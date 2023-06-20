@@ -128,7 +128,14 @@ func handleBOSConnection(conn net.Conn) {
 		os.Exit(1)
 	}
 
-	if err := WriteOServiceHostOnline(conn, 101); err != nil {
+	fmt.Println("writeOServiceHostOnline...")
+	if err := writeOServiceHostOnline(conn, 101); err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
+	fmt.Println("readOServiceClientVersions...")
+	if err := readOServiceClientVersions(conn); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
@@ -830,10 +837,10 @@ func printTLV(r io.Reader) error {
 }
 
 type flapFrame struct {
-	startMarker uint8
-	frameType   uint8
-	sequence    uint16
-	snac        *snacFrame
+	startMarker   uint8
+	frameType     uint8
+	sequence      uint16
+	payloadLength uint16
 }
 
 func (f *flapFrame) write(w io.Writer) error {
@@ -843,24 +850,23 @@ func (f *flapFrame) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, f.frameType); err != nil {
 		return err
 	}
-
 	if err := binary.Write(w, binary.BigEndian, f.sequence); err != nil {
 		return err
 	}
-	if f.snac != nil {
-		buf := &bytes.Buffer{}
-		if err := f.snac.write(buf); err != nil {
-			return err
-		}
-		if err := binary.Write(w, binary.BigEndian, uint16(buf.Len())); err != nil {
-			return err
-		}
-		if _, err := w.Write(buf.Bytes()); err != nil {
-			return err
-		}
-		return nil
+	return binary.Write(w, binary.BigEndian, f.payloadLength)
+}
+
+func (f *flapFrame) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &f.startMarker); err != nil {
+		return err
 	}
-	return binary.Write(w, binary.BigEndian, uint16(0))
+	if err := binary.Read(r, binary.BigEndian, &f.frameType); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &f.sequence); err != nil {
+		return err
+	}
+	return binary.Read(r, binary.BigEndian, &f.payloadLength)
 }
 
 type snacFrame struct {
@@ -890,16 +896,25 @@ func (s *snacFrame) write(w io.Writer) error {
 	return nil
 }
 
-func WriteOServiceHostOnline(conn net.Conn, sequence uint16) error {
-	flap := &flapFrame{
-		startMarker: 42,
-		frameType:   2,
-		sequence:    sequence,
-		snac: &snacFrame{
-			foodGroup: 0x01,
-			sType:     0x03,
-			payload:   &bytes.Buffer{},
-		},
+func (s *snacFrame) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &s.foodGroup); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.sType); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.flags); err != nil {
+		return err
+	}
+	return binary.Read(r, binary.BigEndian, &s.requestID)
+}
+
+func writeOServiceHostOnline(conn net.Conn, sequence uint16) error {
+
+	snac := &snacFrame{
+		foodGroup: 0x01,
+		sType:     0x03,
+		payload:   &bytes.Buffer{},
 	}
 
 	foodGroups := []uint16{
@@ -907,11 +922,79 @@ func WriteOServiceHostOnline(conn net.Conn, sequence uint16) error {
 		0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F, 0x0010, 0x0013, 0x0015,
 		0x0017, 0x0018, 0x0022, 0x0024, 0x0025, 0x044A,
 	}
-	if err := binary.Write(flap.snac.payload, binary.BigEndian, &foodGroups); err != nil {
+	if err := binary.Write(snac.payload, binary.BigEndian, &foodGroups); err != nil {
 		return err
 	}
 
-	return flap.write(conn)
+	snacBuf := &bytes.Buffer{}
+	if err := snac.write(snacBuf); err != nil {
+		return err
+	}
+
+	flap := &flapFrame{
+		startMarker:   42,
+		frameType:     2,
+		sequence:      sequence,
+		payloadLength: uint16(snacBuf.Len()),
+	}
+
+	if err := flap.write(conn); err != nil {
+		return err
+	}
+
+	_, err := conn.Write(snacBuf.Bytes())
+	return err
+}
+
+type snac01_17 struct {
+	snacFrame
+	versions map[uint16]uint16
+}
+
+func (s *snac01_17) read(r io.Reader) error {
+	if err := s.snacFrame.read(r); err != nil {
+		return err
+	}
+	for {
+		var family uint16
+		if err := binary.Read(r, binary.BigEndian, &family); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		var version uint16
+		if err := binary.Read(r, binary.BigEndian, &version); err != nil {
+			return err
+		}
+		s.versions[family] = version
+	}
+	return nil
+}
+
+func readOServiceClientVersions(r io.Reader) error {
+	flap := &flapFrame{}
+	if err := flap.read(r); err != nil {
+		return err
+	}
+
+	fmt.Printf("readOServiceClientVersions FLAP: %+v\n", flap)
+
+	b := make([]byte, flap.payloadLength)
+	if _, err := r.Read(b); err != nil {
+		return err
+	}
+
+	snac := &snac01_17{
+		versions: make(map[uint16]uint16),
+	}
+	if err := snac.read(bytes.NewBuffer(b)); err != nil {
+		return err
+	}
+
+	fmt.Printf("readOServiceClientVersions SNAC: %+v\n", snac)
+
+	return nil
 }
 
 func readString(r io.Reader, len uint16) (string, error) {
