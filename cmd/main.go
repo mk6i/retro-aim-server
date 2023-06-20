@@ -128,7 +128,7 @@ func handleBOSConnection(conn net.Conn) {
 		os.Exit(1)
 	}
 
-	if err := WriteOServiceHostOnline(conn, 0); err != nil {
+	if err := WriteOServiceHostOnline(conn, 101); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
@@ -829,74 +829,89 @@ func printTLV(r io.Reader) error {
 	}
 }
 
-func WriteOServiceHostOnline(conn net.Conn, sequenceNumber uint16) error {
-	fmt.Println("Writing service host online...")
+type flapFrame struct {
+	startMarker uint8
+	frameType   uint8
+	sequence    uint16
+	snac        *snacFrame
+}
 
-	startMarker := uint8(42)
-	if err := binary.Write(conn, binary.BigEndian, startMarker); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+func (f *flapFrame) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, f.startMarker); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, f.frameType); err != nil {
+		return err
 	}
 
-	frameType := uint8(2)
-	if err := binary.Write(conn, binary.BigEndian, frameType); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+	if err := binary.Write(w, binary.BigEndian, f.sequence); err != nil {
+		return err
 	}
-
-	seq := uint16(101)
-	if err := binary.Write(conn, binary.BigEndian, seq); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	b := make([]byte, 0)
-	snacBuf := bytes.NewBuffer(b)
-
-	{
-		foodGroup := uint16(0x01)
-		if err := binary.Write(snacBuf, binary.BigEndian, foodGroup); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+	if f.snac != nil {
+		buf := &bytes.Buffer{}
+		if err := f.snac.write(buf); err != nil {
+			return err
 		}
-
-		foodGroupType := uint16(0x03)
-		if err := binary.Write(snacBuf, binary.BigEndian, foodGroupType); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+		if err := binary.Write(w, binary.BigEndian, uint16(buf.Len())); err != nil {
+			return err
 		}
-
-		flags := uint16(0x00)
-		if err := binary.Write(snacBuf, binary.BigEndian, flags); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+		if _, err := w.Write(buf.Bytes()); err != nil {
+			return err
 		}
-
-		requestID := uint32(0x00)
-		if err := binary.Write(snacBuf, binary.BigEndian, requestID); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-
-		authKey := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F, 0x0010, 0x0013, 0x0015, 0x0017, 0x0018, 0x0022, 0x0024, 0x0025, 0x044A}
-		if err := binary.Write(snacBuf, binary.BigEndian, &authKey); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
+		return nil
 	}
+	return binary.Write(w, binary.BigEndian, uint16(0))
+}
 
-	payloadLength := uint16(snacBuf.Len())
-	if err := binary.Write(conn, binary.BigEndian, payloadLength); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+type snacFrame struct {
+	foodGroup uint16
+	sType     uint16
+	flags     uint16
+	requestID uint32
+	payload   *bytes.Buffer
+}
+
+func (s *snacFrame) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, s.foodGroup); err != nil {
+		return err
 	}
-
-	if _, err := conn.Write(snacBuf.Bytes()); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+	if err := binary.Write(w, binary.BigEndian, s.sType); err != nil {
+		return err
 	}
-
+	if err := binary.Write(w, binary.BigEndian, s.flags); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, s.requestID); err != nil {
+		return err
+	}
+	if _, err := w.Write(s.payload.Bytes()); err != nil {
+		return err
+	}
 	return nil
+}
+
+func WriteOServiceHostOnline(conn net.Conn, sequence uint16) error {
+	flap := &flapFrame{
+		startMarker: 42,
+		frameType:   2,
+		sequence:    sequence,
+		snac: &snacFrame{
+			foodGroup: 0x01,
+			sType:     0x03,
+			payload:   &bytes.Buffer{},
+		},
+	}
+
+	foodGroups := []uint16{
+		0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009,
+		0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F, 0x0010, 0x0013, 0x0015,
+		0x0017, 0x0018, 0x0022, 0x0024, 0x0025, 0x044A,
+	}
+	if err := binary.Write(flap.snac.payload, binary.BigEndian, &foodGroups); err != nil {
+		return err
+	}
+
+	return flap.write(conn)
 }
 
 func readString(r io.Reader, len uint16) (string, error) {
