@@ -874,7 +874,6 @@ type snacFrame struct {
 	sType     uint16
 	flags     uint16
 	requestID uint32
-	payload   *bytes.Buffer
 }
 
 func (s *snacFrame) write(w io.Writer) error {
@@ -888,9 +887,6 @@ func (s *snacFrame) write(w io.Writer) error {
 		return err
 	}
 	if err := binary.Write(w, binary.BigEndian, s.requestID); err != nil {
-		return err
-	}
-	if _, err := w.Write(s.payload.Bytes()); err != nil {
 		return err
 	}
 	return nil
@@ -909,22 +905,36 @@ func (s *snacFrame) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &s.requestID)
 }
 
-func writeOServiceHostOnline(conn net.Conn, sequence uint16) error {
+type snac01_03 struct {
+	snacFrame
+	foodGroups []uint16
+}
 
-	snac := &snacFrame{
-		foodGroup: 0x01,
-		sType:     0x03,
-		payload:   &bytes.Buffer{},
-	}
-
-	foodGroups := []uint16{
-		0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009,
-		0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F, 0x0010, 0x0013, 0x0015,
-		0x0017, 0x0018, 0x0022, 0x0024, 0x0025, 0x044A,
-	}
-	if err := binary.Write(snac.payload, binary.BigEndian, &foodGroups); err != nil {
+func (s *snac01_03) write(w io.Writer) error {
+	if err := s.snacFrame.write(w); err != nil {
 		return err
 	}
+	if err := binary.Write(w, binary.BigEndian, s.foodGroups); err != nil {
+		return err
+	}
+	return nil
+}
+
+func writeOServiceHostOnline(conn net.Conn, sequence uint16) error {
+
+	snac := &snac01_03{
+		snacFrame: snacFrame{
+			foodGroup: 0x01,
+			sType:     0x03,
+		},
+		foodGroups: []uint16{
+			0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009,
+			0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F, 0x0010, 0x0013, 0x0015,
+			0x0017, 0x0018, 0x0022, 0x0024, 0x0025, 0x044A,
+		},
+	}
+
+	fmt.Printf("writeOServiceHostOnline SNAC: %+v\n", snac)
 
 	snacBuf := &bytes.Buffer{}
 	if err := snac.write(snacBuf); err != nil {
@@ -937,6 +947,8 @@ func writeOServiceHostOnline(conn net.Conn, sequence uint16) error {
 		sequence:      sequence,
 		payloadLength: uint16(snacBuf.Len()),
 	}
+
+	fmt.Printf("writeOServiceHostOnline FLAP: %+v\n", flap)
 
 	if err := flap.write(conn); err != nil {
 		return err
