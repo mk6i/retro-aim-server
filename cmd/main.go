@@ -134,8 +134,8 @@ func handleBOSConnection(conn net.Conn) {
 		os.Exit(1)
 	}
 
-	fmt.Println("readOServiceClientVersions...")
-	if err := readOServiceClientVersions(conn); err != nil {
+	fmt.Println("serviceHostVersions...")
+	if err := serviceHostVersions(conn, 102); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
@@ -958,12 +958,12 @@ func writeOServiceHostOnline(conn net.Conn, sequence uint16) error {
 	return err
 }
 
-type snac01_17 struct {
+type snac01_17_18 struct {
 	snacFrame
 	versions map[uint16]uint16
 }
 
-func (s *snac01_17) read(r io.Reader) error {
+func (s *snac01_17_18) read(r io.Reader) error {
 	if err := s.snacFrame.read(r); err != nil {
 		return err
 	}
@@ -984,29 +984,65 @@ func (s *snac01_17) read(r io.Reader) error {
 	return nil
 }
 
-func readOServiceClientVersions(r io.Reader) error {
+func (s *snac01_17_18) write(w io.Writer) error {
+	if err := s.snacFrame.write(w); err != nil {
+		return err
+	}
+	for family, version := range s.versions {
+		if err := binary.Write(w, binary.BigEndian, family); err != nil {
+			return err
+		}
+		if err := binary.Write(w, binary.BigEndian, version); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func serviceHostVersions(rw io.ReadWriter, sequence uint16) error {
+	// receive
 	flap := &flapFrame{}
-	if err := flap.read(r); err != nil {
+	if err := flap.read(rw); err != nil {
 		return err
 	}
 
-	fmt.Printf("readOServiceClientVersions FLAP: %+v\n", flap)
+	fmt.Printf("serviceHostVersions read FLAP: %+v\n", flap)
 
 	b := make([]byte, flap.payloadLength)
-	if _, err := r.Read(b); err != nil {
+	if _, err := rw.Read(b); err != nil {
 		return err
 	}
 
-	snac := &snac01_17{
+	snac := &snac01_17_18{
 		versions: make(map[uint16]uint16),
 	}
 	if err := snac.read(bytes.NewBuffer(b)); err != nil {
 		return err
 	}
 
-	fmt.Printf("readOServiceClientVersions SNAC: %+v\n", snac)
+	fmt.Printf("serviceHostVersions read SNAC: %+v\n", snac)
 
-	return nil
+	// respond
+	snac.snacFrame.sType = 0x18
+
+	snacBuf := &bytes.Buffer{}
+	if err := snac.write(snacBuf); err != nil {
+		return err
+	}
+
+	flap.sequence = sequence
+	flap.payloadLength = uint16(snacBuf.Len())
+
+	fmt.Printf("serviceHostVersions write FLAP: %+v\n", flap)
+
+	if err := flap.write(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("serviceHostVersions write SNAC: %+v\n", snac)
+
+	_, err := rw.Write(snacBuf.Bytes())
+	return err
 }
 
 func readString(r io.Reader, len uint16) (string, error) {
