@@ -152,6 +152,12 @@ func handleBOSConnection(conn net.Conn) {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
+
+	fmt.Println("receiveAndSendFeedbagRightsQuery...")
+	if err := receiveAndSendFeedbagRightsQuery(conn, 105); err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
 }
 
 func writeFlapSignonFrame(conn net.Conn) error {
@@ -484,7 +490,7 @@ func ReadBUCPLoginRequest(conn net.Conn) (uint16, error) {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
-	fmt.Println("HEREW!")
+
 	return sequenceNumber, nil
 }
 
@@ -1382,6 +1388,29 @@ func receiveAndSendServiceRequestSelfInfo(rw io.ReadWriter, sequence uint16) err
 
 	_, err := rw.Write(snacBuf.Bytes())
 	return err
+}
+
+func receiveAndSendFeedbagRightsQuery(rw io.ReadWriter, sequence uint16) error {
+	// receive
+	flap := &flapFrame{}
+	if err := flap.read(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("receiveAndSendServiceRequestSelfInfo read FLAP: %+v\n", flap)
+
+	b := make([]byte, flap.payloadLength)
+	if _, err := rw.Read(b); err != nil {
+		return err
+	}
+
+	snac := &snacFrame{}
+	if err := snac.read(bytes.NewBuffer(b)); err != nil {
+		return err
+	}
+	fmt.Printf("receiveAndSendServiceRequestSelfInfo read SNAC: %+v\n", snac)
+
+	return nil
 }
 
 func readString(r io.Reader, len uint16) (string, error) {
