@@ -134,8 +134,14 @@ func handleBOSConnection(conn net.Conn) {
 		os.Exit(1)
 	}
 
-	fmt.Println("serviceHostVersions...")
-	if err := serviceHostVersions(conn, 102); err != nil {
+	fmt.Println("receiveAndSendHostVersions...")
+	if err := receiveAndSendHostVersions(conn, 102); err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
+	fmt.Println("receiveAndSendServiceRateParams...")
+	if err := receiveAndSendServiceRateParams(conn, 103); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
@@ -871,7 +877,7 @@ func (f *flapFrame) read(r io.Reader) error {
 
 type snacFrame struct {
 	foodGroup uint16
-	sType     uint16
+	subGroup  uint16
 	flags     uint16
 	requestID uint32
 }
@@ -880,7 +886,7 @@ func (s *snacFrame) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.foodGroup); err != nil {
 		return err
 	}
-	if err := binary.Write(w, binary.BigEndian, s.sType); err != nil {
+	if err := binary.Write(w, binary.BigEndian, s.subGroup); err != nil {
 		return err
 	}
 	if err := binary.Write(w, binary.BigEndian, s.flags); err != nil {
@@ -896,7 +902,7 @@ func (s *snacFrame) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &s.foodGroup); err != nil {
 		return err
 	}
-	if err := binary.Read(r, binary.BigEndian, &s.sType); err != nil {
+	if err := binary.Read(r, binary.BigEndian, &s.subGroup); err != nil {
 		return err
 	}
 	if err := binary.Read(r, binary.BigEndian, &s.flags); err != nil {
@@ -925,7 +931,7 @@ func writeOServiceHostOnline(conn net.Conn, sequence uint16) error {
 	snac := &snac01_03{
 		snacFrame: snacFrame{
 			foodGroup: 0x01,
-			sType:     0x03,
+			subGroup:  0x03,
 		},
 		foodGroups: []uint16{
 			0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009,
@@ -999,14 +1005,14 @@ func (s *snac01_17_18) write(w io.Writer) error {
 	return nil
 }
 
-func serviceHostVersions(rw io.ReadWriter, sequence uint16) error {
+func receiveAndSendHostVersions(rw io.ReadWriter, sequence uint16) error {
 	// receive
 	flap := &flapFrame{}
 	if err := flap.read(rw); err != nil {
 		return err
 	}
 
-	fmt.Printf("serviceHostVersions read FLAP: %+v\n", flap)
+	fmt.Printf("receiveAndSendHostVersions read FLAP: %+v\n", flap)
 
 	b := make([]byte, flap.payloadLength)
 	if _, err := rw.Read(b); err != nil {
@@ -1020,10 +1026,10 @@ func serviceHostVersions(rw io.ReadWriter, sequence uint16) error {
 		return err
 	}
 
-	fmt.Printf("serviceHostVersions read SNAC: %+v\n", snac)
+	fmt.Printf("receiveAndSendHostVersions read SNAC: %+v\n", snac)
 
 	// respond
-	snac.snacFrame.sType = 0x18
+	snac.snacFrame.subGroup = 0x18
 
 	snacBuf := &bytes.Buffer{}
 	if err := snac.write(snacBuf); err != nil {
@@ -1033,13 +1039,164 @@ func serviceHostVersions(rw io.ReadWriter, sequence uint16) error {
 	flap.sequence = sequence
 	flap.payloadLength = uint16(snacBuf.Len())
 
-	fmt.Printf("serviceHostVersions write FLAP: %+v\n", flap)
+	fmt.Printf("receiveAndSendHostVersions write FLAP: %+v\n", flap)
 
 	if err := flap.write(rw); err != nil {
 		return err
 	}
 
-	fmt.Printf("serviceHostVersions write SNAC: %+v\n", snac)
+	fmt.Printf("receiveAndSendHostVersions write SNAC: %+v\n", snac)
+
+	_, err := rw.Write(snacBuf.Bytes())
+	return err
+}
+
+type rateClass struct {
+	ID              uint16
+	windowSize      uint32
+	clearLevel      uint32
+	alertLevel      uint32
+	limitLevel      uint32
+	disconnectLevel uint32
+	currentLevel    uint32
+	maxLevel        uint32
+	lastTime        uint32 // protocol v2 only
+	currentState    byte   // protocol v2 only
+}
+
+type rateGroup struct {
+	ID    uint16
+	pairs []struct {
+		foodGroup uint16
+		subGroup  uint16
+	}
+}
+
+type snac01_07 struct {
+	snacFrame
+	rateClasses []rateClass
+	rateGroups  []rateGroup
+}
+
+func (s *snac01_07) write(w io.Writer) error {
+	if err := s.snacFrame.write(w); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint16(len(s.rateClasses))); err != nil {
+		return err
+	}
+	for _, rateClass := range s.rateClasses {
+		if err := binary.Write(w, binary.BigEndian, rateClass.ID); err != nil {
+			return err
+		}
+		if err := binary.Write(w, binary.BigEndian, rateClass.windowSize); err != nil {
+			return err
+		}
+		if err := binary.Write(w, binary.BigEndian, rateClass.clearLevel); err != nil {
+			return err
+		}
+		if err := binary.Write(w, binary.BigEndian, rateClass.alertLevel); err != nil {
+			return err
+		}
+		if err := binary.Write(w, binary.BigEndian, rateClass.limitLevel); err != nil {
+			return err
+		}
+		if err := binary.Write(w, binary.BigEndian, rateClass.disconnectLevel); err != nil {
+			return err
+		}
+		if err := binary.Write(w, binary.BigEndian, rateClass.currentLevel); err != nil {
+			return err
+		}
+		if err := binary.Write(w, binary.BigEndian, rateClass.maxLevel); err != nil {
+			return err
+		}
+		if err := binary.Write(w, binary.BigEndian, rateClass.lastTime); err != nil {
+			return err
+		}
+		if err := binary.Write(w, binary.BigEndian, rateClass.currentState); err != nil {
+			return err
+		}
+	}
+	for _, rateGroup := range s.rateGroups {
+		if err := binary.Write(w, binary.BigEndian, rateGroup.ID); err != nil {
+			return err
+		}
+		if err := binary.Write(w, binary.BigEndian, uint16(len(rateGroup.pairs))); err != nil {
+			return err
+		}
+		for _, pair := range rateGroup.pairs {
+			if err := binary.Write(w, binary.BigEndian, pair.foodGroup); err != nil {
+				return err
+			}
+			if err := binary.Write(w, binary.BigEndian, pair.subGroup); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func receiveAndSendServiceRateParams(rw io.ReadWriter, sequence uint16) error {
+	// receive
+	flap := &flapFrame{}
+	if err := flap.read(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("receiveAndSendServiceRateParams read FLAP: %+v\n", flap)
+
+	// respond
+	snac := &snac01_07{
+		snacFrame: snacFrame{
+			foodGroup: 0x01,
+			subGroup:  0x07,
+		},
+		rateClasses: []rateClass{
+			//{
+			//	ID:              1,
+			//	windowSize:      10,
+			//	clearLevel:      10,
+			//	alertLevel:      10,
+			//	limitLevel:      10,
+			//	disconnectLevel: 10,
+			//	currentLevel:    10,
+			//	maxLevel:        10,
+			//	lastTime:        10,
+			//	currentState:    10,
+			//},
+		},
+		rateGroups: []rateGroup{
+			//{
+			//	ID: 1,
+			//	pairs: []struct {
+			//		foodGroup uint16
+			//		subGroup  uint16
+			//	}{
+			//		{
+			//			foodGroup: 1,
+			//			subGroup:  1,
+			//		},
+			//	},
+			//},
+		},
+	}
+
+	snacBuf := &bytes.Buffer{}
+	if err := snac.write(snacBuf); err != nil {
+		return err
+	}
+
+	flap.sequence = sequence
+	flap.payloadLength = uint16(snacBuf.Len())
+
+	fmt.Printf("receiveAndSendServiceRateParams write FLAP: %+v\n", flap)
+
+	if err := flap.write(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("receiveAndSendServiceRateParams write SNAC: %+v\n", snac)
 
 	_, err := rw.Write(snacBuf.Bytes())
 	return err
