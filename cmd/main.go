@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"reflect"
 	"time"
 )
 
@@ -153,8 +154,8 @@ func handleBOSConnection(conn net.Conn) {
 		os.Exit(1)
 	}
 
-	fmt.Println("receiveAndSendFeedbagRightsQuery...")
-	if err := receiveAndSendFeedbagRightsQuery(conn, 105); err != nil {
+	fmt.Println("receiveFeedbagRightsQuery...")
+	if err := receiveFeedbagRightsQuery(conn); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
@@ -1279,6 +1280,34 @@ func (t *TLV) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, t.val)
 }
 
+func (t *TLV) read(r io.Reader, typeLookup map[uint16]reflect.Kind) error {
+	if err := binary.Read(r, binary.BigEndian, &t.tType); err != nil {
+		return err
+	}
+	var tlvValLen uint16
+	if err := binary.Read(r, binary.BigEndian, &tlvValLen); err != nil {
+		return err
+	}
+
+	kind, ok := typeLookup[t.tType]
+	if !ok {
+		return fmt.Errorf("unknown data type for TLV %d", t.tType)
+	}
+
+	switch kind {
+	case reflect.Uint16:
+		var val uint16
+		if err := binary.Read(r, binary.BigEndian, &val); err != nil {
+			return err
+		}
+		t.val = val
+	default:
+		panic("unsupported data type")
+	}
+
+	return nil
+}
+
 type snac01_0F struct {
 	snacFrame
 	screenName   string
@@ -1390,7 +1419,34 @@ func receiveAndSendServiceRequestSelfInfo(rw io.ReadWriter, sequence uint16) err
 	return err
 }
 
-func receiveAndSendFeedbagRightsQuery(rw io.ReadWriter, sequence uint16) error {
+type snac13_02 struct {
+	snacFrame
+	TLVs []*TLV
+}
+
+func (s *snac13_02) read(r io.Reader) error {
+	if err := s.snacFrame.read(r); err != nil {
+		return err
+	}
+
+	lookup := map[uint16]reflect.Kind{0x0B: reflect.Uint16}
+
+	for {
+		// todo, don't like this extra alloc when we're EOF
+		tlv := &TLV{}
+		if err := tlv.read(r, lookup); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		s.TLVs = append(s.TLVs, tlv)
+	}
+
+	return nil
+}
+
+func receiveFeedbagRightsQuery(rw io.ReadWriter) error {
 	// receive
 	flap := &flapFrame{}
 	if err := flap.read(rw); err != nil {
@@ -1404,7 +1460,7 @@ func receiveAndSendFeedbagRightsQuery(rw io.ReadWriter, sequence uint16) error {
 		return err
 	}
 
-	snac := &snacFrame{}
+	snac := &snac13_02{}
 	if err := snac.read(bytes.NewBuffer(b)); err != nil {
 		return err
 	}
