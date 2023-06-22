@@ -159,6 +159,18 @@ func handleBOSConnection(conn net.Conn) {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
+
+	fmt.Println("receiveAndSendFeedbagQuery...")
+	if err := receiveAndSendFeedbagQuery(conn, 105); err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
+	fmt.Println("receiveLocate...")
+	if err := receiveLocate(conn); err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
 }
 
 func writeFlapSignonFrame(conn net.Conn) error {
@@ -1269,6 +1281,8 @@ func (t *TLV) write(w io.Writer) error {
 		valLen = 2
 	case uint32:
 		valLen = 4
+	case []uint16:
+		valLen = uint16(len(t.val.([]uint16)))
 	case []byte:
 		valLen = uint16(len(t.val.([]byte)))
 	}
@@ -1465,6 +1479,242 @@ func receiveFeedbagRightsQuery(rw io.ReadWriter) error {
 		return err
 	}
 	fmt.Printf("receiveAndSendServiceRequestSelfInfo read SNAC: %+v\n", snac)
+
+	return nil
+}
+
+type feedbagItem struct {
+	name    string
+	groupID uint16
+	itemID  uint16
+	classID uint16
+	tlvs    []*TLV
+}
+
+func (f *feedbagItem) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, uint16(len(f.name))); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, []byte(f.name)); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, f.groupID); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, f.itemID); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, f.classID); err != nil {
+		return err
+	}
+	for _, tlv := range f.tlvs {
+		if err := tlv.write(w); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type snac13_06 struct {
+	snacFrame
+	version    uint8
+	items      []*feedbagItem
+	lastUpdate uint32
+}
+
+func (s *snac13_06) write(w io.Writer) error {
+	if err := s.snacFrame.write(w); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, s.version); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint16(len(s.items))); err != nil {
+		return err
+	}
+	for _, t := range s.items {
+		if err := t.write(w); err != nil {
+			return err
+		}
+	}
+	return binary.Write(w, binary.BigEndian, s.lastUpdate)
+}
+
+func receiveAndSendFeedbagQuery(rw io.ReadWriter, sequence uint16) error {
+	// receive
+	flap := &flapFrame{}
+	if err := flap.read(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("receiveAndSendFeedbagQuery read FLAP: %+v\n", flap)
+
+	b := make([]byte, flap.payloadLength)
+	if _, err := rw.Read(b); err != nil {
+		return err
+	}
+
+	snac := &snacFrame{}
+	if err := snac.read(bytes.NewBuffer(b)); err != nil {
+		return err
+	}
+	fmt.Printf("receiveAndSendFeedbagQuery read SNAC: %+v\n", snac)
+
+	// send
+	writeSnac := &snac13_06{
+		snacFrame: snacFrame{
+			foodGroup: 0x13,
+			subGroup:  0x06,
+		},
+		version: 0,
+		items:   []*feedbagItem{
+			//{
+			//	groupID: 0,
+			//	itemID:  0,
+			//	classID: 0,
+			//	name:    "",
+			//	tlvs: []*TLV{
+			//		{
+			//			tType: 0x00C8,
+			//			val:   []uint16{321, 10},
+			//		},
+			//	},
+			//},
+			//{
+			//	groupID: 0,
+			//	itemID:  1805,
+			//	classID: 3,
+			//	name:    "spimmer123",
+			//	tlvs:    []*TLV{},
+			//},
+			//{
+			//	groupID: 0,
+			//	itemID:  4046,
+			//	classID: 0x14,
+			//	name:    "5",
+			//	tlvs:    []*TLV{},
+			//},
+			//{
+			//	groupID: 0,
+			//	itemID:  12108,
+			//	classID: 4,
+			//	name:    "",
+			//	tlvs: []*TLV{
+			//		{
+			//			tType: 202,
+			//			val:   uint8(0x04),
+			//		},
+			//		{
+			//			tType: 203,
+			//			val:   uint32(0xffffffff),
+			//		},
+			//		{
+			//			tType: 204,
+			//			val:   uint32(1),
+			//		},
+			//	},
+			//},
+			//{
+			//	groupID: 0x0A,
+			//	itemID:  0,
+			//	classID: 1,
+			//	name:    "Friends",
+			//	tlvs: []*TLV{
+			//		{
+			//			tType: 200,
+			//			val:   []uint16{110, 147},
+			//		},
+			//	},
+			//},
+			//{
+			//	groupID: 0x0A,
+			//	itemID:  110,
+			//	classID: 0,
+			//	name:    "ChattingChuck",
+			//	tlvs:    []*TLV{},
+			//},
+			//{
+			//	groupID: 0x0A,
+			//	itemID:  147,
+			//	classID: 0,
+			//	name:    "example@example.com",
+			//	tlvs:    []*TLV{},
+			//},
+			//{
+			//	groupID: 321,
+			//	itemID:  0,
+			//	classID: 1,
+			//	name:    "Empty Group",
+			//	tlvs: []*TLV{
+			//		{
+			//			tType: 200,
+			//			val:   []uint16{},
+			//		},
+			//	},
+			//},
+		},
+		lastUpdate: uint32(time.Now().Unix()),
+	}
+
+	snacBuf := &bytes.Buffer{}
+	if err := writeSnac.write(snacBuf); err != nil {
+		return err
+	}
+
+	flap.sequence = sequence
+	flap.payloadLength = uint16(snacBuf.Len())
+
+	fmt.Printf("receiveAndSendServiceRequestSelfInfo write FLAP: %+v\n", flap)
+
+	if err := flap.write(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("receiveAndSendServiceRequestSelfInfo write SNAC: %+v\n", writeSnac)
+
+	_, err := rw.Write(snacBuf.Bytes())
+
+	//payload := []byte{
+	//	0x2A, 0x02, 0x00, 0x69, 0x00, 0xE1, 0x00, 0x13, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0d,
+	//	0x00, 0x00, 0x08, 0x00, 0x07, 0x36, 0x32, 0x31, 0x38, 0x38, 0x39, 0x37, 0x0A, 0x1E, 0x43, 0x18,
+	//	0x00, 0x00, 0x00, 0x0A, 0x01, 0x31, 0x00, 0x06, 0x46, 0x75, 0x6E, 0x42, 0x6F, 0x6F, 0x00, 0x09,
+	//	0x31, 0x37, 0x36, 0x33, 0x33, 0x33, 0x30, 0x37, 0x38, 0x17, 0xB7, 0x2A, 0x18, 0x00, 0x00, 0x00,
+	//	0x09, 0x01, 0x31, 0x00, 0x05, 0x45, 0x2E, 0x53, 0x2E, 0x56, 0x00, 0x07, 0x36, 0x32, 0x31, 0x38,
+	//	0x38, 0x39, 0x38, 0x23, 0x8C, 0x12, 0xA1, 0x00, 0x00, 0x00, 0x09, 0x01, 0x31, 0x00, 0x05, 0x74,
+	//	0x68, 0x6F, 0x72, 0x64, 0x00, 0x07, 0x46, 0x72, 0x69, 0x65, 0x6E, 0x64, 0x73, 0x7F, 0xED, 0x00,
+	//	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0A, 0x43, 0x6F, 0x2D, 0x57, 0x6F, 0x72, 0x6B, 0x65, 0x72,
+	//	0x73, 0x55, 0x7F, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x07, 0x36, 0x32, 0x31, 0x38, 0x38,
+	//	0x39, 0x35, 0x23, 0x8C, 0x08, 0x80, 0x00, 0x00, 0x00, 0x0D, 0x01, 0x31, 0x00, 0x09, 0x52, 0x65,
+	//	0x67, 0x72, 0x65, 0x73, 0x73, 0x6F, 0x72, 0x00, 0x07, 0x36, 0x32, 0x35, 0x31, 0x37, 0x32, 0x33,
+	//	0x23, 0x8C, 0x05, 0x83, 0x00, 0x00, 0x00, 0x0D, 0x01, 0x31, 0x00, 0x05, 0x47, 0x68, 0x6F, 0x73,
+	//	0x74, 0x00, 0x66, 0x00, 0x00, 0x00, 0x07, 0x36, 0x32, 0x31, 0x33, 0x39, 0x34, 0x39, 0x23, 0x8C,
+	//	0x26, 0x9A, 0x00, 0x00, 0x00, 0x0D, 0x01, 0x31, 0x00, 0x05, 0x6D, 0x69, 0x63, 0x6B, 0x79, 0x00,
+	//	0x66, 0x00, 0x00, 0x3B, 0xB7, 0x4B, 0x7D,
+	//}
+	//
+	//_, err := rw.Write(payload)
+	return err
+}
+
+func receiveLocate(r io.Reader) error {
+	// receive
+	flap := &flapFrame{}
+	if err := flap.read(r); err != nil {
+		return err
+	}
+
+	fmt.Printf("receiveLocate read FLAP: %+v\n", flap)
+
+	b := make([]byte, flap.payloadLength)
+	if _, err := r.Read(b); err != nil {
+		return err
+	}
+
+	snac := &snacFrame{}
+	if err := snac.read(bytes.NewBuffer(b)); err != nil {
+		return err
+	}
+	fmt.Printf("receiveLocate read SNAC: %+v\n", snac)
 
 	return nil
 }
