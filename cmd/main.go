@@ -154,23 +154,53 @@ func handleBOSConnection(conn net.Conn) {
 		os.Exit(1)
 	}
 
-	fmt.Println("receiveFeedbagRightsQuery...")
-	if err := receiveFeedbagRightsQuery(conn); err != nil {
+	fmt.Println("sendAndReceiveFeedbagRightsQuery...")
+	if err := sendAndReceiveFeedbagRightsQuery(conn, 105); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
 	fmt.Println("receiveAndSendFeedbagQuery...")
-	if err := receiveAndSendFeedbagQuery(conn, 105); err != nil {
+	if err := receiveAndSendFeedbagQuery(conn, 106); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
-	fmt.Println("receiveLocate...")
-	if err := receiveLocate(conn); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
+	//fmt.Println("sendAndReceiveLocateRights...")
+	//if err := sendAndReceiveLocateRights(conn, 107); err != nil {
+	//	fmt.Println(err.Error())
+	//	os.Exit(1)
+	//}
+	//
+	//fmt.Println("sendAndReceiveBuddyRights...")
+	//if err := sendAndReceiveBuddyRights(conn, 108); err != nil {
+	//	fmt.Println(err.Error())
+	//	os.Exit(1)
+	//}
+	//
+	//fmt.Println("sendAndReceiveICBMParameterReply...")
+	//if err := sendAndReceiveICBMParameterReply(conn, 109); err != nil {
+	//	fmt.Println(err.Error())
+	//	os.Exit(1)
+	//}
+	//
+	//fmt.Println("sendAndReceivePDRightsQuery...")
+	//if err := sendAndReceivePDRightsQuery(conn, 110); err != nil {
+	//	fmt.Println(err.Error())
+	//	os.Exit(1)
+	//}
+	//
+	//fmt.Println("sendAndReceiveNextChatRights...")
+	//if err := sendAndReceiveNextChatRights(conn, 111); err != nil {
+	//	fmt.Println(err.Error())
+	//	os.Exit(1)
+	//}
+	//
+	//fmt.Println("sendAndReceiveNext...")
+	//if err := sendAndReceiveNext(conn, 112); err != nil {
+	//	fmt.Println(err.Error())
+	//	os.Exit(1)
+	//}
 }
 
 func writeFlapSignonFrame(conn net.Conn) error {
@@ -960,9 +990,7 @@ func writeOServiceHostOnline(conn net.Conn, sequence uint16) error {
 			subGroup:  0x03,
 		},
 		foodGroups: []uint16{
-			0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009,
-			0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F, 0x0010, 0x0013, 0x0015,
-			0x0017, 0x0018, 0x0022, 0x0024, 0x0025, 0x044A,
+			0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013,
 		},
 	}
 
@@ -1460,14 +1488,14 @@ func (s *snac13_02) read(r io.Reader) error {
 	return nil
 }
 
-func receiveFeedbagRightsQuery(rw io.ReadWriter) error {
+func sendAndReceiveFeedbagRightsQuery(rw io.ReadWriter, sequence uint16) error {
 	// receive
 	flap := &flapFrame{}
 	if err := flap.read(rw); err != nil {
 		return err
 	}
 
-	fmt.Printf("receiveAndSendServiceRequestSelfInfo read FLAP: %+v\n", flap)
+	fmt.Printf("sendAndReceiveFeedbagRightsQuery read FLAP: %+v\n", flap)
 
 	b := make([]byte, flap.payloadLength)
 	if _, err := rw.Read(b); err != nil {
@@ -1478,9 +1506,80 @@ func receiveFeedbagRightsQuery(rw io.ReadWriter) error {
 	if err := snac.read(bytes.NewBuffer(b)); err != nil {
 		return err
 	}
-	fmt.Printf("receiveAndSendServiceRequestSelfInfo read SNAC: %+v\n", snac)
+	fmt.Printf("sendAndReceiveFeedbagRightsQuery read SNAC: %+v\n", snac)
 
-	return nil
+	// respond
+	writeSnac := &snacFrameTLV{
+		snacFrame: snacFrame{
+			foodGroup: 0x13,
+			subGroup:  0x03,
+		},
+		TLVs: []*TLV{
+			{
+				tType: 0x03,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x04,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x05,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x06,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x07,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x08,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x09,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x0A,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x0C,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x0D,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x0E,
+				val:   uint16(100),
+			},
+		},
+	}
+
+	snacBuf := &bytes.Buffer{}
+	if err := writeSnac.write(snacBuf); err != nil {
+		return err
+	}
+
+	flap.sequence = sequence
+	flap.payloadLength = uint16(snacBuf.Len())
+
+	fmt.Printf("sendAndReceiveFeedbagRightsQuery write FLAP: %+v\n", flap)
+
+	if err := flap.write(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("sendAndReceiveFeedbagRightsQuery write SNAC: %+v\n", writeSnac)
+
+	_, err := rw.Write(snacBuf.Bytes())
+	return err
 }
 
 type feedbagItem struct {
@@ -1505,6 +1604,9 @@ func (f *feedbagItem) write(w io.Writer) error {
 		return err
 	}
 	if err := binary.Write(w, binary.BigEndian, f.classID); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint16(len(f.tlvs))); err != nil {
 		return err
 	}
 	for _, tlv := range f.tlvs {
@@ -1567,91 +1669,91 @@ func receiveAndSendFeedbagQuery(rw io.ReadWriter, sequence uint16) error {
 			subGroup:  0x06,
 		},
 		version: 0,
-		items:   []*feedbagItem{
-			//{
-			//	groupID: 0,
-			//	itemID:  0,
-			//	classID: 0,
-			//	name:    "",
-			//	tlvs: []*TLV{
-			//		{
-			//			tType: 0x00C8,
-			//			val:   []uint16{321, 10},
-			//		},
-			//	},
-			//},
-			//{
-			//	groupID: 0,
-			//	itemID:  1805,
-			//	classID: 3,
-			//	name:    "spimmer123",
-			//	tlvs:    []*TLV{},
-			//},
-			//{
-			//	groupID: 0,
-			//	itemID:  4046,
-			//	classID: 0x14,
-			//	name:    "5",
-			//	tlvs:    []*TLV{},
-			//},
-			//{
-			//	groupID: 0,
-			//	itemID:  12108,
-			//	classID: 4,
-			//	name:    "",
-			//	tlvs: []*TLV{
-			//		{
-			//			tType: 202,
-			//			val:   uint8(0x04),
-			//		},
-			//		{
-			//			tType: 203,
-			//			val:   uint32(0xffffffff),
-			//		},
-			//		{
-			//			tType: 204,
-			//			val:   uint32(1),
-			//		},
-			//	},
-			//},
-			//{
-			//	groupID: 0x0A,
-			//	itemID:  0,
-			//	classID: 1,
-			//	name:    "Friends",
-			//	tlvs: []*TLV{
-			//		{
-			//			tType: 200,
-			//			val:   []uint16{110, 147},
-			//		},
-			//	},
-			//},
-			//{
-			//	groupID: 0x0A,
-			//	itemID:  110,
-			//	classID: 0,
-			//	name:    "ChattingChuck",
-			//	tlvs:    []*TLV{},
-			//},
-			//{
-			//	groupID: 0x0A,
-			//	itemID:  147,
-			//	classID: 0,
-			//	name:    "example@example.com",
-			//	tlvs:    []*TLV{},
-			//},
-			//{
-			//	groupID: 321,
-			//	itemID:  0,
-			//	classID: 1,
-			//	name:    "Empty Group",
-			//	tlvs: []*TLV{
-			//		{
-			//			tType: 200,
-			//			val:   []uint16{},
-			//		},
-			//	},
-			//},
+		items: []*feedbagItem{
+			{
+				groupID: 0,
+				itemID:  0,
+				classID: 0,
+				name:    "",
+				tlvs: []*TLV{
+					{
+						tType: 0x00C8,
+						val:   []uint16{321, 10},
+					},
+				},
+			},
+			{
+				groupID: 0,
+				itemID:  1805,
+				classID: 3,
+				name:    "spimmer123",
+				tlvs:    []*TLV{},
+			},
+			{
+				groupID: 0,
+				itemID:  4046,
+				classID: 0x14,
+				name:    "5",
+				tlvs:    []*TLV{},
+			},
+			{
+				groupID: 0,
+				itemID:  12108,
+				classID: 4,
+				name:    "",
+				tlvs: []*TLV{
+					{
+						tType: 202,
+						val:   uint8(0x04),
+					},
+					{
+						tType: 203,
+						val:   uint32(0xffffffff),
+					},
+					{
+						tType: 204,
+						val:   uint32(1),
+					},
+				},
+			},
+			{
+				groupID: 0x0A,
+				itemID:  0,
+				classID: 1,
+				name:    "Friends",
+				tlvs: []*TLV{
+					{
+						tType: 200,
+						val:   []uint16{110, 147},
+					},
+				},
+			},
+			{
+				groupID: 0x0A,
+				itemID:  110,
+				classID: 0,
+				name:    "ChattingChuck",
+				tlvs:    []*TLV{},
+			},
+			{
+				groupID: 0x0A,
+				itemID:  147,
+				classID: 0,
+				name:    "example@example.com",
+				tlvs:    []*TLV{},
+			},
+			{
+				groupID: 0,
+				itemID:  0,
+				classID: 1,
+				name:    "Empty Group",
+				tlvs: []*TLV{
+					{
+						tType: 200,
+						val:   []uint16{},
+					},
+				},
+			},
 		},
 		lastUpdate: uint32(time.Now().Unix()),
 	}
@@ -1664,49 +1766,47 @@ func receiveAndSendFeedbagQuery(rw io.ReadWriter, sequence uint16) error {
 	flap.sequence = sequence
 	flap.payloadLength = uint16(snacBuf.Len())
 
-	fmt.Printf("receiveAndSendServiceRequestSelfInfo write FLAP: %+v\n", flap)
+	fmt.Printf("receiveAndSendFeedbagQuery write FLAP: %+v\n", flap)
 
 	if err := flap.write(rw); err != nil {
 		return err
 	}
 
-	fmt.Printf("receiveAndSendServiceRequestSelfInfo write SNAC: %+v\n", writeSnac)
+	fmt.Printf("receiveAndSendFeedbagQuery write SNAC: %+v\n", writeSnac)
 
 	_, err := rw.Write(snacBuf.Bytes())
 
-	//payload := []byte{
-	//	0x2A, 0x02, 0x00, 0x69, 0x00, 0xE1, 0x00, 0x13, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0d,
-	//	0x00, 0x00, 0x08, 0x00, 0x07, 0x36, 0x32, 0x31, 0x38, 0x38, 0x39, 0x37, 0x0A, 0x1E, 0x43, 0x18,
-	//	0x00, 0x00, 0x00, 0x0A, 0x01, 0x31, 0x00, 0x06, 0x46, 0x75, 0x6E, 0x42, 0x6F, 0x6F, 0x00, 0x09,
-	//	0x31, 0x37, 0x36, 0x33, 0x33, 0x33, 0x30, 0x37, 0x38, 0x17, 0xB7, 0x2A, 0x18, 0x00, 0x00, 0x00,
-	//	0x09, 0x01, 0x31, 0x00, 0x05, 0x45, 0x2E, 0x53, 0x2E, 0x56, 0x00, 0x07, 0x36, 0x32, 0x31, 0x38,
-	//	0x38, 0x39, 0x38, 0x23, 0x8C, 0x12, 0xA1, 0x00, 0x00, 0x00, 0x09, 0x01, 0x31, 0x00, 0x05, 0x74,
-	//	0x68, 0x6F, 0x72, 0x64, 0x00, 0x07, 0x46, 0x72, 0x69, 0x65, 0x6E, 0x64, 0x73, 0x7F, 0xED, 0x00,
-	//	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0A, 0x43, 0x6F, 0x2D, 0x57, 0x6F, 0x72, 0x6B, 0x65, 0x72,
-	//	0x73, 0x55, 0x7F, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x07, 0x36, 0x32, 0x31, 0x38, 0x38,
-	//	0x39, 0x35, 0x23, 0x8C, 0x08, 0x80, 0x00, 0x00, 0x00, 0x0D, 0x01, 0x31, 0x00, 0x09, 0x52, 0x65,
-	//	0x67, 0x72, 0x65, 0x73, 0x73, 0x6F, 0x72, 0x00, 0x07, 0x36, 0x32, 0x35, 0x31, 0x37, 0x32, 0x33,
-	//	0x23, 0x8C, 0x05, 0x83, 0x00, 0x00, 0x00, 0x0D, 0x01, 0x31, 0x00, 0x05, 0x47, 0x68, 0x6F, 0x73,
-	//	0x74, 0x00, 0x66, 0x00, 0x00, 0x00, 0x07, 0x36, 0x32, 0x31, 0x33, 0x39, 0x34, 0x39, 0x23, 0x8C,
-	//	0x26, 0x9A, 0x00, 0x00, 0x00, 0x0D, 0x01, 0x31, 0x00, 0x05, 0x6D, 0x69, 0x63, 0x6B, 0x79, 0x00,
-	//	0x66, 0x00, 0x00, 0x3B, 0xB7, 0x4B, 0x7D,
-	//}
-	//
-	//_, err := rw.Write(payload)
 	return err
 }
 
-func receiveLocate(r io.Reader) error {
+type snac02_03 struct {
+	snacFrame
+	TLVs []*TLV
+}
+
+func (s *snac02_03) write(w io.Writer) error {
+	if err := s.snacFrame.write(w); err != nil {
+		return err
+	}
+	for _, tlv := range s.TLVs {
+		if err := tlv.write(w); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func sendAndReceiveLocateRights(rw io.ReadWriter, sequence uint16) error {
 	// receive
 	flap := &flapFrame{}
-	if err := flap.read(r); err != nil {
+	if err := flap.read(rw); err != nil {
 		return err
 	}
 
-	fmt.Printf("receiveLocate read FLAP: %+v\n", flap)
+	fmt.Printf("sendAndReceiveLocateRights read FLAP: %+v\n", flap)
 
 	b := make([]byte, flap.payloadLength)
-	if _, err := r.Read(b); err != nil {
+	if _, err := rw.Read(b); err != nil {
 		return err
 	}
 
@@ -1714,10 +1814,425 @@ func receiveLocate(r io.Reader) error {
 	if err := snac.read(bytes.NewBuffer(b)); err != nil {
 		return err
 	}
-	fmt.Printf("receiveLocate read SNAC: %+v\n", snac)
+	fmt.Printf("sendAndReceiveLocateRights read SNAC: %+v\n", snac)
+
+	// respond
+	writeSnac := &snac02_03{
+		snacFrame: snacFrame{
+			foodGroup: 0x02,
+			subGroup:  0x03,
+		},
+		TLVs: []*TLV{
+			{
+				tType: 0x01,
+				val:   uint16(0),
+			},
+			{
+				tType: 0x02,
+				val:   uint16(0),
+			},
+			{
+				tType: 0x03,
+				val:   uint16(0),
+			},
+			{
+				tType: 0x04,
+				val:   uint16(0),
+			},
+			{
+				tType: 0x05,
+				val:   uint16(0),
+			},
+		},
+	}
+
+	snacBuf := &bytes.Buffer{}
+	if err := writeSnac.write(snacBuf); err != nil {
+		return err
+	}
+
+	flap.sequence = sequence
+	flap.payloadLength = uint16(snacBuf.Len())
+
+	fmt.Printf("sendAndReceiveLocateRights write FLAP: %+v\n", flap)
+
+	if err := flap.write(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("sendAndReceiveLocateRights write SNAC: %+v\n", writeSnac)
+
+	_, err := rw.Write(snacBuf.Bytes())
+	return err
+}
+
+type snac03_02 struct {
+	snacFrame
+	TLVs []*TLV
+}
+
+func (s *snac03_02) read(r io.Reader) error {
+	if err := s.snacFrame.read(r); err != nil {
+		return err
+	}
+
+	lookup := map[uint16]reflect.Kind{0x05: reflect.Uint16}
+
+	for {
+		// todo, don't like this extra alloc when we're EOF
+		tlv := &TLV{}
+		if err := tlv.read(r, lookup); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		s.TLVs = append(s.TLVs, tlv)
+	}
 
 	return nil
 }
+
+type snac03_03 struct {
+	snacFrame
+	TLVs []*TLV
+}
+
+func (s *snac03_03) write(w io.Writer) error {
+	if err := s.snacFrame.write(w); err != nil {
+		return err
+	}
+	for _, tlv := range s.TLVs {
+		if err := tlv.write(w); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func sendAndReceiveBuddyRights(rw io.ReadWriter, sequence uint16) error {
+	// receive
+	flap := &flapFrame{}
+	if err := flap.read(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("sendAndReceiveBuddyRights read FLAP: %+v\n", flap)
+
+	b := make([]byte, flap.payloadLength)
+	if _, err := rw.Read(b); err != nil {
+		return err
+	}
+
+	snac := &snac03_02{}
+	if err := snac.read(bytes.NewBuffer(b)); err != nil {
+		return err
+	}
+	fmt.Printf("sendAndReceiveBuddyRights read SNAC: %+v\n", snac)
+
+	// respond
+	writeSnac := &snac03_03{
+		snacFrame: snacFrame{
+			foodGroup: 0x03,
+			subGroup:  0x03,
+		},
+		TLVs: []*TLV{
+			{
+				tType: 0x01,
+				val:   uint16(100),
+			},
+			{
+				tType: 0x02,
+				val:   uint16(100),
+			},
+			{
+				tType: 0x04,
+				val:   uint16(100),
+			},
+		},
+	}
+
+	snacBuf := &bytes.Buffer{}
+	if err := writeSnac.write(snacBuf); err != nil {
+		return err
+	}
+
+	flap.sequence = sequence
+	flap.payloadLength = uint16(snacBuf.Len())
+
+	fmt.Printf("sendAndReceiveBuddyRights write FLAP: %+v\n", flap)
+
+	if err := flap.write(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("sendAndReceiveBuddyRights write SNAC: %+v\n", writeSnac)
+
+	_, err := rw.Write(snacBuf.Bytes())
+	return err
+}
+
+type snac04_05 struct {
+	snacFrame
+	maxSlots             uint16
+	ICBMFlags            uint32
+	maxIncomingICBMLen   uint16
+	maxSourceEvil        uint16
+	maxDestinationEvil   uint16
+	minInterICBMInterval uint32
+}
+
+func (s *snac04_05) write(w io.Writer) error {
+	if err := s.snacFrame.write(w); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, s.maxSlots); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, s.ICBMFlags); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, s.maxIncomingICBMLen); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, s.maxSourceEvil); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, s.maxDestinationEvil); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, s.minInterICBMInterval); err != nil {
+		return err
+	}
+	return nil
+}
+
+func sendAndReceiveICBMParameterReply(rw io.ReadWriter, sequence uint16) error {
+	// receive
+	flap := &flapFrame{}
+	if err := flap.read(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("sendAndReceiveICBMParameterReply read FLAP: %+v\n", flap)
+
+	b := make([]byte, flap.payloadLength)
+	if _, err := rw.Read(b); err != nil {
+		return err
+	}
+
+	snac := &snacFrame{}
+	if err := snac.read(bytes.NewBuffer(b)); err != nil {
+		return err
+	}
+	fmt.Printf("sendAndReceiveICBMParameterReply read SNAC: %+v\n", snac)
+
+	// respond
+	writeSnac := &snac04_05{
+		snacFrame: snacFrame{
+			foodGroup: 0x04,
+			subGroup:  0x05,
+		},
+		maxSlots:             100,
+		ICBMFlags:            0x00000001,
+		maxIncomingICBMLen:   8000,
+		maxSourceEvil:        999,
+		maxDestinationEvil:   999,
+		minInterICBMInterval: 100,
+	}
+
+	snacBuf := &bytes.Buffer{}
+	if err := writeSnac.write(snacBuf); err != nil {
+		return err
+	}
+
+	flap.sequence = sequence
+	flap.payloadLength = uint16(snacBuf.Len())
+
+	fmt.Printf("sendAndReceiveICBMParameterReply write FLAP: %+v\n", flap)
+
+	if err := flap.write(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("sendAndReceiveICBMParameterReply write SNAC: %+v\n", writeSnac)
+
+	_, err := rw.Write(snacBuf.Bytes())
+	return err
+}
+
+type snacFrameTLV struct {
+	snacFrame
+	TLVs []*TLV
+}
+
+func (s *snacFrameTLV) write(w io.Writer) error {
+	if err := s.snacFrame.write(w); err != nil {
+		return err
+	}
+	for _, tlv := range s.TLVs {
+		if err := tlv.write(w); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func sendAndReceivePDRightsQuery(rw io.ReadWriter, sequence uint16) error {
+	// receive
+	flap := &flapFrame{}
+	if err := flap.read(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("sendAndReceivePDRightsQuery read FLAP: %+v\n", flap)
+
+	b := make([]byte, flap.payloadLength)
+	if _, err := rw.Read(b); err != nil {
+		return err
+	}
+
+	snac := &snacFrame{}
+	if err := snac.read(bytes.NewBuffer(b)); err != nil {
+		return err
+	}
+	fmt.Printf("sendAndReceivePDRightsQuery read SNAC: %+v\n", snac)
+
+	// respond
+	writeSnac := &snacFrameTLV{
+		snacFrame: snacFrame{
+			foodGroup: 0x09,
+			subGroup:  0x03,
+		},
+		TLVs: []*TLV{
+			{
+				tType: 0x01,
+				val:   uint16(100),
+			},
+			{
+				tType: 0x02,
+				val:   uint16(100),
+			},
+			{
+				tType: 0x03,
+				val:   uint16(100),
+			},
+		},
+	}
+
+	snacBuf := &bytes.Buffer{}
+	if err := writeSnac.write(snacBuf); err != nil {
+		return err
+	}
+
+	flap.sequence = sequence
+	flap.payloadLength = uint16(snacBuf.Len())
+
+	fmt.Printf("sendAndReceivePDRightsQuery write FLAP: %+v\n", flap)
+
+	if err := flap.write(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("sendAndReceivePDRightsQuery write SNAC: %+v\n", writeSnac)
+
+	_, err := rw.Write(snacBuf.Bytes())
+	return err
+}
+
+func sendAndReceiveNextChatRights(rw io.ReadWriter, sequence uint16) error {
+	// receive
+	flap := &flapFrame{}
+	if err := flap.read(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("sendAndReceiveNextChatRights read FLAP: %+v\n", flap)
+
+	b := make([]byte, flap.payloadLength)
+	if _, err := rw.Read(b); err != nil {
+		return err
+	}
+
+	snac := &snacFrame{}
+	if err := snac.read(bytes.NewBuffer(b)); err != nil {
+		return err
+	}
+	fmt.Printf("sendAndReceiveNextChatRights read SNAC: %+v\n", snac)
+
+	// respond
+	writeSnac := &snacFrameTLV{
+		snacFrame: snacFrame{
+			foodGroup: 0x0D,
+			subGroup:  0x09,
+		},
+		TLVs: []*TLV{},
+	}
+
+	snacBuf := &bytes.Buffer{}
+	if err := writeSnac.write(snacBuf); err != nil {
+		return err
+	}
+
+	flap.sequence = sequence
+	flap.payloadLength = uint16(snacBuf.Len())
+
+	fmt.Printf("sendAndReceiveNextChatRights write FLAP: %+v\n", flap)
+
+	if err := flap.write(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("sendAndReceiveNextChatRights write SNAC: %+v\n", writeSnac)
+
+	return nil
+}
+
+func sendAndReceiveNext(rw io.ReadWriter, sequence uint16) error {
+	// receive
+	flap := &flapFrame{}
+	if err := flap.read(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("sendAndReceiveNext read FLAP: %+v\n", flap)
+
+	b := make([]byte, flap.payloadLength)
+	if _, err := rw.Read(b); err != nil {
+		return err
+	}
+
+	snac := &snacFrame{}
+	if err := snac.read(bytes.NewBuffer(b)); err != nil {
+		return err
+	}
+	fmt.Printf("sendAndReceiveNext read SNAC: %+v\n", snac)
+
+	return nil
+}
+
+//func sendAndReceiveNext(rw io.ReadWriter, sequence uint16) error {
+//	// receive
+//	flap := &flapFrame{}
+//	if err := flap.read(rw); err != nil {
+//		return err
+//	}
+//
+//	fmt.Printf("sendAndReceiveNext read FLAP: %+v\n", flap)
+//
+//	b := make([]byte, flap.payloadLength)
+//	if _, err := rw.Read(b); err != nil {
+//		return err
+//	}
+//
+//	snac := &snacFrame{}
+//	if err := snac.read(bytes.NewBuffer(b)); err != nil {
+//		return err
+//	}
+//	fmt.Printf("sendAndReceiveNext read SNAC: %+v\n", snac)
+//
+//	return nil
+//}
 
 func readString(r io.Reader, len uint16) (string, error) {
 	buf := make([]byte, len)
