@@ -23,8 +23,7 @@ func WriteFlapSignonFrame(conn net.Conn) error {
 
 	startMarker := uint8(42)
 	if err := binary.Write(conn, binary.BigEndian, startMarker); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		return err
 	}
 
 	frameType := uint8(1)
