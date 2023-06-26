@@ -14,24 +14,6 @@ type snac17_06 struct {
 	TLVs []*TLV
 }
 
-type snac17_07 struct {
-	snacFrame
-	authKey string
-}
-
-func (s *snac17_07) write(w io.Writer) error {
-	if err := s.snacFrame.write(w); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(s.authKey))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, []byte(s.authKey)); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (s *snac17_06) read(r io.Reader) error {
 	if err := s.snacFrame.read(r); err != nil {
 		return err
@@ -55,6 +37,24 @@ func (s *snac17_06) read(r io.Reader) error {
 		s.TLVs = append(s.TLVs, tlv)
 	}
 
+	return nil
+}
+
+type snac17_07 struct {
+	snacFrame
+	authKey string
+}
+
+func (s *snac17_07) write(w io.Writer) error {
+	if err := s.snacFrame.write(w); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint16(len(s.authKey))); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, []byte(s.authKey)); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -226,149 +226,4 @@ func ReceiveAndSendBUCPLoginRequest(rw io.ReadWriter, sequence uint16) error {
 
 	_, err := rw.Write(snacBuf.Bytes())
 	return err
-}
-
-func PrintTLV(r io.Reader) error {
-
-	for {
-		var tlvID uint16
-		if err := binary.Read(r, binary.BigEndian, &tlvID); err != nil {
-			return err
-		}
-
-		var tlvValLen uint16
-		if err := binary.Read(r, binary.BigEndian, &tlvValLen); err != nil {
-			return err
-		}
-
-		fmt.Printf("(%d) ", tlvID)
-		switch tlvID {
-		case 0x01: // screen name
-			val, err := readString(r, tlvValLen)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("screen name: %s", val)
-		case 0x03: // client id string
-			val, err := readString(r, tlvValLen)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("client id string: %s", val)
-		case 0x25: // password md5 hash
-			val, err := readBytes(r, tlvValLen)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("password md5 hash: %b\n", val)
-		case 0x16: // client id
-			val, err := readUint16(r)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("client id (len=%d): %d", tlvValLen, val)
-		case 0x17: // client major version
-			val, err := readUint16(r)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("client major version (len=%d): %d", tlvValLen, val)
-		case 0x18: // client minor version
-			val, err := readUint16(r)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("client minor version (len=%d): %d", tlvValLen, val)
-		case 0x19: // client lesser version
-			val, err := readUint16(r)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("client lesser version (len=%d): %d", tlvValLen, val)
-		case 0x1A: // client build number
-			val, err := readUint16(r)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("client build number (len=%d): %d", tlvValLen, val)
-		case 0x14: // distribution number
-			val, err := readUint32(r)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("distribution number (len=%d): %d", tlvValLen, val)
-		case 0x0F: // client language (2 symbols)
-			val, err := readString(r, tlvValLen)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("client language (2 symbols) (len=%d): %s", tlvValLen, val)
-		case 0x0E: // client country (2 symbols)
-			val, err := readString(r, tlvValLen)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("client country (2 symbols) (len=%d): %s", tlvValLen, val)
-		case 0x4A: // SSI use flag
-			val, err := readBytes(r, tlvValLen)
-			if err != nil {
-				return err
-			}
-			// buddy list thing?
-			fmt.Printf("SSI use flag (len=%d): %d", tlvValLen, val[0])
-			return nil
-		case 0x004c:
-			fmt.Printf("Use old MD5?\n")
-		case 0x06:
-			val, err := readString(r, tlvValLen)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("login cookie (len=%d): %s\n", tlvValLen, val)
-			for {
-				buf := make([]byte, 1)
-				_, err := r.Read(buf)
-				if err != nil {
-					return nil
-				}
-				fmt.Println(buf)
-			}
-		default:
-			fmt.Printf("unknown TLV: %d (len=%d)", tlvID, tlvValLen)
-			_, err := r.Read(make([]byte, tlvValLen))
-			if err != nil {
-				return err
-			}
-		}
-
-		fmt.Println()
-	}
-}
-
-func readString(r io.Reader, len uint16) (string, error) {
-	buf := make([]byte, len)
-	if _, err := r.Read(buf); err != nil {
-		return "", err
-	}
-	return string(buf), nil
-}
-
-func readBytes(r io.Reader, len uint16) ([]byte, error) {
-	buf := make([]byte, len)
-	if _, err := r.Read(buf); err != nil {
-		return buf, err
-	}
-	return buf, nil
-}
-
-func readUint16(r io.Reader) (uint16, error) {
-	var val uint16
-	binary.Read(r, binary.BigEndian, &val)
-	return val, nil
-}
-
-func readUint32(r io.Reader) (uint32, error) {
-	var val uint32
-	binary.Read(r, binary.BigEndian, &val)
-	return val, nil
 }

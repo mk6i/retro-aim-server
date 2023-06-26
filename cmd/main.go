@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/mkaminski/goaim/oscar"
 	"log"
@@ -62,12 +61,7 @@ func listenBOS() {
 func handleAuthConnection(conn net.Conn) {
 	defer conn.Close()
 
-	if err := oscar.WriteFlapSignonFrame(conn); err != nil {
-		log.Println(err)
-		return
-	}
-
-	_, err := oscar.ReadFlapSignonFrame(conn)
+	err := oscar.SendAndReceiveSignonFrame(conn, 100)
 	if err != nil {
 		log.Println(err)
 		return
@@ -88,31 +82,10 @@ func handleAuthConnection(conn net.Conn) {
 
 func handleBOSConnection(conn net.Conn) {
 	//defer conn.Close()
-
-	if err := oscar.WriteFlapSignonFrame(conn); err != nil {
+	fmt.Println("SendAndReceiveSignonFrame...")
+	if err := oscar.SendAndReceiveSignonFrame(conn, 100); err != nil {
 		log.Println(err)
 		return
-	}
-
-	bufLen, err := oscar.ReadFlapSignonFrame(conn)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	fmt.Println("Reading BOS login request...")
-
-	buf := make([]byte, bufLen)
-
-	_, err = conn.Read(buf)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	if err := oscar.PrintTLV(bytes.NewBuffer(buf)); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
 	}
 
 	fmt.Println("writeOServiceHostOnline...")
