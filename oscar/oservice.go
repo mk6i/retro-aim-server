@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"time"
 )
 
@@ -17,83 +16,6 @@ var OServiceRoute = map[uint16]routeHandler{
 func routeOService(frame *flapFrame, rw io.ReadWriter) error {
 
 	return nil
-}
-
-func WriteFlapSignonFrame(conn net.Conn) error {
-
-	startMarker := uint8(42)
-	if err := binary.Write(conn, binary.BigEndian, startMarker); err != nil {
-		return err
-	}
-
-	frameType := uint8(1)
-	if err := binary.Write(conn, binary.BigEndian, frameType); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	sequenceNumber := uint16(100)
-	if err := binary.Write(conn, binary.BigEndian, sequenceNumber); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	payloadLength := uint16(4)
-	if err := binary.Write(conn, binary.BigEndian, payloadLength); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	flapVersion := uint32(1)
-	if err := binary.Write(conn, binary.BigEndian, flapVersion); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	return nil
-}
-
-func ReadFlapSignonFrame(conn net.Conn) (uint16, error) {
-
-	var startMarker uint8
-	if err := binary.Read(conn, binary.BigEndian, &startMarker); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-	fmt.Printf("start marker: %d\n", startMarker)
-
-	var frameType uint8
-	if err := binary.Read(conn, binary.BigEndian, &frameType); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-	fmt.Printf("frame type: %d\n", frameType)
-
-	var sequenceNumber uint16
-	if err := binary.Read(conn, binary.BigEndian, &sequenceNumber); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("sequence number: %d\n", sequenceNumber)
-
-	var payloadLength uint16
-	if err := binary.Read(conn, binary.BigEndian, &payloadLength); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("payload length: %d\n", payloadLength)
-
-	var flapVersion uint32
-	if err := binary.Read(conn, binary.BigEndian, &flapVersion); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("flap version: %d\n", flapVersion)
-
-	return payloadLength, nil
 }
 
 func WriteOServiceHostOnline(conn net.Conn, sequence uint16) error {
