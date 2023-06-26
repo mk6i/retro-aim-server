@@ -7,185 +7,106 @@ import (
 	"io"
 	"net"
 	"os"
+	"reflect"
 )
 
-func ReadAuthChallengeRequest(conn net.Conn) (uint16, error) {
-
-	fmt.Println("Reading snac...")
-
-	var startMarker uint8
-	if err := binary.Read(conn, binary.BigEndian, &startMarker); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-	fmt.Printf("start marker: %d\n", startMarker)
-
-	var frameType uint8
-	if err := binary.Read(conn, binary.BigEndian, &frameType); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-	fmt.Printf("frame type: %d\n", frameType)
-
-	var sequenceNumber uint16
-	if err := binary.Read(conn, binary.BigEndian, &sequenceNumber); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("sequence number: %d\n", sequenceNumber)
-
-	var payloadLength uint16
-	if err := binary.Read(conn, binary.BigEndian, &payloadLength); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("payload length: %d\n", payloadLength)
-
-	remainder := make([]byte, payloadLength)
-	if _, err := conn.Read(remainder); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	snacBuf := bytes.NewBuffer(remainder)
-
-	fmt.Println("Reading Snac header...")
-
-	var foodGroup uint16
-	if err := binary.Read(snacBuf, binary.BigEndian, &foodGroup); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("food group: %d\n", foodGroup)
-	// 23 = 0x17 = https://wiki.nina.chat/wiki/Protocols/OSCAR#Foodgroups BUCP (0x0017)
-	var foodGroupType uint16
-	if err := binary.Read(snacBuf, binary.BigEndian, &foodGroupType); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("foodGroupType: %d\n", foodGroupType)
-	// 6 = 0x0006 = BUCP__CHALLENGE_REQUEST
-	var flags uint16
-	if err := binary.Read(snacBuf, binary.BigEndian, &flags); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("flags: %d\n", flags)
-
-	var requestID uint32
-	if err := binary.Read(snacBuf, binary.BigEndian, &requestID); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("requestID: %d\n", requestID)
-
-	var tag uint16
-	if err := binary.Read(snacBuf, binary.BigEndian, &tag); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("tag: %d\n", tag)
-
-	var screenNameLen uint16
-	if err := binary.Read(snacBuf, binary.BigEndian, &screenNameLen); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("screenNameLen: %d\n", screenNameLen)
-
-	screenNameBuf := make([]byte, screenNameLen)
-	if _, err := snacBuf.Read(screenNameBuf); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("screen name: %s\n", screenNameBuf)
-
-	return sequenceNumber, nil
+type snac17_06 struct {
+	snacFrame
+	TLVs []*TLV
 }
 
-func WriteAuthChallengeResponse(conn net.Conn, sequenceNumber uint16) error {
-	fmt.Println("Writing auth challenge response...")
+type snac17_07 struct {
+	snacFrame
+	authKey string
+}
 
-	startMarker := uint8(42)
-	if err := binary.Write(conn, binary.BigEndian, startMarker); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+func (s *snac17_07) write(w io.Writer) error {
+	if err := s.snacFrame.write(w); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint16(len(s.authKey))); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, []byte(s.authKey)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *snac17_06) read(r io.Reader) error {
+	if err := s.snacFrame.read(r); err != nil {
+		return err
 	}
 
-	frameType := uint8(2)
-	if err := binary.Write(conn, binary.BigEndian, frameType); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+	lookup := map[uint16]reflect.Kind{
+		0x01: reflect.String,
+		0x4B: reflect.String,
+		0x5A: reflect.String,
 	}
 
-	seq := uint16(101)
-	if err := binary.Write(conn, binary.BigEndian, seq); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	b := make([]byte, 0)
-	snacBuf := bytes.NewBuffer(b)
-
-	{
-		foodGroup := uint16(0x17)
-		if err := binary.Write(snacBuf, binary.BigEndian, foodGroup); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+	for {
+		// todo, don't like this extra alloc when we're EOF
+		tlv := &TLV{}
+		if err := tlv.read(r, lookup); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
 		}
-
-		foodGroupType := uint16(7)
-		if err := binary.Write(snacBuf, binary.BigEndian, foodGroupType); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-
-		flags := uint16(0x00)
-		if err := binary.Write(snacBuf, binary.BigEndian, flags); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-
-		requestID := uint32(0x00)
-		if err := binary.Write(snacBuf, binary.BigEndian, requestID); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-
-		authKey := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5}
-		authKeyLen := uint32(len(authKey))
-		if err := binary.Write(snacBuf, binary.BigEndian, authKeyLen); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-
-		if _, err := snacBuf.Write(authKey); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-	}
-
-	payloadLength := uint16(snacBuf.Len())
-	if err := binary.Write(conn, binary.BigEndian, payloadLength); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	if _, err := conn.Write(snacBuf.Bytes()); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		s.TLVs = append(s.TLVs, tlv)
 	}
 
 	return nil
+}
+
+func ReceiveAndSendAuthChallenge(rw net.Conn, sequence uint16) error {
+	// receive
+	flap := &flapFrame{}
+	if err := flap.read(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("ReceiveAndSendAuthChallenge read FLAP: %+v\n", flap)
+
+	b := make([]byte, flap.payloadLength)
+	if _, err := rw.Read(b); err != nil {
+		return err
+	}
+
+	snac := &snac17_06{}
+	if err := snac.read(bytes.NewBuffer(b)); err != nil {
+		return err
+	}
+
+	fmt.Printf("ReceiveAndSendAuthChallenge read SNAC: %+v\n", snac)
+
+	// respond
+	writeSnac := &snac17_07{
+		snacFrame: snacFrame{
+			foodGroup: 0x17,
+			subGroup:  0x07,
+		},
+		authKey: "theauthkey",
+	}
+
+	snacBuf := &bytes.Buffer{}
+	if err := writeSnac.write(snacBuf); err != nil {
+		return err
+	}
+
+	flap.sequence = sequence
+	flap.payloadLength = uint16(snacBuf.Len())
+
+	fmt.Printf("ReceiveAndSendAuthChallenge write FLAP: %+v\n", flap)
+
+	if err := flap.write(rw); err != nil {
+		return err
+	}
+
+	fmt.Printf("ReceiveAndSendAuthChallenge write SNAC: %+v\n", writeSnac)
+
+	_, err := rw.Write(snacBuf.Bytes())
+	return err
 }
 
 func ReadBUCPLoginRequest(conn net.Conn) (uint16, error) {

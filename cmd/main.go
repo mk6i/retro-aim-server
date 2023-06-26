@@ -73,13 +73,8 @@ func handleAuthConnection(conn net.Conn) {
 		return
 	}
 
-	sequenceNumber, err := oscar.ReadAuthChallengeRequest(conn)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	err = oscar.WriteAuthChallengeResponse(conn, sequenceNumber+1)
+	sequenceNumber := uint16(101)
+	err = oscar.ReceiveAndSendAuthChallenge(conn, sequenceNumber)
 	if err != nil {
 		log.Println(err)
 		return

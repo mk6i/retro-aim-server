@@ -152,6 +152,12 @@ func (t *TLV) read(r io.Reader, typeLookup map[uint16]reflect.Kind) error {
 			return err
 		}
 		t.val = val
+	case reflect.String:
+		screenNameBuf := make([]byte, tlvValLen)
+		if _, err := r.Read(screenNameBuf); err != nil {
+			return err
+		}
+		t.val = string(screenNameBuf)
 	default:
 		panic("unsupported data type")
 	}
