@@ -110,6 +110,7 @@ func (t *TLV) write(w io.Writer) error {
 	}
 
 	var valLen uint16
+	val := t.val
 
 	switch t.val.(type) {
 	case uint8:
@@ -122,13 +123,16 @@ func (t *TLV) write(w io.Writer) error {
 		valLen = uint16(len(t.val.([]uint16)))
 	case []byte:
 		valLen = uint16(len(t.val.([]byte)))
+	case string:
+		valLen = uint16(len(t.val.(string)))
+		val = []byte(t.val.(string))
 	}
 
 	if err := binary.Write(w, binary.BigEndian, valLen); err != nil {
 		return err
 	}
 
-	return binary.Write(w, binary.BigEndian, t.val)
+	return binary.Write(w, binary.BigEndian, val)
 }
 
 func (t *TLV) read(r io.Reader, typeLookup map[uint16]reflect.Kind) error {
@@ -152,12 +156,24 @@ func (t *TLV) read(r io.Reader, typeLookup map[uint16]reflect.Kind) error {
 			return err
 		}
 		t.val = val
-	case reflect.String:
-		screenNameBuf := make([]byte, tlvValLen)
-		if _, err := r.Read(screenNameBuf); err != nil {
+	case reflect.Uint32:
+		var val uint32
+		if err := binary.Read(r, binary.BigEndian, &val); err != nil {
 			return err
 		}
-		t.val = string(screenNameBuf)
+		t.val = val
+	case reflect.String:
+		buf := make([]byte, tlvValLen)
+		if _, err := r.Read(buf); err != nil {
+			return err
+		}
+		t.val = string(buf)
+	case reflect.Slice:
+		buf := make([]byte, tlvValLen)
+		if _, err := r.Read(buf); err != nil {
+			return err
+		}
+		t.val = string(buf)
 	default:
 		panic("unsupported data type")
 	}
