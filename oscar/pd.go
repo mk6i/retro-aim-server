@@ -1,37 +1,59 @@
 package oscar
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 )
 
-func SendAndReceivePDRightsQuery(rw io.ReadWriter, sequence uint16) error {
-	// receive
-	flap := &flapFrame{}
-	if err := flap.read(rw); err != nil {
-		return err
+const (
+	PDErr                      uint16 = 0x0001
+	PDRightsQuery                     = 0x0002
+	PDRightsReply                     = 0x0003
+	PDSetGroupPermitMask              = 0x0004
+	PDAddPermListEntries              = 0x0005
+	PDDelPermListEntries              = 0x0006
+	PDAddDenyListEntries              = 0x0007
+	PDDelDenyListEntries              = 0x0008
+	PDBosErr                          = 0x0009
+	PDAddTempPermitListEntries        = 0x000A
+	PDDelTempPermitListEntries        = 0x000B
+)
+
+func routePD(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	switch snac.subGroup {
+	case PDErr:
+		panic("not implemented")
+	case PDRightsQuery:
+		return SendAndReceivePDRightsQuery(flap, snac, r, w, sequence)
+	case PDSetGroupPermitMask:
+		panic("not implemented")
+	case PDAddPermListEntries:
+		panic("not implemented")
+	case PDDelPermListEntries:
+		panic("not implemented")
+	case PDAddDenyListEntries:
+		panic("not implemented")
+	case PDDelDenyListEntries:
+		panic("not implemented")
+	case PDBosErr:
+		panic("not implemented")
+	case PDAddTempPermitListEntries:
+		panic("not implemented")
+	case PDDelTempPermitListEntries:
+		panic("not implemented")
 	}
 
-	fmt.Printf("sendAndReceivePDRightsQuery read FLAP: %+v\n", flap)
+	return nil
+}
 
-	b := make([]byte, flap.payloadLength)
-	if _, err := rw.Read(b); err != nil {
-		return err
+func SendAndReceivePDRightsQuery(flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("sendAndReceivePDRightsQuery read SNAC frame: %+v\n", snac)
+
+	snacFrameOut := snacFrame{
+		foodGroup: PD,
+		subGroup:  PDRightsReply,
 	}
-
-	snac := &snacFrame{}
-	if err := snac.read(bytes.NewBuffer(b)); err != nil {
-		return err
-	}
-	fmt.Printf("sendAndReceivePDRightsQuery read SNAC: %+v\n", snac)
-
-	// respond
-	writeSnac := &snacFrameTLV{
-		snacFrame: snacFrame{
-			foodGroup: 0x09,
-			subGroup:  0x03,
-		},
+	snacPayloadOut := &TLVPayload{
 		TLVs: []*TLV{
 			{
 				tType: 0x01,
@@ -48,22 +70,5 @@ func SendAndReceivePDRightsQuery(rw io.ReadWriter, sequence uint16) error {
 		},
 	}
 
-	snacBuf := &bytes.Buffer{}
-	if err := writeSnac.write(snacBuf); err != nil {
-		return err
-	}
-
-	flap.sequence = sequence
-	flap.payloadLength = uint16(snacBuf.Len())
-
-	fmt.Printf("sendAndReceivePDRightsQuery write FLAP: %+v\n", flap)
-
-	if err := flap.write(rw); err != nil {
-		return err
-	}
-
-	fmt.Printf("sendAndReceivePDRightsQuery write SNAC: %+v\n", writeSnac)
-
-	_, err := rw.Write(snacBuf.Bytes())
-	return err
+	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
