@@ -76,7 +76,7 @@ func routeOService(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, s
 	case OServiceResume:
 		panic("not implemented")
 	case OServiceUserInfoQuery:
-		panic("not implemented")
+		return ReceiveAndSendServiceRequestSelfInfo(flap, snac, r, w, sequence)
 	case OServiceUserInfoUpdate:
 		panic("not implemented")
 	case OServiceEvilNotification:
@@ -354,28 +354,6 @@ func ReceiveAndSendServiceRateParams(flap *flapFrame, snac *snacFrame, _ io.Read
 	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-type snac01_08 struct {
-	snacFrame
-	subs []uint16
-}
-
-func (s *snac01_08) read(r io.Reader) error {
-	if err := s.snacFrame.read(r); err != nil {
-		return err
-	}
-	for {
-		var rateClass uint16
-		if err := binary.Read(r, binary.BigEndian, &rateClass); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		s.subs = append(s.subs, rateClass)
-	}
-	return nil
-}
-
 type snacOServiceUserInfoUpdate struct {
 	TLVPayload
 	screenName   string
@@ -398,7 +376,7 @@ func (s *snacOServiceUserInfoUpdate) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
-func ReceiveAndSendServiceRequestSelfInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+func ReceiveAndSendServiceRequestSelfInfo(flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence uint16) error {
 	fmt.Printf("receiveAndSendServiceRequestSelfInfo read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
