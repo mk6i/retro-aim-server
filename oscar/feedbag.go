@@ -1,7 +1,6 @@
 package oscar
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -9,125 +8,194 @@ import (
 	"time"
 )
 
-type snac13_02 struct {
-	snacFrame
-	TLVs []*TLV
-}
+const (
+	FeedbagErr                      uint16 = 0x0001
+	FeedbagRightsQuery                     = 0x0002
+	FeedbagQuery                           = 0x0004
+	FeedbagQueryIfModified                 = 0x0005
+	FeedbagUse                             = 0x0007
+	FeedbagInsertItem                      = 0x0008
+	FeedbagUpdateItem                      = 0x0009
+	FeedbagDeleteItem                      = 0x000A
+	FeedbagInsertClass                     = 0x000B
+	FeedbagUpdateClass                     = 0x000C
+	FeedbagDeleteClass                     = 0x000D
+	FeedbagStatus                          = 0x000E
+	FeedbagReplyNotModified                = 0x000F
+	FeedbagDeleteUser                      = 0x0010
+	FeedbagStartCluster                    = 0x0011
+	FeedbagEndCluster                      = 0x0012
+	FeedbagAuthorizeBuddy                  = 0x0013
+	FeedbagPreAuthorizeBuddy               = 0x0014
+	FeedbagPreAuthorizedBuddy              = 0x0015
+	FeedbagRemoveMe                        = 0x0016
+	FeedbagRemoveMe2                       = 0x0017
+	FeedbagRequestAuthorizeToHost          = 0x0018
+	FeedbagRequestAuthorizeToClient        = 0x0019
+	FeedbagRespondAuthorizeToHost          = 0x001A
+	FeedbagRespondAuthorizeToClient        = 0x001B
+	FeedbagBuddyAdded                      = 0x001C
+	FeedbagRequestAuthorizeToBadog         = 0x001D
+	FeedbagRespondAuthorizeToBadog         = 0x001E
+	FeedbagBuddyAddedToBadog               = 0x001F
+	FeedbagTestSnac                        = 0x0021
+	FeedbagForwardMsg                      = 0x0022
+	FeedbagIsAuthRequiredQuery             = 0x0023
+	FeedbagIsAuthRequiredReply             = 0x0024
+	FeedbagRecentBuddyUpdate               = 0x0025
+)
 
-func (s *snac13_02) read(r io.Reader) error {
-	if err := s.snacFrame.read(r); err != nil {
-		return err
-	}
-
-	lookup := map[uint16]reflect.Kind{0x0B: reflect.Uint16}
-
-	for {
-		// todo, don't like this extra alloc when we're EOF
-		tlv := &TLV{}
-		if err := tlv.read(r, lookup); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		s.TLVs = append(s.TLVs, tlv)
+func routeFeedbag(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	switch snac.subGroup {
+	case FeedbagErr:
+		panic("not implemented")
+	case FeedbagRightsQuery:
+		return SendAndReceiveFeedbagRightsQuery(flap, snac, r, w, sequence)
+	case FeedbagQuery:
+		return ReceiveAndSendFeedbagQuery(flap, snac, r, w, sequence)
+	case FeedbagQueryIfModified:
+		panic("not implemented")
+	case FeedbagUse:
+		panic("not implemented")
+	case FeedbagInsertItem:
+		panic("not implemented")
+	case FeedbagUpdateItem:
+		panic("not implemented")
+	case FeedbagDeleteItem:
+		panic("not implemented")
+	case FeedbagInsertClass:
+		panic("not implemented")
+	case FeedbagUpdateClass:
+		panic("not implemented")
+	case FeedbagDeleteClass:
+		panic("not implemented")
+	case FeedbagStatus:
+		panic("not implemented")
+	case FeedbagReplyNotModified:
+		panic("not implemented")
+	case FeedbagDeleteUser:
+		panic("not implemented")
+	case FeedbagStartCluster:
+		panic("not implemented")
+	case FeedbagEndCluster:
+		panic("not implemented")
+	case FeedbagAuthorizeBuddy:
+		panic("not implemented")
+	case FeedbagPreAuthorizeBuddy:
+		panic("not implemented")
+	case FeedbagPreAuthorizedBuddy:
+		panic("not implemented")
+	case FeedbagRemoveMe:
+		panic("not implemented")
+	case FeedbagRemoveMe2:
+		panic("not implemented")
+	case FeedbagRequestAuthorizeToHost:
+		panic("not implemented")
+	case FeedbagRequestAuthorizeToClient:
+		panic("not implemented")
+	case FeedbagRespondAuthorizeToHost:
+		panic("not implemented")
+	case FeedbagRespondAuthorizeToClient:
+		panic("not implemented")
+	case FeedbagBuddyAdded:
+		panic("not implemented")
+	case FeedbagRequestAuthorizeToBadog:
+		panic("not implemented")
+	case FeedbagRespondAuthorizeToBadog:
+		panic("not implemented")
+	case FeedbagBuddyAddedToBadog:
+		panic("not implemented")
+	case FeedbagTestSnac:
+		panic("not implemented")
+	case FeedbagForwardMsg:
+		panic("not implemented")
+	case FeedbagIsAuthRequiredQuery:
+		panic("not implemented")
+	case FeedbagIsAuthRequiredReply:
+		panic("not implemented")
+	case FeedbagRecentBuddyUpdate:
+		panic("not implemented")
 	}
 
 	return nil
 }
 
-func SendAndReceiveFeedbagRightsQuery(rw io.ReadWriter, sequence uint16) error {
-	// receive
-	flap := &flapFrame{}
-	if err := flap.read(rw); err != nil {
+type payloadFeedbagRightsQuery struct {
+	TLVPayload
+}
+
+func (s *payloadFeedbagRightsQuery) read(r io.Reader) error {
+	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
+		0x0B: reflect.Uint16,
+	})
+}
+
+func SendAndReceiveFeedbagRightsQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("sendAndReceiveFeedbagRightsQuery read SNAC frame: %+v\n", snac)
+
+	snacPayloadIn := &payloadFeedbagRightsQuery{}
+	if err := snacPayloadIn.read(r); err != nil {
 		return err
 	}
 
-	fmt.Printf("sendAndReceiveFeedbagRightsQuery read FLAP: %+v\n", flap)
+	fmt.Printf("sendAndReceiveFeedbagRightsQuery read SNAC payload: %+v\n", snacPayloadIn)
 
-	b := make([]byte, flap.payloadLength)
-	if _, err := rw.Read(b); err != nil {
-		return err
+	snacFrameOut := snacFrame{
+		foodGroup: 0x13,
+		subGroup:  0x03,
 	}
-
-	snac := &snac13_02{}
-	if err := snac.read(bytes.NewBuffer(b)); err != nil {
-		return err
-	}
-	fmt.Printf("sendAndReceiveFeedbagRightsQuery read SNAC: %+v\n", snac)
-
-	// respond
-	writeSnac := &snacFrameTLV{
-		snacFrame: snacFrame{
-			foodGroup: 0x13,
-			subGroup:  0x03,
+	snacPayloadOut := &snacBUCPLoginRequest{
+		TLVPayload: TLVPayload{
+			TLVs: []*TLV{
+				{
+					tType: 0x03,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x04,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x05,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x06,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x07,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x08,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x09,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x0A,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x0C,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x0D,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x0E,
+					val:   uint16(100),
+				},
+			},
 		},
-		TLVs: []*TLV{
-			{
-				tType: 0x03,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x04,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x05,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x06,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x07,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x08,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x09,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x0A,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x0C,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x0D,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x0E,
-				val:   uint16(100),
-			},
-		},
 	}
 
-	snacBuf := &bytes.Buffer{}
-	if err := writeSnac.write(snacBuf); err != nil {
-		return err
-	}
-
-	flap.sequence = sequence
-	flap.payloadLength = uint16(snacBuf.Len())
-
-	fmt.Printf("sendAndReceiveFeedbagRightsQuery write FLAP: %+v\n", flap)
-
-	if err := flap.write(rw); err != nil {
-		return err
-	}
-
-	fmt.Printf("sendAndReceiveFeedbagRightsQuery write SNAC: %+v\n", writeSnac)
-
-	_, err := rw.Write(snacBuf.Bytes())
-	return err
+	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type feedbagItem struct {
@@ -165,17 +233,13 @@ func (f *feedbagItem) write(w io.Writer) error {
 	return nil
 }
 
-type snac13_06 struct {
-	snacFrame
+type snacFeedbagQuery struct {
 	version    uint8
 	items      []*feedbagItem
 	lastUpdate uint32
 }
 
-func (s *snac13_06) write(w io.Writer) error {
-	if err := s.snacFrame.write(w); err != nil {
-		return err
-	}
+func (s *snacFeedbagQuery) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.version); err != nil {
 		return err
 	}
@@ -190,32 +254,21 @@ func (s *snac13_06) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.lastUpdate)
 }
 
-func ReceiveAndSendFeedbagQuery(rw io.ReadWriter, sequence uint16) error {
-	// receive
-	flap := &flapFrame{}
-	if err := flap.read(rw); err != nil {
+func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("receiveAndSendFeedbagQuery read SNAC frame: %+v\n", snac)
+
+	snacPayload := &snacFrame{}
+	if err := snacPayload.read(r); err != nil {
 		return err
 	}
 
-	fmt.Printf("receiveAndSendFeedbagQuery read FLAP: %+v\n", flap)
+	fmt.Printf("receiveAndSendFeedbagQuery read SNAC payload: %+v\n", snacPayload)
 
-	b := make([]byte, flap.payloadLength)
-	if _, err := rw.Read(b); err != nil {
-		return err
+	snacFrameOut := snacFrame{
+		foodGroup: 0x13,
+		subGroup:  0x06,
 	}
-
-	snac := &snacFrame{}
-	if err := snac.read(bytes.NewBuffer(b)); err != nil {
-		return err
-	}
-	fmt.Printf("receiveAndSendFeedbagQuery read SNAC: %+v\n", snac)
-
-	// send
-	writeSnac := &snac13_06{
-		snacFrame: snacFrame{
-			foodGroup: 0x13,
-			subGroup:  0x06,
-		},
+	snacPayloadOut := &snacFeedbagQuery{
 		version: 0,
 		items: []*feedbagItem{
 			{
@@ -306,23 +359,5 @@ func ReceiveAndSendFeedbagQuery(rw io.ReadWriter, sequence uint16) error {
 		lastUpdate: uint32(time.Now().Unix()),
 	}
 
-	snacBuf := &bytes.Buffer{}
-	if err := writeSnac.write(snacBuf); err != nil {
-		return err
-	}
-
-	flap.sequence = sequence
-	flap.payloadLength = uint16(snacBuf.Len())
-
-	fmt.Printf("receiveAndSendFeedbagQuery write FLAP: %+v\n", flap)
-
-	if err := flap.write(rw); err != nil {
-		return err
-	}
-
-	fmt.Printf("receiveAndSendFeedbagQuery write SNAC: %+v\n", writeSnac)
-
-	_, err := rw.Write(snacBuf.Bytes())
-
-	return err
+	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
