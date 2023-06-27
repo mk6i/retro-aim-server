@@ -9,12 +9,131 @@ import (
 	"time"
 )
 
-var OServiceRoute = map[uint16]routeHandler{
-	0x01: routeOService,
+const (
+	OServiceErr               uint16 = 0x0001
+	OServiceClientOnline             = 0x0002
+	OServiceHostOnline               = 0x0003
+	OServiceServiceRequest           = 0x0004
+	OServiceServiceResponse          = 0x0005
+	OServiceRateParamsQuery          = 0x0006
+	OServiceRateParamsReply          = 0x0007
+	OServiceRateParamsSubAdd         = 0x0008
+	OServiceRateDelParamSub          = 0x0009
+	OServiceRateParamChange          = 0x000A
+	OServicePauseReq                 = 0x000B
+	OServicePauseAck                 = 0x000C
+	OServiceResume                   = 0x000D
+	OServiceUserInfoQuery            = 0x000E
+	OServiceUserInfoUpdate           = 0x000F
+	OServiceEvilNotification         = 0x0010
+	OServiceIdleNotification         = 0x0011
+	OServiceMigrateGroups            = 0x0012
+	OServiceMotd                     = 0x0013
+	OServiceSetPrivacyFlags          = 0x0014
+	OServiceWellKnownUrls            = 0x0015
+	OServiceNoop                     = 0x0016
+	OServiceClientVersions           = 0x0017
+	OServiceHostVersions             = 0x0018
+	OServiceMaxConfigQuery           = 0x0019
+	OServiceMaxConfigReply           = 0x001A
+	OServiceStoreConfig              = 0x001B
+	OServiceConfigQuery              = 0x001C
+	OServiceConfigReply              = 0x001D
+	OServiceSetUserinfoFields        = 0x001E
+	OServiceProbeReq                 = 0x001F
+	OServiceProbeAck                 = 0x0020
+	OServiceBartReply                = 0x0021
+	OServiceBartQuery2               = 0x0022
+	OServiceBartReply2               = 0x0023
+)
+
+func routeOService(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	switch snac.subGroup {
+	case OServiceErr:
+		panic("not implemented")
+	case OServiceClientOnline:
+		panic("not implemented")
+	case OServiceHostOnline:
+		panic("not implemented")
+	case OServiceServiceRequest:
+		panic("not implemented")
+	case OServiceServiceResponse:
+		panic("not implemented")
+	case OServiceRateParamsQuery:
+		panic("not implemented")
+	case OServiceRateParamsReply:
+		panic("not implemented")
+	case OServiceRateParamsSubAdd:
+		panic("not implemented")
+	case OServiceRateDelParamSub:
+		panic("not implemented")
+	case OServiceRateParamChange:
+		panic("not implemented")
+	case OServicePauseReq:
+		panic("not implemented")
+	case OServicePauseAck:
+		panic("not implemented")
+	case OServiceResume:
+		panic("not implemented")
+	case OServiceUserInfoQuery:
+		panic("not implemented")
+	case OServiceUserInfoUpdate:
+		panic("not implemented")
+	case OServiceEvilNotification:
+		panic("not implemented")
+	case OServiceIdleNotification:
+		panic("not implemented")
+	case OServiceMigrateGroups:
+		panic("not implemented")
+	case OServiceMotd:
+		panic("not implemented")
+	case OServiceSetPrivacyFlags:
+		panic("not implemented")
+	case OServiceWellKnownUrls:
+		panic("not implemented")
+	case OServiceNoop:
+		panic("not implemented")
+	case OServiceClientVersions:
+		return ReceiveAndSendHostVersions(flap, snac, r, w, sequence)
+	case OServiceMaxConfigQuery:
+		panic("not implemented")
+	case OServiceMaxConfigReply:
+		panic("not implemented")
+	case OServiceStoreConfig:
+		panic("not implemented")
+	case OServiceConfigQuery:
+		panic("not implemented")
+	case OServiceConfigReply:
+		panic("not implemented")
+	case OServiceSetUserinfoFields:
+		panic("not implemented")
+	case OServiceProbeReq:
+		panic("not implemented")
+	case OServiceProbeAck:
+		panic("not implemented")
+	case OServiceBartReply:
+		panic("not implemented")
+	case OServiceBartQuery2:
+		panic("not implemented")
+	case OServiceBartReply2:
+		panic("not implemented")
+	}
+
+	return nil
 }
 
-func routeOService(frame *flapFrame, rw io.ReadWriter) error {
+type snac01_03 struct {
+	snacFrame
+	foodGroups []uint16
+}
 
+func (s *snac01_03) write(w io.Writer) error {
+	if err := s.snacFrame.write(w); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, s.foodGroups); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -54,15 +173,11 @@ func WriteOServiceHostOnline(conn net.Conn, sequence uint16) error {
 	return err
 }
 
-type snac01_17_18 struct {
-	snacFrame
+type snacVersions struct {
 	versions map[uint16]uint16
 }
 
-func (s *snac01_17_18) read(r io.Reader) error {
-	if err := s.snacFrame.read(r); err != nil {
-		return err
-	}
+func (s *snacVersions) read(r io.Reader) error {
 	for {
 		var family uint16
 		if err := binary.Read(r, binary.BigEndian, &family); err != nil {
@@ -80,10 +195,7 @@ func (s *snac01_17_18) read(r io.Reader) error {
 	return nil
 }
 
-func (s *snac01_17_18) write(w io.Writer) error {
-	if err := s.snacFrame.write(w); err != nil {
-		return err
-	}
+func (s *snacVersions) write(w io.Writer) error {
 	for family, version := range s.versions {
 		if err := binary.Write(w, binary.BigEndian, family); err != nil {
 			return err
@@ -95,65 +207,24 @@ func (s *snac01_17_18) write(w io.Writer) error {
 	return nil
 }
 
-type snac01_03 struct {
-	snacFrame
-	foodGroups []uint16
-}
+func ReceiveAndSendHostVersions(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("receiveAndSendHostVersions read SNAC frame: %+v\n", snac)
 
-func (s *snac01_03) write(w io.Writer) error {
-	if err := s.snacFrame.write(w); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.foodGroups); err != nil {
-		return err
-	}
-	return nil
-}
-
-func ReceiveAndSendHostVersions(rw io.ReadWriter, sequence uint16) error {
-	// receive
-	flap := &flapFrame{}
-	if err := flap.read(rw); err != nil {
-		return err
-	}
-
-	fmt.Printf("receiveAndSendHostVersions read FLAP: %+v\n", flap)
-
-	b := make([]byte, flap.payloadLength)
-	if _, err := rw.Read(b); err != nil {
-		return err
-	}
-
-	snac := &snac01_17_18{
+	snacPayload := &snacVersions{
 		versions: make(map[uint16]uint16),
 	}
-	if err := snac.read(bytes.NewBuffer(b)); err != nil {
+	if err := snacPayload.read(r); err != nil {
 		return err
 	}
 
-	fmt.Printf("receiveAndSendHostVersions read SNAC: %+v\n", snac)
+	fmt.Printf("receiveAndSendHostVersions read SNAC: %+v\n", snacPayload)
 
-	// respond
-	snac.snacFrame.subGroup = 0x18
-
-	snacBuf := &bytes.Buffer{}
-	if err := snac.write(snacBuf); err != nil {
-		return err
+	snacFrameOut := snacFrame{
+		foodGroup: OSERVICE,
+		subGroup:  OServiceHostVersions,
 	}
 
-	flap.sequence = sequence
-	flap.payloadLength = uint16(snacBuf.Len())
-
-	fmt.Printf("receiveAndSendHostVersions write FLAP: %+v\n", flap)
-
-	if err := flap.write(rw); err != nil {
-		return err
-	}
-
-	fmt.Printf("receiveAndSendHostVersions write SNAC: %+v\n", snac)
-
-	_, err := rw.Write(snacBuf.Bytes())
-	return err
+	return writeOutSNAC(flap, snacFrameOut, snacPayload, sequence, w)
 }
 
 type rateClass struct {
