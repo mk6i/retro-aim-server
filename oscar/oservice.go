@@ -138,7 +138,6 @@ func (s *snac01_03) write(w io.Writer) error {
 }
 
 func WriteOServiceHostOnline(conn net.Conn, sequence uint16) error {
-
 	snac := &snac01_03{
 		snacFrame: snacFrame{
 			foodGroup: 0x01,
@@ -248,13 +247,13 @@ type rateGroup struct {
 	}
 }
 
-type snac01_07 struct {
+type snacOServiceRateParamsReply struct {
 	snacFrame
 	rateClasses []rateClass
 	rateGroups  []rateGroup
 }
 
-func (s *snac01_07) write(w io.Writer) error {
+func (s *snacOServiceRateParamsReply) write(w io.Writer) error {
 	if err := s.snacFrame.write(w); err != nil {
 		return err
 	}
@@ -313,33 +312,15 @@ func (s *snac01_07) write(w io.Writer) error {
 	return nil
 }
 
-func ReceiveAndSendServiceRateParams(rw io.ReadWriter, sequence uint16) error {
-	// receive
-	flap := &flapFrame{}
-	if err := flap.read(rw); err != nil {
-		return err
+func ReceiveAndSendServiceRateParams(flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("receiveAndSendServiceRateParams read SNAC frame: %+v\n", snac)
+
+	snacFrameOut := snacFrame{
+		foodGroup: OSERVICE,
+		subGroup:  OServiceRateParamsReply,
 	}
 
-	fmt.Printf("receiveAndSendServiceRateParams read FLAP: %+v\n", flap)
-
-	b := make([]byte, flap.payloadLength)
-	if _, err := rw.Read(b); err != nil {
-		return err
-	}
-
-	incomingSnac := &snacFrame{}
-	if err := incomingSnac.read(bytes.NewBuffer(b)); err != nil {
-		return err
-	}
-
-	fmt.Printf("receiveAndSendServiceRateParams read SNAC: %+v\n", incomingSnac)
-
-	// respond
-	snac := &snac01_07{
-		snacFrame: snacFrame{
-			foodGroup: 0x01,
-			subGroup:  0x07,
-		},
+	snacPayloadOut := &snacOServiceRateParamsReply{
 		rateClasses: []rateClass{
 			//{
 			//	ID:              1,
@@ -370,24 +351,7 @@ func ReceiveAndSendServiceRateParams(rw io.ReadWriter, sequence uint16) error {
 		},
 	}
 
-	snacBuf := &bytes.Buffer{}
-	if err := snac.write(snacBuf); err != nil {
-		return err
-	}
-
-	flap.sequence = sequence
-	flap.payloadLength = uint16(snacBuf.Len())
-
-	fmt.Printf("receiveAndSendServiceRateParams write FLAP: %+v\n", flap)
-
-	if err := flap.write(rw); err != nil {
-		return err
-	}
-
-	fmt.Printf("receiveAndSendServiceRateParams write SNAC: %+v\n", snac)
-
-	_, err := rw.Write(snacBuf.Bytes())
-	return err
+	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snac01_08 struct {
@@ -412,17 +376,13 @@ func (s *snac01_08) read(r io.Reader) error {
 	return nil
 }
 
-type snac01_0F struct {
-	snacFrame
+type snacOServiceUserInfoUpdate struct {
+	TLVPayload
 	screenName   string
 	warningLevel uint16
-	TLVs         []*TLV
 }
 
-func (s *snac01_0F) write(w io.Writer) error {
-	if err := s.snacFrame.write(w); err != nil {
-		return err
-	}
+func (s *snacOServiceUserInfoUpdate) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, uint8(len(s.screenName))); err != nil {
 		return err
 	}
@@ -435,90 +395,52 @@ func (s *snac01_0F) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, uint16(len(s.TLVs))); err != nil {
 		return err
 	}
-	for _, t := range s.TLVs {
-		if err := t.write(w); err != nil {
-			return err
-		}
-	}
-	return nil
+	return s.TLVPayload.write(w)
 }
 
-func ReceiveAndSendServiceRequestSelfInfo(rw io.ReadWriter, sequence uint16) error {
-	// receive
-	flap := &flapFrame{}
-	if err := flap.read(rw); err != nil {
-		return err
+func ReceiveAndSendServiceRequestSelfInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("receiveAndSendServiceRequestSelfInfo read SNAC frame: %+v\n", snac)
+
+	snacFrameOut := snacFrame{
+		foodGroup: OSERVICE,
+		subGroup:  OServiceUserInfoUpdate,
 	}
-
-	fmt.Printf("receiveAndSendServiceRequestSelfInfo read FLAP: %+v\n", flap)
-
-	b := make([]byte, flap.payloadLength)
-	if _, err := rw.Read(b); err != nil {
-		return err
-	}
-
-	snac := &snacFrame{}
-	if err := snac.read(bytes.NewBuffer(b)); err != nil {
-		return err
-	}
-	fmt.Printf("receiveAndSendServiceRequestSelfInfo read SNAC: %+v\n", snac)
-
-	// respond
-	writeSnac := &snac01_0F{
-		snacFrame: snacFrame{
-			foodGroup: 0x01,
-			subGroup:  0x0F,
-		},
+	snacPayloadOut := &snacOServiceUserInfoUpdate{
 		screenName:   "screenname",
 		warningLevel: 0,
-		TLVs: []*TLV{
-			{
-				tType: 0x01,
-				val:   uint32(0x0010),
-			},
-			{
-				tType: 0x02,
-				val:   uint32(time.Now().Unix()),
-			},
-			{
-				tType: 0x03,
-				val:   uint32(1687314861),
-			},
-			{
-				tType: 0x04,
-				val:   uint32(0),
-			},
-			{
-				tType: 0x05,
-				val:   uint32(1687314841),
-			},
-			{
-				tType: 0x0D,
-				val:   make([]byte, 0),
-			},
-			{
-				tType: 0x0F,
-				val:   uint32(0),
+		TLVPayload: TLVPayload{
+			TLVs: []*TLV{
+				{
+					tType: 0x01,
+					val:   uint32(0x0010),
+				},
+				{
+					tType: 0x02,
+					val:   uint32(time.Now().Unix()),
+				},
+				{
+					tType: 0x03,
+					val:   uint32(1687314861),
+				},
+				{
+					tType: 0x04,
+					val:   uint32(0),
+				},
+				{
+					tType: 0x05,
+					val:   uint32(1687314841),
+				},
+				{
+					tType: 0x0D,
+					val:   make([]byte, 0),
+				},
+				{
+					tType: 0x0F,
+					val:   uint32(0),
+				},
 			},
 		},
 	}
 
-	snacBuf := &bytes.Buffer{}
-	if err := writeSnac.write(snacBuf); err != nil {
-		return err
-	}
-
-	flap.sequence = sequence
-	flap.payloadLength = uint16(snacBuf.Len())
-
-	fmt.Printf("receiveAndSendServiceRequestSelfInfo write FLAP: %+v\n", flap)
-
-	if err := flap.write(rw); err != nil {
-		return err
-	}
-
-	fmt.Printf("receiveAndSendServiceRequestSelfInfo write SNAC: %+v\n", snac)
-
-	_, err := rw.Write(snacBuf.Bytes())
-	return err
+	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
