@@ -7,6 +7,27 @@ import (
 	"reflect"
 )
 
+const (
+	BuddyErr                 uint16 = 0x0001
+	BuddyRightsQuery                = 0x0002
+	BuddyRightsReply                = 0x0003
+	BuddyAddBuddies                 = 0x0004
+	BuddyDelBuddies                 = 0x0005
+	BuddyWatcherListQuery           = 0x0006
+	BuddyWatcherListResponse        = 0x0007
+	BuddyWatcherSubRequest          = 0x0008
+	BuddyWatcherNotification        = 0x0009
+	BuddyRejectNotification         = 0x000A
+	BuddyArrived                    = 0x000B
+	BuddyDeparted                   = 0x000C
+	BuddyAddTempBuddies             = 0x000F
+	BuddyDelTempBuddies             = 0x0010
+)
+
+func routeBuddy(snac *snacFrame, r io.Reader, w io.Writer) error {
+	return nil
+}
+
 type snac03_02 struct {
 	snacFrame
 	TLVs []*TLV

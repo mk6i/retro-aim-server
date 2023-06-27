@@ -125,35 +125,35 @@ func handleBOSConnection(conn net.Conn) {
 	}
 
 	//fmt.Println("sendAndReceiveLocateRights...")
-	//if err := sendAndReceiveLocateRights(conn, 107); err != nil {
+	//if err := oscar.SendAndReceiveLocateRights(conn, 107); err != nil {
 	//	fmt.Println(err.Error())
 	//	os.Exit(1)
 	//}
 	//
 	//fmt.Println("sendAndReceiveBuddyRights...")
-	//if err := sendAndReceiveBuddyRights(conn, 108); err != nil {
+	//if err := oscar.SendAndReceiveBuddyRights(conn, 108); err != nil {
 	//	fmt.Println(err.Error())
 	//	os.Exit(1)
 	//}
 	//
 	//fmt.Println("sendAndReceiveICBMParameterReply...")
-	//if err := sendAndReceiveICBMParameterReply(conn, 109); err != nil {
+	//if err := oscar.SendAndReceiveICBMParameterReply(conn, 109); err != nil {
 	//	fmt.Println(err.Error())
 	//	os.Exit(1)
 	//}
 	//
 	//fmt.Println("sendAndReceivePDRightsQuery...")
-	//if err := sendAndReceivePDRightsQuery(conn, 110); err != nil {
+	//if err := oscar.SendAndReceivePDRightsQuery(conn, 110); err != nil {
 	//	fmt.Println(err.Error())
 	//	os.Exit(1)
 	//}
 	//
 	//fmt.Println("sendAndReceiveNextChatRights...")
-	//if err := sendAndReceiveNextChatRights(conn, 111); err != nil {
+	//if err := oscar.SendAndReceiveNextChatRights(conn, 111); err != nil {
 	//	fmt.Println(err.Error())
 	//	os.Exit(1)
 	//}
-	//
+
 	//fmt.Println("sendAndReceiveNext...")
 	//if err := sendAndReceiveNext(conn, 112); err != nil {
 	//	fmt.Println(err.Error())
