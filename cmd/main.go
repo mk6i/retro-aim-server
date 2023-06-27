@@ -67,13 +67,13 @@ func handleAuthConnection(conn net.Conn) {
 		return
 	}
 
-	err = oscar.ReceiveAndSendAuthChallenge(conn, 101)
+	err = oscar.ReceiveAndSendAuthChallenge(conn, conn, 101)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	err = oscar.ReceiveAndSendBUCPLoginRequest(conn, 102)
+	err = oscar.ReceiveAndSendBUCPLoginRequest(conn, conn, 102)
 	if err != nil {
 		log.Println(err)
 		return
@@ -94,115 +94,8 @@ func handleBOSConnection(conn net.Conn) {
 		os.Exit(1)
 	}
 
-	fmt.Println("receiveAndSendHostVersions...")
-	if err := oscar.ReceiveAndSendHostVersions(conn, 102); err != nil {
+	if err := oscar.ReadBos(conn, 102); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
-
-	fmt.Println("receiveAndSendServiceRateParams...")
-	if err := oscar.ReceiveAndSendServiceRateParams(conn, 103); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Println("receiveAndSendServiceRequestSelfInfo...")
-	if err := oscar.ReceiveAndSendServiceRequestSelfInfo(conn, 104); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Println("sendAndReceiveFeedbagRightsQuery...")
-	if err := oscar.SendAndReceiveFeedbagRightsQuery(conn, 105); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Println("receiveAndSendFeedbagQuery...")
-	if err := oscar.ReceiveAndSendFeedbagQuery(conn, 106); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	//fmt.Println("sendAndReceiveLocateRights...")
-	//if err := oscar.SendAndReceiveLocateRights(conn, 107); err != nil {
-	//	fmt.Println(err.Error())
-	//	os.Exit(1)
-	//}
-	//
-	//fmt.Println("sendAndReceiveBuddyRights...")
-	//if err := oscar.SendAndReceiveBuddyRights(conn, 108); err != nil {
-	//	fmt.Println(err.Error())
-	//	os.Exit(1)
-	//}
-	//
-	//fmt.Println("sendAndReceiveICBMParameterReply...")
-	//if err := oscar.SendAndReceiveICBMParameterReply(conn, 109); err != nil {
-	//	fmt.Println(err.Error())
-	//	os.Exit(1)
-	//}
-	//
-	//fmt.Println("sendAndReceivePDRightsQuery...")
-	//if err := oscar.SendAndReceivePDRightsQuery(conn, 110); err != nil {
-	//	fmt.Println(err.Error())
-	//	os.Exit(1)
-	//}
-	//
-	//fmt.Println("sendAndReceiveNextChatRights...")
-	//if err := oscar.SendAndReceiveNextChatRights(conn, 111); err != nil {
-	//	fmt.Println(err.Error())
-	//	os.Exit(1)
-	//}
-
-	//fmt.Println("sendAndReceiveNext...")
-	//if err := sendAndReceiveNext(conn, 112); err != nil {
-	//	fmt.Println(err.Error())
-	//	os.Exit(1)
-	//}
 }
-
-//func SendAndReceiveNext(rw io.ReadWriter, sequence uint16) error {
-//	// receive
-//	flap := &flapFrame{}
-//	if err := flap.read(rw); err != nil {
-//		return err
-//	}
-//
-//	fmt.Printf("sendAndReceiveNext read FLAP: %+v\n", flap)
-//
-//	b := make([]byte, flap.payloadLength)
-//	if _, err := rw.Read(b); err != nil {
-//		return err
-//	}
-//
-//	snac := &snacFrame{}
-//	if err := snac.read(bytes.NewBuffer(b)); err != nil {
-//		return err
-//	}
-//	fmt.Printf("sendAndReceiveNext read SNAC: %+v\n", snac)
-//
-//	return nil
-//}
-
-//func SendAndReceiveNext(rw io.ReadWriter, sequence uint16) error {
-//	// receive
-//	flap := &flapFrame{}
-//	if err := flap.read(rw); err != nil {
-//		return err
-//	}
-//
-//	fmt.Printf("sendAndReceiveNext read FLAP: %+v\n", flap)
-//
-//	b := make([]byte, flap.payloadLength)
-//	if _, err := rw.Read(b); err != nil {
-//		return err
-//	}
-//
-//	snac := &snacFrame{}
-//	if err := snac.read(bytes.NewBuffer(b)); err != nil {
-//		return err
-//	}
-//	fmt.Printf("sendAndReceiveNext read SNAC: %+v\n", snac)
-//
-//	return nil
-//}

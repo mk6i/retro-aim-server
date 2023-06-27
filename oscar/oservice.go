@@ -248,15 +248,11 @@ type rateGroup struct {
 }
 
 type snacOServiceRateParamsReply struct {
-	snacFrame
 	rateClasses []rateClass
 	rateGroups  []rateGroup
 }
 
 func (s *snacOServiceRateParamsReply) write(w io.Writer) error {
-	if err := s.snacFrame.write(w); err != nil {
-		return err
-	}
 	if err := binary.Write(w, binary.BigEndian, uint16(len(s.rateClasses))); err != nil {
 		return err
 	}

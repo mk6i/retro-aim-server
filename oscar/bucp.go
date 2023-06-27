@@ -1,6 +1,7 @@
 package oscar
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -22,11 +23,11 @@ func routeBUCP(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, seque
 	case BUCPErr:
 		panic("not implemented")
 	case BUCPLoginRequest:
-		return ReceiveAndSendBUCPLoginRequest(flap, snac, r, w, sequence)
+		panic("not implemented")
 	case BUCPRegisterRequest:
 		panic("not implemented")
 	case BUCPChallengeRequest:
-		return ReceiveAndSendAuthChallenge(flap, snac, r, w, sequence)
+		panic("not implemented")
 	case BUCPAsasnRequest:
 		panic("not implemented")
 	case BUCPSecuridRequest:
@@ -44,9 +45,23 @@ type snacBUCPChallengeRequest struct {
 
 func (s *snacBUCPChallengeRequest) read(r io.Reader) error {
 	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
-		0x01: reflect.String,
-		0x4B: reflect.String,
-		0x5A: reflect.String,
+		0x01: reflect.String, // screen name
+		0x03: reflect.String, // client ID string
+		0x25: reflect.Slice,  // password md5 hash
+		0x16: reflect.Uint16, // client ID
+		0x17: reflect.Uint16, // client major version
+		0x18: reflect.Uint16, // client minor version
+		0x19: reflect.Uint16, // client lesser version
+		0x1A: reflect.Uint16, // client build number
+		0x14: reflect.Uint32, // distribution number
+		0x0F: reflect.String, // client language
+		0x0E: reflect.String, // client country
+		0x4A: reflect.Slice,  // SSI use flag
+		0x06: reflect.String, // SSI use flag
+		0x4C: reflect.Slice,  // use old md5?
+		//0x01: reflect.String,
+		//0x4B: reflect.String,
+		//0x5A: reflect.String,
 	})
 }
 
@@ -64,11 +79,19 @@ func (s *snacBUCPChallengeResponse) write(w io.Writer) error {
 	return nil
 }
 
-func ReceiveAndSendAuthChallenge(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
-	fmt.Printf("ReceiveAndSendAuthChallenge read SNAC frame: %+v\n", snac)
+func ReceiveAndSendAuthChallenge(r io.Reader, w io.Writer, sequence uint16) error {
+	flap := &flapFrame{}
+	if err := flap.read(r); err != nil {
+		return err
+	}
+
+	b := make([]byte, flap.payloadLength)
+	if _, err := r.Read(b); err != nil {
+		return err
+	}
 
 	snacPayload := &snacBUCPChallengeRequest{}
-	if err := snacPayload.read(r); err != nil {
+	if err := snacPayload.read(bytes.NewBuffer(b)); err != nil {
 		return err
 	}
 
@@ -108,11 +131,19 @@ func (s *snacBUCPLoginRequest) read(r io.Reader) error {
 	})
 }
 
-func ReceiveAndSendBUCPLoginRequest(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
-	fmt.Printf("ReceiveAndSendBUCPLoginRequest read SNAC frame: %+v\n", snac)
+func ReceiveAndSendBUCPLoginRequest(r io.Reader, w io.Writer, sequence uint16) error {
+	flap := &flapFrame{}
+	if err := flap.read(r); err != nil {
+		return err
+	}
+
+	b := make([]byte, flap.payloadLength)
+	if _, err := r.Read(b); err != nil {
+		return err
+	}
 
 	snacPayload := &snacBUCPLoginRequest{}
-	if err := snacPayload.read(r); err != nil {
+	if err := snacPayload.read(bytes.NewBuffer(b)); err != nil {
 		return err
 	}
 
