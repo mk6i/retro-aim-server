@@ -1,94 +1,122 @@
 package oscar
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 )
 
-type snac02_03 struct {
-	snacFrame
-	TLVs []*TLV
-}
+const (
+	LocateErr                  uint16 = 0x0001
+	LocateRightsQuery                 = 0x0002
+	LocateRightsReply                 = 0x0003
+	LocateSetInfo                     = 0x0004
+	LocateUserInfoQuery               = 0x0005
+	LocateUserInfoReply               = 0x0006
+	LocateWatcherSubRequest           = 0x0007
+	LocateWatcherNotification         = 0x0008
+	LocateSetDirInfo                  = 0x0009
+	LocateSetDirReply                 = 0x000A
+	LocateGetDirInfo                  = 0x000B
+	LocateGetDirReply                 = 0x000C
+	LocateGroupCapabilityQuery        = 0x000D
+	LocateGroupCapabilityReply        = 0x000E
+	LocateSetKeywordInfo              = 0x000F
+	LocateSetKeywordReply             = 0x0010
+	LocateGetKeywordInfo              = 0x0011
+	LocateGetKeywordReply             = 0x0012
+	LocateFindListByEmail             = 0x0013
+	LocateFindListReply               = 0x0014
+	LocateUserInfoQuery2              = 0x0015
+)
 
-func (s *snac02_03) write(w io.Writer) error {
-	if err := s.snacFrame.write(w); err != nil {
-		return err
+func routeLocate(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	switch snac.subGroup {
+	case LocateErr:
+		panic("not implemented")
+	case LocateRightsQuery:
+		return SendAndReceiveLocateRights(flap, snac, r, w, sequence)
+	case LocateSetInfo:
+		panic("not implemented")
+	case LocateUserInfoQuery:
+		panic("not implemented")
+	case LocateUserInfoReply:
+		panic("not implemented")
+	case LocateWatcherSubRequest:
+		panic("not implemented")
+	case LocateWatcherNotification:
+		panic("not implemented")
+	case LocateSetDirInfo:
+		panic("not implemented")
+	case LocateSetDirReply:
+		panic("not implemented")
+	case LocateGetDirInfo:
+		panic("not implemented")
+	case LocateGetDirReply:
+		panic("not implemented")
+	case LocateGroupCapabilityQuery:
+		panic("not implemented")
+	case LocateGroupCapabilityReply:
+		panic("not implemented")
+	case LocateSetKeywordInfo:
+		panic("not implemented")
+	case LocateSetKeywordReply:
+		panic("not implemented")
+	case LocateGetKeywordInfo:
+		panic("not implemented")
+	case LocateGetKeywordReply:
+		panic("not implemented")
+	case LocateFindListByEmail:
+		panic("not implemented")
+	case LocateFindListReply:
+		panic("not implemented")
+	case LocateUserInfoQuery2:
+		panic("not implemented")
 	}
-	for _, tlv := range s.TLVs {
-		if err := tlv.write(w); err != nil {
-			return err
-		}
-	}
+
 	return nil
 }
 
-func SendAndReceiveLocateRights(rw io.ReadWriter, sequence uint16) error {
-	// receive
-	flap := &flapFrame{}
-	if err := flap.read(rw); err != nil {
-		return err
+type snacLocateRightsReply struct {
+	TLVPayload
+}
+
+func (s *snacLocateRightsReply) write(w io.Writer) error {
+	return s.TLVPayload.write(w)
+}
+
+func SendAndReceiveLocateRights(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("sendAndReceiveLocateRights read SNAC frame: %+v\n", snac)
+
+	snacFrameOut := snacFrame{
+		foodGroup: LOCATE,
+		subGroup:  LocateRightsReply,
 	}
-
-	fmt.Printf("sendAndReceiveLocateRights read FLAP: %+v\n", flap)
-
-	b := make([]byte, flap.payloadLength)
-	if _, err := rw.Read(b); err != nil {
-		return err
-	}
-
-	snac := &snacFrame{}
-	if err := snac.read(bytes.NewBuffer(b)); err != nil {
-		return err
-	}
-	fmt.Printf("sendAndReceiveLocateRights read SNAC: %+v\n", snac)
-
-	// respond
-	writeSnac := &snac02_03{
-		snacFrame: snacFrame{
-			foodGroup: 0x02,
-			subGroup:  0x03,
-		},
-		TLVs: []*TLV{
-			{
-				tType: 0x01,
-				val:   uint16(0),
-			},
-			{
-				tType: 0x02,
-				val:   uint16(0),
-			},
-			{
-				tType: 0x03,
-				val:   uint16(0),
-			},
-			{
-				tType: 0x04,
-				val:   uint16(0),
-			},
-			{
-				tType: 0x05,
-				val:   uint16(0),
+	snacPayloadOut := &snacLocateRightsReply{
+		TLVPayload: TLVPayload{
+			TLVs: []*TLV{
+				{
+					tType: 0x01,
+					val:   uint16(0),
+				},
+				{
+					tType: 0x02,
+					val:   uint16(0),
+				},
+				{
+					tType: 0x03,
+					val:   uint16(0),
+				},
+				{
+					tType: 0x04,
+					val:   uint16(0),
+				},
+				{
+					tType: 0x05,
+					val:   uint16(0),
+				},
 			},
 		},
 	}
 
-	snacBuf := &bytes.Buffer{}
-	if err := writeSnac.write(snacBuf); err != nil {
-		return err
-	}
-
-	flap.sequence = sequence
-	flap.payloadLength = uint16(snacBuf.Len())
-
-	fmt.Printf("sendAndReceiveLocateRights write FLAP: %+v\n", flap)
-
-	if err := flap.write(rw); err != nil {
-		return err
-	}
-
-	fmt.Printf("sendAndReceiveLocateRights write SNAC: %+v\n", writeSnac)
-
-	_, err := rw.Write(snacBuf.Bytes())
-	return err
+	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }

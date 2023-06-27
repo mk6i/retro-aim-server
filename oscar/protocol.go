@@ -8,12 +8,6 @@ import (
 	"reflect"
 )
 
-type routeHandler func(frame *flapFrame, rw io.ReadWriter) error
-
-var familyRoute = map[uint16]routeHandler{
-	0x01: routeOService,
-}
-
 type flapFrame struct {
 	startMarker   uint8
 	frameType     uint8
@@ -348,22 +342,42 @@ func ReadBos(rw io.ReadWriter, sequence uint16) error {
 
 		switch snac.foodGroup {
 		case OSERVICE:
+			if err := routeOService(flap, snac, buf, rw, sequence); err != nil {
+				return err
+			}
+			sequence++
 		case LOCATE:
+			if err := routeLocate(flap, snac, buf, rw, sequence); err != nil {
+				return err
+			}
+			sequence++
 		case BUDDY:
 			if err := routeBuddy(flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
 			sequence++
 		case ICBM:
+			if err := routeICBM(flap, snac, buf, rw, sequence); err != nil {
+				return err
+			}
+			sequence++
 		case ADVERT:
 		case INVITE:
 		case ADMIN:
 		case POPUP:
 		case PD:
+			if err := routePD(flap, snac, buf, rw, sequence); err != nil {
+				return err
+			}
+			sequence++
 		case USER_LOOKUP:
 		case STATS:
 		case TRANSLATE:
 		case CHAT_NAV:
+			if err := routeChatNav(flap, snac, buf, rw, sequence); err != nil {
+				return err
+			}
+			sequence++
 		case CHAT:
 		case ODIR:
 		case BART:
