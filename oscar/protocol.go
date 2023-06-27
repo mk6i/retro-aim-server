@@ -350,9 +350,10 @@ func ReadBos(rw io.ReadWriter, sequence uint16) error {
 		case OSERVICE:
 		case LOCATE:
 		case BUDDY:
-			if err := routeBuddy(snac, buf, rw); err != nil {
+			if err := routeBuddy(flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
+			sequence++
 		case ICBM:
 		case ADVERT:
 		case INVITE:
@@ -367,6 +368,10 @@ func ReadBos(rw io.ReadWriter, sequence uint16) error {
 		case ODIR:
 		case BART:
 		case FEEDBAG:
+			if err := routeFeedbag(flap, snac, buf, rw, sequence); err != nil {
+				return err
+			}
+			sequence++
 		case ICQ:
 		case BUCP:
 			if err := routeBUCP(flap, snac, buf, rw, sequence); err != nil {

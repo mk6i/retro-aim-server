@@ -1,7 +1,6 @@
 package oscar
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"reflect"
@@ -10,11 +9,9 @@ import (
 const (
 	BuddyErr                 uint16 = 0x0001
 	BuddyRightsQuery                = 0x0002
-	BuddyRightsReply                = 0x0003
 	BuddyAddBuddies                 = 0x0004
 	BuddyDelBuddies                 = 0x0005
 	BuddyWatcherListQuery           = 0x0006
-	BuddyWatcherListResponse        = 0x0007
 	BuddyWatcherSubRequest          = 0x0008
 	BuddyWatcherNotification        = 0x0009
 	BuddyRejectNotification         = 0x000A
@@ -24,112 +21,79 @@ const (
 	BuddyDelTempBuddies             = 0x0010
 )
 
-func routeBuddy(snac *snacFrame, r io.Reader, w io.Writer) error {
-	return nil
-}
+func routeBuddy(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
 
-type snac03_02 struct {
-	snacFrame
-	TLVs []*TLV
-}
-
-func (s *snac03_02) read(r io.Reader) error {
-	if err := s.snacFrame.read(r); err != nil {
-		return err
-	}
-
-	lookup := map[uint16]reflect.Kind{0x05: reflect.Uint16}
-
-	for {
-		// todo, don't like this extra alloc when we're EOF
-		tlv := &TLV{}
-		if err := tlv.read(r, lookup); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		s.TLVs = append(s.TLVs, tlv)
-	}
-
-	return nil
-}
-
-type snac03_03 struct {
-	snacFrame
-	TLVs []*TLV
-}
-
-func (s *snac03_03) write(w io.Writer) error {
-	if err := s.snacFrame.write(w); err != nil {
-		return err
-	}
-	for _, tlv := range s.TLVs {
-		if err := tlv.write(w); err != nil {
-			return err
-		}
+	switch snac.subGroup {
+	case BuddyErr:
+		panic("not implemented")
+	case BuddyRightsQuery:
+		return SendAndReceiveBuddyRights(flap, snac, r, w, sequence)
+	case BuddyAddBuddies:
+		panic("not implemented")
+	case BuddyDelBuddies:
+		panic("not implemented")
+	case BuddyWatcherListQuery:
+		panic("not implemented")
+	case BuddyWatcherSubRequest:
+		panic("not implemented")
+	case BuddyWatcherNotification:
+		panic("not implemented")
+	case BuddyRejectNotification:
+		panic("not implemented")
+	case BuddyArrived:
+		panic("not implemented")
+	case BuddyDeparted:
+		panic("not implemented")
+	case BuddyAddTempBuddies:
+		panic("not implemented")
+	case BuddyDelTempBuddies:
+		panic("not implemented")
 	}
 	return nil
 }
 
-func SendAndReceiveBuddyRights(rw io.ReadWriter, sequence uint16) error {
-	// receive
-	flap := &flapFrame{}
-	if err := flap.read(rw); err != nil {
+type snacBuddyRights struct {
+	TLVPayload
+}
+
+func (s *snacBuddyRights) read(r io.Reader) error {
+	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
+		0x05: reflect.Uint16,
+	})
+}
+
+func SendAndReceiveBuddyRights(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("sendAndReceiveBuddyRights read SNAC frame: %+v\n", snac)
+
+	snacPayloadIn := &snacBuddyRights{}
+	if err := snacPayloadIn.read(r); err != nil {
 		return err
 	}
 
-	fmt.Printf("sendAndReceiveBuddyRights read FLAP: %+v\n", flap)
+	fmt.Printf("sendAndReceiveBuddyRights read SNAC payload: %+v\n", snacPayloadIn)
 
-	b := make([]byte, flap.payloadLength)
-	if _, err := rw.Read(b); err != nil {
-		return err
+	snacFrameOut := snacFrame{
+		foodGroup: 0x03,
+		subGroup:  0x03,
 	}
-
-	snac := &snac03_02{}
-	if err := snac.read(bytes.NewBuffer(b)); err != nil {
-		return err
-	}
-	fmt.Printf("sendAndReceiveBuddyRights read SNAC: %+v\n", snac)
-
-	// respond
-	writeSnac := &snac03_03{
-		snacFrame: snacFrame{
-			foodGroup: 0x03,
-			subGroup:  0x03,
-		},
-		TLVs: []*TLV{
-			{
-				tType: 0x01,
-				val:   uint16(100),
-			},
-			{
-				tType: 0x02,
-				val:   uint16(100),
-			},
-			{
-				tType: 0x04,
-				val:   uint16(100),
+	snacPayloadOut := &snacBuddyRights{
+		TLVPayload: TLVPayload{
+			TLVs: []*TLV{
+				{
+					tType: 0x01,
+					val:   uint16(100),
+				},
+				{
+					tType: 0x02,
+					val:   uint16(100),
+				},
+				{
+					tType: 0x04,
+					val:   uint16(100),
+				},
 			},
 		},
 	}
 
-	snacBuf := &bytes.Buffer{}
-	if err := writeSnac.write(snacBuf); err != nil {
-		return err
-	}
-
-	flap.sequence = sequence
-	flap.payloadLength = uint16(snacBuf.Len())
-
-	fmt.Printf("sendAndReceiveBuddyRights write FLAP: %+v\n", flap)
-
-	if err := flap.write(rw); err != nil {
-		return err
-	}
-
-	fmt.Printf("sendAndReceiveBuddyRights write SNAC: %+v\n", writeSnac)
-
-	_, err := rw.Write(snacBuf.Bytes())
-	return err
+	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }

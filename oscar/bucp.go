@@ -43,12 +43,11 @@ type snacBUCPChallengeRequest struct {
 }
 
 func (s *snacBUCPChallengeRequest) read(r io.Reader) error {
-	lookup := map[uint16]reflect.Kind{
+	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
 		0x01: reflect.String,
 		0x4B: reflect.String,
 		0x5A: reflect.String,
-	}
-	return s.TLVPayload.read(r, lookup)
+	})
 }
 
 type snacBUCPChallengeResponse struct {
@@ -66,12 +65,13 @@ func (s *snacBUCPChallengeResponse) write(w io.Writer) error {
 }
 
 func ReceiveAndSendAuthChallenge(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("ReceiveAndSendAuthChallenge read SNAC frame: %+v\n", snac)
+
 	snacPayload := &snacBUCPChallengeRequest{}
-	if err := snac.read(r); err != nil {
+	if err := snacPayload.read(r); err != nil {
 		return err
 	}
 
-	fmt.Printf("ReceiveAndSendAuthChallenge read SNAC: %+v\n", snac)
 	fmt.Printf("ReceiveAndSendAuthChallenge read SNAC payload: %+v\n", snacPayload)
 
 	snacFrameOut := snacFrame{
@@ -90,7 +90,7 @@ type snacBUCPLoginRequest struct {
 }
 
 func (s *snacBUCPLoginRequest) read(r io.Reader) error {
-	lookup := map[uint16]reflect.Kind{
+	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
 		0x01: reflect.String, // screen name
 		0x03: reflect.String, // client ID string
 		0x25: reflect.Slice,  // password md5 hash
@@ -105,17 +105,18 @@ func (s *snacBUCPLoginRequest) read(r io.Reader) error {
 		0x4A: reflect.Slice,  // SSI use flag
 		0x06: reflect.String, // SSI use flag
 		0x4C: reflect.Slice,  // use old md5?
-	}
-	return s.TLVPayload.read(r, lookup)
+	})
 }
 
 func ReceiveAndSendBUCPLoginRequest(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("ReceiveAndSendBUCPLoginRequest read SNAC frame: %+v\n", snac)
+
 	snacPayload := &snacBUCPLoginRequest{}
 	if err := snacPayload.read(r); err != nil {
 		return err
 	}
 
-	fmt.Printf("ReceiveAndSendBUCPLoginRequest read SNAC: %+v\n", snac)
+	fmt.Printf("ReceiveAndSendBUCPLoginRequest read SNAC: %+v\n", snacPayload)
 
 	snacFrameOut := snacFrame{
 		foodGroup: 0x17,
