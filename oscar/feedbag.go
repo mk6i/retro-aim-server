@@ -257,13 +257,6 @@ func (s *snacFeedbagQuery) write(w io.Writer) error {
 func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
 	fmt.Printf("receiveAndSendFeedbagQuery read SNAC frame: %+v\n", snac)
 
-	snacPayload := &snacFrame{}
-	if err := snacPayload.read(r); err != nil {
-		return err
-	}
-
-	fmt.Printf("receiveAndSendFeedbagQuery read SNAC payload: %+v\n", snacPayload)
-
 	snacFrameOut := snacFrame{
 		foodGroup: 0x13,
 		subGroup:  0x06,

@@ -60,7 +60,7 @@ func routeOService(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, s
 	case OServiceServiceResponse:
 		panic("not implemented")
 	case OServiceRateParamsQuery:
-		panic("not implemented")
+		return ReceiveAndSendServiceRateParams(flap, snac, r, w, sequence)
 	case OServiceRateParamsReply:
 		panic("not implemented")
 	case OServiceRateParamsSubAdd:
