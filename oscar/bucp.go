@@ -45,23 +45,9 @@ type snacBUCPChallengeRequest struct {
 
 func (s *snacBUCPChallengeRequest) read(r io.Reader) error {
 	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
-		0x01: reflect.String, // screen name
-		0x03: reflect.String, // client ID string
-		0x25: reflect.Slice,  // password md5 hash
-		0x16: reflect.Uint16, // client ID
-		0x17: reflect.Uint16, // client major version
-		0x18: reflect.Uint16, // client minor version
-		0x19: reflect.Uint16, // client lesser version
-		0x1A: reflect.Uint16, // client build number
-		0x14: reflect.Uint32, // distribution number
-		0x0F: reflect.String, // client language
-		0x0E: reflect.String, // client country
-		0x4A: reflect.Slice,  // SSI use flag
-		0x06: reflect.String, // SSI use flag
-		0x4C: reflect.Slice,  // use old md5?
-		//0x01: reflect.String,
-		//0x4B: reflect.String,
-		//0x5A: reflect.String,
+		0x01: reflect.String,
+		0x4B: reflect.String,
+		0x5A: reflect.String,
 	})
 }
 
@@ -90,8 +76,14 @@ func ReceiveAndSendAuthChallenge(r io.Reader, w io.Writer, sequence uint16) erro
 		return err
 	}
 
+	buf := bytes.NewBuffer(b)
+	snac := &snacFrame{}
+	if err := snac.read(buf); err != nil {
+		return err
+	}
+
 	snacPayload := &snacBUCPChallengeRequest{}
-	if err := snacPayload.read(bytes.NewBuffer(b)); err != nil {
+	if err := snacPayload.read(buf); err != nil {
 		return err
 	}
 
@@ -142,8 +134,14 @@ func ReceiveAndSendBUCPLoginRequest(r io.Reader, w io.Writer, sequence uint16) e
 		return err
 	}
 
+	buf := bytes.NewBuffer(b)
+	snac := &snacFrame{}
+	if err := snac.read(buf); err != nil {
+		return err
+	}
+
 	snacPayload := &snacBUCPLoginRequest{}
-	if err := snacPayload.read(bytes.NewBuffer(b)); err != nil {
+	if err := snacPayload.read(buf); err != nil {
 		return err
 	}
 
