@@ -35,7 +35,7 @@ func routeICBM(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, seque
 	case ICBMErr:
 		panic("not implemented")
 	case ICBMAddParameters:
-		panic("not implemented")
+		return ReceiveAddParameters(flap, snac, r, w, sequence)
 	case ICBMDelParameters:
 		panic("not implemented")
 	case ICBMParameterQuery:
@@ -108,8 +108,56 @@ func (s *snacParameterRequest) write(w io.Writer) error {
 	return nil
 }
 
+func (s *snacParameterRequest) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &s.maxSlots); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.ICBMFlags); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.maxIncomingICBMLen); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.maxSourceEvil); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.maxDestinationEvil); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.minInterICBMInterval); err != nil {
+		return err
+	}
+	return nil
+}
+
 func SendAndReceiveICBMParameterReply(flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence uint16) error {
 	fmt.Printf("sendAndReceiveICBMParameterReply read SNAC frame: %+v\n", snac)
+
+	snacFrameOut := snacFrame{
+		foodGroup: ICBM,
+		subGroup:  ICBMParameterReply,
+	}
+	snacPayloadOut := &snacParameterRequest{
+		maxSlots:             100,
+		ICBMFlags:            0x00000001,
+		maxIncomingICBMLen:   8000,
+		maxSourceEvil:        999,
+		maxDestinationEvil:   999,
+		minInterICBMInterval: 100,
+	}
+
+	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+func ReceiveAddParameters(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("ReceiveAddParameters read SNAC frame: %+v\n", snac)
+
+	snacPayload := &snacParameterRequest{}
+	if err := snacPayload.read(r); err != nil {
+		return err
+	}
+
+	fmt.Printf("ReceiveAddParameters read SNAC: %+v\n", snacPayload)
 
 	snacFrameOut := snacFrame{
 		foodGroup: ICBM,
