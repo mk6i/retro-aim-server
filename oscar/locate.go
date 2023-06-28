@@ -3,6 +3,7 @@ package oscar
 import (
 	"fmt"
 	"io"
+	"reflect"
 )
 
 const (
@@ -36,7 +37,7 @@ func routeLocate(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, seq
 	case LocateRightsQuery:
 		return SendAndReceiveLocateRights(flap, snac, r, w, sequence)
 	case LocateSetInfo:
-		panic("not implemented")
+		return ReceiveSetInfo(flap, snac, r, w, sequence)
 	case LocateUserInfoQuery:
 		panic("not implemented")
 	case LocateUserInfoReply:
@@ -119,4 +120,20 @@ func SendAndReceiveLocateRights(flap *flapFrame, snac *snacFrame, r io.Reader, w
 	}
 
 	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+func ReceiveSetInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("ReceiveSetInfo read SNAC frame: %+v\n", snac)
+
+	snacPayload := &TLVPayload{}
+	lookup := map[uint16]reflect.Kind{
+		0x05: reflect.Slice,
+	}
+	if err := snacPayload.read(r, lookup); err != nil {
+		return err
+	}
+
+	fmt.Printf("ReceiveSetInfo read SNAC: %+v\n", snacPayload)
+
+	return nil
 }

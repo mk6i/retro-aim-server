@@ -354,3 +354,18 @@ func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w
 
 	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
+
+//func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+//	fmt.Printf("ReceiveInsertItem read SNAC frame: %+v\n", snac)
+//
+//	snacPayload := &snacFrame{}
+//	if err := snacPayload.read(r); err != nil {
+//		return err
+//	}
+//
+//	// read out remainder
+//
+//	fmt.Printf("ReceiveInsertItem read SNAC: %+v\n", snacPayload)
+//
+//	return nil
+//}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"reflect"
 	"time"
 )
 
@@ -64,7 +65,7 @@ func routeOService(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, s
 	case OServiceRateParamsReply:
 		panic("not implemented")
 	case OServiceRateParamsSubAdd:
-		panic("not implemented")
+		return ReceiveRateParamsSubAdd(flap, snac, r, w, sequence)
 	case OServiceRateDelParamSub:
 		panic("not implemented")
 	case OServiceRateParamChange:
@@ -417,4 +418,18 @@ func ReceiveAndSendServiceRequestSelfInfo(flap *flapFrame, snac *snacFrame, _ io
 	}
 
 	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+func ReceiveRateParamsSubAdd(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("receiveRateParamsSubAdd read SNAC frame: %+v\n", snac)
+
+	snacPayload := &TLVPayload{}
+	lookup := map[uint16]reflect.Kind{}
+	if err := snacPayload.read(r, lookup); err != nil {
+		return err
+	}
+
+	fmt.Printf("receiveAndSendHostVersions read SNAC: %+v\n", snacPayload)
+
+	return nil
 }
