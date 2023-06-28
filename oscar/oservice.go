@@ -53,7 +53,7 @@ func routeOService(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, s
 	case OServiceErr:
 		panic("not implemented")
 	case OServiceClientOnline:
-		panic("not implemented")
+		return ReceiveClientOnline(flap, snac, r, w, sequence)
 	case OServiceHostOnline:
 		panic("not implemented")
 	case OServiceServiceRequest:
@@ -430,6 +430,47 @@ func ReceiveRateParamsSubAdd(flap *flapFrame, snac *snacFrame, r io.Reader, w io
 	}
 
 	fmt.Printf("receiveAndSendHostVersions read SNAC: %+v\n", snacPayload)
+
+	return nil
+}
+
+type clientVersion struct {
+	foodGroup   uint16
+	version     uint16
+	toolID      uint16
+	toolVersion uint16
+}
+
+func (c *clientVersion) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &c.foodGroup); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &c.version); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &c.toolID); err != nil {
+		return err
+	}
+	return binary.Read(r, binary.BigEndian, &c.toolVersion)
+}
+
+func ReceiveClientOnline(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("receiveRateParamsSubAdd read SNAC frame: %+v\n", snac)
+
+	b := make([]byte, flap.payloadLength-10)
+	if _, err := r.Read(b); err != nil {
+		return err
+	}
+
+	buf := bytes.NewBuffer(b)
+
+	for buf.Len() > 0 {
+		item := &clientVersion{}
+		if err := item.read(buf); err != nil {
+			return err
+		}
+		fmt.Printf("ReceiveClientOnline read SNAC client version: %+v\n", item)
+	}
 
 	return nil
 }
