@@ -1,6 +1,7 @@
 package oscar
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -45,6 +46,41 @@ const (
 	FeedbagRecentBuddyUpdate               = 0x0025
 )
 
+const (
+	FeedbagClassIdBuddy            uint16 = 0x0000
+	FeedbagClassIdGroup                   = 0x0001
+	FeedbagClassIdPermit                  = 0x0002
+	FeedbagClassIdDeny                    = 0x0003
+	FeedbagClassIdPdinfo                  = 0x0004
+	FeedbagClassIdBuddyPrefs              = 0x0005
+	FeedbagClassIdNonbuddy                = 0x0006
+	FeedbagClassIdTpaProvider             = 0x0007
+	FeedbagClassIdTpaSubscription         = 0x0008
+	FeedbagClassIdClientPrefs             = 0x0009
+	FeedbagClassIdStock                   = 0x000A
+	FeedbagClassIdWeather                 = 0x000B
+	FeedbagClassIdWatchList               = 0x000D
+	FeedbagClassIdIgnoreList              = 0x000E
+	FeedbagClassIdDateTime                = 0x000F
+	FeedbagClassIdExternalUser            = 0x0010
+	FeedbagClassIdRootCreator             = 0x0011
+	FeedbagClassIdFish                    = 0x0012
+	FeedbagClassIdImportTimestamp         = 0x0013
+	FeedbagClassIdBart                    = 0x0014
+	FeedbagClassIdRbOrder                 = 0x0015
+	FeedbagClassIdPersonality             = 0x0016
+	FeedbagClassIdAlProf                  = 0x0017
+	FeedbagClassIdAlInfo                  = 0x0018
+	FeedbagClassIdInteraction             = 0x0019
+	FeedbagClassIdVanityInfo              = 0x001D
+	FeedbagClassIdFavoriteLocation        = 0x001E
+	FeedbagClassIdBartPdinfo              = 0x001F
+	FeedbagClassIdCustomEmoticons         = 0x0024
+	FeedbagClassIdMaxPredefined           = 0x0024
+	FeedbagClassIdXIcqStatusNote          = 0x015C
+	FeedbagClassIdMin                     = 0x0400
+)
+
 func routeFeedbag(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
 	switch snac.subGroup {
 	case FeedbagErr:
@@ -58,7 +94,7 @@ func routeFeedbag(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, se
 	case FeedbagUse:
 		panic("not implemented")
 	case FeedbagInsertItem:
-		panic("not implemented")
+		return ReceiveInsertItem(flap, snac, r, w, sequence)
 	case FeedbagUpdateItem:
 		panic("not implemented")
 	case FeedbagDeleteItem:
@@ -203,7 +239,7 @@ type feedbagItem struct {
 	groupID uint16
 	itemID  uint16
 	classID uint16
-	tlvs    []*TLV
+	TLVPayload
 }
 
 func (f *feedbagItem) write(w io.Writer) error {
@@ -222,15 +258,69 @@ func (f *feedbagItem) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, f.classID); err != nil {
 		return err
 	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(f.tlvs))); err != nil {
+	if err := binary.Write(w, binary.BigEndian, uint16(len(f.TLVPayload.TLVs))); err != nil {
 		return err
 	}
-	for _, tlv := range f.tlvs {
-		if err := tlv.write(w); err != nil {
-			return err
-		}
+	if err := f.TLVPayload.write(w); err != nil {
+		return err
 	}
 	return nil
+}
+
+func (f *feedbagItem) read(r io.Reader) error {
+	var l uint16
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		return err
+	}
+	buf := make([]byte, l)
+	if _, err := r.Read(buf); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &buf); err != nil {
+		return err
+	}
+	f.name = string(buf)
+	if err := binary.Read(r, binary.BigEndian, &f.groupID); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &f.itemID); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &f.classID); err != nil {
+		return err
+	}
+	return f.TLVPayload.read(r, map[uint16]reflect.Kind{
+		FeedbagClassIdBuddy:            reflect.Slice,
+		FeedbagClassIdGroup:            reflect.Slice,
+		FeedbagClassIdPermit:           reflect.Slice,
+		FeedbagClassIdDeny:             reflect.Slice,
+		FeedbagClassIdPdinfo:           reflect.Slice,
+		FeedbagClassIdBuddyPrefs:       reflect.Slice,
+		FeedbagClassIdNonbuddy:         reflect.Slice,
+		FeedbagClassIdTpaProvider:      reflect.Slice,
+		FeedbagClassIdTpaSubscription:  reflect.Slice,
+		FeedbagClassIdClientPrefs:      reflect.Slice,
+		FeedbagClassIdStock:            reflect.Slice,
+		FeedbagClassIdWeather:          reflect.Slice,
+		FeedbagClassIdWatchList:        reflect.Slice,
+		FeedbagClassIdIgnoreList:       reflect.Slice,
+		FeedbagClassIdDateTime:         reflect.Slice,
+		FeedbagClassIdExternalUser:     reflect.Slice,
+		FeedbagClassIdRootCreator:      reflect.Slice,
+		FeedbagClassIdFish:             reflect.Slice,
+		FeedbagClassIdImportTimestamp:  reflect.Slice,
+		FeedbagClassIdBart:             reflect.Slice,
+		FeedbagClassIdRbOrder:          reflect.Slice,
+		FeedbagClassIdPersonality:      reflect.Slice,
+		FeedbagClassIdAlProf:           reflect.Slice,
+		FeedbagClassIdAlInfo:           reflect.Slice,
+		FeedbagClassIdInteraction:      reflect.Slice,
+		FeedbagClassIdVanityInfo:       reflect.Slice,
+		FeedbagClassIdFavoriteLocation: reflect.Slice,
+		FeedbagClassIdBartPdinfo:       reflect.Slice,
+		FeedbagClassIdXIcqStatusNote:   reflect.Slice,
+		FeedbagClassIdMin:              reflect.Slice,
+	})
 }
 
 type snacFeedbagQuery struct {
@@ -263,91 +353,91 @@ func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w
 	}
 	snacPayloadOut := &snacFeedbagQuery{
 		version: 0,
-		items: []*feedbagItem{
-			{
-				groupID: 0,
-				itemID:  0,
-				classID: 0,
-				name:    "",
-				tlvs: []*TLV{
-					{
-						tType: 0x00C8,
-						val:   []uint16{321, 10},
-					},
-				},
-			},
-			{
-				groupID: 0,
-				itemID:  1805,
-				classID: 3,
-				name:    "spimmer123",
-				tlvs:    []*TLV{},
-			},
-			{
-				groupID: 0,
-				itemID:  4046,
-				classID: 0x14,
-				name:    "5",
-				tlvs:    []*TLV{},
-			},
-			{
-				groupID: 0,
-				itemID:  12108,
-				classID: 4,
-				name:    "",
-				tlvs: []*TLV{
-					{
-						tType: 202,
-						val:   uint8(0x04),
-					},
-					{
-						tType: 203,
-						val:   uint32(0xffffffff),
-					},
-					{
-						tType: 204,
-						val:   uint32(1),
-					},
-				},
-			},
-			{
-				groupID: 0x0A,
-				itemID:  0,
-				classID: 1,
-				name:    "Friends",
-				tlvs: []*TLV{
-					{
-						tType: 200,
-						val:   []uint16{110, 147},
-					},
-				},
-			},
-			{
-				groupID: 0x0A,
-				itemID:  110,
-				classID: 0,
-				name:    "ChattingChuck",
-				tlvs:    []*TLV{},
-			},
-			{
-				groupID: 0x0A,
-				itemID:  147,
-				classID: 0,
-				name:    "example@example.com",
-				tlvs:    []*TLV{},
-			},
-			{
-				groupID: 0,
-				itemID:  0,
-				classID: 1,
-				name:    "Empty Group",
-				tlvs: []*TLV{
-					{
-						tType: 200,
-						val:   []uint16{},
-					},
-				},
-			},
+		items:   []*feedbagItem{
+			//{
+			//	groupID: 0,
+			//	itemID:  0,
+			//	classID: 0,
+			//	name:    "",
+			//	tlvs: []*TLV{
+			//		{
+			//			tType: 0x00C8,
+			//			val:   []uint16{321, 10},
+			//		},
+			//	},
+			//},
+			//{
+			//	groupID: 0,
+			//	itemID:  1805,
+			//	classID: 3,
+			//	name:    "spimmer123",
+			//	tlvs:    []*TLV{},
+			//},
+			//{
+			//	groupID: 0,
+			//	itemID:  4046,
+			//	classID: 0x14,
+			//	name:    "5",
+			//	tlvs:    []*TLV{},
+			//},
+			//{
+			//	groupID: 0,
+			//	itemID:  12108,
+			//	classID: 4,
+			//	name:    "",
+			//	tlvs: []*TLV{
+			//		{
+			//			tType: 202,
+			//			val:   uint8(0x04),
+			//		},
+			//		{
+			//			tType: 203,
+			//			val:   uint32(0xffffffff),
+			//		},
+			//		{
+			//			tType: 204,
+			//			val:   uint32(1),
+			//		},
+			//	},
+			//},
+			//{
+			//	groupID: 0x0A,
+			//	itemID:  0,
+			//	classID: 1,
+			//	name:    "Friends",
+			//	tlvs: []*TLV{
+			//		{
+			//			tType: 200,
+			//			val:   []uint16{110, 147},
+			//		},
+			//	},
+			//},
+			//{
+			//	groupID: 0x0A,
+			//	itemID:  110,
+			//	classID: 0,
+			//	name:    "ChattingChuck",
+			//	tlvs:    []*TLV{},
+			//},
+			//{
+			//	groupID: 0x0A,
+			//	itemID:  147,
+			//	classID: 0,
+			//	name:    "example@example.com",
+			//	tlvs:    []*TLV{},
+			//},
+			//{
+			//	groupID: 0,
+			//	itemID:  0,
+			//	classID: 1,
+			//	name:    "Empty Group",
+			//	tlvs: []*TLV{
+			//		{
+			//			tType: 200,
+			//			val:   []uint16{},
+			//		},
+			//	},
+			//},
 		},
 		lastUpdate: uint32(time.Now().Unix()),
 	}
@@ -355,17 +445,39 @@ func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w
 	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-//func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
-//	fmt.Printf("ReceiveInsertItem read SNAC frame: %+v\n", snac)
-//
-//	snacPayload := &snacFrame{}
-//	if err := snacPayload.read(r); err != nil {
-//		return err
-//	}
-//
-//	// read out remainder
-//
-//	fmt.Printf("ReceiveInsertItem read SNAC: %+v\n", snacPayload)
-//
-//	return nil
-//}
+type snacFeedbagStatusReply struct {
+	results []uint16
+}
+
+func (s *snacFeedbagStatusReply) write(w io.Writer) error {
+	return binary.Write(w, binary.BigEndian, s.results)
+}
+
+func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("ReceiveInsertItem read SNAC frame: %+v\n", snac)
+
+	b := make([]byte, flap.payloadLength-10)
+	if _, err := r.Read(b); err != nil {
+		return err
+	}
+
+	buf := bytes.NewBuffer(b)
+
+	snacPayloadOut := &snacFeedbagStatusReply{}
+
+	for buf.Len() > 0 {
+		item := &feedbagItem{}
+		if err := item.read(buf); err != nil {
+			return err
+		}
+		snacPayloadOut.results = append(snacPayloadOut.results, 0x0000) // success by default
+		fmt.Printf("ReceiveInsertItem read SNAC feedbag item: %+v\n", item)
+	}
+
+	snacFrameOut := snacFrame{
+		foodGroup: FEEDBAG,
+		subGroup:  FeedbagStatus,
+	}
+
+	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+}
