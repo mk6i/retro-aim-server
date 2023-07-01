@@ -12,6 +12,8 @@ func main() {
 
 	go listenBOS()
 
+	//todo implement CHATNAV and ALERT
+
 	// Listen on TCP port 5190
 	listener, err := net.Listen("tcp", ":5190")
 	if err != nil {
