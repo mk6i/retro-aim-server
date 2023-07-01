@@ -57,13 +57,9 @@ func routeOService(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, s
 	case OServiceHostOnline:
 		panic("not implemented")
 	case OServiceServiceRequest:
-		panic("not implemented")
-	case OServiceServiceResponse:
-		panic("not implemented")
+		return ReceiveAndSendServiceRequest(flap, snac, r, w, sequence)
 	case OServiceRateParamsQuery:
 		return ReceiveAndSendServiceRateParams(flap, snac, r, w, sequence)
-	case OServiceRateParamsReply:
-		panic("not implemented")
 	case OServiceRateParamsSubAdd:
 		return ReceiveRateParamsSubAdd(flap, snac, r, w, sequence)
 	case OServiceRateDelParamSub:
@@ -83,7 +79,7 @@ func routeOService(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, s
 	case OServiceEvilNotification:
 		panic("not implemented")
 	case OServiceIdleNotification:
-		panic("not implemented")
+		return ReceiveIdleNotification(flap, snac, r, w, sequence)
 	case OServiceMigrateGroups:
 		panic("not implemented")
 	case OServiceMotd:
@@ -107,7 +103,7 @@ func routeOService(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, s
 	case OServiceConfigReply:
 		panic("not implemented")
 	case OServiceSetUserinfoFields:
-		panic("not implemented")
+		return ReceiveSetUserInfoFields(flap, snac, r, w, sequence)
 	case OServiceProbeReq:
 		panic("not implemented")
 	case OServiceProbeAck:
@@ -455,7 +451,7 @@ func (c *clientVersion) read(r io.Reader) error {
 }
 
 func ReceiveClientOnline(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
-	fmt.Printf("receiveRateParamsSubAdd read SNAC frame: %+v\n", snac)
+	fmt.Printf("receiveClientOnline read SNAC frame: %+v\n", snac)
 
 	b := make([]byte, flap.payloadLength-10)
 	if _, err := r.Read(b); err != nil {
@@ -473,4 +469,103 @@ func ReceiveClientOnline(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Wri
 	}
 
 	return nil
+}
+
+func ReceiveSetUserInfoFields(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("receiveSetUserInfoFields read SNAC frame: %+v\n", snac)
+
+	b := make([]byte, flap.payloadLength-10)
+	if _, err := r.Read(b); err != nil {
+		return err
+	}
+
+	snacPayload := &TLVPayload{}
+	return snacPayload.read(bytes.NewBuffer(b), map[uint16]reflect.Kind{
+		0x06: reflect.Uint32,
+		0x1D: reflect.Slice,
+	})
+}
+
+type snacIdleNotification struct {
+	idleTime uint32
+}
+
+func (s *snacIdleNotification) read(r io.Reader) error {
+	return binary.Read(r, binary.BigEndian, &s.idleTime)
+}
+
+func ReceiveIdleNotification(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("receiveIdleNotification read SNAC frame: %+v\n", snac)
+
+	snacPayload := &snacIdleNotification{}
+	return snacPayload.read(r)
+}
+
+type snacServiceRequest struct {
+	foodGroup uint16
+	TLVPayload
+}
+
+func (s *snacServiceRequest) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &s.foodGroup); err != nil {
+		return err
+	}
+	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
+		0x0B: reflect.Uint16,
+	})
+}
+
+const (
+	OserviceTlvTagsReconnectHere uint16 = 0x05
+	OserviceTlvTagsLoginCookie          = 0x06
+	OserviceTlvTagsGroupId              = 0x0D
+	OserviceTlvTagsSslCertname          = 0x8D
+	OserviceTlvTagsSslState             = 0x8E
+)
+
+func ReceiveAndSendServiceRequest(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+	fmt.Printf("receiveAndSendServiceRequest read SNAC frame: %+v\n", snac)
+
+	b := make([]byte, flap.payloadLength-10)
+	if _, err := r.Read(b); err != nil {
+		return err
+	}
+
+	snacPayload := &snacServiceRequest{}
+	if err := snacPayload.read(bytes.NewBuffer(b)); err != nil {
+		return nil
+	}
+
+	fmt.Printf("receiveAndSendServiceRequest read SNAC body: %+v\n", snacPayload)
+
+	snacFrameOut := snacFrame{
+		foodGroup: OSERVICE,
+		subGroup:  OServiceServiceResponse,
+	}
+	snacPayloadOut := &TLVPayload{
+		TLVs: []*TLV{
+			{
+				tType: OserviceTlvTagsReconnectHere,
+				val:   "127.0.0.1",
+			},
+			{
+				tType: OserviceTlvTagsLoginCookie,
+				val:   "some-cookie",
+			},
+			{
+				tType: OserviceTlvTagsGroupId,
+				val:   snacPayload.foodGroup,
+			},
+			{
+				tType: OserviceTlvTagsSslCertname,
+				val:   "",
+			},
+			{
+				tType: OserviceTlvTagsSslState,
+				val:   uint8(0x00),
+			},
+		},
+	}
+
+	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }

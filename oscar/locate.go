@@ -97,23 +97,23 @@ func SendAndReceiveLocateRights(flap *flapFrame, snac *snacFrame, r io.Reader, w
 			TLVs: []*TLV{
 				{
 					tType: 0x01,
-					val:   uint16(0),
+					val:   uint16(1000),
 				},
 				{
 					tType: 0x02,
-					val:   uint16(0),
+					val:   uint16(1000),
 				},
 				{
 					tType: 0x03,
-					val:   uint16(0),
+					val:   uint16(1000),
 				},
 				{
 					tType: 0x04,
-					val:   uint16(0),
+					val:   uint16(1000),
 				},
 				{
 					tType: 0x05,
-					val:   uint16(0),
+					val:   uint16(1000),
 				},
 			},
 		},
