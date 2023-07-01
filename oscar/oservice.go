@@ -315,35 +315,42 @@ func ReceiveAndSendServiceRateParams(flap *flapFrame, snac *snacFrame, _ io.Read
 
 	snacPayloadOut := &snacOServiceRateParamsReply{
 		rateClasses: []rateClass{
-			//{
-			//	ID:              1,
-			//	windowSize:      10,
-			//	clearLevel:      10,
-			//	alertLevel:      10,
-			//	limitLevel:      10,
-			//	disconnectLevel: 10,
-			//	currentLevel:    10,
-			//	maxLevel:        10,
-			//	lastTime:        10,
-			//	currentState:    10,
-			//},
+			{
+				ID:              0x0001,
+				windowSize:      0x00000050,
+				clearLevel:      0x000009C4,
+				alertLevel:      0x000007D0,
+				limitLevel:      0x000005DC,
+				disconnectLevel: 0x00000320,
+				currentLevel:    0x00000D69,
+				maxLevel:        0x00001770,
+				lastTime:        0x00000000,
+				currentState:    0x00,
+			},
 		},
 		rateGroups: []rateGroup{
-			//{
-			//	ID: 1,
-			//	pairs: []struct {
-			//		foodGroup uint16
-			//		subGroup  uint16
-			//	}{
-			//		{
-			//			foodGroup: 1,
-			//			subGroup:  1,
-			//		},
-			//	},
-			//},
+			{
+				ID: 1,
+				pairs: []struct {
+					foodGroup uint16
+					subGroup  uint16
+				}{},
+			},
 		},
 	}
 
+	for i := uint16(0); i < 24; i++ { // for each food group
+		for j := uint16(0); j < 64; j++ { // for each subgroup
+			snacPayloadOut.rateGroups[0].pairs = append(snacPayloadOut.rateGroups[0].pairs,
+				struct {
+					foodGroup uint16
+					subGroup  uint16
+				}{
+					foodGroup: i,
+					subGroup:  j,
+				})
+		}
+	}
 	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 

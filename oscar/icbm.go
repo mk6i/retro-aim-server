@@ -164,12 +164,12 @@ func ReceiveAddParameters(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Wr
 		subGroup:  ICBMParameterReply,
 	}
 	snacPayloadOut := &snacParameterRequest{
-		maxSlots:             100,
-		ICBMFlags:            0x00000001,
-		maxIncomingICBMLen:   8000,
-		maxSourceEvil:        999,
-		maxDestinationEvil:   999,
-		minInterICBMInterval: 100,
+		maxSlots:             snacPayload.maxSlots,
+		ICBMFlags:            snacPayload.ICBMFlags,
+		maxIncomingICBMLen:   snacPayload.maxIncomingICBMLen,
+		maxSourceEvil:        snacPayload.maxSourceEvil,
+		maxDestinationEvil:   snacPayload.maxDestinationEvil,
+		minInterICBMInterval: snacPayload.minInterICBMInterval,
 	}
 
 	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
