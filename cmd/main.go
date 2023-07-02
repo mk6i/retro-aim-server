@@ -62,20 +62,20 @@ func listenBOS() {
 
 func handleAuthConnection(conn net.Conn) {
 	defer conn.Close()
-
-	err := oscar.SendAndReceiveSignonFrame(conn, 100)
+	seq := uint16(100)
+	err := oscar.SendAndReceiveSignonFrame(conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	err = oscar.ReceiveAndSendAuthChallenge(conn, conn, 101)
+	err = oscar.ReceiveAndSendAuthChallenge(conn, conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	err = oscar.ReceiveAndSendBUCPLoginRequest(conn, conn, 102)
+	err = oscar.ReceiveAndSendBUCPLoginRequest(conn, conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return
@@ -83,20 +83,21 @@ func handleAuthConnection(conn net.Conn) {
 }
 
 func handleBOSConnection(conn net.Conn) {
+	seq := uint16(100)
 	//defer conn.Close()
 	fmt.Println("SendAndReceiveSignonFrame...")
-	if err := oscar.SendAndReceiveSignonFrame(conn, 100); err != nil {
+	if err := oscar.SendAndReceiveSignonFrame(conn, &seq); err != nil {
 		log.Println(err)
 		return
 	}
 
 	fmt.Println("writeOServiceHostOnline...")
-	if err := oscar.WriteOServiceHostOnline(conn, 101); err != nil {
+	if err := oscar.WriteOServiceHostOnline(conn, &seq); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
-	if err := oscar.ReadBos(conn, 102); err != nil {
+	if err := oscar.ReadBos(conn, &seq); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}

@@ -264,18 +264,19 @@ func (f *flapSignonFrame) read(r io.Reader) error {
 	return nil
 }
 
-func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence uint16) error {
+func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint16) error {
 	// send
 	flap := &flapSignonFrame{
 		flapFrame: flapFrame{
 			startMarker:   42,
 			frameType:     1,
-			sequence:      sequence,
+			sequence:      *sequence,
 			payloadLength: 4, // size of flapVersion
 		},
 		flapVersion: 1,
 	}
 
+	*sequence++
 	if err := flap.write(rw); err != nil {
 		return err
 	}
@@ -320,7 +321,7 @@ const (
 	ARS                  = 0x044A
 )
 
-func ReadBos(rw io.ReadWriter, sequence uint16) error {
+func ReadBos(rw io.ReadWriter, sequence *uint16) error {
 	for {
 		// receive
 		flap := &flapFrame{}
@@ -345,22 +346,18 @@ func ReadBos(rw io.ReadWriter, sequence uint16) error {
 			if err := routeOService(flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
-			sequence++
 		case LOCATE:
 			if err := routeLocate(flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
-			sequence++
 		case BUDDY:
 			if err := routeBuddy(flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
-			sequence++
 		case ICBM:
 			if err := routeICBM(flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
-			sequence++
 		case ADVERT:
 		case INVITE:
 		case ADMIN:
@@ -369,7 +366,6 @@ func ReadBos(rw io.ReadWriter, sequence uint16) error {
 			if err := routePD(flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
-			sequence++
 		case USER_LOOKUP:
 		case STATS:
 		case TRANSLATE:
@@ -377,7 +373,6 @@ func ReadBos(rw io.ReadWriter, sequence uint16) error {
 			if err := routeChatNav(flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
-			sequence++
 		case CHAT:
 		case ODIR:
 		case BART:
@@ -385,13 +380,11 @@ func ReadBos(rw io.ReadWriter, sequence uint16) error {
 			if err := routeFeedbag(flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
-			sequence++
 		case ICQ:
 		case BUCP:
 			if err := routeBUCP(flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
-			sequence++
 		case ALERT:
 		case PLUGIN:
 		case UNNAMED_FG_24:
@@ -402,7 +395,7 @@ func ReadBos(rw io.ReadWriter, sequence uint16) error {
 	}
 }
 
-func writeOutSNAC(flap *flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence uint16, w io.Writer) error {
+func writeOutSNAC(flap *flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint16, w io.Writer) error {
 	snacBuf := &bytes.Buffer{}
 	if err := snacFrame.write(snacBuf); err != nil {
 		return err
@@ -411,7 +404,8 @@ func writeOutSNAC(flap *flapFrame, snacFrame snacFrame, snacOut snacWriter, sequ
 		return err
 	}
 
-	flap.sequence = sequence
+	flap.sequence = *sequence
+	*sequence++
 	flap.payloadLength = uint16(snacBuf.Len())
 
 	fmt.Printf(" write FLAP: %+v\n", flap)
