@@ -81,7 +81,7 @@ const (
 	FeedbagClassIdMin                     = 0x0400
 )
 
-func routeFeedbag(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+func routeFeedbag(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	switch snac.subGroup {
 	case FeedbagErr:
 		panic("not implemented")
@@ -114,7 +114,7 @@ func routeFeedbag(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, se
 	case FeedbagStartCluster:
 		panic("not implemented")
 	case FeedbagEndCluster:
-		panic("not implemented")
+		return ReceiveFeedbagEndCluster(flap, snac, r, w, sequence)
 	case FeedbagAuthorizeBuddy:
 		panic("not implemented")
 	case FeedbagPreAuthorizeBuddy:
@@ -166,7 +166,7 @@ func (s *payloadFeedbagRightsQuery) read(r io.Reader) error {
 	})
 }
 
-func SendAndReceiveFeedbagRightsQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+func SendAndReceiveFeedbagRightsQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("sendAndReceiveFeedbagRightsQuery read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &payloadFeedbagRightsQuery{}
@@ -276,9 +276,6 @@ func (f *feedbagItem) read(r io.Reader) error {
 	if _, err := r.Read(buf); err != nil {
 		return err
 	}
-	if err := binary.Read(r, binary.BigEndian, &buf); err != nil {
-		return err
-	}
 	f.name = string(buf)
 	if err := binary.Read(r, binary.BigEndian, &f.groupID); err != nil {
 		return err
@@ -344,7 +341,7 @@ func (s *snacFeedbagQuery) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.lastUpdate)
 }
 
-func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("receiveAndSendFeedbagQuery read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -354,92 +351,92 @@ func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w
 	snacPayloadOut := &snacFeedbagQuery{
 		version: 0,
 		items: []*feedbagItem{
-			{
-				groupID: 0,
-				itemID:  0,
-				classID: 0,
-				name:    "",
-				TLVPayload: TLVPayload{
-					TLVs: []*TLV{
-						{
-							tType: 0x00C8,
-							val:   []uint16{321, 10},
-						},
-					},
-				},
-			},
-			{
-				groupID: 0,
-				itemID:  1805,
-				classID: 3,
-				name:    "spimmer123",
-				TLVPayload: TLVPayload{
-					TLVs: []*TLV{},
-				},
-			},
-			{
-				groupID: 0,
-				itemID:  4046,
-				classID: 0x14,
-				name:    "5",
-				TLVPayload: TLVPayload{
-					TLVs: []*TLV{},
-				},
-			},
-			{
-				groupID: 0,
-				itemID:  12108,
-				classID: 4,
-				name:    "",
-				TLVPayload: TLVPayload{
-					TLVs: []*TLV{
-						{
-							tType: 202,
-							val:   uint8(0x04),
-						},
-						{
-							tType: 203,
-							val:   uint32(0xffffffff),
-						},
-						{
-							tType: 204,
-							val:   uint32(1),
-						},
-					},
-				},
-			},
-			{
-				groupID: 0x0A,
-				itemID:  0,
-				classID: 1,
-				name:    "Friends",
-				TLVPayload: TLVPayload{
-					TLVs: []*TLV{
-						{
-							tType: 200,
-							val:   []uint16{110, 147},
-						},
-					},
-				},
-			},
-			{
-				groupID: 0x0A,
-				itemID:  110,
-				classID: 0,
-				name:    "ChattingChuck",
-				TLVPayload: TLVPayload{
-					TLVs: []*TLV{},
-				},
-			},
-			{
-				groupID: 0x0A,
-				itemID:  147,
-				classID: 0,
-				name:    "example@example.com",
-				TLVPayload: TLVPayload{
-					TLVs: []*TLV{},
-				},
-			},
+			//{
+			//	groupID: 0,
+			//	itemID:  0,
+			//	classID: 0,
+			//	name:    "",
+			//	TLVPayload: TLVPayload{
+			//		TLVs: []*TLV{
+			//			{
+			//				tType: 0x00C8,
+			//				val:   []uint16{321, 10},
+			//			},
+			//		},
+			//	},
+			//},
+			//{
+			//	groupID: 0,
+			//	itemID:  1805,
+			//	classID: 3,
+			//	name:    "spimmer123",
+			//	TLVPayload: TLVPayload{
+			//		TLVs: []*TLV{},
+			//	},
+			//},
+			//{
+			//	groupID: 0,
+			//	itemID:  4046,
+			//	classID: 0x14,
+			//	name:    "5",
+			//	TLVPayload: TLVPayload{
+			//		TLVs: []*TLV{},
+			//	},
+			//},
+			//{
+			//	groupID: 0,
+			//	itemID:  12108,
+			//	classID: 4,
+			//	name:    "",
+			//	TLVPayload: TLVPayload{
+			//		TLVs: []*TLV{
+			//			{
+			//				tType: 202,
+			//				val:   uint8(0x04),
+			//			},
+			//			{
+			//				tType: 203,
+			//				val:   uint32(0xffffffff),
+			//			},
+			//			{
+			//				tType: 204,
+			//				val:   uint32(1),
+			//			},
+			//		},
+			//	},
+			//},
+			//{
+			//	groupID: 0x0A,
+			//	itemID:  0,
+			//	classID: 1,
+			//	name:    "Friends",
+			//	TLVPayload: TLVPayload{
+			//		TLVs: []*TLV{
+			//			{
+			//				tType: 200,
+			//				val:   []uint16{110, 147},
+			//			},
+			//		},
+			//	},
+			//},
+			//{
+			//	groupID: 0x0A,
+			//	itemID:  110,
+			//	classID: 0,
+			//	name:    "ChattingChuck",
+			//	TLVPayload: TLVPayload{
+			//		TLVs: []*TLV{},
+			//	},
+			//},
+			//{
+			//	groupID: 0x0A,
+			//	itemID:  147,
+			//	classID: 0,
+			//	name:    "example@example.com",
+			//	TLVPayload: TLVPayload{
+			//		TLVs: []*TLV{},
+			//	},
+			//},
 			{
 				groupID: 0,
 				itemID:  0,
@@ -469,21 +466,17 @@ func (s *snacFeedbagStatusReply) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.results)
 }
 
-func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("ReceiveInsertItem read SNAC frame: %+v\n", snac)
-
-	b := make([]byte, flap.payloadLength-10)
-	if _, err := r.Read(b); err != nil {
-		return err
-	}
-
-	buf := bytes.NewBuffer(b)
 
 	snacPayloadOut := &snacFeedbagStatusReply{}
 
-	for buf.Len() > 0 {
+	for {
 		item := &feedbagItem{}
-		if err := item.read(buf); err != nil {
+		if err := item.read(r); err != nil {
+			if err == io.EOF {
+				break
+			}
 			return err
 		}
 		snacPayloadOut.results = append(snacPayloadOut.results, 0x0000) // success by default
@@ -498,7 +491,7 @@ func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("ReceiveInsertItem read SNAC frame: %+v\n", snac)
 
 	b := make([]byte, flap.payloadLength-10)
@@ -532,4 +525,9 @@ func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 	}
 
 	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+func ReceiveFeedbagEndCluster(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+	fmt.Printf("receiveFeedbagEndCluster read SNAC frame: %+v\n", snac)
+	return nil
 }

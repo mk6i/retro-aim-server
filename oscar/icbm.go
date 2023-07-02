@@ -30,7 +30,7 @@ const (
 	ICBMSinReply                  = 0x0017
 )
 
-func routeICBM(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+func routeICBM(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	switch snac.subGroup {
 	case ICBMErr:
 		panic("not implemented")
@@ -78,6 +78,37 @@ func routeICBM(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, seque
 }
 
 type snacParameterRequest struct {
+	channel              uint16
+	ICBMFlags            uint32
+	maxIncomingICBMLen   uint16
+	maxSourceEvil        uint16
+	maxDestinationEvil   uint16
+	minInterICBMInterval uint32
+}
+
+func (s *snacParameterRequest) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &s.channel); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.ICBMFlags); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.maxIncomingICBMLen); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.maxSourceEvil); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.maxDestinationEvil); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.minInterICBMInterval); err != nil {
+		return err
+	}
+	return nil
+}
+
+type snacParameterResponse struct {
 	maxSlots             uint16
 	ICBMFlags            uint32
 	maxIncomingICBMLen   uint16
@@ -86,7 +117,7 @@ type snacParameterRequest struct {
 	minInterICBMInterval uint32
 }
 
-func (s *snacParameterRequest) write(w io.Writer) error {
+func (s *snacParameterResponse) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.maxSlots); err != nil {
 		return err
 	}
@@ -108,48 +139,26 @@ func (s *snacParameterRequest) write(w io.Writer) error {
 	return nil
 }
 
-func (s *snacParameterRequest) read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &s.maxSlots); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.ICBMFlags); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.maxIncomingICBMLen); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.maxSourceEvil); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.maxDestinationEvil); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.minInterICBMInterval); err != nil {
-		return err
-	}
-	return nil
-}
-
-func SendAndReceiveICBMParameterReply(flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence uint16) error {
+func SendAndReceiveICBMParameterReply(flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("sendAndReceiveICBMParameterReply read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
 		foodGroup: ICBM,
 		subGroup:  ICBMParameterReply,
 	}
-	snacPayloadOut := &snacParameterRequest{
+	snacPayloadOut := &snacParameterResponse{
 		maxSlots:             100,
-		ICBMFlags:            0x00000001,
-		maxIncomingICBMLen:   8000,
+		ICBMFlags:            3,
+		maxIncomingICBMLen:   512,
 		maxSourceEvil:        999,
 		maxDestinationEvil:   999,
-		minInterICBMInterval: 100,
+		minInterICBMInterval: 0,
 	}
 
 	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveAddParameters(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+func ReceiveAddParameters(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("ReceiveAddParameters read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacParameterRequest{}
@@ -158,19 +167,5 @@ func ReceiveAddParameters(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Wr
 	}
 
 	fmt.Printf("ReceiveAddParameters read SNAC: %+v\n", snacPayload)
-
-	snacFrameOut := snacFrame{
-		foodGroup: ICBM,
-		subGroup:  ICBMParameterReply,
-	}
-	snacPayloadOut := &snacParameterRequest{
-		maxSlots:             snacPayload.maxSlots,
-		ICBMFlags:            snacPayload.ICBMFlags,
-		maxIncomingICBMLen:   snacPayload.maxIncomingICBMLen,
-		maxSourceEvil:        snacPayload.maxSourceEvil,
-		maxDestinationEvil:   snacPayload.maxDestinationEvil,
-		minInterICBMInterval: snacPayload.minInterICBMInterval,
-	}
-
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return nil
 }

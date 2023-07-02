@@ -17,7 +17,7 @@ const (
 	ChatNavNavInfo                    = 0x0009
 )
 
-func routeChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+func routeChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	switch snac.subGroup {
 	case ChatNavErr:
 		panic("not implemented")
@@ -41,7 +41,7 @@ func routeChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, se
 	return nil
 }
 
-func SendAndReceiveNextChatRights(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence uint16) error {
+func SendAndReceiveNextChatRights(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("sendAndReceiveNextChatRights read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacFrame{}
