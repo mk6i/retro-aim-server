@@ -341,117 +341,28 @@ func (s *snacFeedbagQuery) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.lastUpdate)
 }
 
+type snacQueryIfModified struct {
+	count      uint8
+	lastUpdate uint32
+}
+
+func (s *snacQueryIfModified) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, s.lastUpdate); err != nil {
+		return err
+	}
+	return binary.Write(w, binary.BigEndian, s.count)
+}
+
 func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("receiveAndSendFeedbagQuery read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
 		foodGroup: 0x13,
-		subGroup:  0x06,
+		subGroup:  0x05,
 	}
-	snacPayloadOut := &snacFeedbagQuery{
-		version: 0,
-		items: []*feedbagItem{
-			//{
-			//	groupID: 0,
-			//	itemID:  0,
-			//	classID: 0,
-			//	name:    "",
-			//	TLVPayload: TLVPayload{
-			//		TLVs: []*TLV{
-			//			{
-			//				tType: 0x00C8,
-			//				val:   []uint16{321, 10},
-			//			},
-			//		},
-			//	},
-			//},
-			//{
-			//	groupID: 0,
-			//	itemID:  1805,
-			//	classID: 3,
-			//	name:    "spimmer123",
-			//	TLVPayload: TLVPayload{
-			//		TLVs: []*TLV{},
-			//	},
-			//},
-			//{
-			//	groupID: 0,
-			//	itemID:  4046,
-			//	classID: 0x14,
-			//	name:    "5",
-			//	TLVPayload: TLVPayload{
-			//		TLVs: []*TLV{},
-			//	},
-			//},
-			//{
-			//	groupID: 0,
-			//	itemID:  12108,
-			//	classID: 4,
-			//	name:    "",
-			//	TLVPayload: TLVPayload{
-			//		TLVs: []*TLV{
-			//			{
-			//				tType: 202,
-			//				val:   uint8(0x04),
-			//			},
-			//			{
-			//				tType: 203,
-			//				val:   uint32(0xffffffff),
-			//			},
-			//			{
-			//				tType: 204,
-			//				val:   uint32(1),
-			//			},
-			//		},
-			//	},
-			//},
-			//{
-			//	groupID: 0x0A,
-			//	itemID:  0,
-			//	classID: 1,
-			//	name:    "Friends",
-			//	TLVPayload: TLVPayload{
-			//		TLVs: []*TLV{
-			//			{
-			//				tType: 200,
-			//				val:   []uint16{110, 147},
-			//			},
-			//		},
-			//	},
-			//},
-			//{
-			//	groupID: 0x0A,
-			//	itemID:  110,
-			//	classID: 0,
-			//	name:    "ChattingChuck",
-			//	TLVPayload: TLVPayload{
-			//		TLVs: []*TLV{},
-			//	},
-			//},
-			//{
-			//	groupID: 0x0A,
-			//	itemID:  147,
-			//	classID: 0,
-			//	name:    "example@example.com",
-			//	TLVPayload: TLVPayload{
-			//		TLVs: []*TLV{},
-			//	},
-			//},
-			{
-				groupID: 0,
-				itemID:  0,
-				classID: 1,
-				name:    "Empty Group",
-				TLVPayload: TLVPayload{
-					TLVs: []*TLV{
-						{
-							tType: 200,
-							val:   []uint16{},
-						},
-					},
-				},
-			},
-		},
+	snacPayloadOut := &snacQueryIfModified{
+		count: 0,
+		//lastUpdate: 0,
 		lastUpdate: uint32(time.Now().Unix()),
 	}
 

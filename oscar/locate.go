@@ -127,6 +127,7 @@ func ReceiveSetInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, 
 
 	snacPayload := &TLVPayload{}
 	lookup := map[uint16]reflect.Kind{
+		0x01: reflect.String,
 		0x05: reflect.Slice,
 	}
 	if err := snacPayload.read(r, lookup); err != nil {
