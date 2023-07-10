@@ -88,6 +88,10 @@ func SendAndReceiveBuddyRights(flap *flapFrame, snac *snacFrame, r io.Reader, w 
 					val:   uint16(100),
 				},
 				{
+					tType: 0x03,
+					val:   uint16(100),
+				},
+				{
 					tType: 0x04,
 					val:   uint16(100),
 				},
@@ -95,5 +99,5 @@ func SendAndReceiveBuddyRights(flap *flapFrame, snac *snacFrame, r io.Reader, w 
 		},
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }

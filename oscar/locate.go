@@ -1,6 +1,7 @@
 package oscar
 
 import (
+	"encoding/binary"
 	"fmt"
 	"io"
 	"reflect"
@@ -51,7 +52,7 @@ func routeLocate(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, seq
 	case LocateSetDirReply:
 		panic("not implemented")
 	case LocateGetDirInfo:
-		panic("not implemented")
+		return ReceiveLocateGetDirInfo(flap, snac, r, w, sequence)
 	case LocateGetDirReply:
 		panic("not implemented")
 	case LocateGroupCapabilityQuery:
@@ -119,7 +120,7 @@ func SendAndReceiveLocateRights(flap *flapFrame, snac *snacFrame, r io.Reader, w
 		},
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func ReceiveSetInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
@@ -128,13 +129,51 @@ func ReceiveSetInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, 
 	snacPayload := &TLVPayload{}
 	lookup := map[uint16]reflect.Kind{
 		0x01: reflect.String,
+		0x02: reflect.Slice,
+		0x04: reflect.Slice,
 		0x05: reflect.Slice,
+		0x06: reflect.Slice,
 	}
 	if err := snacPayload.read(r, lookup); err != nil {
 		return err
 	}
 
 	fmt.Printf("ReceiveSetInfo read SNAC: %+v\n", snacPayload)
+
+	return nil
+}
+
+type snacDirInfo struct {
+	watcherScreenNames []string
+}
+
+func (s *snacDirInfo) read(r io.Reader) error {
+	for {
+		var l uint8
+		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		buf := make([]byte, l)
+		if _, err := r.Read(buf); err != nil {
+			return err
+		}
+		s.watcherScreenNames = append(s.watcherScreenNames, string(buf))
+	}
+	return nil
+}
+
+func ReceiveLocateGetDirInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+	fmt.Printf("ReceiveLocateGetDirInfo read SNAC frame: %+v\n", snac)
+
+	snacPayload := &snacDirInfo{}
+	if err := snacPayload.read(r); err != nil {
+		return err
+	}
+
+	fmt.Printf("ReceiveLocateGetDirInfo read SNAC: %+v\n", snacPayload)
 
 	return nil
 }

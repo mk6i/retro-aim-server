@@ -97,7 +97,7 @@ func ReceiveAndSendAuthChallenge(r io.Reader, w io.Writer, sequence *uint16) err
 		authKey: "theauthkey",
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snacBUCPLoginRequest struct {
@@ -186,5 +186,5 @@ func ReceiveAndSendBUCPLoginRequest(r io.Reader, w io.Writer, sequence *uint16) 
 		},
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
