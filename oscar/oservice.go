@@ -220,7 +220,7 @@ func ReceiveAndSendHostVersions(flap *flapFrame, snac *snacFrame, r io.Reader, w
 		subGroup:  OServiceHostVersions,
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayload, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayload, sequence, w)
 }
 
 type rateClass struct {
@@ -351,7 +351,7 @@ func ReceiveAndSendServiceRateParams(flap *flapFrame, snac *snacFrame, _ io.Read
 				})
 		}
 	}
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snacOServiceUserInfoUpdate struct {
@@ -420,7 +420,7 @@ func ReceiveAndSendServiceRequestSelfInfo(flap *flapFrame, snac *snacFrame, _ io
 		},
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func ReceiveRateParamsSubAdd(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
@@ -533,13 +533,8 @@ const (
 func ReceiveAndSendServiceRequest(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("receiveAndSendServiceRequest read SNAC frame: %+v\n", snac)
 
-	b := make([]byte, flap.payloadLength-10)
-	if _, err := r.Read(b); err != nil {
-		return err
-	}
-
 	snacPayload := &snacServiceRequest{}
-	if err := snacPayload.read(bytes.NewBuffer(b)); err != nil {
+	if err := snacPayload.read(r); err != nil {
 		return nil
 	}
 
@@ -574,5 +569,5 @@ func ReceiveAndSendServiceRequest(flap *flapFrame, snac *snacFrame, r io.Reader,
 		},
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }

@@ -395,7 +395,10 @@ func ReadBos(rw io.ReadWriter, sequence *uint16) error {
 	}
 }
 
-func writeOutSNAC(flap *flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint16, w io.Writer) error {
+func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint16, w io.Writer) error {
+
+	snacFrame.requestID = originSnac.requestID
+
 	snacBuf := &bytes.Buffer{}
 	if err := snacFrame.write(snacBuf); err != nil {
 		return err

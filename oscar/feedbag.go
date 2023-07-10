@@ -189,7 +189,29 @@ func SendAndReceiveFeedbagRightsQuery(flap *flapFrame, snac *snacFrame, r io.Rea
 				},
 				{
 					tType: 0x04,
-					val:   uint16(200),
+					val: []uint16{
+						0xFF,
+						0xFF,
+						0xFF,
+						0xFF,
+						0x01,
+						0x01,
+						0x32,
+						0x00,
+						0x00,
+						0x03,
+						0x00,
+						0x00,
+						0x00,
+						0x80,
+						0xFF,
+						0x14,
+						0xC8,
+						0x01,
+						0x00,
+						0x01,
+						0x00,
+					},
 				},
 				{
 					tType: 0x05,
@@ -231,7 +253,7 @@ func SendAndReceiveFeedbagRightsQuery(flap *flapFrame, snac *snacFrame, r io.Rea
 		},
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type feedbagItem struct {
@@ -358,15 +380,30 @@ func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w
 
 	snacFrameOut := snacFrame{
 		foodGroup: 0x13,
-		subGroup:  0x05,
+		subGroup:  0x06,
 	}
-	snacPayloadOut := &snacQueryIfModified{
-		count: 0,
-		//lastUpdate: 0,
+	snacPayloadOut := &snacFeedbagQuery{
+		version: 0,
+		items: []*feedbagItem{
+			{
+				groupID: 0,
+				itemID:  0,
+				classID: 0,
+				name:    "Empty Group",
+				TLVPayload: TLVPayload{
+					TLVs: []*TLV{
+						{
+							tType: 200,
+							val:   []uint16{},
+						},
+					},
+				},
+			},
+		},
 		lastUpdate: uint32(time.Now().Unix()),
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snacFeedbagStatusReply struct {
@@ -399,7 +436,7 @@ func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 		subGroup:  FeedbagStatus,
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
@@ -435,7 +472,7 @@ func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 		subGroup:  FeedbagStatus,
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func ReceiveFeedbagEndCluster(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {

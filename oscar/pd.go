@@ -70,5 +70,5 @@ func SendAndReceivePDRightsQuery(flap *flapFrame, snac *snacFrame, _ io.Reader, 
 		},
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }

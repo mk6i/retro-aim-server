@@ -59,5 +59,5 @@ func SendAndReceiveNextChatRights(flap *flapFrame, snac *snacFrame, r io.Reader,
 		TLVs: []*TLV{},
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }

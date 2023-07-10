@@ -155,7 +155,7 @@ func SendAndReceiveICBMParameterReply(flap *flapFrame, snac *snacFrame, _ io.Rea
 		minInterICBMInterval: 0,
 	}
 
-	return writeOutSNAC(flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func ReceiveAddParameters(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
