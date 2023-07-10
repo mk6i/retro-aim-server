@@ -90,9 +90,9 @@ func routeFeedbag(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, se
 	case FeedbagQuery:
 		return ReceiveAndSendFeedbagQuery(flap, snac, r, w, sequence)
 	case FeedbagQueryIfModified:
-		panic("not implemented")
+		return ReceiveAndSendFeedbagQueryIfModified(flap, snac, r, w, sequence)
 	case FeedbagUse:
-		panic("not implemented")
+		return ReceiveUse(flap, snac, r, w, sequence)
 	case FeedbagInsertItem:
 		return ReceiveInsertItem(flap, snac, r, w, sequence)
 	case FeedbagUpdateItem:
@@ -190,10 +190,10 @@ func SendAndReceiveFeedbagRightsQuery(flap *flapFrame, snac *snacFrame, r io.Rea
 				{
 					tType: 0x04,
 					val: []uint16{
-						0xFF,
-						0xFF,
-						0xFF,
-						0xFF,
+						0x64,
+						0x64,
+						0x64,
+						0x64,
 						0x01,
 						0x01,
 						0x32,
@@ -363,18 +363,6 @@ func (s *snacFeedbagQuery) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.lastUpdate)
 }
 
-type snacQueryIfModified struct {
-	count      uint8
-	lastUpdate uint32
-}
-
-func (s *snacQueryIfModified) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.lastUpdate); err != nil {
-		return err
-	}
-	return binary.Write(w, binary.BigEndian, s.count)
-}
-
 func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("receiveAndSendFeedbagQuery read SNAC frame: %+v\n", snac)
 
@@ -401,6 +389,47 @@ func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w
 			},
 		},
 		lastUpdate: uint32(time.Now().Unix()),
+	}
+
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+type snacQueryIfModified struct {
+	lastUpdate uint32
+	count      uint8
+}
+
+func (s *snacQueryIfModified) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, s.lastUpdate); err != nil {
+		return err
+	}
+	return binary.Write(w, binary.BigEndian, s.count)
+}
+
+func (s *snacQueryIfModified) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &s.lastUpdate); err != nil {
+		return err
+	}
+	return binary.Read(r, binary.BigEndian, &s.count)
+}
+
+func ReceiveAndSendFeedbagQueryIfModified(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC frame: %+v\n", snac)
+
+	snacPayload := &snacQueryIfModified{}
+	if err := snacPayload.read(r); err != nil {
+		return err
+	}
+
+	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC: %+v\n", snacPayload)
+
+	snacFrameOut := snacFrame{
+		foodGroup: 0x13,
+		subGroup:  0x0F,
+	}
+	snacPayloadOut := &snacQueryIfModified{
+		lastUpdate: snacPayload.lastUpdate,
+		count:      snacPayload.count,
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
@@ -477,5 +506,10 @@ func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 
 func ReceiveFeedbagEndCluster(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("receiveFeedbagEndCluster read SNAC frame: %+v\n", snac)
+	return nil
+}
+
+func ReceiveUse(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+	fmt.Printf("ReceiveUse read SNAC frame: %+v\n", snac)
 	return nil
 }
