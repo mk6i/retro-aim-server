@@ -148,7 +148,7 @@ func (t *TLV) write(w io.Writer) error {
 	case uint32:
 		valLen = 4
 	case []uint16:
-		valLen = uint16(len(t.val.([]uint16)))
+		valLen = uint16(len(t.val.([]uint16)) * 2)
 	case []byte:
 		valLen = uint16(len(t.val.([]byte)))
 	case string:

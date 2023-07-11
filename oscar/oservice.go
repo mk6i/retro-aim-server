@@ -517,9 +517,7 @@ func (s *snacServiceRequest) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &s.foodGroup); err != nil {
 		return err
 	}
-	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
-		0x0B: reflect.Uint16,
-	})
+	return s.TLVPayload.read(r, map[uint16]reflect.Kind{})
 }
 
 const (
@@ -529,6 +527,13 @@ const (
 	OserviceTlvTagsSslCertname          = 0x8D
 	OserviceTlvTagsSslState             = 0x8E
 )
+
+// ServiceHosts config should live outside this package
+var ServiceHosts = map[uint16]string{
+	STATS: "192.168.64.1:5192",
+	ALERT: "192.168.64.1:5193",
+	ODIR:  "192.168.64.1:5194",
+}
 
 func ReceiveAndSendServiceRequest(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("receiveAndSendServiceRequest read SNAC frame: %+v\n", snac)
@@ -540,6 +545,11 @@ func ReceiveAndSendServiceRequest(flap *flapFrame, snac *snacFrame, r io.Reader,
 
 	fmt.Printf("receiveAndSendServiceRequest read SNAC body: %+v\n", snacPayload)
 
+	host, ok := ServiceHosts[snacPayload.foodGroup]
+	if !ok {
+		return fmt.Errorf("unable to find hostname for %s", host)
+	}
+
 	snacFrameOut := snacFrame{
 		foodGroup: OSERVICE,
 		subGroup:  OServiceServiceResponse,
@@ -548,7 +558,7 @@ func ReceiveAndSendServiceRequest(flap *flapFrame, snac *snacFrame, r io.Reader,
 		TLVs: []*TLV{
 			{
 				tType: OserviceTlvTagsReconnectHere,
-				val:   "127.0.0.1",
+				val:   host,
 			},
 			{
 				tType: OserviceTlvTagsLoginCookie,
