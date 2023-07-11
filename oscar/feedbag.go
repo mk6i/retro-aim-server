@@ -112,7 +112,7 @@ func routeFeedbag(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, se
 	case FeedbagDeleteUser:
 		panic("not implemented")
 	case FeedbagStartCluster:
-		panic("not implemented")
+		return ReceiveFeedbagStartCluster(flap, snac, r, w, sequence)
 	case FeedbagEndCluster:
 		return ReceiveFeedbagEndCluster(flap, snac, r, w, sequence)
 	case FeedbagAuthorizeBuddy:
@@ -180,75 +180,73 @@ func SendAndReceiveFeedbagRightsQuery(flap *flapFrame, snac *snacFrame, r io.Rea
 		foodGroup: 0x13,
 		subGroup:  0x03,
 	}
-	snacPayloadOut := &snacBUCPLoginRequest{
-		TLVPayload: TLVPayload{
-			TLVs: []*TLV{
-				{
-					tType: 0x03,
-					val:   uint16(200),
+	snacPayloadOut := &TLVPayload{
+		TLVs: []*TLV{
+			{
+				tType: 0x03,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x04,
+				val: []uint16{
+					0x3D,
+					0x3D,
+					0x64,
+					0x64,
+					0x01,
+					0x01,
+					0x32,
+					0x00,
+					0x00,
+					0x03,
+					0x00,
+					0x00,
+					0x00,
+					0x80,
+					0xFF,
+					0x14,
+					0xC8,
+					0x01,
+					0x00,
+					0x01,
+					0x00,
 				},
-				{
-					tType: 0x04,
-					val: []uint16{
-						0x64,
-						0x64,
-						0x64,
-						0x64,
-						0x01,
-						0x01,
-						0x32,
-						0x00,
-						0x00,
-						0x03,
-						0x00,
-						0x00,
-						0x00,
-						0x80,
-						0xFF,
-						0x14,
-						0xC8,
-						0x01,
-						0x00,
-						0x01,
-						0x00,
-					},
-				},
-				{
-					tType: 0x05,
-					val:   uint16(200),
-				},
-				{
-					tType: 0x06,
-					val:   uint16(200),
-				},
-				{
-					tType: 0x07,
-					val:   uint16(200),
-				},
-				{
-					tType: 0x08,
-					val:   uint16(200),
-				},
-				{
-					tType: 0x09,
-					val:   uint16(200),
-				},
-				{
-					tType: 0x0A,
-					val:   uint16(200),
-				},
-				{
-					tType: 0x0C,
-					val:   uint16(200),
-				},
-				{
-					tType: 0x0D,
-					val:   uint16(200),
-				},
-				{
-					tType: 0x0E,
-					val:   uint16(100),
-				},
+			},
+			{
+				tType: 0x05,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x06,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x07,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x08,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x09,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x0A,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x0C,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x0D,
+				val:   uint16(200),
+			},
+			{
+				tType: 0x0E,
+				val:   uint16(100),
 			},
 		},
 	}
@@ -371,23 +369,8 @@ func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w
 		subGroup:  0x06,
 	}
 	snacPayloadOut := &snacFeedbagQuery{
-		version: 0,
-		items: []*feedbagItem{
-			{
-				groupID: 0,
-				itemID:  0,
-				classID: 0,
-				name:    "Empty Group",
-				TLVPayload: TLVPayload{
-					TLVs: []*TLV{
-						{
-							tType: 200,
-							val:   []uint16{},
-						},
-					},
-				},
-			},
-		},
+		version:    0,
+		items:      []*feedbagItem{},
 		lastUpdate: uint32(time.Now().Unix()),
 	}
 
@@ -469,7 +452,7 @@ func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 }
 
 func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
-	fmt.Printf("ReceiveInsertItem read SNAC frame: %+v\n", snac)
+	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
 
 	b := make([]byte, flap.payloadLength-10)
 	if _, err := r.Read(b); err != nil {
@@ -493,7 +476,7 @@ func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 
 	for _, item := range items {
 		snacPayloadOut.results = append(snacPayloadOut.results, 0x0000) // success by default
-		fmt.Printf("ReceiveInsertItem read SNAC feedbag item: %+v\n", item)
+		fmt.Printf("ReceiveUpdateItem read SNAC feedbag item: %+v\n", item)
 	}
 
 	snacFrameOut := snacFrame{
@@ -502,6 +485,17 @@ func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+func ReceiveFeedbagStartCluster(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+	fmt.Printf("ReceiveFeedbagStartCluster read SNAC frame: %+v\n", snac)
+
+	tlv := &TLVPayload{}
+	if err := tlv.read(r, map[uint16]reflect.Kind{}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func ReceiveFeedbagEndCluster(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
