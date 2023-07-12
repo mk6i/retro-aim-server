@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/mkaminski/goaim/oscar"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -85,8 +86,12 @@ func listenStats() {
 		fmt.Println("got a connection on listenStats")
 		seq := uint16(100)
 		if err := oscar.ReadBos(conn, &seq); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			if err == io.EOF {
+				break
+			} else {
+				fmt.Println(err.Error())
+				os.Exit(1)
+			}
 		}
 	}
 }
@@ -112,9 +117,13 @@ func listenAlert() {
 
 		fmt.Println("got a connection on listenAlert")
 		seq := uint16(100)
-		if err := oscar.ReadBos(conn, &seq); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+		if err := oscar.ReadBos(conn, &seq); err != nil && err != io.EOF {
+			if err == io.EOF {
+				break
+			} else {
+				fmt.Println(err.Error())
+				os.Exit(1)
+			}
 		}
 	}
 }
@@ -141,8 +150,12 @@ func listenOdir() {
 		fmt.Println("got a connection on listenOdir")
 		seq := uint16(100)
 		if err := oscar.ReadBos(conn, &seq); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			if err == io.EOF {
+				break
+			} else {
+				fmt.Println(err.Error())
+				os.Exit(1)
+			}
 		}
 	}
 }
@@ -180,12 +193,16 @@ func handleBOSConnection(conn net.Conn) {
 
 	fmt.Println("writeOServiceHostOnline...")
 	if err := oscar.WriteOServiceHostOnline(conn, &seq); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		if err == io.EOF {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
 	}
 
-	if err := oscar.ReadBos(conn, &seq); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+	if err := oscar.ReadBos(conn, &seq); err != nil && err != io.EOF {
+		if err != io.EOF {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
 	}
 }
