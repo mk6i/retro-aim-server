@@ -81,6 +81,9 @@ const (
 	FeedbagClassIdMin                     = 0x0400
 )
 
+var feedbag []*feedbagItem
+var feedbagModified = time.Now().Unix()
+
 func routeFeedbag(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	switch snac.subGroup {
 	case FeedbagErr:
@@ -278,13 +281,16 @@ func (f *feedbagItem) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, f.classID); err != nil {
 		return err
 	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(f.TLVPayload.TLVs))); err != nil {
+
+	buf := &bytes.Buffer{}
+	if err := f.TLVPayload.write(buf); err != nil {
 		return err
 	}
-	if err := f.TLVPayload.write(w); err != nil {
+	if err := binary.Write(w, binary.BigEndian, uint16(buf.Len())); err != nil {
 		return err
 	}
-	return nil
+	_, err := w.Write(buf.Bytes())
+	return err
 }
 
 func (f *feedbagItem) read(r io.Reader) error {
@@ -306,7 +312,13 @@ func (f *feedbagItem) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &f.classID); err != nil {
 		return err
 	}
-	return f.TLVPayload.read(r, map[uint16]reflect.Kind{
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		return err
+	}
+
+	buff := bytes.NewBuffer(make([]byte, l))
+	return f.TLVPayload.read(buff, map[uint16]reflect.Kind{
+		0xC8:                           reflect.Slice,
 		FeedbagClassIdBuddy:            reflect.Slice,
 		FeedbagClassIdGroup:            reflect.Slice,
 		FeedbagClassIdPermit:           reflect.Slice,
@@ -370,8 +382,8 @@ func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w
 	}
 	snacPayloadOut := &snacFeedbagQuery{
 		version:    0,
-		items:      []*feedbagItem{},
-		lastUpdate: uint32(time.Now().Unix()),
+		items:      feedbag,
+		lastUpdate: uint32(feedbagModified),
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
@@ -400,19 +412,35 @@ func ReceiveAndSendFeedbagQueryIfModified(flap *flapFrame, snac *snacFrame, r io
 	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacQueryIfModified{}
-	if err := snacPayload.read(r); err != nil {
+	if err := snacPayload.read(r); err != nil && err != io.EOF {
 		return err
 	}
 
 	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC: %+v\n", snacPayload)
 
+	lenz := uint8(len(feedbag))
+	if lenz > 0 && snacPayload.count == lenz {
+
+		snacFrameOut := snacFrame{
+			foodGroup: 0x13,
+			subGroup:  0x0F,
+		}
+		snacPayloadOut := &snacQueryIfModified{
+			lastUpdate: uint32(feedbagModified),
+			count:      lenz,
+		}
+
+		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	}
+
 	snacFrameOut := snacFrame{
 		foodGroup: 0x13,
-		subGroup:  0x0F,
+		subGroup:  0x06,
 	}
-	snacPayloadOut := &snacQueryIfModified{
-		lastUpdate: snacPayload.lastUpdate,
-		count:      snacPayload.count,
+	snacPayloadOut := &snacFeedbagQuery{
+		version:    0,
+		items:      feedbag,
+		lastUpdate: uint32(feedbagModified),
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
@@ -439,6 +467,7 @@ func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 			}
 			return err
 		}
+		feedbag = append(feedbag, item)
 		snacPayloadOut.results = append(snacPayloadOut.results, 0x0000) // success by default
 		fmt.Printf("ReceiveInsertItem read SNAC feedbag item: %+v\n", item)
 	}
@@ -447,25 +476,21 @@ func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 		foodGroup: FEEDBAG,
 		subGroup:  FeedbagStatus,
 	}
-
+	feedbagModified = time.Now().Unix()
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
 	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
 
-	b := make([]byte, flap.payloadLength-10)
-	if _, err := r.Read(b); err != nil {
-		return err
-	}
-
-	buf := bytes.NewBuffer(b)
-
 	var items []*feedbagItem
 
-	for buf.Len() > 0 {
+	for {
 		item := &feedbagItem{}
-		if err := item.read(buf); err != nil {
+		if err := item.read(r); err != nil {
+			if err == io.EOF {
+				break
+			}
 			return err
 		}
 		fmt.Printf("\titem: %+v\n", item)
@@ -483,6 +508,8 @@ func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 		foodGroup: FEEDBAG,
 		subGroup:  FeedbagStatus,
 	}
+
+	feedbagModified = time.Now().Unix()
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
