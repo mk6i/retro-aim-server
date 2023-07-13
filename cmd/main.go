@@ -79,9 +79,12 @@ func listenBOS() {
 	}
 }
 
-func sendIM(conn net.Conn, ch chan bool, u *uint32) {
+func sendIM(conn net.Conn, ch chan bool, seq *uint32) {
 	for range ch {
 		fmt.Println("sending im...")
+		if err := oscar.SendIM(conn, seq); err != nil {
+			panic(err.Error())
+		}
 	}
 }
 

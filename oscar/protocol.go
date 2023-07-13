@@ -155,6 +155,13 @@ func (t *TLV) write(w io.Writer) error {
 	case string:
 		valLen = uint16(len(t.val.(string)))
 		val = []byte(t.val.(string))
+	case *messageData:
+		buf := &bytes.Buffer{}
+		if err := t.val.(*messageData).write(buf); err != nil {
+			return err
+		}
+		valLen = uint16(buf.Len())
+		val = buf.Bytes()
 	}
 
 	if err := binary.Write(w, binary.BigEndian, valLen); err != nil {
@@ -399,7 +406,9 @@ func ReadBos(rw io.ReadWriter, sequence *uint32) error {
 
 func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint32, w io.Writer) error {
 
-	snacFrame.requestID = originSnac.requestID
+	if originSnac != nil {
+		snacFrame.requestID = originSnac.requestID
+	}
 
 	snacBuf := &bytes.Buffer{}
 	if err := snacFrame.write(snacBuf); err != nil {

@@ -473,7 +473,7 @@ func ReceiveClientOnline(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Wri
 		if err := item.read(buf); err != nil {
 			return err
 		}
-		fmt.Printf("ReceiveClientOnline read SNAC client version: %+v\n", item)
+		fmt.Printf("ReceiveClientOnline read SNAC client messageType: %+v\n", item)
 	}
 
 	return nil
