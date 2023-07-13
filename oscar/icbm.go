@@ -30,7 +30,7 @@ const (
 	ICBMSinReply                  = 0x0017
 )
 
-func routeICBM(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func routeICBM(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case ICBMErr:
 		panic("not implemented")
@@ -139,7 +139,7 @@ func (s *snacParameterResponse) write(w io.Writer) error {
 	return nil
 }
 
-func SendAndReceiveICBMParameterReply(flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence *uint16) error {
+func SendAndReceiveICBMParameterReply(flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveICBMParameterReply read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -158,7 +158,7 @@ func SendAndReceiveICBMParameterReply(flap *flapFrame, snac *snacFrame, _ io.Rea
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveAddParameters(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func ReceiveAddParameters(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveAddParameters read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacParameterRequest{}

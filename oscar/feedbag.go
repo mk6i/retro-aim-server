@@ -84,7 +84,7 @@ const (
 var feedbag []*feedbagItem
 var feedbagModified = time.Now().Unix()
 
-func routeFeedbag(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func routeFeedbag(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case FeedbagErr:
 		panic("not implemented")
@@ -169,7 +169,7 @@ func (s *payloadFeedbagRightsQuery) read(r io.Reader) error {
 	})
 }
 
-func SendAndReceiveFeedbagRightsQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func SendAndReceiveFeedbagRightsQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveFeedbagRightsQuery read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &payloadFeedbagRightsQuery{}
@@ -373,7 +373,7 @@ func (s *snacFeedbagQuery) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.lastUpdate)
 }
 
-func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendFeedbagQuery read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -408,7 +408,7 @@ func (s *snacQueryIfModified) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &s.count)
 }
 
-func ReceiveAndSendFeedbagQueryIfModified(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func ReceiveAndSendFeedbagQueryIfModified(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacQueryIfModified{}
@@ -454,7 +454,7 @@ func (s *snacFeedbagStatusReply) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.results)
 }
 
-func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveInsertItem read SNAC frame: %+v\n", snac)
 
 	snacPayloadOut := &snacFeedbagStatusReply{}
@@ -480,7 +480,7 @@ func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
 
 	var items []*feedbagItem
@@ -514,7 +514,7 @@ func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveFeedbagStartCluster(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func ReceiveFeedbagStartCluster(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveFeedbagStartCluster read SNAC frame: %+v\n", snac)
 
 	tlv := &TLVPayload{}
@@ -525,12 +525,12 @@ func ReceiveFeedbagStartCluster(flap *flapFrame, snac *snacFrame, r io.Reader, w
 	return nil
 }
 
-func ReceiveFeedbagEndCluster(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func ReceiveFeedbagEndCluster(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveFeedbagEndCluster read SNAC frame: %+v\n", snac)
 	return nil
 }
 
-func ReceiveUse(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func ReceiveUse(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveUse read SNAC frame: %+v\n", snac)
 	return nil
 }
