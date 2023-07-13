@@ -107,12 +107,12 @@ type snacBUCPLoginRequest struct {
 func (s *snacBUCPLoginRequest) read(r io.Reader) error {
 	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
 		0x01: reflect.String, // screen name
-		0x03: reflect.String, // client ID string
+		0x03: reflect.String, // client UIN string
 		0x25: reflect.Slice,  // password md5 hash
-		0x16: reflect.Uint16, // client ID
-		0x17: reflect.Uint16, // client major version
-		0x18: reflect.Uint16, // client minor version
-		0x19: reflect.Uint16, // client lesser version
+		0x16: reflect.Uint16, // client UIN
+		0x17: reflect.Uint16, // client major messageType
+		0x18: reflect.Uint16, // client minor messageType
+		0x19: reflect.Uint16, // client lesser messageType
 		0x1A: reflect.Uint16, // client build number
 		0x14: reflect.Uint32, // distribution number
 		0x0F: reflect.String, // client language

@@ -1,6 +1,7 @@
 package oscar
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -168,4 +169,122 @@ func ReceiveAddParameters(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Wr
 
 	fmt.Printf("ReceiveAddParameters read SNAC: %+v\n", snacPayload)
 	return nil
+}
+
+type snacClientIM struct {
+	cookie       [8]byte
+	channelID    uint16
+	screenName   string
+	warningLevel uint16
+	TLVPayload
+}
+
+func (f *snacClientIM) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, f.cookie); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, f.channelID); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, []byte(f.screenName)); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, f.warningLevel); err != nil {
+		return err
+	}
+	// attrs.num
+	if err := binary.Write(w, binary.BigEndian, uint16(0)); err != nil {
+		return err
+	}
+	return f.TLVPayload.write(w)
+}
+
+type messageData struct {
+	text string
+}
+
+func (m *messageData) write(w io.Writer) error {
+	// required capabilities
+	if err := binary.Write(w, binary.BigEndian, uint8(0x05)); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint8(0x01)); err != nil {
+		return err
+	}
+	l := []byte{0x01}
+	if err := binary.Write(w, binary.BigEndian, uint16(len(l))); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, l); err != nil {
+		return err
+	}
+
+	// message text
+
+	// identifier
+	if err := binary.Write(w, binary.BigEndian, uint8(0x01)); err != nil {
+		return err
+	}
+	// version
+	if err := binary.Write(w, binary.BigEndian, uint8(0x01)); err != nil {
+		return err
+	}
+
+	buf := &bytes.Buffer{}
+	// charset num
+	if err := binary.Write(buf, binary.BigEndian, uint16(0)); err != nil {
+		return err
+	}
+	// charset subset
+	if err := binary.Write(buf, binary.BigEndian, uint16(0)); err != nil {
+		return err
+	}
+	// message text
+	if err := binary.Write(buf, binary.BigEndian, []byte(m.text)); err != nil {
+		return err
+	}
+
+	// TLV len
+	if err := binary.Write(w, binary.BigEndian, uint16(buf.Len())); err != nil {
+		return err
+	}
+	// TLV payload
+	if err := binary.Write(w, binary.BigEndian, buf.Bytes()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func SendIM(w io.Writer, sequence *uint32) error {
+	flap := &flapFrame{
+		startMarker: 42,
+		frameType:   2,
+	}
+
+	snacFrameOut := snacFrame{
+		foodGroup: ICBM,
+		subGroup:  ICBMChannelMsgToclient,
+		requestID: 12425,
+	}
+	snacPayloadOut := &snacClientIM{
+		cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+		channelID:  1,
+		screenName: "testscreenname",
+		TLVPayload: TLVPayload{
+			TLVs: []*TLV{
+				{
+					tType: 0x02,
+					val: &messageData{
+						text: "Test message",
+					},
+				},
+			},
+		},
+	}
+
+	return writeOutSNAC(nil, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
