@@ -18,7 +18,7 @@ const (
 	BUCPRegistrationImageRequest        = 0x000C
 )
 
-func routeBUCP(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func routeBUCP(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case BUCPErr:
 		panic("not implemented")
@@ -65,7 +65,7 @@ func (s *snacBUCPChallengeResponse) write(w io.Writer) error {
 	return nil
 }
 
-func ReceiveAndSendAuthChallenge(r io.Reader, w io.Writer, sequence *uint16) error {
+func ReceiveAndSendAuthChallenge(r io.Reader, w io.Writer, sequence *uint32) error {
 	flap := &flapFrame{}
 	if err := flap.read(r); err != nil {
 		return err
@@ -123,7 +123,7 @@ func (s *snacBUCPLoginRequest) read(r io.Reader) error {
 	})
 }
 
-func ReceiveAndSendBUCPLoginRequest(r io.Reader, w io.Writer, sequence *uint16) error {
+func ReceiveAndSendBUCPLoginRequest(r io.Reader, w io.Writer, sequence *uint32) error {
 	flap := &flapFrame{}
 	if err := flap.read(r); err != nil {
 		return err

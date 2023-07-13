@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"sync/atomic"
 )
 
 type flapFrame struct {
@@ -264,19 +265,20 @@ func (f *flapSignonFrame) read(r io.Reader) error {
 	return nil
 }
 
-func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint16) error {
+func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) error {
 	// send
 	flap := &flapSignonFrame{
 		flapFrame: flapFrame{
 			startMarker:   42,
 			frameType:     1,
-			sequence:      *sequence,
+			sequence:      uint16(*sequence),
 			payloadLength: 4, // size of flapVersion
 		},
 		flapVersion: 1,
 	}
 
-	*sequence++
+	atomic.AddUint32(sequence, 1)
+
 	if err := flap.write(rw); err != nil {
 		return err
 	}
@@ -321,7 +323,7 @@ const (
 	ARS                  = 0x044A
 )
 
-func ReadBos(rw io.ReadWriter, sequence *uint16) error {
+func ReadBos(rw io.ReadWriter, sequence *uint32) error {
 	for {
 		// receive
 		flap := &flapFrame{}
@@ -395,7 +397,7 @@ func ReadBos(rw io.ReadWriter, sequence *uint16) error {
 	}
 }
 
-func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint16, w io.Writer) error {
+func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint32, w io.Writer) error {
 
 	snacFrame.requestID = originSnac.requestID
 
@@ -407,8 +409,8 @@ func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, s
 		return err
 	}
 
-	flap.sequence = *sequence
-	*sequence++
+	flap.sequence = uint16(*sequence)
+	atomic.AddUint32(sequence, 1)
 	flap.payloadLength = uint16(snacBuf.Len())
 
 	fmt.Printf(" write FLAP: %+v\n", flap)

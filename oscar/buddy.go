@@ -21,7 +21,7 @@ const (
 	BuddyDelTempBuddies             = 0x0010
 )
 
-func routeBuddy(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func routeBuddy(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 
 	switch snac.subGroup {
 	case BuddyErr:
@@ -62,7 +62,7 @@ func (s *snacBuddyRights) read(r io.Reader) error {
 	})
 }
 
-func SendAndReceiveBuddyRights(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func SendAndReceiveBuddyRights(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveBuddyRights read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacBuddyRights{}

@@ -31,7 +31,7 @@ const (
 	LocateUserInfoQuery2              = 0x0015
 )
 
-func routeLocate(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func routeLocate(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case LocateErr:
 		panic("not implemented")
@@ -86,7 +86,7 @@ func (s *snacLocateRightsReply) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
-func SendAndReceiveLocateRights(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func SendAndReceiveLocateRights(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveLocateRights read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -123,7 +123,7 @@ func SendAndReceiveLocateRights(flap *flapFrame, snac *snacFrame, r io.Reader, w
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveSetInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func ReceiveSetInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveSetInfo read SNAC frame: %+v\n", snac)
 
 	snacPayload := &TLVPayload{}
@@ -165,7 +165,7 @@ func (s *snacDirInfo) read(r io.Reader) error {
 	return nil
 }
 
-func ReceiveLocateGetDirInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint16) error {
+func ReceiveLocateGetDirInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveLocateGetDirInfo read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacDirInfo{}

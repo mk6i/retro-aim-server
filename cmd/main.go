@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 )
 
@@ -41,12 +42,25 @@ func main() {
 	}
 }
 
+func webServer(ch chan bool) {
+	http.HandleFunc("/send-im", func(w http.ResponseWriter, r *http.Request) {
+		ch <- true
+	})
+
+	if err := http.ListenAndServe(":3333", nil); err != nil {
+		panic(err.Error())
+	}
+}
+
 func listenBOS() {
 	// Listen on TCP port 5190
 	listener, err := net.Listen("tcp", ":5191")
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	ch := make(chan bool, 1)
+	go webServer(ch)
 
 	defer listener.Close()
 
@@ -59,8 +73,15 @@ func listenBOS() {
 			log.Println(err)
 			continue
 		}
+		seq := uint32(100)
+		go handleBOSConnection(conn, &seq)
+		go sendIM(conn, ch, &seq)
+	}
+}
 
-		go handleBOSConnection(conn)
+func sendIM(conn net.Conn, ch chan bool, u *uint32) {
+	for range ch {
+		fmt.Println("sending im...")
 	}
 }
 
@@ -84,7 +105,7 @@ func listenStats() {
 		}
 
 		fmt.Println("got a connection on listenStats")
-		seq := uint16(100)
+		seq := uint32(100)
 		if err := oscar.ReadBos(conn, &seq); err != nil {
 			if err == io.EOF {
 				break
@@ -116,7 +137,7 @@ func listenAlert() {
 		}
 
 		fmt.Println("got a connection on listenAlert")
-		seq := uint16(100)
+		seq := uint32(100)
 		if err := oscar.ReadBos(conn, &seq); err != nil && err != io.EOF {
 			if err == io.EOF {
 				break
@@ -148,7 +169,7 @@ func listenOdir() {
 		}
 
 		fmt.Println("got a connection on listenOdir")
-		seq := uint16(100)
+		seq := uint32(100)
 		if err := oscar.ReadBos(conn, &seq); err != nil {
 			if err == io.EOF {
 				break
@@ -162,7 +183,7 @@ func listenOdir() {
 
 func handleAuthConnection(conn net.Conn) {
 	defer conn.Close()
-	seq := uint16(100)
+	seq := uint32(100)
 	err := oscar.SendAndReceiveSignonFrame(conn, &seq)
 	if err != nil {
 		log.Println(err)
@@ -182,24 +203,23 @@ func handleAuthConnection(conn net.Conn) {
 	}
 }
 
-func handleBOSConnection(conn net.Conn) {
-	seq := uint16(100)
+func handleBOSConnection(conn net.Conn, seq *uint32) {
 	//defer conn.Close()
 	fmt.Println("SendAndReceiveSignonFrame...")
-	if err := oscar.SendAndReceiveSignonFrame(conn, &seq); err != nil {
+	if err := oscar.SendAndReceiveSignonFrame(conn, seq); err != nil {
 		log.Println(err)
 		return
 	}
 
 	fmt.Println("writeOServiceHostOnline...")
-	if err := oscar.WriteOServiceHostOnline(conn, &seq); err != nil {
+	if err := oscar.WriteOServiceHostOnline(conn, seq); err != nil {
 		if err == io.EOF {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
 	}
 
-	if err := oscar.ReadBos(conn, &seq); err != nil && err != io.EOF {
+	if err := oscar.ReadBos(conn, seq); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Println(err.Error())
 			os.Exit(1)
