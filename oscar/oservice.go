@@ -385,7 +385,7 @@ func ReceiveAndSendServiceRequestSelfInfo(flap *flapFrame, snac *snacFrame, _ io
 		subGroup:  OServiceUserInfoUpdate,
 	}
 	snacPayloadOut := &snacOServiceUserInfoUpdate{
-		screenName:   "screenname",
+		screenName:   "myscreenname",
 		warningLevel: 0,
 		TLVPayload: TLVPayload{
 			TLVs: []*TLV{

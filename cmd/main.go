@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -42,9 +43,10 @@ func main() {
 	}
 }
 
-func webServer(ch chan bool) {
+func webServer(ch chan string) {
 	http.HandleFunc("/send-im", func(w http.ResponseWriter, r *http.Request) {
-		ch <- true
+		body, _ := io.ReadAll(r.Body)
+		ch <- string(body)
 	})
 
 	if err := http.ListenAndServe(":3333", nil); err != nil {
@@ -59,7 +61,7 @@ func listenBOS() {
 		log.Fatal(err)
 	}
 
-	ch := make(chan bool, 1)
+	ch := make(chan string, 1)
 	go webServer(ch)
 
 	defer listener.Close()
@@ -79,11 +81,16 @@ func listenBOS() {
 	}
 }
 
-func sendIM(conn net.Conn, ch chan bool, seq *uint32) {
-	for range ch {
-		fmt.Println("sending im...")
-		if err := oscar.SendIM(conn, seq); err != nil {
-			panic(err.Error())
+func sendIM(conn net.Conn, ch chan string, seq *uint32) {
+	for msg := range ch {
+		fmt.Printf("sending im... %s\n", msg)
+		vals := strings.Split(msg, ":")
+
+		if err := oscar.SendIM(conn, seq, vals[0], vals[1]); err != nil {
+			//panic(err.Error())
+		}
+		if err := oscar.SetBuddyArrived(conn, seq, vals[0]); err != nil {
+			//panic(err.Error())
 		}
 	}
 }

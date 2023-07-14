@@ -1,6 +1,7 @@
 package oscar
 
 import (
+	"encoding/binary"
 	"fmt"
 	"io"
 	"reflect"
@@ -100,4 +101,57 @@ func SendAndReceiveBuddyRights(flap *flapFrame, snac *snacFrame, r io.Reader, w 
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+type snacBuddyArrived struct {
+	screenName   string
+	warningLevel uint16
+	TLVPayload
+}
+
+func (f *snacBuddyArrived) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, []byte(f.screenName)); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, f.warningLevel); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint16(len(f.TLVs))); err != nil {
+		return err
+	}
+	return f.TLVPayload.write(w)
+}
+
+func SetBuddyArrived(w io.Writer, sequence *uint32, screenName string) error {
+	flap := &flapFrame{
+		startMarker: 42,
+		frameType:   2,
+	}
+
+	snacFrameOut := snacFrame{
+		foodGroup: BUDDY,
+		subGroup:  BuddyArrived,
+		requestID: 12425,
+	}
+	snacPayloadOut := &snacBuddyArrived{
+		screenName:   screenName,
+		warningLevel: 0,
+		TLVPayload: TLVPayload{
+			TLVs: []*TLV{
+				{
+					tType: 0x01,
+					val:   uint16(0x0004),
+				},
+				{
+					tType: 0x06,
+					val:   uint16(0x0000),
+				},
+			},
+		},
+	}
+
+	return writeOutSNAC(nil, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
