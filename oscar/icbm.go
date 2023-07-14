@@ -42,7 +42,7 @@ func routeICBM(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, seque
 	case ICBMParameterQuery:
 		return SendAndReceiveICBMParameterReply(flap, snac, r, w, sequence)
 	case ICBMChannelMsgTohost:
-		panic("not implemented")
+		return SendAndReceiveChannelMsgTohost(flap, snac, r, w, sequence)
 	case ICBMChannelMsgToclient:
 		panic("not implemented")
 	case ICBMEvilRequest:
@@ -159,6 +159,12 @@ func SendAndReceiveICBMParameterReply(flap *flapFrame, snac *snacFrame, _ io.Rea
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
+func SendAndReceiveChannelMsgTohost(flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+	fmt.Printf("SendAndReceiveChannelMsgTohost read SNAC frame: %+v\n", snac)
+
+	return nil
+}
+
 func ReceiveAddParameters(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveAddParameters read SNAC frame: %+v\n", snac)
 
@@ -259,7 +265,7 @@ func (m *messageData) write(w io.Writer) error {
 	return nil
 }
 
-func SendIM(w io.Writer, sequence *uint32) error {
+func SendIM(w io.Writer, sequence *uint32, screenName string, msg string) error {
 	flap := &flapFrame{
 		startMarker: 42,
 		frameType:   2,
@@ -273,13 +279,13 @@ func SendIM(w io.Writer, sequence *uint32) error {
 	snacPayloadOut := &snacClientIM{
 		cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
 		channelID:  1,
-		screenName: "testscreenname",
+		screenName: screenName,
 		TLVPayload: TLVPayload{
 			TLVs: []*TLV{
 				{
 					tType: 0x02,
 					val: &messageData{
-						text: "Test message",
+						text: msg,
 					},
 				},
 			},
