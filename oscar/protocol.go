@@ -111,6 +111,15 @@ func (s *TLVPayload) write(w io.Writer) error {
 	return nil
 }
 
+func (s *TLVPayload) getString(tType uint16) (string, bool) {
+	for _, tlv := range s.TLVs {
+		if tType == tlv.tType {
+			return tlv.val.(string), true
+		}
+	}
+	return "", false
+}
+
 type TLV struct {
 	tType uint16
 	val   any

@@ -3,6 +3,7 @@ package oscar
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -151,12 +152,18 @@ func ReceiveAndSendBUCPLoginRequest(r io.Reader, w io.Writer, sequence *uint32) 
 		foodGroup: 0x17,
 		subGroup:  0x03,
 	}
+
+	screenName, found := snacPayload.getString(0x01)
+	if !found {
+		return errors.New("unable to find screen name tlv")
+	}
+
 	snacPayloadOut := &snacBUCPLoginRequest{
 		TLVPayload: TLVPayload{
 			TLVs: []*TLV{
 				{
 					tType: 0x01,
-					val:   "myscreenname",
+					val:   screenName,
 				},
 				{
 					tType: 0x08,
