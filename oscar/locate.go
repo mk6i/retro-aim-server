@@ -130,6 +130,7 @@ func ReceiveSetInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, 
 	lookup := map[uint16]reflect.Kind{
 		0x01: reflect.String,
 		0x02: reflect.Slice,
+		0x03: reflect.Slice,
 		0x04: reflect.Slice,
 		0x05: reflect.Slice,
 		0x06: reflect.Slice,
@@ -138,6 +139,9 @@ func ReceiveSetInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, 
 		return err
 	}
 
+	for _, tlv := range snacPayload.TLVs {
+		fmt.Printf("set info: %v\n", tlv.val)
+	}
 	fmt.Printf("ReceiveSetInfo read SNAC: %+v\n", snacPayload)
 
 	return nil
