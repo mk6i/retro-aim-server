@@ -13,7 +13,9 @@ import (
 
 func main() {
 
-	go listenBOS()
+	sm := oscar.NewSessionManager()
+
+	go listenBOS(sm)
 	go listenStats()
 	go listenAlert()
 	go listenOdir()
@@ -39,7 +41,7 @@ func main() {
 		}
 
 		// Handle connection in a separate goroutine
-		go handleAuthConnection(conn)
+		go handleAuthConnection(sm, conn)
 	}
 }
 
@@ -54,7 +56,7 @@ func webServer(ch chan string) {
 	}
 }
 
-func listenBOS() {
+func listenBOS(sm *oscar.SessionManager) {
 	// Listen on TCP port 5190
 	listener, err := net.Listen("tcp", ":5191")
 	if err != nil {
@@ -76,7 +78,7 @@ func listenBOS() {
 			continue
 		}
 		seq := uint32(100)
-		go handleBOSConnection(conn, &seq)
+		go handleBOSConnection(sm, conn, &seq)
 		go sendIM(conn, ch, &seq)
 	}
 }
@@ -116,7 +118,7 @@ func listenStats() {
 
 		fmt.Println("got a connection on listenStats")
 		seq := uint32(100)
-		if err := oscar.ReadBos(conn, &seq); err != nil {
+		if err := oscar.ReadBos(nil, conn, &seq); err != nil {
 			if err == io.EOF {
 				break
 			} else {
@@ -148,7 +150,7 @@ func listenAlert() {
 
 		fmt.Println("got a connection on listenAlert")
 		seq := uint32(100)
-		if err := oscar.ReadBos(conn, &seq); err != nil && err != io.EOF {
+		if err := oscar.ReadBos(nil, conn, &seq); err != nil && err != io.EOF {
 			if err == io.EOF {
 				break
 			} else {
@@ -180,7 +182,7 @@ func listenOdir() {
 
 		fmt.Println("got a connection on listenOdir")
 		seq := uint32(100)
-		if err := oscar.ReadBos(conn, &seq); err != nil {
+		if err := oscar.ReadBos(nil, conn, &seq); err != nil {
 			if err == io.EOF {
 				break
 			} else {
@@ -191,32 +193,37 @@ func listenOdir() {
 	}
 }
 
-func handleAuthConnection(conn net.Conn) {
+func handleAuthConnection(sm *oscar.SessionManager, conn net.Conn) {
 	defer conn.Close()
 	seq := uint32(100)
-	err := oscar.SendAndReceiveSignonFrame(conn, &seq)
+	_, err := oscar.SendAndReceiveSignonFrame(conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	err = oscar.ReceiveAndSendAuthChallenge(conn, conn, &seq)
+	sess, err := sm.NewSession()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	err = oscar.ReceiveAndSendAuthChallenge(sess, conn, conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	err = oscar.ReceiveAndSendBUCPLoginRequest(conn, conn, &seq)
+	err = oscar.ReceiveAndSendBUCPLoginRequest(sess, conn, conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 }
 
-func handleBOSConnection(conn net.Conn, seq *uint32) {
-	//defer conn.Close()
-	fmt.Println("SendAndReceiveSignonFrame...")
-	if err := oscar.SendAndReceiveSignonFrame(conn, seq); err != nil {
+func handleBOSConnection(sm *oscar.SessionManager, conn net.Conn, seq *uint32) {
+	fmt.Println("VerifyLogin...")
+	sess, err := oscar.VerifyLogin(sm, conn, seq)
+	if err != nil {
 		log.Println(err)
 		return
 	}
@@ -229,7 +236,7 @@ func handleBOSConnection(conn net.Conn, seq *uint32) {
 		}
 	}
 
-	if err := oscar.ReadBos(conn, seq); err != nil && err != io.EOF {
+	if err := oscar.ReadBos(sess, conn, seq); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Println(err.Error())
 			os.Exit(1)

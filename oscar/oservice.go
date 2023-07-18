@@ -49,7 +49,7 @@ const (
 	OServiceBartReply2               = 0x0023
 )
 
-func routeOService(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeOService(sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case OServiceErr:
 		panic("not implemented")
@@ -74,7 +74,7 @@ func routeOService(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, s
 	case OServiceResume:
 		panic("not implemented")
 	case OServiceUserInfoQuery:
-		return ReceiveAndSendServiceRequestSelfInfo(flap, snac, r, w, sequence)
+		return ReceiveAndSendServiceRequestSelfInfo(sess, flap, snac, r, w, sequence)
 	case OServiceUserInfoUpdate:
 		panic("not implemented")
 	case OServiceEvilNotification:
@@ -377,15 +377,16 @@ func (s *snacOServiceUserInfoUpdate) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
-func ReceiveAndSendServiceRequestSelfInfo(flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRequestSelfInfo(sess *Session, flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRequestSelfInfo read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
 		foodGroup: OSERVICE,
 		subGroup:  OServiceUserInfoUpdate,
 	}
+
 	snacPayloadOut := &snacOServiceUserInfoUpdate{
-		screenName:   "myscreenname",
+		screenName:   sess.screenName,
 		warningLevel: 0,
 		TLVPayload: TLVPayload{
 			TLVs: []*TLV{

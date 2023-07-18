@@ -66,7 +66,7 @@ func (s *snacBUCPChallengeResponse) write(w io.Writer) error {
 	return nil
 }
 
-func ReceiveAndSendAuthChallenge(r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence *uint32) error {
 	flap := &flapFrame{}
 	if err := flap.read(r); err != nil {
 		return err
@@ -95,7 +95,7 @@ func ReceiveAndSendAuthChallenge(r io.Reader, w io.Writer, sequence *uint32) err
 		subGroup:  0x07,
 	}
 	snacPayloadOut := &snacBUCPChallengeResponse{
-		authKey: "theauthkey",
+		authKey: s.ID,
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
@@ -124,7 +124,7 @@ func (s *snacBUCPLoginRequest) read(r io.Reader) error {
 	})
 }
 
-func ReceiveAndSendBUCPLoginRequest(r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendBUCPLoginRequest(sess *Session, r io.Reader, w io.Writer, sequence *uint32) error {
 	flap := &flapFrame{}
 	if err := flap.read(r); err != nil {
 		return err
@@ -148,22 +148,23 @@ func ReceiveAndSendBUCPLoginRequest(r io.Reader, w io.Writer, sequence *uint32) 
 
 	fmt.Printf("ReceiveAndSendBUCPLoginRequest read SNAC: %+v\n", snacPayload)
 
+	var found bool
+	sess.screenName, found = snacPayload.getString(TLV_SCREEN_NAME)
+	if !found {
+		return errors.New("unable to find screen name")
+	}
+
 	snacFrameOut := snacFrame{
 		foodGroup: 0x17,
 		subGroup:  0x03,
-	}
-
-	screenName, found := snacPayload.getString(0x01)
-	if !found {
-		return errors.New("unable to find screen name tlv")
 	}
 
 	snacPayloadOut := &snacBUCPLoginRequest{
 		TLVPayload: TLVPayload{
 			TLVs: []*TLV{
 				{
-					tType: 0x01,
-					val:   screenName,
+					tType: TLV_SCREEN_NAME,
+					val:   sess.screenName,
 				},
 				{
 					tType: 0x08,
@@ -179,7 +180,7 @@ func ReceiveAndSendBUCPLoginRequest(r io.Reader, w io.Writer, sequence *uint32) 
 				},
 				{
 					tType: 0x06,
-					val:   []byte("thecookie"),
+					val:   []byte(sess.ID),
 				},
 				{
 					tType: 0x11,
