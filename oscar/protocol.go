@@ -3,6 +3,7 @@ package oscar
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -15,6 +16,10 @@ type flapFrame struct {
 	sequence      uint16
 	payloadLength uint16
 }
+
+const (
+	TLV_SCREEN_NAME = 0x01
+)
 
 func (f *flapFrame) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, f.startMarker); err != nil {
@@ -235,7 +240,7 @@ func (t *TLV) read(r io.Reader, typeLookup map[uint16]reflect.Kind) error {
 type flapSignonFrame struct {
 	flapFrame
 	flapVersion uint32
-	TLVs        []*TLV
+	TLVPayload
 }
 
 func (f *flapSignonFrame) write(w io.Writer) error {
@@ -281,7 +286,7 @@ func (f *flapSignonFrame) read(r io.Reader) error {
 	return nil
 }
 
-func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) error {
+func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (*flapSignonFrame, error) {
 	// send
 	flap := &flapSignonFrame{
 		flapFrame: flapFrame{
@@ -296,7 +301,7 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) error {
 	atomic.AddUint32(sequence, 1)
 
 	if err := flap.write(rw); err != nil {
-		return err
+		return nil, err
 	}
 
 	fmt.Printf("SendAndReceiveSignonFrame read FLAP: %+v\n", flap)
@@ -304,12 +309,32 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) error {
 	// receive
 	flap = &flapSignonFrame{}
 	if err := flap.read(rw); err != nil {
-		return err
+		return nil, err
 	}
 
 	fmt.Printf("SendAndReceiveSignonFrame write FLAP: %+v\n", flap)
 
-	return nil
+	return flap, nil
+}
+
+func VerifyLogin(sm *SessionManager, rw io.ReadWriter, sequence *uint32) (*Session, error) {
+	flap, err := SendAndReceiveSignonFrame(rw, sequence)
+	if err != nil {
+		return nil, err
+	}
+
+	var ok bool
+	ID, ok := flap.getString(OserviceTlvTagsLoginCookie)
+	if !ok {
+		return nil, errors.New("unable to get session ID from payload")
+	}
+
+	sess, ok := sm.Retrieve(ID)
+	if !ok {
+		return nil, errors.New("unable to find session by ID")
+	}
+
+	return sess, nil
 }
 
 const (
@@ -339,7 +364,7 @@ const (
 	ARS                  = 0x044A
 )
 
-func ReadBos(rw io.ReadWriter, sequence *uint32) error {
+func ReadBos(sess *Session, rw io.ReadWriter, sequence *uint32) error {
 	for {
 		// receive
 		flap := &flapFrame{}
@@ -361,7 +386,7 @@ func ReadBos(rw io.ReadWriter, sequence *uint32) error {
 
 		switch snac.foodGroup {
 		case OSERVICE:
-			if err := routeOService(flap, snac, buf, rw, sequence); err != nil {
+			if err := routeOService(sess, flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
 		case LOCATE:
