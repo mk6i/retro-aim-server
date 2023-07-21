@@ -364,7 +364,7 @@ const (
 	ARS                  = 0x044A
 )
 
-func ReadBos(sess *Session, rw io.ReadWriter, sequence *uint32) error {
+func ReadBos(sess *Session, fm *FeedbagStore, rw io.ReadWriter, sequence *uint32) error {
 	for {
 		// receive
 		flap := &flapFrame{}
@@ -420,7 +420,7 @@ func ReadBos(sess *Session, rw io.ReadWriter, sequence *uint32) error {
 		case ODIR:
 		case BART:
 		case FEEDBAG:
-			if err := routeFeedbag(flap, snac, buf, rw, sequence); err != nil {
+			if err := routeFeedbag(sess, fm, flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
 		case ICQ:

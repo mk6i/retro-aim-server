@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"time"
 )
 
 const (
@@ -81,25 +80,22 @@ const (
 	FeedbagClassIdMin                     = 0x0400
 )
 
-var feedbag []*feedbagItem
-var feedbagModified = time.Now().Unix()
-
-func routeFeedbag(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeFeedbag(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case FeedbagErr:
 		panic("not implemented")
 	case FeedbagRightsQuery:
 		return SendAndReceiveFeedbagRightsQuery(flap, snac, r, w, sequence)
 	case FeedbagQuery:
-		return ReceiveAndSendFeedbagQuery(flap, snac, r, w, sequence)
+		return ReceiveAndSendFeedbagQuery(sess, fm, flap, snac, r, w, sequence)
 	case FeedbagQueryIfModified:
-		return ReceiveAndSendFeedbagQueryIfModified(flap, snac, r, w, sequence)
+		return ReceiveAndSendFeedbagQueryIfModified(sess, fm, flap, snac, r, w, sequence)
 	case FeedbagUse:
 		return ReceiveUse(flap, snac, r, w, sequence)
 	case FeedbagInsertItem:
-		return ReceiveInsertItem(flap, snac, r, w, sequence)
+		return ReceiveInsertItem(sess, fm, flap, snac, r, w, sequence)
 	case FeedbagUpdateItem:
-		return ReceiveUpdateItem(flap, snac, r, w, sequence)
+		return ReceiveUpdateItem(sess, fm, flap, snac, r, w, sequence)
 	case FeedbagDeleteItem:
 		panic("not implemented")
 	case FeedbagInsertClass:
@@ -315,9 +311,12 @@ func (f *feedbagItem) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
 		return err
 	}
+	buf = make([]byte, l)
+	if _, err := r.Read(buf); err != nil {
+		return err
+	}
 
-	buff := bytes.NewBuffer(make([]byte, l))
-	return f.TLVPayload.read(buff, map[uint16]reflect.Kind{
+	return f.TLVPayload.read(bytes.NewBuffer(buf), map[uint16]reflect.Kind{
 		0xC8:                           reflect.Slice,
 		FeedbagClassIdBuddy:            reflect.Slice,
 		FeedbagClassIdGroup:            reflect.Slice,
@@ -373,8 +372,22 @@ func (s *snacFeedbagQuery) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.lastUpdate)
 }
 
-func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendFeedbagQuery(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendFeedbagQuery read SNAC frame: %+v\n", snac)
+
+	fb, err := fm.Retrieve(sess.screenName)
+	if err != nil {
+		return err
+	}
+
+	var lastModified uint32
+	if len(fb) > 0 {
+		lm, err := fm.LastModified(sess.screenName)
+		if err != nil {
+			return err
+		}
+		lastModified = uint32(lm.Unix())
+	}
 
 	snacFrameOut := snacFrame{
 		foodGroup: 0x13,
@@ -382,8 +395,8 @@ func ReceiveAndSendFeedbagQuery(flap *flapFrame, snac *snacFrame, r io.Reader, w
 	}
 	snacPayloadOut := &snacFeedbagQuery{
 		version:    0,
-		items:      feedbag,
-		lastUpdate: uint32(feedbagModified),
+		items:      fb,
+		lastUpdate: lastModified,
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
@@ -408,7 +421,7 @@ func (s *snacQueryIfModified) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &s.count)
 }
 
-func ReceiveAndSendFeedbagQueryIfModified(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendFeedbagQueryIfModified(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacQueryIfModified{}
@@ -418,20 +431,32 @@ func ReceiveAndSendFeedbagQueryIfModified(flap *flapFrame, snac *snacFrame, r io
 
 	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC: %+v\n", snacPayload)
 
-	lenz := uint8(len(feedbag))
-	if lenz > 0 && snacPayload.count == lenz {
-
-		snacFrameOut := snacFrame{
-			foodGroup: 0x13,
-			subGroup:  0x0F,
-		}
-		snacPayloadOut := &snacQueryIfModified{
-			lastUpdate: uint32(feedbagModified),
-			count:      lenz,
-		}
-
-		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	fb, err := fm.Retrieve(sess.screenName)
+	if err != nil {
+		return err
 	}
+
+	lm, err := fm.LastModified(sess.screenName)
+	if err != nil {
+		return err
+	}
+
+	//if lm.Before(time.Unix(int64(snacPayload.lastUpdate), 0)) {
+	//todo not sure this works right now
+	//	snacFrameOut := snacFrame{
+	//		foodGroup: 0x13,
+	//		subGroup:  0x0F,
+	//	}
+	//	lm, err := fm.LastModified(sess.screenName)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	snacPayloadOut := &snacQueryIfModified{
+	//		lastUpdate: uint32(lm.Unix()),
+	//		count:      uint8(len(fb)),
+	//	}
+	//	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	//}
 
 	snacFrameOut := snacFrame{
 		foodGroup: 0x13,
@@ -439,8 +464,8 @@ func ReceiveAndSendFeedbagQueryIfModified(flap *flapFrame, snac *snacFrame, r io
 	}
 	snacPayloadOut := &snacFeedbagQuery{
 		version:    0,
-		items:      feedbag,
-		lastUpdate: uint32(feedbagModified),
+		items:      fb,
+		lastUpdate: uint32(lm.Unix()),
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
@@ -454,10 +479,11 @@ func (s *snacFeedbagStatusReply) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.results)
 }
 
-func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveInsertItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveInsertItem read SNAC frame: %+v\n", snac)
 
 	snacPayloadOut := &snacFeedbagStatusReply{}
+	var feedbag []*feedbagItem
 
 	for {
 		item := &feedbagItem{}
@@ -472,15 +498,19 @@ func ReceiveInsertItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 		fmt.Printf("ReceiveInsertItem read SNAC feedbag item: %+v\n", item)
 	}
 
+	if err := fm.Upsert(sess.screenName, feedbag); err != nil {
+		return err
+	}
+
 	snacFrameOut := snacFrame{
 		foodGroup: FEEDBAG,
 		subGroup:  FeedbagStatus,
 	}
-	feedbagModified = time.Now().Unix()
+
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveUpdateItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
 
 	var items []*feedbagItem
@@ -497,6 +527,10 @@ func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 		items = append(items, item)
 	}
 
+	if err := fm.Upsert(sess.screenName, items); err != nil {
+		return err
+	}
+
 	snacPayloadOut := &snacFeedbagStatusReply{}
 
 	for _, item := range items {
@@ -508,8 +542,6 @@ func ReceiveUpdateItem(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Write
 		foodGroup: FEEDBAG,
 		subGroup:  FeedbagStatus,
 	}
-
-	feedbagModified = time.Now().Unix()
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }

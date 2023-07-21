@@ -11,11 +11,17 @@ import (
 	"strings"
 )
 
+const testFile string = "/Users/mike/dev/goaim/aim.db"
+
 func main() {
 
 	sm := oscar.NewSessionManager()
+	fm, err := oscar.NewFeedbagStore(testFile)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	go listenBOS(sm)
+	go listenBOS(sm, fm)
 	go listenStats()
 	go listenAlert()
 	go listenOdir()
@@ -56,7 +62,7 @@ func webServer(ch chan string) {
 	}
 }
 
-func listenBOS(sm *oscar.SessionManager) {
+func listenBOS(sm *oscar.SessionManager, fm *oscar.FeedbagStore) {
 	// Listen on TCP port 5190
 	listener, err := net.Listen("tcp", ":5191")
 	if err != nil {
@@ -78,7 +84,7 @@ func listenBOS(sm *oscar.SessionManager) {
 			continue
 		}
 		seq := uint32(100)
-		go handleBOSConnection(sm, conn, &seq)
+		go handleBOSConnection(sm, fm, conn, &seq)
 		go sendIM(conn, ch, &seq)
 	}
 }
@@ -118,7 +124,7 @@ func listenStats() {
 
 		fmt.Println("got a connection on listenStats")
 		seq := uint32(100)
-		if err := oscar.ReadBos(nil, conn, &seq); err != nil {
+		if err := oscar.ReadBos(nil, nil, conn, &seq); err != nil {
 			if err == io.EOF {
 				break
 			} else {
@@ -150,7 +156,7 @@ func listenAlert() {
 
 		fmt.Println("got a connection on listenAlert")
 		seq := uint32(100)
-		if err := oscar.ReadBos(nil, conn, &seq); err != nil && err != io.EOF {
+		if err := oscar.ReadBos(nil, nil, conn, &seq); err != nil && err != io.EOF {
 			if err == io.EOF {
 				break
 			} else {
@@ -182,7 +188,7 @@ func listenOdir() {
 
 		fmt.Println("got a connection on listenOdir")
 		seq := uint32(100)
-		if err := oscar.ReadBos(nil, conn, &seq); err != nil {
+		if err := oscar.ReadBos(nil, nil, conn, &seq); err != nil {
 			if err == io.EOF {
 				break
 			} else {
@@ -220,7 +226,7 @@ func handleAuthConnection(sm *oscar.SessionManager, conn net.Conn) {
 	}
 }
 
-func handleBOSConnection(sm *oscar.SessionManager, conn net.Conn, seq *uint32) {
+func handleBOSConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn net.Conn, seq *uint32) {
 	fmt.Println("VerifyLogin...")
 	sess, err := oscar.VerifyLogin(sm, conn, seq)
 	if err != nil {
@@ -236,7 +242,7 @@ func handleBOSConnection(sm *oscar.SessionManager, conn net.Conn, seq *uint32) {
 		}
 	}
 
-	if err := oscar.ReadBos(sess, conn, seq); err != nil && err != io.EOF {
+	if err := oscar.ReadBos(sess, fm, conn, seq); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Println(err.Error())
 			os.Exit(1)
