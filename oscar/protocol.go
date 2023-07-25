@@ -125,6 +125,15 @@ func (s *TLVPayload) getString(tType uint16) (string, bool) {
 	return "", false
 }
 
+func (s *TLVPayload) getSlice(tType uint16) ([]byte, bool) {
+	for _, tlv := range s.TLVs {
+		if tType == tlv.tType {
+			return tlv.val.([]byte), true
+		}
+	}
+	return nil, false
+}
+
 type TLV struct {
 	tType uint16
 	val   any
@@ -229,7 +238,7 @@ func (t *TLV) read(r io.Reader, typeLookup map[uint16]reflect.Kind) error {
 		if _, err := r.Read(buf); err != nil {
 			return err
 		}
-		t.val = string(buf)
+		t.val = buf
 	default:
 		panic("unsupported data type")
 	}
@@ -331,7 +340,7 @@ func VerifyLogin(sm *SessionManager, rw io.ReadWriter, sequence *uint32) (*Sessi
 
 	sess, ok := sm.Retrieve(ID)
 	if !ok {
-		return nil, errors.New("unable to find session by ID")
+		return nil, fmt.Errorf("unable to find session by ID %s", ID)
 	}
 
 	return sess, nil
@@ -364,11 +373,14 @@ const (
 	ARS                  = 0x044A
 )
 
-func ReadBos(sess *Session, fm *FeedbagStore, rw io.ReadWriter, sequence *uint32) error {
+func ReadBos(sm *SessionManager, sess *Session, fm *FeedbagStore, rw io.ReadWriter, sequence *uint32) error {
 	for {
 		// receive
 		flap := &flapFrame{}
 		if err := flap.read(rw); err != nil {
+			if err := NotifyDeparture(sess, sm, fm); err != nil {
+				return err
+			}
 			return err
 		}
 
@@ -386,7 +398,7 @@ func ReadBos(sess *Session, fm *FeedbagStore, rw io.ReadWriter, sequence *uint32
 
 		switch snac.foodGroup {
 		case OSERVICE:
-			if err := routeOService(sess, flap, snac, buf, rw, sequence); err != nil {
+			if err := routeOService(sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
 		case LOCATE:
@@ -398,7 +410,7 @@ func ReadBos(sess *Session, fm *FeedbagStore, rw io.ReadWriter, sequence *uint32
 				return err
 			}
 		case ICBM:
-			if err := routeICBM(flap, snac, buf, rw, sequence); err != nil {
+			if err := routeICBM(sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
 		case ADVERT:
@@ -466,4 +478,20 @@ func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, s
 
 	_, err := w.Write(snacBuf.Bytes())
 	return err
+}
+
+type XMessage struct {
+	flap      *flapFrame
+	snacFrame snacFrame
+	snacOut   snacWriter
+}
+
+func HandleXMessage(sess *Session, w io.Writer, seq *uint32) {
+	go func() {
+		for msg := range sess.MsgChan {
+			if err := writeOutSNAC(nil, msg.flap, msg.snacFrame, msg.snacOut, seq, w); err != nil {
+				panic("error handling handleXMessage: " + err.Error())
+			}
+		}
+	}()
 }

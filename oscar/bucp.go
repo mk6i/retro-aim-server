@@ -149,7 +149,7 @@ func ReceiveAndSendBUCPLoginRequest(sess *Session, r io.Reader, w io.Writer, seq
 	fmt.Printf("ReceiveAndSendBUCPLoginRequest read SNAC: %+v\n", snacPayload)
 
 	var found bool
-	sess.screenName, found = snacPayload.getString(TLV_SCREEN_NAME)
+	sess.ScreenName, found = snacPayload.getString(TLV_SCREEN_NAME)
 	if !found {
 		return errors.New("unable to find screen name")
 	}
@@ -164,7 +164,7 @@ func ReceiveAndSendBUCPLoginRequest(sess *Session, r io.Reader, w io.Writer, seq
 			TLVs: []*TLV{
 				{
 					tType: TLV_SCREEN_NAME,
-					val:   sess.screenName,
+					val:   sess.ScreenName,
 				},
 				{
 					tType: 0x08,

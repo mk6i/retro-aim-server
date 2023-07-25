@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"reflect"
 )
 
 const (
@@ -31,7 +32,7 @@ const (
 	ICBMSinReply                  = 0x0017
 )
 
-func routeICBM(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeICBM(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case ICBMErr:
 		panic("not implemented")
@@ -42,7 +43,7 @@ func routeICBM(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, seque
 	case ICBMParameterQuery:
 		return SendAndReceiveICBMParameterReply(flap, snac, r, w, sequence)
 	case ICBMChannelMsgTohost:
-		return SendAndReceiveChannelMsgTohost(flap, snac, r, w, sequence)
+		return SendAndReceiveChannelMsgTohost(sm, fm, sess, flap, snac, r, w, sequence)
 	case ICBMChannelMsgToclient:
 		panic("not implemented")
 	case ICBMEvilRequest:
@@ -159,8 +160,80 @@ func SendAndReceiveICBMParameterReply(flap *flapFrame, snac *snacFrame, _ io.Rea
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func SendAndReceiveChannelMsgTohost(flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+type snacMessageToHost struct {
+	cookie     [8]byte
+	channelID  uint16
+	screenName string
+	TLVPayload
+}
+
+func (s *snacMessageToHost) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &s.cookie); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.channelID); err != nil {
+		return err
+	}
+
+	var l uint8
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		return err
+	}
+	buf := make([]byte, l)
+	if _, err := r.Read(buf); err != nil {
+		return err
+	}
+	s.screenName = string(buf)
+
+	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
+		0x02: reflect.Slice,
+		0x03: reflect.Slice,
+	})
+}
+
+func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChannelMsgTohost read SNAC frame: %+v\n", snac)
+
+	snacPayloadIn := &snacMessageToHost{}
+	if err := snacPayloadIn.read(r); err != nil {
+		return err
+	}
+
+	SendIM(sm, snacPayloadIn.screenName, "hey there")
+
+	//session := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+	//
+	//messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x02)
+	//if !found {
+	//	return errors.New("unable to find message data tlv")
+	//}
+	//
+	//mm := &XMessage{
+	//	flap: &flapFrame{
+	//		startMarker: 42,
+	//		frameType:   2,
+	//	},
+	//	snacFrame: snacFrame{
+	//		foodGroup: ICBM,
+	//		subGroup:  ICBMChannelMsgToclient,
+	//		requestID: 12425,
+	//	},
+	//	snacOut: &snacClientIM{
+	//		cookie:       [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+	//		channelID:    1,
+	//		screenName:   snacPayloadIn.screenName,
+	//		warningLevel: 0,
+	//		TLVPayload: TLVPayload{
+	//			TLVs: []*TLV{
+	//				{
+	//					tType: 0x02,
+	//					val:   messagePayload,
+	//				},
+	//			},
+	//		},
+	//	},
+	//}
+	//session.MsgChan <- mm
 
 	return nil
 }
@@ -265,32 +338,36 @@ func (m *messageData) write(w io.Writer) error {
 	return nil
 }
 
-func SendIM(w io.Writer, sequence *uint32, screenName string, msg string) error {
-	flap := &flapFrame{
-		startMarker: 42,
-		frameType:   2,
-	}
+func SendIM(sm *SessionManager, screenName string, msg string) error {
 
-	snacFrameOut := snacFrame{
-		foodGroup: ICBM,
-		subGroup:  ICBMChannelMsgToclient,
-		requestID: 12425,
-	}
-	snacPayloadOut := &snacClientIM{
-		cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
-		channelID:  1,
-		screenName: screenName,
-		TLVPayload: TLVPayload{
-			TLVs: []*TLV{
-				{
-					tType: 0x02,
-					val: &messageData{
-						text: msg,
+	session := sm.RetrieveByScreenName(screenName)
+
+	session.MsgChan <- &XMessage{
+		flap: &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		},
+		snacFrame: snacFrame{
+			foodGroup: ICBM,
+			subGroup:  ICBMChannelMsgToclient,
+			requestID: 12425,
+		},
+		snacOut: &snacClientIM{
+			cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+			channelID:  1,
+			screenName: screenName,
+			TLVPayload: TLVPayload{
+				TLVs: []*TLV{
+					{
+						tType: 0x02,
+						val: &messageData{
+							text: msg,
+						},
 					},
 				},
 			},
 		},
 	}
 
-	return writeOutSNAC(nil, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return nil
 }

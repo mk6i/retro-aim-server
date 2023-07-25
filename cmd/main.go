@@ -23,8 +23,9 @@ func main() {
 
 	go listenBOS(sm, fm)
 	go listenStats()
-	go listenAlert()
+	go listenAlert(sm, fm)
 	go listenOdir()
+	go listenBart()
 
 	//todo implement CHATNAV and ALERT
 
@@ -80,25 +81,35 @@ func listenBOS(sm *oscar.SessionManager, fm *oscar.FeedbagStore) {
 		// Accept incoming connections
 		conn, err := listener.Accept()
 		if err != nil {
+
 			log.Println(err)
 			continue
 		}
 		seq := uint32(100)
 		go handleBOSConnection(sm, fm, conn, &seq)
-		go sendIM(conn, ch, &seq)
+		go sendIM(sm, fm, conn, ch, &seq)
 	}
 }
 
-func sendIM(conn net.Conn, ch chan string, seq *uint32) {
+func sendIM(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn net.Conn, ch chan string, seq *uint32) {
 	for msg := range ch {
 		fmt.Printf("sending im... %s\n", msg)
 		vals := strings.Split(msg, ":")
-
-		if err := oscar.SendIM(conn, seq, vals[0], vals[1]); err != nil {
-			//panic(err.Error())
-		}
-		if err := oscar.SetBuddyArrived(conn, seq, vals[0]); err != nil {
-			//panic(err.Error())
+		switch vals[0] {
+		case "online":
+			if err := oscar.SetBuddyArrived(conn, seq, vals[1]); err != nil {
+				panic(err.Error())
+			}
+		case "offline":
+			if err := oscar.SetBuddyDeparted(conn, seq, vals[1]); err != nil {
+				panic(err.Error())
+			}
+			fmt.Println("Set buddy departed...")
+		case "im":
+			if err := oscar.SendIM(sm, vals[1], vals[2]); err != nil {
+				panic(err.Error())
+			}
+			fmt.Println("Set buddy departed...")
 		}
 	}
 }
@@ -124,7 +135,7 @@ func listenStats() {
 
 		fmt.Println("got a connection on listenStats")
 		seq := uint32(100)
-		if err := oscar.ReadBos(nil, nil, conn, &seq); err != nil {
+		if err := oscar.ReadBos(nil, nil, nil, conn, &seq); err != nil {
 			if err == io.EOF {
 				break
 			} else {
@@ -135,7 +146,39 @@ func listenStats() {
 	}
 }
 
-func listenAlert() {
+func listenBart() {
+	// Listen on TCP port 5190
+	listener, err := net.Listen("tcp", ":5195")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer listener.Close()
+
+	fmt.Println("Server is listening on port 5195")
+
+	for {
+		// Accept incoming connections
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		fmt.Println("got a connection on listenBart")
+		seq := uint32(100)
+		if err := oscar.ReadBos(nil, nil, nil, conn, &seq); err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				fmt.Println(err.Error())
+				os.Exit(1)
+			}
+		}
+	}
+}
+
+func listenAlert(sm *oscar.SessionManager, fm *oscar.FeedbagStore) {
 	// Listen on TCP port 5190
 	listener, err := net.Listen("tcp", ":5193")
 	if err != nil {
@@ -156,14 +199,7 @@ func listenAlert() {
 
 		fmt.Println("got a connection on listenAlert")
 		seq := uint32(100)
-		if err := oscar.ReadBos(nil, nil, conn, &seq); err != nil && err != io.EOF {
-			if err == io.EOF {
-				break
-			} else {
-				fmt.Println(err.Error())
-				os.Exit(1)
-			}
-		}
+		go handleBOSConnection(sm, fm, conn, &seq)
 	}
 }
 
@@ -188,7 +224,7 @@ func listenOdir() {
 
 		fmt.Println("got a connection on listenOdir")
 		seq := uint32(100)
-		if err := oscar.ReadBos(nil, nil, conn, &seq); err != nil {
+		if err := oscar.ReadBos(nil, nil, nil, conn, &seq); err != nil {
 			if err == io.EOF {
 				break
 			} else {
@@ -242,7 +278,9 @@ func handleBOSConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn 
 		}
 	}
 
-	if err := oscar.ReadBos(sess, fm, conn, seq); err != nil && err != io.EOF {
+	go oscar.HandleXMessage(sess, conn, seq)
+
+	if err := oscar.ReadBos(sm, sess, fm, conn, seq); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Println(err.Error())
 			os.Exit(1)
