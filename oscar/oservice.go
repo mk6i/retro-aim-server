@@ -49,16 +49,16 @@ const (
 	OServiceBartReply2               = 0x0023
 )
 
-func routeOService(sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeOService(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case OServiceErr:
 		panic("not implemented")
 	case OServiceClientOnline:
-		return ReceiveClientOnline(flap, snac, r, w, sequence)
+		return ReceiveClientOnline(sess, sm, fm, flap, snac, r, w, sequence)
 	case OServiceHostOnline:
 		panic("not implemented")
 	case OServiceServiceRequest:
-		return ReceiveAndSendServiceRequest(flap, snac, r, w, sequence)
+		return ReceiveAndSendServiceRequest(sess, flap, snac, r, w, sequence)
 	case OServiceRateParamsQuery:
 		return ReceiveAndSendServiceRateParams(flap, snac, r, w, sequence)
 	case OServiceRateParamsSubAdd:
@@ -386,7 +386,7 @@ func ReceiveAndSendServiceRequestSelfInfo(sess *Session, flap *flapFrame, snac *
 	}
 
 	snacPayloadOut := &snacOServiceUserInfoUpdate{
-		screenName:   sess.screenName,
+		screenName:   sess.ScreenName,
 		warningLevel: 0,
 		TLVPayload: TLVPayload{
 			TLVs: []*TLV{
@@ -459,7 +459,7 @@ func (c *clientVersion) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &c.toolVersion)
 }
 
-func ReceiveClientOnline(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveClientOnline(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveClientOnline read SNAC frame: %+v\n", snac)
 
 	b := make([]byte, flap.payloadLength-10)
@@ -477,6 +477,99 @@ func ReceiveClientOnline(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Wri
 		fmt.Printf("ReceiveClientOnline read SNAC client messageType: %+v\n", item)
 	}
 
+	err := NotifyArrival(sess, sm, fm)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
+	screenNames, err := fm.InterestedUsers(sess.ScreenName)
+	if err != nil {
+		return err
+	}
+	sessions := sm.RetrieveByScreenNames(screenNames)
+
+	for _, adjSess := range sessions {
+		flap := &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		}
+
+		snacFrameOut := snacFrame{
+			foodGroup: BUDDY,
+			subGroup:  BuddyArrived,
+			requestID: 12425,
+		}
+		snacPayloadOut := &snacBuddyArrived{
+			screenName:   sess.ScreenName,
+			warningLevel: 0,
+			TLVPayload: TLVPayload{
+				TLVs: []*TLV{
+					{
+						tType: 0x01,
+						val:   uint16(0x0004),
+					},
+					{
+						tType: 0x06,
+						val:   uint16(0x0000),
+					},
+				},
+			},
+		}
+
+		adjSess.MsgChan <- &XMessage{
+			flap:      flap,
+			snacFrame: snacFrameOut,
+			snacOut:   snacPayloadOut,
+		}
+	}
+	return nil
+}
+
+func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
+	screenNames, err := fm.InterestedUsers(sess.ScreenName)
+	if err != nil {
+		return err
+	}
+	sessions := sm.RetrieveByScreenNames(screenNames)
+
+	for _, adjSess := range sessions {
+		flap := &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		}
+
+		snacFrameOut := snacFrame{
+			foodGroup: BUDDY,
+			subGroup:  BuddyDeparted,
+			requestID: 12425,
+		}
+		snacPayloadOut := &snacBuddyArrived{
+			screenName:   sess.ScreenName,
+			warningLevel: 0,
+			TLVPayload: TLVPayload{
+				TLVs: []*TLV{
+					{
+						tType: 0x01,
+						val:   uint16(0x0004),
+					},
+					{
+						tType: 0x06,
+						val:   uint16(0x0000),
+					},
+				},
+			},
+		}
+
+		adjSess.MsgChan <- &XMessage{
+			flap:      flap,
+			snacFrame: snacFrameOut,
+			snacOut:   snacPayloadOut,
+		}
+	}
 	return nil
 }
 
@@ -535,9 +628,10 @@ var ServiceHosts = map[uint16]string{
 	STATS: "192.168.64.1:5192",
 	ALERT: "192.168.64.1:5193",
 	ODIR:  "192.168.64.1:5194",
+	BART:  "192.168.64.1:5195",
 }
 
-func ReceiveAndSendServiceRequest(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRequest(sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRequest read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacServiceRequest{}
@@ -549,7 +643,7 @@ func ReceiveAndSendServiceRequest(flap *flapFrame, snac *snacFrame, r io.Reader,
 
 	host, ok := ServiceHosts[snacPayload.foodGroup]
 	if !ok {
-		return fmt.Errorf("unable to find hostname for %s", host)
+		return fmt.Errorf("unable to find hostname for %s %d", host, snacPayload.foodGroup)
 	}
 
 	snacFrameOut := snacFrame{
@@ -564,7 +658,7 @@ func ReceiveAndSendServiceRequest(flap *flapFrame, snac *snacFrame, r io.Reader,
 			},
 			{
 				tType: OserviceTlvTagsLoginCookie,
-				val:   "some-cookie",
+				val:   sess.ID,
 			},
 			{
 				tType: OserviceTlvTagsGroupId,

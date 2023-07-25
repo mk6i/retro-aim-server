@@ -13,18 +13,18 @@ const file string = "/Users/mike/dev/goaim/aim.db"
 var feedbagDDL = `
 	CREATE TABLE IF NOT EXISTS user
 	(
-		screenName VARCHAR(16) PRIMARY KEY
+		ScreenName VARCHAR(16) PRIMARY KEY
 	);
 	CREATE TABLE IF NOT EXISTS feedbag
 	(
-		screenName   VARCHAR(16),
+		ScreenName   VARCHAR(16),
 		groupID      INTEGER,
 		itemID       INTEGER,
 		classID      INTEGER,
 		name         TEXT,
 		attributes   BLOB,
 		lastModified INTEGER,
-		UNIQUE (screenName, groupID, itemID)
+		UNIQUE (ScreenName, groupID, itemID)
 	);
 `
 
@@ -52,7 +52,7 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]*feedbagItem, error) {
 			name,
 			attributes
 		FROM feedbag
-		WHERE screenName = ?
+		WHERE ScreenName = ?
 	`
 
 	rows, err := f.db.Query(q, screenName)
@@ -112,7 +112,7 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]*feedbagItem, error) {
 
 func (f *FeedbagStore) LastModified(screenName string) (time.Time, error) {
 	var lastModified sql.NullInt64
-	sql := `SELECT MAX(lastModified) FROM feedbag WHERE screenName = ?`
+	sql := `SELECT MAX(lastModified) FROM feedbag WHERE ScreenName = ?`
 	err := f.db.QueryRow(sql, screenName).Scan(&lastModified)
 	return time.Unix(lastModified.Int64, 0), err
 }
@@ -120,9 +120,9 @@ func (f *FeedbagStore) LastModified(screenName string) (time.Time, error) {
 func (f *FeedbagStore) Upsert(screenName string, items []*feedbagItem) error {
 
 	q := `
-		INSERT INTO feedbag (screenName, groupID, itemID, classID, name, attributes, lastModified)
+		INSERT INTO feedbag (ScreenName, groupID, itemID, classID, name, attributes, lastModified)
 		VALUES (?, ?, ?, ?, ?, ?, UNIXEPOCH())
-		ON CONFLICT (screenName, groupID, itemID)
+		ON CONFLICT (ScreenName, groupID, itemID)
 			DO UPDATE SET classID      = excluded.classID,
 						  name         = excluded.name,
 						  attributes   = excluded.attributes,
@@ -149,4 +149,29 @@ func (f *FeedbagStore) Upsert(screenName string, items []*feedbagItem) error {
 	}
 
 	return nil
+}
+
+func (f *FeedbagStore) InterestedUsers(screenName string) ([]string, error) {
+	q := `
+		SELECT name
+		FROM feedbag
+		WHERE ScreenName = ? AND classID = 0
+	`
+
+	rows, err := f.db.Query(q, screenName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []string
+	for rows.Next() {
+		var screenName string
+		if err := rows.Scan(&screenName); err != nil {
+			return nil, err
+		}
+		items = append(items, screenName)
+	}
+
+	return items, nil
 }

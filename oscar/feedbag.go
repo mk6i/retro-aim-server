@@ -375,14 +375,14 @@ func (s *snacFeedbagQuery) write(w io.Writer) error {
 func ReceiveAndSendFeedbagQuery(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendFeedbagQuery read SNAC frame: %+v\n", snac)
 
-	fb, err := fm.Retrieve(sess.screenName)
+	fb, err := fm.Retrieve(sess.ScreenName)
 	if err != nil {
 		return err
 	}
 
 	var lastModified uint32
 	if len(fb) > 0 {
-		lm, err := fm.LastModified(sess.screenName)
+		lm, err := fm.LastModified(sess.ScreenName)
 		if err != nil {
 			return err
 		}
@@ -431,12 +431,12 @@ func ReceiveAndSendFeedbagQueryIfModified(sess *Session, fm *FeedbagStore, flap 
 
 	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC: %+v\n", snacPayload)
 
-	fb, err := fm.Retrieve(sess.screenName)
+	fb, err := fm.Retrieve(sess.ScreenName)
 	if err != nil {
 		return err
 	}
 
-	lm, err := fm.LastModified(sess.screenName)
+	lm, err := fm.LastModified(sess.ScreenName)
 	if err != nil {
 		return err
 	}
@@ -447,7 +447,7 @@ func ReceiveAndSendFeedbagQueryIfModified(sess *Session, fm *FeedbagStore, flap 
 	//		foodGroup: 0x13,
 	//		subGroup:  0x0F,
 	//	}
-	//	lm, err := fm.LastModified(sess.screenName)
+	//	lm, err := fm.LastModified(sess.ScreenName)
 	//	if err != nil {
 	//		return err
 	//	}
@@ -498,7 +498,7 @@ func ReceiveInsertItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *s
 		fmt.Printf("ReceiveInsertItem read SNAC feedbag item: %+v\n", item)
 	}
 
-	if err := fm.Upsert(sess.screenName, feedbag); err != nil {
+	if err := fm.Upsert(sess.ScreenName, feedbag); err != nil {
 		return err
 	}
 
@@ -527,7 +527,7 @@ func ReceiveUpdateItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *s
 		items = append(items, item)
 	}
 
-	if err := fm.Upsert(sess.screenName, items); err != nil {
+	if err := fm.Upsert(sess.ScreenName, items); err != nil {
 		return err
 	}
 
