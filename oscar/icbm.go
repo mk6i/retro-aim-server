@@ -3,6 +3,7 @@ package oscar
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -53,7 +54,7 @@ func routeICBM(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFr
 	case ICBMMissedCalls:
 		panic("not implemented")
 	case ICBMClientErr:
-		panic("not implemented")
+		return ReceiveClientErr(flap, snac, r, w, sequence)
 	case ICBMHostAck:
 		panic("not implemented")
 	case ICBMSinStored:
@@ -191,6 +192,28 @@ func (s *snacMessageToHost) read(r io.Reader) error {
 	})
 }
 
+type snacHostAck struct {
+	cookie     [8]byte
+	channelID  uint16
+	screenName string
+}
+
+func (f *snacHostAck) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, f.cookie); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, f.channelID); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, []byte(f.screenName)); err != nil {
+		return err
+	}
+	return nil
+}
+
 func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChannelMsgTohost read SNAC frame: %+v\n", snac)
 
@@ -199,43 +222,59 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		return err
 	}
 
-	SendIM(sm, snacPayloadIn.screenName, "hey there")
-
-	//session := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+	//SendIM(sm, sess, snacPayloadIn.screenName, "hey there")
 	//
-	//messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x02)
-	//if !found {
-	//	return errors.New("unable to find message data tlv")
-	//}
-	//
-	//mm := &XMessage{
-	//	flap: &flapFrame{
-	//		startMarker: 42,
-	//		frameType:   2,
-	//	},
-	//	snacFrame: snacFrame{
-	//		foodGroup: ICBM,
-	//		subGroup:  ICBMChannelMsgToclient,
-	//		requestID: 12425,
-	//	},
-	//	snacOut: &snacClientIM{
-	//		cookie:       [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
-	//		channelID:    1,
-	//		screenName:   snacPayloadIn.screenName,
-	//		warningLevel: 0,
-	//		TLVPayload: TLVPayload{
-	//			TLVs: []*TLV{
-	//				{
-	//					tType: 0x02,
-	//					val:   messagePayload,
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//session.MsgChan <- mm
 
-	return nil
+	session := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+
+	messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x02)
+	if !found {
+		return errors.New("unable to find message data tlv")
+	}
+
+	_, requestedConfirmation := snacPayloadIn.TLVPayload.getSlice(0x03)
+
+	mm := &XMessage{
+		flap: &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		},
+		snacFrame: snacFrame{
+			foodGroup: ICBM,
+			subGroup:  ICBMChannelMsgToclient,
+		},
+		snacOut: &snacClientIM{
+			cookie:       snacPayloadIn.cookie,
+			channelID:    snacPayloadIn.channelID,
+			screenName:   sess.ScreenName,
+			warningLevel: 0,
+			TLVPayload: TLVPayload{
+				TLVs: []*TLV{
+					{
+						tType: 0x02,
+						val:   messagePayload,
+					},
+				},
+			},
+		},
+	}
+	session.MsgChan <- mm
+
+	snacFrameOut := snacFrame{
+		foodGroup: ICBM,
+		subGroup:  ICBMHostAck,
+	}
+	snacPayloadOut := &snacHostAck{
+		cookie:     snacPayloadIn.cookie,
+		channelID:  snacPayloadIn.channelID,
+		screenName: snacPayloadIn.screenName,
+	}
+
+	if requestedConfirmation {
+		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	} else {
+		return nil
+	}
 }
 
 func ReceiveAddParameters(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
@@ -338,9 +377,9 @@ func (m *messageData) write(w io.Writer) error {
 	return nil
 }
 
-func SendIM(sm *SessionManager, screenName string, msg string) error {
+func SendIM(sm *SessionManager, sess *Session, destScreenName string, msg string) error {
 
-	session := sm.RetrieveByScreenName(screenName)
+	session := sm.RetrieveByScreenName(destScreenName)
 
 	session.MsgChan <- &XMessage{
 		flap: &flapFrame{
@@ -355,7 +394,7 @@ func SendIM(sm *SessionManager, screenName string, msg string) error {
 		snacOut: &snacClientIM{
 			cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
 			channelID:  1,
-			screenName: screenName,
+			screenName: sess.ScreenName,
 			TLVPayload: TLVPayload{
 				TLVs: []*TLV{
 					{
@@ -369,5 +408,51 @@ func SendIM(sm *SessionManager, screenName string, msg string) error {
 		},
 	}
 
+	return nil
+}
+
+type snacClientErr struct {
+	cookie     [8]byte
+	channelID  uint16
+	screenName string
+	code       uint16
+	errInfo    []byte
+}
+
+func (s *snacClientErr) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &s.cookie); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.channelID); err != nil {
+		return err
+	}
+	var l uint8
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		return err
+	}
+	buf := make([]byte, l)
+	if _, err := r.Read(buf); err != nil {
+		return err
+	}
+	s.screenName = string(buf)
+
+	if err := binary.Read(r, binary.BigEndian, &s.code); err != nil {
+		return err
+	}
+
+	var err error
+	s.errInfo, err = io.ReadAll(r)
+	return err
+}
+
+func ReceiveClientErr(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	fmt.Printf("ReceiveClientErr read SNAC frame: %+v\n", snac)
+
+	snacPayload := &snacClientErr{}
+	if err := snacPayload.read(r); err != nil {
+		return err
+	}
+
+	fmt.Printf("ReceiveClientErr read SNAC: %+v\n", snacPayload)
 	return nil
 }
