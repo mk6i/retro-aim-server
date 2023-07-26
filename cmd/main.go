@@ -106,7 +106,7 @@ func sendIM(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn net.Conn, ch 
 			}
 			fmt.Println("Set buddy departed...")
 		case "im":
-			if err := oscar.SendIM(sm, vals[1], vals[2]); err != nil {
+			if err := oscar.SendIM(sm, nil, vals[1], vals[2]); err != nil {
 				panic(err.Error())
 			}
 			fmt.Println("Set buddy departed...")
