@@ -56,3 +56,7 @@ func (s *SessionManager) NewSession() (*Session, error) {
 	s.store[sess.ID] = sess
 	return sess, nil
 }
+
+func (s *SessionManager) Remove(sess *Session) {
+	delete(s.store, sess.ID)
+}

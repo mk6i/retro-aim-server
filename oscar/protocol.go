@@ -381,6 +381,7 @@ func ReadBos(sm *SessionManager, sess *Session, fm *FeedbagStore, rw io.ReadWrit
 			if err := NotifyDeparture(sess, sm, fm); err != nil {
 				return err
 			}
+			sm.Remove(sess)
 			return err
 		}
 
