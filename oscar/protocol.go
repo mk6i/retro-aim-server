@@ -494,11 +494,9 @@ type XMessage struct {
 }
 
 func HandleXMessage(sess *Session, w io.Writer, seq *uint32) {
-	go func() {
-		for msg := range sess.MsgChan {
-			if err := writeOutSNAC(nil, msg.flap, msg.snacFrame, msg.snacOut, seq, w); err != nil {
-				panic("error handling handleXMessage: " + err.Error())
-			}
+	for msg := range sess.MsgChan {
+		if err := writeOutSNAC(nil, msg.flap, msg.snacFrame, msg.snacOut, seq, w); err != nil {
+			panic("error handling handleXMessage: " + err.Error())
 		}
-	}()
+	}
 }

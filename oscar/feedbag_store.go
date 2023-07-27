@@ -175,3 +175,28 @@ func (f *FeedbagStore) InterestedUsers(screenName string) ([]string, error) {
 
 	return items, nil
 }
+
+func (f *FeedbagStore) Buddies(screenName string) ([]string, error) {
+	q := `
+		SELECT name
+		FROM feedbag
+		WHERE ScreenName = ? AND classID = 0
+	`
+
+	rows, err := f.db.Query(q, screenName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []string
+	for rows.Next() {
+		var screenName string
+		if err := rows.Scan(&screenName); err != nil {
+			return nil, err
+		}
+		items = append(items, screenName)
+	}
+
+	return items, nil
+}

@@ -483,6 +483,50 @@ func ReceiveClientOnline(sess *Session, sm *SessionManager, fm *FeedbagStore, fl
 		return err
 	}
 
+	return GetOnlineBuddies(w, sess, sm, fm, sequence)
+}
+
+func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *FeedbagStore, sequence *uint32) error {
+	screenNames, err := fm.Buddies(sess.ScreenName)
+	if err != nil {
+		return err
+	}
+
+	for _, buddies := range screenNames {
+		if sm.RetrieveByScreenName(buddies) == nil {
+			continue
+		}
+		flap := &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		}
+
+		snacFrameOut := snacFrame{
+			foodGroup: BUDDY,
+			subGroup:  BuddyArrived,
+			requestID: 12425,
+		}
+		snacPayloadOut := &snacBuddyArrived{
+			screenName:   buddies,
+			warningLevel: 0,
+			TLVPayload: TLVPayload{
+				TLVs: []*TLV{
+					{
+						tType: 0x01,
+						val:   uint16(0x0004),
+					},
+					{
+						tType: 0x06,
+						val:   uint16(0x0000),
+					},
+				},
+			},
+		}
+
+		if err := writeOutSNAC(nil, flap, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -546,22 +590,12 @@ func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error 
 		snacFrameOut := snacFrame{
 			foodGroup: BUDDY,
 			subGroup:  BuddyDeparted,
-			requestID: 12425,
 		}
 		snacPayloadOut := &snacBuddyArrived{
 			screenName:   sess.ScreenName,
 			warningLevel: 0,
 			TLVPayload: TLVPayload{
-				TLVs: []*TLV{
-					{
-						tType: 0x01,
-						val:   uint16(0x0004),
-					},
-					{
-						tType: 0x06,
-						val:   uint16(0x0000),
-					},
-				},
+				TLVs: []*TLV{},
 			},
 		}
 
