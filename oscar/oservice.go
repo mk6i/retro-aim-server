@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"reflect"
-	"sync/atomic"
 	"time"
 )
 
@@ -153,13 +152,15 @@ func WriteOServiceHostOnline(conn net.Conn, sequence *uint32) error {
 		return err
 	}
 
+	godLock.Lock()
+	defer godLock.Unlock()
 	flap := &flapFrame{
 		startMarker:   42,
 		frameType:     2,
 		sequence:      uint16(*sequence),
 		payloadLength: uint16(snacBuf.Len()),
 	}
-	atomic.AddUint32(sequence, 1)
+	*sequence++
 	fmt.Printf("writeOServiceHostOnline FLAP: %+v\n", flap)
 
 	if err := flap.write(conn); err != nil {

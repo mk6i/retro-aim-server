@@ -1,15 +1,20 @@
 package oscar
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"sync"
+)
 
 type Session struct {
 	ID         string
 	ScreenName string
 	MsgChan    chan *XMessage
+	Mutex      sync.RWMutex
 }
 
 type SessionManager struct {
-	store map[string]*Session
+	store    map[string]*Session
+	mapMutex sync.RWMutex
 }
 
 func NewSessionManager() *SessionManager {
@@ -19,11 +24,15 @@ func NewSessionManager() *SessionManager {
 }
 
 func (s *SessionManager) Retrieve(ID string) (*Session, bool) {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
 	sess, found := s.store[ID]
 	return sess, found
 }
 
 func (s *SessionManager) RetrieveByScreenName(screenName string) *Session {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
 		if screenName == sess.ScreenName {
 			return sess
@@ -33,6 +42,8 @@ func (s *SessionManager) RetrieveByScreenName(screenName string) *Session {
 }
 
 func (s *SessionManager) RetrieveByScreenNames(screenNames []string) []*Session {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
 	var ret []*Session
 	for _, sn := range screenNames {
 		for _, sess := range s.store {
@@ -58,5 +69,7 @@ func (s *SessionManager) NewSession() (*Session, error) {
 }
 
 func (s *SessionManager) Remove(sess *Session) {
+	s.mapMutex.Lock()
+	defer s.mapMutex.Unlock()
 	delete(s.store, sess.ID)
 }

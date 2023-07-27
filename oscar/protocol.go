@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"sync/atomic"
+	"sync"
 )
 
 type flapFrame struct {
@@ -297,6 +297,9 @@ func (f *flapSignonFrame) read(r io.Reader) error {
 
 func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (*flapSignonFrame, error) {
 	// send
+	godLock.Lock()
+	defer godLock.Unlock()
+
 	flap := &flapSignonFrame{
 		flapFrame: flapFrame{
 			startMarker:   42,
@@ -307,7 +310,7 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (*flapSignonF
 		flapVersion: 1,
 	}
 
-	atomic.AddUint32(sequence, 1)
+	*sequence++
 
 	if err := flap.write(rw); err != nil {
 		return nil, err
@@ -451,8 +454,9 @@ func ReadBos(sm *SessionManager, sess *Session, fm *FeedbagStore, rw io.ReadWrit
 	}
 }
 
-func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint32, w io.Writer) error {
+var godLock sync.Mutex
 
+func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint32, w io.Writer) error {
 	if originSnac != nil {
 		snacFrame.requestID = originSnac.requestID
 	}
@@ -465,8 +469,10 @@ func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, s
 		return err
 	}
 
+	godLock.Lock()
+	defer godLock.Unlock()
 	flap.sequence = uint16(*sequence)
-	atomic.AddUint32(sequence, 1)
+	*sequence++
 	flap.payloadLength = uint16(snacBuf.Len())
 
 	fmt.Printf(" write FLAP: %+v\n", flap)
