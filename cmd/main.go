@@ -22,10 +22,10 @@ func main() {
 	}
 
 	go listenBOS(sm, fm)
-	go listenStats()
-	go listenAlert(sm, fm)
-	go listenOdir()
-	go listenBart()
+	//go listenStats()
+	//go listenAlert(sm, fm)
+	//go listenOdir()
+	//go listenBart()
 
 	//todo implement CHATNAV and ALERT
 
@@ -81,7 +81,6 @@ func listenBOS(sm *oscar.SessionManager, fm *oscar.FeedbagStore) {
 		// Accept incoming connections
 		conn, err := listener.Accept()
 		if err != nil {
-
 			log.Println(err)
 			continue
 		}
