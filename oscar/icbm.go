@@ -72,7 +72,7 @@ func routeICBM(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFr
 	case ICBMNotifyReply:
 		panic("not implemented")
 	case ICBMClientEvent:
-		panic("not implemented")
+		return SendAndReceiveClientEvent(sm, fm, sess, flap, snac, r, w, sequence)
 	case ICBMSinReply:
 		panic("not implemented")
 	}
@@ -222,9 +222,6 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		return err
 	}
 
-	//SendIM(sm, sess, snacPayloadIn.screenName, "hey there")
-	//
-
 	session := sm.RetrieveByScreenName(snacPayloadIn.screenName)
 
 	messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x02)
@@ -250,6 +247,10 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 			warningLevel: 0,
 			TLVPayload: TLVPayload{
 				TLVs: []*TLV{
+					{
+						tType: 0x0B,
+						val:   []byte{},
+					},
 					{
 						tType: 0x02,
 						val:   messagePayload,
@@ -313,7 +314,7 @@ func (f *snacClientIM) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, f.warningLevel); err != nil {
 		return err
 	}
-	// attrs.num
+	// user info TLV, size is 0
 	if err := binary.Write(w, binary.BigEndian, uint16(0)); err != nil {
 		return err
 	}
@@ -454,5 +455,76 @@ func ReceiveClientErr(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer
 	}
 
 	fmt.Printf("ReceiveClientErr read SNAC: %+v\n", snacPayload)
+	return nil
+}
+
+type sncClientEvent struct {
+	cookie     [8]byte
+	channelID  uint16
+	screenName string
+	event      uint16
+}
+
+func (s *sncClientEvent) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &s.cookie); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.channelID); err != nil {
+		return err
+	}
+
+	var l uint8
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		return err
+	}
+	buf := make([]byte, l)
+	if _, err := r.Read(buf); err != nil {
+		return err
+	}
+	s.screenName = string(buf)
+
+	return binary.Read(r, binary.BigEndian, &s.event)
+}
+
+func (s *sncClientEvent) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, s.cookie); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, s.channelID); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint8(len(s.screenName))); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, []byte(s.screenName)); err != nil {
+		return err
+	}
+	return binary.Write(w, binary.BigEndian, s.event)
+}
+
+func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	fmt.Printf("SendAndReceiveChannelMsgTohost read SNAC frame: %+v\n", snac)
+
+	snacPayloadIn := &sncClientEvent{}
+	if err := snacPayloadIn.read(r); err != nil {
+		return err
+	}
+
+	session := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+
+	snacPayloadIn.screenName = sess.ScreenName
+
+	session.MsgChan <- &XMessage{
+		flap: &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		},
+		snacFrame: snacFrame{
+			foodGroup: ICBM,
+			subGroup:  ICBMClientEvent,
+		},
+		snacOut: snacPayloadIn,
+	}
+
 	return nil
 }
