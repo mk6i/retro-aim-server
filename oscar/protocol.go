@@ -406,7 +406,7 @@ func ReadBos(sm *SessionManager, sess *Session, fm *FeedbagStore, rw io.ReadWrit
 				return err
 			}
 		case LOCATE:
-			if err := routeLocate(flap, snac, buf, rw, sequence); err != nil {
+			if err := routeLocate(sess, sm, fm, flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
 		case BUDDY:

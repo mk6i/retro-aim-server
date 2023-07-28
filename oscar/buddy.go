@@ -125,37 +125,6 @@ func (f *snacBuddyArrived) write(w io.Writer) error {
 	return f.TLVPayload.write(w)
 }
 
-func SetBuddyArrived(w io.Writer, sequence *uint32, screenName string) error {
-	flap := &flapFrame{
-		startMarker: 42,
-		frameType:   2,
-	}
-
-	snacFrameOut := snacFrame{
-		foodGroup: BUDDY,
-		subGroup:  BuddyArrived,
-		requestID: 12425,
-	}
-	snacPayloadOut := &snacBuddyArrived{
-		screenName:   screenName,
-		warningLevel: 0,
-		TLVPayload: TLVPayload{
-			TLVs: []*TLV{
-				{
-					tType: 0x01,
-					val:   uint16(0x0004),
-				},
-				{
-					tType: 0x06,
-					val:   uint16(0x0000),
-				},
-			},
-		},
-	}
-
-	return writeOutSNAC(nil, flap, snacFrameOut, snacPayloadOut, sequence, w)
-}
-
 type snacBuddyDeparted struct {
 	screenName   string
 	warningLevel uint16
