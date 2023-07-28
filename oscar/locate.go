@@ -72,7 +72,7 @@ func routeLocate(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flap
 	case LocateFindListReply:
 		panic("not implemented")
 	case LocateUserInfoQuery2:
-		panic("not implemented")
+		return SendAndReceiveUserInfoQuery2(flap, snac, r, w, sequence)
 	}
 
 	return nil
@@ -210,4 +210,99 @@ func ReceiveLocateGetDirInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io
 	fmt.Printf("ReceiveLocateGetDirInfo read SNAC: %+v\n", snacPayload)
 
 	return nil
+}
+
+type snacUserInfoQuery2 struct {
+	type2      uint32
+	screenName string
+}
+
+func (s *snacUserInfoQuery2) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &s.type2); err != nil {
+		return err
+	}
+	var l uint8
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		return err
+	}
+	buf := make([]byte, l)
+	if _, err := r.Read(buf); err != nil {
+		return err
+	}
+	s.screenName = string(buf)
+	return nil
+}
+
+type snacUserInfoReply struct {
+	screenName    string
+	warningLevel  uint16
+	userInfo      TLVPayload
+	clientProfile TLVPayload
+	awayMessage   TLVPayload
+}
+
+func (f *snacUserInfoReply) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, []byte(f.screenName)); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, f.warningLevel); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint16(len(f.userInfo.TLVs))); err != nil {
+		return err
+	}
+	if err := f.userInfo.write(w); err != nil {
+		return err
+	}
+	if err := f.clientProfile.write(w); err != nil {
+		return err
+	}
+	return f.awayMessage.write(w)
+}
+
+func SendAndReceiveUserInfoQuery2(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	fmt.Printf("SendAndReceiveUserInfoQuery2 read SNAC frame: %+v\n", snac)
+
+	snacPayloadIn := &snacUserInfoQuery2{}
+	if err := snacPayloadIn.read(r); err != nil {
+		return err
+	}
+
+	snacFrameOut := snacFrame{
+		foodGroup: LOCATE,
+		subGroup:  LocateUserInfoReply,
+	}
+	snacPayloadOut := &snacUserInfoReply{
+		screenName:   snacPayloadIn.screenName,
+		warningLevel: 0,
+		clientProfile: TLVPayload{
+			TLVs: []*TLV{
+				{
+					tType: 0x01,
+					val:   `text/aolrtf; charset="us-ascii"`,
+				},
+				{
+					tType: 0x02,
+					val:   "This is my profile!",
+				},
+			},
+		},
+		awayMessage: TLVPayload{
+			TLVs: []*TLV{
+				{
+					tType: 0x03,
+					val:   `text/aolrtf; charset="us-ascii"`,
+				},
+				{
+					tType: 0x04,
+					val:   "This is my away message!",
+				},
+			},
+		},
+	}
+
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
