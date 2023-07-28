@@ -118,3 +118,76 @@ func TestLastModifiedNotEmpty(t *testing.T) {
 		t.Fatalf("get error from last modified: %s", err.Error())
 	}
 }
+
+func TestProfile(t *testing.T) {
+
+	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const screenName = "sn2day"
+
+	defer func() {
+		err := os.Remove(testFile)
+		if err != nil {
+			t.Error("unable to clean up test file")
+		}
+	}()
+
+	f, err := NewFeedbagStore(testFile)
+	if err != nil {
+		t.Fatalf("failed to create new feedbag store: %s", err.Error())
+	}
+
+	newProfile := "here is my profile"
+	if err := f.UpsertProfile(screenName, newProfile); err != nil {
+		t.Fatalf("failed to create new profile: %s", err.Error())
+	}
+
+	profile, err := f.RetrieveProfile(screenName)
+	if err != nil {
+		t.Fatalf("failed to retrieve profile: %s", err.Error())
+	}
+
+	if !reflect.DeepEqual(newProfile, profile) {
+		t.Fatalf("profiles did not match:\n expected: %v\n actual: %v", newProfile, profile)
+	}
+
+	updatedProfile := "here is my profile [updated]"
+	if err := f.UpsertProfile(screenName, updatedProfile); err != nil {
+		t.Fatalf("failed to create new profile: %s", err.Error())
+	}
+
+	profile, err = f.RetrieveProfile(screenName)
+	if err != nil {
+		t.Fatalf("failed to retrieve profile: %s", err.Error())
+	}
+
+	if !reflect.DeepEqual(updatedProfile, profile) {
+		t.Fatalf("updated profiles did not match:\n expected: %v\n actual: %v", newProfile, profile)
+	}
+}
+
+func TestProfileNonExistent(t *testing.T) {
+
+	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const screenName = "sn2day"
+
+	defer func() {
+		err := os.Remove(testFile)
+		if err != nil {
+			t.Error("unable to clean up test file")
+		}
+	}()
+
+	f, err := NewFeedbagStore(testFile)
+	if err != nil {
+		t.Fatalf("failed to create new feedbag store: %s", err.Error())
+	}
+
+	prof, err := f.RetrieveProfile(screenName)
+	if err != nil {
+		t.Fatalf("failed to retrieve profile: %s", err.Error())
+	}
+
+	if prof != "" {
+		t.Fatalf("expected empty profile")
+	}
+}

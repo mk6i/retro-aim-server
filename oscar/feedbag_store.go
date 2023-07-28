@@ -26,6 +26,11 @@ var feedbagDDL = `
 		lastModified INTEGER,
 		UNIQUE (ScreenName, groupID, itemID)
 	);
+	CREATE TABLE IF NOT EXISTS profile
+	(
+		ScreenName VARCHAR(16) PRIMARY KEY,
+		body  TEXT
+	);
 `
 
 func NewFeedbagStore(dbFile string) (*FeedbagStore, error) {
@@ -199,4 +204,29 @@ func (f *FeedbagStore) Buddies(screenName string) ([]string, error) {
 	}
 
 	return items, nil
+}
+
+func (f *FeedbagStore) RetrieveProfile(screenName string) (string, error) {
+	q := `
+		SELECT body
+		FROM profile
+		WHERE ScreenName = ?
+	`
+	var profile string
+	err := f.db.QueryRow(q, screenName).Scan(&profile)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return profile, err
+}
+
+func (f *FeedbagStore) UpsertProfile(screenName string, body string) error {
+	sql := `
+		INSERT INTO profile (ScreenName, body)
+		VALUES (?, ?)
+		ON CONFLICT (ScreenName)
+			DO UPDATE SET body = excluded.body
+	`
+	_, err := f.db.Exec(sql, screenName, body)
+	return err
 }
