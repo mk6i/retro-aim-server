@@ -524,7 +524,7 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 				TLVs: []*TLV{
 					{
 						tType: 0x01,
-						val:   uint16(0x0004),
+						val:   uint16(0x0010),
 					},
 					{
 						tType: 0x06,
@@ -566,7 +566,51 @@ func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 				TLVs: []*TLV{
 					{
 						tType: 0x01,
-						val:   uint16(0x0004),
+						val:   uint16(0x0010),
+					},
+					{
+						tType: 0x06,
+						val:   uint16(0x0000),
+					},
+				},
+			},
+		}
+
+		adjSess.MsgChan <- &XMessage{
+			flap:      flap,
+			snacFrame: snacFrameOut,
+			snacOut:   snacPayloadOut,
+		}
+	}
+	return nil
+}
+
+func NotifyAway(sess *Session, sm *SessionManager, fm *FeedbagStore, awayMsg string) error {
+	screenNames, err := fm.InterestedUsers(sess.ScreenName)
+	if err != nil {
+		return err
+	}
+	sessions := sm.RetrieveByScreenNames(screenNames)
+
+	for _, adjSess := range sessions {
+		flap := &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		}
+
+		snacFrameOut := snacFrame{
+			foodGroup: BUDDY,
+			subGroup:  BuddyArrived,
+			requestID: 12425,
+		}
+		snacPayloadOut := &snacBuddyArrived{
+			screenName:   sess.ScreenName,
+			warningLevel: 0,
+			TLVPayload: TLVPayload{
+				TLVs: []*TLV{
+					{
+						tType: 0x01,
+						val:   uint16(0x0010 | 0x0020),
 					},
 					{
 						tType: 0x06,

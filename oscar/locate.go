@@ -31,14 +31,14 @@ const (
 	LocateUserInfoQuery2              = 0x0015
 )
 
-func routeLocate(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeLocate(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case LocateErr:
 		panic("not implemented")
 	case LocateRightsQuery:
 		return SendAndReceiveLocateRights(flap, snac, r, w, sequence)
 	case LocateSetInfo:
-		return ReceiveSetInfo(flap, snac, r, w, sequence)
+		return ReceiveSetInfo(sess, sm, fm, flap, snac, r, w, sequence)
 	case LocateUserInfoQuery:
 		panic("not implemented")
 	case LocateUserInfoReply:
@@ -123,25 +123,55 @@ func SendAndReceiveLocateRights(flap *flapFrame, snac *snacFrame, r io.Reader, w
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveSetInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+var (
+	LocateTlvTagsInfoSigMime         = uint16(0x01)
+	LocateTlvTagsInfoSigData         = uint16(0x02)
+	LocateTlvTagsInfoUnavailableMime = uint16(0x03)
+	LocateTlvTagsInfoUnavailableData = uint16(0x04)
+	LocateTlvTagsInfoCapabilities    = uint16(0x05)
+	LocateTlvTagsInfoCerts           = uint16(0x06)
+	LocateTlvTagsInfoSigTime         = uint16(0x0A)
+	LocateTlvTagsInfoUnavailableTime = uint16(0x0B)
+	LocateTlvTagsInfoSupportHostSig  = uint16(0x0C)
+	LocateTlvTagsInfoHtmlInfoData    = uint16(0x0E)
+	LocateTlvTagsInfoHtmlInfoType    = uint16(0x0D)
+)
+
+func ReceiveSetInfo(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveSetInfo read SNAC frame: %+v\n", snac)
 
 	snacPayload := &TLVPayload{}
 	lookup := map[uint16]reflect.Kind{
-		0x01: reflect.String,
-		0x02: reflect.Slice,
-		0x03: reflect.Slice,
-		0x04: reflect.Slice,
-		0x05: reflect.Slice,
-		0x06: reflect.Slice,
+		LocateTlvTagsInfoSigMime:         reflect.String,
+		LocateTlvTagsInfoSigData:         reflect.String,
+		LocateTlvTagsInfoUnavailableMime: reflect.String,
+		LocateTlvTagsInfoUnavailableData: reflect.String,
+		LocateTlvTagsInfoCapabilities:    reflect.Slice,
+		LocateTlvTagsInfoCerts:           reflect.Uint32,
+		LocateTlvTagsInfoSigTime:         reflect.Uint32,
+		LocateTlvTagsInfoUnavailableTime: reflect.Uint32,
+		LocateTlvTagsInfoSupportHostSig:  reflect.Uint8,
+		LocateTlvTagsInfoHtmlInfoType:    reflect.String,
+		LocateTlvTagsInfoHtmlInfoData:    reflect.String,
 	}
 	if err := snacPayload.read(r, lookup); err != nil {
 		return err
 	}
 
-	for _, tlv := range snacPayload.TLVs {
-		fmt.Printf("set info: %v\n", tlv.val)
+	// broadcast away message change to buddies
+	if awayMsg, hasAwayMsg := snacPayload.getString(LocateTlvTagsInfoUnavailableData); hasAwayMsg {
+		if awayMsg != "" {
+			if err := NotifyAway(sess, sm, fm, awayMsg); err != nil {
+				return err
+			}
+		} else {
+			// clear array message
+			if err := NotifyArrival(sess, sm, fm); err != nil {
+				return err
+			}
+		}
 	}
+
 	fmt.Printf("ReceiveSetInfo read SNAC: %+v\n", snacPayload)
 
 	return nil

@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 )
 
 const testFile string = "/Users/mike/dev/goaim/aim.db"
@@ -91,26 +90,26 @@ func listenBOS(sm *oscar.SessionManager, fm *oscar.FeedbagStore) {
 }
 
 func sendIM(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn net.Conn, ch chan string, seq *uint32) {
-	for msg := range ch {
-		fmt.Printf("sending im... %s\n", msg)
-		vals := strings.Split(msg, ":")
-		switch vals[0] {
-		case "online":
-			if err := oscar.SetBuddyArrived(conn, seq, vals[1]); err != nil {
-				panic(err.Error())
-			}
-		case "offline":
-			if err := oscar.SetBuddyDeparted(conn, seq, vals[1]); err != nil {
-				panic(err.Error())
-			}
-			fmt.Println("Set buddy departed...")
-		case "im":
-			if err := oscar.SendIM(sm, nil, vals[1], vals[2]); err != nil {
-				panic(err.Error())
-			}
-			fmt.Println("Set buddy departed...")
-		}
-	}
+	//for msg := range ch {
+	//	fmt.Printf("sending im... %s\n", msg)
+	//	vals := strings.Split(msg, ":")
+	//	switch vals[0] {
+	//	case "online":
+	//		if err := oscar.SetBuddyArrived(conn, seq, vals[1]); err != nil {
+	//			panic(err.Error())
+	//		}
+	//	case "offline":
+	//		if err := oscar.SetBuddyDeparted(conn, seq, vals[1]); err != nil {
+	//			panic(err.Error())
+	//		}
+	//		fmt.Println("Set buddy departed...")
+	//	case "im":
+	//		if err := oscar.SendIM(sm, nil, vals[1], vals[2]); err != nil {
+	//			panic(err.Error())
+	//		}
+	//		fmt.Println("Set buddy departed...")
+	//	}
+	//}
 }
 
 func listenStats() {
