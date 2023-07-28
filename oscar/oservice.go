@@ -119,6 +119,17 @@ func routeOService(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *fl
 	return nil
 }
 
+type snacOServiceErr struct {
+	code uint16
+}
+
+func (s *snacOServiceErr) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, s.code); err != nil {
+		return err
+	}
+	return nil
+}
+
 type snac01_03 struct {
 	snacFrame
 	foodGroups []uint16
@@ -685,29 +696,8 @@ func ReceiveAndSendServiceRequest(sess *Session, flap *flapFrame, snac *snacFram
 		foodGroup: OSERVICE,
 		subGroup:  OServiceServiceResponse,
 	}
-	snacPayloadOut := &TLVPayload{
-		TLVs: []*TLV{
-			{
-				tType: OserviceTlvTagsReconnectHere,
-				val:   host,
-			},
-			{
-				tType: OserviceTlvTagsLoginCookie,
-				val:   sess.ID,
-			},
-			{
-				tType: OserviceTlvTagsGroupId,
-				val:   snacPayload.foodGroup,
-			},
-			{
-				tType: OserviceTlvTagsSslCertname,
-				val:   "",
-			},
-			{
-				tType: OserviceTlvTagsSslState,
-				val:   uint8(0x00),
-			},
-		},
+	snacPayloadOut := &snacOServiceErr{
+		code: 0x06,
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)

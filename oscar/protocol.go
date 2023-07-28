@@ -488,6 +488,8 @@ func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, s
 }
 
 type XMessage struct {
+	// todo: this should only take values, not pointers, in order to avoid race
+	// conditions
 	flap      *flapFrame
 	snacFrame snacFrame
 	snacOut   snacWriter
