@@ -483,7 +483,12 @@ func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, s
 
 	fmt.Printf(" write SNAC: %+v\n", snacOut)
 
-	_, err := w.Write(snacBuf.Bytes())
+	expectLen := snacBuf.Len()
+	c, err := w.Write(snacBuf.Bytes())
+
+	if c != expectLen {
+		panic("did not write the expected # of bytes")
+	}
 	return err
 }
 
