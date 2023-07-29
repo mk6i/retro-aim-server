@@ -222,7 +222,10 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		return err
 	}
 
-	session := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+	session, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+	if err != nil {
+		return err
+	}
 
 	messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x02)
 	if !found {
@@ -380,7 +383,10 @@ func (m *messageData) write(w io.Writer) error {
 
 func SendIM(sm *SessionManager, sess *Session, destScreenName string, msg string) error {
 
-	session := sm.RetrieveByScreenName(destScreenName)
+	session, err := sm.RetrieveByScreenName(destScreenName)
+	if err != nil {
+		return err
+	}
 
 	session.MsgChan <- &XMessage{
 		flap: &flapFrame{
@@ -510,7 +516,10 @@ func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 		return err
 	}
 
-	session := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+	session, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+	if err != nil {
+		return err
+	}
 
 	snacPayloadIn.screenName = sess.ScreenName
 

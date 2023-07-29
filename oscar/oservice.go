@@ -3,6 +3,7 @@ package oscar
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -504,9 +505,14 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 	}
 
 	for _, buddies := range screenNames {
-		if sm.RetrieveByScreenName(buddies) == nil {
-			continue
+		if _, err := sm.RetrieveByScreenName(buddies); err != nil {
+			if errors.Is(err, errSessNotFound) {
+				// buddy isn't online
+				continue
+			}
+			return err
 		}
+
 		flap := &flapFrame{
 			startMarker: 42,
 			frameType:   2,
