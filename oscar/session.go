@@ -1,9 +1,13 @@
 package oscar
 
 import (
+	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"sync"
 )
+
+var errSessNotFound = errors.New("session was not found")
 
 type Session struct {
 	ID         string
@@ -30,15 +34,15 @@ func (s *SessionManager) Retrieve(ID string) (*Session, bool) {
 	return sess, found
 }
 
-func (s *SessionManager) RetrieveByScreenName(screenName string) *Session {
+func (s *SessionManager) RetrieveByScreenName(screenName string) (*Session, error) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
 		if screenName == sess.ScreenName {
-			return sess
+			return sess, nil
 		}
 	}
-	return nil
+	return nil, fmt.Errorf("%w: %s", errSessNotFound, screenName)
 }
 
 func (s *SessionManager) RetrieveByScreenNames(screenNames []string) []*Session {
