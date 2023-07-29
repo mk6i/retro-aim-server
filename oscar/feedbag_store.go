@@ -48,6 +48,19 @@ type FeedbagStore struct {
 	db *sql.DB
 }
 
+func (f *FeedbagStore) Delete(screenName string, items []*feedbagItem) error {
+	// todo add transaction
+	q := `DELETE FROM feedbag WHERE ScreenName = ? AND itemID = ?`
+
+	for _, item := range items {
+		if _, err := f.db.Exec(q, screenName, item.itemID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (f *FeedbagStore) Retrieve(screenName string) ([]*feedbagItem, error) {
 	q := `
 		SELECT 

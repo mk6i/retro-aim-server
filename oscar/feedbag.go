@@ -97,7 +97,7 @@ func routeFeedbag(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFr
 	case FeedbagUpdateItem:
 		return ReceiveUpdateItem(sess, fm, flap, snac, r, w, sequence)
 	case FeedbagDeleteItem:
-		panic("not implemented")
+		return ReceiveDeleteItem(sess, fm, flap, snac, r, w, sequence)
 	case FeedbagInsertClass:
 		panic("not implemented")
 	case FeedbagUpdateClass:
@@ -536,6 +536,42 @@ func ReceiveUpdateItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *s
 	for _, item := range items {
 		snacPayloadOut.results = append(snacPayloadOut.results, 0x0000) // success by default
 		fmt.Printf("ReceiveUpdateItem read SNAC feedbag item: %+v\n", item)
+	}
+
+	snacFrameOut := snacFrame{
+		foodGroup: FEEDBAG,
+		subGroup:  FeedbagStatus,
+	}
+
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+func ReceiveDeleteItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
+
+	var items []*feedbagItem
+
+	for {
+		item := &feedbagItem{}
+		if err := item.read(r); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		fmt.Printf("\titem: %+v\n", item)
+		items = append(items, item)
+	}
+
+	if err := fm.Delete(sess.ScreenName, items); err != nil {
+		return err
+	}
+
+	snacPayloadOut := &snacFeedbagStatusReply{}
+
+	for _, item := range items {
+		snacPayloadOut.results = append(snacPayloadOut.results, 0x0000) // success by default
+		fmt.Printf("ReceiveDeleteItem read SNAC feedbag item: %+v\n", item)
 	}
 
 	snacFrameOut := snacFrame{
