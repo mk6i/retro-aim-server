@@ -56,6 +56,8 @@ func (s *SessionManager) RetrieveByScreenNames(screenNames []string) []*Session 
 }
 
 func (s *SessionManager) NewSession() (*Session, error) {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
 	id, err := uuid.NewUUID()
 	if err != nil {
 		return nil, err
