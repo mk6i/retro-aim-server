@@ -53,6 +53,18 @@ const (
 	ErrorTagsErrorInfoData  = 0x2A
 )
 
+type snacError struct {
+	code uint16
+	TLVPayload
+}
+
+func (s *snacError) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, s.code); err != nil {
+		return err
+	}
+	return s.TLVPayload.write(w)
+}
+
 type flapFrame struct {
 	startMarker   uint8
 	frameType     uint8

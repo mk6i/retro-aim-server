@@ -276,6 +276,16 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 
 	profile, err := fm.RetrieveProfile(snacPayloadIn.screenName)
 	if err != nil {
+		if err == errUserNotExist {
+			snacFrameOut := snacFrame{
+				foodGroup: LOCATE,
+				subGroup:  LocateErr,
+			}
+			snacPayloadOut := &snacError{
+				code: ErrorCodeNotLoggedOn,
+			}
+			return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+		}
 		return err
 	}
 
