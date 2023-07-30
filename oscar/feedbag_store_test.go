@@ -248,12 +248,8 @@ func TestProfileNonExistent(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
-	prof, err := f.RetrieveProfile(screenName)
-	if err != nil {
-		t.Fatalf("failed to retrieve profile: %s", err.Error())
-	}
-
-	if prof != "" {
-		t.Fatalf("expected empty profile")
+	_, err = f.RetrieveProfile(screenName)
+	if err != errUserNotExist {
+		t.Fatalf("failed to get error on non-existing profile: %v", err)
 	}
 }

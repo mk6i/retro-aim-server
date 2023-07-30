@@ -80,18 +80,6 @@ func routeICBM(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFr
 	return nil
 }
 
-type snacError struct {
-	code uint16
-	TLVPayload
-}
-
-func (s *snacError) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.code); err != nil {
-		return err
-	}
-	return s.TLVPayload.write(w)
-}
-
 type snacParameterRequest struct {
 	channel              uint16
 	ICBMFlags            uint32

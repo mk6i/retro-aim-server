@@ -3,12 +3,15 @@ package oscar
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	_ "github.com/mattn/go-sqlite3"
 	"reflect"
 	"time"
 )
 
 const file string = "/Users/mike/dev/goaim/aim.db"
+
+var errUserNotExist = errors.New("user does not exist")
 
 var feedbagDDL = `
 	CREATE TABLE IF NOT EXISTS user
@@ -228,7 +231,7 @@ func (f *FeedbagStore) RetrieveProfile(screenName string) (string, error) {
 	var profile string
 	err := f.db.QueryRow(q, screenName).Scan(&profile)
 	if err == sql.ErrNoRows {
-		return "", nil
+		return "", errUserNotExist
 	}
 	return profile, err
 }
