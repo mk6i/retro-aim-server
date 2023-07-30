@@ -10,6 +10,49 @@ import (
 	"sync"
 )
 
+const (
+	ErrorCodeInvalidSnac          = 0x01
+	ErrorCodeRateToHost           = 0x02
+	ErrorCodeRateToClient         = 0x03
+	ErrorCodeNotLoggedOn          = 0x04
+	ErrorCodeServiceUnavailable   = 0x05
+	ErrorCodeServiceNotDefined    = 0x06
+	ErrorCodeObsoleteSnac         = 0x07
+	ErrorCodeNotSupportedByHost   = 0x08
+	ErrorCodeNotSupportedByClient = 0x09
+	ErrorCodeRefusedByClient      = 0x0A
+	ErrorCodeReplyTooBig          = 0x0B
+	ErrorCodeResponsesLost        = 0x0C
+	ErrorCodeRequestDenied        = 0x0D
+	ErrorCodeBustedSnacPayload    = 0x0E
+	ErrorCodeInsufficientRights   = 0x0F
+	ErrorCodeInLocalPermitDeny    = 0x10
+	ErrorCodeTooEvilSender        = 0x11
+	ErrorCodeTooEvilReceiver      = 0x12
+	ErrorCodeUserTempUnavail      = 0x13
+	ErrorCodeNoMatch              = 0x14
+	ErrorCodeListOverflow         = 0x15
+	ErrorCodeRequestAmbigous      = 0x16
+	ErrorCodeQueueFull            = 0x17
+	ErrorCodeNotWhileOnAol        = 0x18
+	ErrorCodeQueryFail            = 0x19
+	ErrorCodeTimeout              = 0x1A
+	ErrorCodeErrorText            = 0x1B
+	ErrorCodeGeneralFailure       = 0x1C
+	ErrorCodeProgress             = 0x1D
+	ErrorCodeInFreeArea           = 0x1E
+	ErrorCodeRestrictedByPc       = 0x1F
+	ErrorCodeRemoteRestrictedByPc = 0x20
+)
+
+const (
+	ErrorTagsFailUrl        = 0x04
+	ErrorTagsErrorSubcode   = 0x08
+	ErrorTagsErrorText      = 0x1B
+	ErrorTagsErrorInfoClsid = 0x29
+	ErrorTagsErrorInfoData  = 0x2A
+)
+
 type flapFrame struct {
 	startMarker   uint8
 	frameType     uint8
