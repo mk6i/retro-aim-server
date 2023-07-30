@@ -737,11 +737,12 @@ func ReceiveAndSendServiceRequest(sess *Session, flap *flapFrame, snac *snacFram
 
 	fmt.Printf("receiveAndSendServiceRequest read SNAC body: %+v\n", snacPayload)
 
-	host, ok := ServiceHosts[snacPayload.foodGroup]
-	if !ok {
-		return fmt.Errorf("unable to find hostname for %s %d", host, snacPayload.foodGroup)
-	}
+	//host, ok := ServiceHosts[snacPayload.foodGroup]
+	//if !ok {
+	//	return fmt.Errorf("unable to find hostname for %s %d", host, snacPayload.foodGroup)
+	//}
 
+	// just say that all the services are offline
 	snacFrameOut := snacFrame{
 		foodGroup: OSERVICE,
 		subGroup:  OServiceServiceResponse,
