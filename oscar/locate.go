@@ -295,7 +295,7 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 	}
 	snacPayloadOut := &snacUserInfoReply{
 		screenName:   snacPayloadIn.screenName,
-		warningLevel: 0,
+		warningLevel: sess.GetWarning(),
 		clientProfile: TLVPayload{
 			TLVs: []*TLV{
 				{

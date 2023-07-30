@@ -48,9 +48,7 @@ func routeICBM(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFr
 	case ICBMChannelMsgToclient:
 		panic("not implemented")
 	case ICBMEvilRequest:
-		panic("not implemented")
-	case ICBMEvilReply:
-		panic("not implemented")
+		return SendAndReceiveEvilRequest(sm, fm, sess, flap, snac, r, w, sequence)
 	case ICBMMissedCalls:
 		panic("not implemented")
 	case ICBMClientErr:
@@ -257,7 +255,7 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 			cookie:       snacPayloadIn.cookie,
 			channelID:    snacPayloadIn.channelID,
 			screenName:   sess.ScreenName,
-			warningLevel: 0,
+			warningLevel: sess.GetWarning(),
 			TLVPayload: TLVPayload{
 				TLVs: []*TLV{
 					{
@@ -546,4 +544,109 @@ func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 	}
 
 	return nil
+}
+
+type snacEvilRequest struct {
+	sendAs     uint16
+	screenName string
+}
+
+func (s *snacEvilRequest) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &s.sendAs); err != nil {
+		return err
+	}
+
+	var l uint8
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		return err
+	}
+	buf := make([]byte, l)
+	if _, err := r.Read(buf); err != nil {
+		return err
+	}
+	s.screenName = string(buf)
+
+	return nil
+}
+
+func (s *snacEvilRequest) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, s.sendAs); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint8(len(s.screenName))); err != nil {
+		return err
+	}
+	return binary.Write(w, binary.BigEndian, []byte(s.screenName))
+}
+
+type snacEvilResponse struct {
+	evilDeltaApplied uint16
+	updatedEvilValue uint16
+}
+
+func (s *snacEvilResponse) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, s.evilDeltaApplied); err != nil {
+		return err
+	}
+	return binary.Write(w, binary.BigEndian, s.updatedEvilValue)
+}
+
+const (
+	evilDelta     = uint16(100)
+	evilDeltaAnon = uint16(30)
+)
+
+func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	fmt.Printf("SendAndReceiveEvilRequest read SNAC frame: %+v\n", snac)
+
+	snacPayloadIn := &snacEvilRequest{}
+	if err := snacPayloadIn.read(r); err != nil {
+		return err
+	}
+
+	recipSess, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+	if err != nil {
+		return err
+	}
+
+	increase := evilDelta
+	if snacPayloadIn.sendAs == 1 {
+		increase = evilDeltaAnon
+	}
+	recipSess.IncreaseWarning(increase)
+
+	snacFrameOut := snacFrame{
+		foodGroup: ICBM,
+		subGroup:  ICBMEvilReply,
+	}
+	snacPayloadOut := &snacEvilResponse{
+		evilDeltaApplied: increase,
+		updatedEvilValue: recipSess.GetWarning(),
+	}
+
+	if err := writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
+		return err
+	}
+
+	mm := &XMessage{
+		flap: &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		},
+		snacFrame: snacFrame{
+			foodGroup: OSERVICE,
+			subGroup:  OServiceEvilNotification,
+		},
+		snacOut: &snacEvilNotification{
+			newEvil: recipSess.GetWarning(),
+		},
+	}
+
+	if snacPayloadIn.sendAs == 0 {
+		mm.snacOut.(*snacEvilNotification).screenName = snacPayloadIn.screenName
+	}
+
+	recipSess.MsgChan <- mm
+
+	return NotifyArrival(recipSess, sm, fm)
 }

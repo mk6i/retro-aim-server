@@ -146,3 +146,125 @@ func (f *snacBuddyDeparted) write(w io.Writer) error {
 	}
 	return f.TLVPayload.write(w)
 }
+
+func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
+	screenNames, err := fm.InterestedUsers(sess.ScreenName)
+	if err != nil {
+		return err
+	}
+	sessions := sm.RetrieveByScreenNames(screenNames)
+
+	for _, adjSess := range sessions {
+		flap := &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		}
+
+		snacFrameOut := snacFrame{
+			foodGroup: BUDDY,
+			subGroup:  BuddyArrived,
+			requestID: 12425,
+		}
+		snacPayloadOut := &snacBuddyArrived{
+			screenName:   sess.ScreenName,
+			warningLevel: sess.GetWarning(),
+			TLVPayload: TLVPayload{
+				TLVs: []*TLV{
+					{
+						tType: 0x01,
+						val:   uint16(0x0010),
+					},
+					{
+						tType: 0x06,
+						val:   uint16(0x0000),
+					},
+				},
+			},
+		}
+
+		adjSess.MsgChan <- &XMessage{
+			flap:      flap,
+			snacFrame: snacFrameOut,
+			snacOut:   snacPayloadOut,
+		}
+	}
+	return nil
+}
+
+func NotifyAway(sess *Session, sm *SessionManager, fm *FeedbagStore, awayMsg string) error {
+	screenNames, err := fm.InterestedUsers(sess.ScreenName)
+	if err != nil {
+		return err
+	}
+	sessions := sm.RetrieveByScreenNames(screenNames)
+
+	for _, adjSess := range sessions {
+		flap := &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		}
+
+		snacFrameOut := snacFrame{
+			foodGroup: BUDDY,
+			subGroup:  BuddyArrived,
+			requestID: 12425,
+		}
+		snacPayloadOut := &snacBuddyArrived{
+			screenName:   sess.ScreenName,
+			warningLevel: sess.GetWarning(),
+			TLVPayload: TLVPayload{
+				TLVs: []*TLV{
+					{
+						tType: 0x01,
+						val:   uint16(0x0010 | 0x0020),
+					},
+					{
+						tType: 0x06,
+						val:   uint16(0x0000),
+					},
+				},
+			},
+		}
+
+		adjSess.MsgChan <- &XMessage{
+			flap:      flap,
+			snacFrame: snacFrameOut,
+			snacOut:   snacPayloadOut,
+		}
+	}
+	return nil
+}
+
+func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
+	screenNames, err := fm.InterestedUsers(sess.ScreenName)
+	if err != nil {
+		return err
+	}
+	sessions := sm.RetrieveByScreenNames(screenNames)
+
+	for _, adjSess := range sessions {
+		flap := &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		}
+
+		snacFrameOut := snacFrame{
+			foodGroup: BUDDY,
+			subGroup:  BuddyDeparted,
+		}
+		snacPayloadOut := &snacBuddyArrived{
+			screenName:   sess.ScreenName,
+			warningLevel: sess.GetWarning(),
+			TLVPayload: TLVPayload{
+				TLVs: []*TLV{},
+			},
+		}
+
+		adjSess.MsgChan <- &XMessage{
+			flap:      flap,
+			snacFrame: snacFrameOut,
+			snacOut:   snacPayloadOut,
+		}
+	}
+	return nil
+}
