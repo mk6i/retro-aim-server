@@ -436,7 +436,7 @@ func ReadBos(sm *SessionManager, sess *Session, fm *FeedbagStore, rw io.ReadWrit
 		case ODIR:
 		case BART:
 		case FEEDBAG:
-			if err := routeFeedbag(sess, fm, flap, snac, buf, rw, sequence); err != nil {
+			if err := routeFeedbag(sm, sess, fm, flap, snac, buf, rw, sequence); err != nil {
 				return err
 			}
 		case ICQ:

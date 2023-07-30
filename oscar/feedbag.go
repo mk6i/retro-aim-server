@@ -80,7 +80,7 @@ const (
 	FeedbagClassIdMin                     = 0x0400
 )
 
-func routeFeedbag(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeFeedbag(sm *SessionManager, sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case FeedbagErr:
 		panic("not implemented")
@@ -93,7 +93,7 @@ func routeFeedbag(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFr
 	case FeedbagUse:
 		return ReceiveUse(flap, snac, r, w, sequence)
 	case FeedbagInsertItem:
-		return ReceiveInsertItem(sess, fm, flap, snac, r, w, sequence)
+		return ReceiveInsertItem(sm, sess, fm, flap, snac, r, w, sequence)
 	case FeedbagUpdateItem:
 		return ReceiveUpdateItem(sess, fm, flap, snac, r, w, sequence)
 	case FeedbagDeleteItem:
@@ -479,7 +479,7 @@ func (s *snacFeedbagStatusReply) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.results)
 }
 
-func ReceiveInsertItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveInsertItem(sm *SessionManager, sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveInsertItem read SNAC frame: %+v\n", snac)
 
 	snacPayloadOut := &snacFeedbagStatusReply{}
@@ -507,7 +507,12 @@ func ReceiveInsertItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *s
 		subGroup:  FeedbagStatus,
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	if err := writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
+		return err
+	}
+
+	// todo: just check online status for buddies that were added
+	return GetOnlineBuddies(w, sess, sm, fm, sequence)
 }
 
 func ReceiveUpdateItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
