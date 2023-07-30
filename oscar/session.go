@@ -14,6 +14,21 @@ type Session struct {
 	ScreenName string
 	MsgChan    chan *XMessage
 	Mutex      sync.RWMutex
+	Warning    uint16
+}
+
+func (s *Session) IncreaseWarning(incr uint16) {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+	s.Warning += incr
+}
+
+func (s *Session) GetWarning() uint16 {
+	var w uint16
+	s.Mutex.RLock()
+	w = s.Warning
+	s.Mutex.RUnlock()
+	return w
 }
 
 type SessionManager struct {

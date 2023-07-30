@@ -400,7 +400,7 @@ func ReceiveAndSendServiceRequestSelfInfo(sess *Session, flap *flapFrame, snac *
 
 	snacPayloadOut := &snacOServiceUserInfoUpdate{
 		screenName:   sess.ScreenName,
-		warningLevel: 0,
+		warningLevel: sess.GetWarning(),
 		TLVPayload: TLVPayload{
 			TLVs: []*TLV{
 				{
@@ -505,7 +505,8 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 	}
 
 	for _, buddies := range screenNames {
-		if _, err := sm.RetrieveByScreenName(buddies); err != nil {
+		sess, err := sm.RetrieveByScreenName(buddies)
+		if err != nil {
 			if errors.Is(err, errSessNotFound) {
 				// buddy isn't online
 				continue
@@ -525,7 +526,7 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 		}
 		snacPayloadOut := &snacBuddyArrived{
 			screenName:   buddies,
-			warningLevel: 0,
+			warningLevel: sess.GetWarning(),
 			TLVPayload: TLVPayload{
 				TLVs: []*TLV{
 					{
@@ -542,128 +543,6 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 
 		if err := writeOutSNAC(nil, flap, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
 			return err
-		}
-	}
-	return nil
-}
-
-func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
-	screenNames, err := fm.InterestedUsers(sess.ScreenName)
-	if err != nil {
-		return err
-	}
-	sessions := sm.RetrieveByScreenNames(screenNames)
-
-	for _, adjSess := range sessions {
-		flap := &flapFrame{
-			startMarker: 42,
-			frameType:   2,
-		}
-
-		snacFrameOut := snacFrame{
-			foodGroup: BUDDY,
-			subGroup:  BuddyArrived,
-			requestID: 12425,
-		}
-		snacPayloadOut := &snacBuddyArrived{
-			screenName:   sess.ScreenName,
-			warningLevel: 0,
-			TLVPayload: TLVPayload{
-				TLVs: []*TLV{
-					{
-						tType: 0x01,
-						val:   uint16(0x0010),
-					},
-					{
-						tType: 0x06,
-						val:   uint16(0x0000),
-					},
-				},
-			},
-		}
-
-		adjSess.MsgChan <- &XMessage{
-			flap:      flap,
-			snacFrame: snacFrameOut,
-			snacOut:   snacPayloadOut,
-		}
-	}
-	return nil
-}
-
-func NotifyAway(sess *Session, sm *SessionManager, fm *FeedbagStore, awayMsg string) error {
-	screenNames, err := fm.InterestedUsers(sess.ScreenName)
-	if err != nil {
-		return err
-	}
-	sessions := sm.RetrieveByScreenNames(screenNames)
-
-	for _, adjSess := range sessions {
-		flap := &flapFrame{
-			startMarker: 42,
-			frameType:   2,
-		}
-
-		snacFrameOut := snacFrame{
-			foodGroup: BUDDY,
-			subGroup:  BuddyArrived,
-			requestID: 12425,
-		}
-		snacPayloadOut := &snacBuddyArrived{
-			screenName:   sess.ScreenName,
-			warningLevel: 0,
-			TLVPayload: TLVPayload{
-				TLVs: []*TLV{
-					{
-						tType: 0x01,
-						val:   uint16(0x0010 | 0x0020),
-					},
-					{
-						tType: 0x06,
-						val:   uint16(0x0000),
-					},
-				},
-			},
-		}
-
-		adjSess.MsgChan <- &XMessage{
-			flap:      flap,
-			snacFrame: snacFrameOut,
-			snacOut:   snacPayloadOut,
-		}
-	}
-	return nil
-}
-
-func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
-	screenNames, err := fm.InterestedUsers(sess.ScreenName)
-	if err != nil {
-		return err
-	}
-	sessions := sm.RetrieveByScreenNames(screenNames)
-
-	for _, adjSess := range sessions {
-		flap := &flapFrame{
-			startMarker: 42,
-			frameType:   2,
-		}
-
-		snacFrameOut := snacFrame{
-			foodGroup: BUDDY,
-			subGroup:  BuddyDeparted,
-		}
-		snacPayloadOut := &snacBuddyArrived{
-			screenName:   sess.ScreenName,
-			warningLevel: 0,
-			TLVPayload: TLVPayload{
-				TLVs: []*TLV{},
-			},
-		}
-
-		adjSess.MsgChan <- &XMessage{
-			flap:      flap,
-			snacFrame: snacFrameOut,
-			snacOut:   snacPayloadOut,
 		}
 	}
 	return nil
@@ -752,4 +631,34 @@ func ReceiveAndSendServiceRequest(sess *Session, flap *flapFrame, snac *snacFram
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+type snacEvilNotification struct {
+	newEvil    uint16
+	screenName string
+	evil       uint16
+	TLVPayload
+}
+
+func (f *snacEvilNotification) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, f.newEvil); err != nil {
+		return err
+	}
+	if f.screenName == "" {
+		// report anonymously
+		return nil
+	}
+	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, []byte(f.screenName)); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, f.evil); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint16(len(f.TLVs))); err != nil {
+		return err
+	}
+	return f.TLVPayload.write(w)
 }
