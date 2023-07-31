@@ -528,16 +528,7 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 			screenName:   buddies,
 			warningLevel: sess.GetWarning(),
 			TLVPayload: TLVPayload{
-				TLVs: []*TLV{
-					{
-						tType: 0x01,
-						val:   uint16(0x0010),
-					},
-					{
-						tType: 0x06,
-						val:   uint16(0x0000),
-					},
-				},
+				TLVs: sess.GetUserInfo(),
 			},
 		}
 
