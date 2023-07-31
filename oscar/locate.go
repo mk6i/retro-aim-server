@@ -163,15 +163,9 @@ func ReceiveSetInfo(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *f
 
 	// broadcast away message change to buddies
 	if awayMsg, hasAwayMsg := snacPayload.getString(LocateTlvTagsInfoUnavailableData); hasAwayMsg {
-		if awayMsg != "" {
-			if err := NotifyAway(sess, sm, fm, awayMsg); err != nil {
-				return err
-			}
-		} else {
-			// clear array message
-			if err := NotifyArrival(sess, sm, fm); err != nil {
-				return err
-			}
+		sess.SetAwayMessage(awayMsg)
+		if err := NotifyArrival(sess, sm, fm); err != nil {
+			return err
 		}
 	}
 
@@ -266,7 +260,7 @@ func (f *snacUserInfoReply) write(w io.Writer) error {
 	return f.awayMessage.write(w)
 }
 
-func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveUserInfoQuery2(_ *Session, sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveUserInfoQuery2 read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacUserInfoQuery2{}
@@ -289,6 +283,11 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 		return err
 	}
 
+	sess, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+	if err != nil {
+		return err
+	}
+
 	snacFrameOut := snacFrame{
 		foodGroup: LOCATE,
 		subGroup:  LocateUserInfoReply,
@@ -296,30 +295,38 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 	snacPayloadOut := &snacUserInfoReply{
 		screenName:   snacPayloadIn.screenName,
 		warningLevel: sess.GetWarning(),
-		clientProfile: TLVPayload{
-			TLVs: []*TLV{
-				{
-					tType: 0x01,
-					val:   `text/aolrtf; charset="us-ascii"`,
-				},
-				{
-					tType: 0x02,
-					val:   profile,
-				},
-			},
+		userInfo: TLVPayload{
+			TLVs: sess.GetUserInfo(),
 		},
-		awayMessage: TLVPayload{
-			TLVs: []*TLV{
-				{
-					tType: 0x03,
-					val:   `text/aolrtf; charset="us-ascii"`,
-				},
-				{
-					tType: 0x04,
-					val:   "This is my away message!",
-				},
+		clientProfile: TLVPayload{},
+		awayMessage:   TLVPayload{},
+	}
+
+	switch snacPayloadIn.type2 {
+	case 1:
+		snacPayloadOut.clientProfile.TLVs = []*TLV{
+			{
+				tType: 0x01,
+				val:   `text/aolrtf; charset="us-ascii"`,
 			},
-		},
+			{
+				tType: 0x02,
+				val:   profile,
+			},
+		}
+	case 2:
+		snacPayloadOut.awayMessage.TLVs = []*TLV{
+			{
+				tType: 0x03,
+				val:   `text/aolrtf; charset="us-ascii"`,
+			},
+			{
+				tType: 0x04,
+				val:   sess.GetAwayMessage(),
+			},
+		}
+	default:
+		return fmt.Errorf("unknown user info query type %d", snacPayloadIn.type2)
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)

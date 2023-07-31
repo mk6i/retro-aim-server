@@ -10,17 +10,57 @@ import (
 var errSessNotFound = errors.New("session was not found")
 
 type Session struct {
-	ID         string
-	ScreenName string
-	MsgChan    chan *XMessage
-	Mutex      sync.RWMutex
-	Warning    uint16
+	ID          string
+	ScreenName  string
+	MsgChan     chan *XMessage
+	Mutex       sync.RWMutex
+	Warning     uint16
+	AwayMessage string
 }
 
 func (s *Session) IncreaseWarning(incr uint16) {
 	s.Mutex.RLock()
 	defer s.Mutex.RUnlock()
 	s.Warning += incr
+}
+
+func (s *Session) SetAwayMessage(awayMessage string) {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+	s.AwayMessage = awayMessage
+}
+
+func (s *Session) GetAwayMessage() string {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+	return s.AwayMessage
+}
+
+func (s *Session) GetUserInfo() []*TLV {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+
+	var tlvs []*TLV
+
+	if s.AwayMessage != "" {
+		tlvs = append(tlvs, &TLV{
+			tType: 0x01,
+			val:   uint16(0x0010 | 0x0020),
+		})
+	} else {
+		tlvs = append(tlvs, &TLV{
+			tType: 0x01,
+			val:   uint16(0x0010),
+		})
+
+	}
+
+	tlvs = append(tlvs, &TLV{
+		tType: 0x06,
+		val:   uint16(0x0000),
+	})
+
+	return tlvs
 }
 
 func (s *Session) GetWarning() uint16 {
