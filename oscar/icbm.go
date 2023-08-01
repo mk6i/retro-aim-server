@@ -650,7 +650,7 @@ func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 	}
 
 	if snacPayloadIn.sendAs == 0 {
-		mm.snacOut.(*snacEvilNotification).screenName = snacPayloadIn.screenName
+		mm.snacOut.(*snacEvilNotification).screenName = sess.ScreenName
 	}
 
 	recipSess.MsgChan <- mm
