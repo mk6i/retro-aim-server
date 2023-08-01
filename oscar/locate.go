@@ -68,7 +68,7 @@ func routeLocate(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flap
 	case LocateFindListReply:
 		panic("not implemented")
 	case LocateUserInfoQuery2:
-		return SendAndReceiveUserInfoQuery2(sess, sm, fm, flap, snac, r, w, sequence)
+		return SendAndReceiveUserInfoQuery2(sm, fm, flap, snac, r, w, sequence)
 	}
 
 	return nil
@@ -260,26 +260,11 @@ func (f *snacUserInfoReply) write(w io.Writer) error {
 	return f.awayMessage.write(w)
 }
 
-func SendAndReceiveUserInfoQuery2(_ *Session, sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveUserInfoQuery2(sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveUserInfoQuery2 read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacUserInfoQuery2{}
 	if err := snacPayloadIn.read(r); err != nil {
-		return err
-	}
-
-	profile, err := fm.RetrieveProfile(snacPayloadIn.screenName)
-	if err != nil {
-		if err == errUserNotExist {
-			snacFrameOut := snacFrame{
-				foodGroup: LOCATE,
-				subGroup:  LocateErr,
-			}
-			snacPayloadOut := &snacError{
-				code: ErrorCodeNotLoggedOn,
-			}
-			return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
-		}
 		return err
 	}
 
@@ -304,6 +289,20 @@ func SendAndReceiveUserInfoQuery2(_ *Session, sm *SessionManager, fm *FeedbagSto
 
 	switch snacPayloadIn.type2 {
 	case 1:
+		profile, err := fm.RetrieveProfile(snacPayloadIn.screenName)
+		if err != nil {
+			if err == errUserNotExist {
+				snacFrameOut := snacFrame{
+					foodGroup: LOCATE,
+					subGroup:  LocateErr,
+				}
+				snacPayloadOut := &snacError{
+					code: ErrorCodeNotLoggedOn,
+				}
+				return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+			}
+			return err
+		}
 		snacPayloadOut.clientProfile.TLVs = []*TLV{
 			{
 				tType: 0x01,
