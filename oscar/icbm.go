@@ -187,6 +187,7 @@ func (s *snacMessageToHost) read(r io.Reader) error {
 	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
 		0x02: reflect.Slice,
 		0x03: reflect.Slice,
+		0x04: reflect.Slice,
 	})
 }
 
@@ -270,6 +271,12 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 			},
 		},
 	}
+
+	// todo: add append to TLVPayload?
+	if t, hasAutoResp := snacPayloadIn.getTLV(0x04); hasAutoResp {
+		mm.snacOut.(*snacClientIM).TLVs = append(mm.snacOut.(*snacClientIM).TLVs, t)
+	}
+
 	session.MsgChan <- mm
 
 	snacFrameOut := snacFrame{
@@ -517,7 +524,7 @@ func (s *sncClientEvent) write(w io.Writer) error {
 }
 
 func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	fmt.Printf("SendAndReceiveChannelMsgTohost read SNAC frame: %+v\n", snac)
+	fmt.Printf("SendAndReceiveClientEvent read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &sncClientEvent{}
 	if err := snacPayloadIn.read(r); err != nil {
