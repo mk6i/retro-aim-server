@@ -180,6 +180,15 @@ func (s *TLVPayload) getString(tType uint16) (string, bool) {
 	return "", false
 }
 
+func (s *TLVPayload) getTLV(tType uint16) (*TLV, bool) {
+	for _, tlv := range s.TLVs {
+		if tType == tlv.tType {
+			return tlv, true
+		}
+	}
+	return nil, false
+}
+
 func (s *TLVPayload) getSlice(tType uint16) ([]byte, bool) {
 	for _, tlv := range s.TLVs {
 		if tType == tlv.tType {
