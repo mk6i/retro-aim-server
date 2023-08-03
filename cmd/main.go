@@ -124,8 +124,6 @@ func handleBOSConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn 
 		}
 	}
 
-	go oscar.HandleXMessage(sess, conn, seq)
-
 	if err := oscar.ReadBos(sm, sess, fm, conn, seq); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Println(err.Error())

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"sync"
 )
 
 const (
@@ -360,10 +359,6 @@ func (f *flapSignonFrame) read(r io.Reader) error {
 }
 
 func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (*flapSignonFrame, error) {
-	// send
-	godLock.Lock()
-	defer godLock.Unlock()
-
 	flap := &flapSignonFrame{
 		flapFrame: flapFrame{
 			startMarker:   42,
@@ -440,85 +435,120 @@ const (
 	ARS                  = 0x044A
 )
 
-func ReadBos(sm *SessionManager, sess *Session, fm *FeedbagStore, rw io.ReadWriter, sequence *uint32) error {
+type IncomingMessage struct {
+	flap *flapFrame
+	snac *snacFrame
+	buf  io.Reader
+}
+
+type XMessage struct {
+	// todo: this should only take values, not pointers, in order to avoid race
+	// conditions
+	flap      *flapFrame
+	snacFrame snacFrame
+	snacOut   snacWriter
+}
+
+func streamFromConn(rw io.ReadWriter, in chan IncomingMessage) {
 	for {
-		// receive
 		flap := &flapFrame{}
 		if err := flap.read(rw); err != nil {
-			if err := NotifyDeparture(sess, sm, fm); err != nil {
-				return err
+			if err != io.EOF {
+				panic("temporary panic: " + err.Error())
+			} else {
+				break
 			}
-			sm.Remove(sess)
-			return err
 		}
 
 		b := make([]byte, flap.payloadLength)
 		if _, err := rw.Read(b); err != nil {
-			return err
+			if err != io.EOF {
+				panic("temporary panic: " + err.Error())
+			} else {
+				break
+			}
 		}
 
 		buf := bytes.NewBuffer(b)
 
 		snac := &snacFrame{}
 		if err := snac.read(buf); err != nil {
-			return err
+			if err != io.EOF {
+				panic("temporary panic: " + err.Error())
+			} else {
+				break
+			}
 		}
 
-		switch snac.foodGroup {
-		case OSERVICE:
-			if err := routeOService(sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
-				return err
-			}
-		case LOCATE:
-			if err := routeLocate(sess, sm, fm, flap, snac, buf, rw, sequence); err != nil {
-				return err
-			}
-		case BUDDY:
-			if err := routeBuddy(flap, snac, buf, rw, sequence); err != nil {
-				return err
-			}
-		case ICBM:
-			if err := routeICBM(sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
-				return err
-			}
-		case ADVERT:
-		case INVITE:
-		case ADMIN:
-		case POPUP:
-		case PD:
-			if err := routePD(flap, snac, buf, rw, sequence); err != nil {
-				return err
-			}
-		case USER_LOOKUP:
-		case STATS:
-		case TRANSLATE:
-		case CHAT_NAV:
-			if err := routeChatNav(flap, snac, buf, rw, sequence); err != nil {
-				return err
-			}
-		case CHAT:
-		case ODIR:
-		case BART:
-		case FEEDBAG:
-			if err := routeFeedbag(sm, sess, fm, flap, snac, buf, rw, sequence); err != nil {
-				return err
-			}
-		case ICQ:
-		case BUCP:
-			if err := routeBUCP(flap, snac, buf, rw, sequence); err != nil {
-				return err
-			}
-		case ALERT:
-		case PLUGIN:
-		case UNNAMED_FG_24:
-		case MDIR:
-		case ARS:
+		in <- IncomingMessage{
+			flap: flap,
+			snac: snac,
+			buf:  buf,
 		}
-
 	}
 }
 
-var godLock sync.Mutex
+func ReadBos(sm *SessionManager, sess *Session, fm *FeedbagStore, rw io.ReadWriter, sequence *uint32) error {
+	in := make(chan IncomingMessage)
+	defer close(in)
+
+	go streamFromConn(rw, in)
+
+	for {
+		select {
+		case m := <-in:
+			err := routeIncomingRequests(sm, sess, fm, rw, sequence, m.snac, m.flap, m.buf)
+			if err != nil {
+				return err
+			}
+		case m := <-sess.MsgChan:
+			if err := writeOutSNAC(nil, m.flap, m.snacFrame, m.snacOut, sequence, rw); err != nil {
+				panic("error handling handleXMessage: " + err.Error())
+			}
+		}
+	}
+}
+
+func routeIncomingRequests(sm *SessionManager, sess *Session, fm *FeedbagStore, rw io.ReadWriter, sequence *uint32, snac *snacFrame, flap *flapFrame, buf io.Reader) error {
+	switch snac.foodGroup {
+	case OSERVICE:
+		if err := routeOService(sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
+			return err
+		}
+	case LOCATE:
+		if err := routeLocate(sess, sm, fm, flap, snac, buf, rw, sequence); err != nil {
+			return err
+		}
+	case BUDDY:
+		if err := routeBuddy(flap, snac, buf, rw, sequence); err != nil {
+			return err
+		}
+	case ICBM:
+		if err := routeICBM(sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
+			return err
+		}
+	case PD:
+		if err := routePD(flap, snac, buf, rw, sequence); err != nil {
+			return err
+		}
+	case CHAT_NAV:
+		if err := routeChatNav(flap, snac, buf, rw, sequence); err != nil {
+			return err
+		}
+	case FEEDBAG:
+		if err := routeFeedbag(sm, sess, fm, flap, snac, buf, rw, sequence); err != nil {
+			return err
+		}
+	case BUCP:
+		if err := routeBUCP(flap, snac, buf, rw, sequence); err != nil {
+			return err
+		}
+	default:
+		panic(fmt.Sprintf("unsupported food group: %d", snac.foodGroup))
+	}
+
+	return nil
+}
 
 func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint32, w io.Writer) error {
 	if originSnac != nil {
@@ -533,8 +563,6 @@ func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, s
 		return err
 	}
 
-	godLock.Lock()
-	defer godLock.Unlock()
 	flap.sequence = uint16(*sequence)
 	*sequence++
 	flap.payloadLength = uint16(snacBuf.Len())
@@ -554,20 +582,4 @@ func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, s
 		panic("did not write the expected # of bytes")
 	}
 	return err
-}
-
-type XMessage struct {
-	// todo: this should only take values, not pointers, in order to avoid race
-	// conditions
-	flap      *flapFrame
-	snacFrame snacFrame
-	snacOut   snacWriter
-}
-
-func HandleXMessage(sess *Session, w io.Writer, seq *uint32) {
-	for msg := range sess.MsgChan {
-		if err := writeOutSNAC(nil, msg.flap, msg.snacFrame, msg.snacOut, seq, w); err != nil {
-			panic("error handling handleXMessage: " + err.Error())
-		}
-	}
 }

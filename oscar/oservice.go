@@ -164,8 +164,6 @@ func WriteOServiceHostOnline(conn net.Conn, sequence *uint32) error {
 		return err
 	}
 
-	godLock.Lock()
-	defer godLock.Unlock()
 	flap := &flapFrame{
 		startMarker:   42,
 		frameType:     2,
