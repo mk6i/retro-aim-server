@@ -389,6 +389,8 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (*flapSignonF
 }
 
 func VerifyLogin(sm *SessionManager, rw io.ReadWriter, sequence *uint32) (*Session, error) {
+	fmt.Println("VerifyLogin...")
+
 	flap, err := SendAndReceiveSignonFrame(rw, sequence)
 	if err != nil {
 		return nil, err
@@ -500,7 +502,6 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 			return
 		case FlapFrameKeepAlive:
 			fmt.Println("keepalive heartbeat")
-			return
 		default:
 			errCh <- fmt.Errorf("unknown frame type: %v", flap)
 			return
@@ -508,24 +509,34 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 	}
 }
 
-func ReadBos(sm *SessionManager, sess *Session, fm *FeedbagStore, rw io.ReadWriteCloser, sequence *uint32) error {
-	defer rw.Close()
+func ReadBos(sm *SessionManager, fm *FeedbagStore, rwc io.ReadWriteCloser) error {
+	defer rwc.Close()
+
+	seq := uint32(100)
+	sess, err := VerifyLogin(sm, rwc, &seq)
+	if err != nil {
+		return err
+	}
 	defer sess.Close()
+
+	if err := WriteOServiceHostOnline(rwc, &seq); err != nil {
+		return err
+	}
 
 	// buffered so that the go routine has room to exit
 	msgCh := make(chan IncomingMessage, 1)
 	errCh := make(chan error, 1)
-	go readIncomingRequests(rw, msgCh, errCh)
+	go readIncomingRequests(rwc, msgCh, errCh)
 
 	for {
 		select {
 		case m := <-msgCh:
-			if err := routeIncomingRequests(sm, sess, fm, rw, sequence, m.snac, m.flap, m.buf); err != nil {
+			if err := routeIncomingRequests(sm, sess, fm, rwc, &seq, m.snac, m.flap, m.buf); err != nil {
 				return err
 			}
 		case m := <-sess.RecvMessage():
-			if err := writeOutSNAC(nil, m.flap, m.snacFrame, m.snacOut, sequence, rw); err != nil {
-				panic("error handling handleXMessage: " + err.Error())
+			if err := writeOutSNAC(nil, m.flap, m.snacFrame, m.snacOut, &seq, rwc); err != nil {
+				return err
 			}
 		case err := <-errCh:
 			return err

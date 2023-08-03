@@ -85,7 +85,6 @@ func (s *Session) SendMessage(msg *XMessage) {
 }
 
 func (s *Session) Close() {
-	fmt.Println("closing out session")
 	close(s.stopCh)
 }
 

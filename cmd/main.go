@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 )
 
 const testFile string = "/Users/mike/dev/goaim/aim.db"
@@ -76,8 +75,7 @@ func listenBOS(sm *oscar.SessionManager, fm *oscar.FeedbagStore) {
 			log.Println(err)
 			continue
 		}
-		seq := uint32(100)
-		go handleBOSConnection(sm, fm, conn, &seq)
+		go handleBOSConnection(sm, fm, conn)
 	}
 }
 
@@ -108,25 +106,8 @@ func handleAuthConnection(sm *oscar.SessionManager, conn net.Conn) {
 	}
 }
 
-func handleBOSConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn net.Conn, seq *uint32) {
-	defer conn.Close()
-
-	fmt.Println("VerifyLogin...")
-	sess, err := oscar.VerifyLogin(sm, conn, seq)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	fmt.Println("writeOServiceHostOnline...")
-	if err := oscar.WriteOServiceHostOnline(conn, seq); err != nil {
-		if err == io.EOF {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-	}
-
-	if err := oscar.ReadBos(sm, sess, fm, conn, seq); err != nil && err != io.EOF {
+func handleBOSConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn net.Conn) {
+	if err := oscar.ReadBos(sm, fm, conn); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Println(err.Error())
 		}
