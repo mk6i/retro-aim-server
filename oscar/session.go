@@ -123,7 +123,7 @@ func (s *SessionManager) NewSession() (*Session, error) {
 	}
 	sess := &Session{
 		ID:      id.String(),
-		MsgChan: make(chan *XMessage),
+		MsgChan: make(chan *XMessage, 1),
 	}
 	s.store[sess.ID] = sess
 	return sess, nil
