@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"reflect"
 	"time"
 )
@@ -146,7 +145,9 @@ func (s *snac01_03) write(w io.Writer) error {
 	return nil
 }
 
-func WriteOServiceHostOnline(conn net.Conn, sequence *uint32) error {
+func WriteOServiceHostOnline(rw io.ReadWriter, sequence *uint32) error {
+	fmt.Println("writeOServiceHostOnline...")
+
 	snac := &snac01_03{
 		snacFrame: snacFrame{
 			foodGroup: 0x01,
@@ -173,11 +174,11 @@ func WriteOServiceHostOnline(conn net.Conn, sequence *uint32) error {
 	*sequence++
 	fmt.Printf("writeOServiceHostOnline FLAP: %+v\n", flap)
 
-	if err := flap.write(conn); err != nil {
+	if err := flap.write(rw); err != nil {
 		return err
 	}
 
-	_, err := conn.Write(snacBuf.Bytes())
+	_, err := rw.Write(snacBuf.Bytes())
 	return err
 }
 
