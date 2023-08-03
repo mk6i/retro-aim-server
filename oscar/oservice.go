@@ -589,14 +589,6 @@ const (
 	OserviceTlvTagsSslState             = 0x8E
 )
 
-// ServiceHosts config should live outside this package
-var ServiceHosts = map[uint16]string{
-	STATS: "192.168.64.1:5192",
-	ALERT: "192.168.64.1:5193",
-	ODIR:  "192.168.64.1:5194",
-	BART:  "192.168.64.1:5195",
-}
-
 func ReceiveAndSendServiceRequest(sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRequest read SNAC frame: %+v\n", snac)
 
@@ -606,11 +598,6 @@ func ReceiveAndSendServiceRequest(sess *Session, flap *flapFrame, snac *snacFram
 	}
 
 	fmt.Printf("receiveAndSendServiceRequest read SNAC body: %+v\n", snacPayload)
-
-	//host, ok := ServiceHosts[snacPayload.foodGroup]
-	//if !ok {
-	//	return fmt.Errorf("unable to find hostname for %s %d", host, snacPayload.foodGroup)
-	//}
 
 	// just say that all the services are offline
 	snacFrameOut := snacFrame{
