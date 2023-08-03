@@ -449,6 +449,14 @@ type XMessage struct {
 	snacOut   snacWriter
 }
 
+const (
+	FlapFrameSignon    uint8 = 0x01
+	FlapFrameData            = 0x02
+	FlapFrameError           = 0x03
+	FlapFrameSignoff         = 0x04
+	FlapFrameKeepAlive       = 0x05
+)
+
 func streamFromConn(rw io.ReadWriter, in chan IncomingMessage) {
 	for {
 		flap := &flapFrame{}
@@ -460,30 +468,43 @@ func streamFromConn(rw io.ReadWriter, in chan IncomingMessage) {
 			}
 		}
 
-		b := make([]byte, flap.payloadLength)
-		if _, err := rw.Read(b); err != nil {
-			if err != io.EOF {
-				panic("temporary panic: " + err.Error())
-			} else {
-				break
+		switch flap.frameType {
+		case FlapFrameSignon:
+			panic("shouldn't get FlapFrameSignon")
+		case FlapFrameData:
+			b := make([]byte, flap.payloadLength)
+			if _, err := rw.Read(b); err != nil {
+				if err != io.EOF {
+					panic("temporary panic: " + err.Error())
+				} else {
+					break
+				}
 			}
-		}
 
-		buf := bytes.NewBuffer(b)
+			buf := bytes.NewBuffer(b)
 
-		snac := &snacFrame{}
-		if err := snac.read(buf); err != nil {
-			if err != io.EOF {
-				panic("temporary panic: " + err.Error())
-			} else {
-				break
+			snac := &snacFrame{}
+			if err := snac.read(buf); err != nil {
+				if err != io.EOF {
+					panic("temporary panic: " + err.Error())
+				} else {
+					break
+				}
 			}
-		}
 
-		in <- IncomingMessage{
-			flap: flap,
-			snac: snac,
-			buf:  buf,
+			in <- IncomingMessage{
+				flap: flap,
+				snac: snac,
+				buf:  buf,
+			}
+		case FlapFrameError:
+			panic(fmt.Sprintf("got FlapFrameError: %v", flap))
+		case FlapFrameSignoff:
+			panic(fmt.Sprintf("got signoff: %v", flap))
+		case FlapFrameKeepAlive:
+			fmt.Println("keepalive heartbeat")
+		default:
+			panic(fmt.Sprintf("unknown frame type: %v", flap))
 		}
 	}
 }
