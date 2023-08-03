@@ -277,7 +277,7 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		mm.snacOut.(*snacClientIM).TLVs = append(mm.snacOut.(*snacClientIM).TLVs, t)
 	}
 
-	session.MsgChan <- mm
+	session.SendMessage(mm)
 
 	snacFrameOut := snacFrame{
 		foodGroup: ICBM,
@@ -403,7 +403,7 @@ func SendIM(sm *SessionManager, sess *Session, destScreenName string, msg string
 		return err
 	}
 
-	session.MsgChan <- &XMessage{
+	session.SendMessage(&XMessage{
 		flap: &flapFrame{
 			startMarker: 42,
 			frameType:   2,
@@ -428,7 +428,7 @@ func SendIM(sm *SessionManager, sess *Session, destScreenName string, msg string
 				},
 			},
 		},
-	}
+	})
 
 	return nil
 }
@@ -538,7 +538,7 @@ func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 
 	snacPayloadIn.screenName = sess.ScreenName
 
-	session.MsgChan <- &XMessage{
+	session.SendMessage(&XMessage{
 		flap: &flapFrame{
 			startMarker: 42,
 			frameType:   2,
@@ -548,7 +548,7 @@ func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 			subGroup:  ICBMClientEvent,
 		},
 		snacOut: snacPayloadIn,
-	}
+	})
 
 	return nil
 }
@@ -653,7 +653,7 @@ func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 		mm.snacOut.(*snacEvilNotification).screenName = sess.ScreenName
 	}
 
-	recipSess.MsgChan <- mm
+	recipSess.SendMessage(mm)
 
 	return NotifyArrival(recipSess, sm, fm)
 }

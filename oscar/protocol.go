@@ -457,75 +457,78 @@ const (
 	FlapFrameKeepAlive       = 0x05
 )
 
-func streamFromConn(rw io.ReadWriter, in chan IncomingMessage) {
+func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan error) {
+	defer close(msCh)
+	defer close(errCh)
+
 	for {
 		flap := &flapFrame{}
 		if err := flap.read(rw); err != nil {
-			if err != io.EOF {
-				panic("temporary panic: " + err.Error())
-			} else {
-				break
-			}
+			errCh <- err
+			return
 		}
 
 		switch flap.frameType {
 		case FlapFrameSignon:
-			panic("shouldn't get FlapFrameSignon")
+			errCh <- errors.New("shouldn't get FlapFrameSignon")
+			return
 		case FlapFrameData:
 			b := make([]byte, flap.payloadLength)
 			if _, err := rw.Read(b); err != nil {
-				if err != io.EOF {
-					panic("temporary panic: " + err.Error())
-				} else {
-					break
-				}
+				errCh <- err
+				return
 			}
 
 			buf := bytes.NewBuffer(b)
 
 			snac := &snacFrame{}
 			if err := snac.read(buf); err != nil {
-				if err != io.EOF {
-					panic("temporary panic: " + err.Error())
-				} else {
-					break
-				}
+				errCh <- err
+				return
 			}
 
-			in <- IncomingMessage{
+			msCh <- IncomingMessage{
 				flap: flap,
 				snac: snac,
 				buf:  buf,
 			}
 		case FlapFrameError:
-			panic(fmt.Sprintf("got FlapFrameError: %v", flap))
+			errCh <- fmt.Errorf("got FlapFrameError: %v", flap)
+			return
 		case FlapFrameSignoff:
-			panic(fmt.Sprintf("got signoff: %v", flap))
+			errCh <- fmt.Errorf("got signoff: %v", flap)
+			return
 		case FlapFrameKeepAlive:
 			fmt.Println("keepalive heartbeat")
+			return
 		default:
-			panic(fmt.Sprintf("unknown frame type: %v", flap))
+			errCh <- fmt.Errorf("unknown frame type: %v", flap)
+			return
 		}
 	}
 }
 
-func ReadBos(sm *SessionManager, sess *Session, fm *FeedbagStore, rw io.ReadWriter, sequence *uint32) error {
-	in := make(chan IncomingMessage)
-	defer close(in)
+func ReadBos(sm *SessionManager, sess *Session, fm *FeedbagStore, rw io.ReadWriteCloser, sequence *uint32) error {
+	defer rw.Close()
+	defer sess.Close()
 
-	go streamFromConn(rw, in)
+	// buffered so that the go routine has room to exit
+	msgCh := make(chan IncomingMessage, 1)
+	errCh := make(chan error, 1)
+	go readIncomingRequests(rw, msgCh, errCh)
 
 	for {
 		select {
-		case m := <-in:
-			err := routeIncomingRequests(sm, sess, fm, rw, sequence, m.snac, m.flap, m.buf)
-			if err != nil {
+		case m := <-msgCh:
+			if err := routeIncomingRequests(sm, sess, fm, rw, sequence, m.snac, m.flap, m.buf); err != nil {
 				return err
 			}
-		case m := <-sess.MsgChan:
+		case m := <-sess.RecvMessage():
 			if err := writeOutSNAC(nil, m.flap, m.snacFrame, m.snacOut, sequence, rw); err != nil {
 				panic("error handling handleXMessage: " + err.Error())
 			}
+		case err := <-errCh:
+			return err
 		}
 	}
 }

@@ -12,7 +12,8 @@ var errSessNotFound = errors.New("session was not found")
 type Session struct {
 	ID          string
 	ScreenName  string
-	MsgChan     chan *XMessage
+	msgCh       chan *XMessage
+	stopCh      chan struct{}
 	Mutex       sync.RWMutex
 	Warning     uint16
 	AwayMessage string
@@ -71,6 +72,23 @@ func (s *Session) GetWarning() uint16 {
 	return w
 }
 
+func (s *Session) RecvMessage() chan *XMessage {
+	return s.msgCh
+}
+
+func (s *Session) SendMessage(msg *XMessage) {
+	select {
+	case <-s.stopCh:
+		return
+	case s.msgCh <- msg:
+	}
+}
+
+func (s *Session) Close() {
+	fmt.Println("closing out session")
+	close(s.stopCh)
+}
+
 type SessionManager struct {
 	store    map[string]*Session
 	mapMutex sync.RWMutex
@@ -122,8 +140,9 @@ func (s *SessionManager) NewSession() (*Session, error) {
 		return nil, err
 	}
 	sess := &Session{
-		ID:      id.String(),
-		MsgChan: make(chan *XMessage, 1),
+		ID:     id.String(),
+		msgCh:  make(chan *XMessage, 1),
+		stopCh: make(chan struct{}),
 	}
 	s.store[sess.ID] = sess
 	return sess, nil
