@@ -173,11 +173,11 @@ func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 			},
 		}
 
-		adjSess.MsgChan <- &XMessage{
+		adjSess.SendMessage(&XMessage{
 			flap:      flap,
 			snacFrame: snacFrameOut,
 			snacOut:   snacPayloadOut,
-		}
+		})
 	}
 	return nil
 }
@@ -207,11 +207,11 @@ func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error 
 			},
 		}
 
-		adjSess.MsgChan <- &XMessage{
+		adjSess.SendMessage(&XMessage{
 			flap:      flap,
 			snacFrame: snacFrameOut,
 			snacOut:   snacPayloadOut,
-		}
+		})
 	}
 	return nil
 }

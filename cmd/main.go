@@ -109,6 +109,8 @@ func handleAuthConnection(sm *oscar.SessionManager, conn net.Conn) {
 }
 
 func handleBOSConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn net.Conn, seq *uint32) {
+	defer conn.Close()
+
 	fmt.Println("VerifyLogin...")
 	sess, err := oscar.VerifyLogin(sm, conn, seq)
 	if err != nil {
@@ -127,7 +129,6 @@ func handleBOSConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn 
 	if err := oscar.ReadBos(sm, sess, fm, conn, seq); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Println(err.Error())
-			os.Exit(1)
 		}
 	}
 }
