@@ -2,6 +2,7 @@ package oscar
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -270,7 +271,16 @@ func SendAndReceiveUserInfoQuery2(sm *SessionManager, fm *FeedbagStore, flap *fl
 
 	sess, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
 	if err != nil {
-		return err
+		if errors.Is(err, errSessNotFound) {
+			snacFrameOut := snacFrame{
+				foodGroup: LOCATE,
+				subGroup:  LocateErr,
+			}
+			snacPayloadOut := &snacError{
+				code: ErrorCodeNotLoggedOn,
+			}
+			return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+		}
 	}
 
 	snacFrameOut := snacFrame{
