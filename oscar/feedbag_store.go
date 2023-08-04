@@ -182,11 +182,12 @@ func (f *FeedbagStore) Upsert(screenName string, items []*feedbagItem) error {
 	return nil
 }
 
+// InterestedUsers returns all users who have screenName in their buddy list.
 func (f *FeedbagStore) InterestedUsers(screenName string) ([]string, error) {
 	q := `
-		SELECT name
+		SELECT ScreenName
 		FROM feedbag
-		WHERE ScreenName = ? AND classID = 0
+		WHERE name = ? AND classID = 0
 	`
 
 	rows, err := f.db.Query(q, screenName)
