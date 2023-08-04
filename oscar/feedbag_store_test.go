@@ -202,12 +202,25 @@ func TestProfile(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
+	if err := f.UpsertUser(screenName); err != nil {
+		t.Fatalf("failed to upsert new user: %s", err.Error())
+	}
+
+	profile, err := f.RetrieveProfile(screenName)
+	if err != nil {
+		t.Fatalf("failed to retrieve profile: %s", err.Error())
+	}
+
+	if profile != "" {
+		t.Fatalf("expected empty profile for %s", screenName)
+	}
+
 	newProfile := "here is my profile"
 	if err := f.UpsertProfile(screenName, newProfile); err != nil {
 		t.Fatalf("failed to create new profile: %s", err.Error())
 	}
 
-	profile, err := f.RetrieveProfile(screenName)
+	profile, err = f.RetrieveProfile(screenName)
 	if err != nil {
 		t.Fatalf("failed to retrieve profile: %s", err.Error())
 	}

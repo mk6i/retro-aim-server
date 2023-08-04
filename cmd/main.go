@@ -39,7 +39,7 @@ func main() {
 		}
 
 		// Handle connection in a separate goroutine
-		go handleAuthConnection(sm, conn)
+		go handleAuthConnection(sm, fm, conn)
 	}
 }
 
@@ -79,7 +79,7 @@ func listenBOS(sm *oscar.SessionManager, fm *oscar.FeedbagStore) {
 	}
 }
 
-func handleAuthConnection(sm *oscar.SessionManager, conn net.Conn) {
+func handleAuthConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn net.Conn) {
 	defer conn.Close()
 	seq := uint32(100)
 	_, err := oscar.SendAndReceiveSignonFrame(conn, &seq)
@@ -99,7 +99,7 @@ func handleAuthConnection(sm *oscar.SessionManager, conn net.Conn) {
 		return
 	}
 
-	err = oscar.ReceiveAndSendBUCPLoginRequest(sess, conn, conn, &seq)
+	err = oscar.ReceiveAndSendBUCPLoginRequest(sess, fm, conn, conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return

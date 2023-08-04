@@ -51,6 +51,16 @@ type FeedbagStore struct {
 	db *sql.DB
 }
 
+func (f *FeedbagStore) UpsertUser(screenName string) error {
+	q := `
+		INSERT INTO user (ScreenName)
+		VALUES (?)
+		ON CONFLICT DO NOTHING
+	`
+	_, err := f.db.Exec(q, screenName)
+	return err
+}
+
 func (f *FeedbagStore) Delete(screenName string, items []*feedbagItem) error {
 	// todo add transaction
 	q := `DELETE FROM feedbag WHERE ScreenName = ? AND itemID = ?`
@@ -222,11 +232,15 @@ func (f *FeedbagStore) Buddies(screenName string) ([]string, error) {
 	return items, nil
 }
 
+// RetrieveProfile fetches a user profile. Return empty string if the user
+// exists but has no profile. Return errUserNotExist if the user does not
+// exist.
 func (f *FeedbagStore) RetrieveProfile(screenName string) (string, error) {
 	q := `
-		SELECT body
-		FROM profile
-		WHERE ScreenName = ?
+		SELECT IFNULL(body, '')
+		FROM user u
+		LEFT JOIN profile p ON p.ScreenName = u.ScreenName
+		WHERE u.ScreenName = ?
 	`
 	var profile string
 	err := f.db.QueryRow(q, screenName).Scan(&profile)
