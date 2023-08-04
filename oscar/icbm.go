@@ -396,43 +396,6 @@ func (m *messageData) write(w io.Writer) error {
 	return nil
 }
 
-func SendIM(sm *SessionManager, sess *Session, destScreenName string, msg string) error {
-
-	session, err := sm.RetrieveByScreenName(destScreenName)
-	if err != nil {
-		return err
-	}
-
-	session.SendMessage(&XMessage{
-		flap: &flapFrame{
-			startMarker: 42,
-			frameType:   2,
-		},
-		snacFrame: snacFrame{
-			foodGroup: ICBM,
-			subGroup:  ICBMChannelMsgToclient,
-			requestID: 12425,
-		},
-		snacOut: &snacClientIM{
-			cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
-			channelID:  1,
-			screenName: sess.ScreenName,
-			TLVPayload: TLVPayload{
-				TLVs: []*TLV{
-					{
-						tType: 0x02,
-						val: &messageData{
-							text: msg,
-						},
-					},
-				},
-			},
-		},
-	})
-
-	return nil
-}
-
 type snacClientErr struct {
 	cookie     [8]byte
 	channelID  uint16

@@ -163,7 +163,6 @@ func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 		snacFrameOut := snacFrame{
 			foodGroup: BUDDY,
 			subGroup:  BuddyArrived,
-			requestID: 12425,
 		}
 		snacPayloadOut := &snacBuddyArrived{
 			screenName:   sess.ScreenName,
@@ -190,28 +189,21 @@ func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error 
 	sessions := sm.RetrieveByScreenNames(screenNames)
 
 	for _, adjSess := range sessions {
-		flap := &flapFrame{
-			startMarker: 42,
-			frameType:   2,
-		}
-
-		snacFrameOut := snacFrame{
-			foodGroup: BUDDY,
-			subGroup:  BuddyDeparted,
-		}
-		snacPayloadOut := &snacBuddyArrived{
-			screenName:   sess.ScreenName,
-			warningLevel: sess.GetWarning(),
-			TLVPayload: TLVPayload{
-				TLVs: []*TLV{},
-			},
-		}
-
 		adjSess.SendMessage(&XMessage{
-			flap:      flap,
-			snacFrame: snacFrameOut,
-			snacOut:   snacPayloadOut,
+			flap: &flapFrame{
+				startMarker: 42,
+				frameType:   2,
+			},
+			snacFrame: snacFrame{
+				foodGroup: BUDDY,
+				subGroup:  BuddyDeparted,
+			},
+			snacOut: &snacBuddyArrived{
+				screenName:   sess.ScreenName,
+				warningLevel: sess.GetWarning(),
+			},
 		})
 	}
+
 	return nil
 }

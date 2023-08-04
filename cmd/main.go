@@ -109,7 +109,9 @@ func handleAuthConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn
 func handleBOSConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn net.Conn) {
 	if err := oscar.ReadBos(sm, fm, conn); err != nil && err != io.EOF {
 		if err != io.EOF {
-			fmt.Println(err.Error())
+			fmt.Printf("user disconnected with error: %s\n", err.Error())
+		} else {
+			fmt.Println("user disconnected")
 		}
 	}
 }

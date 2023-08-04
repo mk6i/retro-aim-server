@@ -521,7 +521,6 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 		snacFrameOut := snacFrame{
 			foodGroup: BUDDY,
 			subGroup:  BuddyArrived,
-			requestID: 12425,
 		}
 		snacPayloadOut := &snacBuddyArrived{
 			screenName:   buddies,
