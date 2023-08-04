@@ -509,6 +509,14 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 	}
 }
 
+func signout(sess *Session, sm *SessionManager, fm *FeedbagStore) {
+	if err := NotifyDeparture(sess, sm, fm); err != nil {
+		fmt.Printf("error notifying departure: %s", err.Error())
+	}
+	sess.Close()
+	sm.Remove(sess)
+}
+
 func ReadBos(sm *SessionManager, fm *FeedbagStore, rwc io.ReadWriteCloser) error {
 	defer rwc.Close()
 
@@ -517,8 +525,7 @@ func ReadBos(sm *SessionManager, fm *FeedbagStore, rwc io.ReadWriteCloser) error
 	if err != nil {
 		return err
 	}
-	defer sess.Close()
-	defer sm.Remove(sess)
+	defer signout(sess, sm, fm)
 
 	if err := WriteOServiceHostOnline(rwc, &seq); err != nil {
 		return err
