@@ -273,7 +273,7 @@ func (t *TLV) read(r io.Reader, typeLookup map[uint16]reflect.Kind) error {
 
 	switch kind {
 	case reflect.Uint8:
-		var val uint16
+		var val uint8
 		if err := binary.Read(r, binary.BigEndian, &val); err != nil {
 			return err
 		}
