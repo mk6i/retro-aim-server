@@ -124,7 +124,7 @@ func (s *snacBUCPLoginRequest) read(r io.Reader) error {
 	})
 }
 
-func ReceiveAndSendBUCPLoginRequest(sess *Session, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendBUCPLoginRequest(sess *Session, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32) error {
 	flap := &flapFrame{}
 	if err := flap.read(r); err != nil {
 		return err
@@ -152,6 +152,10 @@ func ReceiveAndSendBUCPLoginRequest(sess *Session, r io.Reader, w io.Writer, seq
 	sess.ScreenName, found = snacPayload.getString(TLV_SCREEN_NAME)
 	if !found {
 		return errors.New("unable to find screen name")
+	}
+
+	if err := fm.UpsertUser(sess.ScreenName); err != nil {
+		return err
 	}
 
 	snacFrameOut := snacFrame{
