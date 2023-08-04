@@ -518,6 +518,7 @@ func ReadBos(sm *SessionManager, fm *FeedbagStore, rwc io.ReadWriteCloser) error
 		return err
 	}
 	defer sess.Close()
+	defer sm.Remove(sess)
 
 	if err := WriteOServiceHostOnline(rwc, &seq); err != nil {
 		return err
