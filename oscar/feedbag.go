@@ -3,6 +3,7 @@ package oscar
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -45,6 +46,71 @@ const (
 	FeedbagRecentBuddyUpdate               = 0x0025
 )
 
+const (
+	FeedbagAttributesShared                  uint16 = 0x0064
+	FeedbagAttributesInvited                        = 0x0065
+	FeedbagAttributesPending                        = 0x0066
+	FeedbagAttributesTimeT                          = 0x0067
+	FeedbagAttributesDenied                         = 0x0068
+	FeedbagAttributesSwimIndex                      = 0x0069
+	FeedbagAttributesRecentBuddy                    = 0x006A
+	FeedbagAttributesAutoBot                        = 0x006B
+	FeedbagAttributesInteraction                    = 0x006D
+	FeedbagAttributesMegaBot                        = 0x006F
+	FeedbagAttributesOrder                          = 0x00C8
+	FeedbagAttributesBuddyPrefs                     = 0x00C9
+	FeedbagAttributesPdMode                         = 0x00CA
+	FeedbagAttributesPdMask                         = 0x00CB
+	FeedbagAttributesPdFlags                        = 0x00CC
+	FeedbagAttributesClientPrefs                    = 0x00CD
+	FeedbagAttributesLanguage                       = 0x00CE
+	FeedbagAttributesFishUri                        = 0x00CF
+	FeedbagAttributesWirelessPdMode                 = 0x00D0
+	FeedbagAttributesWirelessIgnoreMode             = 0x00D1
+	FeedbagAttributesFishPdMode                     = 0x00D2
+	FeedbagAttributesFishIgnoreMode                 = 0x00D3
+	FeedbagAttributesCreateTime                     = 0x00D4
+	FeedbagAttributesBartInfo                       = 0x00D5
+	FeedbagAttributesBuddyPrefsValid                = 0x00D6
+	FeedbagAttributesBuddyPrefs2                    = 0x00D7
+	FeedbagAttributesBuddyPrefs2Valid               = 0x00D8
+	FeedbagAttributesBartList                       = 0x00D9
+	FeedbagAttributesArriveSound                    = 0x012C
+	FeedbagAttributesLeaveSound                     = 0x012D
+	FeedbagAttributesImage                          = 0x012E
+	FeedbagAttributesColorBg                        = 0x012F
+	FeedbagAttributesColorFg                        = 0x0130
+	FeedbagAttributesAlias                          = 0x0131
+	FeedbagAttributesPassword                       = 0x0132
+	FeedbagAttributesDisabled                       = 0x0133
+	FeedbagAttributesCollapsed                      = 0x0134
+	FeedbagAttributesUrl                            = 0x0135
+	FeedbagAttributesActiveList                     = 0x0136
+	FeedbagAttributesEmailAddr                      = 0x0137
+	FeedbagAttributesPhoneNumber                    = 0x0138
+	FeedbagAttributesCellPhoneNumber                = 0x0139
+	FeedbagAttributesSmsPhoneNumber                 = 0x013A
+	FeedbagAttributesWireless                       = 0x013B
+	FeedbagAttributesNote                           = 0x013C
+	FeedbagAttributesAlertPrefs                     = 0x013D
+	FeedbagAttributesBudalertSound                  = 0x013E
+	FeedbagAttributesStockalertValue                = 0x013F
+	FeedbagAttributesTpalertEditUrl                 = 0x0140
+	FeedbagAttributesTpalertDeleteUrl               = 0x0141
+	FeedbagAttributesTpprovMorealertsUrl            = 0x0142
+	FeedbagAttributesFish                           = 0x0143
+	FeedbagAttributesXunconfirmedxLastAccess        = 0x0145
+	FeedbagAttributesImSent                         = 0x0150
+	FeedbagAttributesOnlineTime                     = 0x0151
+	FeedbagAttributesAwayMsg                        = 0x0152
+	FeedbagAttributesImReceived                     = 0x0153
+	FeedbagAttributesBuddyfeedView                  = 0x0154
+	FeedbagAttributesWorkPhoneNumber                = 0x0158
+	FeedbagAttributesOtherPhoneNumber               = 0x0159
+	FeedbagAttributesWebPdMode                      = 0x015F
+	FeedbagAttributesFirstCreationTimeXc            = 0x0167
+	FeedbagAttributesPdModeXc                       = 0x016E
+)
 const (
 	FeedbagClassIdBuddy            uint16 = 0x0000
 	FeedbagClassIdGroup                   = 0x0001
@@ -95,9 +161,9 @@ func routeFeedbag(sm *SessionManager, sess *Session, fm *FeedbagStore, flap *fla
 	case FeedbagInsertItem:
 		return ReceiveInsertItem(sm, sess, fm, flap, snac, r, w, sequence)
 	case FeedbagUpdateItem:
-		return ReceiveUpdateItem(sess, fm, flap, snac, r, w, sequence)
+		return ReceiveUpdateItem(sm, sess, fm, flap, snac, r, w, sequence)
 	case FeedbagDeleteItem:
-		return ReceiveDeleteItem(sess, fm, flap, snac, r, w, sequence)
+		return ReceiveDeleteItem(sm, sess, fm, flap, snac, r, w, sequence)
 	case FeedbagInsertClass:
 		panic("not implemented")
 	case FeedbagUpdateClass:
@@ -317,37 +383,8 @@ func (f *feedbagItem) read(r io.Reader) error {
 	}
 
 	return f.TLVPayload.read(bytes.NewBuffer(buf), map[uint16]reflect.Kind{
-		0xC8:                           reflect.Slice,
-		FeedbagClassIdBuddy:            reflect.Slice,
-		FeedbagClassIdGroup:            reflect.Slice,
-		FeedbagClassIdPermit:           reflect.Slice,
-		FeedbagClassIdDeny:             reflect.Slice,
-		FeedbagClassIdPdinfo:           reflect.Slice,
-		FeedbagClassIdBuddyPrefs:       reflect.Slice,
-		FeedbagClassIdNonbuddy:         reflect.Slice,
-		FeedbagClassIdTpaProvider:      reflect.Slice,
-		FeedbagClassIdTpaSubscription:  reflect.Slice,
-		FeedbagClassIdClientPrefs:      reflect.Slice,
-		FeedbagClassIdStock:            reflect.Slice,
-		FeedbagClassIdWeather:          reflect.Slice,
-		FeedbagClassIdWatchList:        reflect.Slice,
-		FeedbagClassIdIgnoreList:       reflect.Slice,
-		FeedbagClassIdDateTime:         reflect.Slice,
-		FeedbagClassIdExternalUser:     reflect.Slice,
-		FeedbagClassIdRootCreator:      reflect.Slice,
-		FeedbagClassIdFish:             reflect.Slice,
-		FeedbagClassIdImportTimestamp:  reflect.Slice,
-		FeedbagClassIdBart:             reflect.Slice,
-		FeedbagClassIdRbOrder:          reflect.Slice,
-		FeedbagClassIdPersonality:      reflect.Slice,
-		FeedbagClassIdAlProf:           reflect.Slice,
-		FeedbagClassIdAlInfo:           reflect.Slice,
-		FeedbagClassIdInteraction:      reflect.Slice,
-		FeedbagClassIdVanityInfo:       reflect.Slice,
-		FeedbagClassIdFavoriteLocation: reflect.Slice,
-		FeedbagClassIdBartPdinfo:       reflect.Slice,
-		FeedbagClassIdXIcqStatusNote:   reflect.Slice,
-		FeedbagClassIdMin:              reflect.Slice,
+		FeedbagAttributesOrder:  reflect.Slice,
+		FeedbagAttributesPdMode: reflect.Uint8,
 	})
 }
 
@@ -511,11 +548,53 @@ func ReceiveInsertItem(sm *SessionManager, sess *Session, fm *FeedbagStore, flap
 		return err
 	}
 
+	for _, item := range feedbag {
+		// DENY, block buddy
+		if item.classID == 3 {
+			buddySess, err := sm.RetrieveByScreenName(item.name)
+			if err != nil {
+				if errors.Is(err, errSessNotFound) {
+					// former buddy is offline
+					continue
+				}
+				return err
+			}
+			buddySess.SendMessage(&XMessage{
+				flap: &flapFrame{
+					startMarker: 42,
+					frameType:   2,
+				},
+				snacFrame: snacFrame{
+					foodGroup: BUDDY,
+					subGroup:  BuddyDeparted,
+				},
+				snacOut: &snacBuddyArrived{
+					screenName:   sess.ScreenName,
+					warningLevel: sess.GetWarning(),
+				},
+			})
+			sess.SendMessage(&XMessage{
+				flap: &flapFrame{
+					startMarker: 42,
+					frameType:   2,
+				},
+				snacFrame: snacFrame{
+					foodGroup: BUDDY,
+					subGroup:  BuddyDeparted,
+				},
+				snacOut: &snacBuddyArrived{
+					screenName:   buddySess.ScreenName,
+					warningLevel: buddySess.GetWarning(),
+				},
+			})
+		}
+	}
+
 	// todo: just check online status for buddies that were added
 	return GetOnlineBuddies(w, sess, sm, fm, sequence)
 }
 
-func ReceiveUpdateItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveUpdateItem(sm *SessionManager, sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
 
 	var items []*feedbagItem
@@ -548,10 +627,14 @@ func ReceiveUpdateItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *s
 		subGroup:  FeedbagStatus,
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	if err := writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
+		return err
+	}
+
+	return GetOnlineBuddies(w, sess, sm, fm, sequence)
 }
 
-func ReceiveDeleteItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveDeleteItem(sm *SessionManager, sess *Session, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
 
 	var items []*feedbagItem
@@ -574,9 +657,20 @@ func ReceiveDeleteItem(sess *Session, fm *FeedbagStore, flap *flapFrame, snac *s
 
 	snacPayloadOut := &snacFeedbagStatusReply{}
 
+	hasUnblock := false
 	for _, item := range items {
+		if item.classID == 3 {
+			hasUnblock = true
+		}
 		snacPayloadOut.results = append(snacPayloadOut.results, 0x0000) // success by default
 		fmt.Printf("ReceiveDeleteItem read SNAC feedbag item: %+v\n", item)
+	}
+
+	if hasUnblock {
+		// notify previously blocked users that user is back online
+		if err := NotifyArrival(sess, sm, fm); err != nil {
+			return err
+		}
 	}
 
 	snacFrameOut := snacFrame{

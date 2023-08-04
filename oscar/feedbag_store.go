@@ -100,37 +100,8 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]*feedbagItem, error) {
 			return nil, err
 		}
 		err = item.TLVPayload.read(bytes.NewBuffer(attrs), map[uint16]reflect.Kind{
-			0xC8: reflect.Slice,
-			//FeedbagClassIdBuddy:            reflect.Slice,
-			FeedbagClassIdGroup: reflect.Uint16,
-			//FeedbagClassIdPermit:           reflect.Slice,
-			//FeedbagClassIdDeny:             reflect.Slice,
-			//FeedbagClassIdPdinfo:           reflect.Slice,
-			//FeedbagClassIdBuddyPrefs:       reflect.Slice,
-			//FeedbagClassIdNonbuddy:         reflect.Slice,
-			//FeedbagClassIdTpaProvider:      reflect.Slice,
-			//FeedbagClassIdTpaSubscription:  reflect.Slice,
-			//FeedbagClassIdClientPrefs:      reflect.Slice,
-			//FeedbagClassIdStock:            reflect.Slice,
-			//FeedbagClassIdWeather:          reflect.Slice,
-			//FeedbagClassIdWatchList:        reflect.Slice,
-			//FeedbagClassIdIgnoreList:       reflect.Slice,
-			//FeedbagClassIdDateTime:         reflect.Slice,
-			//FeedbagClassIdExternalUser:     reflect.Slice,
-			//FeedbagClassIdRootCreator:      reflect.Slice,
-			//FeedbagClassIdFish:             reflect.Slice,
-			//FeedbagClassIdImportTimestamp:  reflect.Slice,
-			//FeedbagClassIdBart:             reflect.Slice,
-			FeedbagClassIdRbOrder: reflect.Uint16,
-			//FeedbagClassIdPersonality:      reflect.Slice,
-			//FeedbagClassIdAlProf:           reflect.Slice,
-			//FeedbagClassIdAlInfo:           reflect.Slice,
-			//FeedbagClassIdInteraction:      reflect.Slice,
-			//FeedbagClassIdVanityInfo:       reflect.Slice,
-			//FeedbagClassIdFavoriteLocation: reflect.Slice,
-			//FeedbagClassIdBartPdinfo:       reflect.Slice,
-			//FeedbagClassIdXIcqStatusNote:   reflect.Slice,
-			//FeedbagClassIdMin:              reflect.Slice,
+			FeedbagAttributesOrder:  reflect.Slice,
+			FeedbagAttributesPdMode: reflect.Uint8,
 		})
 		if err != nil {
 			return items, err
@@ -183,14 +154,21 @@ func (f *FeedbagStore) Upsert(screenName string, items []*feedbagItem) error {
 }
 
 // InterestedUsers returns all users who have screenName in their buddy list.
+// Exclude users who are on screenName's block list.
 func (f *FeedbagStore) InterestedUsers(screenName string) ([]string, error) {
 	q := `
-		SELECT ScreenName
-		FROM feedbag
-		WHERE name = ? AND classID = 0
+		SELECT f.ScreenName
+		FROM feedbag f
+		WHERE f.name = ?
+		  AND f.classID = 0
+		  AND NOT EXISTS(SELECT 1
+						 FROM feedbag
+						 WHERE ScreenName = f.ScreenName
+						   AND name = ?
+						   AND classID = 3)
 	`
 
-	rows, err := f.db.Query(q, screenName)
+	rows, err := f.db.Query(q, screenName, screenName)
 	if err != nil {
 		return nil, err
 	}
@@ -210,12 +188,16 @@ func (f *FeedbagStore) InterestedUsers(screenName string) ([]string, error) {
 
 func (f *FeedbagStore) Buddies(screenName string) ([]string, error) {
 	q := `
-		SELECT name
-		FROM feedbag
-		WHERE ScreenName = ? AND classID = 0
+		SELECT f.name
+		FROM feedbag f
+		WHERE f.ScreenName = ? AND f.classID = 0
+		-- Don't include buddy if they blocked screenName
+		AND NOT EXISTS(SELECT 1 FROM feedbag WHERE ScreenName = f.name AND name = ? AND classID = 3)
+		-- Don't include buddy if screen name blocked them
+		AND NOT EXISTS(SELECT 1 FROM feedbag WHERE ScreenName = ? AND name = f.name AND classID = 3)
 	`
 
-	rows, err := f.db.Query(q, screenName)
+	rows, err := f.db.Query(q, screenName, screenName, screenName)
 	if err != nil {
 		return nil, err
 	}
