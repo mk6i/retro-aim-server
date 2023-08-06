@@ -383,8 +383,11 @@ func (f *feedbagItem) read(r io.Reader) error {
 	}
 
 	return f.TLVPayload.read(bytes.NewBuffer(buf), map[uint16]reflect.Kind{
-		FeedbagAttributesOrder:  reflect.Slice,
-		FeedbagAttributesPdMode: reflect.Uint8,
+		FeedbagAttributesOrder:           reflect.Slice,
+		FeedbagAttributesPdMode:          reflect.Uint8,
+		FeedbagAttributesPdFlags:         reflect.Uint32,
+		FeedbagAttributesBuddyPrefs:      reflect.Uint32,
+		FeedbagAttributesBuddyPrefsValid: reflect.Uint32,
 	})
 }
 
