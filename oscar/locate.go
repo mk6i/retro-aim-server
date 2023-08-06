@@ -69,7 +69,7 @@ func routeLocate(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flap
 	case LocateFindListReply:
 		panic("not implemented")
 	case LocateUserInfoQuery2:
-		return SendAndReceiveUserInfoQuery2(sm, fm, flap, snac, r, w, sequence)
+		return SendAndReceiveUserInfoQuery2(sess, sm, fm, flap, snac, r, w, sequence)
 	}
 
 	return nil
@@ -261,7 +261,7 @@ func (f *snacUserInfoReply) write(w io.Writer) error {
 	return f.awayMessage.write(w)
 }
 
-func SendAndReceiveUserInfoQuery2(sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveUserInfoQuery2 read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacUserInfoQuery2{}
@@ -269,7 +269,22 @@ func SendAndReceiveUserInfoQuery2(sm *SessionManager, fm *FeedbagStore, flap *fl
 		return err
 	}
 
-	sess, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.screenName)
+	if err != nil {
+		return err
+	}
+	if blocked != BlockedNo {
+		snacFrameOut := snacFrame{
+			foodGroup: LOCATE,
+			subGroup:  LocateErr,
+		}
+		snacPayloadOut := &snacError{
+			code: ErrorCodeNotLoggedOn,
+		}
+		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	}
+
+	buddySess, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
 	if err != nil {
 		if errors.Is(err, errSessNotFound) {
 			snacFrameOut := snacFrame{
@@ -289,9 +304,9 @@ func SendAndReceiveUserInfoQuery2(sm *SessionManager, fm *FeedbagStore, flap *fl
 	}
 	snacPayloadOut := &snacUserInfoReply{
 		screenName:   snacPayloadIn.screenName,
-		warningLevel: sess.GetWarning(),
+		warningLevel: buddySess.GetWarning(),
 		userInfo: TLVPayload{
-			TLVs: sess.GetUserInfo(),
+			TLVs: buddySess.GetUserInfo(),
 		},
 		clientProfile: TLVPayload{},
 		awayMessage:   TLVPayload{},
@@ -331,7 +346,7 @@ func SendAndReceiveUserInfoQuery2(sm *SessionManager, fm *FeedbagStore, flap *fl
 			},
 			{
 				tType: 0x04,
-				val:   sess.GetAwayMessage(),
+				val:   buddySess.GetAwayMessage(),
 			},
 		}
 	default:
@@ -370,7 +385,7 @@ func (s *snacSetDirInfoReply) write(w io.Writer) error {
 }
 
 func SendAndReceiveSetDirInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	fmt.Printf("SendAndReceiveUserInfoQuery2 read SNAC frame: %+v\n", snac)
+	fmt.Printf("SendAndReceiveSetDirInfo read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacSetDirInfo{}
 	if err := snacPayloadIn.read(r); err != nil {

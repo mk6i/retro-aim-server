@@ -52,53 +52,6 @@ func TestFeedbagStore(t *testing.T) {
 	}
 }
 
-func TestFeedbagStoreBlockedUser(t *testing.T) {
-
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
-	const screenName = "sn2day"
-
-	defer func() {
-		err := os.Remove(testFile)
-		if err != nil {
-			t.Error("unable to clean up test file")
-		}
-	}()
-
-	f, err := NewFeedbagStore(testFile)
-	if err != nil {
-		t.Fatalf("failed to create new feedbag store: %s", err.Error())
-	}
-
-	itemsIn := []*feedbagItem{
-		{
-			groupID:    0,
-			itemID:     1805,
-			classID:    0,
-			name:       "spimmer1234",
-			TLVPayload: TLVPayload{},
-		},
-		{
-			groupID:    0,
-			itemID:     1807,
-			classID:    3,
-			name:       "spimmer1234",
-			TLVPayload: TLVPayload{},
-		},
-	}
-	if err := f.Upsert(screenName, itemsIn); err != nil {
-		t.Fatalf("failed to upsert: %s", err.Error())
-	}
-
-	itemsOut, err := f.Buddies(screenName)
-	if err != nil {
-		t.Fatalf("failed to retrieve: %s", err.Error())
-	}
-
-	if len(itemsOut) != 0 {
-		t.Fatalf("got unexpected blocked buddy %v", itemsOut[0])
-	}
-}
-
 func TestFeedbagDelete(t *testing.T) {
 
 	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
@@ -308,7 +261,6 @@ func TestProfileNonExistent(t *testing.T) {
 }
 
 func TestInterestedUsers(t *testing.T) {
-
 	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
 
 	defer func() {
@@ -335,5 +287,124 @@ func TestInterestedUsers(t *testing.T) {
 	users, err = f.InterestedUsers("userB")
 	if len(users) != 0 {
 		t.Fatalf("expected no interested users, got %v", users)
+	}
+}
+
+func TestFeedbagStoreBuddiesBlockedUser(t *testing.T) {
+	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+
+	defer func() {
+		err := os.Remove(testFile)
+		if err != nil {
+			t.Error("unable to clean up test file")
+		}
+	}()
+
+	f, err := NewFeedbagStore(testFile)
+	if err != nil {
+		t.Fatalf("failed to create new feedbag store: %s", err.Error())
+	}
+
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',0,13852,3,'userB',NULL,1691286176)`)
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
+
+	users, err := f.Buddies("userA")
+	if len(users) != 0 {
+		t.Fatalf("expected no buddies, got %v", users)
+	}
+
+	users, err = f.Buddies("userB")
+	if len(users) != 0 {
+		t.Fatalf("expected no buddies, got %v", users)
+	}
+}
+
+func TestFeedbagStoreBlockedA(t *testing.T) {
+	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+
+	defer func() {
+		err := os.Remove(testFile)
+		if err != nil {
+			t.Error("unable to clean up test file")
+		}
+	}()
+
+	f, err := NewFeedbagStore(testFile)
+	if err != nil {
+		t.Fatalf("failed to create new feedbag store: %s", err.Error())
+	}
+
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',0,13852,3,'userB',NULL,1691286176)`)
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
+
+	sn1 := "userA"
+	sn2 := "userB"
+	blocked, err := f.Blocked(sn1, sn2)
+	if err != nil {
+		t.Fatalf("db err: %s", err.Error())
+	}
+	if blocked != BlockedA {
+		t.Fatalf("expected A to be blocker")
+	}
+}
+
+func TestFeedbagStoreBlockedB(t *testing.T) {
+	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+
+	defer func() {
+		err := os.Remove(testFile)
+		if err != nil {
+			t.Error("unable to clean up test file")
+		}
+	}()
+
+	f, err := NewFeedbagStore(testFile)
+	if err != nil {
+		t.Fatalf("failed to create new feedbag store: %s", err.Error())
+	}
+
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',0,13852,3,'userA',NULL,1691286176)`)
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
+
+	sn1 := "userA"
+	sn2 := "userB"
+	blocked, err := f.Blocked(sn1, sn2)
+	if err != nil {
+		t.Fatalf("db err: %s", err.Error())
+	}
+	if blocked != BlockedB {
+		t.Fatalf("expected B to be blocker")
+	}
+}
+
+func TestFeedbagStoreBlockedNoBlocked(t *testing.T) {
+	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+
+	defer func() {
+		err := os.Remove(testFile)
+		if err != nil {
+			t.Error("unable to clean up test file")
+		}
+	}()
+
+	f, err := NewFeedbagStore(testFile)
+	if err != nil {
+		t.Fatalf("failed to create new feedbag store: %s", err.Error())
+	}
+
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
+
+	sn1 := "userA"
+	sn2 := "userB"
+	blocked, err := f.Blocked(sn1, sn2)
+	if err != nil {
+		t.Fatalf("db err: %s", err.Error())
+	}
+	if blocked != BlockedNo {
+		t.Fatalf("expected no blocker")
 	}
 }
