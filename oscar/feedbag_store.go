@@ -185,6 +185,8 @@ func (f *FeedbagStore) InterestedUsers(screenName string) ([]string, error) {
 	return items, nil
 }
 
+// Buddies returns all user's buddies. Don't return a buddy if screenName
+// blocked them.
 func (f *FeedbagStore) Buddies(screenName string) ([]string, error) {
 	q := `
 		SELECT f.name
@@ -212,6 +214,61 @@ func (f *FeedbagStore) Buddies(screenName string) ([]string, error) {
 	}
 
 	return items, nil
+}
+
+type BlockedState int
+
+const (
+	BlockedNo BlockedState = iota
+	BlockedA
+	BlockedB
+)
+
+// Blocked informs whether there is a blocking relationship between sn1 and
+// sn2. Return BlockedA if sn1 blocked sn2, BlockedB if sn2 blocked sn1, or
+// BlockedNo if neither screen name blocked the other.
+func (f *FeedbagStore) Blocked(sn1, sn2 string) (BlockedState, error) {
+	q := `
+		SELECT EXISTS(SELECT 1
+					  FROM feedbag f
+					  WHERE f.classID = 3
+						AND f.ScreenName = ?
+						AND f.name = ?)
+		UNION ALL
+		SELECT EXISTS(SELECT 1
+					  FROM feedbag f
+					  WHERE f.classID = 3
+						AND f.ScreenName = ?
+						AND f.name = ?)
+	`
+	var blockedA bool
+	row, err := f.db.Query(q, sn1, sn2, sn2, sn1)
+	if err != nil {
+		return BlockedNo, err
+	}
+	defer row.Close()
+
+	row.Next()
+	err = row.Scan(&blockedA)
+	if err != nil {
+		return BlockedNo, err
+	}
+
+	row.Next()
+	var blockedB bool
+	err = row.Scan(&blockedB)
+	if err != nil {
+		return BlockedNo, err
+	}
+
+	switch {
+	case blockedA:
+		return BlockedA, nil
+	case blockedB:
+		return BlockedB, nil
+	default:
+		return BlockedNo, nil
+	}
 }
 
 // RetrieveProfile fetches a user profile. Return empty string if the user

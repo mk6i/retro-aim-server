@@ -221,6 +221,24 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		return err
 	}
 
+	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.screenName)
+	if err != nil {
+		return err
+	}
+	if blocked != BlockedNo {
+		snacFrameOut := snacFrame{
+			foodGroup: ICBM,
+			subGroup:  ICBMErr,
+		}
+		snacPayloadOut := &snacError{
+			code: ErrorCodeNotLoggedOn,
+		}
+		if blocked == BlockedA {
+			snacPayloadOut.code = ErrorCodeInLocalPermitDeny
+		}
+		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	}
+
 	session, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
 	if err != nil {
 		if errors.Is(err, errSessNotFound) {
