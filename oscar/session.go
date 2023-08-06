@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"sync"
+	"time"
 )
 
 var errSessNotFound = errors.New("session was not found")
@@ -17,6 +18,7 @@ type Session struct {
 	Mutex       sync.RWMutex
 	Warning     uint16
 	AwayMessage string
+	SignonTime  time.Time
 }
 
 func (s *Session) IncreaseWarning(incr uint16) {
@@ -41,7 +43,12 @@ func (s *Session) GetUserInfo() []*TLV {
 	s.Mutex.RLock()
 	defer s.Mutex.RUnlock()
 
-	var tlvs []*TLV
+	tlvs := []*TLV{
+		{
+			tType: 0x03,
+			val:   uint32(s.SignonTime.Unix()),
+		},
+	}
 
 	if s.AwayMessage != "" {
 		tlvs = append(tlvs, &TLV{
@@ -139,9 +146,10 @@ func (s *SessionManager) NewSession() (*Session, error) {
 		return nil, err
 	}
 	sess := &Session{
-		ID:     id.String(),
-		msgCh:  make(chan *XMessage, 1),
-		stopCh: make(chan struct{}),
+		ID:         id.String(),
+		msgCh:      make(chan *XMessage, 1),
+		stopCh:     make(chan struct{}),
+		SignonTime: time.Now(),
 	}
 	s.store[sess.ID] = sess
 	return sess, nil
