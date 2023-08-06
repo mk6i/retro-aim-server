@@ -100,8 +100,13 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]*feedbagItem, error) {
 			return nil, err
 		}
 		err = item.TLVPayload.read(bytes.NewBuffer(attrs), map[uint16]reflect.Kind{
-			FeedbagAttributesOrder:  reflect.Slice,
-			FeedbagAttributesPdMode: reflect.Uint8,
+			// todo: how to do parity with func (f *feedbagItem) read?
+			FeedbagAttributesBuddyPrefs:      reflect.Uint32,
+			FeedbagAttributesBuddyPrefsValid: reflect.Uint32,
+			FeedbagAttributesOrder:           reflect.Slice,
+			FeedbagAttributesPdFlags:         reflect.Uint32,
+			FeedbagAttributesPdMask:          reflect.Uint32,
+			FeedbagAttributesPdMode:          reflect.Uint8,
 		})
 		if err != nil {
 			return items, err
