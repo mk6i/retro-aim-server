@@ -306,3 +306,34 @@ func TestProfileNonExistent(t *testing.T) {
 		t.Fatalf("failed to get error on non-existing profile: %v", err)
 	}
 }
+
+func TestInterestedUsers(t *testing.T) {
+
+	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+
+	defer func() {
+		err := os.Remove(testFile)
+		if err != nil {
+			t.Error("unable to clean up test file")
+		}
+	}()
+
+	f, err := NewFeedbagStore(testFile)
+	if err != nil {
+		t.Fatalf("failed to create new feedbag store: %s", err.Error())
+	}
+
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',0,13852,3,'userB',NULL,1691286176)`)
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
+	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
+
+	users, err := f.InterestedUsers("userA")
+	if len(users) != 0 {
+		t.Fatalf("expected no interested users, got %v", users)
+	}
+
+	users, err = f.InterestedUsers("userB")
+	if len(users) != 0 {
+		t.Fatalf("expected no interested users, got %v", users)
+	}
+}
