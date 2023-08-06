@@ -512,6 +512,14 @@ func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 		return err
 	}
 
+	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.screenName)
+	if err != nil {
+		return err
+	}
+	if blocked != BlockedNo {
+		return nil
+	}
+
 	session, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
 	if err != nil {
 		return err
@@ -590,6 +598,21 @@ func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 	snacPayloadIn := &snacEvilRequest{}
 	if err := snacPayloadIn.read(r); err != nil {
 		return err
+	}
+
+	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.screenName)
+	if err != nil {
+		return err
+	}
+	if blocked != BlockedNo {
+		snacFrameOut := snacFrame{
+			foodGroup: ICBM,
+			subGroup:  ICBMErr,
+		}
+		snacPayloadOut := &snacError{
+			code: ErrorCodeNotLoggedOn,
+		}
+		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
 	recipSess, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
