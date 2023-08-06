@@ -161,14 +161,13 @@ func (f *FeedbagStore) InterestedUsers(screenName string) ([]string, error) {
 		FROM feedbag f
 		WHERE f.name = ?
 		  AND f.classID = 0
-		  AND NOT EXISTS(SELECT 1
-						 FROM feedbag
-						 WHERE ScreenName = f.ScreenName
-						   AND name = ?
-						   AND classID = 3)
+		-- Don't show screenName that its blocked buddy is online
+		AND NOT EXISTS(SELECT 1 FROM feedbag WHERE ScreenName = ? AND name = f.ScreenName AND classID = 3)
+		-- Don't show blocked buddy that screenName is online
+		AND NOT EXISTS(SELECT 1 FROM feedbag WHERE ScreenName = f.ScreenName AND name = f.name AND classID = 3)
 	`
 
-	rows, err := f.db.Query(q, screenName, screenName)
+	rows, err := f.db.Query(q, screenName, screenName, screenName)
 	if err != nil {
 		return nil, err
 	}
