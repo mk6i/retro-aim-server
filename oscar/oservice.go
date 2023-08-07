@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"time"
 )
 
 const (
@@ -103,7 +102,7 @@ func routeOService(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *fl
 	case OServiceConfigReply:
 		panic("not implemented")
 	case OServiceSetUserinfoFields:
-		return ReceiveSetUserInfoFields(flap, snac, r, w, sequence)
+		return ReceiveSetUserInfoFields(sess, sm, fm, flap, snac, r, w, sequence)
 	case OServiceProbeReq:
 		panic("not implemented")
 	case OServiceProbeAck:
@@ -396,41 +395,11 @@ func ReceiveAndSendServiceRequestSelfInfo(sess *Session, flap *flapFrame, snac *
 		foodGroup: OSERVICE,
 		subGroup:  OServiceUserInfoUpdate,
 	}
-
 	snacPayloadOut := &snacOServiceUserInfoUpdate{
 		screenName:   sess.ScreenName,
 		warningLevel: sess.GetWarning(),
 		TLVPayload: TLVPayload{
-			TLVs: []*TLV{
-				{
-					tType: 0x01,
-					val:   uint32(0x0010),
-				},
-				{
-					tType: 0x02,
-					val:   uint32(time.Now().Unix()),
-				},
-				{
-					tType: 0x03,
-					val:   uint32(1687314861),
-				},
-				{
-					tType: 0x04,
-					val:   uint32(0),
-				},
-				{
-					tType: 0x05,
-					val:   uint32(1687314841),
-				},
-				{
-					tType: 0x0D,
-					val:   make([]byte, 0),
-				},
-				{
-					tType: 0x0F,
-					val:   uint32(0),
-				},
-			},
+			TLVs: sess.GetUserInfo(),
 		},
 	}
 
@@ -512,12 +481,14 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 			}
 			return err
 		}
+		if sess.Invisible() {
+			continue
+		}
 
 		flap := &flapFrame{
 			startMarker: 42,
 			frameType:   2,
 		}
-
 		snacFrameOut := snacFrame{
 			foodGroup: BUDDY,
 			subGroup:  BuddyArrived,
@@ -537,19 +508,48 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 	return nil
 }
 
-func ReceiveSetUserInfoFields(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveSetUserInfoFields read SNAC frame: %+v\n", snac)
 
-	b := make([]byte, flap.payloadLength-10)
-	if _, err := r.Read(b); err != nil {
-		return err
-	}
-
 	snacPayload := &TLVPayload{}
-	return snacPayload.read(bytes.NewBuffer(b), map[uint16]reflect.Kind{
+	err := snacPayload.read(r, map[uint16]reflect.Kind{
 		0x06: reflect.Uint32,
 		0x1D: reflect.Slice,
 	})
+	if err != nil {
+		return err
+	}
+
+	if status, hasStatus := snacPayload.getUint32(0x06); hasStatus {
+		switch status {
+		case 0x000:
+			sess.SetInvisible(false)
+			if err := NotifyArrival(sess, sm, fm); err != nil {
+				return err
+			}
+		case 0x100:
+			sess.SetInvisible(true)
+			if err := NotifyDeparture(sess, sm, fm); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("don't know what to do with status %d", status)
+		}
+	}
+
+	snacFrameOut := snacFrame{
+		foodGroup: OSERVICE,
+		subGroup:  OServiceUserInfoUpdate,
+	}
+	snacPayloadOut := &snacOServiceUserInfoUpdate{
+		screenName:   sess.ScreenName,
+		warningLevel: sess.GetWarning(),
+		TLVPayload: TLVPayload{
+			TLVs: sess.GetUserInfo(),
+		},
+	}
+
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snacIdleNotification struct {
