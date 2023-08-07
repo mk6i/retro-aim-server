@@ -197,6 +197,15 @@ func (s *TLVPayload) getSlice(tType uint16) ([]byte, bool) {
 	return nil, false
 }
 
+func (s *TLVPayload) getUint32(tType uint16) (uint32, bool) {
+	for _, tlv := range s.TLVs {
+		if tType == tlv.tType {
+			return tlv.val.(uint32), true
+		}
+	}
+	return 0, false
+}
+
 type TLV struct {
 	tType uint16
 	val   any

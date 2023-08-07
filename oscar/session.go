@@ -19,12 +19,25 @@ type Session struct {
 	Warning     uint16
 	AwayMessage string
 	SignonTime  time.Time
+	invisible   bool
 }
 
 func (s *Session) IncreaseWarning(incr uint16) {
 	s.Mutex.RLock()
 	defer s.Mutex.RUnlock()
 	s.Warning += incr
+}
+
+func (s *Session) SetInvisible(invisible bool) {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+	s.invisible = invisible
+}
+
+func (s *Session) Invisible() bool {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+	return s.invisible
 }
 
 func (s *Session) SetAwayMessage(awayMessage string) {
@@ -43,6 +56,7 @@ func (s *Session) GetUserInfo() []*TLV {
 	s.Mutex.RLock()
 	defer s.Mutex.RUnlock()
 
+	// sign-in timestamp
 	tlvs := []*TLV{
 		{
 			tType: 0x03,
@@ -50,23 +64,25 @@ func (s *Session) GetUserInfo() []*TLV {
 		},
 	}
 
-	if s.AwayMessage != "" {
-		tlvs = append(tlvs, &TLV{
-			tType: 0x01,
-			val:   uint16(0x0010 | 0x0020),
-		})
-	} else {
-		tlvs = append(tlvs, &TLV{
-			tType: 0x01,
-			val:   uint16(0x0010),
-		})
-
+	// away message status
+	userFlags := &TLV{
+		tType: 0x01,
+		val:   uint16(0x0010), // AIM client
 	}
+	if s.AwayMessage != "" {
+		userFlags.val = userFlags.val.(uint16) | uint16(0x0020)
+	}
+	tlvs = append(tlvs, userFlags)
 
-	tlvs = append(tlvs, &TLV{
+	// invisibility status
+	status := &TLV{
 		tType: 0x06,
 		val:   uint16(0x0000),
-	})
+	}
+	if s.invisible {
+		status.val = status.val.(uint16) | uint16(0x0100)
+	}
+	tlvs = append(tlvs, status)
 
 	return tlvs
 }
