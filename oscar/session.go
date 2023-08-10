@@ -20,6 +20,8 @@ type Session struct {
 	AwayMessage string
 	SignonTime  time.Time
 	invisible   bool
+	idle        bool
+	idleTime    time.Time
 }
 
 func (s *Session) IncreaseWarning(incr uint16) {
@@ -38,6 +40,26 @@ func (s *Session) Invisible() bool {
 	s.Mutex.RLock()
 	defer s.Mutex.RUnlock()
 	return s.invisible
+}
+
+func (s *Session) SetIdle(dur time.Duration) {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+	s.idle = true
+	// set the time the user became idle
+	s.idleTime = time.Now().Add(-dur)
+}
+
+func (s *Session) SetActive() {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+	s.idle = false
+}
+
+func (s *Session) Idle() bool {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+	return s.idle
 }
 
 func (s *Session) SetAwayMessage(awayMessage string) {
@@ -83,6 +105,16 @@ func (s *Session) GetUserInfo() []*TLV {
 		status.val = status.val.(uint16) | uint16(0x0100)
 	}
 	tlvs = append(tlvs, status)
+
+	// idle status
+	idle := &TLV{
+		tType: 0x04,
+		val:   uint16(0),
+	}
+	if s.idle {
+		idle.val = uint16(time.Now().Sub(s.idleTime).Seconds())
+	}
+	tlvs = append(tlvs, idle)
 
 	return tlvs
 }
