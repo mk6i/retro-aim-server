@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"time"
 )
 
 const (
@@ -78,7 +79,7 @@ func routeOService(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *fl
 	case OServiceEvilNotification:
 		panic("not implemented")
 	case OServiceIdleNotification:
-		return ReceiveIdleNotification(flap, snac, r, w, sequence)
+		return ReceiveIdleNotification(sess, sm, fm, flap, snac, r, w, sequence)
 	case OServiceMigrateGroups:
 		panic("not implemented")
 	case OServiceMotd:
@@ -560,11 +561,21 @@ func (s *snacIdleNotification) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &s.idleTime)
 }
 
-func ReceiveIdleNotification(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveIdleNotification(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveIdleNotification read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacIdleNotification{}
-	return snacPayload.read(r)
+	if err := snacPayload.read(r); err != nil {
+		return nil
+	}
+
+	if snacPayload.idleTime == 0 {
+		sess.SetActive()
+	} else {
+		sess.SetIdle(time.Duration(snacPayload.idleTime) * time.Second)
+	}
+
+	return NotifyArrival(sess, sm, fm)
 }
 
 type snacServiceRequest struct {
