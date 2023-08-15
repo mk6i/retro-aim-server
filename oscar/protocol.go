@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"reflect"
 )
@@ -51,6 +52,18 @@ const (
 	ErrorTagsErrorInfoClsid = 0x29
 	ErrorTagsErrorInfoData  = 0x2A
 )
+
+var (
+	CAP_CHAT []byte
+)
+
+func init() {
+	cap, err := uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
+	if err != nil {
+		panic(err.Error())
+	}
+	CAP_CHAT = cap
+}
 
 type snacError struct {
 	code uint16
