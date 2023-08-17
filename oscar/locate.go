@@ -312,8 +312,8 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 		awayMessage:   TLVPayload{},
 	}
 
-	switch snacPayloadIn.type2 {
-	case 1:
+	// profile
+	if snacPayloadIn.type2&1 == 1 {
 		profile, err := fm.RetrieveProfile(snacPayloadIn.screenName)
 		if err != nil {
 			if err == errUserNotExist {
@@ -328,7 +328,7 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 			}
 			return err
 		}
-		snacPayloadOut.clientProfile.TLVs = []*TLV{
+		snacPayloadOut.clientProfile.TLVs = append(snacPayloadOut.clientProfile.TLVs, []*TLV{
 			{
 				tType: 0x01,
 				val:   `text/aolrtf; charset="us-ascii"`,
@@ -337,9 +337,12 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 				tType: 0x02,
 				val:   profile,
 			},
-		}
-	case 2:
-		snacPayloadOut.awayMessage.TLVs = []*TLV{
+		}...)
+	}
+
+	// away message
+	if snacPayloadIn.type2&2 == 2 {
+		snacPayloadOut.clientProfile.TLVs = append(snacPayloadOut.clientProfile.TLVs, []*TLV{
 			{
 				tType: 0x03,
 				val:   `text/aolrtf; charset="us-ascii"`,
@@ -348,9 +351,7 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 				tType: 0x04,
 				val:   buddySess.GetAwayMessage(),
 			},
-		}
-	default:
-		return fmt.Errorf("unknown user info query type %d", snacPayloadIn.type2)
+		}...)
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
