@@ -87,96 +87,6 @@ func SendAndReceiveNextChatRights(flap *flapFrame, snac *snacFrame, r io.Reader,
 		subGroup:  ChatNavNavInfo,
 	}
 
-	//rInfo := roomInfo{
-	//	exchange:       4,
-	//	cookie:         []byte("create"),
-	//	instanceNumber: 65535,
-	//}
-	//buf1 := &bytes.Buffer{}
-	//if err := rInfo.write(buf1); err != nil {
-	//	return err
-	//}
-	//
-	//xInfo := exchangeInfo{
-	//	identifier: 4,
-	//	TLVPayload: TLVPayload{
-	//		TLVs: []*TLV{
-	//			{
-	//				tType: 0x05,
-	//				val:   buf1.Bytes(),
-	//			},
-	//			{
-	//				tType: 0x00d1,
-	//				val:   uint16(100),
-	//			},
-	//			{
-	//				tType: 0x000a,
-	//				val:   uint16(0x0114),
-	//			},
-	//			{
-	//				tType: 0x00d2,
-	//				val:   uint16(10),
-	//			},
-	//			{
-	//				tType: 0x02,
-	//				val:   uint16(1),
-	//			},
-	//			{
-	//				tType: 0xc9,
-	//				val:   uint16(63),
-	//			},
-	//			{
-	//				tType: 0xd3,
-	//				val:   "create",
-	//			},
-	//			{
-	//				tType: 0xd5,
-	//				val:   uint8(1),
-	//			},
-	//			{
-	//				tType: 0xd6,
-	//				val:   "us-ascii",
-	//			},
-	//			{
-	//				tType: 0xd7,
-	//				val:   "en",
-	//			},
-	//			{
-	//				tType: 0xd8,
-	//				val:   "us-ascii",
-	//			},
-	//			{
-	//				tType: 0xd9,
-	//				val:   "en",
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//buf := &bytes.Buffer{}
-	//if err := xInfo.write(buf); err != nil {
-	//	return err
-	//}
-	//
-	//roomBuf := &bytes.Buffer{}
-	//newRoomInfo := &snacCreateRoom{
-	//	exchange:       4,
-	//	cookie:         []byte("create"),
-	//	instanceNumber: 65535,
-	//	detailLevel:    2,
-	//	TLVPayload: TLVPayload{
-	//		TLVs: []*TLV{
-	//			{
-	//				tType: uint16(0xD3),
-	//				val:   "hahah new name",
-	//			},
-	//		},
-	//	},
-	//}
-	//if err := newRoomInfo.write(roomBuf); err != nil {
-	//	return err
-	//}
-
 	xchange := TLVPayload{
 		TLVs: []*TLV{
 			{
@@ -343,31 +253,24 @@ func SendAndReceiveCreateRoom(flap *flapFrame, snac *snacFrame, r io.Reader, w i
 		return err
 	}
 
-	name, _ := snacPayloadIn.getString(0x00d3)
+	//name, _ := snacPayloadIn.getString(0x00d3)
 	//charset, _ := snacPayloadIn.getString(0x00d6)
 	//lang, _ := snacPayloadIn.getString(0x00d7)
 
-	snacPayloadIn.TLVPayload = TLVPayload{
-		[]*TLV{
-			//{
-			//	tType: 0x00d3,
-			//	val:   name,
-			//},
-			//{
-			//	tType: 0x00d6,
-			//	val:   charset,
-			//},
-			//{
-			//	tType: 0x00d7,
-			//	val:   lang,
-			//},
+	snacFrameOut := snacFrame{
+		foodGroup: CHAT_NAV,
+		subGroup:  ChatNavNavInfo,
+	}
+
+	xchange := TLVPayload{
+		TLVs: []*TLV{
 			{
 				tType: 0x006a,
-				val:   name,
+				val:   "fully",
 			},
 			{
 				tType: 0x00c9,
-				val:   uint16(0),
+				val:   uint16(1), // tweak this
 			},
 			{
 				tType: 0x00ca,
@@ -375,7 +278,7 @@ func SendAndReceiveCreateRoom(flap *flapFrame, snac *snacFrame, r io.Reader, w i
 			},
 			{
 				tType: 0x00d1,
-				val:   uint16(100),
+				val:   uint16(1024),
 			},
 			{
 				tType: 0x00d2,
@@ -383,7 +286,7 @@ func SendAndReceiveCreateRoom(flap *flapFrame, snac *snacFrame, r io.Reader, w i
 			},
 			{
 				tType: 0x00d3,
-				val:   name,
+				val:   "hello",
 			},
 			{
 				tType: 0x00d5,
@@ -392,26 +295,37 @@ func SendAndReceiveCreateRoom(flap *flapFrame, snac *snacFrame, r io.Reader, w i
 		},
 	}
 
-	snacPayloadIn.detailLevel = 0x02
-
-	buf := &bytes.Buffer{}
-	if err := snacPayloadIn.write(buf); err != nil {
+	roomBuf := &bytes.Buffer{}
+	if err := binary.Write(roomBuf, binary.BigEndian, uint16(4)); err != nil {
+		return err
+	}
+	if err := binary.Write(roomBuf, binary.BigEndian, uint8(len("create"))); err != nil {
+		return err
+	}
+	if err := binary.Write(roomBuf, binary.BigEndian, []byte("create")); err != nil {
+		return err
+	}
+	if err := binary.Write(roomBuf, binary.BigEndian, uint16(100)); err != nil {
+		return err
+	}
+	if err := binary.Write(roomBuf, binary.BigEndian, uint8(2)); err != nil {
+		return err
+	}
+	if err := binary.Write(roomBuf, binary.BigEndian, uint16(len(xchange.TLVs))); err != nil {
+		return err
+	}
+	if err := xchange.write(roomBuf); err != nil {
 		return err
 	}
 
-	snacOut := &TLVPayload{
-		[]*TLV{
+	snacPayloadOut := &TLVPayload{
+		TLVs: []*TLV{
 			{
-				tType: 0x0004,
-				val:   buf.Bytes(),
+				tType: 0x04,
+				val:   roomBuf.Bytes(),
 			},
 		},
 	}
 
-	snacFrameOut := snacFrame{
-		foodGroup: CHAT_NAV,
-		subGroup:  ChatNavCreateRoom,
-	}
-
-	return writeOutSNAC(snac, flap, snacFrameOut, snacOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
