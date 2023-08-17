@@ -253,7 +253,7 @@ func SendAndReceiveCreateRoom(flap *flapFrame, snac *snacFrame, r io.Reader, w i
 		return err
 	}
 
-	//name, _ := snacPayloadIn.getString(0x00d3)
+	name, _ := snacPayloadIn.getString(0x00d3)
 	//charset, _ := snacPayloadIn.getString(0x00d6)
 	//lang, _ := snacPayloadIn.getString(0x00d7)
 
@@ -266,7 +266,7 @@ func SendAndReceiveCreateRoom(flap *flapFrame, snac *snacFrame, r io.Reader, w i
 		TLVs: []*TLV{
 			{
 				tType: 0x006a,
-				val:   "fully",
+				val:   name,
 			},
 			{
 				tType: 0x00c9,

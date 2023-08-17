@@ -603,7 +603,7 @@ func ReceiveAndSendServiceRequest(sess *Session, flap *flapFrame, snac *snacFram
 
 	snacPayload := &snacServiceRequest{}
 	if err := snacPayload.read(r); err != nil {
-		return nil
+		//return err
 	}
 
 	fmt.Printf("receiveAndSendServiceRequest read SNAC body: %+v\n", snacPayload)
@@ -615,6 +615,34 @@ func ReceiveAndSendServiceRequest(sess *Session, flap *flapFrame, snac *snacFram
 	}
 	snacPayloadOut := &snacOServiceErr{
 		code: 0x06,
+	}
+
+	if snacPayload.foodGroup == CHAT {
+		snacPayloadOut := &TLVPayload{
+			TLVs: []*TLV{
+				{
+					tType: OserviceTlvTagsReconnectHere,
+					val:   "192.168.64.1:5191",
+				},
+				{
+					tType: OserviceTlvTagsLoginCookie,
+					val:   sess.ID,
+				},
+				{
+					tType: OserviceTlvTagsGroupId,
+					val:   snacPayload.foodGroup,
+				},
+				{
+					tType: OserviceTlvTagsSslCertname,
+					val:   "",
+				},
+				{
+					tType: OserviceTlvTagsSslState,
+					val:   uint8(0x00),
+				},
+			},
+		}
+		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)

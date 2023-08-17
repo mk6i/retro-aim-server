@@ -188,6 +188,7 @@ func (s *snacMessageToHost) read(r io.Reader) error {
 		0x02: reflect.Slice,
 		0x03: reflect.Slice,
 		0x04: reflect.Slice,
+		0x05: reflect.Slice,
 	})
 }
 
@@ -254,11 +255,6 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		return err
 	}
 
-	messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x02)
-	if !found {
-		return errors.New("unable to find message data tlv")
-	}
-
 	_, requestedConfirmation := snacPayloadIn.TLVPayload.getSlice(0x03)
 
 	mm := &XMessage{
@@ -281,13 +277,25 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 						tType: 0x0B,
 						val:   []byte{},
 					},
-					{
-						tType: 0x02,
-						val:   messagePayload,
-					},
 				},
 			},
 		},
+	}
+
+	if messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x02); found {
+		mm.snacOut.(*snacClientIM).TLVs = append(mm.snacOut.(*snacClientIM).TLVs,
+			&TLV{
+				tType: 0x02,
+				val:   messagePayload,
+			})
+	}
+
+	if messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x05); found {
+		mm.snacOut.(*snacClientIM).TLVs = append(mm.snacOut.(*snacClientIM).TLVs,
+			&TLV{
+				tType: 0x05,
+				val:   messagePayload,
+			})
 	}
 
 	// todo: add append to TLVPayload?

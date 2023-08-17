@@ -20,6 +20,7 @@ func main() {
 	}
 
 	go listenBOS(sm, fm)
+	go listenChat(sm, fm)
 
 	listener, err := net.Listen("tcp", ":5190")
 	if err != nil {
@@ -76,6 +77,26 @@ func listenBOS(sm *oscar.SessionManager, fm *oscar.FeedbagStore) {
 			continue
 		}
 		go handleBOSConnection(sm, fm, conn)
+	}
+}
+
+func listenChat(sm *oscar.SessionManager, fm *oscar.FeedbagStore) {
+	// Listen on TCP port 5190
+	listener, err := net.Listen("tcp", ":5192")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Server is listening on port 5192")
+
+	for {
+		// Accept incoming connections
+		_, err := listener.Accept()
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		fmt.Println("Got CHAT REQUEST DOOT DOOT ODOOT DOOOT DOOT")
 	}
 }
 
