@@ -30,7 +30,7 @@ func routeChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, se
 	case ChatNavRequestExchangeInfo:
 		panic("not implemented")
 	case ChatNavRequestRoomInfo:
-		panic("not implemented")
+		return SendAndReceiveChatNav(flap, snac, r, w, sequence)
 	case ChatNavRequestMoreRoomInfo:
 		panic("not implemented")
 	case ChatNavRequestOccupantList:
@@ -58,25 +58,6 @@ func (s *exchangeInfo) write(w io.Writer) error {
 	//	return err
 	//}
 	return s.TLVPayload.write(w)
-}
-
-type roomInfo struct {
-	exchange       uint16
-	cookie         []byte
-	instanceNumber uint16
-}
-
-func (s *roomInfo) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.exchange); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint8(len(s.cookie))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.cookie); err != nil {
-		return err
-	}
-	return binary.Write(w, binary.BigEndian, s.instanceNumber)
 }
 
 func SendAndReceiveNextChatRights(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
@@ -267,6 +248,116 @@ func SendAndReceiveCreateRoom(flap *flapFrame, snac *snacFrame, r io.Reader, w i
 			{
 				tType: 0x006a,
 				val:   name,
+			},
+			{
+				tType: 0x00c9,
+				val:   uint16(1), // tweak this
+			},
+			{
+				tType: 0x00ca,
+				val:   uint32(time.Now().Unix()),
+			},
+			{
+				tType: 0x00d1,
+				val:   uint16(1024),
+			},
+			{
+				tType: 0x00d2,
+				val:   uint16(100),
+			},
+			{
+				tType: 0x00d3,
+				val:   "hello",
+			},
+			{
+				tType: 0x00d5,
+				val:   uint8(2),
+			},
+		},
+	}
+
+	roomBuf := &bytes.Buffer{}
+	if err := binary.Write(roomBuf, binary.BigEndian, uint16(4)); err != nil {
+		return err
+	}
+	if err := binary.Write(roomBuf, binary.BigEndian, uint8(len("create"))); err != nil {
+		return err
+	}
+	if err := binary.Write(roomBuf, binary.BigEndian, []byte("create")); err != nil {
+		return err
+	}
+	if err := binary.Write(roomBuf, binary.BigEndian, uint16(100)); err != nil {
+		return err
+	}
+	if err := binary.Write(roomBuf, binary.BigEndian, uint8(2)); err != nil {
+		return err
+	}
+	if err := binary.Write(roomBuf, binary.BigEndian, uint16(len(xchange.TLVs))); err != nil {
+		return err
+	}
+	if err := xchange.write(roomBuf); err != nil {
+		return err
+	}
+
+	snacPayloadOut := &TLVPayload{
+		TLVs: []*TLV{
+			{
+				tType: 0x04,
+				val:   roomBuf.Bytes(),
+			},
+		},
+	}
+
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+type roomInfo struct {
+	exchange       uint16
+	cookie         []byte
+	instanceNumber uint16
+	detailLevel    uint8
+}
+
+func (s *roomInfo) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &s.exchange); err != nil {
+		return err
+	}
+	var l uint8
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		return err
+	}
+	s.cookie = make([]byte, l)
+	if _, err := r.Read(s.cookie); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &s.instanceNumber); err != nil {
+		return err
+	}
+	return binary.Read(r, binary.BigEndian, &s.detailLevel)
+}
+
+func SendAndReceiveChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	fmt.Printf("SendAndReceiveChatNav read SNAC frame: %+v\n", snac)
+
+	snacPayloadIn := &roomInfo{}
+	if err := snacPayloadIn.read(r); err != nil {
+		return err
+	}
+
+	//name, _ := snacPayloadIn.getString(0x00d3)
+	//charset, _ := snacPayloadIn.getString(0x00d6)
+	//lang, _ := snacPayloadIn.getString(0x00d7)
+
+	snacFrameOut := snacFrame{
+		foodGroup: CHAT_NAV,
+		subGroup:  ChatNavNavInfo,
+	}
+
+	xchange := TLVPayload{
+		TLVs: []*TLV{
+			{
+				tType: 0x006a,
+				val:   "hahahnewroom!",
 			},
 			{
 				tType: 0x00c9,
