@@ -163,6 +163,14 @@ func NewSessionManager() *SessionManager {
 	}
 }
 
+func (s *SessionManager) Broadcast(msg *XMessage) {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+	for _, sess := range s.store {
+		sess.SendMessage(msg)
+	}
+}
+
 func (s *SessionManager) Retrieve(ID string) (*Session, bool) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()

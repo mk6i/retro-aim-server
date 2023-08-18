@@ -158,6 +158,10 @@ type TLVPayload struct {
 	TLVs []*TLV
 }
 
+func (s *TLVPayload) addTLV(tlv *TLV) {
+	s.TLVs = append(s.TLVs, tlv)
+}
+
 func (s *TLVPayload) read(r io.Reader, lookup map[uint16]reflect.Kind) error {
 	for {
 		// todo, don't like this extra alloc when we're EOF
@@ -598,6 +602,10 @@ func routeIncomingRequests(sm *SessionManager, sess *Session, fm *FeedbagStore, 
 		}
 	case BUCP:
 		if err := routeBUCP(flap, snac, buf, rw, sequence); err != nil {
+			return err
+		}
+	case CHAT:
+		if err := routeChat(sess, sm, flap, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	default:
