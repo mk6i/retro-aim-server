@@ -1,7 +1,6 @@
 package oscar
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -220,22 +219,15 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 		snacPayloadOut.addTLV(tlv)
 	}
 
-	info := &snacSenderInfo{
-		screenName:   sess.ScreenName,
-		warningLevel: sess.GetWarning(),
-		TLVPayload: TLVPayload{
-			TLVs: sess.GetUserInfo(),
-		},
-	}
-
-	buf := &bytes.Buffer{}
-	if err := info.write(buf); err != nil {
-		return err
-	}
-
 	snacPayloadOut.addTLV(&TLV{
 		tType: 0x03,
-		val:   buf.Bytes(),
+		val: &snacSenderInfo{
+			screenName:   sess.ScreenName,
+			warningLevel: sess.GetWarning(),
+			TLVPayload: TLVPayload{
+				TLVs: sess.GetUserInfo(),
+			},
+		},
 	})
 
 	sm.Broadcast(&XMessage{

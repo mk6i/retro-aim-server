@@ -274,6 +274,13 @@ func (t *TLV) write(w io.Writer) error {
 		}
 		valLen = uint16(buf.Len())
 		val = buf.Bytes()
+	case snacWriter:
+		buf := &bytes.Buffer{}
+		if err := val.(snacWriter).write(buf); err != nil {
+			return err
+		}
+		valLen = uint16(buf.Len())
+		val = buf.Bytes()
 	}
 
 	if err := binary.Write(w, binary.BigEndian, valLen); err != nil {
