@@ -13,14 +13,16 @@ const testFile string = "/Users/mike/dev/goaim/aim.db"
 
 func main() {
 
-	sm := oscar.NewSessionManager()
 	fm, err := oscar.NewFeedbagStore(testFile)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	sm := oscar.NewSessionManager()
 	go listenBOS(sm, fm)
-	go listenChat(sm, fm)
+
+	chatSm := oscar.NewSessionManager()
+	go listenChat(sm, chatSm, fm)
 
 	listener, err := net.Listen("tcp", ":5190")
 	if err != nil {
@@ -56,15 +58,10 @@ func webServer(ch chan string) {
 }
 
 func listenBOS(sm *oscar.SessionManager, fm *oscar.FeedbagStore) {
-	// Listen on TCP port 5190
 	listener, err := net.Listen("tcp", ":5191")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	ch := make(chan string, 1)
-	go webServer(ch)
-
 	defer listener.Close()
 
 	fmt.Println("Server is listening on port 5191")
@@ -80,23 +77,23 @@ func listenBOS(sm *oscar.SessionManager, fm *oscar.FeedbagStore) {
 	}
 }
 
-func listenChat(sm *oscar.SessionManager, fm *oscar.FeedbagStore) {
-	// Listen on TCP port 5190
+func listenChat(sm *oscar.SessionManager, chatSm *oscar.SessionManager, fm *oscar.FeedbagStore) {
 	listener, err := net.Listen("tcp", ":5192")
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer listener.Close()
 
 	fmt.Println("Server is listening on port 5192")
 
 	for {
 		// Accept incoming connections
-		_, err := listener.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		fmt.Println("Got CHAT REQUEST DOOT DOOT ODOOT DOOOT DOOT")
+		go handleChatConnection(sm, chatSm, fm, conn)
 	}
 }
 
@@ -128,7 +125,42 @@ func handleAuthConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn
 }
 
 func handleBOSConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn net.Conn) {
-	if err := oscar.ReadBos(sm, fm, conn); err != nil && err != io.EOF {
+	defer conn.Close()
+
+	sess, seq, err := oscar.VerifyLogin(sm, conn)
+	if err != nil {
+		fmt.Printf("user disconnected with error: %s\n", err.Error())
+		return
+	}
+
+	defer oscar.Signout(sess, sm, fm)
+
+	if err := oscar.ReadBos(sess, seq, sm, fm, conn); err != nil && err != io.EOF {
+		if err != io.EOF {
+			fmt.Printf("user disconnected with error: %s\n", err.Error())
+		} else {
+			fmt.Println("user disconnected")
+		}
+	}
+}
+
+func handleChatConnection(sm *oscar.SessionManager, chatSm *oscar.SessionManager, fm *oscar.FeedbagStore, conn net.Conn) {
+	defer conn.Close()
+
+	sess, seq, err := oscar.VerifyLogin(sm, conn)
+	if err != nil {
+		fmt.Printf("user disconnected with error: %s\n", err.Error())
+		return
+	}
+	chatSess, err := chatSm.NewSessionWithSN(sess.ScreenName)
+	if err != nil {
+		fmt.Printf("user disconnected with error: %s\n", err.Error())
+		return
+	}
+	defer chatSess.Close()
+	defer chatSm.Remove(chatSess)
+
+	if err := oscar.ReadBos(chatSess, seq, chatSm, fm, conn); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Printf("user disconnected with error: %s\n", err.Error())
 		} else {

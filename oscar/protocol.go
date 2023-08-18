@@ -410,26 +410,27 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (*flapSignonF
 	return flap, nil
 }
 
-func VerifyLogin(sm *SessionManager, rw io.ReadWriter, sequence *uint32) (*Session, error) {
+func VerifyLogin(sm *SessionManager, rw io.ReadWriter) (*Session, uint32, error) {
+	seq := uint32(100)
 	fmt.Println("VerifyLogin...")
 
-	flap, err := SendAndReceiveSignonFrame(rw, sequence)
+	flap, err := SendAndReceiveSignonFrame(rw, &seq)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var ok bool
 	ID, ok := flap.getString(OserviceTlvTagsLoginCookie)
 	if !ok {
-		return nil, errors.New("unable to get session ID from payload")
+		return nil, 0, errors.New("unable to get session ID from payload")
 	}
 
 	sess, ok := sm.Retrieve(ID)
 	if !ok {
-		return nil, fmt.Errorf("unable to find session by ID %s", ID)
+		return nil, 0, fmt.Errorf("unable to find session by ID %s", ID)
 	}
 
-	return sess, nil
+	return sess, seq, nil
 }
 
 const (
@@ -531,7 +532,7 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 	}
 }
 
-func signout(sess *Session, sm *SessionManager, fm *FeedbagStore) {
+func Signout(sess *Session, sm *SessionManager, fm *FeedbagStore) {
 	if err := NotifyDeparture(sess, sm, fm); err != nil {
 		fmt.Printf("error notifying departure: %s", err.Error())
 	}
@@ -539,16 +540,7 @@ func signout(sess *Session, sm *SessionManager, fm *FeedbagStore) {
 	sm.Remove(sess)
 }
 
-func ReadBos(sm *SessionManager, fm *FeedbagStore, rwc io.ReadWriteCloser) error {
-	defer rwc.Close()
-
-	seq := uint32(100)
-	sess, err := VerifyLogin(sm, rwc, &seq)
-	if err != nil {
-		return err
-	}
-	defer signout(sess, sm, fm)
-
+func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, rwc io.ReadWriter) error {
 	if err := WriteOServiceHostOnline(rwc, &seq); err != nil {
 		return err
 	}

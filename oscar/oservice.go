@@ -622,7 +622,7 @@ func ReceiveAndSendServiceRequest(sess *Session, flap *flapFrame, snac *snacFram
 			TLVs: []*TLV{
 				{
 					tType: OserviceTlvTagsReconnectHere,
-					val:   "192.168.64.1:5191",
+					val:   "192.168.64.1:5192",
 				},
 				{
 					tType: OserviceTlvTagsLoginCookie,

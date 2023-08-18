@@ -212,6 +212,24 @@ func (s *SessionManager) NewSession() (*Session, error) {
 	return sess, nil
 }
 
+func (s *SessionManager) NewSessionWithSN(screenName string) (*Session, error) {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+	id, err := uuid.NewUUID()
+	if err != nil {
+		return nil, err
+	}
+	sess := &Session{
+		ID:         id.String(),
+		msgCh:      make(chan *XMessage, 1),
+		stopCh:     make(chan struct{}),
+		SignonTime: time.Now(),
+		ScreenName: screenName,
+	}
+	s.store[sess.ID] = sess
+	return sess, nil
+}
+
 func (s *SessionManager) Remove(sess *Session) {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
