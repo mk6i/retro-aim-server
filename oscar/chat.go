@@ -52,7 +52,7 @@ const (
 	ChatRoomInfoOwner             = 0x0030
 )
 
-func routeChat(sess *Session, sm *SessionManager, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeChat(cr *ChatRegistry, sess *Session, sm *SessionManager, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case ChatErr:
 		panic("not implemented")

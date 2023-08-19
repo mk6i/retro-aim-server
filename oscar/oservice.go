@@ -48,7 +48,7 @@ const (
 	OServiceBartReply2               = 0x0023
 )
 
-func routeOService(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeOService(cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case OServiceErr:
 		panic("not implemented")
@@ -57,7 +57,7 @@ func routeOService(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *fl
 	case OServiceHostOnline:
 		panic("not implemented")
 	case OServiceServiceRequest:
-		return ReceiveAndSendServiceRequest(sess, flap, snac, r, w, sequence)
+		return ReceiveAndSendServiceRequest(cr, sess, flap, snac, r, w, sequence)
 	case OServiceRateParamsQuery:
 		return ReceiveAndSendServiceRateParams(flap, snac, r, w, sequence)
 	case OServiceRateParamsSubAdd:
@@ -587,7 +587,9 @@ func (s *snacServiceRequest) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &s.foodGroup); err != nil {
 		return err
 	}
-	return s.TLVPayload.read(r, map[uint16]reflect.Kind{})
+	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
+		0x01: reflect.Slice,
+	})
 }
 
 const (
@@ -598,12 +600,12 @@ const (
 	OserviceTlvTagsSslState             = 0x8E
 )
 
-func ReceiveAndSendServiceRequest(sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRequest(cr *ChatRegistry, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRequest read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacServiceRequest{}
 	if err := snacPayload.read(r); err != nil {
-		//return err
+		return err
 	}
 
 	fmt.Printf("receiveAndSendServiceRequest read SNAC body: %+v\n", snacPayload)
@@ -618,6 +620,32 @@ func ReceiveAndSendServiceRequest(sess *Session, flap *flapFrame, snac *snacFram
 	}
 
 	if snacPayload.foodGroup == CHAT {
+		roomMeta, ok := snacPayload.getTLV(0x01)
+		if !ok {
+			return errors.New("missing room info")
+		}
+
+		room := &roomInfoOService{}
+		if err := room.read(bytes.NewBuffer(roomMeta.val.([]byte))); err != nil {
+			return err
+		}
+
+		cookie := &ChatCookie{
+			Cookie: room.cookie,
+			SessID: sess.ID,
+		}
+		buf := &bytes.Buffer{}
+		if err := cookie.write(buf); err != nil {
+			return err
+		}
+
+		sm, err := cr.Retrieve(string(room.cookie))
+		if err != nil {
+			return err
+		}
+
+		sm.NewSessionWithSN(sess.ID, sess.ScreenName)
+
 		snacPayloadOut := &TLVPayload{
 			TLVs: []*TLV{
 				{
@@ -626,7 +654,7 @@ func ReceiveAndSendServiceRequest(sess *Session, flap *flapFrame, snac *snacFram
 				},
 				{
 					tType: OserviceTlvTagsLoginCookie,
-					val:   sess.ID,
+					val:   buf.Bytes(),
 				},
 				{
 					tType: OserviceTlvTagsGroupId,

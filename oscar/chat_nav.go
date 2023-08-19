@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"reflect"
 	"time"
@@ -21,7 +22,7 @@ const (
 	ChatNavNavInfo                    = 0x0009
 )
 
-func routeChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeChatNav(sess *Session, cr *ChatRegistry, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case ChatNavErr:
 		panic("not implemented")
@@ -38,9 +39,50 @@ func routeChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, se
 	case ChatNavSearchForRoom:
 		panic("not implemented")
 	case ChatNavCreateRoom:
-		return SendAndReceiveCreateRoom(flap, snac, r, w, sequence)
+		return SendAndReceiveCreateRoom(sess, cr, flap, snac, r, w, sequence)
 	case ChatNavNavInfo:
 		panic("not implemented")
+	}
+	return nil
+}
+
+type ChatCookie struct {
+	Cookie []byte
+	SessID string
+}
+
+func (s *ChatCookie) read(r io.Reader) error {
+	var l uint16
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		return err
+	}
+	s.Cookie = make([]byte, l)
+	if _, err := r.Read(s.Cookie); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		return err
+	}
+	buf := make([]byte, l)
+	if _, err := r.Read(buf); err != nil {
+		return err
+	}
+	s.SessID = string(buf)
+	return nil
+}
+
+func (s *ChatCookie) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, uint16(len(s.Cookie))); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, s.Cookie); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint16(len(s.SessID))); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, []byte(s.SessID)); err != nil {
+		return err
 	}
 	return nil
 }
@@ -226,7 +268,7 @@ func (s *snacCreateRoom) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
-func SendAndReceiveCreateRoom(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveCreateRoom read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacCreateRoom{}
@@ -267,7 +309,7 @@ func SendAndReceiveCreateRoom(flap *flapFrame, snac *snacFrame, r io.Reader, w i
 			},
 			{
 				tType: 0x00d3,
-				val:   "hello",
+				val:   name,
 			},
 			{
 				tType: 0x00d5,
@@ -276,14 +318,25 @@ func SendAndReceiveCreateRoom(flap *flapFrame, snac *snacFrame, r io.Reader, w i
 		},
 	}
 
+	uu, err := uuid.NewUUID()
+	if err != nil {
+		return err
+	}
+
+	sm := NewSessionManager()
+	sm.NewSessionWithSN(sess.ID, sess.ScreenName)
+
+	chatID := uu.String()
+	cr.Register(chatID, sm)
+
 	roomBuf := &bytes.Buffer{}
 	if err := binary.Write(roomBuf, binary.BigEndian, uint16(4)); err != nil {
 		return err
 	}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint8(len("create"))); err != nil {
+	if err := binary.Write(roomBuf, binary.BigEndian, uint8(len(chatID))); err != nil {
 		return err
 	}
-	if err := binary.Write(roomBuf, binary.BigEndian, []byte("create")); err != nil {
+	if err := binary.Write(roomBuf, binary.BigEndian, []byte(chatID)); err != nil {
 		return err
 	}
 	if err := binary.Write(roomBuf, binary.BigEndian, uint16(100)); err != nil {
@@ -309,6 +362,27 @@ func SendAndReceiveCreateRoom(flap *flapFrame, snac *snacFrame, r io.Reader, w i
 	}
 
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+type roomInfoOService struct {
+	exchange       uint16
+	cookie         []byte
+	instanceNumber uint16
+}
+
+func (s *roomInfoOService) read(r io.Reader) error {
+	if err := binary.Read(r, binary.BigEndian, &s.exchange); err != nil {
+		return err
+	}
+	var l uint8
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		return err
+	}
+	s.cookie = make([]byte, l)
+	if _, err := r.Read(s.cookie); err != nil {
+		return err
+	}
+	return binary.Read(r, binary.BigEndian, &s.instanceNumber)
 }
 
 type roomInfo struct {
@@ -386,14 +460,18 @@ func SendAndReceiveChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.W
 		},
 	}
 
+	uu, err := uuid.NewUUID()
+	if err != nil {
+		return nil
+	}
 	roomBuf := &bytes.Buffer{}
 	if err := binary.Write(roomBuf, binary.BigEndian, uint16(4)); err != nil {
 		return err
 	}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint8(len("create"))); err != nil {
+	if err := binary.Write(roomBuf, binary.BigEndian, uint8(len(uu.String()))); err != nil {
 		return err
 	}
-	if err := binary.Write(roomBuf, binary.BigEndian, []byte("create")); err != nil {
+	if err := binary.Write(roomBuf, binary.BigEndian, []byte(uu.String())); err != nil {
 		return err
 	}
 	if err := binary.Write(roomBuf, binary.BigEndian, uint16(100)); err != nil {

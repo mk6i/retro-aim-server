@@ -220,26 +220,49 @@ func (s *SessionManager) NewSession() (*Session, error) {
 	return sess, nil
 }
 
-func (s *SessionManager) NewSessionWithSN(screenName string) (*Session, error) {
+func (s *SessionManager) NewSessionWithSN(sessID string, screenName string) *Session {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
-	id, err := uuid.NewUUID()
-	if err != nil {
-		return nil, err
-	}
 	sess := &Session{
-		ID:         id.String(),
+		ID:         sessID,
 		msgCh:      make(chan *XMessage, 1),
 		stopCh:     make(chan struct{}),
 		SignonTime: time.Now(),
 		ScreenName: screenName,
 	}
 	s.store[sess.ID] = sess
-	return sess, nil
+	return sess
 }
 
 func (s *SessionManager) Remove(sess *Session) {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
 	delete(s.store, sess.ID)
+}
+
+type ChatRegistry struct {
+	store    map[string]*SessionManager
+	mapMutex sync.RWMutex
+}
+
+func NewChatRegistry() *ChatRegistry {
+	return &ChatRegistry{
+		store: make(map[string]*SessionManager),
+	}
+}
+
+func (c *ChatRegistry) Register(chatID string, sm *SessionManager) {
+	c.mapMutex.Lock()
+	defer c.mapMutex.Unlock()
+	c.store[chatID] = sm
+}
+
+func (c *ChatRegistry) Retrieve(chatID string) (*SessionManager, error) {
+	c.mapMutex.RLock()
+	defer c.mapMutex.RUnlock()
+	sm, found := c.store[chatID]
+	if !found {
+		return nil, errors.New("unable to find session manager for chat")
+	}
+	return sm, nil
 }

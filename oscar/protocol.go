@@ -372,7 +372,7 @@ func (f *flapSignonFrame) read(r io.Reader) error {
 	}
 
 	lookup := map[uint16]reflect.Kind{
-		0x06: reflect.String,
+		0x06: reflect.Slice,
 		0x4A: reflect.Uint8,
 	}
 
@@ -431,17 +431,38 @@ func VerifyLogin(sm *SessionManager, rw io.ReadWriter) (*Session, uint32, error)
 	}
 
 	var ok bool
-	ID, ok := flap.getString(OserviceTlvTagsLoginCookie)
+	ID, ok := flap.getSlice(OserviceTlvTagsLoginCookie)
 	if !ok {
 		return nil, 0, errors.New("unable to get session ID from payload")
 	}
 
-	sess, ok := sm.Retrieve(ID)
+	sess, ok := sm.Retrieve(string(ID))
 	if !ok {
 		return nil, 0, fmt.Errorf("unable to find session by ID %s", ID)
 	}
 
 	return sess, seq, nil
+}
+
+func VerifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error) {
+	seq := uint32(100)
+	fmt.Println("VerifyChatLogin...")
+
+	flap, err := SendAndReceiveSignonFrame(rw, &seq)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var ok bool
+	buf, ok := flap.getSlice(OserviceTlvTagsLoginCookie)
+	if !ok {
+		return nil, 0, errors.New("unable to get session ID from payload")
+	}
+
+	cookie := &ChatCookie{}
+	err = cookie.read(bytes.NewBuffer(buf))
+
+	return cookie, seq, err
 }
 
 const (
@@ -551,7 +572,7 @@ func Signout(sess *Session, sm *SessionManager, fm *FeedbagStore) {
 	sm.Remove(sess)
 }
 
-func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, rwc io.ReadWriter) error {
+func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter) error {
 	if err := WriteOServiceHostOnline(rwc, &seq); err != nil {
 		return err
 	}
@@ -564,7 +585,7 @@ func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, rw
 	for {
 		select {
 		case m := <-msgCh:
-			if err := routeIncomingRequests(sm, sess, fm, rwc, &seq, m.snac, m.flap, m.buf); err != nil {
+			if err := routeIncomingRequests(sm, sess, fm, cr, rwc, &seq, m.snac, m.flap, m.buf); err != nil {
 				return err
 			}
 		case m := <-sess.RecvMessage():
@@ -577,10 +598,10 @@ func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, rw
 	}
 }
 
-func routeIncomingRequests(sm *SessionManager, sess *Session, fm *FeedbagStore, rw io.ReadWriter, sequence *uint32, snac *snacFrame, flap *flapFrame, buf io.Reader) error {
+func routeIncomingRequests(sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac *snacFrame, flap *flapFrame, buf io.Reader) error {
 	switch snac.foodGroup {
 	case OSERVICE:
-		if err := routeOService(sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
+		if err := routeOService(cr, sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case LOCATE:
@@ -600,7 +621,7 @@ func routeIncomingRequests(sm *SessionManager, sess *Session, fm *FeedbagStore, 
 			return err
 		}
 	case CHAT_NAV:
-		if err := routeChatNav(flap, snac, buf, rw, sequence); err != nil {
+		if err := routeChatNav(sess, cr, flap, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case FEEDBAG:
@@ -612,7 +633,7 @@ func routeIncomingRequests(sm *SessionManager, sess *Session, fm *FeedbagStore, 
 			return err
 		}
 	case CHAT:
-		if err := routeChat(sess, sm, flap, snac, buf, rw, sequence); err != nil {
+		if err := routeChat(cr, sess, sm, flap, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	default:
