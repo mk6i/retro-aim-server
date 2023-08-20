@@ -135,7 +135,8 @@ func handleBOSConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, cr *o
 
 	defer oscar.Signout(sess, sm, fm)
 
-	if err := oscar.ReadBos(sess, seq, sm, fm, cr, conn); err != nil && err != io.EOF {
+	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D}
+	if err := oscar.ReadBos(sess, seq, sm, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Printf("user disconnected with error: %s\n", err.Error())
 		} else {
@@ -163,7 +164,8 @@ func handleChatConnection(fm *oscar.FeedbagStore, cr *oscar.ChatRegistry, conn n
 	defer chatSess.Close()
 	defer sm.Remove(chatSess)
 
-	if err := oscar.ReadBos(chatSess, seq, sm, fm, cr, conn); err != nil && err != io.EOF {
+	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D, 0x000E}
+	if err := oscar.ReadBos(chatSess, seq, sm, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Printf("user disconnected with error: %s\n", err.Error())
 		} else {

@@ -572,8 +572,8 @@ func Signout(sess *Session, sm *SessionManager, fm *FeedbagStore) {
 	sm.Remove(sess)
 }
 
-func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter) error {
-	if err := WriteOServiceHostOnline(rwc, &seq); err != nil {
+func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter, foodGroups []uint16) error {
+	if err := WriteOServiceHostOnline(foodGroups, rwc, &seq); err != nil {
 		return err
 	}
 

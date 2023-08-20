@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"time"
 )
 
 const (
@@ -172,6 +173,17 @@ func (s *snacChatMessage) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
+type senders []*snacSenderInfo
+
+func (s senders) write(w io.Writer) error {
+	for _, sender := range s {
+		if err := sender.write(w); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type snacSenderInfo struct {
 	screenName   string
 	warningLevel uint16
@@ -218,6 +230,9 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 	if tlv, ok := snacPayloadIn.getTLV(0x05); ok {
 		snacPayloadOut.addTLV(tlv)
 	}
+	if tlv, ok := snacPayloadIn.getTLV(0x01); ok {
+		snacPayloadOut.addTLV(tlv)
+	}
 
 	snacPayloadOut.addTLV(&TLV{
 		tType: 0x03,
@@ -236,5 +251,88 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 		snacOut:   snacPayloadOut,
 	})
 
+	return nil
+}
+
+func AlertChatArrival(sess *Session, sm *SessionManager) error {
+
+	s := senders{}
+
+	sessions := sm.All()
+
+	for _, uSess := range sessions {
+		s = append(s, &snacSenderInfo{
+			screenName:   uSess.ScreenName,
+			warningLevel: uSess.GetWarning(),
+			TLVPayload: TLVPayload{
+				TLVs: uSess.GetUserInfo(),
+			},
+		})
+	}
+
+	sm.BroadcastExcept(sess, &XMessage{
+		flap: &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		},
+		snacFrame: snacFrame{
+			foodGroup: CHAT,
+			subGroup:  ChatUsersJoined,
+		},
+		snacOut: s,
+	})
+
+	return nil
+}
+
+func AlertChatRoomInfoUpdate(sess *Session, sm *SessionManager) error {
+	sess.SendMessage(&XMessage{
+		flap: &flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		},
+		snacFrame: snacFrame{
+			foodGroup: CHAT,
+			subGroup:  ChatRoomInfoUpdate,
+		},
+		snacOut: &snacCreateRoom{
+			exchange:       4,
+			cookie:         []byte(cannedUUID.String()),
+			instanceNumber: 100,
+			detailLevel:    2,
+			TLVPayload: TLVPayload{
+				TLVs: []*TLV{
+					{
+						tType: 0x006a,
+						val:   cannedName,
+					},
+					{
+						tType: 0x00c9,
+						val:   uint16(1), // tweak this
+					},
+					{
+						tType: 0x00ca,
+						val:   uint32(time.Now().Unix()),
+					},
+					{
+						tType: 0x00d1,
+						val:   uint16(1024),
+					},
+					{
+						tType: 0x00d2,
+						val:   uint16(100),
+					},
+					{
+						tType: 0x00d3,
+						val:   cannedName,
+					},
+					{
+						tType: 0x00d5,
+						val:   uint8(2),
+					},
+				},
+			},
+		},
+	})
 	return nil
 }

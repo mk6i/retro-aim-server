@@ -268,6 +268,9 @@ func (s *snacCreateRoom) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
+var cannedUUID = uuid.New()
+var cannedName = "my new chat"
+
 func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveCreateRoom read SNAC frame: %+v\n", snac)
 
@@ -276,7 +279,8 @@ func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap *flapFrame, 
 		return err
 	}
 
-	name, _ := snacPayloadIn.getString(0x00d3)
+	//name, _ := snacPayloadIn.getString(0x00d3)
+	name := cannedName
 	//charset, _ := snacPayloadIn.getString(0x00d6)
 	//lang, _ := snacPayloadIn.getString(0x00d7)
 
@@ -318,15 +322,15 @@ func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap *flapFrame, 
 		},
 	}
 
-	uu, err := uuid.NewUUID()
-	if err != nil {
-		return err
-	}
+	//uu, err := uuid.NewUUID()
+	//if err != nil {
+	//	return err
+	//}
 
 	sm := NewSessionManager()
 	sm.NewSessionWithSN(sess.ID, sess.ScreenName)
 
-	chatID := uu.String()
+	chatID := cannedUUID.String()
 	cr.Register(chatID, sm)
 
 	roomBuf := &bytes.Buffer{}
@@ -431,7 +435,7 @@ func SendAndReceiveChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.W
 		TLVs: []*TLV{
 			{
 				tType: 0x006a,
-				val:   "hahahnewroom!",
+				val:   cannedName,
 			},
 			{
 				tType: 0x00c9,
@@ -451,7 +455,7 @@ func SendAndReceiveChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.W
 			},
 			{
 				tType: 0x00d3,
-				val:   "hello",
+				val:   cannedName,
 			},
 			{
 				tType: 0x00d5,

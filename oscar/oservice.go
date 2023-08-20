@@ -145,7 +145,7 @@ func (s *snac01_03) write(w io.Writer) error {
 	return nil
 }
 
-func WriteOServiceHostOnline(rw io.ReadWriter, sequence *uint32) error {
+func WriteOServiceHostOnline(foodGroups []uint16, rw io.ReadWriter, sequence *uint32) error {
 	fmt.Println("writeOServiceHostOnline...")
 
 	snac := &snac01_03{
@@ -153,9 +153,7 @@ func WriteOServiceHostOnline(rw io.ReadWriter, sequence *uint32) error {
 			foodGroup: 0x01,
 			subGroup:  0x03,
 		},
-		foodGroups: []uint16{
-			0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D, 0x000E,
-		},
+		foodGroups: foodGroups,
 	}
 
 	fmt.Printf("writeOServiceHostOnline SNAC: %+v\n", snac)
@@ -455,6 +453,11 @@ func ReceiveClientOnline(sess *Session, sm *SessionManager, fm *FeedbagStore, fl
 		item := &clientVersion{}
 		if err := item.read(buf); err != nil {
 			return err
+		}
+		if item.foodGroup == CHAT {
+			AlertChatRoomInfoUpdate(sess, sm)
+			//AlertChatArrival(sess, sm)
+			return nil
 		}
 		fmt.Printf("ReceiveClientOnline read SNAC client messageType: %+v\n", item)
 	}

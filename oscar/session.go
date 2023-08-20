@@ -171,6 +171,27 @@ func (s *SessionManager) Broadcast(msg *XMessage) {
 	}
 }
 
+func (s *SessionManager) All() []*Session {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+	var sessions []*Session
+	for _, sess := range s.store {
+		sessions = append(sessions, sess)
+	}
+	return sessions
+}
+
+func (s *SessionManager) BroadcastExcept(except *Session, msg *XMessage) {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+	for _, sess := range s.store {
+		if sess == except {
+			continue
+		}
+		sess.SendMessage(msg)
+	}
+}
+
 func (s *SessionManager) Retrieve(ID string) (*Session, bool) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
