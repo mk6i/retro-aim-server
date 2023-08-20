@@ -233,7 +233,7 @@ func (s *SessionManager) NewSession() (*Session, error) {
 	}
 	sess := &Session{
 		ID:         id.String(),
-		msgCh:      make(chan *XMessage, 1),
+		msgCh:      make(chan *XMessage, 10),
 		stopCh:     make(chan struct{}),
 		SignonTime: time.Now(),
 	}
@@ -246,7 +246,7 @@ func (s *SessionManager) NewSessionWithSN(sessID string, screenName string) *Ses
 	defer s.mapMutex.RUnlock()
 	sess := &Session{
 		ID:         sessID,
-		msgCh:      make(chan *XMessage, 1),
+		msgCh:      make(chan *XMessage, 10),
 		stopCh:     make(chan struct{}),
 		SignonTime: time.Now(),
 		ScreenName: screenName,

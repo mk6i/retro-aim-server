@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"sync"
 	"time"
 )
 
@@ -48,11 +49,12 @@ const (
 	OServiceBartReply2               = 0x0023
 )
 
-func routeOService(cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeOService(wg *sync.WaitGroup, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case OServiceErr:
 		panic("not implemented")
 	case OServiceClientOnline:
+		wg.Done()
 		return ReceiveClientOnline(sess, sm, fm, flap, snac, r, w, sequence)
 	case OServiceHostOnline:
 		panic("not implemented")
@@ -456,7 +458,7 @@ func ReceiveClientOnline(sess *Session, sm *SessionManager, fm *FeedbagStore, fl
 		}
 		if item.foodGroup == CHAT {
 			AlertChatRoomInfoUpdate(sess, sm)
-			//AlertChatArrival(sess, sm)
+			AlertChatArrival(sess, sm)
 			return nil
 		}
 		fmt.Printf("ReceiveClientOnline read SNAC client messageType: %+v\n", item)

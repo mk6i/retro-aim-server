@@ -270,7 +270,7 @@ func AlertChatArrival(sess *Session, sm *SessionManager) error {
 		})
 	}
 
-	sm.BroadcastExcept(sess, &XMessage{
+	sess.SendMessage(&XMessage{
 		flap: &flapFrame{
 			startMarker: 42,
 			frameType:   2,

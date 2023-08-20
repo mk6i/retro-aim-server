@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"io"
 	"reflect"
+	"sync"
 )
 
 const (
@@ -582,13 +583,17 @@ func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr
 	errCh := make(chan error, 1)
 	go readIncomingRequests(rwc, msgCh, errCh)
 
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
 	for {
 		select {
 		case m := <-msgCh:
-			if err := routeIncomingRequests(sm, sess, fm, cr, rwc, &seq, m.snac, m.flap, m.buf); err != nil {
+			if err := routeIncomingRequests(&wg, sm, sess, fm, cr, rwc, &seq, m.snac, m.flap, m.buf); err != nil {
 				return err
 			}
 		case m := <-sess.RecvMessage():
+			wg.Wait()
 			if err := writeOutSNAC(nil, m.flap, m.snacFrame, m.snacOut, &seq, rwc); err != nil {
 				return err
 			}
@@ -598,10 +603,10 @@ func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr
 	}
 }
 
-func routeIncomingRequests(sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac *snacFrame, flap *flapFrame, buf io.Reader) error {
+func routeIncomingRequests(wg *sync.WaitGroup, sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac *snacFrame, flap *flapFrame, buf io.Reader) error {
 	switch snac.foodGroup {
 	case OSERVICE:
-		if err := routeOService(cr, sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
+		if err := routeOService(wg, cr, sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case LOCATE:
