@@ -22,7 +22,7 @@ const (
 	ChatNavNavInfo                    = 0x0009
 )
 
-func routeChatNav(sess *Session, cr *ChatRegistry, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeChatNav(sess *Session, cr *ChatRegistry, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case ChatNavErr:
 		panic("not implemented")
@@ -102,7 +102,7 @@ func (s *exchangeInfo) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
-func SendAndReceiveNextChatRights(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveNextChatRights(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveNextChatRights read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -267,7 +267,7 @@ var cannedUUID = uuid.New()
 var cannedName = "my new chat"
 var cannedTime = time.Now()
 
-func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveCreateRoom read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacCreateRoom{}
@@ -414,7 +414,7 @@ func (s *roomInfo) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &s.detailLevel)
 }
 
-func SendAndReceiveChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveChatNav(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChatNav read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &roomInfo{}

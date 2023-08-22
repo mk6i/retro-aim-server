@@ -494,7 +494,7 @@ const (
 )
 
 type IncomingMessage struct {
-	flap *flapFrame
+	flap flapFrame
 	snac *snacFrame
 	buf  io.Reader
 }
@@ -502,7 +502,7 @@ type IncomingMessage struct {
 type XMessage struct {
 	// todo: this should only take values, not pointers, in order to avoid race
 	// conditions
-	flap      *flapFrame
+	flap      flapFrame
 	snacFrame snacFrame
 	snacOut   snacWriter
 }
@@ -520,7 +520,7 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 	defer close(errCh)
 
 	for {
-		flap := &flapFrame{}
+		flap := flapFrame{}
 		if err := flap.read(rw); err != nil {
 			errCh <- err
 			return
@@ -603,7 +603,7 @@ func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr
 	}
 }
 
-func routeIncomingRequests(wg *sync.WaitGroup, sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac *snacFrame, flap *flapFrame, buf io.Reader) error {
+func routeIncomingRequests(wg *sync.WaitGroup, sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac *snacFrame, flap flapFrame, buf io.Reader) error {
 	switch snac.foodGroup {
 	case OSERVICE:
 		if err := routeOService(wg, cr, sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
@@ -648,7 +648,7 @@ func routeIncomingRequests(wg *sync.WaitGroup, sm *SessionManager, sess *Session
 	return nil
 }
 
-func writeOutSNAC(originSnac *snacFrame, flap *flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint32, w io.Writer) error {
+func writeOutSNAC(originSnac *snacFrame, flap flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint32, w io.Writer) error {
 	if originSnac != nil {
 		snacFrame.requestID = originSnac.requestID
 	}

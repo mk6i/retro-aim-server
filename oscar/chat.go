@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"sync"
 )
 
 const (
@@ -53,7 +52,7 @@ const (
 	ChatRoomInfoOwner             = 0x0030
 )
 
-func routeChat(cr *ChatRegistry, sess *Session, sm *SessionManager, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeChat(cr *ChatRegistry, sess *Session, sm *SessionManager, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case ChatErr:
 		panic("not implemented")
@@ -206,12 +205,10 @@ func (f *snacSenderInfo) write(w io.Writer) error {
 	return f.TLVPayload.write(w)
 }
 
-var godMutex sync.Mutex
-
-func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChatChannelMsgTohost read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := &snacChatMessage{}
+	snacPayloadIn := snacChatMessage{}
 	if err := snacPayloadIn.read(r); err != nil {
 		return err
 	}
@@ -224,6 +221,20 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 	snacPayloadOut := &snacChatMessage{
 		cookie:  snacPayloadIn.cookie,
 		channel: snacPayloadIn.channel,
+		TLVPayload: TLVPayload{
+			TLVs: []*TLV{
+				{
+					tType: 0x03,
+					val: &snacSenderInfo{
+						screenName:   sess.ScreenName,
+						warningLevel: sess.GetWarning(),
+						TLVPayload: TLVPayload{
+							TLVs: sess.GetUserInfo(),
+						},
+					},
+				},
+			},
+		},
 	}
 
 	if tlv, ok := snacPayloadIn.getTLV(0x01); ok {
@@ -232,81 +243,24 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 	if tlv, ok := snacPayloadIn.getTLV(0x05); ok {
 		snacPayloadOut.addTLV(tlv)
 	}
-	if _, ok := snacPayloadIn.getTLV(0x06); ok {
-		fmt.Println("Reflection is SET")
-	} else {
-		fmt.Println("Reflection is NOT SET")
-	}
 
-	snacPayloadOut.addTLV(&TLV{
-		tType: 0x03,
-		val: &snacSenderInfo{
-			screenName:   sess.ScreenName,
-			warningLevel: sess.GetWarning(),
-			TLVPayload: TLVPayload{
-				TLVs: sess.GetUserInfo(),
-			},
-		},
-	})
-
+	// send message to all the participants except sender
 	sm.BroadcastExcept(sess, &XMessage{
 		flap:      flap,
 		snacFrame: snacFrameOut,
 		snacOut:   snacPayloadOut,
 	})
 
-	// ack self-message
-	snacPayloadOut = &snacChatMessage{
-		cookie:  snacPayloadIn.cookie,
-		channel: snacPayloadIn.channel,
+	if _, ackMsg := snacPayloadIn.getTLV(0x06); !ackMsg {
+		return nil
 	}
 
-	snacPayloadOut.addTLV(&TLV{
-		tType: 0x03,
-		val: &snacSenderInfo{
-			screenName:   sess.ScreenName,
-			warningLevel: sess.GetWarning(),
-			TLVPayload: TLVPayload{
-				TLVs: []*TLV{
-					{
-						tType: 0x01,
-						val:   uint16(0x0010), // AIM client
-					},
-					{
-						tType: 0x0f,
-						val:   uint32(0), // AIM client
-					},
-					{
-						tType: 0x03,
-						val:   uint32(sess.SignonTime.Unix()), // AIM client
-					},
-				},
-			},
-		},
-	})
-
-	if tlv, ok := snacPayloadIn.getTLV(0x01); ok {
-		snacPayloadOut.addTLV(tlv)
-	}
-	if tlv, ok := snacPayloadIn.getTLV(0x05); ok {
-		snacPayloadOut.addTLV(tlv)
-	}
-	//// signal own flag
-	//if tlv, ok := snacPayloadIn.getTLV(0x06); ok {
-	//	snacPayloadOut.addTLV(tlv)
-	//}
-
-	//sess.SendMessage(&XMessage{
-	//	flap:      flap,
-	//	snacFrame: snacFrameOut,
-	//	snacOut:   snacPayloadOut,
-	//})
-	fmt.Printf("screen name: %s seq: %d cookie: %v\n", sess.ScreenName, *sequence, snacPayloadIn.cookie)
+	// reflect the message back to the sender
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func SetOnlineChatUsers(sm *SessionManager, w io.Writer, sequence *uint32) error {
-	flap := &flapFrame{
+	flap := flapFrame{
 		startMarker: 42,
 		frameType:   2,
 	}
@@ -336,7 +290,7 @@ func SetOnlineChatUsers(sm *SessionManager, w io.Writer, sequence *uint32) error
 
 func AlertUserJoined(sess *Session, sm *SessionManager) {
 	sm.BroadcastExcept(sess, &XMessage{
-		flap: &flapFrame{
+		flap: flapFrame{
 			startMarker: 42,
 			frameType:   2,
 		},
@@ -355,7 +309,7 @@ func AlertUserJoined(sess *Session, sm *SessionManager) {
 }
 
 func SendChatRoomInfoUpdate(w io.Writer, sequence *uint32) error {
-	flap := &flapFrame{
+	flap := flapFrame{
 		startMarker: 42,
 		frameType:   2,
 	}

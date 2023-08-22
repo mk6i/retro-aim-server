@@ -22,7 +22,7 @@ const (
 	BuddyDelTempBuddies             = 0x0010
 )
 
-func routeBuddy(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeBuddy(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 
 	switch snac.subGroup {
 	case BuddyErr:
@@ -63,7 +63,7 @@ func (s *snacBuddyRights) read(r io.Reader) error {
 	})
 }
 
-func SendAndReceiveBuddyRights(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveBuddyRights(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveBuddyRights read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacBuddyRights{}
@@ -155,7 +155,7 @@ func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 	sessions := sm.RetrieveByScreenNames(screenNames)
 
 	for _, adjSess := range sessions {
-		flap := &flapFrame{
+		flap := flapFrame{
 			startMarker: 42,
 			frameType:   2,
 		}
@@ -190,7 +190,7 @@ func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error 
 
 	for _, adjSess := range sessions {
 		adjSess.SendMessage(&XMessage{
-			flap: &flapFrame{
+			flap: flapFrame{
 				startMarker: 42,
 				frameType:   2,
 			},
