@@ -217,32 +217,20 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 		foodGroup: CHAT,
 		subGroup:  ChatChannelMsgToclient,
 	}
-
 	snacPayloadOut := &snacChatMessage{
-		cookie:  snacPayloadIn.cookie,
-		channel: snacPayloadIn.channel,
-		TLVPayload: TLVPayload{
-			TLVs: []*TLV{
-				{
-					tType: 0x03,
-					val: &snacSenderInfo{
-						screenName:   sess.ScreenName,
-						warningLevel: sess.GetWarning(),
-						TLVPayload: TLVPayload{
-							TLVs: sess.GetUserInfo(),
-						},
-					},
-				},
-			},
-		},
+		cookie:     snacPayloadIn.cookie,
+		channel:    snacPayloadIn.channel,
+		TLVPayload: TLVPayload{snacPayloadIn.TLVs},
 	}
 
-	if tlv, ok := snacPayloadIn.getTLV(0x01); ok {
-		snacPayloadOut.addTLV(tlv)
-	}
-	if tlv, ok := snacPayloadIn.getTLV(0x05); ok {
-		snacPayloadOut.addTLV(tlv)
-	}
+	snacPayloadOut.addTLV(&TLV{
+		tType: 0x03,
+		val: &snacSenderInfo{
+			screenName:   sess.ScreenName,
+			warningLevel: sess.GetWarning(),
+			TLVPayload:   TLVPayload{sess.GetUserInfo()},
+		},
+	})
 
 	// send message to all the participants except sender
 	sm.BroadcastExcept(sess, &XMessage{

@@ -155,6 +155,7 @@ type snacWriter interface {
 	write(w io.Writer) error
 }
 
+// todo make type TLVPayload TLVs []*TLV
 type TLVPayload struct {
 	TLVs []*TLV
 }
