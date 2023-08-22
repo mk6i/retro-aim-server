@@ -216,7 +216,6 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 	snacFrameOut := snacFrame{
 		foodGroup: CHAT,
 		subGroup:  ChatChannelMsgToclient,
-		requestID: snac.requestID,
 	}
 
 	snacPayloadOut := &snacChatMessage{
@@ -273,13 +272,13 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 	if tlv, ok := snacPayloadIn.getTLV(0x01); ok {
 		snacPayloadOut.addTLV(tlv)
 	}
-	//if tlv, ok := snacPayloadIn.getTLV(0x05); ok {
-	//	snacPayloadOut.addTLV(tlv)
-	//}
-	// signal own flag
-	if tlv, ok := snacPayloadIn.getTLV(0x06); ok {
+	if tlv, ok := snacPayloadIn.getTLV(0x05); ok {
 		snacPayloadOut.addTLV(tlv)
 	}
+	//// signal own flag
+	//if tlv, ok := snacPayloadIn.getTLV(0x06); ok {
+	//	snacPayloadOut.addTLV(tlv)
+	//}
 
 	//sess.SendMessage(&XMessage{
 	//	flap:      flap,
@@ -287,7 +286,7 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 	//	snacOut:   snacPayloadOut,
 	//})
 	fmt.Printf("screen name: %s seq: %d\n", sess.ScreenName, *sequence)
-	return writeOutSNAC(nil, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func SetOnlineChatUsers(sm *SessionManager, w io.Writer, sequence *uint32) error {

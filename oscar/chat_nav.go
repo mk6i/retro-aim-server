@@ -116,13 +116,13 @@ func SendAndReceiveNextChatRights(flap *flapFrame, snac *snacFrame, r io.Reader,
 				tType: 0x000a,
 				val:   uint16(0x0114),
 			},
-			//{
-			//	tType: 0x000d,
-			//	val:   nil,
-			//},
+			////{
+			////	tType: 0x000d,
+			////	val:   nil,
+			////},
 			{
 				tType: 0x0004,
-				val:   uint8(15),
+				val:   uint8(100),
 			},
 			{
 				tType: 0x0002,
@@ -146,11 +146,7 @@ func SendAndReceiveNextChatRights(flap *flapFrame, snac *snacFrame, r io.Reader,
 			},
 			{
 				tType: 0x00d3,
-				val:   "hello",
-			},
-			{
-				tType: 0x00d4,
-				val:   "http://www.google.com",
+				val:   cannedName,
 			},
 			{
 				tType: 0x00d5,
@@ -181,6 +177,9 @@ func SendAndReceiveNextChatRights(flap *flapFrame, snac *snacFrame, r io.Reader,
 
 	roomBuf := &bytes.Buffer{}
 	if err := binary.Write(roomBuf, binary.BigEndian, uint16(4)); err != nil {
+		return err
+	}
+	if err := binary.Write(roomBuf, binary.BigEndian, uint16(len(xchange.TLVs))); err != nil {
 		return err
 	}
 	if err := xchange.write(roomBuf); err != nil {
