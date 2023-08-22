@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"sync"
 )
 
 const (
@@ -205,6 +206,8 @@ func (f *snacSenderInfo) write(w io.Writer) error {
 	return f.TLVPayload.write(w)
 }
 
+var godMutex sync.Mutex
+
 func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChatChannelMsgTohost read SNAC frame: %+v\n", snac)
 
@@ -264,7 +267,20 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 			screenName:   sess.ScreenName,
 			warningLevel: sess.GetWarning(),
 			TLVPayload: TLVPayload{
-				TLVs: sess.GetUserInfo(),
+				TLVs: []*TLV{
+					{
+						tType: 0x01,
+						val:   uint16(0x0010), // AIM client
+					},
+					{
+						tType: 0x0f,
+						val:   uint32(0), // AIM client
+					},
+					{
+						tType: 0x03,
+						val:   uint32(sess.SignonTime.Unix()), // AIM client
+					},
+				},
 			},
 		},
 	})
@@ -285,7 +301,7 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 	//	snacFrame: snacFrameOut,
 	//	snacOut:   snacPayloadOut,
 	//})
-	fmt.Printf("screen name: %s seq: %d\n", sess.ScreenName, *sequence)
+	fmt.Printf("screen name: %s seq: %d cookie: %v\n", sess.ScreenName, *sequence, snacPayloadIn.cookie)
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
@@ -370,6 +386,10 @@ func SendChatRoomInfoUpdate(w io.Writer, sequence *uint32) error {
 					tType: 0x00d1,
 					val:   uint16(1024),
 				},
+				//{
+				//	tType: 0x00da,
+				//	val:   uint16(1024),
+				//},
 				{
 					tType: 0x00d2,
 					val:   uint16(100),

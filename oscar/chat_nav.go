@@ -168,10 +168,10 @@ func SendAndReceiveNextChatRights(flap *flapFrame, snac *snacFrame, r io.Reader,
 				tType: 0xd9,
 				val:   "en",
 			},
-			{
-				tType: 0x00da,
-				val:   uint16(0),
-			},
+			//{
+			//	tType: 0x00da,
+			//	val:   uint16(1024),
+			//},
 		},
 	}
 
@@ -303,6 +303,10 @@ func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap *flapFrame, 
 				tType: 0x00d1,
 				val:   uint16(1024),
 			},
+			//{
+			//	tType: 0x00da,
+			//	val:   uint16(1024),
+			//},
 			{
 				tType: 0x00d2,
 				val:   uint16(100),
@@ -445,6 +449,10 @@ func SendAndReceiveChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.W
 				tType: 0x00d1,
 				val:   uint16(1024),
 			},
+			//{
+			//	tType: 0x00da,
+			//	val:   uint16(1024),
+			//},
 			{
 				tType: 0x00d2,
 				val:   uint16(100),

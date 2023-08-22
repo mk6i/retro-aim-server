@@ -281,7 +281,6 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 			},
 		},
 	}
-
 	if messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x02); found {
 		mm.snacOut.(*snacClientIM).TLVs = append(mm.snacOut.(*snacClientIM).TLVs,
 			&TLV{
