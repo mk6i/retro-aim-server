@@ -22,6 +22,19 @@ type Session struct {
 	invisible   bool
 	idle        bool
 	idleTime    time.Time
+	ready       bool
+}
+
+func (s *Session) SetReady() {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+	s.ready = true
+}
+
+func (s *Session) Ready() bool {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+	return s.ready
 }
 
 func (s *Session) IncreaseWarning(incr uint16) {

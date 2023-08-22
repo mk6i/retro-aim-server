@@ -55,6 +55,7 @@ func routeOService(wg *sync.WaitGroup, cr *ChatRegistry, sm *SessionManager, fm 
 		panic("not implemented")
 	case OServiceClientOnline:
 		wg.Done()
+		sess.SetReady()
 		return ReceiveClientOnline(sess, sm, fm, flap, snac, r, w, sequence)
 	case OServiceHostOnline:
 		panic("not implemented")
@@ -457,8 +458,13 @@ func ReceiveClientOnline(sess *Session, sm *SessionManager, fm *FeedbagStore, fl
 			return err
 		}
 		if item.foodGroup == CHAT {
-			AlertChatRoomInfoUpdate(sess, sm)
-			AlertChatArrival(sess, sm)
+			if err := SendChatRoomInfoUpdate(w, sequence); err != nil {
+				return err
+			}
+			AlertUserJoined(sess, sm)
+			if err := SetOnlineChatUsers(sm, w, sequence); err != nil {
+				return err
+			}
 			return nil
 		}
 		fmt.Printf("ReceiveClientOnline read SNAC client messageType: %+v\n", item)

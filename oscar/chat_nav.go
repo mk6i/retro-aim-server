@@ -134,12 +134,8 @@ func SendAndReceiveNextChatRights(flap *flapFrame, snac *snacFrame, r io.Reader,
 			},
 			{
 				tType: 0x00ca,
-				val:   uint32(time.Now().Unix()),
+				val:   uint32(cannedTime.Unix()),
 			},
-			//{
-			//	tType: 0x00d0,
-			//	val:   nil,
-			//},
 			{
 				tType: 0x00d1,
 				val:   uint16(1024),
@@ -270,6 +266,7 @@ func (s *snacCreateRoom) write(w io.Writer) error {
 
 var cannedUUID = uuid.New()
 var cannedName = "my new chat"
+var cannedTime = time.Now()
 
 func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveCreateRoom read SNAC frame: %+v\n", snac)
@@ -297,11 +294,11 @@ func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap *flapFrame, 
 			},
 			{
 				tType: 0x00c9,
-				val:   uint16(1), // tweak this
+				val:   uint16(15), // tweak this
 			},
 			{
 				tType: 0x00ca,
-				val:   uint32(time.Now().Unix()),
+				val:   uint32(cannedTime.Unix()),
 			},
 			{
 				tType: 0x00d1,
@@ -439,11 +436,11 @@ func SendAndReceiveChatNav(flap *flapFrame, snac *snacFrame, r io.Reader, w io.W
 			},
 			{
 				tType: 0x00c9,
-				val:   uint16(1), // tweak this
+				val:   uint16(15), // tweak this
 			},
 			{
 				tType: 0x00ca,
-				val:   uint32(time.Now().Unix()),
+				val:   uint32(cannedTime.Unix()),
 			},
 			{
 				tType: 0x00d1,
