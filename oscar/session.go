@@ -244,15 +244,15 @@ func (s *SessionManager) RetrieveByScreenNames(screenNames []string) []*Session 
 }
 
 func (s *SessionManager) NewSession() (*Session, error) {
-	s.mapMutex.RLock()
-	defer s.mapMutex.RUnlock()
+	s.mapMutex.Lock()
+	defer s.mapMutex.Unlock()
 	id, err := uuid.NewUUID()
 	if err != nil {
 		return nil, err
 	}
 	sess := &Session{
 		ID:         id.String(),
-		msgCh:      make(chan *XMessage, 10),
+		msgCh:      make(chan *XMessage, 1),
 		stopCh:     make(chan struct{}),
 		SignonTime: time.Now(),
 	}
@@ -261,11 +261,14 @@ func (s *SessionManager) NewSession() (*Session, error) {
 }
 
 func (s *SessionManager) NewSessionWithSN(sessID string, screenName string) *Session {
-	s.mapMutex.RLock()
-	defer s.mapMutex.RUnlock()
+	s.mapMutex.Lock()
+	defer s.mapMutex.Unlock()
 	sess := &Session{
-		ID:         sessID,
-		msgCh:      make(chan *XMessage, 10),
+		ID: sessID,
+		// todo what if client is unresponsive and blocks other messages?
+		// idea: make channel big enough to handle backlog, disconnect user
+		// if the queue fills up
+		msgCh:      make(chan *XMessage, 1),
 		stopCh:     make(chan struct{}),
 		SignonTime: time.Now(),
 		ScreenName: screenName,
