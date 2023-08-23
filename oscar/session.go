@@ -135,7 +135,7 @@ func (s *Session) GetUserInfo() []*TLV {
 		val:   []byte{},
 	}
 	// chat capability
-	caps.val = append(caps.val.([]byte), CAP_CHAT...)
+	caps.val = append(caps.val.([]byte), CapChat...)
 	tlvs = append(tlvs, caps)
 
 	return tlvs

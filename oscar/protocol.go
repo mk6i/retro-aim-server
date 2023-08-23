@@ -55,16 +55,8 @@ const (
 )
 
 var (
-	CAP_CHAT []byte
+	CapChat, _ = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
 )
-
-func init() {
-	cap, err := uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
-	if err != nil {
-		panic(err.Error())
-	}
-	CAP_CHAT = cap
-}
 
 type snacError struct {
 	code uint16
