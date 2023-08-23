@@ -574,7 +574,7 @@ func Signout(sess *Session, sm *SessionManager, fm *FeedbagStore) {
 	sm.Remove(sess)
 }
 
-func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter, foodGroups []uint16) error {
+func ReadBos(ready OnReadyCB, sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter, foodGroups []uint16) error {
 	if err := WriteOServiceHostOnline(foodGroups, rwc, &seq); err != nil {
 		return err
 	}
@@ -590,7 +590,7 @@ func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr
 	for {
 		select {
 		case m := <-msgCh:
-			if err := routeIncomingRequests(&wg, sm, sess, fm, cr, rwc, &seq, m.snac, m.flap, m.buf); err != nil {
+			if err := routeIncomingRequests(ready, &wg, sm, sess, fm, cr, rwc, &seq, m.snac, m.flap, m.buf); err != nil {
 				return err
 			}
 		case m := <-sess.RecvMessage():
@@ -604,10 +604,10 @@ func ReadBos(sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr
 	}
 }
 
-func routeIncomingRequests(wg *sync.WaitGroup, sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac *snacFrame, flap flapFrame, buf io.Reader) error {
+func routeIncomingRequests(ready OnReadyCB, wg *sync.WaitGroup, sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac *snacFrame, flap flapFrame, buf io.Reader) error {
 	switch snac.foodGroup {
 	case OSERVICE:
-		if err := routeOService(wg, cr, sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
+		if err := routeOService(ready, wg, cr, sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case LOCATE:

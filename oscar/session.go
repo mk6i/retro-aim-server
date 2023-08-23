@@ -280,46 +280,81 @@ func (s *SessionManager) Remove(sess *Session) {
 	delete(s.store, sess.ID)
 }
 
+type ChatRoom struct {
+	ID             string
+	SessionManager *SessionManager
+	CreateTime     time.Time
+	Name           string
+}
+
+func (c ChatRoom) TLVList() []*TLV {
+	return []*TLV{
+		{
+			tType: 0x00c9,
+			val:   uint16(15),
+		},
+		{
+			tType: 0x00ca,
+			val:   uint32(c.CreateTime.Unix()),
+		},
+		{
+			tType: 0x00d1,
+			val:   uint16(1024),
+		},
+		{
+			tType: 0x00d2,
+			val:   uint16(100),
+		},
+		{
+			tType: 0x00d5,
+			val:   uint8(2),
+		},
+		{
+			tType: 0x006a,
+			val:   c.Name,
+		},
+		{
+			tType: 0x00d3,
+			val:   c.Name,
+		},
+	}
+}
+
 type ChatRegistry struct {
-	store    map[string]*SessionManager
+	store    map[string]ChatRoom
 	mapMutex sync.RWMutex
 }
 
 func NewChatRegistry() *ChatRegistry {
 	return &ChatRegistry{
-		store: make(map[string]*SessionManager),
+		store: make(map[string]ChatRoom),
 	}
 }
 
-func (c *ChatRegistry) Register(chatID string, sm *SessionManager) {
+func (c *ChatRegistry) Register(room ChatRoom) {
 	c.mapMutex.Lock()
 	defer c.mapMutex.Unlock()
-	c.store[chatID] = sm
+	c.store[room.ID] = room
 }
 
-func (c *ChatRegistry) Retrieve(chatID string) (*SessionManager, error) {
+func (c *ChatRegistry) Retrieve(chatID string) (ChatRoom, error) {
 	c.mapMutex.RLock()
 	defer c.mapMutex.RUnlock()
 	sm, found := c.store[chatID]
 	if !found {
-		return nil, errors.New("unable to find session manager for chat")
+		return sm, errors.New("unable to find session manager for chat")
 	}
 	return sm, nil
 }
 
-func (c *ChatRegistry) MaybeRemoveRoom(toRem *SessionManager) {
+func (c *ChatRegistry) MaybeRemoveRoom(chatID string) {
 	c.mapMutex.Lock()
 	defer c.mapMutex.Unlock()
 
-	if !toRem.Empty() {
+	room, found := c.store[chatID]
+	if !found || room.SessionManager.Empty() {
 		return
 	}
-	var chatID string
-	for cid, sm := range c.store {
-		if sm == toRem {
-			chatID = cid
-			break
-		}
-	}
+
 	delete(c.store, chatID)
 }

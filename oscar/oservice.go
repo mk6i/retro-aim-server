@@ -49,14 +49,14 @@ const (
 	OServiceBartReply2               = 0x0023
 )
 
-func routeOService(wg *sync.WaitGroup, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeOService(ready OnReadyCB, wg *sync.WaitGroup, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case OServiceErr:
 		panic("not implemented")
 	case OServiceClientOnline:
 		wg.Done()
 		sess.SetReady()
-		return ReceiveClientOnline(sess, sm, fm, flap, snac, r, w, sequence)
+		return ReceiveClientOnline(ready, sess, sm, flap, snac, r, w, sequence)
 	case OServiceHostOnline:
 		panic("not implemented")
 	case OServiceServiceRequest:
@@ -442,7 +442,9 @@ func (c *clientVersion) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &c.toolVersion)
 }
 
-func ReceiveClientOnline(sess *Session, sm *SessionManager, fm *FeedbagStore, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+type OnReadyCB func(sess *Session, sm *SessionManager, r io.Reader, w io.Writer, sequence *uint32) error
+
+func ReceiveClientOnline(onReadyCB OnReadyCB, sess *Session, sm *SessionManager, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveClientOnline read SNAC frame: %+v\n", snac)
 
 	b := make([]byte, flap.payloadLength-10)
@@ -457,25 +459,10 @@ func ReceiveClientOnline(sess *Session, sm *SessionManager, fm *FeedbagStore, fl
 		if err := item.read(buf); err != nil {
 			return err
 		}
-		if item.foodGroup == CHAT {
-			if err := SendChatRoomInfoUpdate(w, sequence); err != nil {
-				return err
-			}
-			AlertUserJoined(sess, sm)
-			if err := SetOnlineChatUsers(sm, w, sequence); err != nil {
-				return err
-			}
-			return nil
-		}
 		fmt.Printf("ReceiveClientOnline read SNAC client messageType: %+v\n", item)
 	}
 
-	err := NotifyArrival(sess, sm, fm)
-	if err != nil {
-		return err
-	}
-
-	return GetOnlineBuddies(w, sess, sm, fm, sequence)
+	return onReadyCB(sess, sm, r, w, sequence)
 }
 
 func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *FeedbagStore, sequence *uint32) error {
@@ -636,13 +623,13 @@ func ReceiveAndSendServiceRequest(cr *ChatRegistry, sess *Session, flap flapFram
 			return errors.New("missing room info")
 		}
 
-		room := &roomInfoOService{}
-		if err := room.read(bytes.NewBuffer(roomMeta.val.([]byte))); err != nil {
+		roomSnac := &roomInfoOService{}
+		if err := roomSnac.read(bytes.NewBuffer(roomMeta.val.([]byte))); err != nil {
 			return err
 		}
 
 		cookie := &ChatCookie{
-			Cookie: room.cookie,
+			Cookie: roomSnac.cookie,
 			SessID: sess.ID,
 		}
 		buf := &bytes.Buffer{}
@@ -650,12 +637,12 @@ func ReceiveAndSendServiceRequest(cr *ChatRegistry, sess *Session, flap flapFram
 			return err
 		}
 
-		sm, err := cr.Retrieve(string(room.cookie))
+		room, err := cr.Retrieve(string(roomSnac.cookie))
 		if err != nil {
 			return err
 		}
 
-		sm.NewSessionWithSN(sess.ID, sess.ScreenName)
+		room.SessionManager.NewSessionWithSN(sess.ID, sess.ScreenName)
 
 		snacPayloadOut := &TLVPayload{
 			TLVs: []*TLV{

@@ -132,8 +132,17 @@ func handleBOSConnection(sm *oscar.SessionManager, fm *oscar.FeedbagStore, cr *o
 
 	defer oscar.Signout(sess, sm, fm)
 
+	onClientReady := func(sess *oscar.Session, sm *oscar.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
+		err := oscar.NotifyArrival(sess, sm, fm)
+		if err != nil {
+			return err
+		}
+
+		return oscar.GetOnlineBuddies(w, sess, sm, fm, sequence)
+	}
+
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D}
-	if err := oscar.ReadBos(sess, seq, sm, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
+	if err := oscar.ReadBos(onClientReady, sess, seq, sm, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Printf("user disconnected with error: %s\n", err.Error())
 		} else {
@@ -151,17 +160,26 @@ func handleChatConnection(fm *oscar.FeedbagStore, cr *oscar.ChatRegistry, conn n
 		return
 	}
 
-	sm, err := cr.Retrieve(string(cookie.Cookie))
+	room, err := cr.Retrieve(string(cookie.Cookie))
 
-	chatSess, found := sm.Retrieve(cookie.SessID)
+	chatSess, found := room.SessionManager.Retrieve(cookie.SessID)
 	if !found {
 		fmt.Printf("unable to find user for session: %s\n", cookie.SessID)
 		return
 	}
-	defer exitChat(chatSess, sm, cr)
+	defer exitChat(chatSess, room, cr)
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D, 0x000E}
-	if err := oscar.ReadBos(chatSess, seq, sm, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
+
+	onClientReady := func(sess *oscar.Session, sm *oscar.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
+		if err := oscar.SendChatRoomInfoUpdate(room, w, sequence); err != nil {
+			return err
+		}
+		oscar.AlertUserJoined(sess, sm)
+		return oscar.SetOnlineChatUsers(sm, w, sequence)
+	}
+
+	if err := oscar.ReadBos(onClientReady, chatSess, seq, room.SessionManager, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Printf("user disconnected with error: %s\n", err.Error())
 		} else {
@@ -170,9 +188,9 @@ func handleChatConnection(fm *oscar.FeedbagStore, cr *oscar.ChatRegistry, conn n
 	}
 }
 
-func exitChat(chatSess *oscar.Session, sm *oscar.SessionManager, cr *oscar.ChatRegistry) {
-	oscar.AlertUserLeft(chatSess, sm)
+func exitChat(chatSess *oscar.Session, room oscar.ChatRoom, cr *oscar.ChatRegistry) {
+	oscar.AlertUserLeft(chatSess, room.SessionManager)
 	chatSess.Close()
-	sm.Remove(chatSess)
-	cr.MaybeRemoveRoom(sm)
+	room.SessionManager.Remove(chatSess)
+	cr.MaybeRemoveRoom(room.ID)
 }

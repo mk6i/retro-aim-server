@@ -3,6 +3,7 @@ package oscar
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"io"
@@ -31,7 +32,7 @@ func routeChatNav(sess *Session, cr *ChatRegistry, flap flapFrame, snac *snacFra
 	case ChatNavRequestExchangeInfo:
 		panic("not implemented")
 	case ChatNavRequestRoomInfo:
-		return SendAndReceiveChatNav(flap, snac, r, w, sequence)
+		return SendAndReceiveChatNav(cr, flap, snac, r, w, sequence)
 	case ChatNavRequestMoreRoomInfo:
 		panic("not implemented")
 	case ChatNavRequestOccupantList:
@@ -113,18 +114,6 @@ func SendAndReceiveNextChatRights(flap flapFrame, snac *snacFrame, r io.Reader, 
 	xchange := TLVPayload{
 		TLVs: []*TLV{
 			{
-				tType: 0x000a,
-				val:   uint16(0x0114),
-			},
-			////{
-			////	tType: 0x000d,
-			////	val:   nil,
-			////},
-			{
-				tType: 0x0004,
-				val:   uint8(100),
-			},
-			{
 				tType: 0x0002,
 				val:   uint16(0x0010),
 			},
@@ -133,20 +122,8 @@ func SendAndReceiveNextChatRights(flap flapFrame, snac *snacFrame, r io.Reader, 
 				val:   uint16(15),
 			},
 			{
-				tType: 0x00ca,
-				val:   uint32(cannedTime.Unix()),
-			},
-			{
-				tType: 0x00d1,
-				val:   uint16(1024),
-			},
-			{
-				tType: 0x00d2,
-				val:   uint16(100),
-			},
-			{
 				tType: 0x00d3,
-				val:   cannedName,
+				val:   "default exchange",
 			},
 			{
 				tType: 0x00d5,
@@ -168,10 +145,6 @@ func SendAndReceiveNextChatRights(flap flapFrame, snac *snacFrame, r io.Reader, 
 				tType: 0xd9,
 				val:   "en",
 			},
-			//{
-			//	tType: 0x00da,
-			//	val:   uint16(1024),
-			//},
 		},
 	}
 
@@ -263,10 +236,6 @@ func (s *snacCreateRoom) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
-var cannedUUID = uuid.New()
-var cannedName = "my new chat"
-var cannedTime = time.Now()
-
 func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveCreateRoom read SNAC frame: %+v\n", snac)
 
@@ -275,92 +244,39 @@ func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap flapFrame, s
 		return err
 	}
 
-	//name, _ := snacPayloadIn.getString(0x00d3)
-	name := cannedName
-	//charset, _ := snacPayloadIn.getString(0x00d6)
-	//lang, _ := snacPayloadIn.getString(0x00d7)
+	name, hasName := snacPayloadIn.getString(0x00d3)
+	if !hasName {
+		return errors.New("unable to find chat name")
+	}
+
+	room := ChatRoom{
+		ID:             uuid.New().String(),
+		SessionManager: NewSessionManager(),
+		CreateTime:     time.Now(),
+		Name:           name,
+	}
+	cr.Register(room)
+
+	// add user to chat room
+	room.SessionManager.NewSessionWithSN(sess.ID, sess.ScreenName)
 
 	snacFrameOut := snacFrame{
 		foodGroup: CHAT_NAV,
 		subGroup:  ChatNavNavInfo,
 	}
-
-	xchange := TLVPayload{
-		TLVs: []*TLV{
-			{
-				tType: 0x006a,
-				val:   name,
-			},
-			{
-				tType: 0x00c9,
-				val:   uint16(15), // tweak this
-			},
-			{
-				tType: 0x00ca,
-				val:   uint32(cannedTime.Unix()),
-			},
-			{
-				tType: 0x00d1,
-				val:   uint16(1024),
-			},
-			//{
-			//	tType: 0x00da,
-			//	val:   uint16(1024),
-			//},
-			{
-				tType: 0x00d2,
-				val:   uint16(100),
-			},
-			{
-				tType: 0x00d3,
-				val:   name,
-			},
-			{
-				tType: 0x00d5,
-				val:   uint8(2),
-			},
-		},
-	}
-
-	//uu, err := uuid.NewUUID()
-	//if err != nil {
-	//	return err
-	//}
-
-	sm := NewSessionManager()
-	sm.NewSessionWithSN(sess.ID, sess.ScreenName)
-
-	chatID := cannedUUID.String()
-	cr.Register(chatID, sm)
-
-	roomBuf := &bytes.Buffer{}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint16(4)); err != nil {
-		return err
-	}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint8(len(chatID))); err != nil {
-		return err
-	}
-	if err := binary.Write(roomBuf, binary.BigEndian, []byte(chatID)); err != nil {
-		return err
-	}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint16(100)); err != nil {
-		return err
-	}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint8(2)); err != nil {
-		return err
-	}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint16(len(xchange.TLVs))); err != nil {
-		return err
-	}
-	if err := xchange.write(roomBuf); err != nil {
-		return err
-	}
-
 	snacPayloadOut := &TLVPayload{
 		TLVs: []*TLV{
 			{
 				tType: 0x04,
-				val:   roomBuf.Bytes(),
+				val: &snacCreateRoom{
+					exchange:       4,
+					cookie:         []byte(room.ID),
+					instanceNumber: 100,
+					detailLevel:    2,
+					TLVPayload: TLVPayload{
+						TLVs: room.TLVList(),
+					},
+				},
 			},
 		},
 	}
@@ -414,7 +330,7 @@ func (s *roomInfo) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &s.detailLevel)
 }
 
-func SendAndReceiveChatNav(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveChatNav(cr *ChatRegistry, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChatNav read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &roomInfo{}
@@ -422,9 +338,10 @@ func SendAndReceiveChatNav(flap flapFrame, snac *snacFrame, r io.Reader, w io.Wr
 		return err
 	}
 
-	//name, _ := snacPayloadIn.getString(0x00d3)
-	//charset, _ := snacPayloadIn.getString(0x00d6)
-	//lang, _ := snacPayloadIn.getString(0x00d7)
+	room, err := cr.Retrieve(string(snacPayloadIn.cookie))
+	if err != nil {
+		return err
+	}
 
 	snacFrameOut := snacFrame{
 		foodGroup: CHAT_NAV,
@@ -432,54 +349,17 @@ func SendAndReceiveChatNav(flap flapFrame, snac *snacFrame, r io.Reader, w io.Wr
 	}
 
 	xchange := TLVPayload{
-		TLVs: []*TLV{
-			{
-				tType: 0x006a,
-				val:   cannedName,
-			},
-			{
-				tType: 0x00c9,
-				val:   uint16(15), // tweak this
-			},
-			{
-				tType: 0x00ca,
-				val:   uint32(cannedTime.Unix()),
-			},
-			{
-				tType: 0x00d1,
-				val:   uint16(1024),
-			},
-			//{
-			//	tType: 0x00da,
-			//	val:   uint16(1024),
-			//},
-			{
-				tType: 0x00d2,
-				val:   uint16(100),
-			},
-			{
-				tType: 0x00d3,
-				val:   cannedName,
-			},
-			{
-				tType: 0x00d5,
-				val:   uint8(2),
-			},
-		},
+		TLVs: room.TLVList(),
 	}
 
-	uu, err := uuid.NewUUID()
-	if err != nil {
-		return nil
-	}
 	roomBuf := &bytes.Buffer{}
 	if err := binary.Write(roomBuf, binary.BigEndian, uint16(4)); err != nil {
 		return err
 	}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint8(len(uu.String()))); err != nil {
+	if err := binary.Write(roomBuf, binary.BigEndian, uint8(len(room.ID))); err != nil {
 		return err
 	}
-	if err := binary.Write(roomBuf, binary.BigEndian, []byte(uu.String())); err != nil {
+	if err := binary.Write(roomBuf, binary.BigEndian, []byte(room.ID)); err != nil {
 		return err
 	}
 	if err := binary.Write(roomBuf, binary.BigEndian, uint16(100)); err != nil {

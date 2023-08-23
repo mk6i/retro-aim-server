@@ -316,7 +316,7 @@ func AlertUserLeft(sess *Session, sm *SessionManager) {
 	})
 }
 
-func SendChatRoomInfoUpdate(w io.Writer, sequence *uint32) error {
+func SendChatRoomInfoUpdate(room ChatRoom, w io.Writer, sequence *uint32) error {
 	flap := flapFrame{
 		startMarker: 42,
 		frameType:   2,
@@ -327,46 +327,12 @@ func SendChatRoomInfoUpdate(w io.Writer, sequence *uint32) error {
 	}
 	snacPayloadOut := &snacCreateRoom{
 		exchange:       4,
-		cookie:         []byte(cannedUUID.String()),
+		cookie:         []byte(room.ID),
 		instanceNumber: 100,
 		detailLevel:    2,
 		TLVPayload: TLVPayload{
-			TLVs: []*TLV{
-				{
-					tType: 0x006a,
-					val:   cannedName,
-				},
-				{
-					tType: 0x00c9,
-					val:   uint16(15), // tweak this
-				},
-				{
-					tType: 0x00ca,
-					val:   uint32(cannedTime.Unix()),
-				},
-				{
-					tType: 0x00d1,
-					val:   uint16(1024),
-				},
-				//{
-				//	tType: 0x00da,
-				//	val:   uint16(1024),
-				//},
-				{
-					tType: 0x00d2,
-					val:   uint16(100),
-				},
-				{
-					tType: 0x00d3,
-					val:   cannedName,
-				},
-				{
-					tType: 0x00d5,
-					val:   uint8(2),
-				},
-			},
+			TLVs: room.TLVList(),
 		},
 	}
-
 	return writeOutSNAC(nil, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
