@@ -1,7 +1,6 @@
 package oscar
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -97,9 +96,9 @@ func (s *exchangeInfo) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.identifier); err != nil {
 		return err
 	}
-	//if err := binary.Write(w, binary.BigEndian, uint8(len(s.TLVs))); err != nil {
-	//	return err
-	//}
+	if err := binary.Write(w, binary.BigEndian, uint16(len(s.TLVs))); err != nil {
+		return err
+	}
 	return s.TLVPayload.write(w)
 }
 
@@ -111,54 +110,6 @@ func SendAndReceiveNextChatRights(flap flapFrame, snac *snacFrame, r io.Reader, 
 		subGroup:  ChatNavNavInfo,
 	}
 
-	xchange := TLVPayload{
-		TLVs: []*TLV{
-			{
-				tType: 0x0002,
-				val:   uint16(0x0010),
-			},
-			{
-				tType: 0x00c9,
-				val:   uint16(15),
-			},
-			{
-				tType: 0x00d3,
-				val:   "default exchange",
-			},
-			{
-				tType: 0x00d5,
-				val:   uint8(2),
-			},
-			{
-				tType: 0xd6,
-				val:   "us-ascii",
-			},
-			{
-				tType: 0xd7,
-				val:   "en",
-			},
-			{
-				tType: 0xd8,
-				val:   "us-ascii",
-			},
-			{
-				tType: 0xd9,
-				val:   "en",
-			},
-		},
-	}
-
-	roomBuf := &bytes.Buffer{}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint16(4)); err != nil {
-		return err
-	}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint16(len(xchange.TLVs))); err != nil {
-		return err
-	}
-	if err := xchange.write(roomBuf); err != nil {
-		return err
-	}
-
 	snacPayloadOut := &TLVPayload{
 		TLVs: []*TLV{
 			{
@@ -167,7 +118,45 @@ func SendAndReceiveNextChatRights(flap flapFrame, snac *snacFrame, r io.Reader, 
 			},
 			{
 				tType: 0x03,
-				val:   roomBuf.Bytes(),
+				val: &exchangeInfo{
+					identifier: 4,
+					TLVPayload: TLVPayload{
+						TLVs: []*TLV{
+							{
+								tType: 0x0002,
+								val:   uint16(0x0010),
+							},
+							{
+								tType: 0x00c9,
+								val:   uint16(15),
+							},
+							{
+								tType: 0x00d3,
+								val:   "default exchange",
+							},
+							{
+								tType: 0x00d5,
+								val:   uint8(2),
+							},
+							{
+								tType: 0xd6,
+								val:   "us-ascii",
+							},
+							{
+								tType: 0xd7,
+								val:   "en",
+							},
+							{
+								tType: 0xd8,
+								val:   "us-ascii",
+							},
+							{
+								tType: 0xd9,
+								val:   "en",
+							},
+						},
+					},
+				},
 			},
 		},
 	}
