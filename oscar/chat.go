@@ -296,6 +296,26 @@ func AlertUserJoined(sess *Session, sm *SessionManager) {
 	})
 }
 
+func AlertUserLeft(sess *Session, sm *SessionManager) {
+	sm.BroadcastExcept(sess, &XMessage{
+		flap: flapFrame{
+			startMarker: 42,
+			frameType:   2,
+		},
+		snacFrame: snacFrame{
+			foodGroup: CHAT,
+			subGroup:  ChatUsersLeft,
+		},
+		snacOut: &snacSenderInfo{
+			screenName:   sess.ScreenName,
+			warningLevel: sess.GetWarning(),
+			TLVPayload: TLVPayload{
+				TLVs: sess.GetUserInfo(),
+			},
+		},
+	})
+}
+
 func SendChatRoomInfoUpdate(w io.Writer, sequence *uint32) error {
 	flap := flapFrame{
 		startMarker: 42,

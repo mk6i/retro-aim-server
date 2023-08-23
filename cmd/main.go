@@ -34,14 +34,12 @@ func main() {
 	fmt.Println("Server is listening on port 5190")
 
 	for {
-		// Accept incoming connections
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 
-		// Handle connection in a separate goroutine
 		go handleAuthConnection(sm, fm, conn)
 	}
 }
@@ -67,7 +65,6 @@ func listenBOS(sm *oscar.SessionManager, fm *oscar.FeedbagStore, cr *oscar.ChatR
 	fmt.Println("Server is listening on port 5191")
 
 	for {
-		// Accept incoming connections
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println(err)
@@ -161,8 +158,7 @@ func handleChatConnection(fm *oscar.FeedbagStore, cr *oscar.ChatRegistry, conn n
 		fmt.Printf("unable to find user for session: %s\n", cookie.SessID)
 		return
 	}
-	defer chatSess.Close()
-	defer sm.Remove(chatSess)
+	defer exitChat(chatSess, sm, cr)
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D, 0x000E}
 	if err := oscar.ReadBos(chatSess, seq, sm, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
@@ -172,4 +168,11 @@ func handleChatConnection(fm *oscar.FeedbagStore, cr *oscar.ChatRegistry, conn n
 			fmt.Println("user disconnected")
 		}
 	}
+}
+
+func exitChat(chatSess *oscar.Session, sm *oscar.SessionManager, cr *oscar.ChatRegistry) {
+	oscar.AlertUserLeft(chatSess, sm)
+	chatSess.Close()
+	sm.Remove(chatSess)
+	cr.MaybeRemoveRoom(sm)
 }

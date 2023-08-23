@@ -184,6 +184,12 @@ func (s *SessionManager) Broadcast(msg *XMessage) {
 	}
 }
 
+func (s *SessionManager) Empty() bool {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+	return len(s.store) == 0
+}
+
 func (s *SessionManager) All() []*Session {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
@@ -299,4 +305,21 @@ func (c *ChatRegistry) Retrieve(chatID string) (*SessionManager, error) {
 		return nil, errors.New("unable to find session manager for chat")
 	}
 	return sm, nil
+}
+
+func (c *ChatRegistry) MaybeRemoveRoom(toRem *SessionManager) {
+	c.mapMutex.Lock()
+	defer c.mapMutex.Unlock()
+
+	if !toRem.Empty() {
+		return
+	}
+	var chatID string
+	for cid, sm := range c.store {
+		if sm == toRem {
+			chatID = cid
+			break
+		}
+	}
+	delete(c.store, chatID)
 }
