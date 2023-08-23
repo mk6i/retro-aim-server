@@ -33,7 +33,7 @@ const (
 	ICBMSinReply                  = 0x0017
 )
 
-func routeICBM(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeICBM(sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case ICBMErr:
 		panic("not implemented")
@@ -140,7 +140,7 @@ func (s *snacParameterResponse) write(w io.Writer) error {
 	return nil
 }
 
-func SendAndReceiveICBMParameterReply(flap *flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveICBMParameterReply(flap flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveICBMParameterReply read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -188,6 +188,7 @@ func (s *snacMessageToHost) read(r io.Reader) error {
 		0x02: reflect.Slice,
 		0x03: reflect.Slice,
 		0x04: reflect.Slice,
+		0x05: reflect.Slice,
 	})
 }
 
@@ -213,7 +214,7 @@ func (f *snacHostAck) write(w io.Writer) error {
 	return nil
 }
 
-func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChannelMsgTohost read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacMessageToHost{}
@@ -254,15 +255,10 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		return err
 	}
 
-	messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x02)
-	if !found {
-		return errors.New("unable to find message data tlv")
-	}
-
 	_, requestedConfirmation := snacPayloadIn.TLVPayload.getSlice(0x03)
 
 	mm := &XMessage{
-		flap: &flapFrame{
+		flap: flapFrame{
 			startMarker: 42,
 			frameType:   2,
 		},
@@ -281,13 +277,24 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 						tType: 0x0B,
 						val:   []byte{},
 					},
-					{
-						tType: 0x02,
-						val:   messagePayload,
-					},
 				},
 			},
 		},
+	}
+	if messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x02); found {
+		mm.snacOut.(*snacClientIM).TLVs = append(mm.snacOut.(*snacClientIM).TLVs,
+			&TLV{
+				tType: 0x02,
+				val:   messagePayload,
+			})
+	}
+
+	if messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x05); found {
+		mm.snacOut.(*snacClientIM).TLVs = append(mm.snacOut.(*snacClientIM).TLVs,
+			&TLV{
+				tType: 0x05,
+				val:   messagePayload,
+			})
 	}
 
 	// todo: add append to TLVPayload?
@@ -314,7 +321,7 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 	}
 }
 
-func ReceiveAddParameters(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAddParameters(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveAddParameters read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacParameterRequest{}
@@ -448,7 +455,7 @@ func (s *snacClientErr) read(r io.Reader) error {
 	return err
 }
 
-func ReceiveClientErr(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveClientErr(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveClientErr read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacClientErr{}
@@ -504,7 +511,7 @@ func (s *sncClientEvent) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.event)
 }
 
-func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveClientEvent read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &sncClientEvent{}
@@ -528,7 +535,7 @@ func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 	snacPayloadIn.screenName = sess.ScreenName
 
 	session.SendMessage(&XMessage{
-		flap: &flapFrame{
+		flap: flapFrame{
 			startMarker: 42,
 			frameType:   2,
 		},
@@ -592,7 +599,7 @@ const (
 	evilDeltaAnon = uint16(30)
 )
 
-func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Session, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveEvilRequest read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacEvilRequest{}
@@ -640,7 +647,7 @@ func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 	}
 
 	mm := &XMessage{
-		flap: &flapFrame{
+		flap: flapFrame{
 			startMarker: 42,
 			frameType:   2,
 		},

@@ -22,6 +22,19 @@ type Session struct {
 	invisible   bool
 	idle        bool
 	idleTime    time.Time
+	ready       bool
+}
+
+func (s *Session) SetReady() {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+	s.ready = true
+}
+
+func (s *Session) Ready() bool {
+	s.Mutex.RLock()
+	defer s.Mutex.RUnlock()
+	return s.ready
 }
 
 func (s *Session) IncreaseWarning(incr uint16) {
@@ -116,6 +129,15 @@ func (s *Session) GetUserInfo() []*TLV {
 	}
 	tlvs = append(tlvs, idle)
 
+	// capabilities
+	caps := &TLV{
+		tType: 0x0D,
+		val:   []byte{},
+	}
+	// chat capability
+	caps.val = append(caps.val.([]byte), CapChat...)
+	tlvs = append(tlvs, caps)
+
 	return tlvs
 }
 
@@ -154,6 +176,41 @@ func NewSessionManager() *SessionManager {
 	}
 }
 
+func (s *SessionManager) Broadcast(msg *XMessage) {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+	for _, sess := range s.store {
+		sess.SendMessage(msg)
+	}
+}
+
+func (s *SessionManager) Empty() bool {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+	return len(s.store) == 0
+}
+
+func (s *SessionManager) All() []*Session {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+	var sessions []*Session
+	for _, sess := range s.store {
+		sessions = append(sessions, sess)
+	}
+	return sessions
+}
+
+func (s *SessionManager) BroadcastExcept(except *Session, msg *XMessage) {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+	for _, sess := range s.store {
+		if sess == except {
+			continue
+		}
+		sess.SendMessage(msg)
+	}
+}
+
 func (s *SessionManager) Retrieve(ID string) (*Session, bool) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
@@ -187,8 +244,8 @@ func (s *SessionManager) RetrieveByScreenNames(screenNames []string) []*Session 
 }
 
 func (s *SessionManager) NewSession() (*Session, error) {
-	s.mapMutex.RLock()
-	defer s.mapMutex.RUnlock()
+	s.mapMutex.Lock()
+	defer s.mapMutex.Unlock()
 	id, err := uuid.NewUUID()
 	if err != nil {
 		return nil, err
@@ -203,8 +260,102 @@ func (s *SessionManager) NewSession() (*Session, error) {
 	return sess, nil
 }
 
+func (s *SessionManager) NewSessionWithSN(sessID string, screenName string) *Session {
+	s.mapMutex.Lock()
+	defer s.mapMutex.Unlock()
+	sess := &Session{
+		ID: sessID,
+		// todo what if client is unresponsive and blocks other messages?
+		// idea: make channel big enough to handle backlog, disconnect user
+		// if the queue fills up
+		msgCh:      make(chan *XMessage, 1),
+		stopCh:     make(chan struct{}),
+		SignonTime: time.Now(),
+		ScreenName: screenName,
+	}
+	s.store[sess.ID] = sess
+	return sess
+}
+
 func (s *SessionManager) Remove(sess *Session) {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
 	delete(s.store, sess.ID)
+}
+
+type ChatRoom struct {
+	ID             string
+	SessionManager *SessionManager
+	CreateTime     time.Time
+	Name           string
+}
+
+func (c ChatRoom) TLVList() []*TLV {
+	return []*TLV{
+		{
+			tType: 0x00c9,
+			val:   uint16(15),
+		},
+		{
+			tType: 0x00ca,
+			val:   uint32(c.CreateTime.Unix()),
+		},
+		{
+			tType: 0x00d1,
+			val:   uint16(1024),
+		},
+		{
+			tType: 0x00d2,
+			val:   uint16(100),
+		},
+		{
+			tType: 0x00d5,
+			val:   uint8(2),
+		},
+		{
+			tType: 0x006a,
+			val:   c.Name,
+		},
+		{
+			tType: 0x00d3,
+			val:   c.Name,
+		},
+	}
+}
+
+type ChatRegistry struct {
+	store    map[string]ChatRoom
+	mapMutex sync.RWMutex
+}
+
+func NewChatRegistry() *ChatRegistry {
+	return &ChatRegistry{
+		store: make(map[string]ChatRoom),
+	}
+}
+
+func (c *ChatRegistry) Register(room ChatRoom) {
+	c.mapMutex.Lock()
+	defer c.mapMutex.Unlock()
+	c.store[room.ID] = room
+}
+
+func (c *ChatRegistry) Retrieve(chatID string) (ChatRoom, error) {
+	c.mapMutex.RLock()
+	defer c.mapMutex.RUnlock()
+	sm, found := c.store[chatID]
+	if !found {
+		return sm, errors.New("unable to find session manager for chat")
+	}
+	return sm, nil
+}
+
+func (c *ChatRegistry) MaybeRemoveRoom(chatID string) {
+	c.mapMutex.Lock()
+	defer c.mapMutex.Unlock()
+
+	room, found := c.store[chatID]
+	if found && room.SessionManager.Empty() {
+		delete(c.store, chatID)
+	}
 }
