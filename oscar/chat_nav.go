@@ -348,38 +348,19 @@ func SendAndReceiveChatNav(cr *ChatRegistry, flap flapFrame, snac *snacFrame, r 
 		subGroup:  ChatNavNavInfo,
 	}
 
-	xchange := TLVPayload{
-		TLVs: room.TLVList(),
-	}
-
-	roomBuf := &bytes.Buffer{}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint16(4)); err != nil {
-		return err
-	}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint8(len(room.ID))); err != nil {
-		return err
-	}
-	if err := binary.Write(roomBuf, binary.BigEndian, []byte(room.ID)); err != nil {
-		return err
-	}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint16(100)); err != nil {
-		return err
-	}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint8(2)); err != nil {
-		return err
-	}
-	if err := binary.Write(roomBuf, binary.BigEndian, uint16(len(xchange.TLVs))); err != nil {
-		return err
-	}
-	if err := xchange.write(roomBuf); err != nil {
-		return err
-	}
-
 	snacPayloadOut := &TLVPayload{
 		TLVs: []*TLV{
 			{
 				tType: 0x04,
-				val:   roomBuf.Bytes(),
+				val: &snacCreateRoom{
+					exchange:       4,
+					cookie:         []byte(room.ID),
+					instanceNumber: 100,
+					detailLevel:    2,
+					TLVPayload: TLVPayload{
+						TLVs: room.TLVList(),
+					},
+				},
 			},
 		},
 	}
