@@ -32,7 +32,7 @@ const (
 	LocateUserInfoQuery2              = 0x0015
 )
 
-func routeLocate(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeLocate(sess *Session, sm *SessionManager, fm *FeedbagStore, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case LocateErr:
 		panic("not implemented")
@@ -83,7 +83,7 @@ func (s *snacLocateRightsReply) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
-func SendAndReceiveLocateRights(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveLocateRights(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveLocateRights read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -134,7 +134,7 @@ var (
 	LocateTlvTagsInfoHtmlInfoType    = uint16(0x0D)
 )
 
-func ReceiveSetInfo(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveSetInfo(sess *Session, sm *SessionManager, fm *FeedbagStore, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveSetInfo read SNAC frame: %+v\n", snac)
 
 	snacPayload := &TLVPayload{}
@@ -197,7 +197,7 @@ func (s *snacDirInfo) read(r io.Reader) error {
 	return nil
 }
 
-func ReceiveLocateGetDirInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveLocateGetDirInfo(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveLocateGetDirInfo read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacDirInfo{}
@@ -261,7 +261,7 @@ func (f *snacUserInfoReply) write(w io.Writer) error {
 	return f.awayMessage.write(w)
 }
 
-func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *FeedbagStore, flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *FeedbagStore, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveUserInfoQuery2 read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacUserInfoQuery2{}
@@ -385,7 +385,7 @@ func (s *snacSetDirInfoReply) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.result)
 }
 
-func SendAndReceiveSetDirInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveSetDirInfo(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveSetDirInfo read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacSetDirInfo{}
@@ -421,7 +421,7 @@ func (s *snacSetKeywordInfoReply) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.unknown)
 }
 
-func SendAndReceiveSetKeywordInfo(flap *flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveSetKeywordInfo(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveSetKeywordInfo read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacSetKeywordInfo{}
