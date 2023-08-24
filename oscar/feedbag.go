@@ -389,6 +389,7 @@ func (f *feedbagItem) read(r io.Reader) error {
 		FeedbagAttributesPdFlags:         reflect.Uint32,
 		FeedbagAttributesPdMask:          reflect.Uint32,
 		FeedbagAttributesPdMode:          reflect.Uint8,
+		FeedbagAttributesNote:            reflect.String,
 	})
 }
 
@@ -533,6 +534,18 @@ func ReceiveInsertItem(sm *SessionManager, sess *Session, fm *FeedbagStore, flap
 				break
 			}
 			return err
+		}
+		// don't let users block themselves, it causes the AIM client to go
+		// into a weird state.
+		if item.classID == 3 && item.name == sess.ScreenName {
+			snacFrameOut := snacFrame{
+				foodGroup: FEEDBAG,
+				subGroup:  FeedbagErr,
+			}
+			snacPayloadOut := &snacError{
+				code: ErrorCodeNotSupportedByHost,
+			}
+			return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 		}
 		feedbag = append(feedbag, item)
 		snacPayloadOut.results = append(snacPayloadOut.results, 0x0000) // success by default
