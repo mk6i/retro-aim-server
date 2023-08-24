@@ -607,6 +607,19 @@ func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 		return err
 	}
 
+	// don't let users warn themselves, it causes the AIM client to go into a
+	// weird state.
+	if snacPayloadIn.screenName == sess.ScreenName {
+		snacFrameOut := snacFrame{
+			foodGroup: ICBM,
+			subGroup:  ICBMErr,
+		}
+		snacPayloadOut := &snacError{
+			code: ErrorCodeNotSupportedByHost,
+		}
+		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	}
+
 	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.screenName)
 	if err != nil {
 		return err
