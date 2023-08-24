@@ -107,6 +107,7 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]*feedbagItem, error) {
 			FeedbagAttributesPdFlags:         reflect.Uint32,
 			FeedbagAttributesPdMask:          reflect.Uint32,
 			FeedbagAttributesPdMode:          reflect.Uint8,
+			FeedbagAttributesNote:            reflect.String,
 		})
 		if err != nil {
 			return items, err

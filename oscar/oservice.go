@@ -587,6 +587,7 @@ func (s *snacServiceRequest) read(r io.Reader) error {
 	}
 	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
 		0x01: reflect.Slice,
+		0x28: reflect.Slice,
 	})
 }
 
@@ -604,6 +605,19 @@ func ReceiveAndSendServiceRequest(cr *ChatRegistry, sess *Session, flap flapFram
 	snacPayload := &snacServiceRequest{}
 	if err := snacPayload.read(r); err != nil {
 		return err
+	}
+
+	// this prevents AIM client from crashing when using the
+	// store/edit email address feature.
+	if _, hasEditBuddy := snacPayload.getTLV(0x28); hasEditBuddy {
+		snacFrameOut := snacFrame{
+			foodGroup: OSERVICE,
+			subGroup:  OServiceErr,
+		}
+		snacPayloadOut := &snacOServiceErr{
+			code: ErrorCodeNotSupportedByHost,
+		}
+		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
 	fmt.Printf("receiveAndSendServiceRequest read SNAC body: %+v\n", snacPayload)
