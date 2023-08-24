@@ -58,6 +58,17 @@ var (
 	CapChat, _ = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
 )
 
+type Config struct {
+	OSCARHost string `envconfig:"OSCAR_HOST" required:"true"`
+	OSCARPort int    `envconfig:"OSCAR_PORT" default:"5190"`
+	BOSPort   int    `envconfig:"BOS_PORT" default:"5191"`
+	ChatPort  int    `envconfig:"CHAT_PORT" default:"5192"`
+}
+
+func Address(host string, port int) string {
+	return fmt.Sprintf("%s:%d", host, port)
+}
+
 type snacError struct {
 	code uint16
 	TLVPayload
@@ -566,7 +577,7 @@ func Signout(sess *Session, sm *SessionManager, fm *FeedbagStore) {
 	sm.Remove(sess)
 }
 
-func ReadBos(ready OnReadyCB, sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter, foodGroups []uint16) error {
+func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter, foodGroups []uint16) error {
 	if err := WriteOServiceHostOnline(foodGroups, rwc, &seq); err != nil {
 		return err
 	}
@@ -582,7 +593,7 @@ func ReadBos(ready OnReadyCB, sess *Session, seq uint32, sm *SessionManager, fm 
 	for {
 		select {
 		case m := <-msgCh:
-			if err := routeIncomingRequests(ready, &wg, sm, sess, fm, cr, rwc, &seq, m.snac, m.flap, m.buf); err != nil {
+			if err := routeIncomingRequests(cfg, ready, &wg, sm, sess, fm, cr, rwc, &seq, m.snac, m.flap, m.buf); err != nil {
 				return err
 			}
 		case m := <-sess.RecvMessage():
@@ -596,10 +607,10 @@ func ReadBos(ready OnReadyCB, sess *Session, seq uint32, sm *SessionManager, fm 
 	}
 }
 
-func routeIncomingRequests(ready OnReadyCB, wg *sync.WaitGroup, sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac *snacFrame, flap flapFrame, buf io.Reader) error {
+func routeIncomingRequests(cfg Config, ready OnReadyCB, wg *sync.WaitGroup, sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac *snacFrame, flap flapFrame, buf io.Reader) error {
 	switch snac.foodGroup {
 	case OSERVICE:
-		if err := routeOService(ready, wg, cr, sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
+		if err := routeOService(cfg, ready, wg, cr, sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case LOCATE:

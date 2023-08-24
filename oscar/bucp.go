@@ -124,7 +124,7 @@ func (s *snacBUCPLoginRequest) read(r io.Reader) error {
 	})
 }
 
-func ReceiveAndSendBUCPLoginRequest(sess *Session, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32) error {
 	flap := flapFrame{}
 	if err := flap.read(r); err != nil {
 		return err
@@ -180,7 +180,7 @@ func ReceiveAndSendBUCPLoginRequest(sess *Session, fm *FeedbagStore, r io.Reader
 				},
 				{
 					tType: 0x05,
-					val:   "192.168.64.1:5191",
+					val:   Address(cfg.OSCARHost, cfg.BOSPort),
 				},
 				{
 					tType: 0x06,

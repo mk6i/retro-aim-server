@@ -49,7 +49,7 @@ const (
 	OServiceBartReply2               = 0x0023
 )
 
-func routeOService(ready OnReadyCB, wg *sync.WaitGroup, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeOService(cfg Config, ready OnReadyCB, wg *sync.WaitGroup, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case OServiceErr:
 		panic("not implemented")
@@ -60,7 +60,7 @@ func routeOService(ready OnReadyCB, wg *sync.WaitGroup, cr *ChatRegistry, sm *Se
 	case OServiceHostOnline:
 		panic("not implemented")
 	case OServiceServiceRequest:
-		return ReceiveAndSendServiceRequest(cr, sess, flap, snac, r, w, sequence)
+		return ReceiveAndSendServiceRequest(cfg, cr, sess, flap, snac, r, w, sequence)
 	case OServiceRateParamsQuery:
 		return ReceiveAndSendServiceRateParams(flap, snac, r, w, sequence)
 	case OServiceRateParamsSubAdd:
@@ -599,7 +599,7 @@ const (
 	OserviceTlvTagsSslState             = 0x8E
 )
 
-func ReceiveAndSendServiceRequest(cr *ChatRegistry, sess *Session, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRequest read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacServiceRequest{}
@@ -662,7 +662,7 @@ func ReceiveAndSendServiceRequest(cr *ChatRegistry, sess *Session, flap flapFram
 			TLVs: []*TLV{
 				{
 					tType: OserviceTlvTagsReconnectHere,
-					val:   "192.168.64.1:5192",
+					val:   Address(cfg.OSCARHost, cfg.ChatPort),
 				},
 				{
 					tType: OserviceTlvTagsLoginCookie,
