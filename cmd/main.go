@@ -10,8 +10,6 @@ import (
 	"net/http"
 )
 
-const testFile string = "/Users/mike/dev/goaim/aim.db"
-
 func main() {
 
 	var cfg oscar.Config
@@ -20,7 +18,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	fm, err := oscar.NewFeedbagStore(testFile)
+	fm, err := oscar.NewFeedbagStore(cfg.DBPath)
 	if err != nil {
 		log.Fatal(err)
 	}
