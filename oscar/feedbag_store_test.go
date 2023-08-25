@@ -8,7 +8,7 @@ import (
 
 func TestFeedbagStore(t *testing.T) {
 
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 	const screenName = "sn2day"
 
 	defer func() {

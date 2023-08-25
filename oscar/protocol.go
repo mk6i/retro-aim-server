@@ -63,6 +63,7 @@ type Config struct {
 	OSCARPort int    `envconfig:"OSCAR_PORT" default:"5190"`
 	BOSPort   int    `envconfig:"BOS_PORT" default:"5191"`
 	ChatPort  int    `envconfig:"CHAT_PORT" default:"5192"`
+	DBPath    string `envconfig:"DB_PATH" required:"true"`
 }
 
 func Address(host string, port int) string {
