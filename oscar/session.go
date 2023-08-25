@@ -252,7 +252,7 @@ func (s *SessionManager) NewSession() (*Session, error) {
 	}
 	sess := &Session{
 		ID:         id.String(),
-		msgCh:      make(chan *XMessage, 1),
+		msgCh:      make(chan *XMessage, 100),
 		stopCh:     make(chan struct{}),
 		SignonTime: time.Now(),
 	}
@@ -268,7 +268,7 @@ func (s *SessionManager) NewSessionWithSN(sessID string, screenName string) *Ses
 		// todo what if client is unresponsive and blocks other messages?
 		// idea: make channel big enough to handle backlog, disconnect user
 		// if the queue fills up
-		msgCh:      make(chan *XMessage, 1),
+		msgCh:      make(chan *XMessage, 100),
 		stopCh:     make(chan struct{}),
 		SignonTime: time.Now(),
 		ScreenName: screenName,
