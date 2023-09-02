@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sync"
 	"time"
 )
 
@@ -48,13 +47,11 @@ const (
 	OServiceBartReply2               = 0x0023
 )
 
-func routeOService(cfg Config, ready OnReadyCB, wg *sync.WaitGroup, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case OServiceErr:
 		panic("not implemented")
 	case OServiceClientOnline:
-		wg.Done()
-		sess.SetReady()
 		return ReceiveClientOnline(ready, sess, sm, flap, snac, r, w, sequence)
 	case OServiceHostOnline:
 		panic("not implemented")

@@ -256,9 +256,6 @@ func SetOnlineChatUsers(sm *SessionManager, w io.Writer, sequence *uint32) error
 	sessions := sm.All()
 
 	for _, uSess := range sessions {
-		if !uSess.Ready() {
-			continue
-		}
 		snacPayloadOut = append(snacPayloadOut, snacSenderInfo{
 			screenName:   uSess.ScreenName,
 			warningLevel: uSess.GetWarning(),
