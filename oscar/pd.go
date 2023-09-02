@@ -19,12 +19,12 @@ const (
 	PDDelTempPermitListEntries        = 0x000B
 )
 
-func routePD(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routePD(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case PDErr:
 		panic("not implemented")
 	case PDRightsQuery:
-		return SendAndReceivePDRightsQuery(flap, snac, r, w, sequence)
+		return SendAndReceivePDRightsQuery(snac, r, w, sequence)
 	case PDSetGroupPermitMask:
 		panic("not implemented")
 	case PDAddPermListEntries:
@@ -46,7 +46,7 @@ func routePD(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence 
 	return nil
 }
 
-func SendAndReceivePDRightsQuery(flap flapFrame, snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceivePDRightsQuery(snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceivePDRightsQuery read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -70,5 +70,5 @@ func SendAndReceivePDRightsQuery(flap flapFrame, snac snacFrame, _ io.Reader, w 
 		},
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }

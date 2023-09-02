@@ -31,26 +31,26 @@ const (
 	ICBMSinReply                  = 0x0017
 )
 
-func routeICBM(sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeICBM(sm *SessionManager, fm *FeedbagStore, sess *Session, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case ICBMErr:
 		panic("not implemented")
 	case ICBMAddParameters:
-		return ReceiveAddParameters(flap, snac, r, w, sequence)
+		return ReceiveAddParameters(snac, r)
 	case ICBMDelParameters:
 		panic("not implemented")
 	case ICBMParameterQuery:
-		return SendAndReceiveICBMParameterReply(flap, snac, r, w, sequence)
+		return SendAndReceiveICBMParameterReply(snac, r, w, sequence)
 	case ICBMChannelMsgTohost:
-		return SendAndReceiveChannelMsgTohost(sm, fm, sess, flap, snac, r, w, sequence)
+		return SendAndReceiveChannelMsgTohost(sm, fm, sess, snac, r, w, sequence)
 	case ICBMChannelMsgToclient:
 		panic("not implemented")
 	case ICBMEvilRequest:
-		return SendAndReceiveEvilRequest(sm, fm, sess, flap, snac, r, w, sequence)
+		return SendAndReceiveEvilRequest(sm, fm, sess, snac, r, w, sequence)
 	case ICBMMissedCalls:
 		panic("not implemented")
 	case ICBMClientErr:
-		return ReceiveClientErr(flap, snac, r, w, sequence)
+		return ReceiveClientErr(snac, r)
 	case ICBMHostAck:
 		panic("not implemented")
 	case ICBMSinStored:
@@ -68,7 +68,7 @@ func routeICBM(sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFra
 	case ICBMNotifyReply:
 		panic("not implemented")
 	case ICBMClientEvent:
-		return SendAndReceiveClientEvent(sm, fm, sess, flap, snac, r, w, sequence)
+		return SendAndReceiveClientEvent(sm, fm, sess, snac, r)
 	case ICBMSinReply:
 		panic("not implemented")
 	}
@@ -138,7 +138,7 @@ func (s snacParameterResponse) write(w io.Writer) error {
 	return nil
 }
 
-func SendAndReceiveICBMParameterReply(flap flapFrame, snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveICBMParameterReply(snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveICBMParameterReply read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -154,7 +154,7 @@ func SendAndReceiveICBMParameterReply(flap flapFrame, snac snacFrame, _ io.Reade
 		minInterICBMInterval: 0,
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snacMessageToHost struct {
@@ -207,10 +207,10 @@ func (f snacHostAck) write(w io.Writer) error {
 	return nil
 }
 
-func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *Session, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChannelMsgTohost read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := &snacMessageToHost{}
+	snacPayloadIn := snacMessageToHost{}
 	if err := snacPayloadIn.read(r); err != nil {
 		return err
 	}
@@ -230,7 +230,7 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		if blocked == BlockedA {
 			snacPayloadOut.code = ErrorCodeInLocalPermitDeny
 		}
-		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
 	session, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
@@ -243,7 +243,7 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 			snacPayloadOut := snacError{
 				code: ErrorCodeNotLoggedOn,
 			}
-			return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+			return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 		}
 		return err
 	}
@@ -288,10 +288,6 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 	}
 
 	session.SendMessage(XMessage{
-		flap: flapFrame{
-			startMarker: 42,
-			frameType:   2,
-		},
 		snacFrame: snacFrame{
 			foodGroup: ICBM,
 			subGroup:  ICBMChannelMsgToclient,
@@ -310,16 +306,16 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 	}
 
 	if requestedConfirmation {
-		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 	} else {
 		return nil
 	}
 }
 
-func ReceiveAddParameters(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAddParameters(snac snacFrame, r io.Reader) error {
 	fmt.Printf("ReceiveAddParameters read SNAC frame: %+v\n", snac)
 
-	snacPayload := &snacParameterRequest{}
+	snacPayload := snacParameterRequest{}
 	if err := snacPayload.read(r); err != nil {
 		return err
 	}
@@ -393,10 +389,10 @@ func (s *snacClientErr) read(r io.Reader) error {
 	return err
 }
 
-func ReceiveClientErr(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveClientErr(snac snacFrame, r io.Reader) error {
 	fmt.Printf("ReceiveClientErr read SNAC frame: %+v\n", snac)
 
-	snacPayload := &snacClientErr{}
+	snacPayload := snacClientErr{}
 	if err := snacPayload.read(r); err != nil {
 		return err
 	}
@@ -449,10 +445,10 @@ func (s sncClientEvent) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, s.event)
 }
 
-func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Session, snac snacFrame, r io.Reader) error {
 	fmt.Printf("SendAndReceiveClientEvent read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := &sncClientEvent{}
+	snacPayloadIn := sncClientEvent{}
 	if err := snacPayloadIn.read(r); err != nil {
 		return err
 	}
@@ -473,10 +469,6 @@ func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 	snacPayloadIn.screenName = sess.ScreenName
 
 	session.SendMessage(XMessage{
-		flap: flapFrame{
-			startMarker: 42,
-			frameType:   2,
-		},
 		snacFrame: snacFrame{
 			foodGroup: ICBM,
 			subGroup:  ICBMClientEvent,
@@ -537,10 +529,10 @@ const (
 	evilDeltaAnon = uint16(30)
 )
 
-func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Session, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveEvilRequest read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := &snacEvilRequest{}
+	snacPayloadIn := snacEvilRequest{}
 	if err := snacPayloadIn.read(r); err != nil {
 		return err
 	}
@@ -555,7 +547,7 @@ func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 		snacPayloadOut := snacError{
 			code: ErrorCodeNotSupportedByHost,
 		}
-		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
 	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.screenName)
@@ -570,7 +562,7 @@ func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 		snacPayloadOut := snacError{
 			code: ErrorCodeNotLoggedOn,
 		}
-		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
 	recipSess, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
@@ -593,7 +585,7 @@ func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 		updatedEvilValue: recipSess.GetWarning(),
 	}
 
-	if err := writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
+	if err := writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
 		return err
 	}
 
@@ -605,10 +597,6 @@ func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 	}
 
 	recipSess.SendMessage(XMessage{
-		flap: flapFrame{
-			startMarker: 42,
-			frameType:   2,
-		},
 		snacFrame: snacFrame{
 			foodGroup: OSERVICE,
 			subGroup:  OServiceEvilNotification,

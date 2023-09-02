@@ -23,7 +23,7 @@ func TestFeedbagStore(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
-	itemsIn := []*feedbagItem{
+	itemsIn := []feedbagItem{
 		{
 			groupID:    0,
 			itemID:     1805,
@@ -69,7 +69,7 @@ func TestFeedbagDelete(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
-	itemsIn := []*feedbagItem{
+	itemsIn := []feedbagItem{
 		{
 			groupID: 0,
 			itemID:  1805,
@@ -102,7 +102,7 @@ func TestFeedbagDelete(t *testing.T) {
 		t.Fatalf("failed to upsert: %s", err.Error())
 	}
 
-	if err := f.Delete(screenName, []*feedbagItem{itemsIn[0]}); err != nil {
+	if err := f.Delete(screenName, []feedbagItem{itemsIn[0]}); err != nil {
 		t.Fatalf("failed to delete: %s", err.Error())
 	}
 
@@ -159,7 +159,7 @@ func TestLastModifiedNotEmpty(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
-	itemsIn := []*feedbagItem{
+	itemsIn := []feedbagItem{
 		{
 			groupID: 0x0A,
 			itemID:  0,

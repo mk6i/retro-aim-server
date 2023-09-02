@@ -18,7 +18,7 @@ const (
 	BUCPRegistrationImageRequest        = 0x000C
 )
 
-func routeBUCP(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeBUCP(snac snacFrame) error {
 	switch snac.subGroup {
 	case BUCPErr:
 		panic("not implemented")
@@ -73,12 +73,12 @@ func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence 
 	}
 
 	buf := bytes.NewBuffer(b)
-	snac := &snacFrame{}
+	snac := snacFrame{}
 	if err := snac.read(buf); err != nil {
 		return err
 	}
 
-	snacPayload := &snacBUCPChallengeRequest{}
+	snacPayload := snacBUCPChallengeRequest{}
 	if err := snacPayload.read(buf); err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence 
 		authKey: s.ID,
 	}
 
-	return writeOutSNAC(*snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snacBUCPLoginRequest struct {
@@ -116,12 +116,12 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore,
 	}
 
 	buf := bytes.NewBuffer(b)
-	snac := &snacFrame{}
+	snac := snacFrame{}
 	if err := snac.read(buf); err != nil {
 		return err
 	}
 
-	snacPayload := &snacBUCPLoginRequest{}
+	snacPayload := snacBUCPLoginRequest{}
 	if err := snacPayload.read(buf); err != nil {
 		return err
 	}
@@ -178,5 +178,5 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore,
 		},
 	}
 
-	return writeOutSNAC(*snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }

@@ -169,14 +169,14 @@ func (s *TLVPayload) addTLV(tlv TLV) {
 func (s *TLVPayload) read(r io.Reader) error {
 	for {
 		// todo, don't like this extra alloc when we're EOF
-		tlv := &TLV{}
+		tlv := TLV{}
 		if err := tlv.read(r); err != nil {
 			if err == io.EOF {
 				break
 			}
 			return err
 		}
-		s.TLVs = append(s.TLVs, *tlv)
+		s.TLVs = append(s.TLVs, tlv)
 	}
 
 	return nil
@@ -317,21 +317,21 @@ func (f *flapSignonFrame) read(r io.Reader) error {
 
 	for {
 		// todo, don't like this extra alloc when we're EOF
-		tlv := &TLV{}
+		tlv := TLV{}
 		if err := tlv.read(buf); err != nil {
 			if err == io.EOF {
 				break
 			}
 			return err
 		}
-		f.TLVs = append(f.TLVs, *tlv)
+		f.TLVs = append(f.TLVs, tlv)
 	}
 
 	return nil
 }
 
 func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (*flapSignonFrame, error) {
-	flapIn := flapSignonFrame{
+	flapOut := flapSignonFrame{
 		flapFrame: flapFrame{
 			startMarker:   42,
 			frameType:     1,
@@ -341,23 +341,23 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (*flapSignonF
 		flapVersion: 1,
 	}
 
-	*sequence++
-
-	if err := flapIn.write(rw); err != nil {
+	if err := flapOut.write(rw); err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("SendAndReceiveSignonFrame read FLAP: %+v\n", flapIn)
+	fmt.Printf("SendAndReceiveSignonFrame read FLAP: %+v\n", flapOut)
 
 	// receive
-	flapOut := &flapSignonFrame{}
-	if err := flapOut.read(rw); err != nil {
+	flapIn := flapSignonFrame{}
+	if err := flapIn.read(rw); err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("SendAndReceiveSignonFrame write FLAP: %+v\n", flapOut)
+	fmt.Printf("SendAndReceiveSignonFrame write FLAP: %+v\n", flapIn)
 
-	return flapOut, nil
+	*sequence++
+
+	return &flapIn, nil
 }
 
 func VerifyLogin(sm *SessionManager, rw io.ReadWriter) (*Session, uint32, error) {
@@ -398,10 +398,10 @@ func VerifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error) {
 		return nil, 0, errors.New("unable to get session ID from payload")
 	}
 
-	cookie := &ChatCookie{}
+	cookie := ChatCookie{}
 	err = cookie.read(bytes.NewBuffer(buf))
 
-	return cookie, seq, err
+	return &cookie, seq, err
 }
 
 const (
@@ -438,9 +438,6 @@ type IncomingMessage struct {
 }
 
 type XMessage struct {
-	// todo: this should only take values, not pointers, in order to avoid race
-	// conditions
-	flap      flapFrame
 	snacFrame snacFrame
 	snacOut   snacWriter
 }
@@ -477,7 +474,7 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 
 			buf := bytes.NewBuffer(b)
 
-			snac := &snacFrame{}
+			snac := snacFrame{}
 			if err := snac.read(buf); err != nil {
 				errCh <- err
 				return
@@ -485,7 +482,7 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 
 			msCh <- IncomingMessage{
 				flap: flap,
-				snac: *snac,
+				snac: snac,
 				buf:  buf,
 			}
 		case FlapFrameError:
@@ -528,7 +525,7 @@ func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm *Session
 				return err
 			}
 		case m := <-sess.RecvMessage():
-			if err := writeOutSNAC(snacFrame{}, m.flap, m.snacFrame, m.snacOut, &seq, rwc); err != nil {
+			if err := writeOutSNAC(snacFrame{}, m.snacFrame, m.snacOut, &seq, rwc); err != nil {
 				return err
 			}
 		case err := <-errCh:
@@ -540,39 +537,39 @@ func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm *Session
 func routeIncomingRequests(cfg Config, ready OnReadyCB, sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac snacFrame, flap flapFrame, buf io.Reader) error {
 	switch snac.foodGroup {
 	case OSERVICE:
-		if err := routeOService(cfg, ready, cr, sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
+		if err := routeOService(cfg, ready, cr, sm, fm, sess, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case LOCATE:
-		if err := routeLocate(sess, sm, fm, flap, snac, buf, rw, sequence); err != nil {
+		if err := routeLocate(sess, sm, fm, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case BUDDY:
-		if err := routeBuddy(flap, snac, buf, rw, sequence); err != nil {
+		if err := routeBuddy(snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case ICBM:
-		if err := routeICBM(sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
+		if err := routeICBM(sm, fm, sess, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case PD:
-		if err := routePD(flap, snac, buf, rw, sequence); err != nil {
+		if err := routePD(snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case CHAT_NAV:
-		if err := routeChatNav(sess, cr, flap, snac, buf, rw, sequence); err != nil {
+		if err := routeChatNav(sess, cr, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case FEEDBAG:
-		if err := routeFeedbag(sm, sess, fm, flap, snac, buf, rw, sequence); err != nil {
+		if err := routeFeedbag(sm, sess, fm, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case BUCP:
-		if err := routeBUCP(flap, snac, buf, rw, sequence); err != nil {
+		if err := routeBUCP(snac); err != nil {
 			return err
 		}
 	case CHAT:
-		if err := routeChat(cr, sess, sm, flap, snac, buf, rw, sequence); err != nil {
+		if err := routeChat(sess, sm, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	default:
@@ -582,7 +579,7 @@ func routeIncomingRequests(cfg Config, ready OnReadyCB, sm *SessionManager, sess
 	return nil
 }
 
-func writeOutSNAC(originsnac snacFrame, flap flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint32, w io.Writer) error {
+func writeOutSNAC(originsnac snacFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint32, w io.Writer) error {
 	if originsnac.requestID != 0 {
 		snacFrame.requestID = originsnac.requestID
 	}
@@ -595,9 +592,12 @@ func writeOutSNAC(originsnac snacFrame, flap flapFrame, snacFrame snacFrame, sna
 		return err
 	}
 
-	flap.sequence = uint16(*sequence)
-	*sequence++
-	flap.payloadLength = uint16(snacBuf.Len())
+	flap := flapFrame{
+		startMarker:   42,
+		frameType:     2,
+		sequence:      uint16(*sequence),
+		payloadLength: uint16(snacBuf.Len()),
+	}
 
 	fmt.Printf(" write FLAP: %+v\n", flap)
 
@@ -609,9 +609,13 @@ func writeOutSNAC(originsnac snacFrame, flap flapFrame, snacFrame snacFrame, sna
 
 	expectLen := snacBuf.Len()
 	c, err := w.Write(snacBuf.Bytes())
-
+	if err != nil {
+		return err
+	}
 	if c != expectLen {
 		panic("did not write the expected # of bytes")
 	}
-	return err
+
+	*sequence++
+	return nil
 }

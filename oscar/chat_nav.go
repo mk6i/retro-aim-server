@@ -21,16 +21,16 @@ const (
 	ChatNavNavInfo                    = 0x0009
 )
 
-func routeChatNav(sess *Session, cr *ChatRegistry, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeChatNav(sess *Session, cr *ChatRegistry, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case ChatNavErr:
 		panic("not implemented")
 	case ChatNavRequestChatRights:
-		return SendAndReceiveNextChatRights(flap, snac, r, w, sequence)
+		return SendAndReceiveNextChatRights(snac, w, sequence)
 	case ChatNavRequestExchangeInfo:
 		panic("not implemented")
 	case ChatNavRequestRoomInfo:
-		return SendAndReceiveChatNav(cr, flap, snac, r, w, sequence)
+		return SendAndReceiveChatNav(cr, snac, r, w, sequence)
 	case ChatNavRequestMoreRoomInfo:
 		panic("not implemented")
 	case ChatNavRequestOccupantList:
@@ -38,7 +38,7 @@ func routeChatNav(sess *Session, cr *ChatRegistry, flap flapFrame, snac snacFram
 	case ChatNavSearchForRoom:
 		panic("not implemented")
 	case ChatNavCreateRoom:
-		return SendAndReceiveCreateRoom(sess, cr, flap, snac, r, w, sequence)
+		return SendAndReceiveCreateRoom(sess, cr, snac, r, w, sequence)
 	case ChatNavNavInfo:
 		panic("not implemented")
 	}
@@ -101,7 +101,7 @@ func (s exchangeInfo) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
-func SendAndReceiveNextChatRights(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveNextChatRights(snac snacFrame, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveNextChatRights read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -160,7 +160,7 @@ func SendAndReceiveNextChatRights(flap flapFrame, snac snacFrame, r io.Reader, w
 		},
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snacCreateRoom struct {
@@ -220,10 +220,10 @@ func (s snacCreateRoom) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
-func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveCreateRoom read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := &snacCreateRoom{}
+	snacPayloadIn := snacCreateRoom{}
 	if err := snacPayloadIn.read(r); err != nil {
 		return err
 	}
@@ -265,7 +265,7 @@ func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, flap flapFrame, s
 		},
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type roomInfoOService struct {
@@ -314,10 +314,10 @@ func (s *roomInfo) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &s.detailLevel)
 }
 
-func SendAndReceiveChatNav(cr *ChatRegistry, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveChatNav(cr *ChatRegistry, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChatNav read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := &roomInfo{}
+	snacPayloadIn := roomInfo{}
 	if err := snacPayloadIn.read(r); err != nil {
 		return err
 	}
@@ -349,5 +349,5 @@ func SendAndReceiveChatNav(cr *ChatRegistry, flap flapFrame, snac snacFrame, r i
 		},
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }

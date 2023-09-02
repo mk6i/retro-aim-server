@@ -60,7 +60,7 @@ func (f *FeedbagStore) UpsertUser(screenName string) error {
 	return err
 }
 
-func (f *FeedbagStore) Delete(screenName string, items []*feedbagItem) error {
+func (f *FeedbagStore) Delete(screenName string, items []feedbagItem) error {
 	// todo add transaction
 	q := `DELETE FROM feedbag WHERE ScreenName = ? AND itemID = ?`
 
@@ -73,7 +73,7 @@ func (f *FeedbagStore) Delete(screenName string, items []*feedbagItem) error {
 	return nil
 }
 
-func (f *FeedbagStore) Retrieve(screenName string) ([]*feedbagItem, error) {
+func (f *FeedbagStore) Retrieve(screenName string) ([]feedbagItem, error) {
 	q := `
 		SELECT 
 			groupID,
@@ -91,7 +91,7 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]*feedbagItem, error) {
 	}
 	defer rows.Close()
 
-	var items []*feedbagItem
+	var items []feedbagItem
 	for rows.Next() {
 		var item feedbagItem
 		var attrs []byte
@@ -102,7 +102,7 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]*feedbagItem, error) {
 		if err != nil {
 			return items, err
 		}
-		items = append(items, &item)
+		items = append(items, item)
 	}
 
 	return items, nil
@@ -115,7 +115,7 @@ func (f *FeedbagStore) LastModified(screenName string) (time.Time, error) {
 	return time.Unix(lastModified.Int64, 0), err
 }
 
-func (f *FeedbagStore) Upsert(screenName string, items []*feedbagItem) error {
+func (f *FeedbagStore) Upsert(screenName string, items []feedbagItem) error {
 
 	q := `
 		INSERT INTO feedbag (ScreenName, groupID, itemID, classID, name, attributes, lastModified)
