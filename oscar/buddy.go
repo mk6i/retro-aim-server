@@ -21,13 +21,13 @@ const (
 	BuddyDelTempBuddies             = 0x0010
 )
 
-func routeBuddy(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeBuddy(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 
 	switch snac.subGroup {
 	case BuddyErr:
 		panic("not implemented")
 	case BuddyRightsQuery:
-		return SendAndReceiveBuddyRights(flap, snac, r, w, sequence)
+		return SendAndReceiveBuddyRights(snac, r, w, sequence)
 	case BuddyAddBuddies:
 		panic("not implemented")
 	case BuddyDelBuddies:
@@ -60,10 +60,10 @@ func (s *snacBuddyRights) read(r io.Reader) error {
 	return s.TLVPayload.read(r)
 }
 
-func SendAndReceiveBuddyRights(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveBuddyRights(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveBuddyRights read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := &snacBuddyRights{}
+	snacPayloadIn := snacBuddyRights{}
 	if err := snacPayloadIn.read(r); err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func SendAndReceiveBuddyRights(flap flapFrame, snac snacFrame, r io.Reader, w io
 		},
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snacBuddyArrived struct {
@@ -122,28 +122,6 @@ func (f snacBuddyArrived) write(w io.Writer) error {
 	return f.TLVPayload.write(w)
 }
 
-type snacBuddyDeparted struct {
-	screenName   string
-	warningLevel uint16
-	TLVPayload
-}
-
-func (f snacBuddyDeparted) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, []byte(f.screenName)); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, f.warningLevel); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(f.TLVs))); err != nil {
-		return err
-	}
-	return f.TLVPayload.write(w)
-}
-
 func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName)
 	if err != nil {
@@ -152,11 +130,6 @@ func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 	sessions := sm.RetrieveByScreenNames(screenNames)
 
 	for _, adjSess := range sessions {
-		flap := flapFrame{
-			startMarker: 42,
-			frameType:   2,
-		}
-
 		snacFrameOut := snacFrame{
 			foodGroup: BUDDY,
 			subGroup:  BuddyArrived,
@@ -170,7 +143,6 @@ func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 		}
 
 		adjSess.SendMessage(XMessage{
-			flap:      flap,
 			snacFrame: snacFrameOut,
 			snacOut:   snacPayloadOut,
 		})
@@ -187,10 +159,6 @@ func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error 
 
 	for _, adjSess := range sessions {
 		adjSess.SendMessage(XMessage{
-			flap: flapFrame{
-				startMarker: 42,
-				frameType:   2,
-			},
 			snacFrame: snacFrame{
 				foodGroup: BUDDY,
 				subGroup:  BuddyDeparted,

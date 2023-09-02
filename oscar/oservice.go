@@ -47,20 +47,20 @@ const (
 	OServiceBartReply2               = 0x0023
 )
 
-func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case OServiceErr:
 		panic("not implemented")
 	case OServiceClientOnline:
-		return ReceiveClientOnline(ready, sess, sm, flap, snac, r, w, sequence)
+		return ReceiveClientOnline(ready, sess, sm, snac, r, w, sequence)
 	case OServiceHostOnline:
 		panic("not implemented")
 	case OServiceServiceRequest:
-		return ReceiveAndSendServiceRequest(cfg, cr, sess, flap, snac, r, w, sequence)
+		return ReceiveAndSendServiceRequest(cfg, cr, sess, snac, r, w, sequence)
 	case OServiceRateParamsQuery:
-		return ReceiveAndSendServiceRateParams(flap, snac, r, w, sequence)
+		return ReceiveAndSendServiceRateParams(snac, r, w, sequence)
 	case OServiceRateParamsSubAdd:
-		return ReceiveRateParamsSubAdd(flap, snac, r, w, sequence)
+		return ReceiveRateParamsSubAdd(snac, r)
 	case OServiceRateDelParamSub:
 		panic("not implemented")
 	case OServiceRateParamChange:
@@ -72,13 +72,13 @@ func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm *SessionMan
 	case OServiceResume:
 		panic("not implemented")
 	case OServiceUserInfoQuery:
-		return ReceiveAndSendServiceRequestSelfInfo(sess, flap, snac, r, w, sequence)
+		return ReceiveAndSendServiceRequestSelfInfo(sess, snac, r, w, sequence)
 	case OServiceUserInfoUpdate:
 		panic("not implemented")
 	case OServiceEvilNotification:
 		panic("not implemented")
 	case OServiceIdleNotification:
-		return ReceiveIdleNotification(sess, sm, fm, flap, snac, r, w, sequence)
+		return ReceiveIdleNotification(sess, sm, fm, snac, r)
 	case OServiceMigrateGroups:
 		panic("not implemented")
 	case OServiceMotd:
@@ -90,7 +90,7 @@ func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm *SessionMan
 	case OServiceNoop:
 		panic("not implemented")
 	case OServiceClientVersions:
-		return ReceiveAndSendHostVersions(flap, snac, r, w, sequence)
+		return ReceiveAndSendHostVersions(snac, r, w, sequence)
 	case OServiceMaxConfigQuery:
 		panic("not implemented")
 	case OServiceMaxConfigReply:
@@ -102,7 +102,7 @@ func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm *SessionMan
 	case OServiceConfigReply:
 		panic("not implemented")
 	case OServiceSetUserinfoFields:
-		return ReceiveSetUserInfoFields(sess, sm, fm, flap, snac, r, w, sequence)
+		return ReceiveSetUserInfoFields(sess, sm, fm, snac, r, w, sequence)
 	case OServiceProbeReq:
 		panic("not implemented")
 	case OServiceProbeAck:
@@ -213,10 +213,10 @@ func (s snacVersions) write(w io.Writer) error {
 	return nil
 }
 
-func ReceiveAndSendHostVersions(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendHostVersions(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendHostVersions read SNAC frame: %+v\n", snac)
 
-	snacPayloadOut := &snacVersions{
+	snacPayloadOut := snacVersions{
 		versions: make(map[uint16]uint16),
 	}
 	if err := snacPayloadOut.read(r); err != nil {
@@ -230,7 +230,7 @@ func ReceiveAndSendHostVersions(flap flapFrame, snac snacFrame, r io.Reader, w i
 		subGroup:  OServiceHostVersions,
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, *snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type rateClass struct {
@@ -315,7 +315,7 @@ func (s snacOServiceRateParamsReply) write(w io.Writer) error {
 	return nil
 }
 
-func ReceiveAndSendServiceRateParams(flap flapFrame, snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRateParams(snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRateParams read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -361,7 +361,7 @@ func ReceiveAndSendServiceRateParams(flap flapFrame, snac snacFrame, _ io.Reader
 				})
 		}
 	}
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snacOServiceUserInfoUpdate struct {
@@ -386,7 +386,7 @@ func (s snacOServiceUserInfoUpdate) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
-func ReceiveAndSendServiceRequestSelfInfo(sess *Session, flap flapFrame, snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRequestSelfInfo(sess *Session, snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRequestSelfInfo read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -401,13 +401,13 @@ func ReceiveAndSendServiceRequestSelfInfo(sess *Session, flap flapFrame, snac sn
 		},
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveRateParamsSubAdd(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveRateParamsSubAdd(snac snacFrame, r io.Reader) error {
 	fmt.Printf("receiveRateParamsSubAdd read SNAC frame: %+v\n", snac)
 
-	snacPayload := &TLVPayload{}
+	snacPayload := TLVPayload{}
 	if err := snacPayload.read(r); err != nil {
 		return err
 	}
@@ -439,19 +439,15 @@ func (c *clientVersion) read(r io.Reader) error {
 
 type OnReadyCB func(sess *Session, sm *SessionManager, r io.Reader, w io.Writer, sequence *uint32) error
 
-func ReceiveClientOnline(onReadyCB OnReadyCB, sess *Session, sm *SessionManager, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveClientOnline(onReadyCB OnReadyCB, sess *Session, sm *SessionManager, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveClientOnline read SNAC frame: %+v\n", snac)
 
-	b := make([]byte, flap.payloadLength-10)
-	if _, err := r.Read(b); err != nil {
-		return err
-	}
-
-	buf := bytes.NewBuffer(b)
-
-	for buf.Len() > 0 {
-		item := &clientVersion{}
-		if err := item.read(buf); err != nil {
+	for {
+		item := clientVersion{}
+		if err := item.read(r); err != nil {
+			if err == io.EOF {
+				break
+			}
 			return err
 		}
 		fmt.Printf("ReceiveClientOnline read SNAC client messageType: %+v\n", item)
@@ -479,10 +475,6 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 			continue
 		}
 
-		flap := flapFrame{
-			startMarker: 42,
-			frameType:   2,
-		}
 		snacFrameOut := snacFrame{
 			foodGroup: BUDDY,
 			subGroup:  BuddyArrived,
@@ -495,17 +487,17 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 			},
 		}
 
-		if err := writeOutSNAC(snacFrame{}, flap, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
+		if err := writeOutSNAC(snacFrame{}, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStore, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveSetUserInfoFields read SNAC frame: %+v\n", snac)
 
-	snacPayload := &TLVPayload{}
+	snacPayload := TLVPayload{}
 	err := snacPayload.read(r)
 	if err != nil {
 		return err
@@ -540,7 +532,7 @@ func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStor
 		},
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snacIdleNotification struct {
@@ -551,10 +543,10 @@ func (s *snacIdleNotification) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &s.idleTime)
 }
 
-func ReceiveIdleNotification(sess *Session, sm *SessionManager, fm *FeedbagStore, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveIdleNotification(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacFrame, r io.Reader) error {
 	fmt.Printf("receiveIdleNotification read SNAC frame: %+v\n", snac)
 
-	snacPayload := &snacIdleNotification{}
+	snacPayload := snacIdleNotification{}
 	if err := snacPayload.read(r); err != nil {
 		return nil
 	}
@@ -588,10 +580,10 @@ const (
 	OserviceTlvTagsSslState             = 0x8E
 )
 
-func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRequest read SNAC frame: %+v\n", snac)
 
-	snacPayload := &snacServiceRequest{}
+	snacPayload := snacServiceRequest{}
 	if err := snacPayload.read(r); err != nil {
 		return err
 	}
@@ -606,7 +598,7 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, f
 		snacPayloadOut := snacOServiceErr{
 			code: ErrorCodeNotSupportedByHost,
 		}
-		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
 	fmt.Printf("receiveAndSendServiceRequest read SNAC body: %+v\n", snacPayload)
@@ -626,12 +618,12 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, f
 			return errors.New("missing room info")
 		}
 
-		roomSnac := &roomInfoOService{}
+		roomSnac := roomInfoOService{}
 		if err := roomSnac.read(bytes.NewBuffer(roomMeta.val.([]byte))); err != nil {
 			return err
 		}
 
-		cookie := &ChatCookie{
+		cookie := ChatCookie{
 			Cookie: roomSnac.cookie,
 			SessID: sess.ID,
 		}
@@ -671,10 +663,10 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, f
 				},
 			},
 		}
-		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snacEvilNotification struct {
