@@ -48,7 +48,7 @@ const (
 	OServiceBartReply2               = 0x0023
 )
 
-func routeOService(cfg Config, ready OnReadyCB, wg *sync.WaitGroup, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeOService(cfg Config, ready OnReadyCB, wg *sync.WaitGroup, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case OServiceErr:
 		panic("not implemented")
@@ -125,7 +125,7 @@ type snacOServiceErr struct {
 	code uint16
 }
 
-func (s *snacOServiceErr) write(w io.Writer) error {
+func (s snacOServiceErr) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.code); err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ type snac01_03 struct {
 	foodGroups []uint16
 }
 
-func (s *snac01_03) write(w io.Writer) error {
+func (s snac01_03) write(w io.Writer) error {
 	if err := s.snacFrame.write(w); err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func (s *snac01_03) write(w io.Writer) error {
 func WriteOServiceHostOnline(foodGroups []uint16, rw io.ReadWriter, sequence *uint32) error {
 	fmt.Println("writeOServiceHostOnline...")
 
-	snac := &snac01_03{
+	snac := snac01_03{
 		snacFrame: snacFrame{
 			foodGroup: 0x01,
 			subGroup:  0x03,
@@ -204,7 +204,7 @@ func (s *snacVersions) read(r io.Reader) error {
 	return nil
 }
 
-func (s *snacVersions) write(w io.Writer) error {
+func (s snacVersions) write(w io.Writer) error {
 	for family, version := range s.versions {
 		if err := binary.Write(w, binary.BigEndian, family); err != nil {
 			return err
@@ -216,24 +216,24 @@ func (s *snacVersions) write(w io.Writer) error {
 	return nil
 }
 
-func ReceiveAndSendHostVersions(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendHostVersions(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendHostVersions read SNAC frame: %+v\n", snac)
 
-	snacPayload := &snacVersions{
+	snacPayloadOut := &snacVersions{
 		versions: make(map[uint16]uint16),
 	}
-	if err := snacPayload.read(r); err != nil {
+	if err := snacPayloadOut.read(r); err != nil {
 		return err
 	}
 
-	fmt.Printf("receiveAndSendHostVersions read SNAC: %+v\n", snacPayload)
+	fmt.Printf("receiveAndSendHostVersions read SNAC: %+v\n", snacPayloadOut)
 
 	snacFrameOut := snacFrame{
 		foodGroup: OSERVICE,
 		subGroup:  OServiceHostVersions,
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayload, sequence, w)
+	return writeOutSNAC(snac, flap, snacFrameOut, *snacPayloadOut, sequence, w)
 }
 
 type rateClass struct {
@@ -262,7 +262,7 @@ type snacOServiceRateParamsReply struct {
 	rateGroups  []rateGroup
 }
 
-func (s *snacOServiceRateParamsReply) write(w io.Writer) error {
+func (s snacOServiceRateParamsReply) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, uint16(len(s.rateClasses))); err != nil {
 		return err
 	}
@@ -318,7 +318,7 @@ func (s *snacOServiceRateParamsReply) write(w io.Writer) error {
 	return nil
 }
 
-func ReceiveAndSendServiceRateParams(flap flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRateParams(flap flapFrame, snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRateParams read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
@@ -326,7 +326,7 @@ func ReceiveAndSendServiceRateParams(flap flapFrame, snac *snacFrame, _ io.Reade
 		subGroup:  OServiceRateParamsReply,
 	}
 
-	snacPayloadOut := &snacOServiceRateParamsReply{
+	snacPayloadOut := snacOServiceRateParamsReply{
 		rateClasses: []rateClass{
 			{
 				ID:              0x0001,
@@ -373,7 +373,7 @@ type snacOServiceUserInfoUpdate struct {
 	warningLevel uint16
 }
 
-func (s *snacOServiceUserInfoUpdate) write(w io.Writer) error {
+func (s snacOServiceUserInfoUpdate) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, uint8(len(s.screenName))); err != nil {
 		return err
 	}
@@ -389,14 +389,14 @@ func (s *snacOServiceUserInfoUpdate) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
-func ReceiveAndSendServiceRequestSelfInfo(sess *Session, flap flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRequestSelfInfo(sess *Session, flap flapFrame, snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRequestSelfInfo read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
 		foodGroup: OSERVICE,
 		subGroup:  OServiceUserInfoUpdate,
 	}
-	snacPayloadOut := &snacOServiceUserInfoUpdate{
+	snacPayloadOut := snacOServiceUserInfoUpdate{
 		screenName:   sess.ScreenName,
 		warningLevel: sess.GetWarning(),
 		TLVPayload: TLVPayload{
@@ -407,7 +407,7 @@ func ReceiveAndSendServiceRequestSelfInfo(sess *Session, flap flapFrame, snac *s
 	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveRateParamsSubAdd(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveRateParamsSubAdd(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveRateParamsSubAdd read SNAC frame: %+v\n", snac)
 
 	snacPayload := &TLVPayload{}
@@ -442,7 +442,7 @@ func (c *clientVersion) read(r io.Reader) error {
 
 type OnReadyCB func(sess *Session, sm *SessionManager, r io.Reader, w io.Writer, sequence *uint32) error
 
-func ReceiveClientOnline(onReadyCB OnReadyCB, sess *Session, sm *SessionManager, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveClientOnline(onReadyCB OnReadyCB, sess *Session, sm *SessionManager, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveClientOnline read SNAC frame: %+v\n", snac)
 
 	b := make([]byte, flap.payloadLength-10)
@@ -490,7 +490,7 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 			foodGroup: BUDDY,
 			subGroup:  BuddyArrived,
 		}
-		snacPayloadOut := &snacBuddyArrived{
+		snacPayloadOut := snacBuddyArrived{
 			screenName:   buddies,
 			warningLevel: sess.GetWarning(),
 			TLVPayload: TLVPayload{
@@ -498,14 +498,14 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 			},
 		}
 
-		if err := writeOutSNAC(nil, flap, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
+		if err := writeOutSNAC(snacFrame{}, flap, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStore, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStore, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveSetUserInfoFields read SNAC frame: %+v\n", snac)
 
 	snacPayload := &TLVPayload{}
@@ -535,7 +535,7 @@ func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStor
 		foodGroup: OSERVICE,
 		subGroup:  OServiceUserInfoUpdate,
 	}
-	snacPayloadOut := &snacOServiceUserInfoUpdate{
+	snacPayloadOut := snacOServiceUserInfoUpdate{
 		screenName:   sess.ScreenName,
 		warningLevel: sess.GetWarning(),
 		TLVPayload: TLVPayload{
@@ -554,7 +554,7 @@ func (s *snacIdleNotification) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &s.idleTime)
 }
 
-func ReceiveIdleNotification(sess *Session, sm *SessionManager, fm *FeedbagStore, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveIdleNotification(sess *Session, sm *SessionManager, fm *FeedbagStore, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveIdleNotification read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacIdleNotification{}
@@ -591,7 +591,7 @@ const (
 	OserviceTlvTagsSslState             = 0x8E
 )
 
-func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRequest read SNAC frame: %+v\n", snac)
 
 	snacPayload := &snacServiceRequest{}
@@ -606,7 +606,7 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, f
 			foodGroup: OSERVICE,
 			subGroup:  OServiceErr,
 		}
-		snacPayloadOut := &snacOServiceErr{
+		snacPayloadOut := snacOServiceErr{
 			code: ErrorCodeNotSupportedByHost,
 		}
 		return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
@@ -619,7 +619,7 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, f
 		foodGroup: OSERVICE,
 		subGroup:  OServiceServiceResponse,
 	}
-	snacPayloadOut := &snacOServiceErr{
+	snacPayloadOut := snacOServiceErr{
 		code: 0x06,
 	}
 
@@ -650,8 +650,8 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, f
 
 		room.SessionManager.NewSessionWithSN(sess.ID, sess.ScreenName)
 
-		snacPayloadOut := &TLVPayload{
-			TLVs: []*TLV{
+		snacPayloadOut := TLVPayload{
+			TLVs: []TLV{
 				{
 					tType: OserviceTlvTagsReconnectHere,
 					val:   Address(cfg.OSCARHost, cfg.ChatPort),
@@ -687,7 +687,7 @@ type snacEvilNotification struct {
 	TLVPayload
 }
 
-func (f *snacEvilNotification) write(w io.Writer) error {
+func (f snacEvilNotification) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, f.newEvil); err != nil {
 		return err
 	}

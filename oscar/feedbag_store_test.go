@@ -76,7 +76,7 @@ func TestFeedbagDelete(t *testing.T) {
 			classID: 3,
 			name:    "spimmer1234",
 			TLVPayload: TLVPayload{
-				TLVs: []*TLV{
+				TLVs: []TLV{
 					{
 						tType: 0x01,
 						val:   uint16(1000),

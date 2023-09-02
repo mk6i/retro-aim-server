@@ -13,7 +13,7 @@ var errSessNotFound = errors.New("session was not found")
 type Session struct {
 	ID          string
 	ScreenName  string
-	msgCh       chan *XMessage
+	msgCh       chan XMessage
 	stopCh      chan struct{}
 	Mutex       sync.RWMutex
 	Warning     uint16
@@ -87,12 +87,12 @@ func (s *Session) GetAwayMessage() string {
 	return s.AwayMessage
 }
 
-func (s *Session) GetUserInfo() []*TLV {
+func (s *Session) GetUserInfo() []TLV {
 	s.Mutex.RLock()
 	defer s.Mutex.RUnlock()
 
 	// sign-in timestamp
-	tlvs := []*TLV{
+	tlvs := []TLV{
 		{
 			tType: 0x03,
 			val:   uint32(s.SignonTime.Unix()),
@@ -100,7 +100,7 @@ func (s *Session) GetUserInfo() []*TLV {
 	}
 
 	// away message status
-	userFlags := &TLV{
+	userFlags := TLV{
 		tType: 0x01,
 		val:   uint16(0x0010), // AIM client
 	}
@@ -110,7 +110,7 @@ func (s *Session) GetUserInfo() []*TLV {
 	tlvs = append(tlvs, userFlags)
 
 	// invisibility status
-	status := &TLV{
+	status := TLV{
 		tType: 0x06,
 		val:   uint16(0x0000),
 	}
@@ -120,7 +120,7 @@ func (s *Session) GetUserInfo() []*TLV {
 	tlvs = append(tlvs, status)
 
 	// idle status
-	idle := &TLV{
+	idle := TLV{
 		tType: 0x04,
 		val:   uint16(0),
 	}
@@ -130,7 +130,7 @@ func (s *Session) GetUserInfo() []*TLV {
 	tlvs = append(tlvs, idle)
 
 	// capabilities
-	caps := &TLV{
+	caps := TLV{
 		tType: 0x0D,
 		val:   []byte{},
 	}
@@ -149,11 +149,11 @@ func (s *Session) GetWarning() uint16 {
 	return w
 }
 
-func (s *Session) RecvMessage() chan *XMessage {
+func (s *Session) RecvMessage() chan XMessage {
 	return s.msgCh
 }
 
-func (s *Session) SendMessage(msg *XMessage) {
+func (s *Session) SendMessage(msg XMessage) {
 	select {
 	case <-s.stopCh:
 		return
@@ -176,7 +176,7 @@ func NewSessionManager() *SessionManager {
 	}
 }
 
-func (s *SessionManager) Broadcast(msg *XMessage) {
+func (s *SessionManager) Broadcast(msg XMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
@@ -200,7 +200,7 @@ func (s *SessionManager) All() []*Session {
 	return sessions
 }
 
-func (s *SessionManager) BroadcastExcept(except *Session, msg *XMessage) {
+func (s *SessionManager) BroadcastExcept(except *Session, msg XMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
@@ -252,7 +252,7 @@ func (s *SessionManager) NewSession() (*Session, error) {
 	}
 	sess := &Session{
 		ID:         id.String(),
-		msgCh:      make(chan *XMessage, 100),
+		msgCh:      make(chan XMessage, 100),
 		stopCh:     make(chan struct{}),
 		SignonTime: time.Now(),
 	}
@@ -268,7 +268,7 @@ func (s *SessionManager) NewSessionWithSN(sessID string, screenName string) *Ses
 		// todo what if client is unresponsive and blocks other messages?
 		// idea: make channel big enough to handle backlog, disconnect user
 		// if the queue fills up
-		msgCh:      make(chan *XMessage, 100),
+		msgCh:      make(chan XMessage, 100),
 		stopCh:     make(chan struct{}),
 		SignonTime: time.Now(),
 		ScreenName: screenName,
@@ -290,8 +290,8 @@ type ChatRoom struct {
 	Name           string
 }
 
-func (c ChatRoom) TLVList() []*TLV {
-	return []*TLV{
+func (c ChatRoom) TLVList() []TLV {
+	return []TLV{
 		{
 			tType: 0x00c9,
 			val:   uint16(15),
