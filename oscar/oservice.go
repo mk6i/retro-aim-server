@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"sync"
 	"time"
 )
@@ -412,8 +411,7 @@ func ReceiveRateParamsSubAdd(flap flapFrame, snac *snacFrame, r io.Reader, w io.
 	fmt.Printf("receiveRateParamsSubAdd read SNAC frame: %+v\n", snac)
 
 	snacPayload := &TLVPayload{}
-	lookup := map[uint16]reflect.Kind{}
-	if err := snacPayload.read(r, lookup); err != nil {
+	if err := snacPayload.read(r); err != nil {
 		return err
 	}
 
@@ -511,10 +509,7 @@ func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStor
 	fmt.Printf("receiveSetUserInfoFields read SNAC frame: %+v\n", snac)
 
 	snacPayload := &TLVPayload{}
-	err := snacPayload.read(r, map[uint16]reflect.Kind{
-		0x06: reflect.Uint32,
-		0x1D: reflect.Slice,
-	})
+	err := snacPayload.read(r)
 	if err != nil {
 		return err
 	}
@@ -585,10 +580,7 @@ func (s *snacServiceRequest) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &s.foodGroup); err != nil {
 		return err
 	}
-	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
-		0x01: reflect.Slice,
-		0x28: reflect.Slice,
-	})
+	return s.TLVPayload.read(r)
 }
 
 const (

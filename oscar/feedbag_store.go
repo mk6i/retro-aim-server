@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	_ "github.com/mattn/go-sqlite3"
-	"reflect"
 	"time"
 )
 
@@ -99,16 +98,7 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]*feedbagItem, error) {
 		if err := rows.Scan(&item.groupID, &item.itemID, &item.classID, &item.name, &attrs); err != nil {
 			return nil, err
 		}
-		err = item.TLVPayload.read(bytes.NewBuffer(attrs), map[uint16]reflect.Kind{
-			// todo: how to do parity with func (f *feedbagItem) read?
-			FeedbagAttributesBuddyPrefs:      reflect.Uint32,
-			FeedbagAttributesBuddyPrefsValid: reflect.Uint32,
-			FeedbagAttributesOrder:           reflect.Slice,
-			FeedbagAttributesPdFlags:         reflect.Uint32,
-			FeedbagAttributesPdMask:          reflect.Uint32,
-			FeedbagAttributesPdMode:          reflect.Uint8,
-			FeedbagAttributesNote:            reflect.String,
-		})
+		err = item.TLVPayload.read(bytes.NewBuffer(attrs))
 		if err != nil {
 			return items, err
 		}

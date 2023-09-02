@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 )
 
 const (
@@ -138,20 +137,7 @@ func ReceiveSetInfo(sess *Session, sm *SessionManager, fm *FeedbagStore, flap fl
 	fmt.Printf("ReceiveSetInfo read SNAC frame: %+v\n", snac)
 
 	snacPayload := &TLVPayload{}
-	lookup := map[uint16]reflect.Kind{
-		LocateTlvTagsInfoSigMime:         reflect.String,
-		LocateTlvTagsInfoSigData:         reflect.String,
-		LocateTlvTagsInfoUnavailableMime: reflect.String,
-		LocateTlvTagsInfoUnavailableData: reflect.String,
-		LocateTlvTagsInfoCapabilities:    reflect.Slice,
-		LocateTlvTagsInfoCerts:           reflect.Uint32,
-		LocateTlvTagsInfoSigTime:         reflect.Uint32,
-		LocateTlvTagsInfoUnavailableTime: reflect.Uint32,
-		LocateTlvTagsInfoSupportHostSig:  reflect.Uint8,
-		LocateTlvTagsInfoHtmlInfoType:    reflect.String,
-		LocateTlvTagsInfoHtmlInfoData:    reflect.String,
-	}
-	if err := snacPayload.read(r, lookup); err != nil {
+	if err := snacPayload.read(r); err != nil {
 		return err
 	}
 
@@ -362,19 +348,7 @@ type snacSetDirInfo struct {
 }
 
 func (s *snacSetDirInfo) read(r io.Reader) error {
-	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
-		0x01: reflect.String,
-		0x02: reflect.String,
-		0x03: reflect.String,
-		0x04: reflect.String,
-		0x06: reflect.String,
-		0x07: reflect.String,
-		0x08: reflect.String,
-		0x0A: reflect.String,
-		0x0C: reflect.String,
-		0x0D: reflect.String,
-		0x21: reflect.String,
-	})
+	return s.TLVPayload.read(r)
 }
 
 type snacSetDirInfoReply struct {

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 )
 
 const (
@@ -226,9 +225,7 @@ type payloadFeedbagRightsQuery struct {
 }
 
 func (s *payloadFeedbagRightsQuery) read(r io.Reader) error {
-	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
-		0x0B: reflect.Uint16,
-	})
+	return s.TLVPayload.read(r)
 }
 
 func SendAndReceiveFeedbagRightsQuery(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
@@ -382,15 +379,7 @@ func (f *feedbagItem) read(r io.Reader) error {
 		return err
 	}
 
-	return f.TLVPayload.read(bytes.NewBuffer(buf), map[uint16]reflect.Kind{
-		FeedbagAttributesBuddyPrefs:      reflect.Uint32,
-		FeedbagAttributesBuddyPrefsValid: reflect.Uint32,
-		FeedbagAttributesOrder:           reflect.Slice,
-		FeedbagAttributesPdFlags:         reflect.Uint32,
-		FeedbagAttributesPdMask:          reflect.Uint32,
-		FeedbagAttributesPdMode:          reflect.Uint8,
-		FeedbagAttributesNote:            reflect.String,
-	})
+	return f.TLVPayload.read(bytes.NewBuffer(buf))
 }
 
 type snacFeedbagQuery struct {
@@ -702,7 +691,7 @@ func ReceiveFeedbagStartCluster(flap flapFrame, snac *snacFrame, r io.Reader, w 
 	fmt.Printf("ReceiveFeedbagStartCluster read SNAC frame: %+v\n", snac)
 
 	tlv := &TLVPayload{}
-	if err := tlv.read(r, map[uint16]reflect.Kind{}); err != nil {
+	if err := tlv.read(r); err != nil {
 		return err
 	}
 

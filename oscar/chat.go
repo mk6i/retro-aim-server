@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"reflect"
 )
 
 const (
@@ -155,11 +154,7 @@ func (s *snacChatMessage) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &s.channel); err != nil {
 		return err
 	}
-	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
-		0x01: reflect.Slice,
-		0x06: reflect.Slice,
-		0x05: reflect.Slice,
-	})
+	return s.TLVPayload.read(r)
 }
 
 func (s *snacChatMessage) write(w io.Writer) error {

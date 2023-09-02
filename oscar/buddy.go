@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"reflect"
 )
 
 const (
@@ -58,9 +57,7 @@ type snacBuddyRights struct {
 }
 
 func (s *snacBuddyRights) read(r io.Reader) error {
-	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
-		0x05: reflect.Uint16,
-	})
+	return s.TLVPayload.read(r)
 }
 
 func SendAndReceiveBuddyRights(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"io"
-	"reflect"
 	"time"
 )
 
@@ -196,11 +195,7 @@ func (s *snacCreateRoom) read(r io.Reader) error {
 		return err
 	}
 
-	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
-		0x00d3: reflect.String, // name
-		0x00d6: reflect.String, // charset
-		0x00d7: reflect.String, // lang
-	})
+	return s.TLVPayload.read(r)
 }
 
 func (s *snacCreateRoom) write(w io.Writer) error {
