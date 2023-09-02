@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"io"
-	"reflect"
 	"sync"
 )
 
@@ -168,11 +167,11 @@ func (s *TLVPayload) addTLV(tlv *TLV) {
 	s.TLVs = append(s.TLVs, tlv)
 }
 
-func (s *TLVPayload) read(r io.Reader, lookup map[uint16]reflect.Kind) error {
+func (s *TLVPayload) read(r io.Reader) error {
 	for {
 		// todo, don't like this extra alloc when we're EOF
 		tlv := &TLV{}
-		if err := tlv.read(r, lookup); err != nil {
+		if err := tlv.read(r); err != nil {
 			if err == io.EOF {
 				break
 			}
@@ -196,7 +195,7 @@ func (s *TLVPayload) write(w io.Writer) error {
 func (s *TLVPayload) getString(tType uint16) (string, bool) {
 	for _, tlv := range s.TLVs {
 		if tType == tlv.tType {
-			return tlv.val.(string), true
+			return string(tlv.val.([]byte)), true
 		}
 	}
 	return "", false
@@ -223,7 +222,7 @@ func (s *TLVPayload) getSlice(tType uint16) ([]byte, bool) {
 func (s *TLVPayload) getUint32(tType uint16) (uint32, bool) {
 	for _, tlv := range s.TLVs {
 		if tType == tlv.tType {
-			return tlv.val.(uint32), true
+			return binary.BigEndian.Uint32(tlv.val.([]byte)), true
 		}
 	}
 	return 0, false
@@ -296,7 +295,7 @@ func (t *TLV) write(w io.Writer) error {
 	return binary.Write(w, binary.BigEndian, val)
 }
 
-func (t *TLV) read(r io.Reader, typeLookup map[uint16]reflect.Kind) error {
+func (t *TLV) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &t.tType); err != nil {
 		return err
 	}
@@ -304,47 +303,11 @@ func (t *TLV) read(r io.Reader, typeLookup map[uint16]reflect.Kind) error {
 	if err := binary.Read(r, binary.BigEndian, &tlvValLen); err != nil {
 		return err
 	}
-
-	kind, ok := typeLookup[t.tType]
-	if !ok {
-		return fmt.Errorf("unknown data type for TLV %d", t.tType)
+	buf := make([]byte, tlvValLen)
+	if _, err := r.Read(buf); err != nil {
+		return err
 	}
-
-	switch kind {
-	case reflect.Uint8:
-		var val uint8
-		if err := binary.Read(r, binary.BigEndian, &val); err != nil {
-			return err
-		}
-		t.val = val
-	case reflect.Uint16:
-		var val uint16
-		if err := binary.Read(r, binary.BigEndian, &val); err != nil {
-			return err
-		}
-		t.val = val
-	case reflect.Uint32:
-		var val uint32
-		if err := binary.Read(r, binary.BigEndian, &val); err != nil {
-			return err
-		}
-		t.val = val
-	case reflect.String:
-		buf := make([]byte, tlvValLen)
-		if _, err := r.Read(buf); err != nil {
-			return err
-		}
-		t.val = string(buf)
-	case reflect.Slice:
-		buf := make([]byte, tlvValLen)
-		if _, err := r.Read(buf); err != nil {
-			return err
-		}
-		t.val = buf
-	default:
-		panic("unsupported data type")
-	}
-
+	t.val = buf
 	return nil
 }
 
@@ -377,15 +340,10 @@ func (f *flapSignonFrame) read(r io.Reader) error {
 		return err
 	}
 
-	lookup := map[uint16]reflect.Kind{
-		0x06: reflect.Slice,
-		0x4A: reflect.Uint8,
-	}
-
 	for {
 		// todo, don't like this extra alloc when we're EOF
 		tlv := &TLV{}
-		if err := tlv.read(buf, lookup); err != nil {
+		if err := tlv.read(buf); err != nil {
 			if err == io.EOF {
 				break
 			}

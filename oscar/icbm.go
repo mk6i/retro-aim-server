@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 )
 
 const (
@@ -184,12 +183,7 @@ func (s *snacMessageToHost) read(r io.Reader) error {
 	}
 	s.screenName = string(buf)
 
-	return s.TLVPayload.read(r, map[uint16]reflect.Kind{
-		0x02: reflect.Slice,
-		0x03: reflect.Slice,
-		0x04: reflect.Slice,
-		0x05: reflect.Slice,
-	})
+	return s.TLVPayload.read(r)
 }
 
 type snacHostAck struct {
