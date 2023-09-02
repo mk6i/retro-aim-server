@@ -21,7 +21,7 @@ const (
 	BuddyDelTempBuddies             = 0x0010
 )
 
-func routeBuddy(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeBuddy(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 
 	switch snac.subGroup {
 	case BuddyErr:
@@ -60,7 +60,7 @@ func (s *snacBuddyRights) read(r io.Reader) error {
 	return s.TLVPayload.read(r)
 }
 
-func SendAndReceiveBuddyRights(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveBuddyRights(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveBuddyRights read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := &snacBuddyRights{}
@@ -74,9 +74,9 @@ func SendAndReceiveBuddyRights(flap flapFrame, snac *snacFrame, r io.Reader, w i
 		foodGroup: 0x03,
 		subGroup:  0x03,
 	}
-	snacPayloadOut := &snacBuddyRights{
+	snacPayloadOut := snacBuddyRights{
 		TLVPayload: TLVPayload{
-			TLVs: []*TLV{
+			TLVs: []TLV{
 				{
 					tType: 0x01,
 					val:   uint16(100),
@@ -106,7 +106,7 @@ type snacBuddyArrived struct {
 	TLVPayload
 }
 
-func (f *snacBuddyArrived) write(w io.Writer) error {
+func (f snacBuddyArrived) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ type snacBuddyDeparted struct {
 	TLVPayload
 }
 
-func (f *snacBuddyDeparted) write(w io.Writer) error {
+func (f snacBuddyDeparted) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 			foodGroup: BUDDY,
 			subGroup:  BuddyArrived,
 		}
-		snacPayloadOut := &snacBuddyArrived{
+		snacPayloadOut := snacBuddyArrived{
 			screenName:   sess.ScreenName,
 			warningLevel: sess.GetWarning(),
 			TLVPayload: TLVPayload{
@@ -169,7 +169,7 @@ func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 			},
 		}
 
-		adjSess.SendMessage(&XMessage{
+		adjSess.SendMessage(XMessage{
 			flap:      flap,
 			snacFrame: snacFrameOut,
 			snacOut:   snacPayloadOut,
@@ -186,7 +186,7 @@ func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error 
 	sessions := sm.RetrieveByScreenNames(screenNames)
 
 	for _, adjSess := range sessions {
-		adjSess.SendMessage(&XMessage{
+		adjSess.SendMessage(XMessage{
 			flap: flapFrame{
 				startMarker: 42,
 				frameType:   2,
@@ -195,7 +195,7 @@ func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error 
 				foodGroup: BUDDY,
 				subGroup:  BuddyDeparted,
 			},
-			snacOut: &snacBuddyArrived{
+			snacOut: snacBuddyArrived{
 				screenName:   sess.ScreenName,
 				warningLevel: sess.GetWarning(),
 			},

@@ -51,7 +51,7 @@ const (
 	ChatRoomInfoOwner             = 0x0030
 )
 
-func routeChat(cr *ChatRegistry, sess *Session, sm *SessionManager, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeChat(cr *ChatRegistry, sess *Session, sm *SessionManager, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case ChatErr:
 		panic("not implemented")
@@ -157,7 +157,7 @@ func (s *snacChatMessage) read(r io.Reader) error {
 	return s.TLVPayload.read(r)
 }
 
-func (s *snacChatMessage) write(w io.Writer) error {
+func (s snacChatMessage) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.cookie); err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func (s *snacChatMessage) write(w io.Writer) error {
 	return s.TLVPayload.write(w)
 }
 
-type senders []*snacSenderInfo
+type senders []snacSenderInfo
 
 func (s senders) write(w io.Writer) error {
 	for _, sender := range s {
@@ -184,7 +184,7 @@ type snacSenderInfo struct {
 	TLVPayload
 }
 
-func (f *snacSenderInfo) write(w io.Writer) error {
+func (f snacSenderInfo) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
 		return err
 	}
@@ -200,10 +200,10 @@ func (f *snacSenderInfo) write(w io.Writer) error {
 	return f.TLVPayload.write(w)
 }
 
-func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChatChannelMsgTohost read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := snacChatMessage{}
+	snacPayloadIn := &snacChatMessage{}
 	if err := snacPayloadIn.read(r); err != nil {
 		return err
 	}
@@ -212,15 +212,15 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 		foodGroup: CHAT,
 		subGroup:  ChatChannelMsgToclient,
 	}
-	snacPayloadOut := &snacChatMessage{
+	snacPayloadOut := snacChatMessage{
 		cookie:     snacPayloadIn.cookie,
 		channel:    snacPayloadIn.channel,
 		TLVPayload: TLVPayload{snacPayloadIn.TLVs},
 	}
 
-	snacPayloadOut.addTLV(&TLV{
+	snacPayloadOut.addTLV(TLV{
 		tType: 0x03,
-		val: &snacSenderInfo{
+		val: snacSenderInfo{
 			screenName:   sess.ScreenName,
 			warningLevel: sess.GetWarning(),
 			TLVPayload:   TLVPayload{sess.GetUserInfo()},
@@ -228,7 +228,7 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, flap 
 	})
 
 	// send message to all the participants except sender
-	sm.BroadcastExcept(sess, &XMessage{
+	sm.BroadcastExcept(sess, XMessage{
 		flap:      flap,
 		snacFrame: snacFrameOut,
 		snacOut:   snacPayloadOut,
@@ -259,7 +259,7 @@ func SetOnlineChatUsers(sm *SessionManager, w io.Writer, sequence *uint32) error
 		if !uSess.Ready() {
 			continue
 		}
-		snacPayloadOut = append(snacPayloadOut, &snacSenderInfo{
+		snacPayloadOut = append(snacPayloadOut, snacSenderInfo{
 			screenName:   uSess.ScreenName,
 			warningLevel: uSess.GetWarning(),
 			TLVPayload: TLVPayload{
@@ -268,11 +268,11 @@ func SetOnlineChatUsers(sm *SessionManager, w io.Writer, sequence *uint32) error
 		})
 	}
 
-	return writeOutSNAC(nil, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snacFrame{}, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func AlertUserJoined(sess *Session, sm *SessionManager) {
-	sm.BroadcastExcept(sess, &XMessage{
+	sm.BroadcastExcept(sess, XMessage{
 		flap: flapFrame{
 			startMarker: 42,
 			frameType:   2,
@@ -281,7 +281,7 @@ func AlertUserJoined(sess *Session, sm *SessionManager) {
 			foodGroup: CHAT,
 			subGroup:  ChatUsersJoined,
 		},
-		snacOut: &snacSenderInfo{
+		snacOut: snacSenderInfo{
 			screenName:   sess.ScreenName,
 			warningLevel: sess.GetWarning(),
 			TLVPayload: TLVPayload{
@@ -292,7 +292,7 @@ func AlertUserJoined(sess *Session, sm *SessionManager) {
 }
 
 func AlertUserLeft(sess *Session, sm *SessionManager) {
-	sm.BroadcastExcept(sess, &XMessage{
+	sm.BroadcastExcept(sess, XMessage{
 		flap: flapFrame{
 			startMarker: 42,
 			frameType:   2,
@@ -301,7 +301,7 @@ func AlertUserLeft(sess *Session, sm *SessionManager) {
 			foodGroup: CHAT,
 			subGroup:  ChatUsersLeft,
 		},
-		snacOut: &snacSenderInfo{
+		snacOut: snacSenderInfo{
 			screenName:   sess.ScreenName,
 			warningLevel: sess.GetWarning(),
 			TLVPayload: TLVPayload{
@@ -320,7 +320,7 @@ func SendChatRoomInfoUpdate(room ChatRoom, w io.Writer, sequence *uint32) error 
 		foodGroup: CHAT,
 		subGroup:  ChatRoomInfoUpdate,
 	}
-	snacPayloadOut := &snacCreateRoom{
+	snacPayloadOut := snacCreateRoom{
 		exchange:       4,
 		cookie:         []byte(room.ID),
 		instanceNumber: 100,
@@ -329,5 +329,5 @@ func SendChatRoomInfoUpdate(room ChatRoom, w io.Writer, sequence *uint32) error 
 			TLVs: room.TLVList(),
 		},
 	}
-	return writeOutSNAC(nil, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(snacFrame{}, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }

@@ -18,7 +18,7 @@ const (
 	BUCPRegistrationImageRequest        = 0x000C
 )
 
-func routeBUCP(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeBUCP(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case BUCPErr:
 		panic("not implemented")
@@ -51,7 +51,7 @@ type snacBUCPChallengeResponse struct {
 	authKey string
 }
 
-func (s *snacBUCPChallengeResponse) write(w io.Writer) error {
+func (s snacBUCPChallengeResponse) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, uint16(len(s.authKey))); err != nil {
 		return err
 	}
@@ -89,11 +89,11 @@ func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence 
 		foodGroup: 0x17,
 		subGroup:  0x07,
 	}
-	snacPayloadOut := &snacBUCPChallengeResponse{
+	snacPayloadOut := snacBUCPChallengeResponse{
 		authKey: s.ID,
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(*snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 type snacBUCPLoginRequest struct {
@@ -143,9 +143,9 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore,
 		subGroup:  0x03,
 	}
 
-	snacPayloadOut := &snacBUCPLoginRequest{
+	snacPayloadOut := snacBUCPLoginRequest{
 		TLVPayload: TLVPayload{
-			TLVs: []*TLV{
+			TLVs: []TLV{
 				{
 					tType: TLV_SCREEN_NAME,
 					val:   sess.ScreenName,
@@ -178,5 +178,5 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore,
 		},
 	}
 
-	return writeOutSNAC(snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(*snac, flap, snacFrameOut, snacPayloadOut, sequence, w)
 }

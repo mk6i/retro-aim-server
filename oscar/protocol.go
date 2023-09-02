@@ -74,7 +74,7 @@ type snacError struct {
 	TLVPayload
 }
 
-func (s *snacError) write(w io.Writer) error {
+func (s snacError) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.code); err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ const (
 	TLV_SCREEN_NAME = 0x01
 )
 
-func (f *flapFrame) write(w io.Writer) error {
+func (f flapFrame) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, f.startMarker); err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ type snacFrame struct {
 	requestID uint32
 }
 
-func (s *snacFrame) write(w io.Writer) error {
+func (s snacFrame) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.foodGroup); err != nil {
 		return err
 	}
@@ -160,10 +160,10 @@ type snacWriter interface {
 
 // todo make type TLVPayload TLVs []*TLV
 type TLVPayload struct {
-	TLVs []*TLV
+	TLVs []TLV
 }
 
-func (s *TLVPayload) addTLV(tlv *TLV) {
+func (s *TLVPayload) addTLV(tlv TLV) {
 	s.TLVs = append(s.TLVs, tlv)
 }
 
@@ -177,13 +177,13 @@ func (s *TLVPayload) read(r io.Reader) error {
 			}
 			return err
 		}
-		s.TLVs = append(s.TLVs, tlv)
+		s.TLVs = append(s.TLVs, *tlv)
 	}
 
 	return nil
 }
 
-func (s *TLVPayload) write(w io.Writer) error {
+func (s TLVPayload) write(w io.Writer) error {
 	for _, tlv := range s.TLVs {
 		if err := tlv.write(w); err != nil {
 			return err
@@ -192,7 +192,7 @@ func (s *TLVPayload) write(w io.Writer) error {
 	return nil
 }
 
-func (s *TLVPayload) getString(tType uint16) (string, bool) {
+func (s TLVPayload) getString(tType uint16) (string, bool) {
 	for _, tlv := range s.TLVs {
 		if tType == tlv.tType {
 			return string(tlv.val.([]byte)), true
@@ -201,16 +201,16 @@ func (s *TLVPayload) getString(tType uint16) (string, bool) {
 	return "", false
 }
 
-func (s *TLVPayload) getTLV(tType uint16) (*TLV, bool) {
+func (s TLVPayload) getTLV(tType uint16) (TLV, bool) {
 	for _, tlv := range s.TLVs {
 		if tType == tlv.tType {
 			return tlv, true
 		}
 	}
-	return nil, false
+	return TLV{}, false
 }
 
-func (s *TLVPayload) getSlice(tType uint16) ([]byte, bool) {
+func (s TLVPayload) getSlice(tType uint16) ([]byte, bool) {
 	for _, tlv := range s.TLVs {
 		if tType == tlv.tType {
 			return tlv.val.([]byte), true
@@ -219,7 +219,7 @@ func (s *TLVPayload) getSlice(tType uint16) ([]byte, bool) {
 	return nil, false
 }
 
-func (s *TLVPayload) getUint32(tType uint16) (uint32, bool) {
+func (s TLVPayload) getUint32(tType uint16) (uint32, bool) {
 	for _, tlv := range s.TLVs {
 		if tType == tlv.tType {
 			return binary.BigEndian.Uint32(tlv.val.([]byte)), true
@@ -233,24 +233,7 @@ type TLV struct {
 	val   any
 }
 
-type snacFrameTLV struct {
-	snacFrame
-	TLVs []*TLV
-}
-
-func (s *snacFrameTLV) write(w io.Writer) error {
-	if err := s.snacFrame.write(w); err != nil {
-		return err
-	}
-	for _, tlv := range s.TLVs {
-		if err := tlv.write(w); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (t *TLV) write(w io.Writer) error {
+func (t TLV) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, t.tType); err != nil {
 		return err
 	}
@@ -272,13 +255,6 @@ func (t *TLV) write(w io.Writer) error {
 	case string:
 		valLen = uint16(len(t.val.(string)))
 		val = []byte(t.val.(string))
-	case *messageData:
-		buf := &bytes.Buffer{}
-		if err := t.val.(*messageData).write(buf); err != nil {
-			return err
-		}
-		valLen = uint16(buf.Len())
-		val = buf.Bytes()
 	case snacWriter:
 		buf := &bytes.Buffer{}
 		if err := val.(snacWriter).write(buf); err != nil {
@@ -317,7 +293,7 @@ type flapSignonFrame struct {
 	TLVPayload
 }
 
-func (f *flapSignonFrame) write(w io.Writer) error {
+func (f flapSignonFrame) write(w io.Writer) error {
 	if err := f.flapFrame.write(w); err != nil {
 		return err
 	}
@@ -349,14 +325,14 @@ func (f *flapSignonFrame) read(r io.Reader) error {
 			}
 			return err
 		}
-		f.TLVs = append(f.TLVs, tlv)
+		f.TLVs = append(f.TLVs, *tlv)
 	}
 
 	return nil
 }
 
 func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (*flapSignonFrame, error) {
-	flap := &flapSignonFrame{
+	flapIn := flapSignonFrame{
 		flapFrame: flapFrame{
 			startMarker:   42,
 			frameType:     1,
@@ -368,21 +344,21 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (*flapSignonF
 
 	*sequence++
 
-	if err := flap.write(rw); err != nil {
+	if err := flapIn.write(rw); err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("SendAndReceiveSignonFrame read FLAP: %+v\n", flap)
+	fmt.Printf("SendAndReceiveSignonFrame read FLAP: %+v\n", flapIn)
 
 	// receive
-	flap = &flapSignonFrame{}
-	if err := flap.read(rw); err != nil {
+	flapOut := &flapSignonFrame{}
+	if err := flapOut.read(rw); err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("SendAndReceiveSignonFrame write FLAP: %+v\n", flap)
+	fmt.Printf("SendAndReceiveSignonFrame write FLAP: %+v\n", flapOut)
 
-	return flap, nil
+	return flapOut, nil
 }
 
 func VerifyLogin(sm *SessionManager, rw io.ReadWriter) (*Session, uint32, error) {
@@ -458,7 +434,7 @@ const (
 
 type IncomingMessage struct {
 	flap flapFrame
-	snac *snacFrame
+	snac snacFrame
 	buf  io.Reader
 }
 
@@ -510,7 +486,7 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 
 			msCh <- IncomingMessage{
 				flap: flap,
-				snac: snac,
+				snac: *snac,
 				buf:  buf,
 			}
 		case FlapFrameError:
@@ -557,7 +533,7 @@ func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm *Session
 			}
 		case m := <-sess.RecvMessage():
 			wg.Wait()
-			if err := writeOutSNAC(nil, m.flap, m.snacFrame, m.snacOut, &seq, rwc); err != nil {
+			if err := writeOutSNAC(snacFrame{}, m.flap, m.snacFrame, m.snacOut, &seq, rwc); err != nil {
 				return err
 			}
 		case err := <-errCh:
@@ -566,7 +542,7 @@ func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm *Session
 	}
 }
 
-func routeIncomingRequests(cfg Config, ready OnReadyCB, wg *sync.WaitGroup, sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac *snacFrame, flap flapFrame, buf io.Reader) error {
+func routeIncomingRequests(cfg Config, ready OnReadyCB, wg *sync.WaitGroup, sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac snacFrame, flap flapFrame, buf io.Reader) error {
 	switch snac.foodGroup {
 	case OSERVICE:
 		if err := routeOService(cfg, ready, wg, cr, sm, fm, sess, flap, snac, buf, rw, sequence); err != nil {
@@ -611,9 +587,9 @@ func routeIncomingRequests(cfg Config, ready OnReadyCB, wg *sync.WaitGroup, sm *
 	return nil
 }
 
-func writeOutSNAC(originSnac *snacFrame, flap flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint32, w io.Writer) error {
-	if originSnac != nil {
-		snacFrame.requestID = originSnac.requestID
+func writeOutSNAC(originsnac snacFrame, flap flapFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint32, w io.Writer) error {
+	if originsnac.requestID != 0 {
+		snacFrame.requestID = originsnac.requestID
 	}
 
 	snacBuf := &bytes.Buffer{}

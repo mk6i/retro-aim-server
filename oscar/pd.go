@@ -19,7 +19,7 @@ const (
 	PDDelTempPermitListEntries        = 0x000B
 )
 
-func routePD(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routePD(flap flapFrame, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.subGroup {
 	case PDErr:
 		panic("not implemented")
@@ -46,15 +46,15 @@ func routePD(flap flapFrame, snac *snacFrame, r io.Reader, w io.Writer, sequence
 	return nil
 }
 
-func SendAndReceivePDRightsQuery(flap flapFrame, snac *snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceivePDRightsQuery(flap flapFrame, snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceivePDRightsQuery read SNAC frame: %+v\n", snac)
 
 	snacFrameOut := snacFrame{
 		foodGroup: PD,
 		subGroup:  PDRightsReply,
 	}
-	snacPayloadOut := &TLVPayload{
-		TLVs: []*TLV{
+	snacPayloadOut := TLVPayload{
+		TLVs: []TLV{
 			{
 				tType: 0x01,
 				val:   uint16(100),
