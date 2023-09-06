@@ -504,7 +504,6 @@ func Signout(sess *Session, sm *SessionManager, fm *FeedbagStore) {
 	if err := NotifyDeparture(sess, sm, fm); err != nil {
 		fmt.Printf("error notifying departure: %s", err.Error())
 	}
-	sess.Close()
 	sm.Remove(sess)
 }
 

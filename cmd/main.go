@@ -126,15 +126,18 @@ func handleAuthConnection(cfg oscar.Config, sm *oscar.SessionManager, fm *oscar.
 }
 
 func handleBOSConnection(cfg oscar.Config, sm *oscar.SessionManager, fm *oscar.FeedbagStore, cr *oscar.ChatRegistry, conn net.Conn) {
-	defer conn.Close()
-
 	sess, seq, err := oscar.VerifyLogin(sm, conn)
 	if err != nil {
 		fmt.Printf("user disconnected with error: %s\n", err.Error())
 		return
 	}
 
-	defer oscar.Signout(sess, sm, fm)
+	defer sess.Close()
+	go func() {
+		<-sess.Closed()
+		oscar.Signout(sess, sm, fm)
+		conn.Close()
+	}()
 
 	onClientReady := func(sess *oscar.Session, sm *oscar.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
 		err := oscar.NotifyArrival(sess, sm, fm)
@@ -156,8 +159,6 @@ func handleBOSConnection(cfg oscar.Config, sm *oscar.SessionManager, fm *oscar.F
 }
 
 func handleChatConnection(cfg oscar.Config, fm *oscar.FeedbagStore, cr *oscar.ChatRegistry, conn net.Conn) {
-	defer conn.Close()
-
 	cookie, seq, err := oscar.VerifyChatLogin(conn)
 	if err != nil {
 		fmt.Printf("user disconnected with error: %s\n", err.Error())
@@ -171,7 +172,15 @@ func handleChatConnection(cfg oscar.Config, fm *oscar.FeedbagStore, cr *oscar.Ch
 		fmt.Printf("unable to find user for session: %s\n", cookie.SessID)
 		return
 	}
-	defer exitChat(chatSess, room, cr)
+
+	defer chatSess.Close()
+	go func() {
+		<-chatSess.Closed()
+		oscar.AlertUserLeft(chatSess, room.SessionManager)
+		room.SessionManager.Remove(chatSess)
+		cr.MaybeRemoveRoom(room.ID)
+		conn.Close()
+	}()
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D, 0x000E}
 
@@ -190,11 +199,4 @@ func handleChatConnection(cfg oscar.Config, fm *oscar.FeedbagStore, cr *oscar.Ch
 			fmt.Println("user disconnected")
 		}
 	}
-}
-
-func exitChat(chatSess *oscar.Session, room oscar.ChatRoom, cr *oscar.ChatRegistry) {
-	oscar.AlertUserLeft(chatSess, room.SessionManager)
-	chatSess.Close()
-	room.SessionManager.Remove(chatSess)
-	cr.MaybeRemoveRoom(room.ID)
 }

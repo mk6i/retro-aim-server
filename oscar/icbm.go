@@ -233,7 +233,7 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
-	session, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+	recipSess, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
 	if err != nil {
 		if errors.Is(err, errSessNotFound) {
 			snacFrameOut := snacFrame{
@@ -248,9 +248,7 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		return err
 	}
 
-	_, requestedConfirmation := snacPayloadIn.TLVPayload.getSlice(0x03)
-
-	sic := snacClientIM{
+	clientIM := snacClientIM{
 		cookie:       snacPayloadIn.cookie,
 		channelID:    snacPayloadIn.channelID,
 		screenName:   sess.ScreenName,
@@ -264,37 +262,39 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 			},
 		},
 	}
-
 	if messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x02); found {
-		sic.addTLV(TLV{
+		clientIM.addTLV(TLV{
 			tType: 0x02,
 			val:   messagePayload,
 		})
 	}
-
 	if messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x05); found {
-		sic.addTLV(TLV{
+		clientIM.addTLV(TLV{
 			tType: 0x05,
 			val:   messagePayload,
 		})
 	}
-
-	// todo: add append to TLVPayload?
 	if t, hasAutoResp := snacPayloadIn.getTLV(0x04); hasAutoResp {
-		sic.addTLV(TLV{
+		clientIM.addTLV(TLV{
 			tType: 0x05,
 			val:   t,
 		})
 	}
 
-	session.SendMessage(XMessage{
+	sm.SendToScreenName(recipSess.ScreenName, XMessage{
 		snacFrame: snacFrame{
 			foodGroup: ICBM,
 			subGroup:  ICBMChannelMsgToclient,
 		},
-		snacOut: sic,
+		snacOut: clientIM,
 	})
 
+	if _, requestedConfirmation := snacPayloadIn.TLVPayload.getSlice(0x03); !requestedConfirmation {
+		// don't ack message
+		return nil
+	}
+
+	// ack message back to sender
 	snacFrameOut := snacFrame{
 		foodGroup: ICBM,
 		subGroup:  ICBMHostAck,
@@ -305,11 +305,7 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		screenName: snacPayloadIn.screenName,
 	}
 
-	if requestedConfirmation {
-		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
-	} else {
-		return nil
-	}
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func ReceiveAddParameters(snac snacFrame, r io.Reader) error {
@@ -401,14 +397,14 @@ func ReceiveClientErr(snac snacFrame, r io.Reader) error {
 	return nil
 }
 
-type sncClientEvent struct {
+type snacClientEvent struct {
 	cookie     [8]byte
 	channelID  uint16
 	screenName string
 	event      uint16
 }
 
-func (s *sncClientEvent) read(r io.Reader) error {
+func (s *snacClientEvent) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &s.cookie); err != nil {
 		return err
 	}
@@ -429,7 +425,7 @@ func (s *sncClientEvent) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &s.event)
 }
 
-func (s sncClientEvent) write(w io.Writer) error {
+func (s snacClientEvent) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.cookie); err != nil {
 		return err
 	}
@@ -448,7 +444,7 @@ func (s sncClientEvent) write(w io.Writer) error {
 func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Session, snac snacFrame, r io.Reader) error {
 	fmt.Printf("SendAndReceiveClientEvent read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := sncClientEvent{}
+	snacPayloadIn := snacClientEvent{}
 	if err := snacPayloadIn.read(r); err != nil {
 		return err
 	}
@@ -461,19 +457,17 @@ func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 		return nil
 	}
 
-	session, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
-	if err != nil {
-		return err
-	}
-
-	snacPayloadIn.screenName = sess.ScreenName
-
-	session.SendMessage(XMessage{
+	sm.SendToScreenName(snacPayloadIn.screenName, XMessage{
 		snacFrame: snacFrame{
 			foodGroup: ICBM,
 			subGroup:  ICBMClientEvent,
 		},
-		snacOut: snacPayloadIn,
+		snacOut: snacClientEvent{
+			cookie:     snacPayloadIn.cookie,
+			channelID:  snacPayloadIn.channelID,
+			screenName: sess.ScreenName,
+			event:      snacPayloadIn.event,
+		},
 	})
 
 	return nil
@@ -596,7 +590,7 @@ func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 		notif.screenName = sess.ScreenName
 	}
 
-	recipSess.SendMessage(XMessage{
+	sm.SendToScreenName(recipSess.ScreenName, XMessage{
 		snacFrame: snacFrame{
 			foodGroup: OSERVICE,
 			subGroup:  OServiceEvilNotification,

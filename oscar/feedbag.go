@@ -557,39 +557,49 @@ func ReceiveInsertItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac
 	for _, item := range feedbag {
 		// DENY, block buddy
 		if item.classID == 3 {
-			buddySess, err := sm.RetrieveByScreenName(item.name)
-			if err != nil {
-				if errors.Is(err, errSessNotFound) {
-					// former buddy is offline
-					continue
-				}
+			if err := blockBuddy(sm, sess, item.name, sequence, w); err != nil {
 				return err
 			}
-			buddySess.SendMessage(XMessage{
-				snacFrame: snacFrame{
-					foodGroup: BUDDY,
-					subGroup:  BuddyDeparted,
-				},
-				snacOut: snacBuddyArrived{
-					screenName:   sess.ScreenName,
-					warningLevel: sess.GetWarning(),
-				},
-			})
-			sess.SendMessage(XMessage{
-				snacFrame: snacFrame{
-					foodGroup: BUDDY,
-					subGroup:  BuddyDeparted,
-				},
-				snacOut: snacBuddyArrived{
-					screenName:   buddySess.ScreenName,
-					warningLevel: buddySess.GetWarning(),
-				},
-			})
 		}
 	}
 
 	// todo: just check online status for buddies that were added
 	return GetOnlineBuddies(w, sess, sm, fm, sequence)
+}
+
+func blockBuddy(sm *SessionManager, sess *Session, screenName string, sequence *uint32, w io.Writer) error {
+	// tell the blocked buddy you've signed off
+	sm.SendToScreenName(screenName, XMessage{
+		snacFrame: snacFrame{
+			foodGroup: BUDDY,
+			subGroup:  BuddyDeparted,
+		},
+		snacOut: snacBuddyArrived{
+			screenName:   sess.ScreenName,
+			warningLevel: sess.GetWarning(),
+		},
+	})
+
+	// show your blocked buddy as signed off
+	buddySess, err := sm.RetrieveByScreenName(screenName)
+	if err != nil {
+		if errors.Is(err, errSessNotFound) {
+			// former buddy is offline
+			return nil
+		}
+		return err
+	}
+
+	snacFrameOut := snacFrame{
+		foodGroup: BUDDY,
+		subGroup:  BuddyDeparted,
+	}
+	snacPayloadOut := snacBuddyArrived{
+		screenName:   buddySess.ScreenName,
+		warningLevel: buddySess.GetWarning(),
+	}
+
+	return writeOutSNAC(snacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func ReceiveUpdateItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
