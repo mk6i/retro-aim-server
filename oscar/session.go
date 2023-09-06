@@ -10,6 +10,19 @@ import (
 
 var errSessNotFound = errors.New("session was not found")
 
+type SessSendStatus int
+
+const (
+	// SessSendOK indicates message was sent to recipient
+	SessSendOK SessSendStatus = iota
+	// SessSendClosed indicates send did not complete because session is closed
+	SessSendClosed
+	// SessSendTimeout indicates send timed out due to blocked recipient
+	SessSendTimeout
+)
+
+const sendTimeout = 10 * time.Second
+
 type Session struct {
 	ID          string
 	ScreenName  string
@@ -22,6 +35,8 @@ type Session struct {
 	invisible   bool
 	idle        bool
 	idleTime    time.Time
+	sendTimeout time.Duration
+	closed      bool
 }
 
 func (s *Session) IncreaseWarning(incr uint16) {
@@ -140,16 +155,29 @@ func (s *Session) RecvMessage() chan XMessage {
 	return s.msgCh
 }
 
-func (s *Session) SendMessage(msg XMessage) {
+func (s *Session) SendMessage(msg XMessage) SessSendStatus {
 	select {
-	case <-s.stopCh:
-		return
 	case s.msgCh <- msg:
+		return SessSendOK
+	case <-s.stopCh:
+		return SessSendClosed
+	case <-time.After(s.sendTimeout):
+		return SessSendTimeout
 	}
 }
 
 func (s *Session) Close() {
+	s.Mutex.Lock()
+	defer s.Mutex.Unlock()
+	if s.closed {
+		return
+	}
 	close(s.stopCh)
+	s.closed = true
+}
+
+func (s *Session) Closed() <-chan struct{} {
+	return s.stopCh
 }
 
 type SessionManager struct {
@@ -167,7 +195,17 @@ func (s *SessionManager) Broadcast(msg XMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
-		sess.SendMessage(msg)
+		go s.maybeSendMessage(msg, sess)
+	}
+}
+
+func (s *SessionManager) maybeSendMessage(msg XMessage, sess *Session) {
+	switch sess.SendMessage(msg) {
+	case SessSendClosed:
+		fmt.Printf("message to %s was blocked, removing session\n", sess.ScreenName)
+	case SessSendTimeout:
+		fmt.Printf("message to %s timed out\n", sess.ScreenName)
+		sess.Close()
 	}
 }
 
@@ -194,7 +232,7 @@ func (s *SessionManager) BroadcastExcept(except *Session, msg XMessage) {
 		if sess == except {
 			continue
 		}
-		sess.SendMessage(msg)
+		go s.maybeSendMessage(msg, sess)
 	}
 }
 
@@ -230,6 +268,30 @@ func (s *SessionManager) RetrieveByScreenNames(screenNames []string) []*Session 
 	return ret
 }
 
+func (s *SessionManager) SendToScreenName(screenName string, msg XMessage) {
+	sess, err := s.RetrieveByScreenName(screenName)
+	if err != nil {
+		fmt.Printf("error sending to screen name: %s\n", screenName)
+		return
+	}
+	go s.maybeSendMessage(msg, sess)
+}
+
+func (s *SessionManager) BroadcastToScreenNames(screenNames []string, msg XMessage) {
+	for _, sess := range s.RetrieveByScreenNames(screenNames) {
+		go s.maybeSendMessage(msg, sess)
+	}
+}
+
+func makeSession() *Session {
+	return &Session{
+		msgCh:       make(chan XMessage, 1),
+		stopCh:      make(chan struct{}),
+		sendTimeout: sendTimeout,
+		SignonTime:  time.Now(),
+	}
+}
+
 func (s *SessionManager) NewSession() (*Session, error) {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
@@ -237,12 +299,8 @@ func (s *SessionManager) NewSession() (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	sess := &Session{
-		ID:         id.String(),
-		msgCh:      make(chan XMessage, 100),
-		stopCh:     make(chan struct{}),
-		SignonTime: time.Now(),
-	}
+	sess := makeSession()
+	sess.ID = id.String()
 	s.store[sess.ID] = sess
 	return sess, nil
 }
@@ -250,16 +308,9 @@ func (s *SessionManager) NewSession() (*Session, error) {
 func (s *SessionManager) NewSessionWithSN(sessID string, screenName string) *Session {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
-	sess := &Session{
-		ID: sessID,
-		// todo what if client is unresponsive and blocks other messages?
-		// idea: make channel big enough to handle backlog, disconnect user
-		// if the queue fills up
-		msgCh:      make(chan XMessage, 100),
-		stopCh:     make(chan struct{}),
-		SignonTime: time.Now(),
-		ScreenName: screenName,
-	}
+	sess := makeSession()
+	sess.ID = sessID
+	sess.ScreenName = screenName
 	s.store[sess.ID] = sess
 	return sess
 }

@@ -127,26 +127,21 @@ func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 	if err != nil {
 		return err
 	}
-	sessions := sm.RetrieveByScreenNames(screenNames)
 
-	for _, adjSess := range sessions {
-		snacFrameOut := snacFrame{
+	sm.BroadcastToScreenNames(screenNames, XMessage{
+		snacFrame: snacFrame{
 			foodGroup: BUDDY,
 			subGroup:  BuddyArrived,
-		}
-		snacPayloadOut := snacBuddyArrived{
+		},
+		snacOut: snacBuddyArrived{
 			screenName:   sess.ScreenName,
 			warningLevel: sess.GetWarning(),
 			TLVPayload: TLVPayload{
 				TLVs: sess.GetUserInfo(),
 			},
-		}
+		},
+	})
 
-		adjSess.SendMessage(XMessage{
-			snacFrame: snacFrameOut,
-			snacOut:   snacPayloadOut,
-		})
-	}
 	return nil
 }
 
@@ -155,20 +150,17 @@ func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error 
 	if err != nil {
 		return err
 	}
-	sessions := sm.RetrieveByScreenNames(screenNames)
 
-	for _, adjSess := range sessions {
-		adjSess.SendMessage(XMessage{
-			snacFrame: snacFrame{
-				foodGroup: BUDDY,
-				subGroup:  BuddyDeparted,
-			},
-			snacOut: snacBuddyArrived{
-				screenName:   sess.ScreenName,
-				warningLevel: sess.GetWarning(),
-			},
-		})
-	}
+	sm.BroadcastToScreenNames(screenNames, XMessage{
+		snacFrame: snacFrame{
+			foodGroup: BUDDY,
+			subGroup:  BuddyDeparted,
+		},
+		snacOut: snacBuddyArrived{
+			screenName:   sess.ScreenName,
+			warningLevel: sess.GetWarning(),
+		},
+	})
 
 	return nil
 }
