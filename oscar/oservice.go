@@ -365,9 +365,9 @@ func ReceiveAndSendServiceRateParams(snac snacFrame, _ io.Reader, w io.Writer, s
 }
 
 type snacOServiceUserInfoUpdate struct {
-	TLVPayload
 	screenName   string
 	warningLevel uint16
+	TLVBlock
 }
 
 func (s snacOServiceUserInfoUpdate) write(w io.Writer) error {
@@ -380,10 +380,7 @@ func (s snacOServiceUserInfoUpdate) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.warningLevel); err != nil {
 		return err
 	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(s.TLVs))); err != nil {
-		return err
-	}
-	return s.TLVPayload.write(w)
+	return s.TLVBlock.write(w)
 }
 
 func ReceiveAndSendServiceRequestSelfInfo(sess *Session, snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
@@ -396,8 +393,8 @@ func ReceiveAndSendServiceRequestSelfInfo(sess *Session, snac snacFrame, _ io.Re
 	snacPayloadOut := snacOServiceUserInfoUpdate{
 		screenName:   sess.ScreenName,
 		warningLevel: sess.GetWarning(),
-		TLVPayload: TLVPayload{
-			TLVs: sess.GetUserInfo(),
+		TLVBlock: TLVBlock{
+			TLVList: sess.GetUserInfo(),
 		},
 	}
 
@@ -407,7 +404,7 @@ func ReceiveAndSendServiceRequestSelfInfo(sess *Session, snac snacFrame, _ io.Re
 func ReceiveRateParamsSubAdd(snac snacFrame, r io.Reader) error {
 	fmt.Printf("receiveRateParamsSubAdd read SNAC frame: %+v\n", snac)
 
-	snacPayload := TLVPayload{}
+	snacPayload := TLVRestBlock{}
 	if err := snacPayload.read(r); err != nil {
 		return err
 	}
@@ -482,8 +479,8 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 		snacPayloadOut := snacBuddyArrived{
 			screenName:   buddies,
 			warningLevel: sess.GetWarning(),
-			TLVPayload: TLVPayload{
-				TLVs: sess.GetUserInfo(),
+			TLVBlock: TLVBlock{
+				TLVList: sess.GetUserInfo(),
 			},
 		}
 
@@ -497,7 +494,7 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveSetUserInfoFields read SNAC frame: %+v\n", snac)
 
-	snacPayload := TLVPayload{}
+	snacPayload := TLVRestBlock{}
 	err := snacPayload.read(r)
 	if err != nil {
 		return err
@@ -527,8 +524,8 @@ func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStor
 	snacPayloadOut := snacOServiceUserInfoUpdate{
 		screenName:   sess.ScreenName,
 		warningLevel: sess.GetWarning(),
-		TLVPayload: TLVPayload{
-			TLVs: sess.GetUserInfo(),
+		TLVBlock: TLVBlock{
+			TLVList: sess.GetUserInfo(),
 		},
 	}
 
@@ -562,14 +559,14 @@ func ReceiveIdleNotification(sess *Session, sm *SessionManager, fm *FeedbagStore
 
 type snacServiceRequest struct {
 	foodGroup uint16
-	TLVPayload
+	TLVRestBlock
 }
 
 func (s *snacServiceRequest) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &s.foodGroup); err != nil {
 		return err
 	}
-	return s.TLVPayload.read(r)
+	return s.TLVRestBlock.read(r)
 }
 
 const (
@@ -639,8 +636,8 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, s
 
 		room.SessionManager.NewSessionWithSN(sess.ID, sess.ScreenName)
 
-		snacPayloadOut := TLVPayload{
-			TLVs: []TLV{
+		snacPayloadOut := TLVRestBlock{
+			TLVList: TLVList{
 				{
 					tType: OserviceTlvTagsReconnectHere,
 					val:   Address(cfg.OSCARHost, cfg.ChatPort),
@@ -673,7 +670,7 @@ type snacEvilNotification struct {
 	newEvil    uint16
 	screenName string
 	evil       uint16
-	TLVPayload
+	TLVBlock
 }
 
 func (f snacEvilNotification) write(w io.Writer) error {
@@ -693,8 +690,5 @@ func (f snacEvilNotification) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, f.evil); err != nil {
 		return err
 	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(f.TLVs))); err != nil {
-		return err
-	}
-	return f.TLVPayload.write(w)
+	return f.TLVBlock.write(w)
 }

@@ -1,7 +1,6 @@
 package oscar
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -221,11 +220,11 @@ func routeFeedbag(sm *SessionManager, sess *Session, fm *FeedbagStore, snac snac
 }
 
 type payloadFeedbagRightsQuery struct {
-	TLVPayload
+	TLVRestBlock
 }
 
 func (s *payloadFeedbagRightsQuery) read(r io.Reader) error {
-	return s.TLVPayload.read(r)
+	return s.TLVRestBlock.read(r)
 }
 
 func SendAndReceiveFeedbagRightsQuery(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
@@ -242,8 +241,8 @@ func SendAndReceiveFeedbagRightsQuery(snac snacFrame, r io.Reader, w io.Writer, 
 		foodGroup: 0x13,
 		subGroup:  0x03,
 	}
-	snacPayloadOut := TLVPayload{
-		TLVs: []TLV{
+	snacPayloadOut := TLVRestBlock{
+		TLVList: TLVList{
 			{
 				tType: 0x03,
 				val:   uint16(200),
@@ -321,7 +320,7 @@ type feedbagItem struct {
 	groupID uint16
 	itemID  uint16
 	classID uint16
-	TLVPayload
+	TLVLBlock
 }
 
 func (f feedbagItem) write(w io.Writer) error {
@@ -340,16 +339,7 @@ func (f feedbagItem) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, f.classID); err != nil {
 		return err
 	}
-
-	buf := &bytes.Buffer{}
-	if err := f.TLVPayload.write(buf); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint16(buf.Len())); err != nil {
-		return err
-	}
-	_, err := w.Write(buf.Bytes())
-	return err
+	return f.TLVLBlock.write(w)
 }
 
 func (f *feedbagItem) read(r io.Reader) error {
@@ -371,15 +361,7 @@ func (f *feedbagItem) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &f.classID); err != nil {
 		return err
 	}
-	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-		return err
-	}
-	buf = make([]byte, l)
-	if _, err := r.Read(buf); err != nil {
-		return err
-	}
-
-	return f.TLVPayload.read(bytes.NewBuffer(buf))
+	return f.TLVLBlock.read(r)
 }
 
 type snacFeedbagQuery struct {
@@ -691,13 +673,8 @@ func ReceiveDeleteItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac
 
 func ReceiveFeedbagStartCluster(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveFeedbagStartCluster read SNAC frame: %+v\n", snac)
-
-	tlv := TLVPayload{}
-	if err := tlv.read(r); err != nil {
-		return err
-	}
-
-	return nil
+	tlv := TLVRestBlock{}
+	return tlv.read(r)
 }
 
 func ReceiveFeedbagEndCluster(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {

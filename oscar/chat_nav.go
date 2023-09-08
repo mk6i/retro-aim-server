@@ -88,17 +88,14 @@ func (s ChatCookie) write(w io.Writer) error {
 
 type exchangeInfo struct {
 	identifier uint16
-	TLVPayload
+	TLVBlock
 }
 
 func (s exchangeInfo) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.identifier); err != nil {
 		return err
 	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(s.TLVs))); err != nil {
-		return err
-	}
-	return s.TLVPayload.write(w)
+	return s.TLVBlock.write(w)
 }
 
 func SendAndReceiveNextChatRights(snac snacFrame, w io.Writer, sequence *uint32) error {
@@ -109,8 +106,8 @@ func SendAndReceiveNextChatRights(snac snacFrame, w io.Writer, sequence *uint32)
 		subGroup:  ChatNavNavInfo,
 	}
 
-	snacPayloadOut := TLVPayload{
-		TLVs: []TLV{
+	snacPayloadOut := TLVRestBlock{
+		TLVList: TLVList{
 			{
 				tType: 0x02,
 				val:   uint8(10),
@@ -119,8 +116,8 @@ func SendAndReceiveNextChatRights(snac snacFrame, w io.Writer, sequence *uint32)
 				tType: 0x03,
 				val: exchangeInfo{
 					identifier: 4,
-					TLVPayload: TLVPayload{
-						TLVs: []TLV{
+					TLVBlock: TLVBlock{
+						TLVList: TLVList{
 							{
 								tType: 0x0002,
 								val:   uint16(0x0010),
@@ -168,7 +165,7 @@ type snacCreateRoom struct {
 	cookie         []byte
 	instanceNumber uint16
 	detailLevel    uint8
-	TLVPayload
+	TLVBlock
 }
 
 func (s *snacCreateRoom) read(r io.Reader) error {
@@ -189,13 +186,7 @@ func (s *snacCreateRoom) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &s.detailLevel); err != nil {
 		return err
 	}
-
-	var tlvCount uint16
-	if err := binary.Read(r, binary.BigEndian, &tlvCount); err != nil {
-		return err
-	}
-
-	return s.TLVPayload.read(r)
+	return s.TLVBlock.read(r)
 }
 
 func (s snacCreateRoom) write(w io.Writer) error {
@@ -214,10 +205,7 @@ func (s snacCreateRoom) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.detailLevel); err != nil {
 		return err
 	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(s.TLVs))); err != nil {
-		return err
-	}
-	return s.TLVPayload.write(w)
+	return s.TLVBlock.write(w)
 }
 
 func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
@@ -248,8 +236,8 @@ func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, snac snacFrame, r
 		foodGroup: CHAT_NAV,
 		subGroup:  ChatNavNavInfo,
 	}
-	snacPayloadOut := TLVPayload{
-		TLVs: []TLV{
+	snacPayloadOut := TLVRestBlock{
+		TLVList: TLVList{
 			{
 				tType: 0x04,
 				val: snacCreateRoom{
@@ -257,8 +245,8 @@ func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, snac snacFrame, r
 					cookie:         []byte(room.ID),
 					instanceNumber: 100,
 					detailLevel:    2,
-					TLVPayload: TLVPayload{
-						TLVs: room.TLVList(),
+					TLVBlock: TLVBlock{
+						TLVList: room.TLVList(),
 					},
 				},
 			},
@@ -332,8 +320,8 @@ func SendAndReceiveChatNav(cr *ChatRegistry, snac snacFrame, r io.Reader, w io.W
 		subGroup:  ChatNavNavInfo,
 	}
 
-	snacPayloadOut := TLVPayload{
-		TLVs: []TLV{
+	snacPayloadOut := TLVRestBlock{
+		TLVList: TLVList{
 			{
 				tType: 0x04,
 				val: snacCreateRoom{
@@ -341,8 +329,8 @@ func SendAndReceiveChatNav(cr *ChatRegistry, snac snacFrame, r io.Reader, w io.W
 					cookie:         []byte(room.ID),
 					instanceNumber: 100,
 					detailLevel:    2,
-					TLVPayload: TLVPayload{
-						TLVs: room.TLVList(),
+					TLVBlock: TLVBlock{
+						TLVList: room.TLVList(),
 					},
 				},
 			},

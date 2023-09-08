@@ -144,7 +144,7 @@ func routeChat(sess *Session, sm *SessionManager, snac snacFrame, r io.Reader, w
 type snacChatMessage struct {
 	cookie  uint64
 	channel uint16
-	TLVPayload
+	TLVRestBlock
 }
 
 func (s *snacChatMessage) read(r io.Reader) error {
@@ -154,7 +154,7 @@ func (s *snacChatMessage) read(r io.Reader) error {
 	if err := binary.Read(r, binary.BigEndian, &s.channel); err != nil {
 		return err
 	}
-	return s.TLVPayload.read(r)
+	return s.TLVRestBlock.read(r)
 }
 
 func (s snacChatMessage) write(w io.Writer) error {
@@ -164,7 +164,7 @@ func (s snacChatMessage) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.channel); err != nil {
 		return err
 	}
-	return s.TLVPayload.write(w)
+	return s.TLVRestBlock.write(w)
 }
 
 type senders []snacSenderInfo
@@ -181,7 +181,7 @@ func (s senders) write(w io.Writer) error {
 type snacSenderInfo struct {
 	screenName   string
 	warningLevel uint16
-	TLVPayload
+	TLVBlock
 }
 
 func (f snacSenderInfo) write(w io.Writer) error {
@@ -194,10 +194,7 @@ func (f snacSenderInfo) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, f.warningLevel); err != nil {
 		return err
 	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(f.TLVs))); err != nil {
-		return err
-	}
-	return f.TLVPayload.write(w)
+	return f.TLVBlock.write(w)
 }
 
 func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
@@ -213,9 +210,9 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, snac 
 		subGroup:  ChatChannelMsgToclient,
 	}
 	snacPayloadOut := snacChatMessage{
-		cookie:     snacPayloadIn.cookie,
-		channel:    snacPayloadIn.channel,
-		TLVPayload: TLVPayload{snacPayloadIn.TLVs},
+		cookie:       snacPayloadIn.cookie,
+		channel:      snacPayloadIn.channel,
+		TLVRestBlock: TLVRestBlock{snacPayloadIn.TLVList},
 	}
 
 	snacPayloadOut.addTLV(TLV{
@@ -223,7 +220,7 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, snac 
 		val: snacSenderInfo{
 			screenName:   sess.ScreenName,
 			warningLevel: sess.GetWarning(),
-			TLVPayload:   TLVPayload{sess.GetUserInfo()},
+			TLVBlock:     TLVBlock{sess.GetUserInfo()},
 		},
 	})
 
@@ -254,8 +251,8 @@ func SetOnlineChatUsers(sm *SessionManager, w io.Writer, sequence *uint32) error
 		snacPayloadOut = append(snacPayloadOut, snacSenderInfo{
 			screenName:   uSess.ScreenName,
 			warningLevel: uSess.GetWarning(),
-			TLVPayload: TLVPayload{
-				TLVs: uSess.GetUserInfo(),
+			TLVBlock: TLVBlock{
+				TLVList: uSess.GetUserInfo(),
 			},
 		})
 	}
@@ -272,8 +269,8 @@ func AlertUserJoined(sess *Session, sm *SessionManager) {
 		snacOut: snacSenderInfo{
 			screenName:   sess.ScreenName,
 			warningLevel: sess.GetWarning(),
-			TLVPayload: TLVPayload{
-				TLVs: sess.GetUserInfo(),
+			TLVBlock: TLVBlock{
+				TLVList: sess.GetUserInfo(),
 			},
 		},
 	})
@@ -288,8 +285,8 @@ func AlertUserLeft(sess *Session, sm *SessionManager) {
 		snacOut: snacSenderInfo{
 			screenName:   sess.ScreenName,
 			warningLevel: sess.GetWarning(),
-			TLVPayload: TLVPayload{
-				TLVs: sess.GetUserInfo(),
+			TLVBlock: TLVBlock{
+				TLVList: sess.GetUserInfo(),
 			},
 		},
 	})
@@ -305,8 +302,8 @@ func SendChatRoomInfoUpdate(room ChatRoom, w io.Writer, sequence *uint32) error 
 		cookie:         []byte(room.ID),
 		instanceNumber: 100,
 		detailLevel:    2,
-		TLVPayload: TLVPayload{
-			TLVs: room.TLVList(),
+		TLVBlock: TLVBlock{
+			TLVList: room.TLVList(),
 		},
 	}
 	return writeOutSNAC(snacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)

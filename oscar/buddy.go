@@ -53,11 +53,11 @@ func routeBuddy(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) erro
 }
 
 type snacBuddyRights struct {
-	TLVPayload
+	TLVRestBlock
 }
 
 func (s *snacBuddyRights) read(r io.Reader) error {
-	return s.TLVPayload.read(r)
+	return s.TLVRestBlock.read(r)
 }
 
 func SendAndReceiveBuddyRights(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
@@ -75,8 +75,8 @@ func SendAndReceiveBuddyRights(snac snacFrame, r io.Reader, w io.Writer, sequenc
 		subGroup:  0x03,
 	}
 	snacPayloadOut := snacBuddyRights{
-		TLVPayload: TLVPayload{
-			TLVs: []TLV{
+		TLVRestBlock: TLVRestBlock{
+			TLVList: TLVList{
 				{
 					tType: 0x01,
 					val:   uint16(100),
@@ -103,7 +103,7 @@ func SendAndReceiveBuddyRights(snac snacFrame, r io.Reader, w io.Writer, sequenc
 type snacBuddyArrived struct {
 	screenName   string
 	warningLevel uint16
-	TLVPayload
+	TLVBlock
 }
 
 func (f snacBuddyArrived) write(w io.Writer) error {
@@ -116,10 +116,7 @@ func (f snacBuddyArrived) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, f.warningLevel); err != nil {
 		return err
 	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(f.TLVs))); err != nil {
-		return err
-	}
-	return f.TLVPayload.write(w)
+	return f.TLVBlock.write(w)
 }
 
 func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
@@ -136,8 +133,8 @@ func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 		snacOut: snacBuddyArrived{
 			screenName:   sess.ScreenName,
 			warningLevel: sess.GetWarning(),
-			TLVPayload: TLVPayload{
-				TLVs: sess.GetUserInfo(),
+			TLVBlock: TLVBlock{
+				TLVList: sess.GetUserInfo(),
 			},
 		},
 	})

@@ -40,11 +40,11 @@ func routeBUCP(snac snacFrame) error {
 }
 
 type snacBUCPChallengeRequest struct {
-	TLVPayload
+	TLVRestBlock
 }
 
 func (s *snacBUCPChallengeRequest) read(r io.Reader) error {
-	return s.TLVPayload.read(r)
+	return s.TLVRestBlock.read(r)
 }
 
 type snacBUCPChallengeResponse struct {
@@ -97,11 +97,11 @@ func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence 
 }
 
 type snacBUCPLoginRequest struct {
-	TLVPayload
+	TLVRestBlock
 }
 
 func (s *snacBUCPLoginRequest) read(r io.Reader) error {
-	return s.TLVPayload.read(r)
+	return s.TLVRestBlock.read(r)
 }
 
 func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32) error {
@@ -144,8 +144,8 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore,
 	}
 
 	snacPayloadOut := snacBUCPLoginRequest{
-		TLVPayload: TLVPayload{
-			TLVs: []TLV{
+		TLVRestBlock: TLVRestBlock{
+			TLVList: TLVList{
 				{
 					tType: TLV_SCREEN_NAME,
 					val:   sess.ScreenName,
