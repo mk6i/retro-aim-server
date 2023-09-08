@@ -75,11 +75,11 @@ func routeLocate(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacF
 }
 
 type snacLocateRightsReply struct {
-	TLVPayload
+	TLVRestBlock
 }
 
 func (s snacLocateRightsReply) write(w io.Writer) error {
-	return s.TLVPayload.write(w)
+	return s.TLVRestBlock.write(w)
 }
 
 func SendAndReceiveLocateRights(snac snacFrame, w io.Writer, sequence *uint32) error {
@@ -90,8 +90,8 @@ func SendAndReceiveLocateRights(snac snacFrame, w io.Writer, sequence *uint32) e
 		subGroup:  LocateRightsReply,
 	}
 	snacPayloadOut := snacLocateRightsReply{
-		TLVPayload: TLVPayload{
-			TLVs: []TLV{
+		TLVRestBlock: TLVRestBlock{
+			TLVList: TLVList{
 				{
 					tType: 0x01,
 					val:   uint16(1000),
@@ -136,7 +136,7 @@ var (
 func ReceiveSetInfo(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacFrame, r io.Reader) error {
 	fmt.Printf("ReceiveSetInfo read SNAC frame: %+v\n", snac)
 
-	snacPayload := TLVPayload{}
+	snacPayload := TLVRestBlock{}
 	if err := snacPayload.read(r); err != nil {
 		return err
 	}
@@ -220,9 +220,9 @@ func (s *snacUserInfoQuery2) read(r io.Reader) error {
 type snacUserInfoReply struct {
 	screenName    string
 	warningLevel  uint16
-	userInfo      TLVPayload
-	clientProfile TLVPayload
-	awayMessage   TLVPayload
+	userInfo      TLVBlock
+	clientProfile TLVRestBlock
+	awayMessage   TLVRestBlock
 }
 
 func (f snacUserInfoReply) write(w io.Writer) error {
@@ -233,9 +233,6 @@ func (f snacUserInfoReply) write(w io.Writer) error {
 		return err
 	}
 	if err := binary.Write(w, binary.BigEndian, f.warningLevel); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(f.userInfo.TLVs))); err != nil {
 		return err
 	}
 	if err := f.userInfo.write(w); err != nil {
@@ -291,11 +288,11 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 	snacPayloadOut := snacUserInfoReply{
 		screenName:   snacPayloadIn.screenName,
 		warningLevel: buddySess.GetWarning(),
-		userInfo: TLVPayload{
-			TLVs: buddySess.GetUserInfo(),
+		userInfo: TLVBlock{
+			TLVList: buddySess.GetUserInfo(),
 		},
-		clientProfile: TLVPayload{},
-		awayMessage:   TLVPayload{},
+		clientProfile: TLVRestBlock{},
+		awayMessage:   TLVRestBlock{},
 	}
 
 	// profile
@@ -314,7 +311,7 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 			}
 			return err
 		}
-		snacPayloadOut.clientProfile.TLVs = append(snacPayloadOut.clientProfile.TLVs, []TLV{
+		snacPayloadOut.clientProfile.TLVList = append(snacPayloadOut.clientProfile.TLVList, []TLV{
 			{
 				tType: 0x01,
 				val:   `text/aolrtf; charset="us-ascii"`,
@@ -328,7 +325,7 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 
 	// away message
 	if snacPayloadIn.type2&2 == 2 {
-		snacPayloadOut.clientProfile.TLVs = append(snacPayloadOut.clientProfile.TLVs, []TLV{
+		snacPayloadOut.clientProfile.TLVList = append(snacPayloadOut.clientProfile.TLVList, []TLV{
 			{
 				tType: 0x03,
 				val:   `text/aolrtf; charset="us-ascii"`,
@@ -344,11 +341,11 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 }
 
 type snacSetDirInfo struct {
-	TLVPayload
+	TLVRestBlock
 }
 
 func (s *snacSetDirInfo) read(r io.Reader) error {
-	return s.TLVPayload.read(r)
+	return s.TLVRestBlock.read(r)
 }
 
 type snacSetDirInfoReply struct {

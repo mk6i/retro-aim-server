@@ -25,11 +25,11 @@ func TestFeedbagStore(t *testing.T) {
 
 	itemsIn := []feedbagItem{
 		{
-			groupID:    0,
-			itemID:     1805,
-			classID:    3,
-			name:       "spimmer1234",
-			TLVPayload: TLVPayload{},
+			groupID:   0,
+			itemID:    1805,
+			classID:   3,
+			name:      "spimmer1234",
+			TLVLBlock: TLVLBlock{},
 		},
 		{
 			groupID: 0x0A,
@@ -75,8 +75,8 @@ func TestFeedbagDelete(t *testing.T) {
 			itemID:  1805,
 			classID: 3,
 			name:    "spimmer1234",
-			TLVPayload: TLVPayload{
-				TLVs: []TLV{
+			TLVLBlock: TLVLBlock{
+				TLVList: TLVList{
 					{
 						tType: 0x01,
 						val:   uint16(1000),

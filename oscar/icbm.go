@@ -161,7 +161,7 @@ type snacMessageToHost struct {
 	cookie     [8]byte
 	channelID  uint16
 	screenName string
-	TLVPayload
+	TLVRestBlock
 }
 
 func (s *snacMessageToHost) read(r io.Reader) error {
@@ -182,7 +182,7 @@ func (s *snacMessageToHost) read(r io.Reader) error {
 	}
 	s.screenName = string(buf)
 
-	return s.TLVPayload.read(r)
+	return s.TLVRestBlock.read(r)
 }
 
 type snacHostAck struct {
@@ -253,8 +253,8 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		channelID:    snacPayloadIn.channelID,
 		screenName:   sess.ScreenName,
 		warningLevel: sess.GetWarning(),
-		TLVPayload: TLVPayload{
-			TLVs: []TLV{
+		TLVRestBlock: TLVRestBlock{
+			TLVList: TLVList{
 				{
 					tType: 0x0B,
 					val:   []byte{},
@@ -262,20 +262,20 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 			},
 		},
 	}
-	if messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x02); found {
-		clientIM.addTLV(TLV{
+	if messagePayload, found := snacPayloadIn.TLVRestBlock.getSlice(0x02); found {
+		clientIM.TLVRestBlock.addTLV(TLV{
 			tType: 0x02,
 			val:   messagePayload,
 		})
 	}
-	if messagePayload, found := snacPayloadIn.TLVPayload.getSlice(0x05); found {
-		clientIM.addTLV(TLV{
+	if messagePayload, found := snacPayloadIn.TLVRestBlock.getSlice(0x05); found {
+		clientIM.TLVRestBlock.addTLV(TLV{
 			tType: 0x05,
 			val:   messagePayload,
 		})
 	}
 	if t, hasAutoResp := snacPayloadIn.getTLV(0x04); hasAutoResp {
-		clientIM.addTLV(TLV{
+		clientIM.TLVRestBlock.addTLV(TLV{
 			tType: 0x05,
 			val:   t,
 		})
@@ -289,7 +289,7 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		snacOut: clientIM,
 	})
 
-	if _, requestedConfirmation := snacPayloadIn.TLVPayload.getSlice(0x03); !requestedConfirmation {
+	if _, requestedConfirmation := snacPayloadIn.TLVRestBlock.getSlice(0x03); !requestedConfirmation {
 		// don't ack message
 		return nil
 	}
@@ -325,7 +325,8 @@ type snacClientIM struct {
 	channelID    uint16
 	screenName   string
 	warningLevel uint16
-	TLVPayload
+	TLVBlock
+	TLVRestBlock
 }
 
 func (f snacClientIM) write(w io.Writer) error {
@@ -344,11 +345,10 @@ func (f snacClientIM) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, f.warningLevel); err != nil {
 		return err
 	}
-	// user info TLV, size is 0
-	if err := binary.Write(w, binary.BigEndian, uint16(0)); err != nil {
+	if err := f.TLVBlock.write(w); err != nil {
 		return err
 	}
-	return f.TLVPayload.write(w)
+	return f.TLVRestBlock.write(w)
 }
 
 type snacClientErr struct {

@@ -98,7 +98,7 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]feedbagItem, error) {
 		if err := rows.Scan(&item.groupID, &item.itemID, &item.classID, &item.name, &attrs); err != nil {
 			return nil, err
 		}
-		err = item.TLVPayload.read(bytes.NewBuffer(attrs))
+		err = item.TLVLBlock.read(bytes.NewBuffer(attrs))
 		if err != nil {
 			return items, err
 		}
@@ -130,7 +130,7 @@ func (f *FeedbagStore) Upsert(screenName string, items []feedbagItem) error {
 	for _, item := range items {
 
 		buf := &bytes.Buffer{}
-		if err := item.TLVPayload.write(buf); err != nil {
+		if err := item.TLVLBlock.write(buf); err != nil {
 			return err
 		}
 

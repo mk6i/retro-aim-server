@@ -70,14 +70,14 @@ func Address(host string, port int) string {
 
 type snacError struct {
 	code uint16
-	TLVPayload
+	TLVRestBlock
 }
 
 func (s snacError) write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, s.code); err != nil {
 		return err
 	}
-	return s.TLVPayload.write(w)
+	return s.TLVRestBlock.write(w)
 }
 
 type flapFrame struct {
@@ -157,18 +157,64 @@ type snacWriter interface {
 	write(w io.Writer) error
 }
 
-// todo make type TLVPayload TLVs []*TLV
-type TLVPayload struct {
-	TLVs []TLV
+type TLVRestBlock struct {
+	TLVList
+}
+type TLVBlock struct {
+	TLVList
 }
 
-func (s *TLVPayload) addTLV(tlv TLV) {
-	s.TLVs = append(s.TLVs, tlv)
+func (s *TLVBlock) read(r io.Reader) error {
+	var tlvCount uint16
+	if err := binary.Read(r, binary.BigEndian, &tlvCount); err != nil {
+		return err
+	}
+	return s.TLVList.read(r)
 }
 
-func (s *TLVPayload) read(r io.Reader) error {
+func (s TLVBlock) write(w io.Writer) error {
+	if err := binary.Write(w, binary.BigEndian, uint16(len(s.TLVList))); err != nil {
+		return err
+	}
+	return s.TLVList.write(w)
+}
+
+type TLVLBlock struct {
+	TLVList
+}
+
+func (s *TLVLBlock) read(r io.Reader) error {
+	var tlvLen uint16
+	if err := binary.Read(r, binary.BigEndian, &tlvLen); err != nil {
+		return err
+	}
+	buf := make([]byte, tlvLen)
+	if _, err := r.Read(buf); err != nil {
+		return err
+	}
+	return s.TLVList.read(bytes.NewBuffer(buf))
+}
+
+func (s TLVLBlock) write(w io.Writer) error {
+	buf := &bytes.Buffer{}
+	if err := s.TLVList.write(buf); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, uint16(buf.Len())); err != nil {
+		return err
+	}
+	_, err := w.Write(buf.Bytes())
+	return err
+}
+
+type TLVList []TLV
+
+func (s *TLVList) addTLV(tlv TLV) {
+	*s = append(*s, tlv)
+}
+
+func (s *TLVList) read(r io.Reader) error {
 	for {
-		// todo, don't like this extra alloc when we're EOF
 		tlv := TLV{}
 		if err := tlv.read(r); err != nil {
 			if err == io.EOF {
@@ -176,14 +222,14 @@ func (s *TLVPayload) read(r io.Reader) error {
 			}
 			return err
 		}
-		s.TLVs = append(s.TLVs, tlv)
+		*s = append(*s, tlv)
 	}
 
 	return nil
 }
 
-func (s TLVPayload) write(w io.Writer) error {
-	for _, tlv := range s.TLVs {
+func (s TLVList) write(w io.Writer) error {
+	for _, tlv := range s {
 		if err := tlv.write(w); err != nil {
 			return err
 		}
@@ -191,8 +237,8 @@ func (s TLVPayload) write(w io.Writer) error {
 	return nil
 }
 
-func (s TLVPayload) getString(tType uint16) (string, bool) {
-	for _, tlv := range s.TLVs {
+func (s TLVList) getString(tType uint16) (string, bool) {
+	for _, tlv := range s {
 		if tType == tlv.tType {
 			return string(tlv.val.([]byte)), true
 		}
@@ -200,8 +246,8 @@ func (s TLVPayload) getString(tType uint16) (string, bool) {
 	return "", false
 }
 
-func (s TLVPayload) getTLV(tType uint16) (TLV, bool) {
-	for _, tlv := range s.TLVs {
+func (s TLVList) getTLV(tType uint16) (TLV, bool) {
+	for _, tlv := range s {
 		if tType == tlv.tType {
 			return tlv, true
 		}
@@ -209,8 +255,8 @@ func (s TLVPayload) getTLV(tType uint16) (TLV, bool) {
 	return TLV{}, false
 }
 
-func (s TLVPayload) getSlice(tType uint16) ([]byte, bool) {
-	for _, tlv := range s.TLVs {
+func (s TLVList) getSlice(tType uint16) ([]byte, bool) {
+	for _, tlv := range s {
 		if tType == tlv.tType {
 			return tlv.val.([]byte), true
 		}
@@ -218,8 +264,8 @@ func (s TLVPayload) getSlice(tType uint16) ([]byte, bool) {
 	return nil, false
 }
 
-func (s TLVPayload) getUint32(tType uint16) (uint32, bool) {
-	for _, tlv := range s.TLVs {
+func (s TLVList) getUint32(tType uint16) (uint32, bool) {
+	for _, tlv := range s {
 		if tType == tlv.tType {
 			return binary.BigEndian.Uint32(tlv.val.([]byte)), true
 		}
@@ -289,7 +335,7 @@ func (t *TLV) read(r io.Reader) error {
 type flapSignonFrame struct {
 	flapFrame
 	flapVersion uint32
-	TLVPayload
+	TLVRestBlock
 }
 
 func (f flapSignonFrame) write(w io.Writer) error {
@@ -315,19 +361,7 @@ func (f *flapSignonFrame) read(r io.Reader) error {
 		return err
 	}
 
-	for {
-		// todo, don't like this extra alloc when we're EOF
-		tlv := TLV{}
-		if err := tlv.read(buf); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		f.TLVs = append(f.TLVs, tlv)
-	}
-
-	return nil
+	return f.TLVRestBlock.read(buf)
 }
 
 func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (*flapSignonFrame, error) {
