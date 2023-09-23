@@ -1,9 +1,10 @@
-package oscar
+package server
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/mkaminski/goaim/oscar"
 	"io"
 	"time"
 )
@@ -46,8 +47,8 @@ const (
 	OServiceBartReply2               = 0x0023
 )
 
-func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	switch snac.subGroup {
+func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	switch snac.SubGroup {
 	case OServiceErr:
 		panic("not implemented")
 	case OServiceClientOnline:
@@ -119,46 +120,46 @@ func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm *SessionMan
 
 func WriteOServiceHostOnline(foodGroups []uint16, w io.Writer, sequence *uint32) error {
 	fmt.Println("writeOServiceHostOnline...")
-	snacFrameOut := snacFrame{
-		foodGroup: OSERVICE,
-		subGroup:  OServiceHostOnline,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: OSERVICE,
+		SubGroup:  OServiceHostOnline,
 	}
-	snacPayloadOut := SNAC_0x01_0x03_OServiceHostOnline{
+	snacPayloadOut := oscar.SNAC_0x01_0x03_OServiceHostOnline{
 		FoodGroups: foodGroups,
 	}
-	return writeOutSNAC(snacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
+	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveAndSendHostVersions(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendHostVersions(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendHostVersions read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x01_0x17_OServiceClientVersions{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x01_0x17_OServiceClientVersions{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
 	fmt.Printf("receiveAndSendHostVersions read SNAC: %+v\n", snacPayloadIn)
 
-	snacFrameOut := snacFrame{
-		foodGroup: OSERVICE,
-		subGroup:  OServiceHostVersions,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: OSERVICE,
+		SubGroup:  OServiceHostVersions,
 	}
-	snacPayloadOut := SNAC_0x01_0x18_OServiceHostVersions{
+	snacPayloadOut := oscar.SNAC_0x01_0x18_OServiceHostVersions{
 		Versions: snacPayloadIn.Versions,
 	}
 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveAndSendServiceRateParams(snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRateParams(snac oscar.SnacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRateParams read SNAC frame: %+v\n", snac)
 
-	snacFrameOut := snacFrame{
-		foodGroup: OSERVICE,
-		subGroup:  OServiceRateParamsReply,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: OSERVICE,
+		SubGroup:  OServiceRateParamsReply,
 	}
 
-	snacPayloadOut := SNAC_0x01_0x07_OServiceRateParamsReply{
+	snacPayloadOut := oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
 		RateClasses: []struct {
 			ID              uint16
 			WindowSize      uint32
@@ -216,18 +217,18 @@ func ReceiveAndSendServiceRateParams(snac snacFrame, _ io.Reader, w io.Writer, s
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveAndSendServiceRequestSelfInfo(sess *Session, snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRequestSelfInfo(sess *Session, snac oscar.SnacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRequestSelfInfo read SNAC frame: %+v\n", snac)
 
-	snacFrameOut := snacFrame{
-		foodGroup: OSERVICE,
-		subGroup:  OServiceUserInfoUpdate,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: OSERVICE,
+		SubGroup:  OServiceUserInfoUpdate,
 	}
-	snacPayloadOut := SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-		TLVUserInfo: TLVUserInfo{
+	snacPayloadOut := oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+		TLVUserInfo: oscar.TLVUserInfo{
 			ScreenName:   sess.ScreenName,
 			WarningLevel: sess.GetWarning(),
-			TLVBlock: TLVBlock{
+			TLVBlock: oscar.TLVBlock{
 				TLVList: sess.GetUserInfo(),
 			},
 		},
@@ -236,11 +237,11 @@ func ReceiveAndSendServiceRequestSelfInfo(sess *Session, snac snacFrame, _ io.Re
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveRateParamsSubAdd(snac snacFrame, r io.Reader) error {
+func ReceiveRateParamsSubAdd(snac oscar.SnacFrame, r io.Reader) error {
 	fmt.Printf("receiveRateParamsSubAdd read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x01_0x08_OServiceRateParamsSubAdd{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
@@ -251,11 +252,11 @@ func ReceiveRateParamsSubAdd(snac snacFrame, r io.Reader) error {
 
 type OnReadyCB func(sess *Session, sm *SessionManager, r io.Reader, w io.Writer, sequence *uint32) error
 
-func ReceiveClientOnline(onReadyCB OnReadyCB, sess *Session, sm *SessionManager, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveClientOnline(onReadyCB OnReadyCB, sess *Session, sm *SessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveClientOnline read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x01_0x02_OServiceClientOnline{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x01_0x02_OServiceClientOnline{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
@@ -285,36 +286,36 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 			continue
 		}
 
-		snacFrameOut := snacFrame{
-			foodGroup: BUDDY,
-			subGroup:  BuddyArrived,
+		snacFrameOut := oscar.SnacFrame{
+			FoodGroup: BUDDY,
+			SubGroup:  BuddyArrived,
 		}
-		snacPayloadOut := SNAC_0x03_0x0A_BuddyArrived{
-			TLVUserInfo: TLVUserInfo{
+		snacPayloadOut := oscar.SNAC_0x03_0x0A_BuddyArrived{
+			TLVUserInfo: oscar.TLVUserInfo{
 				ScreenName:   buddies,
 				WarningLevel: sess.GetWarning(),
-				TLVBlock: TLVBlock{
+				TLVBlock: oscar.TLVBlock{
 					TLVList: sess.GetUserInfo(),
 				},
 			},
 		}
 
-		if err := writeOutSNAC(snacFrame{}, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
+		if err := writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveSetUserInfoFields read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x01_0x1E_OServiceSetUserInfoFields{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	if status, hasStatus := snacPayloadIn.getUint32(0x06); hasStatus {
+	if status, hasStatus := snacPayloadIn.GetUint32(0x06); hasStatus {
 		switch status {
 		case 0x000:
 			sess.SetInvisible(false)
@@ -331,15 +332,15 @@ func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStor
 		}
 	}
 
-	snacFrameOut := snacFrame{
-		foodGroup: OSERVICE,
-		subGroup:  OServiceUserInfoUpdate,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: OSERVICE,
+		SubGroup:  OServiceUserInfoUpdate,
 	}
-	snacPayloadOut := SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-		TLVUserInfo: TLVUserInfo{
+	snacPayloadOut := oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+		TLVUserInfo: oscar.TLVUserInfo{
 			ScreenName:   sess.ScreenName,
 			WarningLevel: sess.GetWarning(),
-			TLVBlock: TLVBlock{
+			TLVBlock: oscar.TLVBlock{
 				TLVList: sess.GetUserInfo(),
 			},
 		},
@@ -348,11 +349,11 @@ func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStor
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveIdleNotification(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacFrame, r io.Reader) error {
+func ReceiveIdleNotification(sess *Session, sm *SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader) error {
 	fmt.Printf("receiveIdleNotification read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x01_0x11_OServiceIdleNotification{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x01_0x11_OServiceIdleNotification{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
@@ -373,22 +374,22 @@ const (
 	OserviceTlvTagsSslState             = 0x8E
 )
 
-func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRequest read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x01_0x04_OServiceServiceRequest{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
 	// this prevents AIM client from crashing when using the
 	// store/edit email address feature.
-	if _, hasEditBuddy := snacPayloadIn.getTLV(0x28); hasEditBuddy {
-		snacFrameOut := snacFrame{
-			foodGroup: OSERVICE,
-			subGroup:  OServiceErr,
+	if _, hasEditBuddy := snacPayloadIn.GetTLV(0x28); hasEditBuddy {
+		snacFrameOut := oscar.SnacFrame{
+			FoodGroup: OSERVICE,
+			SubGroup:  OServiceErr,
 		}
-		snacPayloadOut := SnacOServiceErr{
+		snacPayloadOut := oscar.SnacOServiceErr{
 			Code: ErrorCodeNotSupportedByHost,
 		}
 		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
@@ -397,22 +398,22 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, s
 	fmt.Printf("receiveAndSendServiceRequest read SNAC body: %+v\n", snacPayloadIn)
 
 	// just say that all the services are offline
-	snacFrameOut := snacFrame{
-		foodGroup: OSERVICE,
-		subGroup:  OServiceServiceResponse,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: OSERVICE,
+		SubGroup:  OServiceServiceResponse,
 	}
-	snacPayloadOut := SnacOServiceErr{
+	snacPayloadOut := oscar.SnacOServiceErr{
 		Code: 0x06,
 	}
 
 	if snacPayloadIn.FoodGroup == CHAT {
-		roomMeta, ok := snacPayloadIn.getSlice(0x01)
+		roomMeta, ok := snacPayloadIn.GetSlice(0x01)
 		if !ok {
 			return errors.New("missing room info")
 		}
 
-		roomSnac := SNAC_0x01_0x04_TLVRoomInfo{}
-		if err := Unmarshal(&roomSnac, bytes.NewBuffer(roomMeta)); err != nil {
+		roomSnac := oscar.SNAC_0x01_0x04_TLVRoomInfo{}
+		if err := oscar.Unmarshal(&roomSnac, bytes.NewBuffer(roomMeta)); err != nil {
 			return err
 		}
 
@@ -421,7 +422,7 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, s
 			SessID: sess.ID,
 		}
 		buf := &bytes.Buffer{}
-		if err := cookie.write(buf); err != nil {
+		if err := cookie.Write(buf); err != nil {
 			return err
 		}
 
@@ -432,28 +433,28 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, s
 
 		room.SessionManager.NewSessionWithSN(sess.ID, sess.ScreenName)
 
-		snacPayloadOut := SNAC_0x01_0x05_OServiceServiceResponse{
-			TLVRestBlock{
-				TLVList: TLVList{
+		snacPayloadOut := oscar.SNAC_0x01_0x05_OServiceServiceResponse{
+			TLVRestBlock: oscar.TLVRestBlock{
+				TLVList: oscar.TLVList{
 					{
-						tType: OserviceTlvTagsReconnectHere,
-						val:   Address(cfg.OSCARHost, cfg.ChatPort),
+						TType: OserviceTlvTagsReconnectHere,
+						Val:   Address(cfg.OSCARHost, cfg.ChatPort),
 					},
 					{
-						tType: OserviceTlvTagsLoginCookie,
-						val:   buf.Bytes(),
+						TType: OserviceTlvTagsLoginCookie,
+						Val:   buf.Bytes(),
 					},
 					{
-						tType: OserviceTlvTagsGroupId,
-						val:   snacPayloadIn.FoodGroup,
+						TType: OserviceTlvTagsGroupId,
+						Val:   snacPayloadIn.FoodGroup,
 					},
 					{
-						tType: OserviceTlvTagsSslCertname,
-						val:   "",
+						TType: OserviceTlvTagsSslCertname,
+						Val:   "",
 					},
 					{
-						tType: OserviceTlvTagsSslState,
-						val:   uint8(0x00),
+						TType: OserviceTlvTagsSslState,
+						Val:   uint8(0x00),
 					},
 				},
 			},

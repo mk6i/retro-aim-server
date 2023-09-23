@@ -1,7 +1,8 @@
-package oscar
+package server
 
 import (
 	"fmt"
+	"github.com/mkaminski/goaim/oscar"
 	"io"
 )
 
@@ -20,9 +21,9 @@ const (
 	BuddyDelTempBuddies             = 0x0010
 )
 
-func routeBuddy(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeBuddy(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 
-	switch snac.subGroup {
+	switch snac.SubGroup {
 	case BuddyErr:
 		panic("not implemented")
 	case BuddyRightsQuery:
@@ -51,38 +52,38 @@ func routeBuddy(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) erro
 	return nil
 }
 
-func SendAndReceiveBuddyRights(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveBuddyRights(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveBuddyRights read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x03_0x02_BuddyRightsQuery{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x03_0x02_BuddyRightsQuery{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
 	fmt.Printf("sendAndReceiveBuddyRights read SNAC payload: %+v\n", snacPayloadIn)
 
-	snacFrameOut := snacFrame{
-		foodGroup: 0x03,
-		subGroup:  0x03,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: 0x03,
+		SubGroup:  0x03,
 	}
-	snacPayloadOut := SNAC_0x03_0x03_BuddyRightsReply{
-		TLVRestBlock: TLVRestBlock{
-			TLVList: TLVList{
+	snacPayloadOut := oscar.SNAC_0x03_0x03_BuddyRightsReply{
+		TLVRestBlock: oscar.TLVRestBlock{
+			TLVList: oscar.TLVList{
 				{
-					tType: 0x01,
-					val:   uint16(100),
+					TType: 0x01,
+					Val:   uint16(100),
 				},
 				{
-					tType: 0x02,
-					val:   uint16(100),
+					TType: 0x02,
+					Val:   uint16(100),
 				},
 				{
-					tType: 0x03,
-					val:   uint16(100),
+					TType: 0x03,
+					Val:   uint16(100),
 				},
 				{
-					tType: 0x04,
-					val:   uint16(100),
+					TType: 0x04,
+					Val:   uint16(100),
 				},
 			},
 		},
@@ -98,15 +99,15 @@ func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 	}
 
 	sm.BroadcastToScreenNames(screenNames, XMessage{
-		snacFrame: snacFrame{
-			foodGroup: BUDDY,
-			subGroup:  BuddyArrived,
+		snacFrame: oscar.SnacFrame{
+			FoodGroup: BUDDY,
+			SubGroup:  BuddyArrived,
 		},
-		snacOut: SNAC_0x03_0x0A_BuddyArrived{
-			TLVUserInfo: TLVUserInfo{
+		snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
+			TLVUserInfo: oscar.TLVUserInfo{
 				ScreenName:   sess.ScreenName,
 				WarningLevel: sess.GetWarning(),
-				TLVBlock: TLVBlock{
+				TLVBlock: oscar.TLVBlock{
 					TLVList: sess.GetUserInfo(),
 				},
 			},
@@ -123,12 +124,12 @@ func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error 
 	}
 
 	sm.BroadcastToScreenNames(screenNames, XMessage{
-		snacFrame: snacFrame{
-			foodGroup: BUDDY,
-			subGroup:  BuddyDeparted,
+		snacFrame: oscar.SnacFrame{
+			FoodGroup: BUDDY,
+			SubGroup:  BuddyDeparted,
 		},
-		snacOut: SNAC_0x03_0x0B_BuddyDeparted{
-			TLVUserInfo: TLVUserInfo{
+		snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+			TLVUserInfo: oscar.TLVUserInfo{
 				ScreenName:   sess.ScreenName,
 				WarningLevel: sess.GetWarning(),
 			},

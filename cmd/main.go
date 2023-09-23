@@ -3,39 +3,38 @@ package main
 import (
 	"fmt"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/server"
 	"io"
 	"log"
 	"net"
-	"net/http"
 )
 
 func main() {
 
-	var cfg oscar.Config
+	var cfg server.Config
 	err := envconfig.Process("", &cfg)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	fm, err := oscar.NewFeedbagStore(cfg.DBPath)
+	fm, err := server.NewFeedbagStore(cfg.DBPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	sm := oscar.NewSessionManager()
-	cr := oscar.NewChatRegistry()
+	sm := server.NewSessionManager()
+	cr := server.NewChatRegistry()
 
 	go listenBOS(cfg, sm, fm, cr)
 	go listenChat(cfg, fm, cr)
 
-	listener, err := net.Listen("tcp", oscar.Address("", cfg.OSCARPort))
+	listener, err := net.Listen("tcp", server.Address("", cfg.OSCARPort))
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer listener.Close()
 
-	fmt.Printf("OSCAR server listening on %s\n", oscar.Address(cfg.OSCARHost, cfg.OSCARPort))
+	fmt.Printf("OSCAR server listening on %s\n", server.Address(cfg.OSCARHost, cfg.OSCARPort))
 
 	for {
 		conn, err := listener.Accept()
@@ -48,25 +47,14 @@ func main() {
 	}
 }
 
-func webServer(ch chan string) {
-	http.HandleFunc("/send-im", func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		ch <- string(body)
-	})
-
-	if err := http.ListenAndServe(":3333", nil); err != nil {
-		panic(err.Error())
-	}
-}
-
-func listenBOS(cfg oscar.Config, sm *oscar.SessionManager, fm *oscar.FeedbagStore, cr *oscar.ChatRegistry) {
-	listener, err := net.Listen("tcp", oscar.Address("", cfg.BOSPort))
+func listenBOS(cfg server.Config, sm *server.SessionManager, fm *server.FeedbagStore, cr *server.ChatRegistry) {
+	listener, err := net.Listen("tcp", server.Address("", cfg.BOSPort))
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer listener.Close()
 
-	fmt.Printf("BOS server listening on %s\n", oscar.Address(cfg.OSCARHost, cfg.BOSPort))
+	fmt.Printf("BOS server listening on %s\n", server.Address(cfg.OSCARHost, cfg.BOSPort))
 
 	for {
 		conn, err := listener.Accept()
@@ -78,17 +66,16 @@ func listenBOS(cfg oscar.Config, sm *oscar.SessionManager, fm *oscar.FeedbagStor
 	}
 }
 
-func listenChat(cfg oscar.Config, fm *oscar.FeedbagStore, cr *oscar.ChatRegistry) {
-	listener, err := net.Listen("tcp", oscar.Address("", cfg.ChatPort))
+func listenChat(cfg server.Config, fm *server.FeedbagStore, cr *server.ChatRegistry) {
+	listener, err := net.Listen("tcp", server.Address("", cfg.ChatPort))
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer listener.Close()
 
-	fmt.Printf("Chat server listening on %s\n", oscar.Address(cfg.OSCARHost, cfg.ChatPort))
+	fmt.Printf("Chat server listening on %s\n", server.Address(cfg.OSCARHost, cfg.ChatPort))
 
 	for {
-		// Accept incoming connections
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println(err)
@@ -98,10 +85,10 @@ func listenChat(cfg oscar.Config, fm *oscar.FeedbagStore, cr *oscar.ChatRegistry
 	}
 }
 
-func handleAuthConnection(cfg oscar.Config, sm *oscar.SessionManager, fm *oscar.FeedbagStore, conn net.Conn) {
+func handleAuthConnection(cfg server.Config, sm *server.SessionManager, fm *server.FeedbagStore, conn net.Conn) {
 	defer conn.Close()
 	seq := uint32(100)
-	_, err := oscar.SendAndReceiveSignonFrame(conn, &seq)
+	_, err := server.SendAndReceiveSignonFrame(conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return
@@ -112,21 +99,21 @@ func handleAuthConnection(cfg oscar.Config, sm *oscar.SessionManager, fm *oscar.
 		log.Fatal(err.Error())
 	}
 
-	err = oscar.ReceiveAndSendAuthChallenge(sess, conn, conn, &seq)
+	err = server.ReceiveAndSendAuthChallenge(sess, conn, conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	err = oscar.ReceiveAndSendBUCPLoginRequest(cfg, sess, fm, conn, conn, &seq)
+	err = server.ReceiveAndSendBUCPLoginRequest(cfg, sess, fm, conn, conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 }
 
-func handleBOSConnection(cfg oscar.Config, sm *oscar.SessionManager, fm *oscar.FeedbagStore, cr *oscar.ChatRegistry, conn net.Conn) {
-	sess, seq, err := oscar.VerifyLogin(sm, conn)
+func handleBOSConnection(cfg server.Config, sm *server.SessionManager, fm *server.FeedbagStore, cr *server.ChatRegistry, conn net.Conn) {
+	sess, seq, err := server.VerifyLogin(sm, conn)
 	if err != nil {
 		fmt.Printf("user disconnected with error: %s\n", err.Error())
 		return
@@ -135,21 +122,19 @@ func handleBOSConnection(cfg oscar.Config, sm *oscar.SessionManager, fm *oscar.F
 	defer sess.Close()
 	go func() {
 		<-sess.Closed()
-		oscar.Signout(sess, sm, fm)
+		server.Signout(sess, sm, fm)
 		conn.Close()
 	}()
 
-	onClientReady := func(sess *oscar.Session, sm *oscar.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
-		err := oscar.NotifyArrival(sess, sm, fm)
-		if err != nil {
+	onClientReady := func(sess *server.Session, sm *server.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
+		if err := server.NotifyArrival(sess, sm, fm); err != nil {
 			return err
 		}
-
-		return oscar.GetOnlineBuddies(w, sess, sm, fm, sequence)
+		return server.GetOnlineBuddies(w, sess, sm, fm, sequence)
 	}
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D}
-	if err := oscar.ReadBos(cfg, onClientReady, sess, seq, sm, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
+	if err := server.ReadBos(cfg, onClientReady, sess, seq, sm, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Printf("user disconnected with error: %s\n", err.Error())
 		} else {
@@ -158,8 +143,8 @@ func handleBOSConnection(cfg oscar.Config, sm *oscar.SessionManager, fm *oscar.F
 	}
 }
 
-func handleChatConnection(cfg oscar.Config, fm *oscar.FeedbagStore, cr *oscar.ChatRegistry, conn net.Conn) {
-	cookie, seq, err := oscar.VerifyChatLogin(conn)
+func handleChatConnection(cfg server.Config, fm *server.FeedbagStore, cr *server.ChatRegistry, conn net.Conn) {
+	cookie, seq, err := server.VerifyChatLogin(conn)
 	if err != nil {
 		fmt.Printf("user disconnected with error: %s\n", err.Error())
 		return
@@ -176,7 +161,7 @@ func handleChatConnection(cfg oscar.Config, fm *oscar.FeedbagStore, cr *oscar.Ch
 	defer chatSess.Close()
 	go func() {
 		<-chatSess.Closed()
-		oscar.AlertUserLeft(chatSess, room.SessionManager)
+		server.AlertUserLeft(chatSess, room.SessionManager)
 		room.SessionManager.Remove(chatSess)
 		cr.MaybeRemoveRoom(room.ID)
 		conn.Close()
@@ -184,15 +169,15 @@ func handleChatConnection(cfg oscar.Config, fm *oscar.FeedbagStore, cr *oscar.Ch
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D, 0x000E}
 
-	onClientReady := func(sess *oscar.Session, sm *oscar.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
-		if err := oscar.SendChatRoomInfoUpdate(room, w, sequence); err != nil {
+	onClientReady := func(sess *server.Session, sm *server.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
+		if err := server.SendChatRoomInfoUpdate(room, w, sequence); err != nil {
 			return err
 		}
-		oscar.AlertUserJoined(sess, sm)
-		return oscar.SetOnlineChatUsers(sm, w, sequence)
+		server.AlertUserJoined(sess, sm)
+		return server.SetOnlineChatUsers(sm, w, sequence)
 	}
 
-	if err := oscar.ReadBos(cfg, onClientReady, chatSess, seq, room.SessionManager, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
+	if err := server.ReadBos(cfg, onClientReady, chatSess, seq, room.SessionManager, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
 		if err != io.EOF {
 			fmt.Printf("user disconnected with error: %s\n", err.Error())
 		} else {

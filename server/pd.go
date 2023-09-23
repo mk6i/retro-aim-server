@@ -1,7 +1,8 @@
-package oscar
+package server
 
 import (
 	"fmt"
+	"github.com/mkaminski/goaim/oscar"
 	"io"
 )
 
@@ -19,8 +20,8 @@ const (
 	PDDelTempPermitListEntries        = 0x000B
 )
 
-func routePD(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	switch snac.subGroup {
+func routePD(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	switch snac.SubGroup {
 	case PDErr:
 		panic("not implemented")
 	case PDRightsQuery:
@@ -46,27 +47,27 @@ func routePD(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	return nil
 }
 
-func SendAndReceivePDRightsQuery(snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceivePDRightsQuery(snac oscar.SnacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceivePDRightsQuery read SNAC frame: %+v\n", snac)
 
-	snacFrameOut := snacFrame{
-		foodGroup: PD,
-		subGroup:  PDRightsReply,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: PD,
+		SubGroup:  PDRightsReply,
 	}
-	snacPayloadOut := SNAC_0x09_0x03_PDRightsReply{
-		TLVRestBlock{
-			TLVList: TLVList{
+	snacPayloadOut := oscar.SNAC_0x09_0x03_PDRightsReply{
+		TLVRestBlock: oscar.TLVRestBlock{
+			TLVList: oscar.TLVList{
 				{
-					tType: 0x01,
-					val:   uint16(100),
+					TType: 0x01,
+					Val:   uint16(100),
 				},
 				{
-					tType: 0x02,
-					val:   uint16(100),
+					TType: 0x02,
+					Val:   uint16(100),
 				},
 				{
-					tType: 0x03,
-					val:   uint16(100),
+					TType: 0x03,
+					Val:   uint16(100),
 				},
 			},
 		},

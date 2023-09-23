@@ -1,8 +1,9 @@
-package oscar
+package server
 
 import (
 	"errors"
 	"fmt"
+	"github.com/mkaminski/goaim/oscar"
 	"io"
 )
 
@@ -30,8 +31,8 @@ const (
 	LocateUserInfoQuery2              = 0x0015
 )
 
-func routeLocate(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	switch snac.subGroup {
+func routeLocate(sess *Session, sm *SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	switch snac.SubGroup {
 	case LocateErr:
 		panic("not implemented")
 	case LocateRightsQuery:
@@ -73,35 +74,35 @@ func routeLocate(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacF
 	return nil
 }
 
-func SendAndReceiveLocateRights(snac snacFrame, w io.Writer, sequence *uint32) error {
+func SendAndReceiveLocateRights(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveLocateRights read SNAC frame: %+v\n", snac)
 
-	snacFrameOut := snacFrame{
-		foodGroup: LOCATE,
-		subGroup:  LocateRightsReply,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: LOCATE,
+		SubGroup:  LocateRightsReply,
 	}
-	snacPayloadOut := SNAC_0x02_0x03_LocateRightsReply{
-		TLVRestBlock: TLVRestBlock{
-			TLVList: TLVList{
+	snacPayloadOut := oscar.SNAC_0x02_0x03_LocateRightsReply{
+		TLVRestBlock: oscar.TLVRestBlock{
+			TLVList: oscar.TLVList{
 				{
-					tType: 0x01,
-					val:   uint16(1000),
+					TType: 0x01,
+					Val:   uint16(1000),
 				},
 				{
-					tType: 0x02,
-					val:   uint16(1000),
+					TType: 0x02,
+					Val:   uint16(1000),
 				},
 				{
-					tType: 0x03,
-					val:   uint16(1000),
+					TType: 0x03,
+					Val:   uint16(1000),
 				},
 				{
-					tType: 0x04,
-					val:   uint16(1000),
+					TType: 0x04,
+					Val:   uint16(1000),
 				},
 				{
-					tType: 0x05,
-					val:   uint16(1000),
+					TType: 0x05,
+					Val:   uint16(1000),
 				},
 			},
 		},
@@ -124,23 +125,23 @@ var (
 	LocateTlvTagsInfoHtmlInfoType    = uint16(0x0D)
 )
 
-func ReceiveSetInfo(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacFrame, r io.Reader) error {
+func ReceiveSetInfo(sess *Session, sm *SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader) error {
 	fmt.Printf("ReceiveSetInfo read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x02_0x04_LocateSetInfo{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x02_0x04_LocateSetInfo{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
 	// update profile
-	if profile, hasProfile := snacPayloadIn.getString(LocateTlvTagsInfoSigData); hasProfile {
+	if profile, hasProfile := snacPayloadIn.GetString(LocateTlvTagsInfoSigData); hasProfile {
 		if err := fm.UpsertProfile(sess.ScreenName, profile); err != nil {
 			return err
 		}
 	}
 
 	// broadcast away message change to buddies
-	if awayMsg, hasAwayMsg := snacPayloadIn.getString(LocateTlvTagsInfoUnavailableData); hasAwayMsg {
+	if awayMsg, hasAwayMsg := snacPayloadIn.GetString(LocateTlvTagsInfoUnavailableData); hasAwayMsg {
 		sess.SetAwayMessage(awayMsg)
 		if err := NotifyArrival(sess, sm, fm); err != nil {
 			return err
@@ -152,11 +153,11 @@ func ReceiveSetInfo(sess *Session, sm *SessionManager, fm *FeedbagStore, snac sn
 	return nil
 }
 
-func ReceiveLocateGetDirInfo(snac snacFrame, r io.Reader) error {
+func ReceiveLocateGetDirInfo(snac oscar.SnacFrame, r io.Reader) error {
 	fmt.Printf("ReceiveLocateGetDirInfo read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x02_0x0B_LocateGetDirInfo{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x02_0x0B_LocateGetDirInfo{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
@@ -165,11 +166,11 @@ func ReceiveLocateGetDirInfo(snac snacFrame, r io.Reader) error {
 	return nil
 }
 
-func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveUserInfoQuery2 read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x02_0x15_LocateUserInfoQuery2{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
@@ -178,11 +179,11 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 		return err
 	}
 	if blocked != BlockedNo {
-		snacFrameOut := snacFrame{
-			foodGroup: LOCATE,
-			subGroup:  LocateErr,
+		snacFrameOut := oscar.SnacFrame{
+			FoodGroup: LOCATE,
+			SubGroup:  LocateErr,
 		}
-		snacPayloadOut := snacError{
+		snacPayloadOut := oscar.SnacError{
 			Code: ErrorCodeNotLoggedOn,
 		}
 		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
@@ -191,31 +192,31 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 	buddySess, err := sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
 	if err != nil {
 		if errors.Is(err, errSessNotFound) {
-			snacFrameOut := snacFrame{
-				foodGroup: LOCATE,
-				subGroup:  LocateErr,
+			snacFrameOut := oscar.SnacFrame{
+				FoodGroup: LOCATE,
+				SubGroup:  LocateErr,
 			}
-			snacPayloadOut := snacError{
+			snacPayloadOut := oscar.SnacError{
 				Code: ErrorCodeNotLoggedOn,
 			}
 			return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 		}
 	}
 
-	snacFrameOut := snacFrame{
-		foodGroup: LOCATE,
-		subGroup:  LocateUserInfoReply,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: LOCATE,
+		SubGroup:  LocateUserInfoReply,
 	}
-	snacPayloadOut := SNAC_0x02_0x06_LocateUserInfoReply{
-		TLVUserInfo: TLVUserInfo{
+	snacPayloadOut := oscar.SNAC_0x02_0x06_LocateUserInfoReply{
+		TLVUserInfo: oscar.TLVUserInfo{
 			ScreenName:   snacPayloadIn.ScreenName,
 			WarningLevel: buddySess.GetWarning(),
-			TLVBlock: TLVBlock{
+			TLVBlock: oscar.TLVBlock{
 				TLVList: buddySess.GetUserInfo(),
 			},
 		},
-		ClientProfile: TLVRestBlock{},
-		AwayMessage:   TLVRestBlock{},
+		ClientProfile: oscar.TLVRestBlock{},
+		AwayMessage:   oscar.TLVRestBlock{},
 	}
 
 	// profile
@@ -223,39 +224,39 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 		profile, err := fm.RetrieveProfile(snacPayloadIn.ScreenName)
 		if err != nil {
 			if err == errUserNotExist {
-				snacFrameOut := snacFrame{
-					foodGroup: LOCATE,
-					subGroup:  LocateErr,
+				snacFrameOut := oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  LocateErr,
 				}
-				snacPayloadOut := snacError{
+				snacPayloadOut := oscar.SnacError{
 					Code: ErrorCodeNotLoggedOn,
 				}
 				return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 			}
 			return err
 		}
-		snacPayloadOut.ClientProfile.TLVList = append(snacPayloadOut.ClientProfile.TLVList, []TLV{
+		snacPayloadOut.ClientProfile.TLVList = append(snacPayloadOut.ClientProfile.TLVList, []oscar.TLV{
 			{
-				tType: 0x01,
-				val:   `text/aolrtf; charset="us-ascii"`,
+				TType: 0x01,
+				Val:   `text/aolrtf; charset="us-ascii"`,
 			},
 			{
-				tType: 0x02,
-				val:   profile,
+				TType: 0x02,
+				Val:   profile,
 			},
 		}...)
 	}
 
 	// away message
 	if snacPayloadIn.Type2&2 == 2 {
-		snacPayloadOut.ClientProfile.TLVList = append(snacPayloadOut.ClientProfile.TLVList, []TLV{
+		snacPayloadOut.ClientProfile.TLVList = append(snacPayloadOut.ClientProfile.TLVList, []oscar.TLV{
 			{
-				tType: 0x03,
-				val:   `text/aolrtf; charset="us-ascii"`,
+				TType: 0x03,
+				Val:   `text/aolrtf; charset="us-ascii"`,
 			},
 			{
-				tType: 0x04,
-				val:   buddySess.GetAwayMessage(),
+				TType: 0x04,
+				Val:   buddySess.GetAwayMessage(),
 			},
 		}...)
 	}
@@ -263,38 +264,38 @@ func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *Feedbag
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func SendAndReceiveSetDirInfo(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveSetDirInfo(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveSetDirInfo read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x02_0x09_LocateSetDirInfo{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x02_0x09_LocateSetDirInfo{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	snacFrameOut := snacFrame{
-		foodGroup: LOCATE,
-		subGroup:  LocateSetDirReply,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: LOCATE,
+		SubGroup:  LocateSetDirReply,
 	}
-	snacPayloadOut := SNAC_0x02_0x0A_LocateSetDirReply{
+	snacPayloadOut := oscar.SNAC_0x02_0x0A_LocateSetDirReply{
 		Result: 1,
 	}
 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func SendAndReceiveSetKeywordInfo(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveSetKeywordInfo(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveSetKeywordInfo read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x02_0x0F_LocateSetKeywordInfo{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x02_0x0F_LocateSetKeywordInfo{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	snacFrameOut := snacFrame{
-		foodGroup: LOCATE,
-		subGroup:  LocateSetKeywordReply,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: LOCATE,
+		SubGroup:  LocateSetKeywordReply,
 	}
-	snacPayloadOut := SNAC_0x02_0x10_LocateSetKeywordReply{
+	snacPayloadOut := oscar.SNAC_0x02_0x10_LocateSetKeywordReply{
 		Unknown: 1,
 	}
 

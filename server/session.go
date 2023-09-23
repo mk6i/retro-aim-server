@@ -1,9 +1,10 @@
-package oscar
+package server
 
 import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/mkaminski/goaim/oscar"
 	"sync"
 	"time"
 )
@@ -89,55 +90,55 @@ func (s *Session) GetAwayMessage() string {
 	return s.AwayMessage
 }
 
-func (s *Session) GetUserInfo() []TLV {
+func (s *Session) GetUserInfo() []oscar.TLV {
 	s.Mutex.RLock()
 	defer s.Mutex.RUnlock()
 
 	// sign-in timestamp
-	tlvs := []TLV{
+	tlvs := []oscar.TLV{
 		{
-			tType: 0x03,
-			val:   uint32(s.SignonTime.Unix()),
+			TType: 0x03,
+			Val:   uint32(s.SignonTime.Unix()),
 		},
 	}
 
 	// away message status
-	userFlags := TLV{
-		tType: 0x01,
-		val:   uint16(0x0010), // AIM client
+	userFlags := oscar.TLV{
+		TType: 0x01,
+		Val:   uint16(0x0010), // AIM client
 	}
 	if s.AwayMessage != "" {
-		userFlags.val = userFlags.val.(uint16) | uint16(0x0020)
+		userFlags.Val = userFlags.Val.(uint16) | uint16(0x0020)
 	}
 	tlvs = append(tlvs, userFlags)
 
 	// invisibility status
-	status := TLV{
-		tType: 0x06,
-		val:   uint16(0x0000),
+	status := oscar.TLV{
+		TType: 0x06,
+		Val:   uint16(0x0000),
 	}
 	if s.invisible {
-		status.val = status.val.(uint16) | uint16(0x0100)
+		status.Val = status.Val.(uint16) | uint16(0x0100)
 	}
 	tlvs = append(tlvs, status)
 
 	// idle status
-	idle := TLV{
-		tType: 0x04,
-		val:   uint16(0),
+	idle := oscar.TLV{
+		TType: 0x04,
+		Val:   uint16(0),
 	}
 	if s.idle {
-		idle.val = uint16(time.Now().Sub(s.idleTime).Seconds())
+		idle.Val = uint16(time.Now().Sub(s.idleTime).Seconds())
 	}
 	tlvs = append(tlvs, idle)
 
 	// capabilities
-	caps := TLV{
-		tType: 0x0D,
-		val:   []byte{},
+	caps := oscar.TLV{
+		TType: 0x0D,
+		Val:   []byte{},
 	}
 	// chat capability
-	caps.val = append(caps.val.([]byte), CapChat...)
+	caps.Val = append(caps.Val.([]byte), CapChat...)
 	tlvs = append(tlvs, caps)
 
 	return tlvs
@@ -328,35 +329,35 @@ type ChatRoom struct {
 	Name           string
 }
 
-func (c ChatRoom) TLVList() []TLV {
-	return []TLV{
+func (c ChatRoom) TLVList() []oscar.TLV {
+	return []oscar.TLV{
 		{
-			tType: 0x00c9,
-			val:   uint16(15),
+			TType: 0x00c9,
+			Val:   uint16(15),
 		},
 		{
-			tType: 0x00ca,
-			val:   uint32(c.CreateTime.Unix()),
+			TType: 0x00ca,
+			Val:   uint32(c.CreateTime.Unix()),
 		},
 		{
-			tType: 0x00d1,
-			val:   uint16(1024),
+			TType: 0x00d1,
+			Val:   uint16(1024),
 		},
 		{
-			tType: 0x00d2,
-			val:   uint16(100),
+			TType: 0x00d2,
+			Val:   uint16(100),
 		},
 		{
-			tType: 0x00d5,
-			val:   uint8(2),
+			TType: 0x00d5,
+			Val:   uint8(2),
 		},
 		{
-			tType: 0x006a,
-			val:   c.Name,
+			TType: 0x006a,
+			Val:   c.Name,
 		},
 		{
-			tType: 0x00d3,
-			val:   c.Name,
+			TType: 0x00d3,
+			Val:   c.Name,
 		},
 	}
 }

@@ -1,10 +1,11 @@
-package oscar
+package server
 
 import (
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/mkaminski/goaim/oscar"
 	"io"
 	"time"
 )
@@ -21,8 +22,8 @@ const (
 	ChatNavNavInfo                    = 0x0009
 )
 
-func routeChatNav(sess *Session, cr *ChatRegistry, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	switch snac.subGroup {
+func routeChatNav(sess *Session, cr *ChatRegistry, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	switch snac.SubGroup {
 	case ChatNavErr:
 		panic("not implemented")
 	case ChatNavRequestChatRights:
@@ -50,7 +51,7 @@ type ChatCookie struct {
 	SessID string
 }
 
-func (s *ChatCookie) read(r io.Reader) error {
+func (s *ChatCookie) Read(r io.Reader) error {
 	var l uint16
 	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
 		return err
@@ -70,7 +71,7 @@ func (s *ChatCookie) read(r io.Reader) error {
 	return nil
 }
 
-func (s ChatCookie) write(w io.Writer) error {
+func (s ChatCookie) Write(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, uint16(len(s.Cookie))); err != nil {
 		return err
 	}
@@ -86,58 +87,58 @@ func (s ChatCookie) write(w io.Writer) error {
 	return nil
 }
 
-func SendAndReceiveNextChatRights(snac snacFrame, w io.Writer, sequence *uint32) error {
+func SendAndReceiveNextChatRights(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveNextChatRights read SNAC frame: %+v\n", snac)
 
-	snacFrameOut := snacFrame{
-		foodGroup: CHAT_NAV,
-		subGroup:  ChatNavNavInfo,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: CHAT_NAV,
+		SubGroup:  ChatNavNavInfo,
 	}
 
-	snacPayloadOut := SNAC_0x0D_0x09_ChatNavNavInfo{
-		TLVRestBlock{
-			TLVList: TLVList{
+	snacPayloadOut := oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+		TLVRestBlock: oscar.TLVRestBlock{
+			TLVList: oscar.TLVList{
 				{
-					tType: 0x02,
-					val:   uint8(10),
+					TType: 0x02,
+					Val:   uint8(10),
 				},
 				{
-					tType: 0x03,
-					val: SNAC_0x0D_0x09_TLVExchangeInfo{
+					TType: 0x03,
+					Val: oscar.SNAC_0x0D_0x09_TLVExchangeInfo{
 						Identifier: 4,
-						TLVBlock: TLVBlock{
-							TLVList: TLVList{
+						TLVBlock: oscar.TLVBlock{
+							TLVList: oscar.TLVList{
 								{
-									tType: 0x0002,
-									val:   uint16(0x0010),
+									TType: 0x0002,
+									Val:   uint16(0x0010),
 								},
 								{
-									tType: 0x00c9,
-									val:   uint16(15),
+									TType: 0x00c9,
+									Val:   uint16(15),
 								},
 								{
-									tType: 0x00d3,
-									val:   "default Exchange",
+									TType: 0x00d3,
+									Val:   "default Exchange",
 								},
 								{
-									tType: 0x00d5,
-									val:   uint8(2),
+									TType: 0x00d5,
+									Val:   uint8(2),
 								},
 								{
-									tType: 0xd6,
-									val:   "us-ascii",
+									TType: 0xd6,
+									Val:   "us-ascii",
 								},
 								{
-									tType: 0xd7,
-									val:   "en",
+									TType: 0xd7,
+									Val:   "en",
 								},
 								{
-									tType: 0xd8,
-									val:   "us-ascii",
+									TType: 0xd8,
+									Val:   "us-ascii",
 								},
 								{
-									tType: 0xd9,
-									val:   "en",
+									TType: 0xd9,
+									Val:   "en",
 								},
 							},
 						},
@@ -150,15 +151,15 @@ func SendAndReceiveNextChatRights(snac snacFrame, w io.Writer, sequence *uint32)
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveCreateRoom read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	name, hasName := snacPayloadIn.getString(0x00d3)
+	name, hasName := snacPayloadIn.GetString(0x00d3)
 	if !hasName {
 		return errors.New("unable to find chat name")
 	}
@@ -174,21 +175,21 @@ func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, snac snacFrame, r
 	// add user to chat room
 	room.SessionManager.NewSessionWithSN(sess.ID, sess.ScreenName)
 
-	snacFrameOut := snacFrame{
-		foodGroup: CHAT_NAV,
-		subGroup:  ChatNavNavInfo,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: CHAT_NAV,
+		SubGroup:  ChatNavNavInfo,
 	}
-	snacPayloadOut := SNAC_0x0D_0x09_ChatNavNavInfo{
-		TLVRestBlock{
-			TLVList: TLVList{
+	snacPayloadOut := oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+		TLVRestBlock: oscar.TLVRestBlock{
+			TLVList: oscar.TLVList{
 				{
-					tType: 0x04,
-					val: SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+					TType: 0x04,
+					Val: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 						Exchange:       4,
 						Cookie:         room.ID,
 						InstanceNumber: 100,
 						DetailLevel:    2,
-						TLVBlock: TLVBlock{
+						TLVBlock: oscar.TLVBlock{
 							TLVList: room.TLVList(),
 						},
 					},
@@ -200,11 +201,11 @@ func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, snac snacFrame, r
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func SendAndReceiveRequestRoomInfo(cr *ChatRegistry, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveRequestRoomInfo(cr *ChatRegistry, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveRequestRoomInfo read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := SNAC_0x0D_0x04_ChatNavRequestRoomInfo{}
-	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+	snacPayloadIn := oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{}
+	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
@@ -213,22 +214,22 @@ func SendAndReceiveRequestRoomInfo(cr *ChatRegistry, snac snacFrame, r io.Reader
 		return err
 	}
 
-	snacFrameOut := snacFrame{
-		foodGroup: CHAT_NAV,
-		subGroup:  ChatNavNavInfo,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: CHAT_NAV,
+		SubGroup:  ChatNavNavInfo,
 	}
 
-	snacPayloadOut := SNAC_0x0D_0x09_ChatNavNavInfo{
-		TLVRestBlock{
-			TLVList: TLVList{
+	snacPayloadOut := oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+		TLVRestBlock: oscar.TLVRestBlock{
+			TLVList: oscar.TLVList{
 				{
-					tType: 0x04,
-					val: SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+					TType: 0x04,
+					Val: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 						Exchange:       4,
 						Cookie:         room.ID,
 						InstanceNumber: 100,
 						DetailLevel:    2,
-						TLVBlock: TLVBlock{
+						TLVBlock: oscar.TLVBlock{
 							TLVList: room.TLVList(),
 						},
 					},

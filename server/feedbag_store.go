@@ -1,14 +1,13 @@
-package oscar
+package server
 
 import (
 	"bytes"
 	"database/sql"
 	"errors"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/mkaminski/goaim/oscar"
 	"time"
 )
-
-const file string = "/Users/mike/dev/goaim/aim.db"
 
 var errUserNotExist = errors.New("user does not exist")
 
@@ -60,7 +59,7 @@ func (f *FeedbagStore) UpsertUser(screenName string) error {
 	return err
 }
 
-func (f *FeedbagStore) Delete(screenName string, items []FeedbagItem) error {
+func (f *FeedbagStore) Delete(screenName string, items []oscar.FeedbagItem) error {
 	// todo add transaction
 	q := `DELETE FROM feedbag WHERE ScreenName = ? AND itemID = ?`
 
@@ -73,7 +72,7 @@ func (f *FeedbagStore) Delete(screenName string, items []FeedbagItem) error {
 	return nil
 }
 
-func (f *FeedbagStore) Retrieve(screenName string) ([]FeedbagItem, error) {
+func (f *FeedbagStore) Retrieve(screenName string) ([]oscar.FeedbagItem, error) {
 	q := `
 		SELECT 
 			groupID,
@@ -91,14 +90,14 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]FeedbagItem, error) {
 	}
 	defer rows.Close()
 
-	var items []FeedbagItem
+	var items []oscar.FeedbagItem
 	for rows.Next() {
-		var item FeedbagItem
+		var item oscar.FeedbagItem
 		var attrs []byte
 		if err := rows.Scan(&item.GroupID, &item.ItemID, &item.ClassID, &item.Name, &attrs); err != nil {
 			return nil, err
 		}
-		err = item.TLVLBlock.read(bytes.NewBuffer(attrs))
+		err = item.TLVLBlock.Read(bytes.NewBuffer(attrs))
 		if err != nil {
 			return items, err
 		}
@@ -110,12 +109,12 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]FeedbagItem, error) {
 
 func (f *FeedbagStore) LastModified(screenName string) (time.Time, error) {
 	var lastModified sql.NullInt64
-	sql := `SELECT MAX(lastModified) FROM feedbag WHERE ScreenName = ?`
-	err := f.db.QueryRow(sql, screenName).Scan(&lastModified)
+	q := `SELECT MAX(lastModified) FROM feedbag WHERE ScreenName = ?`
+	err := f.db.QueryRow(q, screenName).Scan(&lastModified)
 	return time.Unix(lastModified.Int64, 0), err
 }
 
-func (f *FeedbagStore) Upsert(screenName string, items []FeedbagItem) error {
+func (f *FeedbagStore) Upsert(screenName string, items []oscar.FeedbagItem) error {
 
 	q := `
 		INSERT INTO feedbag (ScreenName, groupID, itemID, classID, name, attributes, lastModified)
@@ -130,7 +129,7 @@ func (f *FeedbagStore) Upsert(screenName string, items []FeedbagItem) error {
 	for _, item := range items {
 
 		buf := &bytes.Buffer{}
-		if err := item.TLVLBlock.writeTLV(buf); err != nil {
+		if err := item.TLVLBlock.WriteTLV(buf); err != nil {
 			return err
 		}
 
@@ -286,12 +285,12 @@ func (f *FeedbagStore) RetrieveProfile(screenName string) (string, error) {
 }
 
 func (f *FeedbagStore) UpsertProfile(screenName string, body string) error {
-	sql := `
+	q := `
 		INSERT INTO profile (ScreenName, body)
 		VALUES (?, ?)
 		ON CONFLICT (ScreenName)
 			DO UPDATE SET body = excluded.body
 	`
-	_, err := f.db.Exec(sql, screenName, body)
+	_, err := f.db.Exec(q, screenName, body)
 	return err
 }

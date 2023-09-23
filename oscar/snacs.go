@@ -42,8 +42,8 @@ type SNAC_0x01_0x07_OServiceRateParamsReply struct {
 		DisconnectLevel uint32
 		CurrentLevel    uint32
 		MaxLevel        uint32
-		LastTime        uint32 // protocol v2 only
-		CurrentState    uint8  // protocol v2 only
+		LastTime        uint32
+		CurrentState    uint8
 	} `count_prefix:"uint16"`
 	RateGroups []struct {
 		ID    uint16

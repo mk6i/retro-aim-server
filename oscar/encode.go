@@ -17,15 +17,15 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 	case reflect.Struct:
 		switch sVal := v.Interface().(type) {
 		case TLVRestBlock:
-			if err := sVal.writeTLV(w); err != nil {
+			if err := sVal.WriteTLV(w); err != nil {
 				return err
 			}
 		case TLVLBlock:
-			if err := sVal.writeTLV(w); err != nil {
+			if err := sVal.WriteTLV(w); err != nil {
 				return err
 			}
 		case TLVBlock:
-			if err := sVal.writeTLV(w); err != nil {
+			if err := sVal.WriteTLV(w); err != nil {
 				return err
 			}
 		default:

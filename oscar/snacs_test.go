@@ -37,8 +37,8 @@ func TestUnmarshal(t *testing.T) {
 		TLVRestBlock: TLVRestBlock{
 			TLVList: TLVList{
 				{
-					tType: 0x0B,
-					val:   []byte{1, 2, 3, 4},
+					TType: 0x0B,
+					Val:   []byte{1, 2, 3, 4},
 				},
 			},
 		},

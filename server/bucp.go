@@ -1,9 +1,10 @@
-package oscar
+package server
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/mkaminski/goaim/oscar"
 	"io"
 )
 
@@ -17,8 +18,8 @@ const (
 	BUCPRegistrationImageRequest        = 0x000C
 )
 
-func routeBUCP(snac snacFrame) error {
-	switch snac.subGroup {
+func routeBUCP(snac oscar.SnacFrame) error {
+	switch snac.SubGroup {
 	case BUCPErr:
 		panic("not implemented")
 	case BUCPLoginRequest:
@@ -39,34 +40,34 @@ func routeBUCP(snac snacFrame) error {
 }
 
 func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence *uint32) error {
-	flap := flapFrame{}
-	if err := flap.read(r); err != nil {
+	flap := oscar.FlapFrame{}
+	if err := flap.Read(r); err != nil {
 		return err
 	}
 
-	b := make([]byte, flap.payloadLength)
+	b := make([]byte, flap.PayloadLength)
 	if _, err := r.Read(b); err != nil {
 		return err
 	}
 
 	buf := bytes.NewBuffer(b)
-	snac := snacFrame{}
-	if err := snac.read(buf); err != nil {
+	snac := oscar.SnacFrame{}
+	if err := snac.Read(buf); err != nil {
 		return err
 	}
 
-	snacPayloadIn := SNAC_0x17_0x06_BUCPChallengeRequest{}
-	if err := Unmarshal(&snacPayloadIn, buf); err != nil {
+	snacPayloadIn := oscar.SNAC_0x17_0x06_BUCPChallengeRequest{}
+	if err := oscar.Unmarshal(&snacPayloadIn, buf); err != nil {
 		return err
 	}
 
 	fmt.Printf("ReceiveAndSendAuthChallenge read SNAC payload: %+v\n", snacPayloadIn)
 
-	snacFrameOut := snacFrame{
-		foodGroup: 0x17,
-		subGroup:  0x07,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: 0x17,
+		SubGroup:  0x07,
 	}
-	snacPayloadOut := SNAC_0x17_0x07_BUCPChallengeResponse{
+	snacPayloadOut := oscar.SNAC_0x17_0x07_BUCPChallengeResponse{
 		AuthKey: s.ID,
 	}
 
@@ -74,31 +75,31 @@ func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence 
 }
 
 func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32) error {
-	flap := flapFrame{}
-	if err := flap.read(r); err != nil {
+	flap := oscar.FlapFrame{}
+	if err := flap.Read(r); err != nil {
 		return err
 	}
 
-	b := make([]byte, flap.payloadLength)
+	b := make([]byte, flap.PayloadLength)
 	if _, err := r.Read(b); err != nil {
 		return err
 	}
 
 	buf := bytes.NewBuffer(b)
-	snac := snacFrame{}
-	if err := snac.read(buf); err != nil {
+	snac := oscar.SnacFrame{}
+	if err := snac.Read(buf); err != nil {
 		return err
 	}
 
-	snacPayloadIn := SNAC_0x17_0x02_BUCPLoginRequest{}
-	if err := Unmarshal(&snacPayloadIn, buf); err != nil {
+	snacPayloadIn := oscar.SNAC_0x17_0x02_BUCPLoginRequest{}
+	if err := oscar.Unmarshal(&snacPayloadIn, buf); err != nil {
 		return err
 	}
 
 	fmt.Printf("ReceiveAndSendBUCPLoginRequest read SNAC: %+v\n", snacPayloadIn)
 
 	var found bool
-	sess.ScreenName, found = snacPayloadIn.getString(TLV_SCREEN_NAME)
+	sess.ScreenName, found = snacPayloadIn.GetString(0x01)
 	if !found {
 		return errors.New("unable to find screen name")
 	}
@@ -107,41 +108,41 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore,
 		return err
 	}
 
-	snacFrameOut := snacFrame{
-		foodGroup: 0x17,
-		subGroup:  0x03,
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: 0x17,
+		SubGroup:  0x03,
 	}
 
-	snacPayloadOut := SNAC_0x17_0x02_BUCPLoginRequest{
-		TLVRestBlock: TLVRestBlock{
-			TLVList: TLVList{
+	snacPayloadOut := oscar.SNAC_0x17_0x02_BUCPLoginRequest{
+		TLVRestBlock: oscar.TLVRestBlock{
+			TLVList: oscar.TLVList{
 				{
-					tType: TLV_SCREEN_NAME,
-					val:   sess.ScreenName,
+					TType: 0x01,
+					Val:   sess.ScreenName,
 				},
 				{
-					tType: 0x08,
-					val:   uint16(0x00),
+					TType: 0x08,
+					Val:   uint16(0x00),
 				},
 				{
-					tType: 0x04,
-					val:   "",
+					TType: 0x04,
+					Val:   "",
 				},
 				{
-					tType: 0x05,
-					val:   Address(cfg.OSCARHost, cfg.BOSPort),
+					TType: 0x05,
+					Val:   Address(cfg.OSCARHost, cfg.BOSPort),
 				},
 				{
-					tType: 0x06,
-					val:   []byte(sess.ID),
+					TType: 0x06,
+					Val:   []byte(sess.ID),
 				},
 				{
-					tType: 0x11,
-					val:   "mike@localhost",
+					TType: 0x11,
+					Val:   "mike@localhost",
 				},
 				{
-					tType: 0x54,
-					val:   "http://localhost",
+					TType: 0x54,
+					Val:   "http://localhost",
 				},
 			},
 		},
