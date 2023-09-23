@@ -18,66 +18,11 @@ type FlapFrame struct {
 	PayloadLength uint16
 }
 
-func (f FlapFrame) Write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, f.StartMarker); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, f.FrameType); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, f.Sequence); err != nil {
-		return err
-	}
-	return binary.Write(w, binary.BigEndian, f.PayloadLength)
-}
-
-func (f *FlapFrame) Read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &f.StartMarker); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &f.FrameType); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &f.Sequence); err != nil {
-		return err
-	}
-	return binary.Read(r, binary.BigEndian, &f.PayloadLength)
-}
-
 type SnacFrame struct {
 	FoodGroup uint16
 	SubGroup  uint16
 	Flags     uint16
 	RequestID uint32
-}
-
-func (s SnacFrame) Write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.FoodGroup); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.SubGroup); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.Flags); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.RequestID); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *SnacFrame) Read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &s.FoodGroup); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.SubGroup); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.Flags); err != nil {
-		return err
-	}
-	return binary.Read(r, binary.BigEndian, &s.RequestID)
 }
 
 type FlapSignonFrame struct {
@@ -87,14 +32,14 @@ type FlapSignonFrame struct {
 }
 
 func (f FlapSignonFrame) Write(w io.Writer) error {
-	if err := f.FlapFrame.Write(w); err != nil {
+	if err := Marshal(f.FlapFrame, w); err != nil {
 		return err
 	}
 	return binary.Write(w, binary.BigEndian, f.FlapVersion)
 }
 
 func (f *FlapSignonFrame) Read(r io.Reader) error {
-	if err := f.FlapFrame.Read(r); err != nil {
+	if err := Unmarshal(&f.FlapFrame, r); err != nil {
 		return err
 	}
 
