@@ -1,7 +1,6 @@
 package oscar
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
 )
@@ -52,19 +51,11 @@ func routeBuddy(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) erro
 	return nil
 }
 
-type snacBuddyRights struct {
-	TLVRestBlock
-}
-
-func (s *snacBuddyRights) read(r io.Reader) error {
-	return s.TLVRestBlock.read(r)
-}
-
 func SendAndReceiveBuddyRights(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveBuddyRights read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := snacBuddyRights{}
-	if err := snacPayloadIn.read(r); err != nil {
+	snacPayloadIn := SNAC_0x03_0x02_BuddyRightsQuery{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
@@ -74,7 +65,7 @@ func SendAndReceiveBuddyRights(snac snacFrame, r io.Reader, w io.Writer, sequenc
 		foodGroup: 0x03,
 		subGroup:  0x03,
 	}
-	snacPayloadOut := snacBuddyRights{
+	snacPayloadOut := SNAC_0x03_0x03_BuddyRightsReply{
 		TLVRestBlock: TLVRestBlock{
 			TLVList: TLVList{
 				{
@@ -100,25 +91,6 @@ func SendAndReceiveBuddyRights(snac snacFrame, r io.Reader, w io.Writer, sequenc
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-type snacBuddyArrived struct {
-	screenName   string
-	warningLevel uint16
-	TLVBlock
-}
-
-func (f snacBuddyArrived) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, []byte(f.screenName)); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, f.warningLevel); err != nil {
-		return err
-	}
-	return f.TLVBlock.write(w)
-}
-
 func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName)
 	if err != nil {
@@ -130,11 +102,13 @@ func NotifyArrival(sess *Session, sm *SessionManager, fm *FeedbagStore) error {
 			foodGroup: BUDDY,
 			subGroup:  BuddyArrived,
 		},
-		snacOut: snacBuddyArrived{
-			screenName:   sess.ScreenName,
-			warningLevel: sess.GetWarning(),
-			TLVBlock: TLVBlock{
-				TLVList: sess.GetUserInfo(),
+		snacOut: SNAC_0x03_0x0A_BuddyArrived{
+			TLVUserInfo: TLVUserInfo{
+				ScreenName:   sess.ScreenName,
+				WarningLevel: sess.GetWarning(),
+				TLVBlock: TLVBlock{
+					TLVList: sess.GetUserInfo(),
+				},
 			},
 		},
 	})
@@ -153,9 +127,11 @@ func NotifyDeparture(sess *Session, sm *SessionManager, fm *FeedbagStore) error 
 			foodGroup: BUDDY,
 			subGroup:  BuddyDeparted,
 		},
-		snacOut: snacBuddyArrived{
-			screenName:   sess.ScreenName,
-			warningLevel: sess.GetWarning(),
+		snacOut: SNAC_0x03_0x0B_BuddyDeparted{
+			TLVUserInfo: TLVUserInfo{
+				ScreenName:   sess.ScreenName,
+				WarningLevel: sess.GetWarning(),
+			},
 		},
 	})
 

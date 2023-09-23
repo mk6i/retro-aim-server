@@ -1,7 +1,6 @@
 package oscar
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -151,7 +150,7 @@ func routeFeedbag(sm *SessionManager, sess *Session, fm *FeedbagStore, snac snac
 	case FeedbagRightsQuery:
 		return SendAndReceiveFeedbagRightsQuery(snac, r, w, sequence)
 	case FeedbagQuery:
-		return ReceiveAndSendFeedbagQuery(sess, fm, snac, r, w, sequence)
+		return ReceiveAndSendFeedbagQuery(sess, fm, snac, w, sequence)
 	case FeedbagQueryIfModified:
 		return ReceiveAndSendFeedbagQueryIfModified(sess, fm, snac, r, w, sequence)
 	case FeedbagUse:
@@ -219,19 +218,11 @@ func routeFeedbag(sm *SessionManager, sess *Session, fm *FeedbagStore, snac snac
 	return nil
 }
 
-type payloadFeedbagRightsQuery struct {
-	TLVRestBlock
-}
-
-func (s *payloadFeedbagRightsQuery) read(r io.Reader) error {
-	return s.TLVRestBlock.read(r)
-}
-
 func SendAndReceiveFeedbagRightsQuery(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveFeedbagRightsQuery read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := payloadFeedbagRightsQuery{}
-	if err := snacPayloadIn.read(r); err != nil {
+	snacPayloadIn := SNAC_0x13_0x02_FeedbagRightsQuery{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
@@ -241,73 +232,75 @@ func SendAndReceiveFeedbagRightsQuery(snac snacFrame, r io.Reader, w io.Writer, 
 		foodGroup: 0x13,
 		subGroup:  0x03,
 	}
-	snacPayloadOut := TLVRestBlock{
-		TLVList: TLVList{
-			{
-				tType: 0x03,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x04,
-				val: []uint16{
-					0x3D,
-					0x3D,
-					0x64,
-					0x64,
-					0x01,
-					0x01,
-					0x32,
-					0x00,
-					0x00,
-					0x03,
-					0x00,
-					0x00,
-					0x00,
-					0x80,
-					0xFF,
-					0x14,
-					0xC8,
-					0x01,
-					0x00,
-					0x01,
-					0x00,
+	snacPayloadOut := SNAC_0x13_0x03_FeedbagRightsReply{
+		TLVRestBlock{
+			TLVList: TLVList{
+				{
+					tType: 0x03,
+					val:   uint16(200),
 				},
-			},
-			{
-				tType: 0x05,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x06,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x07,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x08,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x09,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x0A,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x0C,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x0D,
-				val:   uint16(200),
-			},
-			{
-				tType: 0x0E,
-				val:   uint16(100),
+				{
+					tType: 0x04,
+					val: []uint16{
+						0x3D,
+						0x3D,
+						0x64,
+						0x64,
+						0x01,
+						0x01,
+						0x32,
+						0x00,
+						0x00,
+						0x03,
+						0x00,
+						0x00,
+						0x00,
+						0x80,
+						0xFF,
+						0x14,
+						0xC8,
+						0x01,
+						0x00,
+						0x01,
+						0x00,
+					},
+				},
+				{
+					tType: 0x05,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x06,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x07,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x08,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x09,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x0A,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x0C,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x0D,
+					val:   uint16(200),
+				},
+				{
+					tType: 0x0E,
+					val:   uint16(100),
+				},
 			},
 		},
 	}
@@ -315,77 +308,7 @@ func SendAndReceiveFeedbagRightsQuery(snac snacFrame, r io.Reader, w io.Writer, 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-type feedbagItem struct {
-	name    string
-	groupID uint16
-	itemID  uint16
-	classID uint16
-	TLVLBlock
-}
-
-func (f feedbagItem) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, uint16(len(f.name))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, []byte(f.name)); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, f.groupID); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, f.itemID); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, f.classID); err != nil {
-		return err
-	}
-	return f.TLVLBlock.write(w)
-}
-
-func (f *feedbagItem) read(r io.Reader) error {
-	var l uint16
-	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-		return err
-	}
-	buf := make([]byte, l)
-	if _, err := r.Read(buf); err != nil {
-		return err
-	}
-	f.name = string(buf)
-	if err := binary.Read(r, binary.BigEndian, &f.groupID); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &f.itemID); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &f.classID); err != nil {
-		return err
-	}
-	return f.TLVLBlock.read(r)
-}
-
-type snacFeedbagQuery struct {
-	version    uint8
-	items      []feedbagItem
-	lastUpdate uint32
-}
-
-func (s snacFeedbagQuery) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.version); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(s.items))); err != nil {
-		return err
-	}
-	for _, t := range s.items {
-		if err := t.write(w); err != nil {
-			return err
-		}
-	}
-	return binary.Write(w, binary.BigEndian, s.lastUpdate)
-}
-
-func ReceiveAndSendFeedbagQuery(sess *Session, fm *FeedbagStore, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendFeedbagQuery(sess *Session, fm *FeedbagStore, snac snacFrame, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendFeedbagQuery read SNAC frame: %+v\n", snac)
 
 	fb, err := fm.Retrieve(sess.ScreenName)
@@ -406,43 +329,24 @@ func ReceiveAndSendFeedbagQuery(sess *Session, fm *FeedbagStore, snac snacFrame,
 		foodGroup: 0x13,
 		subGroup:  0x06,
 	}
-	snacPayloadOut := snacFeedbagQuery{
-		version:    0,
-		items:      fb,
-		lastUpdate: lastModified,
+	snacPayloadOut := SNAC_0x13_0x06_FeedbagReply{
+		Version:    0,
+		Items:      fb,
+		LastUpdate: lastModified,
 	}
 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-type snacQueryIfModified struct {
-	lastUpdate uint32
-	count      uint8
-}
-
-func (s snacQueryIfModified) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.lastUpdate); err != nil {
-		return err
-	}
-	return binary.Write(w, binary.BigEndian, s.count)
-}
-
-func (s *snacQueryIfModified) read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &s.lastUpdate); err != nil {
-		return err
-	}
-	return binary.Read(r, binary.BigEndian, &s.count)
-}
-
 func ReceiveAndSendFeedbagQueryIfModified(sess *Session, fm *FeedbagStore, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC frame: %+v\n", snac)
 
-	snacPayload := snacQueryIfModified{}
-	if err := snacPayload.read(r); err != nil && err != io.EOF {
+	snacPayloadIn := SNAC_0x13_0x05_FeedbagQueryIfModified{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC: %+v\n", snacPayload)
+	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC: %+v\n", snacPayloadIn)
 
 	fb, err := fm.Retrieve(sess.ScreenName)
 	if err != nil {
@@ -454,17 +358,17 @@ func ReceiveAndSendFeedbagQueryIfModified(sess *Session, fm *FeedbagStore, snac 
 		return err
 	}
 
-	//if lm.Before(time.Unix(int64(snacPayload.lastUpdate), 0)) {
+	//if lm.Before(time.Unix(int64(snacPayloadIn.lastUpdate), 0)) {
 	//todo not sure this works right now
 	//	snacFrameOut := snacFrame{
-	//		foodGroup: 0x13,
+	//		FoodGroup: 0x13,
 	//		subGroup:  0x0F,
 	//	}
 	//	lm, err := fm.LastModified(sess.ScreenName)
 	//	if err != nil {
 	//		return err
 	//	}
-	//	snacPayloadOut := snacQueryIfModified{
+	//	snacPayloadOut := SNAC_0x13_0x05_FeedbagQueryIfModified{
 	//		lastUpdate: uint32(lm.Unix()),
 	//		count:      uint8(len(fb)),
 	//	}
@@ -475,55 +379,42 @@ func ReceiveAndSendFeedbagQueryIfModified(sess *Session, fm *FeedbagStore, snac 
 		foodGroup: 0x13,
 		subGroup:  0x06,
 	}
-	snacPayloadOut := snacFeedbagQuery{
-		version:    0,
-		items:      fb,
-		lastUpdate: uint32(lm.Unix()),
+	snacPayloadOut := SNAC_0x13_0x06_FeedbagReply{
+		Version:    0,
+		Items:      fb,
+		LastUpdate: uint32(lm.Unix()),
 	}
 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-type snacFeedbagStatusReply struct {
-	results []uint16
-}
-
-func (s snacFeedbagStatusReply) write(w io.Writer) error {
-	return binary.Write(w, binary.BigEndian, s.results)
-}
-
 func ReceiveInsertItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveInsertItem read SNAC frame: %+v\n", snac)
 
-	snacPayloadOut := snacFeedbagStatusReply{}
-	var feedbag []feedbagItem
+	snacPayloadIn := SNAC_0x13_0x08_FeedbagInsertItem{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+		return err
+	}
 
-	for {
-		item := feedbagItem{}
-		if err := item.read(r); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
+	snacPayloadOut := SNAC_0x13_0x0E_FeedbagStatus{}
+	for _, item := range snacPayloadIn.Items {
 		// don't let users block themselves, it causes the AIM client to go
 		// into a weird state.
-		if item.classID == 3 && item.name == sess.ScreenName {
+		if item.ClassID == 3 && item.Name == sess.ScreenName {
 			snacFrameOut := snacFrame{
 				foodGroup: FEEDBAG,
 				subGroup:  FeedbagErr,
 			}
 			snacPayloadOut := snacError{
-				code: ErrorCodeNotSupportedByHost,
+				Code: ErrorCodeNotSupportedByHost,
 			}
 			return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 		}
-		feedbag = append(feedbag, item)
-		snacPayloadOut.results = append(snacPayloadOut.results, 0x0000) // success by default
+		snacPayloadOut.Results = append(snacPayloadOut.Results, 0x0000) // success by default
 		fmt.Printf("ReceiveInsertItem read SNAC feedbag item: %+v\n", item)
 	}
 
-	if err := fm.Upsert(sess.ScreenName, feedbag); err != nil {
+	if err := fm.Upsert(sess.ScreenName, snacPayloadIn.Items); err != nil {
 		return err
 	}
 
@@ -536,10 +427,10 @@ func ReceiveInsertItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac
 		return err
 	}
 
-	for _, item := range feedbag {
+	for _, item := range snacPayloadIn.Items {
 		// DENY, block buddy
-		if item.classID == 3 {
-			if err := blockBuddy(sm, sess, item.name, sequence, w); err != nil {
+		if item.ClassID == 3 {
+			if err := blockBuddy(sm, sess, item.Name, sequence, w); err != nil {
 				return err
 			}
 		}
@@ -556,9 +447,11 @@ func blockBuddy(sm *SessionManager, sess *Session, screenName string, sequence *
 			foodGroup: BUDDY,
 			subGroup:  BuddyDeparted,
 		},
-		snacOut: snacBuddyArrived{
-			screenName:   sess.ScreenName,
-			warningLevel: sess.GetWarning(),
+		snacOut: SNAC_0x03_0x0A_BuddyArrived{
+			TLVUserInfo: TLVUserInfo{
+				ScreenName:   sess.ScreenName,
+				WarningLevel: sess.GetWarning(),
+			},
 		},
 	})
 
@@ -576,9 +469,11 @@ func blockBuddy(sm *SessionManager, sess *Session, screenName string, sequence *
 		foodGroup: BUDDY,
 		subGroup:  BuddyDeparted,
 	}
-	snacPayloadOut := snacBuddyArrived{
-		screenName:   buddySess.ScreenName,
-		warningLevel: buddySess.GetWarning(),
+	snacPayloadOut := SNAC_0x03_0x0A_BuddyArrived{
+		TLVUserInfo: TLVUserInfo{
+			ScreenName:   buddySess.ScreenName,
+			WarningLevel: buddySess.GetWarning(),
+		},
 	}
 
 	return writeOutSNAC(snacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
@@ -587,28 +482,19 @@ func blockBuddy(sm *SessionManager, sess *Session, screenName string, sequence *
 func ReceiveUpdateItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
 
-	var items []feedbagItem
-
-	for {
-		item := feedbagItem{}
-		if err := item.read(r); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		fmt.Printf("\titem: %+v\n", item)
-		items = append(items, item)
-	}
-
-	if err := fm.Upsert(sess.ScreenName, items); err != nil {
+	snacPayloadIn := SNAC_0x13_0x09_FeedbagUpdateItem{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	snacPayloadOut := snacFeedbagStatusReply{}
+	if err := fm.Upsert(sess.ScreenName, snacPayloadIn.Items); err != nil {
+		return err
+	}
 
-	for _, item := range items {
-		snacPayloadOut.results = append(snacPayloadOut.results, 0x0000) // success by default
+	snacPayloadOut := SNAC_0x13_0x0E_FeedbagStatus{}
+
+	for _, item := range snacPayloadIn.Items {
+		snacPayloadOut.Results = append(snacPayloadOut.Results, 0x0000) // success by default
 		fmt.Printf("ReceiveUpdateItem read SNAC feedbag item: %+v\n", item)
 	}
 
@@ -627,32 +513,23 @@ func ReceiveUpdateItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac
 func ReceiveDeleteItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
 
-	var items []feedbagItem
-
-	for {
-		item := feedbagItem{}
-		if err := item.read(r); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		fmt.Printf("\titem: %+v\n", item)
-		items = append(items, item)
-	}
-
-	if err := fm.Delete(sess.ScreenName, items); err != nil {
+	snacPayloadIn := SNAC_0x13_0x0A_FeedbagDeleteItem{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	snacPayloadOut := snacFeedbagStatusReply{}
+	if err := fm.Delete(sess.ScreenName, snacPayloadIn.Items); err != nil {
+		return err
+	}
+
+	snacPayloadOut := SNAC_0x13_0x0E_FeedbagStatus{}
 
 	hasUnblock := false
-	for _, item := range items {
-		if item.classID == 3 {
+	for _, item := range snacPayloadIn.Items {
+		if item.ClassID == 3 {
 			hasUnblock = true
 		}
-		snacPayloadOut.results = append(snacPayloadOut.results, 0x0000) // success by default
+		snacPayloadOut.Results = append(snacPayloadOut.Results, 0x0000) // success by default
 		fmt.Printf("ReceiveDeleteItem read SNAC feedbag item: %+v\n", item)
 	}
 

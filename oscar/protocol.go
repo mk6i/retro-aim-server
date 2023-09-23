@@ -69,15 +69,8 @@ func Address(host string, port int) string {
 }
 
 type snacError struct {
-	code uint16
+	Code uint16
 	TLVRestBlock
-}
-
-func (s snacError) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.code); err != nil {
-		return err
-	}
-	return s.TLVRestBlock.write(w)
 }
 
 type flapFrame struct {
@@ -153,51 +146,83 @@ func (s *snacFrame) read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, &s.requestID)
 }
 
-type snacWriter interface {
-	write(w io.Writer) error
-}
-
 type TLVRestBlock struct {
 	TLVList
 }
+
+// read consumes the remainder of the read buffer
+func (s *TLVRestBlock) read(r io.Reader) error {
+	for {
+		tlv := TLV{}
+		if err := tlv.read(r); err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		s.TLVList = append(s.TLVList, tlv)
+	}
+	return nil
+}
+
 type TLVBlock struct {
 	TLVList
 }
 
+// read consumes up to n TLVs, as specified in payload
 func (s *TLVBlock) read(r io.Reader) error {
 	var tlvCount uint16
 	if err := binary.Read(r, binary.BigEndian, &tlvCount); err != nil {
 		return err
 	}
-	return s.TLVList.read(r)
+	if tlvCount == 0 {
+		return nil
+	}
+	for i := uint16(0); i < tlvCount; i++ {
+		tlv := TLV{}
+		if err := tlv.read(r); err != nil {
+			return err
+		}
+		s.TLVList = append(s.TLVList, tlv)
+	}
+	return nil
 }
 
-func (s TLVBlock) write(w io.Writer) error {
+func (s TLVBlock) writeTLV(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, uint16(len(s.TLVList))); err != nil {
 		return err
 	}
-	return s.TLVList.write(w)
+	return s.TLVList.writeTLV(w)
 }
 
 type TLVLBlock struct {
 	TLVList
 }
 
+// read consumes up to n bytes, as specified in the payload
 func (s *TLVLBlock) read(r io.Reader) error {
 	var tlvLen uint16
 	if err := binary.Read(r, binary.BigEndian, &tlvLen); err != nil {
 		return err
 	}
-	buf := make([]byte, tlvLen)
-	if _, err := r.Read(buf); err != nil {
+	p := make([]byte, tlvLen)
+	if _, err := r.Read(p); err != nil {
 		return err
 	}
-	return s.TLVList.read(bytes.NewBuffer(buf))
+	buf := bytes.NewBuffer(p)
+	for buf.Len() > 0 {
+		tlv := TLV{}
+		if err := tlv.read(buf); err != nil {
+			return err
+		}
+		s.TLVList = append(s.TLVList, tlv)
+	}
+	return nil
 }
 
-func (s TLVLBlock) write(w io.Writer) error {
+func (s TLVLBlock) writeTLV(w io.Writer) error {
 	buf := &bytes.Buffer{}
-	if err := s.TLVList.write(buf); err != nil {
+	if err := s.TLVList.writeTLV(buf); err != nil {
 		return err
 	}
 	if err := binary.Write(w, binary.BigEndian, uint16(buf.Len())); err != nil {
@@ -213,24 +238,9 @@ func (s *TLVList) addTLV(tlv TLV) {
 	*s = append(*s, tlv)
 }
 
-func (s *TLVList) read(r io.Reader) error {
-	for {
-		tlv := TLV{}
-		if err := tlv.read(r); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		*s = append(*s, tlv)
-	}
-
-	return nil
-}
-
-func (s TLVList) write(w io.Writer) error {
+func (s TLVList) writeTLV(w io.Writer) error {
 	for _, tlv := range s {
-		if err := tlv.write(w); err != nil {
+		if err := tlv.writeTLV(w); err != nil {
 			return err
 		}
 	}
@@ -278,7 +288,7 @@ type TLV struct {
 	val   any
 }
 
-func (t TLV) write(w io.Writer) error {
+func (t TLV) writeTLV(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, t.tType); err != nil {
 		return err
 	}
@@ -300,9 +310,10 @@ func (t TLV) write(w io.Writer) error {
 	case string:
 		valLen = uint16(len(t.val.(string)))
 		val = []byte(t.val.(string))
-	case snacWriter:
+	default:
+		// move this logic to SNAC_0x0E_0x04_ChatUsersLeft
 		buf := &bytes.Buffer{}
-		if err := val.(snacWriter).write(buf); err != nil {
+		if err := Marshal(t.val, buf); err != nil {
 			return err
 		}
 		valLen = uint16(buf.Len())
@@ -473,7 +484,7 @@ type IncomingMessage struct {
 
 type XMessage struct {
 	snacFrame snacFrame
-	snacOut   snacWriter
+	snacOut   any
 }
 
 const (
@@ -612,7 +623,7 @@ func routeIncomingRequests(cfg Config, ready OnReadyCB, sm *SessionManager, sess
 	return nil
 }
 
-func writeOutSNAC(originsnac snacFrame, snacFrame snacFrame, snacOut snacWriter, sequence *uint32, w io.Writer) error {
+func writeOutSNAC(originsnac snacFrame, snacFrame snacFrame, snacOut any, sequence *uint32, w io.Writer) error {
 	if originsnac.requestID != 0 {
 		snacFrame.requestID = originsnac.requestID
 	}
@@ -621,7 +632,7 @@ func writeOutSNAC(originsnac snacFrame, snacFrame snacFrame, snacOut snacWriter,
 	if err := snacFrame.write(snacBuf); err != nil {
 		return err
 	}
-	if err := snacOut.write(snacBuf); err != nil {
+	if err := Marshal(snacOut, snacBuf); err != nil {
 		return err
 	}
 

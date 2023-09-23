@@ -1,7 +1,6 @@
 package oscar
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -76,68 +75,6 @@ func routeICBM(sm *SessionManager, fm *FeedbagStore, sess *Session, snac snacFra
 	return nil
 }
 
-type snacParameterRequest struct {
-	channel              uint16
-	ICBMFlags            uint32
-	maxIncomingICBMLen   uint16
-	maxSourceEvil        uint16
-	maxDestinationEvil   uint16
-	minInterICBMInterval uint32
-}
-
-func (s *snacParameterRequest) read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &s.channel); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.ICBMFlags); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.maxIncomingICBMLen); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.maxSourceEvil); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.maxDestinationEvil); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.minInterICBMInterval); err != nil {
-		return err
-	}
-	return nil
-}
-
-type snacParameterResponse struct {
-	maxSlots             uint16
-	ICBMFlags            uint32
-	maxIncomingICBMLen   uint16
-	maxSourceEvil        uint16
-	maxDestinationEvil   uint16
-	minInterICBMInterval uint32
-}
-
-func (s snacParameterResponse) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.maxSlots); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.ICBMFlags); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.maxIncomingICBMLen); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.maxSourceEvil); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.maxDestinationEvil); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.minInterICBMInterval); err != nil {
-		return err
-	}
-	return nil
-}
-
 func SendAndReceiveICBMParameterReply(snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("sendAndReceiveICBMParameterReply read SNAC frame: %+v\n", snac)
 
@@ -145,77 +82,27 @@ func SendAndReceiveICBMParameterReply(snac snacFrame, _ io.Reader, w io.Writer, 
 		foodGroup: ICBM,
 		subGroup:  ICBMParameterReply,
 	}
-	snacPayloadOut := snacParameterResponse{
-		maxSlots:             100,
+	snacPayloadOut := SNAC_0x04_0x05_ICBMParameterReply{
+		MaxSlots:             100,
 		ICBMFlags:            3,
-		maxIncomingICBMLen:   512,
-		maxSourceEvil:        999,
-		maxDestinationEvil:   999,
-		minInterICBMInterval: 0,
+		MaxIncomingICBMLen:   512,
+		MaxSourceEvil:        999,
+		MaxDestinationEvil:   999,
+		MinInterICBMInterval: 0,
 	}
 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-type snacMessageToHost struct {
-	cookie     [8]byte
-	channelID  uint16
-	screenName string
-	TLVRestBlock
-}
-
-func (s *snacMessageToHost) read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &s.cookie); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.channelID); err != nil {
-		return err
-	}
-
-	var l uint8
-	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-		return err
-	}
-	buf := make([]byte, l)
-	if _, err := r.Read(buf); err != nil {
-		return err
-	}
-	s.screenName = string(buf)
-
-	return s.TLVRestBlock.read(r)
-}
-
-type snacHostAck struct {
-	cookie     [8]byte
-	channelID  uint16
-	screenName string
-}
-
-func (f snacHostAck) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, f.cookie); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, f.channelID); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, []byte(f.screenName)); err != nil {
-		return err
-	}
-	return nil
-}
-
 func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *Session, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChannelMsgTohost read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := snacMessageToHost{}
-	if err := snacPayloadIn.read(r); err != nil {
+	snacPayloadIn := SNAC_0x04_0x06_ICBMChannelMsgToHost{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.screenName)
+	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.ScreenName)
 	if err != nil {
 		return err
 	}
@@ -225,15 +112,15 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 			subGroup:  ICBMErr,
 		}
 		snacPayloadOut := snacError{
-			code: ErrorCodeNotLoggedOn,
+			Code: ErrorCodeNotLoggedOn,
 		}
 		if blocked == BlockedA {
-			snacPayloadOut.code = ErrorCodeInLocalPermitDeny
+			snacPayloadOut.Code = ErrorCodeInLocalPermitDeny
 		}
 		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
-	recipSess, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+	recipSess, err := sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
 	if err != nil {
 		if errors.Is(err, errSessNotFound) {
 			snacFrameOut := snacFrame{
@@ -241,18 +128,20 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 				subGroup:  ICBMErr,
 			}
 			snacPayloadOut := snacError{
-				code: ErrorCodeNotLoggedOn,
+				Code: ErrorCodeNotLoggedOn,
 			}
 			return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 		}
 		return err
 	}
 
-	clientIM := snacClientIM{
-		cookie:       snacPayloadIn.cookie,
-		channelID:    snacPayloadIn.channelID,
-		screenName:   sess.ScreenName,
-		warningLevel: sess.GetWarning(),
+	clientIM := SNAC_0x04_0x07_ICBMChannelMsgToClient{
+		Cookie:    snacPayloadIn.Cookie,
+		ChannelID: snacPayloadIn.ChannelID,
+		TLVUserInfo: TLVUserInfo{
+			ScreenName:   sess.ScreenName,
+			WarningLevel: sess.GetWarning(),
+		},
 		TLVRestBlock: TLVRestBlock{
 			TLVList: TLVList{
 				{
@@ -275,10 +164,7 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		})
 	}
 	if t, hasAutoResp := snacPayloadIn.getTLV(0x04); hasAutoResp {
-		clientIM.TLVRestBlock.addTLV(TLV{
-			tType: 0x05,
-			val:   t,
-		})
+		clientIM.TLVRestBlock.addTLV(t)
 	}
 
 	sm.SendToScreenName(recipSess.ScreenName, XMessage{
@@ -299,10 +185,10 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		foodGroup: ICBM,
 		subGroup:  ICBMHostAck,
 	}
-	snacPayloadOut := snacHostAck{
-		cookie:     snacPayloadIn.cookie,
-		channelID:  snacPayloadIn.channelID,
-		screenName: snacPayloadIn.screenName,
+	snacPayloadOut := SNAC_0x04_0x0C_ICBMHostAck{
+		Cookie:     snacPayloadIn.Cookie,
+		ChannelID:  snacPayloadIn.ChannelID,
+		ScreenName: snacPayloadIn.ScreenName,
 	}
 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
@@ -311,145 +197,36 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 func ReceiveAddParameters(snac snacFrame, r io.Reader) error {
 	fmt.Printf("ReceiveAddParameters read SNAC frame: %+v\n", snac)
 
-	snacPayload := snacParameterRequest{}
-	if err := snacPayload.read(r); err != nil {
+	snacPayloadIn := SNAC_0x04_0x02_ICBMAddParameters{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	fmt.Printf("ReceiveAddParameters read SNAC: %+v\n", snacPayload)
+	fmt.Printf("ReceiveAddParameters read SNAC: %+v\n", snacPayloadIn)
 	return nil
-}
-
-type snacClientIM struct {
-	cookie       [8]byte
-	channelID    uint16
-	screenName   string
-	warningLevel uint16
-	TLVBlock
-	TLVRestBlock
-}
-
-func (f snacClientIM) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, f.cookie); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, f.channelID); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, []byte(f.screenName)); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, f.warningLevel); err != nil {
-		return err
-	}
-	if err := f.TLVBlock.write(w); err != nil {
-		return err
-	}
-	return f.TLVRestBlock.write(w)
-}
-
-type snacClientErr struct {
-	cookie     [8]byte
-	channelID  uint16
-	screenName string
-	code       uint16
-	errInfo    []byte
-}
-
-func (s *snacClientErr) read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &s.cookie); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.channelID); err != nil {
-		return err
-	}
-	var l uint8
-	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-		return err
-	}
-	buf := make([]byte, l)
-	if _, err := r.Read(buf); err != nil {
-		return err
-	}
-	s.screenName = string(buf)
-
-	if err := binary.Read(r, binary.BigEndian, &s.code); err != nil {
-		return err
-	}
-
-	var err error
-	s.errInfo, err = io.ReadAll(r)
-	return err
 }
 
 func ReceiveClientErr(snac snacFrame, r io.Reader) error {
 	fmt.Printf("ReceiveClientErr read SNAC frame: %+v\n", snac)
 
-	snacPayload := snacClientErr{}
-	if err := snacPayload.read(r); err != nil {
+	snacPayloadIn := SNAC_0x04_0x0B_ICBMClientErr{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	fmt.Printf("ReceiveClientErr read SNAC: %+v\n", snacPayload)
+	fmt.Printf("ReceiveClientErr read SNAC: %+v\n", snacPayloadIn)
 	return nil
-}
-
-type snacClientEvent struct {
-	cookie     [8]byte
-	channelID  uint16
-	screenName string
-	event      uint16
-}
-
-func (s *snacClientEvent) read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &s.cookie); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.channelID); err != nil {
-		return err
-	}
-
-	var l uint8
-	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-		return err
-	}
-	buf := make([]byte, l)
-	if _, err := r.Read(buf); err != nil {
-		return err
-	}
-	s.screenName = string(buf)
-
-	return binary.Read(r, binary.BigEndian, &s.event)
-}
-
-func (s snacClientEvent) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.cookie); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.channelID); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint8(len(s.screenName))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, []byte(s.screenName)); err != nil {
-		return err
-	}
-	return binary.Write(w, binary.BigEndian, s.event)
 }
 
 func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Session, snac snacFrame, r io.Reader) error {
 	fmt.Printf("SendAndReceiveClientEvent read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := snacClientEvent{}
-	if err := snacPayloadIn.read(r); err != nil {
+	snacPayloadIn := SNAC_0x04_0x14_ICBMClientEvent{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.screenName)
+	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.ScreenName)
 	if err != nil {
 		return err
 	}
@@ -457,65 +234,20 @@ func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 		return nil
 	}
 
-	sm.SendToScreenName(snacPayloadIn.screenName, XMessage{
+	sm.SendToScreenName(snacPayloadIn.ScreenName, XMessage{
 		snacFrame: snacFrame{
 			foodGroup: ICBM,
 			subGroup:  ICBMClientEvent,
 		},
-		snacOut: snacClientEvent{
-			cookie:     snacPayloadIn.cookie,
-			channelID:  snacPayloadIn.channelID,
-			screenName: sess.ScreenName,
-			event:      snacPayloadIn.event,
+		snacOut: SNAC_0x04_0x14_ICBMClientEvent{
+			Cookie:     snacPayloadIn.Cookie,
+			ChannelID:  snacPayloadIn.ChannelID,
+			ScreenName: sess.ScreenName,
+			Event:      snacPayloadIn.Event,
 		},
 	})
 
 	return nil
-}
-
-type snacEvilRequest struct {
-	sendAs     uint16
-	screenName string
-}
-
-func (s *snacEvilRequest) read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &s.sendAs); err != nil {
-		return err
-	}
-
-	var l uint8
-	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-		return err
-	}
-	buf := make([]byte, l)
-	if _, err := r.Read(buf); err != nil {
-		return err
-	}
-	s.screenName = string(buf)
-
-	return nil
-}
-
-func (s snacEvilRequest) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.sendAs); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint8(len(s.screenName))); err != nil {
-		return err
-	}
-	return binary.Write(w, binary.BigEndian, []byte(s.screenName))
-}
-
-type snacEvilResponse struct {
-	evilDeltaApplied uint16
-	updatedEvilValue uint16
-}
-
-func (s snacEvilResponse) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.evilDeltaApplied); err != nil {
-		return err
-	}
-	return binary.Write(w, binary.BigEndian, s.updatedEvilValue)
 }
 
 const (
@@ -526,25 +258,25 @@ const (
 func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Session, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveEvilRequest read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := snacEvilRequest{}
-	if err := snacPayloadIn.read(r); err != nil {
+	snacPayloadIn := SNAC_0x04_0x08_ICBMEvilRequest{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
 	// don't let users warn themselves, it causes the AIM client to go into a
 	// weird state.
-	if snacPayloadIn.screenName == sess.ScreenName {
+	if snacPayloadIn.ScreenName == sess.ScreenName {
 		snacFrameOut := snacFrame{
 			foodGroup: ICBM,
 			subGroup:  ICBMErr,
 		}
 		snacPayloadOut := snacError{
-			code: ErrorCodeNotSupportedByHost,
+			Code: ErrorCodeNotSupportedByHost,
 		}
 		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
-	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.screenName)
+	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.ScreenName)
 	if err != nil {
 		return err
 	}
@@ -554,18 +286,18 @@ func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 			subGroup:  ICBMErr,
 		}
 		snacPayloadOut := snacError{
-			code: ErrorCodeNotLoggedOn,
+			Code: ErrorCodeNotLoggedOn,
 		}
 		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
-	recipSess, err := sm.RetrieveByScreenName(snacPayloadIn.screenName)
+	recipSess, err := sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
 	if err != nil {
 		return err
 	}
 
 	increase := evilDelta
-	if snacPayloadIn.sendAs == 1 {
+	if snacPayloadIn.SendAs == 1 {
 		increase = evilDeltaAnon
 	}
 	recipSess.IncreaseWarning(increase)
@@ -574,20 +306,28 @@ func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Sessi
 		foodGroup: ICBM,
 		subGroup:  ICBMEvilReply,
 	}
-	snacPayloadOut := snacEvilResponse{
-		evilDeltaApplied: increase,
-		updatedEvilValue: recipSess.GetWarning(),
+	snacPayloadOut := SNAC_0x04_0x09_ICBMEvilReply{
+		EvilDeltaApplied: increase,
+		UpdatedEvilValue: recipSess.GetWarning(),
 	}
 
 	if err := writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
 		return err
 	}
 
-	notif := snacEvilNotification{
-		newEvil: recipSess.GetWarning(),
-	}
-	if snacPayloadIn.sendAs == 0 {
-		notif.screenName = sess.ScreenName
+	var notif any
+	if snacPayloadIn.SendAs == 0 {
+		notif = SNAC_0x01_0x10_OServiceEvilNotification{
+			NewEvil: recipSess.GetWarning(),
+			TLVUserInfo: TLVUserInfo{
+				ScreenName:   sess.ScreenName,
+				WarningLevel: recipSess.GetWarning(),
+			},
+		}
+	} else {
+		notif = SNAC_0x01_0x10_OServiceEvilNotificationAnon{
+			NewEvil: recipSess.GetWarning(),
+		}
 	}
 
 	sm.SendToScreenName(recipSess.ScreenName, XMessage{
