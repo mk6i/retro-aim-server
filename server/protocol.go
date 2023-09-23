@@ -194,7 +194,7 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 
 	for {
 		flap := oscar.FlapFrame{}
-		if err := flap.Read(rw); err != nil {
+		if err := oscar.Unmarshal(&flap, rw); err != nil {
 			errCh <- err
 			return
 		}
@@ -210,10 +210,9 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 				return
 			}
 
-			buf := bytes.NewBuffer(b)
-
 			snac := oscar.SnacFrame{}
-			if err := snac.Read(buf); err != nil {
+			buf := bytes.NewBuffer(b)
+			if err := oscar.Unmarshal(&snac, buf); err != nil {
 				errCh <- err
 				return
 			}
@@ -322,7 +321,7 @@ func writeOutSNAC(originsnac oscar.SnacFrame, snacFrame oscar.SnacFrame, snacOut
 	}
 
 	snacBuf := &bytes.Buffer{}
-	if err := snacFrame.Write(snacBuf); err != nil {
+	if err := oscar.Marshal(snacFrame, snacBuf); err != nil {
 		return err
 	}
 	if err := oscar.Marshal(snacOut, snacBuf); err != nil {
@@ -338,7 +337,7 @@ func writeOutSNAC(originsnac oscar.SnacFrame, snacFrame oscar.SnacFrame, snacOut
 
 	fmt.Printf(" write FLAP: %+v\n", flap)
 
-	if err := flap.Write(w); err != nil {
+	if err := oscar.Marshal(flap, w); err != nil {
 		return err
 	}
 

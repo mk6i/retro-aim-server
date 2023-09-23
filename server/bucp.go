@@ -41,7 +41,7 @@ func routeBUCP(snac oscar.SnacFrame) error {
 
 func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence *uint32) error {
 	flap := oscar.FlapFrame{}
-	if err := flap.Read(r); err != nil {
+	if err := oscar.Unmarshal(&flap, r); err != nil {
 		return err
 	}
 
@@ -50,9 +50,9 @@ func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence 
 		return err
 	}
 
-	buf := bytes.NewBuffer(b)
 	snac := oscar.SnacFrame{}
-	if err := snac.Read(buf); err != nil {
+	buf := bytes.NewBuffer(b)
+	if err := oscar.Unmarshal(&snac, buf); err != nil {
 		return err
 	}
 
@@ -76,7 +76,7 @@ func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence 
 
 func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32) error {
 	flap := oscar.FlapFrame{}
-	if err := flap.Read(r); err != nil {
+	if err := oscar.Unmarshal(&flap, r); err != nil {
 		return err
 	}
 
@@ -85,9 +85,9 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore,
 		return err
 	}
 
-	buf := bytes.NewBuffer(b)
 	snac := oscar.SnacFrame{}
-	if err := snac.Read(buf); err != nil {
+	buf := bytes.NewBuffer(b)
+	if err := oscar.Unmarshal(&snac, buf); err != nil {
 		return err
 	}
 
