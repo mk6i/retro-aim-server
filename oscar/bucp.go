@@ -2,7 +2,6 @@ package oscar
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -39,28 +38,6 @@ func routeBUCP(snac snacFrame) error {
 	return nil
 }
 
-type snacBUCPChallengeRequest struct {
-	TLVRestBlock
-}
-
-func (s *snacBUCPChallengeRequest) read(r io.Reader) error {
-	return s.TLVRestBlock.read(r)
-}
-
-type snacBUCPChallengeResponse struct {
-	authKey string
-}
-
-func (s snacBUCPChallengeResponse) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, uint16(len(s.authKey))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, []byte(s.authKey)); err != nil {
-		return err
-	}
-	return nil
-}
-
 func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence *uint32) error {
 	flap := flapFrame{}
 	if err := flap.read(r); err != nil {
@@ -78,30 +55,22 @@ func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence 
 		return err
 	}
 
-	snacPayload := snacBUCPChallengeRequest{}
-	if err := snacPayload.read(buf); err != nil {
+	snacPayloadIn := SNAC_0x17_0x06_BUCPChallengeRequest{}
+	if err := Unmarshal(&snacPayloadIn, buf); err != nil {
 		return err
 	}
 
-	fmt.Printf("ReceiveAndSendAuthChallenge read SNAC payload: %+v\n", snacPayload)
+	fmt.Printf("ReceiveAndSendAuthChallenge read SNAC payload: %+v\n", snacPayloadIn)
 
 	snacFrameOut := snacFrame{
 		foodGroup: 0x17,
 		subGroup:  0x07,
 	}
-	snacPayloadOut := snacBUCPChallengeResponse{
-		authKey: s.ID,
+	snacPayloadOut := SNAC_0x17_0x07_BUCPChallengeResponse{
+		AuthKey: s.ID,
 	}
 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
-}
-
-type snacBUCPLoginRequest struct {
-	TLVRestBlock
-}
-
-func (s *snacBUCPLoginRequest) read(r io.Reader) error {
-	return s.TLVRestBlock.read(r)
 }
 
 func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32) error {
@@ -121,15 +90,15 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore,
 		return err
 	}
 
-	snacPayload := snacBUCPLoginRequest{}
-	if err := snacPayload.read(buf); err != nil {
+	snacPayloadIn := SNAC_0x17_0x02_BUCPLoginRequest{}
+	if err := Unmarshal(&snacPayloadIn, buf); err != nil {
 		return err
 	}
 
-	fmt.Printf("ReceiveAndSendBUCPLoginRequest read SNAC: %+v\n", snacPayload)
+	fmt.Printf("ReceiveAndSendBUCPLoginRequest read SNAC: %+v\n", snacPayloadIn)
 
 	var found bool
-	sess.ScreenName, found = snacPayload.getString(TLV_SCREEN_NAME)
+	sess.ScreenName, found = snacPayloadIn.getString(TLV_SCREEN_NAME)
 	if !found {
 		return errors.New("unable to find screen name")
 	}
@@ -143,7 +112,7 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore,
 		subGroup:  0x03,
 	}
 
-	snacPayloadOut := snacBUCPLoginRequest{
+	snacPayloadOut := SNAC_0x17_0x02_BUCPLoginRequest{
 		TLVRestBlock: TLVRestBlock{
 			TLVList: TLVList{
 				{

@@ -53,19 +53,21 @@ func SendAndReceivePDRightsQuery(snac snacFrame, _ io.Reader, w io.Writer, seque
 		foodGroup: PD,
 		subGroup:  PDRightsReply,
 	}
-	snacPayloadOut := TLVRestBlock{
-		TLVList: TLVList{
-			{
-				tType: 0x01,
-				val:   uint16(100),
-			},
-			{
-				tType: 0x02,
-				val:   uint16(100),
-			},
-			{
-				tType: 0x03,
-				val:   uint16(100),
+	snacPayloadOut := SNAC_0x09_0x03_PDRightsReply{
+		TLVRestBlock{
+			TLVList: TLVList{
+				{
+					tType: 0x01,
+					val:   uint16(100),
+				},
+				{
+					tType: 0x02,
+					val:   uint16(100),
+				},
+				{
+					tType: 0x03,
+					val:   uint16(100),
+				},
 			},
 		},
 	}

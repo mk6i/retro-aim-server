@@ -23,19 +23,19 @@ func TestFeedbagStore(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
-	itemsIn := []feedbagItem{
+	itemsIn := []FeedbagItem{
 		{
-			groupID:   0,
-			itemID:    1805,
-			classID:   3,
-			name:      "spimmer1234",
+			GroupID:   0,
+			ItemID:    1805,
+			ClassID:   3,
+			Name:      "spimmer1234",
 			TLVLBlock: TLVLBlock{},
 		},
 		{
-			groupID: 0x0A,
-			itemID:  0,
-			classID: 1,
-			name:    "Friends",
+			GroupID: 0x0A,
+			ItemID:  0,
+			ClassID: 1,
+			Name:    "Friends",
 		},
 	}
 	if err := f.Upsert(screenName, itemsIn); err != nil {
@@ -69,12 +69,12 @@ func TestFeedbagDelete(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
-	itemsIn := []feedbagItem{
+	itemsIn := []FeedbagItem{
 		{
-			groupID: 0,
-			itemID:  1805,
-			classID: 3,
-			name:    "spimmer1234",
+			GroupID: 0,
+			ItemID:  1805,
+			ClassID: 3,
+			Name:    "spimmer1234",
 			TLVLBlock: TLVLBlock{
 				TLVList: TLVList{
 					{
@@ -85,16 +85,16 @@ func TestFeedbagDelete(t *testing.T) {
 			},
 		},
 		{
-			groupID: 0x0A,
-			itemID:  0,
-			classID: 1,
-			name:    "Friends",
+			GroupID: 0x0A,
+			ItemID:  0,
+			ClassID: 1,
+			Name:    "Friends",
 		},
 		{
-			groupID: 0x0B,
-			itemID:  100,
-			classID: 1,
-			name:    "co-workers",
+			GroupID: 0x0B,
+			ItemID:  100,
+			ClassID: 1,
+			Name:    "co-workers",
 		},
 	}
 
@@ -102,7 +102,7 @@ func TestFeedbagDelete(t *testing.T) {
 		t.Fatalf("failed to upsert: %s", err.Error())
 	}
 
-	if err := f.Delete(screenName, []feedbagItem{itemsIn[0]}); err != nil {
+	if err := f.Delete(screenName, []FeedbagItem{itemsIn[0]}); err != nil {
 		t.Fatalf("failed to delete: %s", err.Error())
 	}
 
@@ -159,12 +159,12 @@ func TestLastModifiedNotEmpty(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
-	itemsIn := []feedbagItem{
+	itemsIn := []FeedbagItem{
 		{
-			groupID: 0x0A,
-			itemID:  0,
-			classID: 1,
-			name:    "Friends",
+			GroupID: 0x0A,
+			ItemID:  0,
+			ClassID: 1,
+			Name:    "Friends",
 		},
 	}
 	if err := f.Upsert(screenName, itemsIn); err != nil {

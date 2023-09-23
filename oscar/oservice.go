@@ -2,7 +2,6 @@ package oscar
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -118,201 +117,37 @@ func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm *SessionMan
 	return nil
 }
 
-type snacOServiceErr struct {
-	code uint16
-}
-
-func (s snacOServiceErr) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.code); err != nil {
-		return err
-	}
-	return nil
-}
-
-type snac01_03 struct {
-	snacFrame
-	foodGroups []uint16
-}
-
-func (s snac01_03) write(w io.Writer) error {
-	if err := s.snacFrame.write(w); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.foodGroups); err != nil {
-		return err
-	}
-	return nil
-}
-
-func WriteOServiceHostOnline(foodGroups []uint16, rw io.ReadWriter, sequence *uint32) error {
+func WriteOServiceHostOnline(foodGroups []uint16, w io.Writer, sequence *uint32) error {
 	fmt.Println("writeOServiceHostOnline...")
-
-	snac := snac01_03{
-		snacFrame: snacFrame{
-			foodGroup: 0x01,
-			subGroup:  0x03,
-		},
-		foodGroups: foodGroups,
+	snacFrameOut := snacFrame{
+		foodGroup: OSERVICE,
+		subGroup:  OServiceHostOnline,
 	}
-
-	fmt.Printf("writeOServiceHostOnline SNAC: %+v\n", snac)
-
-	snacBuf := &bytes.Buffer{}
-	if err := snac.write(snacBuf); err != nil {
-		return err
+	snacPayloadOut := SNAC_0x01_0x03_OServiceHostOnline{
+		FoodGroups: foodGroups,
 	}
-
-	flap := flapFrame{
-		startMarker:   42,
-		frameType:     2,
-		sequence:      uint16(*sequence),
-		payloadLength: uint16(snacBuf.Len()),
-	}
-	*sequence++
-	fmt.Printf("writeOServiceHostOnline FLAP: %+v\n", flap)
-
-	if err := flap.write(rw); err != nil {
-		return err
-	}
-
-	_, err := rw.Write(snacBuf.Bytes())
-	return err
-}
-
-type snacVersions struct {
-	versions map[uint16]uint16
-}
-
-func (s *snacVersions) read(r io.Reader) error {
-	for {
-		var family uint16
-		if err := binary.Read(r, binary.BigEndian, &family); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		var version uint16
-		if err := binary.Read(r, binary.BigEndian, &version); err != nil {
-			return err
-		}
-		s.versions[family] = version
-	}
-	return nil
-}
-
-func (s snacVersions) write(w io.Writer) error {
-	for family, version := range s.versions {
-		if err := binary.Write(w, binary.BigEndian, family); err != nil {
-			return err
-		}
-		if err := binary.Write(w, binary.BigEndian, version); err != nil {
-			return err
-		}
-	}
-	return nil
+	return writeOutSNAC(snacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func ReceiveAndSendHostVersions(snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendHostVersions read SNAC frame: %+v\n", snac)
 
-	snacPayloadOut := snacVersions{
-		versions: make(map[uint16]uint16),
-	}
-	if err := snacPayloadOut.read(r); err != nil {
+	snacPayloadIn := SNAC_0x01_0x17_OServiceClientVersions{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	fmt.Printf("receiveAndSendHostVersions read SNAC: %+v\n", snacPayloadOut)
+	fmt.Printf("receiveAndSendHostVersions read SNAC: %+v\n", snacPayloadIn)
 
 	snacFrameOut := snacFrame{
 		foodGroup: OSERVICE,
 		subGroup:  OServiceHostVersions,
 	}
+	snacPayloadOut := SNAC_0x01_0x18_OServiceHostVersions{
+		Versions: snacPayloadIn.Versions,
+	}
 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
-}
-
-type rateClass struct {
-	ID              uint16
-	windowSize      uint32
-	clearLevel      uint32
-	alertLevel      uint32
-	limitLevel      uint32
-	disconnectLevel uint32
-	currentLevel    uint32
-	maxLevel        uint32
-	lastTime        uint32 // protocol v2 only
-	currentState    byte   // protocol v2 only
-}
-
-type rateGroup struct {
-	ID    uint16
-	pairs []struct {
-		foodGroup uint16
-		subGroup  uint16
-	}
-}
-
-type snacOServiceRateParamsReply struct {
-	rateClasses []rateClass
-	rateGroups  []rateGroup
-}
-
-func (s snacOServiceRateParamsReply) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, uint16(len(s.rateClasses))); err != nil {
-		return err
-	}
-	for _, rateClass := range s.rateClasses {
-		if err := binary.Write(w, binary.BigEndian, rateClass.ID); err != nil {
-			return err
-		}
-		if err := binary.Write(w, binary.BigEndian, rateClass.windowSize); err != nil {
-			return err
-		}
-		if err := binary.Write(w, binary.BigEndian, rateClass.clearLevel); err != nil {
-			return err
-		}
-		if err := binary.Write(w, binary.BigEndian, rateClass.alertLevel); err != nil {
-			return err
-		}
-		if err := binary.Write(w, binary.BigEndian, rateClass.limitLevel); err != nil {
-			return err
-		}
-		if err := binary.Write(w, binary.BigEndian, rateClass.disconnectLevel); err != nil {
-			return err
-		}
-		if err := binary.Write(w, binary.BigEndian, rateClass.currentLevel); err != nil {
-			return err
-		}
-		if err := binary.Write(w, binary.BigEndian, rateClass.maxLevel); err != nil {
-			return err
-		}
-		if err := binary.Write(w, binary.BigEndian, rateClass.lastTime); err != nil {
-			return err
-		}
-		if err := binary.Write(w, binary.BigEndian, rateClass.currentState); err != nil {
-			return err
-		}
-	}
-	for _, rateGroup := range s.rateGroups {
-		if err := binary.Write(w, binary.BigEndian, rateGroup.ID); err != nil {
-			return err
-		}
-		if err := binary.Write(w, binary.BigEndian, uint16(len(rateGroup.pairs))); err != nil {
-			return err
-		}
-		for _, pair := range rateGroup.pairs {
-			if err := binary.Write(w, binary.BigEndian, pair.foodGroup); err != nil {
-				return err
-			}
-			if err := binary.Write(w, binary.BigEndian, pair.subGroup); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }
 
 func ReceiveAndSendServiceRateParams(snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
@@ -323,27 +158,44 @@ func ReceiveAndSendServiceRateParams(snac snacFrame, _ io.Reader, w io.Writer, s
 		subGroup:  OServiceRateParamsReply,
 	}
 
-	snacPayloadOut := snacOServiceRateParamsReply{
-		rateClasses: []rateClass{
+	snacPayloadOut := SNAC_0x01_0x07_OServiceRateParamsReply{
+		RateClasses: []struct {
+			ID              uint16
+			WindowSize      uint32
+			ClearLevel      uint32
+			AlertLevel      uint32
+			LimitLevel      uint32
+			DisconnectLevel uint32
+			CurrentLevel    uint32
+			MaxLevel        uint32
+			LastTime        uint32 // protocol v2 only
+			CurrentState    uint8  // protocol v2 only
+		}{
 			{
 				ID:              0x0001,
-				windowSize:      0x00000050,
-				clearLevel:      0x000009C4,
-				alertLevel:      0x000007D0,
-				limitLevel:      0x000005DC,
-				disconnectLevel: 0x00000320,
-				currentLevel:    0x00000D69,
-				maxLevel:        0x00001770,
-				lastTime:        0x00000000,
-				currentState:    0x00,
+				WindowSize:      0x00000050,
+				ClearLevel:      0x000009C4,
+				AlertLevel:      0x000007D0,
+				LimitLevel:      0x000005DC,
+				DisconnectLevel: 0x00000320,
+				CurrentLevel:    0x00000D69,
+				MaxLevel:        0x00001770,
+				LastTime:        0x00000000,
+				CurrentState:    0x00,
 			},
 		},
-		rateGroups: []rateGroup{
+		RateGroups: []struct {
+			ID    uint16
+			Pairs []struct {
+				FoodGroup uint16
+				SubGroup  uint16
+			} `count_prefix:"uint16"`
+		}{
 			{
 				ID: 1,
-				pairs: []struct {
-					foodGroup uint16
-					subGroup  uint16
+				Pairs: []struct {
+					FoodGroup uint16
+					SubGroup  uint16
 				}{},
 			},
 		},
@@ -351,36 +203,17 @@ func ReceiveAndSendServiceRateParams(snac snacFrame, _ io.Reader, w io.Writer, s
 
 	for i := uint16(0); i < 24; i++ { // for each food group
 		for j := uint16(0); j < 32; j++ { // for each subgroup
-			snacPayloadOut.rateGroups[0].pairs = append(snacPayloadOut.rateGroups[0].pairs,
+			snacPayloadOut.RateGroups[0].Pairs = append(snacPayloadOut.RateGroups[0].Pairs,
 				struct {
-					foodGroup uint16
-					subGroup  uint16
+					FoodGroup uint16
+					SubGroup  uint16
 				}{
-					foodGroup: i,
-					subGroup:  j,
+					FoodGroup: i,
+					SubGroup:  j,
 				})
 		}
 	}
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
-}
-
-type snacOServiceUserInfoUpdate struct {
-	screenName   string
-	warningLevel uint16
-	TLVBlock
-}
-
-func (s snacOServiceUserInfoUpdate) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, uint8(len(s.screenName))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, []byte(s.screenName)); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.warningLevel); err != nil {
-		return err
-	}
-	return s.TLVBlock.write(w)
 }
 
 func ReceiveAndSendServiceRequestSelfInfo(sess *Session, snac snacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
@@ -390,11 +223,13 @@ func ReceiveAndSendServiceRequestSelfInfo(sess *Session, snac snacFrame, _ io.Re
 		foodGroup: OSERVICE,
 		subGroup:  OServiceUserInfoUpdate,
 	}
-	snacPayloadOut := snacOServiceUserInfoUpdate{
-		screenName:   sess.ScreenName,
-		warningLevel: sess.GetWarning(),
-		TLVBlock: TLVBlock{
-			TLVList: sess.GetUserInfo(),
+	snacPayloadOut := SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+		TLVUserInfo: TLVUserInfo{
+			ScreenName:   sess.ScreenName,
+			WarningLevel: sess.GetWarning(),
+			TLVBlock: TLVBlock{
+				TLVList: sess.GetUserInfo(),
+			},
 		},
 	}
 
@@ -404,34 +239,14 @@ func ReceiveAndSendServiceRequestSelfInfo(sess *Session, snac snacFrame, _ io.Re
 func ReceiveRateParamsSubAdd(snac snacFrame, r io.Reader) error {
 	fmt.Printf("receiveRateParamsSubAdd read SNAC frame: %+v\n", snac)
 
-	snacPayload := TLVRestBlock{}
-	if err := snacPayload.read(r); err != nil {
+	snacPayloadIn := SNAC_0x01_0x08_OServiceRateParamsSubAdd{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	fmt.Printf("receiveAndSendHostVersions read SNAC: %+v\n", snacPayload)
+	fmt.Printf("receiveAndSendHostVersions read SNAC: %+v\n", snacPayloadIn)
 
 	return nil
-}
-
-type clientVersion struct {
-	foodGroup   uint16
-	version     uint16
-	toolID      uint16
-	toolVersion uint16
-}
-
-func (c *clientVersion) read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &c.foodGroup); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &c.version); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &c.toolID); err != nil {
-		return err
-	}
-	return binary.Read(r, binary.BigEndian, &c.toolVersion)
 }
 
 type OnReadyCB func(sess *Session, sm *SessionManager, r io.Reader, w io.Writer, sequence *uint32) error
@@ -439,15 +254,13 @@ type OnReadyCB func(sess *Session, sm *SessionManager, r io.Reader, w io.Writer,
 func ReceiveClientOnline(onReadyCB OnReadyCB, sess *Session, sm *SessionManager, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveClientOnline read SNAC frame: %+v\n", snac)
 
-	for {
-		item := clientVersion{}
-		if err := item.read(r); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		fmt.Printf("ReceiveClientOnline read SNAC client messageType: %+v\n", item)
+	snacPayloadIn := SNAC_0x01_0x02_OServiceClientOnline{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+		return err
+	}
+
+	for _, version := range snacPayloadIn.GroupVersions {
+		fmt.Printf("ReceiveClientOnline read SNAC client messageType: %+v\n", version)
 	}
 
 	return onReadyCB(sess, sm, r, w, sequence)
@@ -476,11 +289,13 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 			foodGroup: BUDDY,
 			subGroup:  BuddyArrived,
 		}
-		snacPayloadOut := snacBuddyArrived{
-			screenName:   buddies,
-			warningLevel: sess.GetWarning(),
-			TLVBlock: TLVBlock{
-				TLVList: sess.GetUserInfo(),
+		snacPayloadOut := SNAC_0x03_0x0A_BuddyArrived{
+			TLVUserInfo: TLVUserInfo{
+				ScreenName:   buddies,
+				WarningLevel: sess.GetWarning(),
+				TLVBlock: TLVBlock{
+					TLVList: sess.GetUserInfo(),
+				},
 			},
 		}
 
@@ -494,13 +309,12 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveSetUserInfoFields read SNAC frame: %+v\n", snac)
 
-	snacPayload := TLVRestBlock{}
-	err := snacPayload.read(r)
-	if err != nil {
+	snacPayloadIn := SNAC_0x01_0x1E_OServiceSetUserInfoFields{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	if status, hasStatus := snacPayload.getUint32(0x06); hasStatus {
+	if status, hasStatus := snacPayloadIn.getUint32(0x06); hasStatus {
 		switch status {
 		case 0x000:
 			sess.SetInvisible(false)
@@ -521,52 +335,34 @@ func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStor
 		foodGroup: OSERVICE,
 		subGroup:  OServiceUserInfoUpdate,
 	}
-	snacPayloadOut := snacOServiceUserInfoUpdate{
-		screenName:   sess.ScreenName,
-		warningLevel: sess.GetWarning(),
-		TLVBlock: TLVBlock{
-			TLVList: sess.GetUserInfo(),
+	snacPayloadOut := SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+		TLVUserInfo: TLVUserInfo{
+			ScreenName:   sess.ScreenName,
+			WarningLevel: sess.GetWarning(),
+			TLVBlock: TLVBlock{
+				TLVList: sess.GetUserInfo(),
+			},
 		},
 	}
 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-type snacIdleNotification struct {
-	idleTime uint32
-}
-
-func (s *snacIdleNotification) read(r io.Reader) error {
-	return binary.Read(r, binary.BigEndian, &s.idleTime)
-}
-
 func ReceiveIdleNotification(sess *Session, sm *SessionManager, fm *FeedbagStore, snac snacFrame, r io.Reader) error {
 	fmt.Printf("receiveIdleNotification read SNAC frame: %+v\n", snac)
 
-	snacPayload := snacIdleNotification{}
-	if err := snacPayload.read(r); err != nil {
-		return nil
+	snacPayloadIn := SNAC_0x01_0x11_OServiceIdleNotification{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
+		return err
 	}
 
-	if snacPayload.idleTime == 0 {
+	if snacPayloadIn.IdleTime == 0 {
 		sess.SetActive()
 	} else {
-		sess.SetIdle(time.Duration(snacPayload.idleTime) * time.Second)
+		sess.SetIdle(time.Duration(snacPayloadIn.IdleTime) * time.Second)
 	}
 
 	return NotifyArrival(sess, sm, fm)
-}
-
-type snacServiceRequest struct {
-	foodGroup uint16
-	TLVRestBlock
-}
-
-func (s *snacServiceRequest) read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &s.foodGroup); err != nil {
-		return err
-	}
-	return s.TLVRestBlock.read(r)
 }
 
 const (
@@ -580,48 +376,48 @@ const (
 func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveAndSendServiceRequest read SNAC frame: %+v\n", snac)
 
-	snacPayload := snacServiceRequest{}
-	if err := snacPayload.read(r); err != nil {
+	snacPayloadIn := SNAC_0x01_0x04_OServiceServiceRequest{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
 	// this prevents AIM client from crashing when using the
 	// store/edit email address feature.
-	if _, hasEditBuddy := snacPayload.getTLV(0x28); hasEditBuddy {
+	if _, hasEditBuddy := snacPayloadIn.getTLV(0x28); hasEditBuddy {
 		snacFrameOut := snacFrame{
 			foodGroup: OSERVICE,
 			subGroup:  OServiceErr,
 		}
-		snacPayloadOut := snacOServiceErr{
-			code: ErrorCodeNotSupportedByHost,
+		snacPayloadOut := SnacOServiceErr{
+			Code: ErrorCodeNotSupportedByHost,
 		}
 		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
-	fmt.Printf("receiveAndSendServiceRequest read SNAC body: %+v\n", snacPayload)
+	fmt.Printf("receiveAndSendServiceRequest read SNAC body: %+v\n", snacPayloadIn)
 
 	// just say that all the services are offline
 	snacFrameOut := snacFrame{
 		foodGroup: OSERVICE,
 		subGroup:  OServiceServiceResponse,
 	}
-	snacPayloadOut := snacOServiceErr{
-		code: 0x06,
+	snacPayloadOut := SnacOServiceErr{
+		Code: 0x06,
 	}
 
-	if snacPayload.foodGroup == CHAT {
-		roomMeta, ok := snacPayload.getTLV(0x01)
+	if snacPayloadIn.FoodGroup == CHAT {
+		roomMeta, ok := snacPayloadIn.getSlice(0x01)
 		if !ok {
 			return errors.New("missing room info")
 		}
 
-		roomSnac := roomInfoOService{}
-		if err := roomSnac.read(bytes.NewBuffer(roomMeta.val.([]byte))); err != nil {
+		roomSnac := SNAC_0x01_0x04_TLVRoomInfo{}
+		if err := Unmarshal(&roomSnac, bytes.NewBuffer(roomMeta)); err != nil {
 			return err
 		}
 
 		cookie := ChatCookie{
-			Cookie: roomSnac.cookie,
+			Cookie: roomSnac.Cookie,
 			SessID: sess.ID,
 		}
 		buf := &bytes.Buffer{}
@@ -629,34 +425,36 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, s
 			return err
 		}
 
-		room, err := cr.Retrieve(string(roomSnac.cookie))
+		room, err := cr.Retrieve(string(roomSnac.Cookie))
 		if err != nil {
 			return err
 		}
 
 		room.SessionManager.NewSessionWithSN(sess.ID, sess.ScreenName)
 
-		snacPayloadOut := TLVRestBlock{
-			TLVList: TLVList{
-				{
-					tType: OserviceTlvTagsReconnectHere,
-					val:   Address(cfg.OSCARHost, cfg.ChatPort),
-				},
-				{
-					tType: OserviceTlvTagsLoginCookie,
-					val:   buf.Bytes(),
-				},
-				{
-					tType: OserviceTlvTagsGroupId,
-					val:   snacPayload.foodGroup,
-				},
-				{
-					tType: OserviceTlvTagsSslCertname,
-					val:   "",
-				},
-				{
-					tType: OserviceTlvTagsSslState,
-					val:   uint8(0x00),
+		snacPayloadOut := SNAC_0x01_0x05_OServiceServiceResponse{
+			TLVRestBlock{
+				TLVList: TLVList{
+					{
+						tType: OserviceTlvTagsReconnectHere,
+						val:   Address(cfg.OSCARHost, cfg.ChatPort),
+					},
+					{
+						tType: OserviceTlvTagsLoginCookie,
+						val:   buf.Bytes(),
+					},
+					{
+						tType: OserviceTlvTagsGroupId,
+						val:   snacPayloadIn.FoodGroup,
+					},
+					{
+						tType: OserviceTlvTagsSslCertname,
+						val:   "",
+					},
+					{
+						tType: OserviceTlvTagsSslState,
+						val:   uint8(0x00),
+					},
 				},
 			},
 		}
@@ -664,31 +462,4 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, s
 	}
 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
-}
-
-type snacEvilNotification struct {
-	newEvil    uint16
-	screenName string
-	evil       uint16
-	TLVBlock
-}
-
-func (f snacEvilNotification) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, f.newEvil); err != nil {
-		return err
-	}
-	if f.screenName == "" {
-		// report anonymously
-		return nil
-	}
-	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, []byte(f.screenName)); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, f.evil); err != nil {
-		return err
-	}
-	return f.TLVBlock.write(w)
 }

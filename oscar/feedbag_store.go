@@ -60,12 +60,12 @@ func (f *FeedbagStore) UpsertUser(screenName string) error {
 	return err
 }
 
-func (f *FeedbagStore) Delete(screenName string, items []feedbagItem) error {
+func (f *FeedbagStore) Delete(screenName string, items []FeedbagItem) error {
 	// todo add transaction
 	q := `DELETE FROM feedbag WHERE ScreenName = ? AND itemID = ?`
 
 	for _, item := range items {
-		if _, err := f.db.Exec(q, screenName, item.itemID); err != nil {
+		if _, err := f.db.Exec(q, screenName, item.ItemID); err != nil {
 			return err
 		}
 	}
@@ -73,7 +73,7 @@ func (f *FeedbagStore) Delete(screenName string, items []feedbagItem) error {
 	return nil
 }
 
-func (f *FeedbagStore) Retrieve(screenName string) ([]feedbagItem, error) {
+func (f *FeedbagStore) Retrieve(screenName string) ([]FeedbagItem, error) {
 	q := `
 		SELECT 
 			groupID,
@@ -91,11 +91,11 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]feedbagItem, error) {
 	}
 	defer rows.Close()
 
-	var items []feedbagItem
+	var items []FeedbagItem
 	for rows.Next() {
-		var item feedbagItem
+		var item FeedbagItem
 		var attrs []byte
-		if err := rows.Scan(&item.groupID, &item.itemID, &item.classID, &item.name, &attrs); err != nil {
+		if err := rows.Scan(&item.GroupID, &item.ItemID, &item.ClassID, &item.Name, &attrs); err != nil {
 			return nil, err
 		}
 		err = item.TLVLBlock.read(bytes.NewBuffer(attrs))
@@ -115,7 +115,7 @@ func (f *FeedbagStore) LastModified(screenName string) (time.Time, error) {
 	return time.Unix(lastModified.Int64, 0), err
 }
 
-func (f *FeedbagStore) Upsert(screenName string, items []feedbagItem) error {
+func (f *FeedbagStore) Upsert(screenName string, items []FeedbagItem) error {
 
 	q := `
 		INSERT INTO feedbag (ScreenName, groupID, itemID, classID, name, attributes, lastModified)
@@ -130,16 +130,16 @@ func (f *FeedbagStore) Upsert(screenName string, items []feedbagItem) error {
 	for _, item := range items {
 
 		buf := &bytes.Buffer{}
-		if err := item.TLVLBlock.write(buf); err != nil {
+		if err := item.TLVLBlock.writeTLV(buf); err != nil {
 			return err
 		}
 
 		_, err := f.db.Exec(q,
 			screenName,
-			item.groupID,
-			item.itemID,
-			item.classID,
-			item.name,
+			item.GroupID,
+			item.ItemID,
+			item.ClassID,
+			item.Name,
 			buf.Bytes())
 		if err != nil {
 			return err

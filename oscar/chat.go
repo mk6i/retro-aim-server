@@ -1,7 +1,6 @@
 package oscar
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
 )
@@ -141,67 +140,11 @@ func routeChat(sess *Session, sm *SessionManager, snac snacFrame, r io.Reader, w
 	return nil
 }
 
-type snacChatMessage struct {
-	cookie  uint64
-	channel uint16
-	TLVRestBlock
-}
-
-func (s *snacChatMessage) read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &s.cookie); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &s.channel); err != nil {
-		return err
-	}
-	return s.TLVRestBlock.read(r)
-}
-
-func (s snacChatMessage) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, s.cookie); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.channel); err != nil {
-		return err
-	}
-	return s.TLVRestBlock.write(w)
-}
-
-type senders []snacSenderInfo
-
-func (s senders) write(w io.Writer) error {
-	for _, sender := range s {
-		if err := sender.write(w); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type snacSenderInfo struct {
-	screenName   string
-	warningLevel uint16
-	TLVBlock
-}
-
-func (f snacSenderInfo) write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, uint8(len(f.screenName))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, []byte(f.screenName)); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, f.warningLevel); err != nil {
-		return err
-	}
-	return f.TLVBlock.write(w)
-}
-
 func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, snac snacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChatChannelMsgTohost read SNAC frame: %+v\n", snac)
 
-	snacPayloadIn := snacChatMessage{}
-	if err := snacPayloadIn.read(r); err != nil {
+	snacPayloadIn := SNAC_0x0E_0x05_ChatChannelMsgToHost{}
+	if err := Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
@@ -209,17 +152,17 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, snac 
 		foodGroup: CHAT,
 		subGroup:  ChatChannelMsgToclient,
 	}
-	snacPayloadOut := snacChatMessage{
-		cookie:       snacPayloadIn.cookie,
-		channel:      snacPayloadIn.channel,
+	snacPayloadOut := SNAC_0x0E_0x06_ChatChannelMsgToClient{
+		Cookie:       snacPayloadIn.Cookie,
+		Channel:      snacPayloadIn.Channel,
 		TLVRestBlock: TLVRestBlock{snacPayloadIn.TLVList},
 	}
 
 	snacPayloadOut.addTLV(TLV{
 		tType: 0x03,
-		val: snacSenderInfo{
-			screenName:   sess.ScreenName,
-			warningLevel: sess.GetWarning(),
+		val: TLVUserInfo{
+			ScreenName:   sess.ScreenName,
+			WarningLevel: sess.GetWarning(),
 			TLVBlock:     TLVBlock{sess.GetUserInfo()},
 		},
 	})
@@ -243,14 +186,14 @@ func SetOnlineChatUsers(sm *SessionManager, w io.Writer, sequence *uint32) error
 		foodGroup: CHAT,
 		subGroup:  ChatUsersJoined,
 	}
-	snacPayloadOut := senders{}
+	snacPayloadOut := SNAC_0x0E_0x03_ChatUsersJoined{}
 
 	sessions := sm.All()
 
 	for _, uSess := range sessions {
-		snacPayloadOut = append(snacPayloadOut, snacSenderInfo{
-			screenName:   uSess.ScreenName,
-			warningLevel: uSess.GetWarning(),
+		snacPayloadOut.Users = append(snacPayloadOut.Users, TLVUserInfo{
+			ScreenName:   uSess.ScreenName,
+			WarningLevel: uSess.GetWarning(),
 			TLVBlock: TLVBlock{
 				TLVList: uSess.GetUserInfo(),
 			},
@@ -266,11 +209,15 @@ func AlertUserJoined(sess *Session, sm *SessionManager) {
 			foodGroup: CHAT,
 			subGroup:  ChatUsersJoined,
 		},
-		snacOut: snacSenderInfo{
-			screenName:   sess.ScreenName,
-			warningLevel: sess.GetWarning(),
-			TLVBlock: TLVBlock{
-				TLVList: sess.GetUserInfo(),
+		snacOut: SNAC_0x0E_0x03_ChatUsersJoined{
+			Users: []TLVUserInfo{
+				{
+					ScreenName:   sess.ScreenName,
+					WarningLevel: sess.GetWarning(),
+					TLVBlock: TLVBlock{
+						TLVList: sess.GetUserInfo(),
+					},
+				},
 			},
 		},
 	})
@@ -282,11 +229,15 @@ func AlertUserLeft(sess *Session, sm *SessionManager) {
 			foodGroup: CHAT,
 			subGroup:  ChatUsersLeft,
 		},
-		snacOut: snacSenderInfo{
-			screenName:   sess.ScreenName,
-			warningLevel: sess.GetWarning(),
-			TLVBlock: TLVBlock{
-				TLVList: sess.GetUserInfo(),
+		snacOut: SNAC_0x0E_0x04_ChatUsersLeft{
+			Users: []TLVUserInfo{
+				{
+					ScreenName:   sess.ScreenName,
+					WarningLevel: sess.GetWarning(),
+					TLVBlock: TLVBlock{
+						TLVList: sess.GetUserInfo(),
+					},
+				},
 			},
 		},
 	})
@@ -297,11 +248,11 @@ func SendChatRoomInfoUpdate(room ChatRoom, w io.Writer, sequence *uint32) error 
 		foodGroup: CHAT,
 		subGroup:  ChatRoomInfoUpdate,
 	}
-	snacPayloadOut := snacCreateRoom{
-		exchange:       4,
-		cookie:         []byte(room.ID),
-		instanceNumber: 100,
-		detailLevel:    2,
+	snacPayloadOut := SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+		Exchange:       4,
+		Cookie:         room.ID,
+		InstanceNumber: 100,
+		DetailLevel:    2,
 		TLVBlock: TLVBlock{
 			TLVList: room.TLVList(),
 		},
