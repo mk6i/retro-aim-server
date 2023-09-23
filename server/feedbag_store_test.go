@@ -1,6 +1,7 @@
-package oscar
+package server
 
 import (
+	"github.com/mkaminski/goaim/oscar"
 	"os"
 	"reflect"
 	"testing"
@@ -23,13 +24,13 @@ func TestFeedbagStore(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
-	itemsIn := []FeedbagItem{
+	itemsIn := []oscar.FeedbagItem{
 		{
 			GroupID:   0,
 			ItemID:    1805,
 			ClassID:   3,
 			Name:      "spimmer1234",
-			TLVLBlock: TLVLBlock{},
+			TLVLBlock: oscar.TLVLBlock{},
 		},
 		{
 			GroupID: 0x0A,
@@ -69,17 +70,17 @@ func TestFeedbagDelete(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
-	itemsIn := []FeedbagItem{
+	itemsIn := []oscar.FeedbagItem{
 		{
 			GroupID: 0,
 			ItemID:  1805,
 			ClassID: 3,
 			Name:    "spimmer1234",
-			TLVLBlock: TLVLBlock{
-				TLVList: TLVList{
+			TLVLBlock: oscar.TLVLBlock{
+				TLVList: oscar.TLVList{
 					{
-						tType: 0x01,
-						val:   uint16(1000),
+						TType: 0x01,
+						Val:   uint16(1000),
 					},
 				},
 			},
@@ -102,7 +103,7 @@ func TestFeedbagDelete(t *testing.T) {
 		t.Fatalf("failed to upsert: %s", err.Error())
 	}
 
-	if err := f.Delete(screenName, []FeedbagItem{itemsIn[0]}); err != nil {
+	if err := f.Delete(screenName, []oscar.FeedbagItem{itemsIn[0]}); err != nil {
 		t.Fatalf("failed to delete: %s", err.Error())
 	}
 
@@ -159,7 +160,7 @@ func TestLastModifiedNotEmpty(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
-	itemsIn := []FeedbagItem{
+	itemsIn := []oscar.FeedbagItem{
 		{
 			GroupID: 0x0A,
 			ItemID:  0,

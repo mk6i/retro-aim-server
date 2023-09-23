@@ -1,4 +1,4 @@
-package oscar
+package server
 
 import (
 	"testing"

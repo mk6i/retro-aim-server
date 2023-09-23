@@ -18,19 +18,19 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 		switch v.Interface().(type) {
 		case TLVRestBlock:
 			val := TLVRestBlock{}
-			if err := val.read(r); err != nil {
+			if err := val.Read(r); err != nil {
 				return err
 			}
 			v.Set(reflect.ValueOf(val))
 		case TLVLBlock:
 			val := TLVLBlock{}
-			if err := val.read(r); err != nil {
+			if err := val.Read(r); err != nil {
 				return err
 			}
 			v.Set(reflect.ValueOf(val))
 		case TLVBlock:
 			val := TLVBlock{}
-			if err := val.read(r); err != nil {
+			if err := val.Read(r); err != nil {
 				return err
 			}
 			v.Set(reflect.ValueOf(val))
