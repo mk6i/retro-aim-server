@@ -22,6 +22,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	go server.StartManagementAPI(fm)
+
 	sm := server.NewSessionManager()
 	cr := server.NewChatRegistry()
 

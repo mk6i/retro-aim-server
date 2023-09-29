@@ -67,9 +67,9 @@ func NewStubUser(screenName string) (User, error) {
 }
 
 type User struct {
-	ScreenName string
-	AuthKey    string
-	PassHash   []byte
+	ScreenName string `json:"screen_name"`
+	AuthKey    string `json:"-"`
+	PassHash   []byte `json:"-"`
 }
 
 func (u *User) HashPassword(passwd string) error {
@@ -95,6 +95,30 @@ type FeedbagStore struct {
 	db *sql.DB
 }
 
+func (f *FeedbagStore) Users() ([]*User, error) {
+	q := `SELECT ScreenName FROM user`
+	rows, err := f.db.Query(q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		u := &User{}
+		if err := rows.Scan(&u.ScreenName); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 func (f *FeedbagStore) GetUser(screenName string) (*User, error) {
 	q := `
 		SELECT 
@@ -110,6 +134,15 @@ func (f *FeedbagStore) GetUser(screenName string) (*User, error) {
 		return nil, nil
 	}
 	return u, err
+}
+
+func (f *FeedbagStore) InsertUser(u User) error {
+	q := `
+		INSERT INTO user (ScreenName, authKey, passHash)
+		VALUES (?, ?, ?)
+	`
+	_, err := f.db.Exec(q, u.ScreenName, u.AuthKey, u.PassHash)
+	return err
 }
 
 func (f *FeedbagStore) UpsertUser(u User) error {
