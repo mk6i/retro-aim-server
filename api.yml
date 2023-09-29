@@ -1,0 +1,46 @@
+openapi: 3.0.3
+info:
+  title: User Management API
+  description: API to manage user accounts with screen names and passwords
+  version: 1.0.0
+paths:
+  /user:
+    get:
+      summary: Get all users
+      description: Retrieve a list of all user accounts without passwords.
+      responses:
+        '200':
+          description: Successful response containing a list of users without passwords.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+    post:
+      summary: Create a new user
+      description: Create a new user account with a screen name and password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: User account created successfully.
+        '400':
+          description: Bad request. Invalid input data.
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        screen_name:
+          type: string
+          description: The user's screen name.
+        password:
+          type: string
+          description: The user's password.
+          readOnly: true
+          format: password
