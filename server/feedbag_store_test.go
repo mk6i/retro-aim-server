@@ -196,7 +196,10 @@ func TestProfile(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
-	if err := f.UpsertUser(screenName); err != nil {
+	u := User{
+		ScreenName: screenName,
+	}
+	if err := f.UpsertUser(u); err != nil {
 		t.Fatalf("failed to upsert new user: %s", err.Error())
 	}
 
@@ -408,4 +411,75 @@ func TestFeedbagStoreBlockedNoBlocked(t *testing.T) {
 	if blocked != BlockedNo {
 		t.Fatalf("expected no blocker")
 	}
+}
+
+func TestGetUser(t *testing.T) {
+	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+
+	defer func() {
+		err := os.Remove(testFile)
+		if err != nil {
+			t.Error("unable to clean up test file")
+		}
+	}()
+
+	f, err := NewFeedbagStore(testFile)
+	if err != nil {
+		t.Fatalf("failed to create new feedbag store: %s", err.Error())
+	}
+
+	expectUser := &User{
+		ScreenName: "testscreenname",
+		AuthKey:    "theauthkey",
+		PassHash:   []byte("thepasshash"),
+	}
+	_, err = f.db.Exec(`INSERT INTO user (ScreenName, authKey, passHash) VALUES(?, ?, ?)`,
+		expectUser.ScreenName, expectUser.AuthKey, expectUser.PassHash)
+	if err != nil {
+		t.Fatalf("failed to insert user: %s", err.Error())
+	}
+
+	actualUser, err := f.GetUser(expectUser.ScreenName)
+	if err != nil {
+		t.Fatalf("failed to get user: %s", err.Error())
+	}
+
+	if !reflect.DeepEqual(expectUser, actualUser) {
+		t.Fatalf("users are not equal. expect: %v actual: %v", expectUser, actualUser)
+	}
+}
+
+func TestGetUserNotFound(t *testing.T) {
+	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+
+	defer func() {
+		err := os.Remove(testFile)
+		if err != nil {
+			t.Error("unable to clean up test file")
+		}
+	}()
+
+	f, err := NewFeedbagStore(testFile)
+	if err != nil {
+		t.Fatalf("failed to create new feedbag store: %s", err.Error())
+	}
+
+	actualUser, err := f.GetUser("testscreenname")
+	if err != nil {
+		t.Fatalf("failed to get user: %s", err.Error())
+	}
+
+	if actualUser != nil {
+		t.Fatal("expected user to not be found")
+	}
+}
+
+func TestHashPassword(t *testing.T) {
+	u := &User{
+		AuthKey: "the_auth_key",
+	}
+	if err := u.HashPassword(""); err != nil {
+		t.Fatalf("error hashing password: %s", err.Error())
+	}
+	t.Logf("password hash: %s", u.PassHash)
 }
