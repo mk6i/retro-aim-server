@@ -293,7 +293,7 @@ func makeSession() *Session {
 	}
 }
 
-func (s *SessionManager) NewSession() (*Session, error) {
+func (s *SessionManager) NewSession(screenName string) (*Session, error) {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
 	id, err := uuid.NewUUID()
@@ -302,6 +302,7 @@ func (s *SessionManager) NewSession() (*Session, error) {
 	}
 	sess := makeSession()
 	sess.ID = id.String()
+	sess.ScreenName = screenName
 	s.store[sess.ID] = sess
 	return sess, nil
 }

@@ -56,46 +56,65 @@ var (
 	CapChat, _ = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
 )
 
+const (
+	TLVScreenName          uint16 = 0x01
+	TLVReconnectHere       uint16 = 0x05
+	TLVAuthorizationCookie uint16 = 0x06
+	TLVErrorSubcode        uint16 = 0x08
+	TLVPasswordHash        uint16 = 0x25
+)
+
 type Config struct {
-	OSCARHost string `envconfig:"OSCAR_HOST" required:"true"`
-	OSCARPort int    `envconfig:"OSCAR_PORT" default:"5190"`
-	BOSPort   int    `envconfig:"BOS_PORT" default:"5191"`
-	ChatPort  int    `envconfig:"CHAT_PORT" default:"5192"`
-	DBPath    string `envconfig:"DB_PATH" required:"true"`
+	OSCARHost   string `envconfig:"OSCAR_HOST" required:"true"`
+	OSCARPort   int    `envconfig:"OSCAR_PORT" default:"5190"`
+	BOSPort     int    `envconfig:"BOS_PORT" default:"5191"`
+	ChatPort    int    `envconfig:"CHAT_PORT" default:"5192"`
+	DisableAuth bool   `envconfig:"DISABLE_AUTH" default:"false"`
+	DBPath      string `envconfig:"DB_PATH" required:"true"`
 }
 
 func Address(host string, port int) string {
 	return fmt.Sprintf("%s:%d", host, port)
 }
 
-func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (*oscar.FlapSignonFrame, error) {
-	flapOut := oscar.FlapSignonFrame{
-		FlapFrame: oscar.FlapFrame{
-			StartMarker:   42,
-			FrameType:     1,
-			Sequence:      uint16(*sequence),
-			PayloadLength: 4, // size of flapVersion
-		},
+func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSignonFrame, error) {
+	flapFrameOut := oscar.FlapFrame{
+		StartMarker:   42,
+		FrameType:     1,
+		Sequence:      uint16(*sequence),
+		PayloadLength: 4, // size of FlapSignonFrame
+	}
+	if err := oscar.Marshal(flapFrameOut, rw); err != nil {
+		return oscar.FlapSignonFrame{}, err
+	}
+	flapSignonFrameOut := oscar.FlapSignonFrame{
 		FlapVersion: 1,
 	}
-
-	if err := flapOut.Write(rw); err != nil {
-		return nil, err
+	if err := oscar.Marshal(flapSignonFrameOut, rw); err != nil {
+		return oscar.FlapSignonFrame{}, err
 	}
 
-	fmt.Printf("SendAndReceiveSignonFrame read FLAP: %+v\n", flapOut)
+	fmt.Printf("SendAndReceiveSignonFrame read FLAP: %+v\n", flapFrameOut)
 
 	// receive
-	flapIn := oscar.FlapSignonFrame{}
-	if err := flapIn.Read(rw); err != nil {
-		return nil, err
+	flapFrameIn := oscar.FlapFrame{}
+	if err := oscar.Unmarshal(&flapFrameIn, rw); err != nil {
+		return oscar.FlapSignonFrame{}, err
+	}
+	b := make([]byte, flapFrameIn.PayloadLength)
+	if _, err := rw.Read(b); err != nil {
+		return oscar.FlapSignonFrame{}, err
+	}
+	flapSignonFrameIn := oscar.FlapSignonFrame{}
+	if err := oscar.Unmarshal(&flapSignonFrameIn, bytes.NewBuffer(b)); err != nil {
+		return oscar.FlapSignonFrame{}, err
 	}
 
-	fmt.Printf("SendAndReceiveSignonFrame write FLAP: %+v\n", flapIn)
+	fmt.Printf("SendAndReceiveSignonFrame write FLAP: %+v\n", flapSignonFrameIn)
 
 	*sequence++
 
-	return &flapIn, nil
+	return flapSignonFrameIn, nil
 }
 
 func VerifyLogin(sm *SessionManager, rw io.ReadWriter) (*Session, uint32, error) {

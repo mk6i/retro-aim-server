@@ -324,6 +324,10 @@ type SNAC_0x17_0x02_BUCPLoginRequest struct {
 	TLVRestBlock
 }
 
+type SNAC_0x17_0x03_BUCPLoginResponse struct {
+	TLVRestBlock
+}
+
 type SNAC_0x17_0x06_BUCPChallengeRequest struct {
 	TLVRestBlock
 }

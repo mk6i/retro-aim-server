@@ -94,18 +94,13 @@ func handleAuthConnection(cfg server.Config, sm *server.SessionManager, fm *serv
 		return
 	}
 
-	sess, err := sm.NewSession()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	err = server.ReceiveAndSendAuthChallenge(sess, conn, conn, &seq)
+	err = server.ReceiveAndSendAuthChallenge(cfg, fm, conn, conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	err = server.ReceiveAndSendBUCPLoginRequest(cfg, sess, fm, conn, conn, &seq)
+	err = server.ReceiveAndSendBUCPLoginRequest(cfg, sm, fm, conn, conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return

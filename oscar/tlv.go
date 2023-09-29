@@ -98,6 +98,10 @@ func (s *TLVList) AddTLV(tlv TLV) {
 	*s = append(*s, tlv)
 }
 
+func (s *TLVList) AddTLVList(tlvs []TLV) {
+	*s = append(*s, tlvs...)
+}
+
 func (s TLVList) WriteTLV(w io.Writer) error {
 	for _, tlv := range s {
 		if err := tlv.WriteTLV(w); err != nil {

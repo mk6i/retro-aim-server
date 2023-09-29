@@ -3,16 +3,19 @@ package server
 import (
 	"bytes"
 	"errors"
-	"fmt"
-	"github.com/mkaminski/goaim/oscar"
 	"io"
+
+	"github.com/google/uuid"
+	"github.com/mkaminski/goaim/oscar"
 )
 
 const (
 	BUCPErr                      uint16 = 0x0001
 	BUCPLoginRequest                    = 0x0002
+	BUCPLoginResponse                   = 0x0003
 	BUCPRegisterRequest                 = 0x0004
 	BUCPChallengeRequest                = 0x0006
+	BUCPChallengeResponse               = 0x0007
 	BUCPAsasnRequest                    = 0x0008
 	BUCPSecuridRequest                  = 0x000A
 	BUCPRegistrationImageRequest        = 0x000C
@@ -39,17 +42,15 @@ func routeBUCP(snac oscar.SnacFrame) error {
 	return nil
 }
 
-func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32) error {
 	flap := oscar.FlapFrame{}
 	if err := oscar.Unmarshal(&flap, r); err != nil {
 		return err
 	}
-
 	b := make([]byte, flap.PayloadLength)
 	if _, err := r.Read(b); err != nil {
 		return err
 	}
-
 	snac := oscar.SnacFrame{}
 	buf := bytes.NewBuffer(b)
 	if err := oscar.Unmarshal(&snac, buf); err != nil {
@@ -60,32 +61,61 @@ func ReceiveAndSendAuthChallenge(s *Session, r io.Reader, w io.Writer, sequence 
 	if err := oscar.Unmarshal(&snacPayloadIn, buf); err != nil {
 		return err
 	}
+	screenName, exists := snacPayloadIn.GetString(TLVScreenName)
+	if !exists {
+		return errors.New("screen name doesn't exist in tlv")
+	}
 
-	fmt.Printf("ReceiveAndSendAuthChallenge read SNAC payload: %+v\n", snacPayloadIn)
+	var authKey string
+
+	u, err := fm.GetUser(screenName)
+	switch {
+	case err != nil:
+		return err
+	case u != nil:
+		// user lookup succeeded
+		authKey = u.AuthKey
+	case cfg.DisableAuth:
+		// can't find user, generate stub auth key
+		uid, err := uuid.NewUUID()
+		if err != nil {
+			return err
+		}
+		authKey = uid.String()
+	default:
+		// can't find user, return login error
+		snacFrameOut := oscar.SnacFrame{
+			FoodGroup: BUCP,
+			SubGroup:  BUCPLoginResponse,
+		}
+		snacPayloadOut := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
+		snacPayloadOut.AddTLV(oscar.TLV{
+			TType: TLVErrorSubcode,
+			Val:   uint16(0x01),
+		})
+		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
+	}
 
 	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: 0x17,
-		SubGroup:  0x07,
+		FoodGroup: BUCP,
+		SubGroup:  BUCPChallengeResponse,
 	}
 	snacPayloadOut := oscar.SNAC_0x17_0x07_BUCPChallengeResponse{
-		AuthKey: s.ID,
+		AuthKey: authKey,
 	}
-
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendBUCPLoginRequest(cfg Config, sm *SessionManager, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32) error {
 	flap := oscar.FlapFrame{}
 	if err := oscar.Unmarshal(&flap, r); err != nil {
 		return err
 	}
-
+	snac := oscar.SnacFrame{}
 	b := make([]byte, flap.PayloadLength)
 	if _, err := r.Read(b); err != nil {
 		return err
 	}
-
-	snac := oscar.SnacFrame{}
 	buf := bytes.NewBuffer(b)
 	if err := oscar.Unmarshal(&snac, buf); err != nil {
 		return err
@@ -95,58 +125,69 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sess *Session, fm *FeedbagStore,
 	if err := oscar.Unmarshal(&snacPayloadIn, buf); err != nil {
 		return err
 	}
-
-	fmt.Printf("ReceiveAndSendBUCPLoginRequest read SNAC: %+v\n", snacPayloadIn)
-
-	var found bool
-	sess.ScreenName, found = snacPayloadIn.GetString(0x01)
+	screenName, found := snacPayloadIn.GetString(TLVScreenName)
 	if !found {
-		return errors.New("unable to find screen name")
+		return errors.New("screen name doesn't exist in tlv")
+	}
+	md5Hash, found := snacPayloadIn.GetSlice(TLVPasswordHash)
+	if !found {
+		return errors.New("password hash doesn't exist in tlv")
 	}
 
-	if err := fm.UpsertUser(sess.ScreenName); err != nil {
+	loginOK := false
+
+	u, err := fm.GetUser(screenName)
+	switch {
+	case err != nil:
 		return err
+	case u != nil && bytes.Equal(u.PassHash, md5Hash):
+		// password check succeeded
+		loginOK = true
+	case cfg.DisableAuth:
+		// login failed but let them in anyway
+		newUser, err := NewStubUser(screenName)
+		if err != nil {
+			return err
+		}
+		if err := fm.UpsertUser(newUser); err != nil {
+			return err
+		}
+		loginOK = true
+	}
+
+	snacPayloadOut := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
+	snacPayloadOut.AddTLV(oscar.TLV{
+		TType: TLVScreenName,
+		Val:   screenName,
+	})
+
+	if loginOK {
+		sess, err := sm.NewSession(screenName)
+		if err != nil {
+			return err
+		}
+		snacPayloadOut.AddTLVList([]oscar.TLV{
+			{
+				TType: TLVReconnectHere,
+				Val:   Address(cfg.OSCARHost, cfg.BOSPort),
+			},
+			{
+				TType: TLVAuthorizationCookie,
+				Val:   sess.ID,
+			},
+		})
+	} else {
+		snacPayloadOut.AddTLVList([]oscar.TLV{
+			{
+				TType: TLVErrorSubcode,
+				Val:   uint16(0x01),
+			},
+		})
 	}
 
 	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: 0x17,
-		SubGroup:  0x03,
+		FoodGroup: BUCP,
+		SubGroup:  BUCPLoginResponse,
 	}
-
-	snacPayloadOut := oscar.SNAC_0x17_0x02_BUCPLoginRequest{
-		TLVRestBlock: oscar.TLVRestBlock{
-			TLVList: oscar.TLVList{
-				{
-					TType: 0x01,
-					Val:   sess.ScreenName,
-				},
-				{
-					TType: 0x08,
-					Val:   uint16(0x00),
-				},
-				{
-					TType: 0x04,
-					Val:   "",
-				},
-				{
-					TType: 0x05,
-					Val:   Address(cfg.OSCARHost, cfg.BOSPort),
-				},
-				{
-					TType: 0x06,
-					Val:   []byte(sess.ID),
-				},
-				{
-					TType: 0x11,
-					Val:   "mike@localhost",
-				},
-				{
-					TType: 0x54,
-					Val:   "http://localhost",
-				},
-			},
-		},
-	}
-
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }

@@ -2,11 +2,15 @@ package server
 
 import (
 	"bytes"
+	"crypto/md5"
 	"database/sql"
 	"errors"
+	"io"
+	"time"
+
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mkaminski/goaim/oscar"
-	"time"
 )
 
 var errUserNotExist = errors.New("user does not exist")
@@ -14,7 +18,9 @@ var errUserNotExist = errors.New("user does not exist")
 var feedbagDDL = `
 	CREATE TABLE IF NOT EXISTS user
 	(
-		ScreenName VARCHAR(16) PRIMARY KEY
+		ScreenName VARCHAR(16) PRIMARY KEY,
+		authKey    TEXT,
+		passHash   TEXT
 	);
 	CREATE TABLE IF NOT EXISTS feedbag
 	(
@@ -45,17 +51,74 @@ func NewFeedbagStore(dbFile string) (*FeedbagStore, error) {
 	return &FeedbagStore{db: db}, nil
 }
 
+func NewStubUser(screenName string) (User, error) {
+	u := User{ScreenName: screenName}
+
+	uid, err := uuid.NewRandom()
+	if err != nil {
+		return u, err
+	}
+	u.AuthKey = uid.String()
+
+	if err := u.HashPassword("welcome1"); err != nil {
+		return u, err
+	}
+	return u, u.HashPassword("welcome1")
+}
+
+type User struct {
+	ScreenName string
+	AuthKey    string
+	PassHash   []byte
+}
+
+func (u *User) HashPassword(passwd string) error {
+	top := md5.New()
+	if _, err := io.WriteString(top, passwd); err != nil {
+		return err
+	}
+	bottom := md5.New()
+	if _, err := io.WriteString(bottom, u.AuthKey); err != nil {
+		return err
+	}
+	if _, err := bottom.Write(top.Sum(nil)); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(bottom, "AOL Instant Messenger (SM)"); err != nil {
+		return err
+	}
+	u.PassHash = bottom.Sum(nil)
+	return nil
+}
+
 type FeedbagStore struct {
 	db *sql.DB
 }
 
-func (f *FeedbagStore) UpsertUser(screenName string) error {
+func (f *FeedbagStore) GetUser(screenName string) (*User, error) {
 	q := `
-		INSERT INTO user (ScreenName)
-		VALUES (?)
+		SELECT 
+			ScreenName, 
+			authKey, 
+			passHash
+		FROM user
+		WHERE ScreenName = ?
+	`
+	u := &User{}
+	err := f.db.QueryRow(q, screenName).Scan(&u.ScreenName, &u.AuthKey, &u.PassHash)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return u, err
+}
+
+func (f *FeedbagStore) UpsertUser(u User) error {
+	q := `
+		INSERT INTO user (ScreenName, authKey, passHash)
+		VALUES (?, ?, ?)
 		ON CONFLICT DO NOTHING
 	`
-	_, err := f.db.Exec(q, screenName)
+	_, err := f.db.Exec(q, u.ScreenName, u.AuthKey, u.PassHash)
 	return err
 }
 
