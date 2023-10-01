@@ -6,6 +6,14 @@ import (
 	"io"
 )
 
+const (
+	TLVScreenName          uint16 = 0x01
+	TLVReconnectHere       uint16 = 0x05
+	TLVAuthorizationCookie uint16 = 0x06
+	TLVErrorSubcode        uint16 = 0x08
+	TLVPasswordHash        uint16 = 0x25
+)
+
 type TLVRestBlock struct {
 	TLVList
 }
@@ -105,6 +113,20 @@ func (s *TLVList) AddTLVList(tlvs []TLV) {
 func (s TLVList) WriteTLV(w io.Writer) error {
 	for _, tlv := range s {
 		if err := tlv.WriteTLV(w); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// todo explain what this does
+func (s TLVList) SerializeInPlace() error {
+	for i := range s {
+		buf := &bytes.Buffer{}
+		if err := s[i].WriteTLV(buf); err != nil {
+			return err
+		}
+		if err := s[i].Read(buf); err != nil {
 			return err
 		}
 	}

@@ -17,7 +17,7 @@ func StartManagementAPI(fs *FeedbagStore) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
-
+	//todo make port configurable
 	port := 8080
 	fmt.Printf("Server is running on :%d...\n", port)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
@@ -51,7 +51,7 @@ func createUser(fs *FeedbagStore, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
+	// todo does the request contain authkey?
 	newUser.HashPassword(newUser.Password)
 	if err := fs.InsertUser(newUser.User); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

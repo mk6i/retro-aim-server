@@ -42,7 +42,7 @@ func routeBUCP(snac oscar.SnacFrame) error {
 	return nil
 }
 
-func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
 	flap := oscar.FlapFrame{}
 	if err := oscar.Unmarshal(&flap, r); err != nil {
 		return err
@@ -61,7 +61,7 @@ func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io
 	if err := oscar.Unmarshal(&snacPayloadIn, buf); err != nil {
 		return err
 	}
-	screenName, exists := snacPayloadIn.GetString(TLVScreenName)
+	screenName, exists := snacPayloadIn.GetString(oscar.TLVScreenName)
 	if !exists {
 		return errors.New("screen name doesn't exist in tlv")
 	}
@@ -77,11 +77,7 @@ func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io
 		authKey = u.AuthKey
 	case cfg.DisableAuth:
 		// can't find user, generate stub auth key
-		uid, err := uuid.NewUUID()
-		if err != nil {
-			return err
-		}
-		authKey = uid.String()
+		authKey = newUUID().String()
 	default:
 		// can't find user, return login error
 		snacFrameOut := oscar.SnacFrame{
@@ -90,7 +86,7 @@ func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io
 		}
 		snacPayloadOut := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
 		snacPayloadOut.AddTLV(oscar.TLV{
-			TType: TLVErrorSubcode,
+			TType: oscar.TLVErrorSubcode,
 			Val:   uint16(0x01),
 		})
 		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
@@ -106,7 +102,7 @@ func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveAndSendBUCPLoginRequest(cfg Config, sm *SessionManager, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveAndSendBUCPLoginRequest(cfg Config, sm *SessionManager, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
 	flap := oscar.FlapFrame{}
 	if err := oscar.Unmarshal(&flap, r); err != nil {
 		return err
@@ -125,11 +121,11 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sm *SessionManager, fm *FeedbagS
 	if err := oscar.Unmarshal(&snacPayloadIn, buf); err != nil {
 		return err
 	}
-	screenName, found := snacPayloadIn.GetString(TLVScreenName)
+	screenName, found := snacPayloadIn.GetString(oscar.TLVScreenName)
 	if !found {
 		return errors.New("screen name doesn't exist in tlv")
 	}
-	md5Hash, found := snacPayloadIn.GetSlice(TLVPasswordHash)
+	md5Hash, found := snacPayloadIn.GetSlice(oscar.TLVPasswordHash)
 	if !found {
 		return errors.New("password hash doesn't exist in tlv")
 	}
@@ -157,29 +153,26 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sm *SessionManager, fm *FeedbagS
 
 	snacPayloadOut := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
 	snacPayloadOut.AddTLV(oscar.TLV{
-		TType: TLVScreenName,
+		TType: oscar.TLVScreenName,
 		Val:   screenName,
 	})
 
 	if loginOK {
-		sess, err := sm.NewSession(screenName)
-		if err != nil {
-			return err
-		}
+		sess := sm.NewSessionWithSN(newUUID().String(), screenName)
 		snacPayloadOut.AddTLVList([]oscar.TLV{
 			{
-				TType: TLVReconnectHere,
+				TType: oscar.TLVReconnectHere,
 				Val:   Address(cfg.OSCARHost, cfg.BOSPort),
 			},
 			{
-				TType: TLVAuthorizationCookie,
+				TType: oscar.TLVAuthorizationCookie,
 				Val:   sess.ID,
 			},
 		})
 	} else {
 		snacPayloadOut.AddTLVList([]oscar.TLV{
 			{
-				TType: TLVErrorSubcode,
+				TType: oscar.TLVErrorSubcode,
 				Val:   uint16(0x01),
 			},
 		})
