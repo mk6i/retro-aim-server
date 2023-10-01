@@ -56,14 +56,6 @@ var (
 	CapChat, _ = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
 )
 
-const (
-	TLVScreenName          uint16 = 0x01
-	TLVReconnectHere       uint16 = 0x05
-	TLVAuthorizationCookie uint16 = 0x06
-	TLVErrorSubcode        uint16 = 0x08
-	TLVPasswordHash        uint16 = 0x25
-)
-
 type Config struct {
 	OSCARHost   string `envconfig:"OSCAR_HOST" required:"true"`
 	OSCARPort   int    `envconfig:"OSCAR_PORT" default:"5190"`

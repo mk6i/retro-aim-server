@@ -3,7 +3,6 @@ package server
 import (
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
 	"sync"
 	"time"
@@ -291,20 +290,6 @@ func makeSession() *Session {
 		sendTimeout: sendTimeout,
 		SignonTime:  time.Now(),
 	}
-}
-
-func (s *SessionManager) NewSession(screenName string) (*Session, error) {
-	s.mapMutex.Lock()
-	defer s.mapMutex.Unlock()
-	id, err := uuid.NewUUID()
-	if err != nil {
-		return nil, err
-	}
-	sess := makeSession()
-	sess.ID = id.String()
-	sess.ScreenName = screenName
-	s.store[sess.ID] = sess
-	return sess, nil
 }
 
 func (s *SessionManager) NewSessionWithSN(sessID string, screenName string) *Session {

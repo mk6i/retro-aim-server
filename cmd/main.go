@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/mkaminski/goaim/server"
 	"io"
@@ -96,7 +97,7 @@ func handleAuthConnection(cfg server.Config, sm *server.SessionManager, fm *serv
 		return
 	}
 
-	err = server.ReceiveAndSendAuthChallenge(cfg, fm, conn, conn, &seq)
+	err = server.ReceiveAndSendAuthChallenge(cfg, fm, conn, conn, &seq, uuid.New)
 	if err != nil {
 		log.Println(err)
 		return
