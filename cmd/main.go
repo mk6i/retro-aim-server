@@ -50,7 +50,7 @@ func main() {
 	}
 }
 
-func listenBOS(cfg server.Config, sm *server.SessionManager, fm *server.FeedbagStore, cr *server.ChatRegistry) {
+func listenBOS(cfg server.Config, sm *server.InMemorySessionManager, fm *server.FeedbagStore, cr *server.ChatRegistry) {
 	listener, err := net.Listen("tcp", server.Address("", cfg.BOSPort))
 	if err != nil {
 		log.Fatal(err)
@@ -88,7 +88,7 @@ func listenChat(cfg server.Config, fm *server.FeedbagStore, cr *server.ChatRegis
 	}
 }
 
-func handleAuthConnection(cfg server.Config, sm *server.SessionManager, fm *server.FeedbagStore, conn net.Conn) {
+func handleAuthConnection(cfg server.Config, sm *server.InMemorySessionManager, fm *server.FeedbagStore, conn net.Conn) {
 	defer conn.Close()
 	seq := uint32(100)
 	_, err := server.SendAndReceiveSignonFrame(conn, &seq)
@@ -103,14 +103,14 @@ func handleAuthConnection(cfg server.Config, sm *server.SessionManager, fm *serv
 		return
 	}
 
-	err = server.ReceiveAndSendBUCPLoginRequest(cfg, sm, fm, conn, conn, &seq)
+	err = server.ReceiveAndSendBUCPLoginRequest(cfg, sm, fm, conn, conn, &seq, uuid.New)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 }
 
-func handleBOSConnection(cfg server.Config, sm *server.SessionManager, fm *server.FeedbagStore, cr *server.ChatRegistry, conn net.Conn) {
+func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, fm *server.FeedbagStore, cr *server.ChatRegistry, conn net.Conn) {
 	sess, seq, err := server.VerifyLogin(sm, conn)
 	if err != nil {
 		fmt.Printf("user disconnected with error: %s\n", err.Error())
@@ -124,7 +124,7 @@ func handleBOSConnection(cfg server.Config, sm *server.SessionManager, fm *serve
 		conn.Close()
 	}()
 
-	onClientReady := func(sess *server.Session, sm *server.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
+	onClientReady := func(sess *server.Session, sm *server.InMemorySessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
 		if err := server.NotifyArrival(sess, sm, fm); err != nil {
 			return err
 		}
@@ -167,7 +167,7 @@ func handleChatConnection(cfg server.Config, fm *server.FeedbagStore, cr *server
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D, 0x000E}
 
-	onClientReady := func(sess *server.Session, sm *server.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
+	onClientReady := func(sess *server.Session, sm *server.InMemorySessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
 		if err := server.SendChatRoomInfoUpdate(room, w, sequence); err != nil {
 			return err
 		}

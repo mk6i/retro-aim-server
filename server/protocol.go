@@ -109,7 +109,7 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSi
 	return flapSignonFrameIn, nil
 }
 
-func VerifyLogin(sm *SessionManager, rw io.ReadWriter) (*Session, uint32, error) {
+func VerifyLogin(sm *InMemorySessionManager, rw io.ReadWriter) (*Session, uint32, error) {
 	seq := uint32(100)
 	fmt.Println("VerifyLogin...")
 
@@ -248,14 +248,14 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 	}
 }
 
-func Signout(sess *Session, sm *SessionManager, fm *FeedbagStore) {
+func Signout(sess *Session, sm *InMemorySessionManager, fm *FeedbagStore) {
 	if err := NotifyDeparture(sess, sm, fm); err != nil {
 		fmt.Printf("error notifying departure: %s", err.Error())
 	}
 	sm.Remove(sess)
 }
 
-func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm *SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter, foodGroups []uint16) error {
+func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm *InMemorySessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter, foodGroups []uint16) error {
 	if err := WriteOServiceHostOnline(foodGroups, rwc, &seq); err != nil {
 		return err
 	}
@@ -281,7 +281,7 @@ func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm *Session
 	}
 }
 
-func routeIncomingRequests(cfg Config, ready OnReadyCB, sm *SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader) error {
+func routeIncomingRequests(cfg Config, ready OnReadyCB, sm *InMemorySessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader) error {
 	switch snac.FoodGroup {
 	case OSERVICE:
 		if err := routeOService(cfg, ready, cr, sm, fm, sess, snac, buf, rw, sequence); err != nil {

@@ -31,7 +31,7 @@ const (
 	LocateUserInfoQuery2              = 0x0015
 )
 
-func routeLocate(sess *Session, sm *SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeLocate(sess *Session, sm *InMemorySessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
 	case LocateErr:
 		panic("not implemented")
@@ -125,7 +125,7 @@ var (
 	LocateTlvTagsInfoHtmlInfoType    = uint16(0x0D)
 )
 
-func ReceiveSetInfo(sess *Session, sm *SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader) error {
+func ReceiveSetInfo(sess *Session, sm *InMemorySessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader) error {
 	fmt.Printf("ReceiveSetInfo read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x02_0x04_LocateSetInfo{}
@@ -166,7 +166,7 @@ func ReceiveLocateGetDirInfo(snac oscar.SnacFrame, r io.Reader) error {
 	return nil
 }
 
-func SendAndReceiveUserInfoQuery2(sess *Session, sm *SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveUserInfoQuery2(sess *Session, sm *InMemorySessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveUserInfoQuery2 read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{}

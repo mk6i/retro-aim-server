@@ -31,7 +31,12 @@ const (
 	ICBMSinReply                  = 0x0017
 )
 
-func routeICBM(sm *SessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+const (
+	ICBMTLVTagRequestHostAck uint16 = 0x03
+	ICBMTLVTagsWantEvents    uint16 = 0x0B
+)
+
+func routeICBM(sm *InMemorySessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
 	case ICBMErr:
 		panic("not implemented")
@@ -95,7 +100,7 @@ func SendAndReceiveICBMParameterReply(snac oscar.SnacFrame, _ io.Reader, w io.Wr
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveChannelMsgTohost(sm SessionManager, fm FeedbagManager, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChannelMsgTohost read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{}
@@ -152,21 +157,10 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 			},
 		},
 	}
-	if messagePayload, found := snacPayloadIn.TLVRestBlock.GetSlice(0x02); found {
-		clientIM.TLVRestBlock.AddTLV(oscar.TLV{
-			TType: 0x02,
-			Val:   messagePayload,
-		})
-	}
-	if messagePayload, found := snacPayloadIn.TLVRestBlock.GetSlice(0x05); found {
-		clientIM.TLVRestBlock.AddTLV(oscar.TLV{
-			TType: 0x05,
-			Val:   messagePayload,
-		})
-	}
-	if t, hasAutoResp := snacPayloadIn.GetTLV(0x04); hasAutoResp {
-		clientIM.TLVRestBlock.AddTLV(t)
-	}
+	// copy over TLVs from sender SNAC to recipient SNAC verbatim. this
+	// includes ICBMTLVTagRequestHostAck, which is ignored by the client, as
+	// far as I can tell.
+	clientIM.AddTLVList(snacPayloadIn.TLVRestBlock.TLVList)
 
 	sm.SendToScreenName(recipSess.ScreenName, XMessage{
 		snacFrame: oscar.SnacFrame{
@@ -176,7 +170,7 @@ func SendAndReceiveChannelMsgTohost(sm *SessionManager, fm *FeedbagStore, sess *
 		snacOut: clientIM,
 	})
 
-	if _, requestedConfirmation := snacPayloadIn.TLVRestBlock.GetSlice(0x03); !requestedConfirmation {
+	if _, requestedConfirmation := snacPayloadIn.TLVRestBlock.GetSlice(ICBMTLVTagRequestHostAck); !requestedConfirmation {
 		// don't ack message
 		return nil
 	}
@@ -219,7 +213,7 @@ func ReceiveClientErr(snac oscar.SnacFrame, r io.Reader) error {
 	return nil
 }
 
-func SendAndReceiveClientEvent(sm *SessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader) error {
+func SendAndReceiveClientEvent(sm *InMemorySessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader) error {
 	fmt.Printf("SendAndReceiveClientEvent read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x04_0x14_ICBMClientEvent{}
@@ -256,7 +250,7 @@ const (
 	evilDeltaAnon = uint16(30)
 )
 
-func SendAndReceiveEvilRequest(sm *SessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveEvilRequest(sm *InMemorySessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveEvilRequest read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x04_0x08_ICBMEvilRequest{}

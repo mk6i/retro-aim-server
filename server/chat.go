@@ -51,7 +51,7 @@ const (
 	ChatRoomInfoOwner             = 0x0030
 )
 
-func routeChat(sess *Session, sm *SessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeChat(sess *Session, sm *InMemorySessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
 	case ChatErr:
 		panic("not implemented")
@@ -141,7 +141,7 @@ func routeChat(sess *Session, sm *SessionManager, snac oscar.SnacFrame, r io.Rea
 	return nil
 }
 
-func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *InMemorySessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveChatChannelMsgTohost read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{}
@@ -186,7 +186,7 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *SessionManager, snac 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func SetOnlineChatUsers(sm *SessionManager, w io.Writer, sequence *uint32) error {
+func SetOnlineChatUsers(sm *InMemorySessionManager, w io.Writer, sequence *uint32) error {
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: CHAT,
 		SubGroup:  ChatUsersJoined,
@@ -208,7 +208,7 @@ func SetOnlineChatUsers(sm *SessionManager, w io.Writer, sequence *uint32) error
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func AlertUserJoined(sess *Session, sm *SessionManager) {
+func AlertUserJoined(sess *Session, sm *InMemorySessionManager) {
 	sm.BroadcastExcept(sess, XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: CHAT,
@@ -228,7 +228,7 @@ func AlertUserJoined(sess *Session, sm *SessionManager) {
 	})
 }
 
-func AlertUserLeft(sess *Session, sm *SessionManager) {
+func AlertUserLeft(sess *Session, sm *InMemorySessionManager) {
 	sm.BroadcastExcept(sess, XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: CHAT,
