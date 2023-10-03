@@ -180,18 +180,18 @@ func (s *Session) Closed() <-chan struct{} {
 	return s.stopCh
 }
 
-type SessionManager struct {
+type InMemorySessionManager struct {
 	store    map[string]*Session
 	mapMutex sync.RWMutex
 }
 
-func NewSessionManager() *SessionManager {
-	return &SessionManager{
+func NewSessionManager() *InMemorySessionManager {
+	return &InMemorySessionManager{
 		store: make(map[string]*Session),
 	}
 }
 
-func (s *SessionManager) Broadcast(msg XMessage) {
+func (s *InMemorySessionManager) Broadcast(msg XMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
@@ -199,7 +199,7 @@ func (s *SessionManager) Broadcast(msg XMessage) {
 	}
 }
 
-func (s *SessionManager) maybeSendMessage(msg XMessage, sess *Session) {
+func (s *InMemorySessionManager) maybeSendMessage(msg XMessage, sess *Session) {
 	switch sess.SendMessage(msg) {
 	case SessSendClosed:
 		fmt.Printf("message to %s was blocked, removing session\n", sess.ScreenName)
@@ -209,13 +209,13 @@ func (s *SessionManager) maybeSendMessage(msg XMessage, sess *Session) {
 	}
 }
 
-func (s *SessionManager) Empty() bool {
+func (s *InMemorySessionManager) Empty() bool {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	return len(s.store) == 0
 }
 
-func (s *SessionManager) All() []*Session {
+func (s *InMemorySessionManager) All() []*Session {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	var sessions []*Session
@@ -225,7 +225,7 @@ func (s *SessionManager) All() []*Session {
 	return sessions
 }
 
-func (s *SessionManager) BroadcastExcept(except *Session, msg XMessage) {
+func (s *InMemorySessionManager) BroadcastExcept(except *Session, msg XMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
@@ -236,14 +236,14 @@ func (s *SessionManager) BroadcastExcept(except *Session, msg XMessage) {
 	}
 }
 
-func (s *SessionManager) Retrieve(ID string) (*Session, bool) {
+func (s *InMemorySessionManager) Retrieve(ID string) (*Session, bool) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	sess, found := s.store[ID]
 	return sess, found
 }
 
-func (s *SessionManager) RetrieveByScreenName(screenName string) (*Session, error) {
+func (s *InMemorySessionManager) RetrieveByScreenName(screenName string) (*Session, error) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
@@ -254,7 +254,7 @@ func (s *SessionManager) RetrieveByScreenName(screenName string) (*Session, erro
 	return nil, fmt.Errorf("%w: %s", errSessNotFound, screenName)
 }
 
-func (s *SessionManager) RetrieveByScreenNames(screenNames []string) []*Session {
+func (s *InMemorySessionManager) retrieveByScreenNames(screenNames []string) []*Session {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	var ret []*Session
@@ -268,7 +268,7 @@ func (s *SessionManager) RetrieveByScreenNames(screenNames []string) []*Session 
 	return ret
 }
 
-func (s *SessionManager) SendToScreenName(screenName string, msg XMessage) {
+func (s *InMemorySessionManager) SendToScreenName(screenName string, msg XMessage) {
 	sess, err := s.RetrieveByScreenName(screenName)
 	if err != nil {
 		fmt.Printf("error sending to screen name: %s\n", screenName)
@@ -277,8 +277,8 @@ func (s *SessionManager) SendToScreenName(screenName string, msg XMessage) {
 	go s.maybeSendMessage(msg, sess)
 }
 
-func (s *SessionManager) BroadcastToScreenNames(screenNames []string, msg XMessage) {
-	for _, sess := range s.RetrieveByScreenNames(screenNames) {
+func (s *InMemorySessionManager) BroadcastToScreenNames(screenNames []string, msg XMessage) {
+	for _, sess := range s.retrieveByScreenNames(screenNames) {
 		go s.maybeSendMessage(msg, sess)
 	}
 }
@@ -292,7 +292,7 @@ func makeSession() *Session {
 	}
 }
 
-func (s *SessionManager) NewSessionWithSN(sessID string, screenName string) *Session {
+func (s *InMemorySessionManager) NewSessionWithSN(sessID string, screenName string) *Session {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
 	sess := makeSession()
@@ -302,7 +302,7 @@ func (s *SessionManager) NewSessionWithSN(sessID string, screenName string) *Ses
 	return sess
 }
 
-func (s *SessionManager) Remove(sess *Session) {
+func (s *InMemorySessionManager) Remove(sess *Session) {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
 	delete(s.store, sess.ID)
@@ -310,7 +310,7 @@ func (s *SessionManager) Remove(sess *Session) {
 
 type ChatRoom struct {
 	ID             string
-	SessionManager *SessionManager
+	SessionManager *InMemorySessionManager
 	CreateTime     time.Time
 	Name           string
 }

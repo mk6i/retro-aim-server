@@ -144,7 +144,7 @@ const (
 	FeedbagClassIdMin                     = 0x0400
 )
 
-func routeFeedbag(sm *SessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeFeedbag(sm *InMemorySessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
 	case FeedbagErr:
 		panic("not implemented")
@@ -389,7 +389,7 @@ func ReceiveAndSendFeedbagQueryIfModified(sess *Session, fm *FeedbagStore, snac 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveInsertItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveInsertItem(sm *InMemorySessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveInsertItem read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x13_0x08_FeedbagInsertItem{}
@@ -441,7 +441,7 @@ func ReceiveInsertItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac
 	return GetOnlineBuddies(w, sess, sm, fm, sequence)
 }
 
-func blockBuddy(sm *SessionManager, sess *Session, screenName string, sequence *uint32, w io.Writer) error {
+func blockBuddy(sm *InMemorySessionManager, sess *Session, screenName string, sequence *uint32, w io.Writer) error {
 	// tell the blocked buddy you've signed off
 	sm.SendToScreenName(screenName, XMessage{
 		snacFrame: oscar.SnacFrame{
@@ -480,7 +480,7 @@ func blockBuddy(sm *SessionManager, sess *Session, screenName string, sequence *
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveUpdateItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveUpdateItem(sm *InMemorySessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x13_0x09_FeedbagUpdateItem{}
@@ -511,7 +511,7 @@ func ReceiveUpdateItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac
 	return GetOnlineBuddies(w, sess, sm, fm, sequence)
 }
 
-func ReceiveDeleteItem(sm *SessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveDeleteItem(sm *InMemorySessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x13_0x0A_FeedbagDeleteItem{}

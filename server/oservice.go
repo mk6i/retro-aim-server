@@ -47,7 +47,7 @@ const (
 	OServiceBartReply2               = 0x0023
 )
 
-func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm *SessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm *InMemorySessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
 	case OServiceErr:
 		panic("not implemented")
@@ -250,9 +250,9 @@ func ReceiveRateParamsSubAdd(snac oscar.SnacFrame, r io.Reader) error {
 	return nil
 }
 
-type OnReadyCB func(sess *Session, sm *SessionManager, r io.Reader, w io.Writer, sequence *uint32) error
+type OnReadyCB func(sess *Session, sm *InMemorySessionManager, r io.Reader, w io.Writer, sequence *uint32) error
 
-func ReceiveClientOnline(onReadyCB OnReadyCB, sess *Session, sm *SessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveClientOnline(onReadyCB OnReadyCB, sess *Session, sm *InMemorySessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveClientOnline read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x01_0x02_OServiceClientOnline{}
@@ -267,7 +267,7 @@ func ReceiveClientOnline(onReadyCB OnReadyCB, sess *Session, sm *SessionManager,
 	return onReadyCB(sess, sm, r, w, sequence)
 }
 
-func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *FeedbagStore, sequence *uint32) error {
+func GetOnlineBuddies(w io.Writer, sess *Session, sm *InMemorySessionManager, fm *FeedbagStore, sequence *uint32) error {
 	screenNames, err := fm.Buddies(sess.ScreenName)
 	if err != nil {
 		return err
@@ -307,7 +307,7 @@ func GetOnlineBuddies(w io.Writer, sess *Session, sm *SessionManager, fm *Feedba
 	return nil
 }
 
-func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveSetUserInfoFields(sess *Session, sm *InMemorySessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("receiveSetUserInfoFields read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{}
@@ -349,7 +349,7 @@ func ReceiveSetUserInfoFields(sess *Session, sm *SessionManager, fm *FeedbagStor
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveIdleNotification(sess *Session, sm *SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader) error {
+func ReceiveIdleNotification(sess *Session, sm *InMemorySessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader) error {
 	fmt.Printf("receiveIdleNotification read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x01_0x11_OServiceIdleNotification{}
