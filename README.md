@@ -38,5 +38,5 @@ curl http://localhost:8080/user
 #### Create Users
 
 ```curl
-curl -d'{"screen_name":"myScrenName", "password":"thepassword"}' http://localhost:8080/user
+curl -d'{"screen_name":"myScreenName", "password":"thepassword"}' http://localhost:8080/user
 ```
