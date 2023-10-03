@@ -1,6 +1,6 @@
 # goaim
 
-goaim is an implemntation of the OSCAR protocol that supports AIM versions 5.0-5.9.
+goaim is a server implementation of the OSCAR protocol that supports AIM versions 5.0-5.9.
 
 ## How to run
 
@@ -12,9 +12,9 @@ Server configuration is set through environment variables. The following are the
 
 | Env Variable | Description |
 | ------------ | ----------- |
-| OSCAR_HOST   | The hostname that the server should bind to. If exposing to the internet, use the public IP. |
-| DISABLE_AUTH | If true, auto-create screen names and skip the password check. Useful for development purposes. |
-| DB_PATH      | The path to the SQLite database.|
+| `OSCAR_HOST`   | The hostname that the server should bind to. If exposing to the internet, use the public IP. |
+| `DISABLE_AUTH` | If true, auto-create screen names at login and skip the password check. Useful for development purposes. |
+| `DB_PATH`      | The path to the SQLite database. |
 
 ### Starting Up
 
