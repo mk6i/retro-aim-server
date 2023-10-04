@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 func StartManagementAPI(fs *FeedbagStore) {
@@ -51,6 +53,7 @@ func createUser(fs *FeedbagStore, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	newUser.AuthKey = uuid.New().String()
 	// todo does the request contain authkey?
 	newUser.HashPassword(newUser.Password)
 	if err := fs.InsertUser(newUser.User); err != nil {
