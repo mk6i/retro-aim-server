@@ -213,7 +213,7 @@ func ReceiveClientErr(snac oscar.SnacFrame, r io.Reader) error {
 	return nil
 }
 
-func SendAndReceiveClientEvent(sm *InMemorySessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader) error {
+func SendAndReceiveClientEvent(sm SessionManager, fm FeedbagManager, sess *Session, snac oscar.SnacFrame, r io.Reader) error {
 	fmt.Printf("SendAndReceiveClientEvent read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x04_0x14_ICBMClientEvent{}
@@ -250,7 +250,7 @@ const (
 	evilDeltaAnon = uint16(30)
 )
 
-func SendAndReceiveEvilRequest(sm *InMemorySessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func SendAndReceiveEvilRequest(sm SessionManager, fm FeedbagManager, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("SendAndReceiveEvilRequest read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x04_0x08_ICBMEvilRequest{}

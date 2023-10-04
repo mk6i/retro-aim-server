@@ -92,7 +92,7 @@ func SendAndReceiveBuddyRights(snac oscar.SnacFrame, r io.Reader, w io.Writer, s
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func NotifyArrival(sess *Session, sm *InMemorySessionManager, fm *FeedbagStore) error {
+func NotifyArrival(sess *Session, sm SessionManager, fm FeedbagManager) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName)
 	if err != nil {
 		return err
