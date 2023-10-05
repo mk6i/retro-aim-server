@@ -94,8 +94,8 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 		}
 		v.Set(reflect.ValueOf(l))
 	case reflect.Slice:
-		var bufLen int
 		if lenTag, ok := tag.Lookup("len_prefix"); ok {
+			var bufLen int
 			switch lenTag {
 			case "uint8":
 				var l uint8
@@ -122,6 +122,34 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 			for b.Len() > 0 {
 				v1 := reflect.New(v.Type().Elem()).Interface()
 				if err := Unmarshal(v1, b); err != nil {
+					return err
+				}
+				slice = reflect.Append(slice, reflect.ValueOf(v1).Elem())
+			}
+			v.Set(slice)
+		} else if countTag, ok := tag.Lookup("count_prefix"); ok {
+			var count int
+			switch countTag {
+			case "uint8":
+				var l uint8
+				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+					return err
+				}
+				count = int(l)
+			case "uint16":
+				var l uint16
+				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+					return err
+				}
+				count = int(l)
+			default:
+				panic("count not set")
+			}
+
+			slice := reflect.New(v.Type()).Elem()
+			for i := 0; i < count; i++ {
+				v1 := reflect.New(v.Type().Elem()).Interface()
+				if err := Unmarshal(v1, r); err != nil {
 					return err
 				}
 				slice = reflect.Append(slice, reflect.ValueOf(v1).Elem())

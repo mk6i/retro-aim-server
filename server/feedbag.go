@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/mkaminski/goaim/oscar"
 	"io"
+	"time"
 )
 
 const (
@@ -12,6 +13,7 @@ const (
 	FeedbagRightsQuery                     = 0x0002
 	FeedbagQuery                           = 0x0004
 	FeedbagQueryIfModified                 = 0x0005
+	FeedbagReply                           = 0x0006
 	FeedbagUse                             = 0x0007
 	FeedbagInsertItem                      = 0x0008
 	FeedbagUpdateItem                      = 0x0009
@@ -309,76 +311,68 @@ func SendAndReceiveFeedbagRightsQuery(snac oscar.SnacFrame, r io.Reader, w io.Wr
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveAndSendFeedbagQuery(sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
-	fmt.Printf("receiveAndSendFeedbagQuery read SNAC frame: %+v\n", snac)
-
+func ReceiveAndSendFeedbagQuery(sess *Session, fm FeedbagManager, snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
 	fb, err := fm.Retrieve(sess.ScreenName)
 	if err != nil {
 		return err
 	}
 
-	var lastModified uint32
+	lm := time.UnixMilli(0)
+
 	if len(fb) > 0 {
-		lm, err := fm.LastModified(sess.ScreenName)
+		lm, err = fm.LastModified(sess.ScreenName)
 		if err != nil {
 			return err
 		}
-		lastModified = uint32(lm.Unix())
 	}
 
 	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: 0x13,
-		SubGroup:  0x06,
+		FoodGroup: FEEDBAG,
+		SubGroup:  FeedbagReply,
 	}
 	snacPayloadOut := oscar.SNAC_0x13_0x06_FeedbagReply{
 		Version:    0,
 		Items:      fb,
-		LastUpdate: lastModified,
+		LastUpdate: uint32(lm.Unix()),
 	}
 
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveAndSendFeedbagQueryIfModified(sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC frame: %+v\n", snac)
-
+func ReceiveAndSendFeedbagQueryIfModified(sess *Session, fm FeedbagManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	snacPayloadIn := oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{}
 	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
-
-	fmt.Printf("ReceiveAndSendFeedbagQueryIfModified read SNAC: %+v\n", snacPayloadIn)
 
 	fb, err := fm.Retrieve(sess.ScreenName)
 	if err != nil {
 		return err
 	}
 
-	lm, err := fm.LastModified(sess.ScreenName)
-	if err != nil {
-		return err
+	lm := time.UnixMilli(0)
+
+	if len(fb) > 0 {
+		lm, err = fm.LastModified(sess.ScreenName)
+		if err != nil {
+			return err
+		}
+		if lm.Before(time.Unix(int64(snacPayloadIn.LastUpdate), 0)) {
+			snacFrameOut := oscar.SnacFrame{
+				FoodGroup: FEEDBAG,
+				SubGroup:  FeedbagReplyNotModified,
+			}
+			snacPayloadOut := oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
+				LastUpdate: uint32(lm.Unix()),
+				Count:      uint8(len(fb)),
+			}
+			return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
+		}
 	}
 
-	//if lm.Before(time.Unix(int64(snacPayloadIn.lastUpdate), 0)) {
-	//todo not sure this works right now
-	//	snacFrameOut := snacFrame{
-	//		FoodGroup: 0x13,
-	//		SubGroup:  0x0F,
-	//	}
-	//	lm, err := fm.LastModified(sess.ScreenName)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	snacPayloadOut := SNAC_0x13_0x05_FeedbagQueryIfModified{
-	//		lastUpdate: uint32(lm.Unix()),
-	//		count:      uint8(len(fb)),
-	//	}
-	//	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
-	//}
-
 	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: 0x13,
-		SubGroup:  0x06,
+		FoodGroup: FEEDBAG,
+		SubGroup:  FeedbagReply,
 	}
 	snacPayloadOut := oscar.SNAC_0x13_0x06_FeedbagReply{
 		Version:    0,
