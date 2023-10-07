@@ -267,44 +267,48 @@ func ReceiveClientOnline(onReadyCB OnReadyCB, sess *Session, sm *InMemorySession
 	return onReadyCB(sess, sm, r, w, sequence)
 }
 
-func GetOnlineBuddies(w io.Writer, sess *Session, sm *InMemorySessionManager, fm *FeedbagStore, sequence *uint32) error {
+func GetAllOnlineBuddies(w io.Writer, sess *Session, sm SessionManager, fm FeedbagManager, sequence *uint32) error {
 	screenNames, err := fm.Buddies(sess.ScreenName)
 	if err != nil {
 		return err
 	}
-
-	for _, buddies := range screenNames {
-		sess, err := sm.RetrieveByScreenName(buddies)
-		if err != nil {
-			if errors.Is(err, errSessNotFound) {
-				// buddy isn't online
-				continue
-			}
-			return err
-		}
-		if sess.Invisible() {
-			continue
-		}
-
-		snacFrameOut := oscar.SnacFrame{
-			FoodGroup: BUDDY,
-			SubGroup:  BuddyArrived,
-		}
-		snacPayloadOut := oscar.SNAC_0x03_0x0A_BuddyArrived{
-			TLVUserInfo: oscar.TLVUserInfo{
-				ScreenName:   buddies,
-				WarningLevel: sess.GetWarning(),
-				TLVBlock: oscar.TLVBlock{
-					TLVList: sess.GetUserInfo(),
-				},
-			},
-		}
-
-		if err := writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
+	for _, screenName := range screenNames {
+		if err := NotifyBuddyOnline(w, screenName, sm, sequence); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func NotifyBuddyOnline(w io.Writer, screenName string, sm SessionManager, sequence *uint32) error {
+	sess, err := sm.RetrieveByScreenName(screenName)
+	if err != nil {
+		if errors.Is(err, errSessNotFound) {
+			// buddy isn't online
+			return nil
+		}
+		return err
+	}
+	if sess.Invisible() {
+		// don't tell user this buddy is online
+		return nil
+	}
+
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: BUDDY,
+		SubGroup:  BuddyArrived,
+	}
+	snacPayloadOut := oscar.SNAC_0x03_0x0A_BuddyArrived{
+		TLVUserInfo: oscar.TLVUserInfo{
+			ScreenName:   screenName,
+			WarningLevel: sess.GetWarning(),
+			TLVBlock: oscar.TLVBlock{
+				TLVList: sess.GetUserInfo(),
+			},
+		},
+	}
+
+	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func ReceiveSetUserInfoFields(sess *Session, sm *InMemorySessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {

@@ -128,7 +128,7 @@ func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, f
 		if err := server.NotifyArrival(sess, sm, fm); err != nil {
 			return err
 		}
-		return server.GetOnlineBuddies(w, sess, sm, fm, sequence)
+		return server.GetAllOnlineBuddies(w, sess, sm, fm, sequence)
 	}
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D}

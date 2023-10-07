@@ -1,5 +1,10 @@
 package oscar
 
+import (
+	"bytes"
+	"io"
+)
+
 type SnacError struct {
 	Code uint16
 	TLVRestBlock
@@ -10,6 +15,14 @@ type FlapFrame struct {
 	FrameType     uint8
 	Sequence      uint16
 	PayloadLength uint16
+}
+
+func (f FlapFrame) SNACBuffer(r io.Reader) (io.Reader, error) {
+	b := make([]byte, f.PayloadLength)
+	if _, err := r.Read(b); err != nil {
+		return nil, err
+	}
+	return bytes.NewBuffer(b), nil
 }
 
 type SnacFrame struct {

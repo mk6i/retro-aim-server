@@ -383,15 +383,12 @@ func ReceiveAndSendFeedbagQueryIfModified(sess *Session, fm FeedbagManager, snac
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveInsertItem(sm *InMemorySessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	fmt.Printf("ReceiveInsertItem read SNAC frame: %+v\n", snac)
-
+func ReceiveInsertItem(sm SessionManager, sess *Session, fm FeedbagManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	snacPayloadIn := oscar.SNAC_0x13_0x08_FeedbagInsertItem{}
 	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	snacPayloadOut := oscar.SNAC_0x13_0x0E_FeedbagStatus{}
 	for _, item := range snacPayloadIn.Items {
 		// don't let users block themselves, it causes the AIM client to go
 		// into a weird state.
@@ -405,8 +402,6 @@ func ReceiveInsertItem(sm *InMemorySessionManager, sess *Session, fm *FeedbagSto
 			}
 			return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 		}
-		snacPayloadOut.Results = append(snacPayloadOut.Results, 0x0000) // success by default
-		fmt.Printf("ReceiveInsertItem read SNAC feedbag item: %+v\n", item)
 	}
 
 	if err := fm.Upsert(sess.ScreenName, snacPayloadIn.Items); err != nil {
@@ -417,25 +412,43 @@ func ReceiveInsertItem(sm *InMemorySessionManager, sess *Session, fm *FeedbagSto
 		FoodGroup: FEEDBAG,
 		SubGroup:  FeedbagStatus,
 	}
+	snacPayloadOut := oscar.SNAC_0x13_0x0E_FeedbagStatus{}
+
+	for range snacPayloadIn.Items {
+		snacPayloadOut.Results = append(snacPayloadOut.Results, 0x0000)
+	}
 
 	if err := writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w); err != nil {
 		return err
 	}
 
 	for _, item := range snacPayloadIn.Items {
-		// DENY, block buddy
-		if item.ClassID == 3 {
+		switch item.ClassID {
+		case 2:
+			// notify that added buddy is online
+			if err := NotifyBuddyOnline(w, item.Name, sm, sequence); err != nil {
+				return err
+			}
+		case 3:
+			// DENY, block buddy
 			if err := blockBuddy(sm, sess, item.Name, sequence, w); err != nil {
 				return err
 			}
 		}
 	}
-
-	// todo: just check online status for buddies that were added
-	return GetOnlineBuddies(w, sess, sm, fm, sequence)
+	return nil
 }
 
-func blockBuddy(sm *InMemorySessionManager, sess *Session, screenName string, sequence *uint32, w io.Writer) error {
+func blockBuddy(sm SessionManager, sess *Session, screenName string, sequence *uint32, w io.Writer) error {
+	buddySess, err := sm.RetrieveByScreenName(screenName)
+	if err != nil {
+		if errors.Is(err, errSessNotFound) {
+			// former buddy is offline
+			return nil
+		}
+		return err
+	}
+
 	// tell the blocked buddy you've signed off
 	sm.SendToScreenName(screenName, XMessage{
 		snacFrame: oscar.SnacFrame{
@@ -450,16 +463,7 @@ func blockBuddy(sm *InMemorySessionManager, sess *Session, screenName string, se
 		},
 	})
 
-	// show your blocked buddy as signed off
-	buddySess, err := sm.RetrieveByScreenName(screenName)
-	if err != nil {
-		if errors.Is(err, errSessNotFound) {
-			// former buddy is offline
-			return nil
-		}
-		return err
-	}
-
+	// tell yourself blocked buddy has signed off
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: BUDDY,
 		SubGroup:  BuddyDeparted,
@@ -502,7 +506,7 @@ func ReceiveUpdateItem(sm *InMemorySessionManager, sess *Session, fm *FeedbagSto
 		return err
 	}
 
-	return GetOnlineBuddies(w, sess, sm, fm, sequence)
+	return GetAllOnlineBuddies(w, sess, sm, fm, sequence)
 }
 
 func ReceiveDeleteItem(sm *InMemorySessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
