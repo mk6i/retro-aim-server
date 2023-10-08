@@ -89,6 +89,16 @@ func (s *Session) GetAwayMessage() string {
 	return s.AwayMessage
 }
 
+func (s *Session) GetTLVUserInfo() oscar.TLVUserInfo {
+	return oscar.TLVUserInfo{
+		ScreenName:   s.ScreenName,
+		WarningLevel: s.GetWarning(),
+		TLVBlock: oscar.TLVBlock{
+			TLVList: s.GetUserInfo(),
+		},
+	}
+}
+
 func (s *Session) GetUserInfo() []oscar.TLV {
 	s.Mutex.RLock()
 	defer s.Mutex.RUnlock()

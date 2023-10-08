@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"reflect"
 	"testing"
@@ -258,10 +259,9 @@ func TestProfileNonExistent(t *testing.T) {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
 
-	_, err = f.RetrieveProfile(screenName)
-	if err != errUserNotExist {
-		t.Fatalf("failed to get error on non-existing profile: %v", err)
-	}
+	prof, err := f.RetrieveProfile(screenName)
+	assert.NoError(t, err)
+	assert.Empty(t, prof)
 }
 
 func TestInterestedUsers(t *testing.T) {
