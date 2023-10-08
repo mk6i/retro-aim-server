@@ -8,4 +8,5 @@ packages:
     interfaces:
       FeedbagManager:
       SessionManager:
+      ProfileManager:
 # Lots more config...

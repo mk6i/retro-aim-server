@@ -13,8 +13,6 @@ import (
 	"github.com/mkaminski/goaim/oscar"
 )
 
-var errUserNotExist = errors.New("user does not exist")
-
 var feedbagDDL = `
 	CREATE TABLE IF NOT EXISTS user
 	(
@@ -335,6 +333,7 @@ func (f *FeedbagStore) Blocked(sn1, sn2 string) (BlockedState, error) {
 	var blockedA bool
 	row, err := f.db.Query(q, sn1, sn2, sn2, sn1)
 	if err != nil {
+		// todo check to make sure there's no runtime error here...
 		return BlockedNo, err
 	}
 	defer row.Close()
@@ -363,21 +362,19 @@ func (f *FeedbagStore) Blocked(sn1, sn2 string) (BlockedState, error) {
 }
 
 // RetrieveProfile fetches a user profile. Return empty string if the user
-// exists but has no profile. Return errUserNotExist if the user does not
-// exist.
+// does not exist or has no profile.
 func (f *FeedbagStore) RetrieveProfile(screenName string) (string, error) {
 	q := `
 		SELECT IFNULL(body, '')
-		FROM user u
-		LEFT JOIN profile p ON p.ScreenName = u.ScreenName
-		WHERE u.ScreenName = ?
+		FROM profile
+		WHERE ScreenName = ?
 	`
 	var profile string
 	err := f.db.QueryRow(q, screenName).Scan(&profile)
-	if err == sql.ErrNoRows {
-		return "", errUserNotExist
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", err
 	}
-	return profile, err
+	return profile, nil
 }
 
 func (f *FeedbagStore) UpsertProfile(screenName string, body string) error {
@@ -412,4 +409,9 @@ type SessionManager interface {
 	BroadcastToScreenNames(screenNames []string, msg XMessage)
 	NewSessionWithSN(sessID string, screenName string) *Session
 	Remove(sess *Session)
+}
+
+type ProfileManager interface {
+	RetrieveProfile(screenName string) (string, error)
+	UpsertProfile(screenName string, body string) error
 }

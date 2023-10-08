@@ -91,6 +91,14 @@ type SNAC_0x01_0x1E_OServiceSetUserInfoFields struct {
 // 0x02: Locate
 //
 
+const (
+	LocateType2Sig          uint32 = 0x00000001
+	LocateType2Unavailable  uint32 = 0x00000002
+	LocateType2Capabilities uint32 = 0x00000004
+	LocateType2Certs        uint32 = 0x00000008
+	LocateType2HtmlInfo     uint32 = 0x00000400
+)
+
 type SNAC_0x02_0x03_LocateRightsReply struct {
 	TLVRestBlock
 }
@@ -101,8 +109,7 @@ type SNAC_0x02_0x04_LocateSetInfo struct {
 
 type SNAC_0x02_0x06_LocateUserInfoReply struct {
 	TLVUserInfo
-	ClientProfile TLVRestBlock
-	AwayMessage   TLVRestBlock
+	LocateInfo TLVRestBlock
 }
 
 type SNAC_0x02_0x09_LocateSetDirInfo struct {
@@ -128,6 +135,14 @@ type SNAC_0x02_0x10_LocateSetKeywordReply struct {
 type SNAC_0x02_0x15_LocateUserInfoQuery2 struct {
 	Type2      uint32
 	ScreenName string `len_prefix:"uint8"`
+}
+
+func (s SNAC_0x02_0x15_LocateUserInfoQuery2) RequestProfile() bool {
+	return s.Type2&LocateType2Sig == LocateType2Sig
+}
+
+func (s SNAC_0x02_0x15_LocateUserInfoQuery2) RequestAwayMessage() bool {
+	return s.Type2&LocateType2Unavailable == LocateType2Unavailable
 }
 
 //
