@@ -109,6 +109,7 @@ func TestReceiveAndSendFeedbagQuery(t *testing.T) {
 			actual := oscar.SNAC_0x13_0x06_FeedbagReply{}
 			assert.NoError(t, oscar.Unmarshal(&actual, output))
 			assert.Equal(t, tc.expectSNACBody, actual)
+			assert.Equalf(t, 0, output.Len(), "the rest of the buffer is unread")
 		})
 	}
 }
@@ -256,6 +257,7 @@ func TestReceiveAndSendFeedbagQueryIfModified(t *testing.T) {
 			default:
 				t.Fatalf("unexpected output SNAC type")
 			}
+			assert.Equalf(t, 0, output.Len(), "the rest of the buffer is unread")
 		})
 	}
 }

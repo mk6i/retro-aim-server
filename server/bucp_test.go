@@ -200,6 +200,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 			actual := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
 			assert.NoError(t, oscar.Unmarshal(&actual, output))
 			assert.Equal(t, tc.expectSNACBody, actual)
+			assert.Equalf(t, 0, output.Len(), "the rest of the buffer is unread")
 		})
 	}
 }
@@ -360,6 +361,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 			default:
 				t.Fatalf("unexpected output SNAC type")
 			}
+			assert.Equalf(t, 0, output.Len(), "the rest of the buffer is unread")
 		})
 	}
 }
