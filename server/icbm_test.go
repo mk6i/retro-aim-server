@@ -265,6 +265,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			default:
 				t.Fatalf("unexpected output SNAC type")
 			}
+			assert.Equalf(t, 0, output.Len(), "the rest of the buffer is unread")
 		})
 	}
 }
@@ -600,6 +601,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			default:
 				t.Fatalf("unexpected output SNAC type")
 			}
+			assert.Equalf(t, 0, output.Len(), "the rest of the buffer is unread")
 		})
 	}
 }
