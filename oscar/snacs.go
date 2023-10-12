@@ -244,6 +244,13 @@ type SNAC_0x09_0x03_PDRightsReply struct {
 // 0x0D: ChatNav
 //
 
+const (
+	ChatNavTLVRedirect     uint16 = 0x01
+	ChatNavTLVMaxRooms     uint16 = 0x02
+	ChatNavTLVExchangeInfo uint16 = 0x03
+	ChatNavTLVRoomInfo     uint16 = 0x04
+)
+
 type SNAC_0x0D_0x04_ChatNavRequestRoomInfo struct {
 	Exchange       uint16
 	Cookie         []byte `len_prefix:"uint8"`
@@ -263,6 +270,13 @@ type SNAC_0x0D_0x09_TLVExchangeInfo struct {
 //
 // 0x0E: Chat
 //
+
+const (
+	ChatTLVPublicWhisperFlag    uint16 = 0x01
+	ChatTLVSenderInformation    uint16 = 0x03
+	ChatTLVEnableReflectionFlag uint16 = 0x06
+	ChatTLVRoomName             uint16 = 0xD3
+)
 
 type SNAC_0x0E_0x02_ChatRoomInfoUpdate struct {
 	Exchange       uint16

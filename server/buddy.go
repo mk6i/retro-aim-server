@@ -117,7 +117,7 @@ func NotifyArrival(sess *Session, sm SessionManager, fm FeedbagManager) error {
 	return nil
 }
 
-func NotifyDeparture(sess *Session, sm *InMemorySessionManager, fm *FeedbagStore) error {
+func NotifyDeparture(sess *Session, sm SessionManager, fm *FeedbagStore) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName)
 	if err != nil {
 		return err

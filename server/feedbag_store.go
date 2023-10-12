@@ -389,26 +389,26 @@ func (f *FeedbagStore) UpsertProfile(screenName string, body string) error {
 }
 
 type FeedbagManager interface {
-	Delete(screenName string, items []oscar.FeedbagItem) error
-	Retrieve(screenName string) ([]oscar.FeedbagItem, error)
-	LastModified(screenName string) (time.Time, error)
-	Upsert(screenName string, items []oscar.FeedbagItem) error
-	InterestedUsers(screenName string) ([]string, error)
-	Buddies(screenName string) ([]string, error)
 	Blocked(sn1, sn2 string) (BlockedState, error)
+	Buddies(screenName string) ([]string, error)
+	Delete(screenName string, items []oscar.FeedbagItem) error
+	InterestedUsers(screenName string) ([]string, error)
+	LastModified(screenName string) (time.Time, error)
+	Retrieve(screenName string) ([]oscar.FeedbagItem, error)
+	Upsert(screenName string, items []oscar.FeedbagItem) error
 }
 
 type SessionManager interface {
-	Broadcast(msg XMessage)
+	BroadcastToScreenNames(screenNames []string, msg XMessage)
 	Empty() bool
-	All() []*Session
-	BroadcastExcept(except *Session, msg XMessage)
+	NewSessionWithSN(sessID string, screenName string) *Session
+	Remove(sess *Session)
 	Retrieve(ID string) (*Session, bool)
 	RetrieveByScreenName(screenName string) (*Session, error)
 	SendToScreenName(screenName string, msg XMessage)
-	BroadcastToScreenNames(screenNames []string, msg XMessage)
-	NewSessionWithSN(sessID string, screenName string) *Session
-	Remove(sess *Session)
+	Broadcast(msg XMessage)
+	BroadcastExcept(except *Session, msg XMessage)
+	Participants() []*Session
 }
 
 type ProfileManager interface {

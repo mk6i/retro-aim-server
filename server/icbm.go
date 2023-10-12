@@ -36,7 +36,7 @@ const (
 	ICBMTLVTagsWantEvents    uint16 = 0x0B
 )
 
-func routeICBM(sm *InMemorySessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeICBM(sm SessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
 	case ICBMErr:
 		panic("not implemented")

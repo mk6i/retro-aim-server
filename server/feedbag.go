@@ -146,7 +146,7 @@ const (
 	FeedbagClassIdMin                     = 0x0400
 )
 
-func routeFeedbag(sm *InMemorySessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeFeedbag(sm SessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
 	case FeedbagErr:
 		panic("not implemented")
@@ -478,7 +478,7 @@ func blockBuddy(sm SessionManager, sess *Session, screenName string, sequence *u
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveUpdateItem(sm *InMemorySessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveUpdateItem(sm SessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x13_0x09_FeedbagUpdateItem{}
@@ -509,7 +509,7 @@ func ReceiveUpdateItem(sm *InMemorySessionManager, sess *Session, fm *FeedbagSto
 	return GetAllOnlineBuddies(w, sess, sm, fm, sequence)
 }
 
-func ReceiveDeleteItem(sm *InMemorySessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func ReceiveDeleteItem(sm SessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	fmt.Printf("ReceiveUpdateItem read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x13_0x0A_FeedbagDeleteItem{}

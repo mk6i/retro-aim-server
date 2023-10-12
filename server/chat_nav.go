@@ -39,7 +39,7 @@ func routeChatNav(sess *Session, cr *ChatRegistry, snac oscar.SnacFrame, r io.Re
 	case ChatNavSearchForRoom:
 		panic("not implemented")
 	case ChatNavCreateRoom:
-		return SendAndReceiveCreateRoom(sess, cr, snac, r, w, sequence)
+		return SendAndReceiveCreateRoom(sess, cr, NewChatRoom, snac, r, w, sequence)
 	case ChatNavNavInfo:
 		panic("not implemented")
 	}
@@ -151,29 +151,36 @@ func SendAndReceiveNextChatRights(snac oscar.SnacFrame, w io.Writer, sequence *u
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	fmt.Printf("SendAndReceiveCreateRoom read SNAC frame: %+v\n", snac)
+func NewChatRoom() ChatRoom {
+	return ChatRoom{
+		Cookie:         uuid.New().String(),
+		CreateTime:     time.Now(),
+		SessionManager: NewSessionManager(),
+	}
+}
 
+type ChatRoomFactory func() ChatRoom
+
+func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, newChatRoom ChatRoomFactory, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	snacPayloadIn := oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
 	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
 	}
 
-	name, hasName := snacPayloadIn.GetString(0x00d3)
+	name, hasName := snacPayloadIn.GetString(oscar.ChatTLVRoomName)
 	if !hasName {
 		return errors.New("unable to find chat name")
 	}
 
-	room := ChatRoom{
-		ID:             uuid.New().String(),
-		SessionManager: NewSessionManager(),
-		CreateTime:     time.Now(),
-		Name:           name,
-	}
+	room := newChatRoom()
+	room.DetailLevel = snacPayloadIn.DetailLevel
+	room.Exchange = snacPayloadIn.Exchange
+	room.InstanceNumber = snacPayloadIn.InstanceNumber
+	room.Name = name
 	cr.Register(room)
 
 	// add user to chat room
-	room.SessionManager.NewSessionWithSN(sess.ID, sess.ScreenName)
+	room.NewSessionWithSN(sess.ID, sess.ScreenName)
 
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: CHAT_NAV,
@@ -183,12 +190,12 @@ func SendAndReceiveCreateRoom(sess *Session, cr *ChatRegistry, snac oscar.SnacFr
 		TLVRestBlock: oscar.TLVRestBlock{
 			TLVList: oscar.TLVList{
 				{
-					TType: 0x04,
+					TType: oscar.ChatNavTLVRoomInfo,
 					Val: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-						Exchange:       4,
-						Cookie:         room.ID,
-						InstanceNumber: 100,
-						DetailLevel:    2,
+						Exchange:       snacPayloadIn.Exchange,
+						Cookie:         room.Cookie,
+						InstanceNumber: snacPayloadIn.InstanceNumber,
+						DetailLevel:    snacPayloadIn.DetailLevel,
 						TLVBlock: oscar.TLVBlock{
 							TLVList: room.TLVList(),
 						},
@@ -226,7 +233,7 @@ func SendAndReceiveRequestRoomInfo(cr *ChatRegistry, snac oscar.SnacFrame, r io.
 					TType: 0x04,
 					Val: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 						Exchange:       4,
-						Cookie:         room.ID,
+						Cookie:         room.Cookie,
 						InstanceNumber: 100,
 						DetailLevel:    2,
 						TLVBlock: oscar.TLVBlock{

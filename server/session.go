@@ -225,7 +225,7 @@ func (s *InMemorySessionManager) Empty() bool {
 	return len(s.store) == 0
 }
 
-func (s *InMemorySessionManager) All() []*Session {
+func (s *InMemorySessionManager) Participants() []*Session {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	var sessions []*Session
@@ -319,10 +319,13 @@ func (s *InMemorySessionManager) Remove(sess *Session) {
 }
 
 type ChatRoom struct {
-	ID             string
-	SessionManager *InMemorySessionManager
 	CreateTime     time.Time
+	DetailLevel    uint8
+	Exchange       uint16
+	Cookie         string
+	InstanceNumber uint16
 	Name           string
+	SessionManager
 }
 
 func (c ChatRoom) TLVList() []oscar.TLV {
@@ -372,7 +375,7 @@ func NewChatRegistry() *ChatRegistry {
 func (c *ChatRegistry) Register(room ChatRoom) {
 	c.mapMutex.Lock()
 	defer c.mapMutex.Unlock()
-	c.store[room.ID] = room
+	c.store[room.Cookie] = room
 }
 
 func (c *ChatRegistry) Retrieve(chatID string) (ChatRoom, error) {
@@ -390,7 +393,7 @@ func (c *ChatRegistry) MaybeRemoveRoom(chatID string) {
 	defer c.mapMutex.Unlock()
 
 	room, found := c.store[chatID]
-	if found && room.SessionManager.Empty() {
+	if found && room.Empty() {
 		delete(c.store, chatID)
 	}
 }

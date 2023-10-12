@@ -124,7 +124,7 @@ func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, f
 		conn.Close()
 	}()
 
-	onClientReady := func(sess *server.Session, sm *server.InMemorySessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
+	onClientReady := func(sess *server.Session, sm server.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
 		if err := server.NotifyArrival(sess, sm, fm); err != nil {
 			return err
 		}
@@ -149,8 +149,12 @@ func handleChatConnection(cfg server.Config, fm *server.FeedbagStore, cr *server
 	}
 
 	room, err := cr.Retrieve(string(cookie.Cookie))
+	if err != nil {
+		fmt.Printf("unable to find chat room: %s\n", err.Error())
+		return
+	}
 
-	chatSess, found := room.SessionManager.Retrieve(cookie.SessID)
+	chatSess, found := room.Retrieve(cookie.SessID)
 	if !found {
 		fmt.Printf("unable to find user for session: %s\n", cookie.SessID)
 		return
@@ -159,15 +163,15 @@ func handleChatConnection(cfg server.Config, fm *server.FeedbagStore, cr *server
 	defer chatSess.Close()
 	go func() {
 		<-chatSess.Closed()
-		server.AlertUserLeft(chatSess, room.SessionManager)
-		room.SessionManager.Remove(chatSess)
-		cr.MaybeRemoveRoom(room.ID)
+		server.AlertUserLeft(chatSess, room)
+		room.Remove(chatSess)
+		cr.MaybeRemoveRoom(room.Cookie)
 		conn.Close()
 	}()
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D, 0x000E}
 
-	onClientReady := func(sess *server.Session, sm *server.InMemorySessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
+	onClientReady := func(sess *server.Session, sm server.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
 		if err := server.SendChatRoomInfoUpdate(room, w, sequence); err != nil {
 			return err
 		}
