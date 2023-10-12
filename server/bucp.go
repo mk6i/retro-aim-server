@@ -102,7 +102,7 @@ func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveAndSendBUCPLoginRequest(cfg Config, sm *InMemorySessionManager, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
+func ReceiveAndSendBUCPLoginRequest(cfg Config, sm SessionManager, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
 	flap := oscar.FlapFrame{}
 	if err := oscar.Unmarshal(&flap, r); err != nil {
 		return err

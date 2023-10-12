@@ -45,7 +45,7 @@ var (
 	LocateTLVTagsInfoHtmlInfoType    uint16 = 0x0D
 )
 
-func routeLocate(sess *Session, sm *InMemorySessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeLocate(sess *Session, sm SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
 	case LocateErr:
 		panic("not implemented")
@@ -125,7 +125,7 @@ func SendAndReceiveLocateRights(snac oscar.SnacFrame, w io.Writer, sequence *uin
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveSetInfo(sess *Session, sm *InMemorySessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader) error {
+func ReceiveSetInfo(sess *Session, sm SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader) error {
 	fmt.Printf("ReceiveSetInfo read SNAC frame: %+v\n", snac)
 
 	snacPayloadIn := oscar.SNAC_0x02_0x04_LocateSetInfo{}

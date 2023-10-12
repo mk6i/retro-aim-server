@@ -17,49 +17,6 @@ func (_m *MockSessionManager) EXPECT() *MockSessionManager_Expecter {
 	return &MockSessionManager_Expecter{mock: &_m.Mock}
 }
 
-// All provides a mock function with given fields:
-func (_m *MockSessionManager) All() []*Session {
-	ret := _m.Called()
-
-	var r0 []*Session
-	if rf, ok := ret.Get(0).(func() []*Session); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*Session)
-		}
-	}
-
-	return r0
-}
-
-// MockSessionManager_All_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'All'
-type MockSessionManager_All_Call struct {
-	*mock.Call
-}
-
-// All is a helper method to define mock.On call
-func (_e *MockSessionManager_Expecter) All() *MockSessionManager_All_Call {
-	return &MockSessionManager_All_Call{Call: _e.mock.On("All")}
-}
-
-func (_c *MockSessionManager_All_Call) Run(run func()) *MockSessionManager_All_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockSessionManager_All_Call) Return(_a0 []*Session) *MockSessionManager_All_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockSessionManager_All_Call) RunAndReturn(run func() []*Session) *MockSessionManager_All_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Broadcast provides a mock function with given fields: msg
 func (_m *MockSessionManager) Broadcast(msg XMessage) {
 	_m.Called(msg)
@@ -243,6 +200,49 @@ func (_c *MockSessionManager_NewSessionWithSN_Call) Return(_a0 *Session) *MockSe
 }
 
 func (_c *MockSessionManager_NewSessionWithSN_Call) RunAndReturn(run func(string, string) *Session) *MockSessionManager_NewSessionWithSN_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Participants provides a mock function with given fields:
+func (_m *MockSessionManager) Participants() []*Session {
+	ret := _m.Called()
+
+	var r0 []*Session
+	if rf, ok := ret.Get(0).(func() []*Session); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*Session)
+		}
+	}
+
+	return r0
+}
+
+// MockSessionManager_Participants_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Participants'
+type MockSessionManager_Participants_Call struct {
+	*mock.Call
+}
+
+// Participants is a helper method to define mock.On call
+func (_e *MockSessionManager_Expecter) Participants() *MockSessionManager_Participants_Call {
+	return &MockSessionManager_Participants_Call{Call: _e.mock.On("Participants")}
+}
+
+func (_c *MockSessionManager_Participants_Call) Run(run func()) *MockSessionManager_Participants_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSessionManager_Participants_Call) Return(_a0 []*Session) *MockSessionManager_Participants_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSessionManager_Participants_Call) RunAndReturn(run func() []*Session) *MockSessionManager_Participants_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/mkaminski/goaim/oscar"
 	"io"
 )
@@ -51,7 +50,7 @@ const (
 	ChatRoomInfoOwner             = 0x0030
 )
 
-func routeChat(sess *Session, sm *InMemorySessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func routeChat(sess *Session, sm SessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
 	case ChatErr:
 		panic("not implemented")
@@ -141,9 +140,7 @@ func routeChat(sess *Session, sm *InMemorySessionManager, snac oscar.SnacFrame, 
 	return nil
 }
 
-func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *InMemorySessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	fmt.Printf("SendAndReceiveChatChannelMsgTohost read SNAC frame: %+v\n", snac)
-
+func SendAndReceiveChatChannelMsgTohost(sess *Session, sm SessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	snacPayloadIn := oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{}
 	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
@@ -162,7 +159,7 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *InMemorySessionManage
 	}
 
 	snacPayloadOut.AddTLV(oscar.TLV{
-		TType: 0x03,
+		TType: oscar.ChatTLVSenderInformation,
 		Val: oscar.TLVUserInfo{
 			ScreenName:   sess.ScreenName,
 			WarningLevel: sess.GetWarning(),
@@ -178,7 +175,7 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *InMemorySessionManage
 		snacOut:   snacPayloadOut,
 	})
 
-	if _, ackMsg := snacPayloadIn.GetTLV(0x06); !ackMsg {
+	if _, ackMsg := snacPayloadIn.GetTLV(oscar.ChatTLVEnableReflectionFlag); !ackMsg {
 		return nil
 	}
 
@@ -186,14 +183,14 @@ func SendAndReceiveChatChannelMsgTohost(sess *Session, sm *InMemorySessionManage
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func SetOnlineChatUsers(sm *InMemorySessionManager, w io.Writer, sequence *uint32) error {
+func SetOnlineChatUsers(sm SessionManager, w io.Writer, sequence *uint32) error {
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: CHAT,
 		SubGroup:  ChatUsersJoined,
 	}
 	snacPayloadOut := oscar.SNAC_0x0E_0x03_ChatUsersJoined{}
 
-	sessions := sm.All()
+	sessions := sm.Participants()
 
 	for _, uSess := range sessions {
 		snacPayloadOut.Users = append(snacPayloadOut.Users, oscar.TLVUserInfo{
@@ -208,7 +205,7 @@ func SetOnlineChatUsers(sm *InMemorySessionManager, w io.Writer, sequence *uint3
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func AlertUserJoined(sess *Session, sm *InMemorySessionManager) {
+func AlertUserJoined(sess *Session, sm SessionManager) {
 	sm.BroadcastExcept(sess, XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: CHAT,
@@ -228,7 +225,7 @@ func AlertUserJoined(sess *Session, sm *InMemorySessionManager) {
 	})
 }
 
-func AlertUserLeft(sess *Session, sm *InMemorySessionManager) {
+func AlertUserLeft(sess *Session, sm SessionManager) {
 	sm.BroadcastExcept(sess, XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: CHAT,
@@ -255,7 +252,7 @@ func SendChatRoomInfoUpdate(room ChatRoom, w io.Writer, sequence *uint32) error 
 	}
 	snacPayloadOut := oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 		Exchange:       4,
-		Cookie:         room.ID,
+		Cookie:         room.Cookie,
 		InstanceNumber: 100,
 		DetailLevel:    2,
 		TLVBlock: oscar.TLVBlock{
