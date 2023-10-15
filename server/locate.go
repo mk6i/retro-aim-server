@@ -31,7 +31,7 @@ const (
 	LocateUserInfoQuery2              = 0x0015
 )
 
-var (
+const (
 	LocateTLVTagsInfoSigMime         uint16 = 0x01
 	LocateTLVTagsInfoSigData         uint16 = 0x02
 	LocateTLVTagsInfoUnavailableMime uint16 = 0x03
@@ -47,45 +47,21 @@ var (
 
 func routeLocate(sess *Session, sm SessionManager, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
-	case LocateErr:
-		panic("not implemented")
 	case LocateRightsQuery:
 		return SendAndReceiveLocateRights(snac, w, sequence)
 	case LocateSetInfo:
 		return ReceiveSetInfo(sess, sm, fm, snac, r)
-	case LocateUserInfoQuery:
-		panic("not implemented")
-	case LocateUserInfoReply:
-		panic("not implemented")
-	case LocateWatcherSubRequest:
-		panic("not implemented")
-	case LocateWatcherNotification:
-		panic("not implemented")
 	case LocateSetDirInfo:
 		return SendAndReceiveSetDirInfo(snac, r, w, sequence)
 	case LocateGetDirInfo:
 		return ReceiveLocateGetDirInfo(snac, r)
-	case LocateGetDirReply:
-		panic("not implemented")
-	case LocateGroupCapabilityQuery:
-		panic("not implemented")
-	case LocateGroupCapabilityReply:
-		panic("not implemented")
 	case LocateSetKeywordInfo:
 		return SendAndReceiveSetKeywordInfo(snac, r, w, sequence)
-	case LocateGetKeywordInfo:
-		panic("not implemented")
-	case LocateGetKeywordReply:
-		panic("not implemented")
-	case LocateFindListByEmail:
-		panic("not implemented")
-	case LocateFindListReply:
-		panic("not implemented")
 	case LocateUserInfoQuery2:
 		return SendAndReceiveUserInfoQuery2(sess, sm, fm, fm, snac, r, w, sequence)
+	default:
+		return sendInvalidSNACErr(snac, w, sequence)
 	}
-
-	return nil
 }
 
 func SendAndReceiveLocateRights(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {

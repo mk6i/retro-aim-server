@@ -38,47 +38,21 @@ const (
 
 func routeICBM(sm SessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
-	case ICBMErr:
-		panic("not implemented")
 	case ICBMAddParameters:
 		return ReceiveAddParameters(snac, r)
-	case ICBMDelParameters:
-		panic("not implemented")
 	case ICBMParameterQuery:
 		return SendAndReceiveICBMParameterReply(snac, r, w, sequence)
 	case ICBMChannelMsgTohost:
 		return SendAndReceiveChannelMsgTohost(sm, fm, sess, snac, r, w, sequence)
-	case ICBMChannelMsgToclient:
-		panic("not implemented")
 	case ICBMEvilRequest:
 		return SendAndReceiveEvilRequest(sm, fm, sess, snac, r, w, sequence)
-	case ICBMMissedCalls:
-		panic("not implemented")
 	case ICBMClientErr:
 		return ReceiveClientErr(snac, r)
-	case ICBMHostAck:
-		panic("not implemented")
-	case ICBMSinStored:
-		panic("not implemented")
-	case ICBMSinListQuery:
-		panic("not implemented")
-	case ICBMSinListReply:
-		panic("not implemented")
-	case ICBMSinRetrieve:
-		panic("not implemented")
-	case ICBMSinDelete:
-		panic("not implemented")
-	case ICBMNotifyRequest:
-		panic("not implemented")
-	case ICBMNotifyReply:
-		panic("not implemented")
 	case ICBMClientEvent:
 		return SendAndReceiveClientEvent(sm, fm, sess, snac, r)
-	case ICBMSinReply:
-		panic("not implemented")
+	default:
+		return sendInvalidSNACErr(snac, w, sequence)
 	}
-
-	return nil
 }
 
 func SendAndReceiveICBMParameterReply(snac oscar.SnacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {

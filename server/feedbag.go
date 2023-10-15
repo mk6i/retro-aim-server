@@ -148,8 +148,6 @@ const (
 
 func routeFeedbag(sm SessionManager, sess *Session, fm *FeedbagStore, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
-	case FeedbagErr:
-		panic("not implemented")
 	case FeedbagRightsQuery:
 		return SendAndReceiveFeedbagRightsQuery(snac, r, w, sequence)
 	case FeedbagQuery:
@@ -164,61 +162,13 @@ func routeFeedbag(sm SessionManager, sess *Session, fm *FeedbagStore, snac oscar
 		return ReceiveUpdateItem(sm, sess, fm, snac, r, w, sequence)
 	case FeedbagDeleteItem:
 		return ReceiveDeleteItem(sm, sess, fm, snac, r, w, sequence)
-	case FeedbagInsertClass:
-		panic("not implemented")
-	case FeedbagUpdateClass:
-		panic("not implemented")
-	case FeedbagDeleteClass:
-		panic("not implemented")
-	case FeedbagStatus:
-		panic("not implemented")
-	case FeedbagReplyNotModified:
-		panic("not implemented")
-	case FeedbagDeleteUser:
-		panic("not implemented")
 	case FeedbagStartCluster:
 		return ReceiveFeedbagStartCluster(snac, r, w, sequence)
 	case FeedbagEndCluster:
 		return ReceiveFeedbagEndCluster(snac, r, w, sequence)
-	case FeedbagAuthorizeBuddy:
-		panic("not implemented")
-	case FeedbagPreAuthorizeBuddy:
-		panic("not implemented")
-	case FeedbagPreAuthorizedBuddy:
-		panic("not implemented")
-	case FeedbagRemoveMe:
-		panic("not implemented")
-	case FeedbagRemoveMe2:
-		panic("not implemented")
-	case FeedbagRequestAuthorizeToHost:
-		panic("not implemented")
-	case FeedbagRequestAuthorizeToClient:
-		panic("not implemented")
-	case FeedbagRespondAuthorizeToHost:
-		panic("not implemented")
-	case FeedbagRespondAuthorizeToClient:
-		panic("not implemented")
-	case FeedbagBuddyAdded:
-		panic("not implemented")
-	case FeedbagRequestAuthorizeToBadog:
-		panic("not implemented")
-	case FeedbagRespondAuthorizeToBadog:
-		panic("not implemented")
-	case FeedbagBuddyAddedToBadog:
-		panic("not implemented")
-	case FeedbagTestSnac:
-		panic("not implemented")
-	case FeedbagForwardMsg:
-		panic("not implemented")
-	case FeedbagIsAuthRequiredQuery:
-		panic("not implemented")
-	case FeedbagIsAuthRequiredReply:
-		panic("not implemented")
-	case FeedbagRecentBuddyUpdate:
-		panic("not implemented")
+	default:
+		return sendInvalidSNACErr(snac, w, sequence)
 	}
-
-	return nil
 }
 
 func SendAndReceiveFeedbagRightsQuery(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {

@@ -21,25 +21,8 @@ const (
 	BUCPRegistrationImageRequest        = 0x000C
 )
 
-func routeBUCP(snac oscar.SnacFrame) error {
-	switch snac.SubGroup {
-	case BUCPErr:
-		panic("not implemented")
-	case BUCPLoginRequest:
-		panic("not implemented")
-	case BUCPRegisterRequest:
-		panic("not implemented")
-	case BUCPChallengeRequest:
-		panic("not implemented")
-	case BUCPAsasnRequest:
-		panic("not implemented")
-	case BUCPSecuridRequest:
-		panic("not implemented")
-	case BUCPRegistrationImageRequest:
-		panic("not implemented")
-	}
-
-	return nil
+func routeBUCP(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
+	return sendInvalidSNACErr(snac, w, sequence)
 }
 
 func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
