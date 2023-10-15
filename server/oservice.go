@@ -379,35 +379,9 @@ const (
 )
 
 func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	fmt.Printf("receiveAndSendServiceRequest read SNAC frame: %+v\n", snac)
-
 	snacPayloadIn := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
 	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
 		return err
-	}
-
-	// this prevents AIM client from crashing when using the
-	// store/edit email address feature.
-	if _, hasEditBuddy := snacPayloadIn.GetTLV(0x28); hasEditBuddy {
-		snacFrameOut := oscar.SnacFrame{
-			FoodGroup: OSERVICE,
-			SubGroup:  OServiceErr,
-		}
-		snacPayloadOut := oscar.SnacOServiceErr{
-			Code: ErrorCodeNotSupportedByHost,
-		}
-		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
-	}
-
-	fmt.Printf("receiveAndSendServiceRequest read SNAC body: %+v\n", snacPayloadIn)
-
-	// just say that all the services are offline
-	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: OSERVICE,
-		SubGroup:  OServiceServiceResponse,
-	}
-	snacPayloadOut := oscar.SnacOServiceErr{
-		Code: 0x06,
 	}
 
 	if snacPayloadIn.FoodGroup == CHAT {
@@ -421,50 +395,58 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, s
 			return err
 		}
 
-		cookie := ChatCookie{
-			Cookie: roomSnac.Cookie,
-			SessID: sess.ID,
-		}
-		buf := &bytes.Buffer{}
-		if err := cookie.Write(buf); err != nil {
-			return err
-		}
-
 		room, err := cr.Retrieve(string(roomSnac.Cookie))
 		if err != nil {
 			return err
 		}
-
 		room.NewSessionWithSN(sess.ID, sess.ScreenName)
 
-		snacPayloadOut := oscar.SNAC_0x01_0x05_OServiceServiceResponse{
-			TLVRestBlock: oscar.TLVRestBlock{
-				TLVList: oscar.TLVList{
-					{
-						TType: OserviceTlvTagsReconnectHere,
-						Val:   Address(cfg.OSCARHost, cfg.ChatPort),
-					},
-					{
-						TType: OserviceTlvTagsLoginCookie,
-						Val:   buf.Bytes(),
-					},
-					{
-						TType: OserviceTlvTagsGroupId,
-						Val:   snacPayloadIn.FoodGroup,
-					},
-					{
-						TType: OserviceTlvTagsSslCertname,
-						Val:   "",
-					},
-					{
-						TType: OserviceTlvTagsSslState,
-						Val:   uint8(0x00),
-					},
-				},
-			},
-		}
-		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
+		return sendChatRoomServiceInfo(cfg, room, sess, snac, sequence, w)
 	}
 
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: OSERVICE,
+		SubGroup:  OServiceErr,
+	}
+	snacPayloadOut := oscar.SnacOServiceErr{
+		Code: ErrorCodeNotSupportedByHost,
+	}
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+func sendChatRoomServiceInfo(cfg Config, room ChatRoom, sess *Session, snac oscar.SnacFrame, sequence *uint32, w io.Writer) error {
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: OSERVICE,
+		SubGroup:  OServiceServiceResponse,
+	}
+	snacPayloadOut := oscar.SNAC_0x01_0x05_OServiceServiceResponse{
+		TLVRestBlock: oscar.TLVRestBlock{
+			TLVList: oscar.TLVList{
+				{
+					TType: OserviceTlvTagsReconnectHere,
+					Val:   Address(cfg.OSCARHost, cfg.ChatPort),
+				},
+				{
+					TType: OserviceTlvTagsLoginCookie,
+					Val: ChatCookie{
+						Cookie: []byte(room.Cookie),
+						SessID: sess.ID,
+					},
+				},
+				{
+					TType: OserviceTlvTagsGroupId,
+					Val:   CHAT,
+				},
+				{
+					TType: OserviceTlvTagsSslCertname,
+					Val:   "",
+				},
+				{
+					TType: OserviceTlvTagsSslState,
+					Val:   uint8(0x00),
+				},
+			},
+		},
+	}
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
