@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
@@ -47,44 +46,8 @@ func routeChatNav(sess *Session, cr *ChatRegistry, snac oscar.SnacFrame, r io.Re
 }
 
 type ChatCookie struct {
-	Cookie []byte
-	SessID string
-}
-
-func (s *ChatCookie) Read(r io.Reader) error {
-	var l uint16
-	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-		return err
-	}
-	s.Cookie = make([]byte, l)
-	if _, err := r.Read(s.Cookie); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-		return err
-	}
-	buf := make([]byte, l)
-	if _, err := r.Read(buf); err != nil {
-		return err
-	}
-	s.SessID = string(buf)
-	return nil
-}
-
-func (s ChatCookie) Write(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, uint16(len(s.Cookie))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, s.Cookie); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(s.SessID))); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, []byte(s.SessID)); err != nil {
-		return err
-	}
-	return nil
+	Cookie []byte `len_prefix:"uint16"`
+	SessID string `len_prefix:"uint16"`
 }
 
 func SendAndReceiveNextChatRights(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
