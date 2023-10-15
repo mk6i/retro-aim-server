@@ -24,32 +24,11 @@ const (
 func routeBuddy(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 
 	switch snac.SubGroup {
-	case BuddyErr:
-		panic("not implemented")
 	case BuddyRightsQuery:
 		return SendAndReceiveBuddyRights(snac, r, w, sequence)
-	case BuddyAddBuddies:
-		panic("not implemented")
-	case BuddyDelBuddies:
-		panic("not implemented")
-	case BuddyWatcherListQuery:
-		panic("not implemented")
-	case BuddyWatcherSubRequest:
-		panic("not implemented")
-	case BuddyWatcherNotification:
-		panic("not implemented")
-	case BuddyRejectNotification:
-		panic("not implemented")
-	case BuddyArrived:
-		panic("not implemented")
-	case BuddyDeparted:
-		panic("not implemented")
-	case BuddyAddTempBuddies:
-		panic("not implemented")
-	case BuddyDelTempBuddies:
-		panic("not implemented")
+	default:
+		return sendInvalidSNACErr(snac, w, sequence)
 	}
-	return nil
 }
 
 func SendAndReceiveBuddyRights(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {

@@ -23,26 +23,15 @@ const (
 
 func routeChatNav(sess *Session, cr *ChatRegistry, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
-	case ChatNavErr:
-		panic("not implemented")
 	case ChatNavRequestChatRights:
 		return SendAndReceiveNextChatRights(snac, w, sequence)
-	case ChatNavRequestExchangeInfo:
-		panic("not implemented")
 	case ChatNavRequestRoomInfo:
 		return SendAndReceiveRequestRoomInfo(cr, snac, r, w, sequence)
-	case ChatNavRequestMoreRoomInfo:
-		panic("not implemented")
-	case ChatNavRequestOccupantList:
-		panic("not implemented")
-	case ChatNavSearchForRoom:
-		panic("not implemented")
 	case ChatNavCreateRoom:
 		return SendAndReceiveCreateRoom(sess, cr, NewChatRoom, snac, r, w, sequence)
-	case ChatNavNavInfo:
-		panic("not implemented")
+	default:
+		return sendInvalidSNACErr(snac, w, sequence)
 	}
-	return nil
 }
 
 type ChatCookie struct {

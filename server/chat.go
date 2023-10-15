@@ -52,92 +52,11 @@ const (
 
 func routeChat(sess *Session, sm SessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
-	case ChatErr:
-		panic("not implemented")
-	case ChatRoomInfoUpdate:
-		panic("not implemented")
-	case ChatUsersJoined:
-		panic("not implemented")
-	case ChatUsersLeft:
-		panic("not implemented")
 	case ChatChannelMsgTohost:
 		return SendAndReceiveChatChannelMsgTohost(sess, sm, snac, r, w, sequence)
-	case ChatChannelMsgToclient:
-		panic("not implemented")
-	case ChatEvilRequest:
-		panic("not implemented")
-	case ChatEvilReply:
-		panic("not implemented")
-	case ChatClientErr:
-		panic("not implemented")
-	case ChatPauseRoomReq:
-		panic("not implemented")
-	case ChatPauseRoomAck:
-		panic("not implemented")
-	case ChatResumeRoom:
-		panic("not implemented")
-	case ChatShowMyRow:
-		panic("not implemented")
-	case ChatShowRowByUsername:
-		panic("not implemented")
-	case ChatShowRowByNumber:
-		panic("not implemented")
-	case ChatShowRowByName:
-		panic("not implemented")
-	case ChatRowInfo:
-		panic("not implemented")
-	case ChatListRows:
-		panic("not implemented")
-	case ChatRowListInfo:
-		panic("not implemented")
-	case ChatMoreRows:
-		panic("not implemented")
-	case ChatMoveToRow:
-		panic("not implemented")
-	case ChatToggleChat:
-		panic("not implemented")
-	case ChatSendQuestion:
-		panic("not implemented")
-	case ChatSendComment:
-		panic("not implemented")
-	case ChatTallyVote:
-		panic("not implemented")
-	case ChatAcceptBid:
-		panic("not implemented")
-	case ChatSendInvite:
-		panic("not implemented")
-	case ChatDeclineInvite:
-		panic("not implemented")
-	case ChatAcceptInvite:
-		panic("not implemented")
-	case ChatNotifyMessage:
-		panic("not implemented")
-	case ChatGotoRow:
-		panic("not implemented")
-	case ChatStageUserJoin:
-		panic("not implemented")
-	case ChatStageUserLeft:
-		panic("not implemented")
-	case ChatUnnamedSnac22:
-		panic("not implemented")
-	case ChatClose:
-		panic("not implemented")
-	case ChatUserBan:
-		panic("not implemented")
-	case ChatUserUnban:
-		panic("not implemented")
-	case ChatJoined:
-		panic("not implemented")
-	case ChatUnnamedSnac27:
-		panic("not implemented")
-	case ChatUnnamedSnac28:
-		panic("not implemented")
-	case ChatUnnamedSnac29:
-		panic("not implemented")
-	case ChatRoomInfoOwner:
-		panic("not implemented")
+	default:
+		return sendInvalidSNACErr(snac, w, sequence)
 	}
-	return nil
 }
 
 func SendAndReceiveChatChannelMsgTohost(sess *Session, sm SessionManager, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {

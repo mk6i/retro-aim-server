@@ -199,6 +199,18 @@ const (
 	FlapFrameKeepAlive       = 0x05
 )
 
+func sendInvalidSNACErr(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
+	fmt.Printf("unimplemented SNAC: %+v\n", snac)
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: snac.FoodGroup,
+		SubGroup:  0x01, // error subgroup for all SNACs
+	}
+	snacPayloadOut := oscar.SnacError{
+		Code: ErrorCodeInvalidSnac,
+	}
+	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
 func readIncomingRequests(rw io.Reader, msgCh chan IncomingMessage, errCh chan error) {
 	defer close(msgCh)
 	defer close(errCh)
@@ -312,7 +324,7 @@ func routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionManager, sess 
 			return err
 		}
 	case BUCP:
-		if err := routeBUCP(snac); err != nil {
+		if err := routeBUCP(snac, rw, sequence); err != nil {
 			return err
 		}
 	case CHAT:

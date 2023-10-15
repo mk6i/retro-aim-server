@@ -49,73 +49,25 @@ const (
 
 func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm SessionManager, fm *FeedbagStore, sess *Session, snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
-	case OServiceErr:
-		panic("not implemented")
 	case OServiceClientOnline:
 		return ReceiveClientOnline(ready, sess, sm, snac, r, w, sequence)
-	case OServiceHostOnline:
-		panic("not implemented")
 	case OServiceServiceRequest:
 		return ReceiveAndSendServiceRequest(cfg, cr, sess, snac, r, w, sequence)
 	case OServiceRateParamsQuery:
 		return ReceiveAndSendServiceRateParams(snac, r, w, sequence)
 	case OServiceRateParamsSubAdd:
 		return ReceiveRateParamsSubAdd(snac, r)
-	case OServiceRateDelParamSub:
-		panic("not implemented")
-	case OServiceRateParamChange:
-		panic("not implemented")
-	case OServicePauseReq:
-		panic("not implemented")
-	case OServicePauseAck:
-		panic("not implemented")
-	case OServiceResume:
-		panic("not implemented")
 	case OServiceUserInfoQuery:
 		return ReceiveAndSendServiceRequestSelfInfo(sess, snac, r, w, sequence)
-	case OServiceUserInfoUpdate:
-		panic("not implemented")
-	case OServiceEvilNotification:
-		panic("not implemented")
 	case OServiceIdleNotification:
 		return ReceiveIdleNotification(sess, sm, fm, snac, r)
-	case OServiceMigrateGroups:
-		panic("not implemented")
-	case OServiceMotd:
-		panic("not implemented")
-	case OServiceSetPrivacyFlags:
-		panic("not implemented")
-	case OServiceWellKnownUrls:
-		panic("not implemented")
-	case OServiceNoop:
-		panic("not implemented")
 	case OServiceClientVersions:
 		return ReceiveAndSendHostVersions(snac, r, w, sequence)
-	case OServiceMaxConfigQuery:
-		panic("not implemented")
-	case OServiceMaxConfigReply:
-		panic("not implemented")
-	case OServiceStoreConfig:
-		panic("not implemented")
-	case OServiceConfigQuery:
-		panic("not implemented")
-	case OServiceConfigReply:
-		panic("not implemented")
 	case OServiceSetUserinfoFields:
 		return ReceiveSetUserInfoFields(sess, sm, fm, snac, r, w, sequence)
-	case OServiceProbeReq:
-		panic("not implemented")
-	case OServiceProbeAck:
-		panic("not implemented")
-	case OServiceBartReply:
-		panic("not implemented")
-	case OServiceBartQuery2:
-		panic("not implemented")
-	case OServiceBartReply2:
-		panic("not implemented")
+	default:
+		return sendInvalidSNACErr(snac, w, sequence)
 	}
-
-	return nil
 }
 
 func WriteOServiceHostOnline(foodGroups []uint16, w io.Writer, sequence *uint32) error {

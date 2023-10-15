@@ -22,29 +22,11 @@ const (
 
 func routePD(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch snac.SubGroup {
-	case PDErr:
-		panic("not implemented")
 	case PDRightsQuery:
 		return SendAndReceivePDRightsQuery(snac, r, w, sequence)
-	case PDSetGroupPermitMask:
-		panic("not implemented")
-	case PDAddPermListEntries:
-		panic("not implemented")
-	case PDDelPermListEntries:
-		panic("not implemented")
-	case PDAddDenyListEntries:
-		panic("not implemented")
-	case PDDelDenyListEntries:
-		panic("not implemented")
-	case PDBosErr:
-		panic("not implemented")
-	case PDAddTempPermitListEntries:
-		panic("not implemented")
-	case PDDelTempPermitListEntries:
-		panic("not implemented")
+	default:
+		return sendInvalidSNACErr(snac, w, sequence)
 	}
-
-	return nil
 }
 
 func SendAndReceivePDRightsQuery(snac oscar.SnacFrame, _ io.Reader, w io.Writer, sequence *uint32) error {
