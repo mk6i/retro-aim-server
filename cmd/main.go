@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
@@ -133,10 +134,13 @@ func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, f
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D}
 	if err := server.ReadBos(cfg, onClientReady, sess, seq, sm, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
-		if err != io.EOF {
+		switch {
+		case errors.Is(io.EOF, err):
+			fallthrough
+		case errors.Is(server.ErrSignedOff, err):
+			fmt.Println("user signed off")
+		default:
 			fmt.Printf("user disconnected with error: %s\n", err.Error())
-		} else {
-			fmt.Println("user disconnected")
 		}
 	}
 }

@@ -8,7 +8,10 @@ import (
 	"time"
 )
 
-var errSessNotFound = errors.New("session was not found")
+var (
+	errSessNotFound = errors.New("session was not found")
+	ErrSignedOff    = errors.New("user signed off")
+)
 
 type SessSendStatus int
 
@@ -212,7 +215,7 @@ func (s *InMemorySessionManager) Broadcast(msg XMessage) {
 func (s *InMemorySessionManager) maybeSendMessage(msg XMessage, sess *Session) {
 	switch sess.SendMessage(msg) {
 	case SessSendClosed:
-		fmt.Printf("message to %s was blocked, removing session\n", sess.ScreenName)
+		fmt.Printf("can't send message to %s because the session was closed: %+v\n", sess.ScreenName, msg)
 	case SessSendTimeout:
 		fmt.Printf("message to %s timed out\n", sess.ScreenName)
 		sess.Close()
