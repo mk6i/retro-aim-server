@@ -30,7 +30,7 @@ func routeChatNav(sess *Session, cr *ChatRegistry, snac oscar.SnacFrame, r io.Re
 	case ChatNavCreateRoom:
 		return SendAndReceiveCreateRoom(sess, cr, NewChatRoom, snac, r, w, sequence)
 	default:
-		return sendInvalidSNACErr(snac, w, sequence)
+		return handleUnimplementedSNAC(snac, w, sequence)
 	}
 }
 

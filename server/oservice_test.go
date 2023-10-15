@@ -16,7 +16,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 		// cfg is the application config
 		cfg Config
 		// chatRoom is the chat room the user connects to
-		chatRoom ChatRoom
+		chatRoom *ChatRoom
 		// userSession is the session of the user requesting the chat service
 		// info
 		userSession *Session
@@ -30,7 +30,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 		expectSNACBody any
 	}{
 		{
-			name: "request info for ICBM service, return service not defined error",
+			name: "request info for ICBM service, return invalid SNAC err",
 			userSession: &Session{
 				ScreenName: "user_screen_name",
 			},
@@ -42,7 +42,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				SubGroup:  OServiceErr,
 			},
 			expectSNACBody: oscar.SnacOServiceErr{
-				Code: ErrorCodeNotSupportedByHost,
+				Code: ErrorCodeInvalidSnac,
 			},
 		},
 		{
@@ -51,7 +51,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				ChatPort:  1234,
 			},
-			chatRoom: ChatRoom{
+			chatRoom: &ChatRoom{
 				CreateTime:     time.UnixMilli(0),
 				DetailLevel:    4,
 				Exchange:       8,
@@ -112,6 +112,40 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "request info for connecting to non-existent chat room, return SNAC error",
+			cfg: Config{
+				OSCARHost: "127.0.0.1",
+				ChatPort:  1234,
+			},
+			chatRoom: nil,
+			userSession: &Session{
+				ID:         "user-sess-id",
+				ScreenName: "user_screen_name",
+			},
+			inputSNAC: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
+				FoodGroup: CHAT,
+				TLVRestBlock: oscar.TLVRestBlock{
+					TLVList: oscar.TLVList{
+						{
+							TType: 0x01,
+							Val: oscar.SNAC_0x01_0x04_TLVRoomInfo{
+								Exchange:       8,
+								Cookie:         []byte("the-chat-cookie"),
+								InstanceNumber: 16,
+							},
+						},
+					},
+				},
+			},
+			expectSNACFrame: oscar.SnacFrame{
+				FoodGroup: OSERVICE,
+				SubGroup:  OServiceErr,
+			},
+			expectSNACBody: oscar.SnacOServiceErr{
+				Code: ErrorCodeInvalidSnac,
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -120,13 +154,15 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			// initialize dependencies
 			//
 			sm := NewMockSessionManager(t)
-			sm.EXPECT().
-				NewSessionWithSN(tc.userSession.ID, tc.userSession.ScreenName).
-				Return(&Session{}).
-				Maybe()
-			tc.chatRoom.SessionManager = sm
 			cr := NewChatRegistry()
-			cr.Register(tc.chatRoom)
+			if tc.chatRoom != nil {
+				sm.EXPECT().
+					NewSessionWithSN(tc.userSession.ID, tc.userSession.ScreenName).
+					Return(&Session{}).
+					Maybe()
+				tc.chatRoom.SessionManager = sm
+				cr.Register(*tc.chatRoom)
+			}
 
 			//
 			// send input SNAC
