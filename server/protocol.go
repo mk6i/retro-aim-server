@@ -199,8 +199,8 @@ const (
 	FlapFrameKeepAlive       = 0x05
 )
 
-func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan error) {
-	defer close(msCh)
+func readIncomingRequests(rw io.Reader, msgCh chan IncomingMessage, errCh chan error) {
+	defer close(msgCh)
 	defer close(errCh)
 
 	for {
@@ -228,7 +228,7 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 				return
 			}
 
-			msCh <- IncomingMessage{
+			msgCh <- IncomingMessage{
 				flap: flap,
 				snac: snac,
 				buf:  buf,
@@ -237,7 +237,7 @@ func readIncomingRequests(rw io.Reader, msCh chan IncomingMessage, errCh chan er
 			errCh <- fmt.Errorf("got FlapFrameError: %v", flap)
 			return
 		case FlapFrameSignoff:
-			errCh <- fmt.Errorf("got signoff: %v", flap)
+			errCh <- ErrSignedOff
 			return
 		case FlapFrameKeepAlive:
 			fmt.Println("keepalive heartbeat")
