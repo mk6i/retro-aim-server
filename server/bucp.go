@@ -22,7 +22,7 @@ const (
 )
 
 func routeBUCP(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
-	return sendInvalidSNACErr(snac, w, sequence)
+	return handleUnimplementedSNAC(snac, w, sequence)
 }
 
 func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {

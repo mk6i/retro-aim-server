@@ -66,7 +66,7 @@ func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm SessionMana
 	case OServiceSetUserinfoFields:
 		return ReceiveSetUserInfoFields(sess, sm, fm, snac, r, w, sequence)
 	default:
-		return sendInvalidSNACErr(snac, w, sequence)
+		return handleUnimplementedSNAC(snac, w, sequence)
 	}
 }
 
@@ -349,21 +349,14 @@ func ReceiveAndSendServiceRequest(cfg Config, cr *ChatRegistry, sess *Session, s
 
 		room, err := cr.Retrieve(string(roomSnac.Cookie))
 		if err != nil {
-			return err
+			return sendInvalidSNACErr(snac, w, sequence)
 		}
 		room.NewSessionWithSN(sess.ID, sess.ScreenName)
 
 		return sendChatRoomServiceInfo(cfg, room, sess, snac, sequence, w)
 	}
 
-	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: OSERVICE,
-		SubGroup:  OServiceErr,
-	}
-	snacPayloadOut := oscar.SnacOServiceErr{
-		Code: ErrorCodeNotSupportedByHost,
-	}
-	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
+	return sendInvalidSNACErr(snac, w, sequence)
 }
 
 func sendChatRoomServiceInfo(cfg Config, room ChatRoom, sess *Session, snac oscar.SnacFrame, sequence *uint32, w io.Writer) error {

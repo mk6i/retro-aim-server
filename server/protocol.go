@@ -199,8 +199,12 @@ const (
 	FlapFrameKeepAlive       = 0x05
 )
 
-func sendInvalidSNACErr(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
+func handleUnimplementedSNAC(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
 	fmt.Printf("unimplemented SNAC: %+v\n", snac)
+	return sendInvalidSNACErr(snac, w, sequence)
+}
+
+func sendInvalidSNACErr(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: snac.FoodGroup,
 		SubGroup:  0x01, // error subgroup for all SNACs

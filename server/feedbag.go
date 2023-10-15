@@ -167,7 +167,7 @@ func routeFeedbag(sm SessionManager, sess *Session, fm *FeedbagStore, snac oscar
 	case FeedbagEndCluster:
 		return ReceiveFeedbagEndCluster(snac, r, w, sequence)
 	default:
-		return sendInvalidSNACErr(snac, w, sequence)
+		return handleUnimplementedSNAC(snac, w, sequence)
 	}
 }
 

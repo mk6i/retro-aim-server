@@ -51,7 +51,7 @@ func routeICBM(sm SessionManager, fm *FeedbagStore, sess *Session, snac oscar.Sn
 	case ICBMClientEvent:
 		return SendAndReceiveClientEvent(sm, fm, sess, snac, r)
 	default:
-		return sendInvalidSNACErr(snac, w, sequence)
+		return handleUnimplementedSNAC(snac, w, sequence)
 	}
 }
 
