@@ -25,7 +25,7 @@ func routePD(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) e
 	case PDRightsQuery:
 		return SendAndReceivePDRightsQuery(snac, r, w, sequence)
 	default:
-		return handleUnimplementedSNAC(snac, w, sequence)
+		return ErrUnimplementedSNAC
 	}
 }
 

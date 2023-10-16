@@ -66,7 +66,7 @@ func routeOService(cfg Config, ready OnReadyCB, cr *ChatRegistry, sm SessionMana
 	case OServiceSetUserinfoFields:
 		return ReceiveSetUserInfoFields(sess, sm, fm, snac, r, w, sequence)
 	default:
-		return handleUnimplementedSNAC(snac, w, sequence)
+		return ErrUnimplementedSNAC
 	}
 }
 

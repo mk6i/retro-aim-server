@@ -56,13 +56,16 @@ var (
 	CapChat, _ = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
 )
 
+var ErrUnimplementedSNAC = errors.New("snac is unimplemented")
+
 type Config struct {
-	OSCARHost   string `envconfig:"OSCAR_HOST" required:"true"`
-	OSCARPort   int    `envconfig:"OSCAR_PORT" default:"5190"`
 	BOSPort     int    `envconfig:"BOS_PORT" default:"5191"`
 	ChatPort    int    `envconfig:"CHAT_PORT" default:"5192"`
-	DisableAuth bool   `envconfig:"DISABLE_AUTH" default:"false"`
 	DBPath      string `envconfig:"DB_PATH" required:"true"`
+	DisableAuth bool   `envconfig:"DISABLE_AUTH" default:"false"`
+	FailFast    bool   `envconfig:"FAIL_FAST" default:"false"`
+	OSCARHost   string `envconfig:"OSCAR_HOST" required:"true"`
+	OSCARPort   int    `envconfig:"OSCAR_PORT" default:"5190"`
 }
 
 func Address(host string, port int) string {
@@ -199,11 +202,6 @@ const (
 	FlapFrameKeepAlive       = 0x05
 )
 
-func handleUnimplementedSNAC(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
-	fmt.Printf("unimplemented SNAC: %+v\n", snac)
-	return sendInvalidSNACErr(snac, w, sequence)
-}
-
 func sendInvalidSNACErr(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: snac.FoodGroup,
@@ -285,7 +283,19 @@ func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm SessionM
 		select {
 		case m := <-msgCh:
 			if err := routeIncomingRequests(cfg, ready, sm, sess, fm, cr, rwc, &seq, m.snac, m.buf); err != nil {
-				return err
+				switch {
+				case errors.Is(err, ErrUnimplementedSNAC):
+					if err := sendInvalidSNACErr(m.snac, rwc, &seq); err != nil {
+						return err
+					}
+					msg := fmt.Sprintf("unimplemented SNAC: %+v", m.snac)
+					if cfg.FailFast {
+						panic(msg)
+					}
+					fmt.Println(msg)
+				default:
+					return err
+				}
 			}
 		case m := <-sess.RecvMessage():
 			if err := writeOutSNAC(oscar.SnacFrame{}, m.snacFrame, m.snacOut, &seq, rwc); err != nil {
@@ -328,7 +338,7 @@ func routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionManager, sess 
 			return err
 		}
 	case BUCP:
-		if err := routeBUCP(snac, rw, sequence); err != nil {
+		if err := routeBUCP(); err != nil {
 			return err
 		}
 	case CHAT:

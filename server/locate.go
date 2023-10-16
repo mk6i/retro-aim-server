@@ -60,7 +60,7 @@ func routeLocate(sess *Session, sm SessionManager, fm *FeedbagStore, snac oscar.
 	case LocateUserInfoQuery2:
 		return SendAndReceiveUserInfoQuery2(sess, sm, fm, fm, snac, r, w, sequence)
 	default:
-		return handleUnimplementedSNAC(snac, w, sequence)
+		return ErrUnimplementedSNAC
 	}
 }
 
