@@ -55,7 +55,7 @@ func routeChat(sess *Session, sm SessionManager, snac oscar.SnacFrame, r io.Read
 	case ChatChannelMsgTohost:
 		return SendAndReceiveChatChannelMsgTohost(sess, sm, snac, r, w, sequence)
 	default:
-		return handleUnimplementedSNAC(snac, w, sequence)
+		return ErrUnimplementedSNAC
 	}
 }
 

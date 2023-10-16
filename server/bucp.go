@@ -21,8 +21,8 @@ const (
 	BUCPRegistrationImageRequest        = 0x000C
 )
 
-func routeBUCP(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
-	return handleUnimplementedSNAC(snac, w, sequence)
+func routeBUCP() error {
+	return ErrUnimplementedSNAC
 }
 
 func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
