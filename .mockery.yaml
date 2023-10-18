@@ -9,4 +9,4 @@ packages:
       FeedbagManager:
       SessionManager:
       ProfileManager:
-# Lots more config...
+      ICBMHandler:

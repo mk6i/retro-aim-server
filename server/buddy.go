@@ -27,7 +27,7 @@ func routeBuddy(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32
 	case BuddyRightsQuery:
 		return SendAndReceiveBuddyRights(snac, r, w, sequence)
 	default:
-		return ErrUnimplementedSNAC
+		return ErrUnsupportedSubGroup
 	}
 }
 

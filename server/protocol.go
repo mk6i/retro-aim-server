@@ -56,7 +56,7 @@ var (
 	CapChat, _ = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
 )
 
-var ErrUnimplementedSNAC = errors.New("snac is unimplemented")
+var ErrUnsupportedSubGroup = errors.New("unimplemented subgroup, your client version may be unsupported")
 
 type Config struct {
 	BOSPort     int    `envconfig:"BOS_PORT" default:"5191"`
@@ -279,12 +279,14 @@ func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm SessionM
 	errCh := make(chan error, 1)
 	go readIncomingRequests(rwc, msgCh, errCh)
 
+	router := NewRouter()
+
 	for {
 		select {
 		case m := <-msgCh:
-			if err := routeIncomingRequests(cfg, ready, sm, sess, fm, cr, rwc, &seq, m.snac, m.buf); err != nil {
+			if err := router.routeIncomingRequests(cfg, ready, sm, sess, fm, cr, rwc, &seq, m.snac, m.buf); err != nil {
 				switch {
-				case errors.Is(err, ErrUnimplementedSNAC):
+				case errors.Is(err, ErrUnsupportedSubGroup):
 					if err := sendInvalidSNACErr(m.snac, rwc, &seq); err != nil {
 						return err
 					}
@@ -307,7 +309,17 @@ func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm SessionM
 	}
 }
 
-func routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader) error {
+func NewRouter() Router {
+	return Router{
+		ICBMRouter: NewICBMRouter(),
+	}
+}
+
+type Router struct {
+	ICBMRouter
+}
+
+func (rt *Router) routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader) error {
 	switch snac.FoodGroup {
 	case OSERVICE:
 		if err := routeOService(cfg, ready, cr, sm, fm, sess, snac, buf, rw, sequence); err != nil {
@@ -322,7 +334,7 @@ func routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionManager, sess 
 			return err
 		}
 	case ICBM:
-		if err := routeICBM(sm, fm, sess, snac, buf, rw, sequence); err != nil {
+		if err := rt.RouteICBM(sm, fm, sess, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case PD:
