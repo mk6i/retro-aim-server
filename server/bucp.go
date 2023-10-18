@@ -22,7 +22,7 @@ const (
 )
 
 func routeBUCP() error {
-	return ErrUnimplementedSNAC
+	return ErrUnsupportedSubGroup
 }
 
 func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {

@@ -169,6 +169,33 @@ type SNAC_0x03_0x0B_BuddyDeparted struct {
 // 0x04: ICBM
 //
 
+const (
+	ICBMErr                uint16 = 0x0001
+	ICBMAddParameters      uint16 = 0x0002
+	ICBMDelParameters      uint16 = 0x0003
+	ICBMParameterQuery     uint16 = 0x0004
+	ICBMParameterReply     uint16 = 0x0005
+	ICBMChannelMsgToHost   uint16 = 0x0006
+	ICBMChannelMsgToclient uint16 = 0x0007
+	ICBMEvilRequest        uint16 = 0x0008
+	ICBMEvilReply          uint16 = 0x0009
+	ICBMMissedCalls        uint16 = 0x000A
+	ICBMClientErr          uint16 = 0x000B
+	ICBMHostAck            uint16 = 0x000C
+	ICBMSinStored          uint16 = 0x000D
+	ICBMSinListQuery       uint16 = 0x000E
+	ICBMSinListReply       uint16 = 0x000F
+	ICBMSinRetrieve        uint16 = 0x0010
+	ICBMSinDelete          uint16 = 0x0011
+	ICBMNotifyRequest      uint16 = 0x0012
+	ICBMNotifyReply        uint16 = 0x0013
+	ICBMClientEvent        uint16 = 0x0014
+	ICBMSinReply           uint16 = 0x0017
+
+	ICBMTLVTagRequestHostAck uint16 = 0x03
+	ICBMTLVTagsWantEvents    uint16 = 0x0B
+)
+
 type SNAC_0x04_0x02_ICBMAddParameters struct {
 	Channel              uint16
 	ICBMFlags            uint32
