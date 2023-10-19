@@ -92,11 +92,45 @@ type SNAC_0x01_0x1E_OServiceSetUserInfoFields struct {
 //
 
 const (
+	LocateErr                  uint16 = 0x0001
+	LocateRightsQuery          uint16 = 0x0002
+	LocateRightsReply          uint16 = 0x0003
+	LocateSetInfo              uint16 = 0x0004
+	LocateUserInfoQuery        uint16 = 0x0005
+	LocateUserInfoReply        uint16 = 0x0006
+	LocateWatcherSubRequest    uint16 = 0x0007
+	LocateWatcherNotification  uint16 = 0x0008
+	LocateSetDirInfo           uint16 = 0x0009
+	LocateSetDirReply          uint16 = 0x000A
+	LocateGetDirInfo           uint16 = 0x000B
+	LocateGetDirReply          uint16 = 0x000C
+	LocateGroupCapabilityQuery uint16 = 0x000D
+	LocateGroupCapabilityReply uint16 = 0x000E
+	LocateSetKeywordInfo       uint16 = 0x000F
+	LocateSetKeywordReply      uint16 = 0x0010
+	LocateGetKeywordInfo       uint16 = 0x0011
+	LocateGetKeywordReply      uint16 = 0x0012
+	LocateFindListByEmail      uint16 = 0x0013
+	LocateFindListReply        uint16 = 0x0014
+	LocateUserInfoQuery2       uint16 = 0x0015
+
 	LocateType2Sig          uint32 = 0x00000001
 	LocateType2Unavailable  uint32 = 0x00000002
 	LocateType2Capabilities uint32 = 0x00000004
 	LocateType2Certs        uint32 = 0x00000008
 	LocateType2HtmlInfo     uint32 = 0x00000400
+
+	LocateTLVTagsInfoSigMime         uint16 = 0x01
+	LocateTLVTagsInfoSigData         uint16 = 0x02
+	LocateTLVTagsInfoUnavailableMime uint16 = 0x03
+	LocateTLVTagsInfoUnavailableData uint16 = 0x04
+	LocateTLVTagsInfoCapabilities    uint16 = 0x05
+	LocateTLVTagsInfoCerts           uint16 = 0x06
+	LocateTLVTagsInfoSigTime         uint16 = 0x0A
+	LocateTLVTagsInfoUnavailableTime uint16 = 0x0B
+	LocateTLVTagsInfoSupportHostSig  uint16 = 0x0C
+	LocateTLVTagsInfoHtmlInfoData    uint16 = 0x0E
+	LocateTLVTagsInfoHtmlInfoType    uint16 = 0x0D
 )
 
 type SNAC_0x02_0x03_LocateRightsReply struct {

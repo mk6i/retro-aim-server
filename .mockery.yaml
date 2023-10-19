@@ -10,3 +10,4 @@ packages:
       SessionManager:
       ProfileManager:
       ICBMHandler:
+      LocateHandler:
