@@ -311,12 +311,14 @@ func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm SessionM
 
 func NewRouter() Router {
 	return Router{
-		ICBMRouter: NewICBMRouter(),
+		ICBMRouter:   NewICBMRouter(),
+		LocateRouter: NewLocateRouter(),
 	}
 }
 
 type Router struct {
 	ICBMRouter
+	LocateRouter
 }
 
 func (rt *Router) routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader) error {
@@ -326,7 +328,7 @@ func (rt *Router) routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionM
 			return err
 		}
 	case LOCATE:
-		if err := routeLocate(sess, sm, fm, snac, buf, rw, sequence); err != nil {
+		if err := rt.RouteLocate(sess, sm, fm, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case BUDDY:

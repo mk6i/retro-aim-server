@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 )
@@ -34,14 +35,9 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		}
 		// userSession is the session of the user requesting the user info
 		userSession *Session
-		// expectSNACFrame is the SNAC frame sent from the server to the recipient
-		// client
-		expectSNACFrame oscar.SnacFrame
 		// inputSNAC is the SNAC sent by the sender client
-		inputSNAC oscar.SNAC_0x02_0x15_LocateUserInfoQuery2
-		// expectSNACBody is the SNAC payload sent from the server to the
-		// recipient client
-		expectSNACBody any
+		inputSNAC    oscar.SNAC_0x02_0x15_LocateUserInfoQuery2
+		expectOutput XMessage
 	}{
 		{
 			name:         "request user info, expect user info response",
@@ -60,20 +56,22 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			userSession: &Session{
 				ScreenName: "user_screen_name",
 			},
-			expectSNACFrame: oscar.SnacFrame{
-				FoodGroup: LOCATE,
-				SubGroup:  LocateUserInfoReply,
-			},
 			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
 				Type2:      0,
 				ScreenName: "requested-user",
 			},
-			expectSNACBody: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
-				TLVUserInfo: newTestSession(Session{
-					ScreenName:  "requested-user",
-					AwayMessage: "this is my away message!",
-				}).GetTLVUserInfo(),
-				LocateInfo: oscar.TLVRestBlock{},
+			expectOutput: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateUserInfoReply,
+				},
+				snacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
+					TLVUserInfo: newTestSession(Session{
+						ScreenName:  "requested-user",
+						AwayMessage: "this is my away message!",
+					}).GetTLVUserInfo(),
+					LocateInfo: oscar.TLVRestBlock{},
+				},
 			},
 		},
 		{
@@ -101,29 +99,31 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			userSession: &Session{
 				ScreenName: "user_screen_name",
 			},
-			expectSNACFrame: oscar.SnacFrame{
-				FoodGroup: LOCATE,
-				SubGroup:  LocateUserInfoReply,
-			},
 			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
 				// 2048 is a dummy to make sure bitmask check works
 				Type2:      oscar.LocateType2Sig | 2048,
 				ScreenName: "requested-user",
 			},
-			expectSNACBody: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
-				TLVUserInfo: newTestSession(Session{
-					ScreenName:  "requested-user",
-					AwayMessage: "this is my away message!",
-				}).GetTLVUserInfo(),
-				LocateInfo: oscar.TLVRestBlock{
-					TLVList: oscar.TLVList{
-						{
-							TType: LocateTLVTagsInfoSigMime,
-							Val:   `text/aolrtf; charset="us-ascii"`,
-						},
-						{
-							TType: LocateTLVTagsInfoSigData,
-							Val:   "this is my profile!",
+			expectOutput: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateUserInfoReply,
+				},
+				snacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
+					TLVUserInfo: newTestSession(Session{
+						ScreenName:  "requested-user",
+						AwayMessage: "this is my away message!",
+					}).GetTLVUserInfo(),
+					LocateInfo: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: oscar.LocateTLVTagsInfoSigMime,
+								Val:   `text/aolrtf; charset="us-ascii"`,
+							},
+							{
+								TType: oscar.LocateTLVTagsInfoSigData,
+								Val:   "this is my profile!",
+							},
 						},
 					},
 				},
@@ -154,29 +154,31 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			userSession: &Session{
 				ScreenName: "user_screen_name",
 			},
-			expectSNACFrame: oscar.SnacFrame{
-				FoodGroup: LOCATE,
-				SubGroup:  LocateUserInfoReply,
-			},
 			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
 				// 2048 is a dummy to make sure bitmask check works
 				Type2:      oscar.LocateType2Sig | 2048,
 				ScreenName: "requested-user",
 			},
-			expectSNACBody: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
-				TLVUserInfo: newTestSession(Session{
-					ScreenName:  "requested-user",
-					AwayMessage: "this is my away message!",
-				}).GetTLVUserInfo(),
-				LocateInfo: oscar.TLVRestBlock{
-					TLVList: oscar.TLVList{
-						{
-							TType: LocateTLVTagsInfoSigMime,
-							Val:   `text/aolrtf; charset="us-ascii"`,
-						},
-						{
-							TType: LocateTLVTagsInfoSigData,
-							Val:   "this is my profile!",
+			expectOutput: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateUserInfoReply,
+				},
+				snacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
+					TLVUserInfo: newTestSession(Session{
+						ScreenName:  "requested-user",
+						AwayMessage: "this is my away message!",
+					}).GetTLVUserInfo(),
+					LocateInfo: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: oscar.LocateTLVTagsInfoSigMime,
+								Val:   `text/aolrtf; charset="us-ascii"`,
+							},
+							{
+								TType: oscar.LocateTLVTagsInfoSigData,
+								Val:   "this is my profile!",
+							},
 						},
 					},
 				},
@@ -199,29 +201,31 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			userSession: &Session{
 				ScreenName: "user_screen_name",
 			},
-			expectSNACFrame: oscar.SnacFrame{
-				FoodGroup: LOCATE,
-				SubGroup:  LocateUserInfoReply,
-			},
 			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
 				// 2048 is a dummy to make sure bitmask check works
 				Type2:      oscar.LocateType2Unavailable | 2048,
 				ScreenName: "requested-user",
 			},
-			expectSNACBody: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
-				TLVUserInfo: newTestSession(Session{
-					ScreenName:  "requested-user",
-					AwayMessage: "this is my away message!",
-				}).GetTLVUserInfo(),
-				LocateInfo: oscar.TLVRestBlock{
-					TLVList: oscar.TLVList{
-						{
-							TType: LocateTLVTagsInfoUnavailableMime,
-							Val:   `text/aolrtf; charset="us-ascii"`,
-						},
-						{
-							TType: LocateTLVTagsInfoUnavailableData,
-							Val:   "this is my away message!",
+			expectOutput: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateUserInfoReply,
+				},
+				snacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
+					TLVUserInfo: newTestSession(Session{
+						ScreenName:  "requested-user",
+						AwayMessage: "this is my away message!",
+					}).GetTLVUserInfo(),
+					LocateInfo: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: oscar.LocateTLVTagsInfoUnavailableMime,
+								Val:   `text/aolrtf; charset="us-ascii"`,
+							},
+							{
+								TType: oscar.LocateTLVTagsInfoUnavailableData,
+								Val:   "this is my away message!",
+							},
 						},
 					},
 				},
@@ -233,15 +237,17 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			userSession: &Session{
 				ScreenName: "user_screen_name",
 			},
-			expectSNACFrame: oscar.SnacFrame{
-				FoodGroup: LOCATE,
-				SubGroup:  LocateErr,
-			},
 			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
 				ScreenName: "requested-user",
 			},
-			expectSNACBody: oscar.SnacError{
-				Code: ErrorCodeNotLoggedOn,
+			expectOutput: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateErr,
+				},
+				snacOut: oscar.SnacError{
+					Code: ErrorCodeNotLoggedOn,
+				},
 			},
 		},
 		{
@@ -258,24 +264,23 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			userSession: &Session{
 				ScreenName: "user_screen_name",
 			},
-			expectSNACFrame: oscar.SnacFrame{
-				FoodGroup: LOCATE,
-				SubGroup:  LocateErr,
-			},
 			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
 				ScreenName: "non_existent_requested_user",
 			},
-			expectSNACBody: oscar.SnacError{
-				Code: ErrorCodeNotLoggedOn,
+			expectOutput: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateErr,
+				},
+				snacOut: oscar.SnacError{
+					Code: ErrorCodeNotLoggedOn,
+				},
 			},
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			//
-			// initialize dependencies
-			//
 			fm := NewMockFeedbagManager(t)
 			fm.EXPECT().
 				Blocked(tc.userSession.ScreenName, tc.inputSNAC.ScreenName).
@@ -295,44 +300,253 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 					Return(val.payload, val.err).
 					Maybe()
 			}
-			//
-			// send input SNAC
-			//
-			input := &bytes.Buffer{}
-			var seq uint32
-			assert.NoError(t, oscar.Marshal(tc.inputSNAC, input))
-			output := &bytes.Buffer{}
-			snac := oscar.SnacFrame{
-				FoodGroup: LOCATE,
-				SubGroup:  LocateUserInfoQuery2,
+
+			svc := LocateService{}
+			outputSNAC, err := svc.UserInfoQuery2Handler(tc.userSession, sm, fm, pm, tc.inputSNAC)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectOutput, outputSNAC)
+		})
+	}
+}
+
+func TestLocateRouter_RouteLocate(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// input is the request payload
+		input XMessage
+		// output is the response payload
+		output XMessage
+		// handlerErr is the mocked handler error response
+		handlerErr error
+		// expectErr is the expected error returned by the router
+		expectErr error
+	}{
+		{
+			name: "receive LocateRightsQuery, return LocateRightsReply",
+			input: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateRightsQuery,
+				},
+				snacOut: struct{}{},
+			},
+			output: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateRightsReply,
+				},
+				snacOut: oscar.SNAC_0x02_0x03_LocateRightsReply{
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: 0x01,
+								Val:   uint16(1000),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "receive LocateSetInfo, return no response",
+			input: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateSetInfo,
+				},
+				snacOut: oscar.SNAC_0x02_0x04_LocateSetInfo{
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: 0x01,
+								Val:   []byte{1, 2, 3, 4},
+							},
+						},
+					},
+				},
+			},
+			output: XMessage{
+				snacFrame: oscar.SnacFrame{},
+			},
+		},
+		{
+			name: "receive LocateSetDirInfo, return LocateSetDirReply",
+			input: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateSetDirInfo,
+				},
+				snacOut: oscar.SNAC_0x02_0x09_LocateSetDirInfo{
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: 0x01,
+								Val:   []byte{1, 2, 3, 4},
+							},
+						},
+					},
+				},
+			},
+			output: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateSetDirReply,
+				},
+				snacOut: oscar.SNAC_0x02_0x0A_LocateSetDirReply{
+					Result: 1,
+				},
+			},
+		},
+		{
+			name: "receive LocateGetDirInfo, return no response",
+			input: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateGetDirInfo,
+				},
+				snacOut: oscar.SNAC_0x02_0x0B_LocateGetDirInfo{
+					WatcherScreenNames: "screen-name",
+				},
+			},
+			output: XMessage{
+				snacFrame: oscar.SnacFrame{},
+			},
+		},
+		{
+			name: "receive LocateSetKeywordInfo, return LocateSetKeywordReply",
+			input: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateSetKeywordInfo,
+				},
+				snacOut: oscar.SNAC_0x02_0x0F_LocateSetKeywordInfo{
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: 0x01,
+								Val:   []byte{1, 2, 3, 4},
+							},
+						},
+					},
+				},
+			},
+			output: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateSetKeywordReply,
+				},
+				snacOut: oscar.SNAC_0x02_0x10_LocateSetKeywordReply{
+					Unknown: 1,
+				},
+			},
+		},
+		{
+			name: "receive LocateUserInfoQuery2, return LocateUserInfoReply",
+			input: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateUserInfoQuery2,
+				},
+				snacOut: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					Type2: 1,
+				},
+			},
+			output: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateUserInfoReply,
+				},
+				snacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
+					TLVUserInfo: oscar.TLVUserInfo{
+						ScreenName: "screen-name",
+					},
+					LocateInfo: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: 0x01,
+								Val:   []byte{1, 2, 3, 4},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "receive LocateGetKeywordInfo, expect ErrUnsupportedSubGroup",
+			input: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: LOCATE,
+					SubGroup:  oscar.LocateGetKeywordInfo,
+				},
+				snacOut: struct{}{}, // empty SNAC
+			},
+			output:    XMessage{}, // empty SNAC
+			expectErr: ErrUnsupportedSubGroup,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := NewMockLocateHandler(t)
+			svc.EXPECT().
+				RightsQueryHandler().
+				Return(tc.output).
+				Maybe()
+			svc.EXPECT().
+				SetDirInfoHandler().
+				Return(tc.output).
+				Maybe()
+			svc.EXPECT().
+				SetInfoHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				Return(tc.handlerErr).
+				Maybe()
+			svc.EXPECT().
+				SetKeywordInfoHandler().
+				Return(tc.output).
+				Maybe()
+			svc.EXPECT().
+				UserInfoQuery2Handler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				Return(tc.output, tc.handlerErr).
+				Maybe()
+
+			router := LocateRouter{
+				LocateHandler: svc,
 			}
-			assert.NoError(t, SendAndReceiveUserInfoQuery2(tc.userSession, sm, fm, pm, snac, input, output, &seq))
-			//
-			// verify output
-			//
+
+			bufIn := &bytes.Buffer{}
+			assert.NoError(t, oscar.Marshal(tc.input.snacOut, bufIn))
+
+			bufOut := &bytes.Buffer{}
+			seq := uint32(1)
+
+			err := router.RouteLocate(nil, nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
+			assert.ErrorIs(t, err, tc.expectErr)
+			if tc.expectErr != nil {
+				return
+			}
+
+			if tc.output.snacFrame == (oscar.SnacFrame{}) {
+				return // handler doesn't return response
+			}
+
+			// make sure the sequence number was incremented
+			assert.Equal(t, uint32(2), seq)
+
+			// verify the FLAP frame
 			flap := oscar.FlapFrame{}
-			assert.NoError(t, oscar.Unmarshal(&flap, output))
+			assert.NoError(t, oscar.Unmarshal(&flap, bufOut))
+			assert.Equal(t, uint16(1), flap.Sequence)
+
+			// verify the SNAC frame
 			snacFrame := oscar.SnacFrame{}
-			assert.NoError(t, oscar.Unmarshal(&snacFrame, output))
-			assert.Equal(t, tc.expectSNACFrame, snacFrame)
-			//
-			// verify output SNAC body
-			//
-			switch v := tc.expectSNACBody.(type) {
-			case oscar.SNAC_0x02_0x06_LocateUserInfoReply:
-				assert.NoError(t, v.SerializeInPlace())
-				assert.NoError(t, v.LocateInfo.SerializeInPlace())
-				outputSNAC := oscar.SNAC_0x02_0x06_LocateUserInfoReply{}
-				assert.NoError(t, oscar.Unmarshal(&outputSNAC, output))
-				assert.Equal(t, v, outputSNAC)
-			case oscar.SnacError:
-				outputSNAC := oscar.SnacError{}
-				assert.NoError(t, oscar.Unmarshal(&outputSNAC, output))
-				assert.Equal(t, v, outputSNAC)
-			default:
-				t.Fatalf("unexpected output SNAC type")
-			}
-			assert.Equalf(t, 0, output.Len(), "the rest of the buffer is unread")
+			assert.NoError(t, oscar.Unmarshal(&snacFrame, bufOut))
+			assert.Equal(t, tc.output.snacFrame, snacFrame)
+
+			// verify the SNAC message
+			snacBuf := &bytes.Buffer{}
+			assert.NoError(t, oscar.Marshal(tc.output.snacOut, snacBuf))
+			assert.Equal(t, snacBuf.Bytes(), bufOut.Bytes())
 		})
 	}
 }
