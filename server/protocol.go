@@ -122,7 +122,7 @@ func VerifyLogin(sm SessionManager, rw io.ReadWriter) (*Session, uint32, error) 
 	}
 
 	var ok bool
-	ID, ok := flap.GetSlice(OserviceTlvTagsLoginCookie)
+	ID, ok := flap.GetSlice(oscar.OServiceTLVTagsLoginCookie)
 	if !ok {
 		return nil, 0, errors.New("unable to get session ID from payload")
 	}
@@ -145,7 +145,7 @@ func VerifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error) {
 	}
 
 	var ok bool
-	buf, ok := flap.GetSlice(OserviceTlvTagsLoginCookie)
+	buf, ok := flap.GetSlice(oscar.OServiceTLVTagsLoginCookie)
 	if !ok {
 		return nil, 0, errors.New("unable to get session ID from payload")
 	}
@@ -311,20 +311,22 @@ func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm SessionM
 
 func NewRouter() Router {
 	return Router{
-		ICBMRouter:   NewICBMRouter(),
-		LocateRouter: NewLocateRouter(),
+		ICBMRouter:     NewICBMRouter(),
+		LocateRouter:   NewLocateRouter(),
+		OServiceRouter: NewOServiceRouter(),
 	}
 }
 
 type Router struct {
 	ICBMRouter
 	LocateRouter
+	OServiceRouter
 }
 
 func (rt *Router) routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader) error {
 	switch snac.FoodGroup {
 	case OSERVICE:
-		if err := routeOService(cfg, ready, cr, sm, fm, sess, snac, buf, rw, sequence); err != nil {
+		if err := rt.RouteOService(cfg, ready, cr, sm, fm, sess, snac, buf, rw, sequence); err != nil {
 			return err
 		}
 	case LOCATE:

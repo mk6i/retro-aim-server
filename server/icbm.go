@@ -267,7 +267,7 @@ func (s ICBMService) EvilRequestHandler(sm SessionManager, fm FeedbagManager, se
 	sm.SendToScreenName(recipSess.ScreenName, XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: OSERVICE,
-			SubGroup:  OServiceEvilNotification,
+			SubGroup:  oscar.OServiceEvilNotification,
 		},
 		snacOut: notif,
 	})

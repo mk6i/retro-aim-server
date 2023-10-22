@@ -4,6 +4,50 @@ package oscar
 // 0x01: OService
 //
 
+const (
+	OServiceErr               uint16 = 0x0001
+	OServiceClientOnline      uint16 = 0x0002
+	OServiceHostOnline        uint16 = 0x0003
+	OServiceServiceRequest    uint16 = 0x0004
+	OServiceServiceResponse   uint16 = 0x0005
+	OServiceRateParamsQuery   uint16 = 0x0006
+	OServiceRateParamsReply   uint16 = 0x0007
+	OServiceRateParamsSubAdd  uint16 = 0x0008
+	OServiceRateDelParamSub   uint16 = 0x0009
+	OServiceRateParamChange   uint16 = 0x000A
+	OServicePauseReq          uint16 = 0x000B
+	OServicePauseAck          uint16 = 0x000C
+	OServiceResume            uint16 = 0x000D
+	OServiceUserInfoQuery     uint16 = 0x000E
+	OServiceUserInfoUpdate    uint16 = 0x000F
+	OServiceEvilNotification  uint16 = 0x0010
+	OServiceIdleNotification  uint16 = 0x0011
+	OServiceMigrateGroups     uint16 = 0x0012
+	OServiceMotd              uint16 = 0x0013
+	OServiceSetPrivacyFlags   uint16 = 0x0014
+	OServiceWellKnownUrls     uint16 = 0x0015
+	OServiceNoop              uint16 = 0x0016
+	OServiceClientVersions    uint16 = 0x0017
+	OServiceHostVersions      uint16 = 0x0018
+	OServiceMaxConfigQuery    uint16 = 0x0019
+	OServiceMaxConfigReply    uint16 = 0x001A
+	OServiceStoreConfig       uint16 = 0x001B
+	OServiceConfigQuery       uint16 = 0x001C
+	OServiceConfigReply       uint16 = 0x001D
+	OServiceSetUserInfoFields uint16 = 0x001E
+	OServiceProbeReq          uint16 = 0x001F
+	OServiceProbeAck          uint16 = 0x0020
+	OServiceBartReply         uint16 = 0x0021
+	OServiceBartQuery2        uint16 = 0x0022
+	OServiceBartReply2        uint16 = 0x0023
+
+	OServiceTLVTagsReconnectHere uint16 = 0x05
+	OServiceTLVTagsLoginCookie   uint16 = 0x06
+	OServiceTLVTagsGroupID       uint16 = 0x0D
+	OServiceTLVTagsSSLCertName   uint16 = 0x8D
+	OServiceTLVTagsSSLState      uint16 = 0x8E
+)
+
 type SNAC_0x01_0x02_OServiceClientOnline struct {
 	GroupVersions []struct {
 		FoodGroup   uint16
