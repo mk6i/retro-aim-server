@@ -385,7 +385,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			expectSNACToClient: XMessage{
 				snacFrame: oscar.SnacFrame{
 					FoodGroup: OSERVICE,
-					SubGroup:  OServiceEvilNotification,
+					SubGroup:  oscar.OServiceEvilNotification,
 				},
 				snacOut: oscar.SNAC_0x01_0x10_OServiceEvilNotificationAnon{
 					NewEvil: evilDeltaAnon,
@@ -432,7 +432,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			expectSNACToClient: XMessage{
 				snacFrame: oscar.SnacFrame{
 					FoodGroup: OSERVICE,
-					SubGroup:  OServiceEvilNotification,
+					SubGroup:  oscar.OServiceEvilNotification,
 				},
 				snacOut: oscar.SNAC_0x01_0x10_OServiceEvilNotification{
 					NewEvil: evilDelta,

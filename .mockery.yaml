@@ -11,3 +11,4 @@ packages:
       ProfileManager:
       ICBMHandler:
       LocateHandler:
+      OServiceHandler:
