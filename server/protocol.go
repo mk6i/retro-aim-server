@@ -56,7 +56,10 @@ var (
 	CapChat, _ = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
 )
 
-var ErrUnsupportedSubGroup = errors.New("unimplemented subgroup, your client version may be unsupported")
+var (
+	ErrUnsupportedFoodGroup = errors.New("unimplemented food group, your client version may be unsupported")
+	ErrUnsupportedSubGroup  = errors.New("unimplemented subgroup, your client version may be unsupported")
+)
 
 type Config struct {
 	BOSPort     int    `envconfig:"BOS_PORT" default:"5191"`
@@ -286,7 +289,7 @@ func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm SessionM
 		case m := <-msgCh:
 			if err := router.routeIncomingRequests(cfg, ready, sm, sess, fm, cr, rwc, &seq, m.snac, m.buf); err != nil {
 				switch {
-				case errors.Is(err, ErrUnsupportedSubGroup):
+				case errors.Is(err, ErrUnsupportedSubGroup) || errors.Is(err, ErrUnsupportedFoodGroup):
 					if err := sendInvalidSNACErr(m.snac, rwc, &seq); err != nil {
 						return err
 					}
@@ -326,46 +329,26 @@ type Router struct {
 func (rt *Router) routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader) error {
 	switch snac.FoodGroup {
 	case OSERVICE:
-		if err := rt.RouteOService(cfg, ready, cr, sm, fm, sess, snac, buf, rw, sequence); err != nil {
-			return err
-		}
+		return rt.RouteOService(cfg, ready, cr, sm, fm, sess, snac, buf, rw, sequence)
 	case LOCATE:
-		if err := rt.RouteLocate(sess, sm, fm, snac, buf, rw, sequence); err != nil {
-			return err
-		}
+		return rt.RouteLocate(sess, sm, fm, snac, buf, rw, sequence)
 	case BUDDY:
-		if err := routeBuddy(snac, buf, rw, sequence); err != nil {
-			return err
-		}
+		return routeBuddy(snac, buf, rw, sequence)
 	case ICBM:
-		if err := rt.RouteICBM(sm, fm, sess, snac, buf, rw, sequence); err != nil {
-			return err
-		}
+		return rt.RouteICBM(sm, fm, sess, snac, buf, rw, sequence)
 	case PD:
-		if err := routePD(snac, buf, rw, sequence); err != nil {
-			return err
-		}
+		return routePD(snac, buf, rw, sequence)
 	case CHAT_NAV:
-		if err := routeChatNav(sess, cr, snac, buf, rw, sequence); err != nil {
-			return err
-		}
+		return routeChatNav(sess, cr, snac, buf, rw, sequence)
 	case FEEDBAG:
-		if err := routeFeedbag(sm, sess, fm, snac, buf, rw, sequence); err != nil {
-			return err
-		}
+		return routeFeedbag(sm, sess, fm, snac, buf, rw, sequence)
 	case BUCP:
-		if err := routeBUCP(); err != nil {
-			return err
-		}
+		return routeBUCP()
 	case CHAT:
-		if err := routeChat(sess, sm, snac, buf, rw, sequence); err != nil {
-			return err
-		}
+		return routeChat(sess, sm, snac, buf, rw, sequence)
 	default:
-		panic(fmt.Sprintf("unsupported food group: %d", snac.FoodGroup))
+		return ErrUnsupportedFoodGroup
 	}
-
-	return nil
 }
 
 func writeOutSNAC(originsnac oscar.SnacFrame, snacFrame oscar.SnacFrame, snacOut any, sequence *uint32, w io.Writer) error {
