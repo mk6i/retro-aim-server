@@ -258,7 +258,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 				err  error
 			}{
 				"non_existent_requested_user": {
-					err: errSessNotFound,
+					err: ErrSessNotFound,
 				},
 			},
 			userSession: &Session{

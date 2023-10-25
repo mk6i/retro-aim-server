@@ -120,7 +120,7 @@ func (s ICBMService) ChannelMsgToHostHandler(sm SessionManager, fm FeedbagManage
 
 	recipSess, err := sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
 	switch {
-	case errors.Is(err, errSessNotFound):
+	case errors.Is(err, ErrSessNotFound):
 		return &XMessage{
 			snacFrame: oscar.SnacFrame{
 				FoodGroup: ICBM,

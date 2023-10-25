@@ -415,6 +415,142 @@ type SNAC_0x0E_0x06_ChatChannelMsgToClient struct {
 // 0x13: Feedbag
 //
 
+const (
+	FeedbagClassIdBuddy            uint16 = 0x0000
+	FeedbagClassIdGroup            uint16 = 0x0001
+	FeedbagClassIDPermit           uint16 = 0x0002
+	FeedbagClassIDDeny             uint16 = 0x0003
+	FeedbagClassIdPdinfo           uint16 = 0x0004
+	FeedbagClassIdBuddyPrefs       uint16 = 0x0005
+	FeedbagClassIdNonbuddy         uint16 = 0x0006
+	FeedbagClassIdTpaProvider      uint16 = 0x0007
+	FeedbagClassIdTpaSubscription  uint16 = 0x0008
+	FeedbagClassIdClientPrefs      uint16 = 0x0009
+	FeedbagClassIdStock            uint16 = 0x000A
+	FeedbagClassIdWeather          uint16 = 0x000B
+	FeedbagClassIdWatchList        uint16 = 0x000D
+	FeedbagClassIdIgnoreList       uint16 = 0x000E
+	FeedbagClassIdDateTime         uint16 = 0x000F
+	FeedbagClassIdExternalUser     uint16 = 0x0010
+	FeedbagClassIdRootCreator      uint16 = 0x0011
+	FeedbagClassIdFish             uint16 = 0x0012
+	FeedbagClassIdImportTimestamp  uint16 = 0x0013
+	FeedbagClassIdBart             uint16 = 0x0014
+	FeedbagClassIdRbOrder          uint16 = 0x0015
+	FeedbagClassIdPersonality      uint16 = 0x0016
+	FeedbagClassIdAlProf           uint16 = 0x0017
+	FeedbagClassIdAlInfo           uint16 = 0x0018
+	FeedbagClassIdInteraction      uint16 = 0x0019
+	FeedbagClassIdVanityInfo       uint16 = 0x001D
+	FeedbagClassIdFavoriteLocation uint16 = 0x001E
+	FeedbagClassIdBartPdinfo       uint16 = 0x001F
+	FeedbagClassIdCustomEmoticons  uint16 = 0x0024
+	FeedbagClassIdMaxPredefined    uint16 = 0x0024
+	FeedbagClassIdXIcqStatusNote   uint16 = 0x015C
+	FeedbagClassIdMin              uint16 = 0x0400
+
+	FeedbagAttributesShared                  uint16 = 0x0064
+	FeedbagAttributesInvited                 uint16 = 0x0065
+	FeedbagAttributesPending                 uint16 = 0x0066
+	FeedbagAttributesTimeT                   uint16 = 0x0067
+	FeedbagAttributesDenied                  uint16 = 0x0068
+	FeedbagAttributesSwimIndex               uint16 = 0x0069
+	FeedbagAttributesRecentBuddy             uint16 = 0x006A
+	FeedbagAttributesAutoBot                 uint16 = 0x006B
+	FeedbagAttributesInteraction             uint16 = 0x006D
+	FeedbagAttributesMegaBot                 uint16 = 0x006F
+	FeedbagAttributesOrder                   uint16 = 0x00C8
+	FeedbagAttributesBuddyPrefs              uint16 = 0x00C9
+	FeedbagAttributesPdMode                  uint16 = 0x00CA
+	FeedbagAttributesPdMask                  uint16 = 0x00CB
+	FeedbagAttributesPdFlags                 uint16 = 0x00CC
+	FeedbagAttributesClientPrefs             uint16 = 0x00CD
+	FeedbagAttributesLanguage                uint16 = 0x00CE
+	FeedbagAttributesFishUri                 uint16 = 0x00CF
+	FeedbagAttributesWirelessPdMode          uint16 = 0x00D0
+	FeedbagAttributesWirelessIgnoreMode      uint16 = 0x00D1
+	FeedbagAttributesFishPdMode              uint16 = 0x00D2
+	FeedbagAttributesFishIgnoreMode          uint16 = 0x00D3
+	FeedbagAttributesCreateTime              uint16 = 0x00D4
+	FeedbagAttributesBartInfo                uint16 = 0x00D5
+	FeedbagAttributesBuddyPrefsValid         uint16 = 0x00D6
+	FeedbagAttributesBuddyPrefs2             uint16 = 0x00D7
+	FeedbagAttributesBuddyPrefs2Valid        uint16 = 0x00D8
+	FeedbagAttributesBartList                uint16 = 0x00D9
+	FeedbagAttributesArriveSound             uint16 = 0x012C
+	FeedbagAttributesLeaveSound              uint16 = 0x012D
+	FeedbagAttributesImage                   uint16 = 0x012E
+	FeedbagAttributesColorBg                 uint16 = 0x012F
+	FeedbagAttributesColorFg                 uint16 = 0x0130
+	FeedbagAttributesAlias                   uint16 = 0x0131
+	FeedbagAttributesPassword                uint16 = 0x0132
+	FeedbagAttributesDisabled                uint16 = 0x0133
+	FeedbagAttributesCollapsed               uint16 = 0x0134
+	FeedbagAttributesUrl                     uint16 = 0x0135
+	FeedbagAttributesActiveList              uint16 = 0x0136
+	FeedbagAttributesEmailAddr               uint16 = 0x0137
+	FeedbagAttributesPhoneNumber             uint16 = 0x0138
+	FeedbagAttributesCellPhoneNumber         uint16 = 0x0139
+	FeedbagAttributesSmsPhoneNumber          uint16 = 0x013A
+	FeedbagAttributesWireless                uint16 = 0x013B
+	FeedbagAttributesNote                    uint16 = 0x013C
+	FeedbagAttributesAlertPrefs              uint16 = 0x013D
+	FeedbagAttributesBudalertSound           uint16 = 0x013E
+	FeedbagAttributesStockalertValue         uint16 = 0x013F
+	FeedbagAttributesTpalertEditUrl          uint16 = 0x0140
+	FeedbagAttributesTpalertDeleteUrl        uint16 = 0x0141
+	FeedbagAttributesTpprovMorealertsUrl     uint16 = 0x0142
+	FeedbagAttributesFish                    uint16 = 0x0143
+	FeedbagAttributesXunconfirmedxLastAccess uint16 = 0x0145
+	FeedbagAttributesImSent                  uint16 = 0x0150
+	FeedbagAttributesOnlineTime              uint16 = 0x0151
+	FeedbagAttributesAwayMsg                 uint16 = 0x0152
+	FeedbagAttributesImReceived              uint16 = 0x0153
+	FeedbagAttributesBuddyfeedView           uint16 = 0x0154
+	FeedbagAttributesWorkPhoneNumber         uint16 = 0x0158
+	FeedbagAttributesOtherPhoneNumber        uint16 = 0x0159
+	FeedbagAttributesWebPdMode               uint16 = 0x015F
+	FeedbagAttributesFirstCreationTimeXc     uint16 = 0x0167
+	FeedbagAttributesPdModeXc                uint16 = 0x016E
+
+	FeedbagErr                      uint16 = 0x0001
+	FeedbagRightsQuery              uint16 = 0x0002
+	FeedbagRightsReply              uint16 = 0x0003
+	FeedbagQuery                    uint16 = 0x0004
+	FeedbagQueryIfModified          uint16 = 0x0005
+	FeedbagReply                    uint16 = 0x0006
+	FeedbagUse                      uint16 = 0x0007
+	FeedbagInsertItem               uint16 = 0x0008
+	FeedbagUpdateItem               uint16 = 0x0009
+	FeedbagDeleteItem               uint16 = 0x000A
+	FeedbagInsertClass              uint16 = 0x000B
+	FeedbagUpdateClass              uint16 = 0x000C
+	FeedbagDeleteClass              uint16 = 0x000D
+	FeedbagStatus                   uint16 = 0x000E
+	FeedbagReplyNotModified         uint16 = 0x000F
+	FeedbagDeleteUser               uint16 = 0x0010
+	FeedbagStartCluster             uint16 = 0x0011
+	FeedbagEndCluster               uint16 = 0x0012
+	FeedbagAuthorizeBuddy           uint16 = 0x0013
+	FeedbagPreAuthorizeBuddy        uint16 = 0x0014
+	FeedbagPreAuthorizedBuddy       uint16 = 0x0015
+	FeedbagRemoveMe                 uint16 = 0x0016
+	FeedbagRemoveMe2                uint16 = 0x0017
+	FeedbagRequestAuthorizeToHost   uint16 = 0x0018
+	FeedbagRequestAuthorizeToClient uint16 = 0x0019
+	FeedbagRespondAuthorizeToHost   uint16 = 0x001A
+	FeedbagRespondAuthorizeToClient uint16 = 0x001B
+	FeedbagBuddyAdded               uint16 = 0x001C
+	FeedbagRequestAuthorizeToBadog  uint16 = 0x001D
+	FeedbagRespondAuthorizeToBadog  uint16 = 0x001E
+	FeedbagBuddyAddedToBadog        uint16 = 0x001F
+	FeedbagTestSnac                 uint16 = 0x0021
+	FeedbagForwardMsg               uint16 = 0x0022
+	FeedbagIsAuthRequiredQuery      uint16 = 0x0023
+	FeedbagIsAuthRequiredReply      uint16 = 0x0024
+	FeedbagRecentBuddyUpdate        uint16 = 0x0025
+)
+
 type SNAC_0x13_0x02_FeedbagRightsQuery struct {
 	TLVRestBlock
 }
@@ -448,6 +584,10 @@ type SNAC_0x13_0x0A_FeedbagDeleteItem struct {
 
 type SNAC_0x13_0x0E_FeedbagStatus struct {
 	Results []uint16
+}
+
+type SNAC_0x13_0x11_FeedbagStartCluster struct {
+	TLVRestBlock
 }
 
 //

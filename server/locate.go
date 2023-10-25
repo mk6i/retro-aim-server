@@ -143,7 +143,7 @@ func (s LocateService) UserInfoQuery2Handler(sess *Session, sm SessionManager, f
 
 	buddySess, err := sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
 	switch {
-	case errors.Is(err, errSessNotFound):
+	case errors.Is(err, ErrSessNotFound):
 		return XMessage{
 			snacFrame: oscar.SnacFrame{
 				FoodGroup: LOCATE,

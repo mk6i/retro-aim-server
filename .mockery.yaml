@@ -12,3 +12,4 @@ packages:
       ICBMHandler:
       LocateHandler:
       OServiceHandler:
+      FeedbagHandler:

@@ -124,6 +124,28 @@ func SetOnlineChatUsers(sm SessionManager, w io.Writer, sequence *uint32) error 
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
+func SetOnlineChatUsersTmp(sm SessionManager) XMessage {
+	snacPayloadOut := oscar.SNAC_0x0E_0x03_ChatUsersJoined{}
+	sessions := sm.Participants()
+
+	for _, uSess := range sessions {
+		snacPayloadOut.Users = append(snacPayloadOut.Users, oscar.TLVUserInfo{
+			ScreenName:   uSess.ScreenName,
+			WarningLevel: uSess.GetWarning(),
+			TLVBlock: oscar.TLVBlock{
+				TLVList: uSess.GetUserInfo(),
+			},
+		})
+	}
+	return XMessage{
+		snacFrame: oscar.SnacFrame{
+			FoodGroup: CHAT,
+			SubGroup:  ChatUsersJoined,
+		},
+		snacOut: snacPayloadOut,
+	}
+}
+
 func AlertUserJoined(sess *Session, sm SessionManager) {
 	sm.BroadcastExcept(sess, XMessage{
 		snacFrame: oscar.SnacFrame{
@@ -179,4 +201,22 @@ func SendChatRoomInfoUpdate(room ChatRoom, w io.Writer, sequence *uint32) error 
 		},
 	}
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+func SendChatRoomInfoUpdateTmp(room ChatRoom) XMessage {
+	return XMessage{
+		snacFrame: oscar.SnacFrame{
+			FoodGroup: CHAT,
+			SubGroup:  ChatRoomInfoUpdate,
+		},
+		snacOut: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+			Exchange:       4,
+			Cookie:         room.Cookie,
+			InstanceNumber: 100,
+			DetailLevel:    2,
+			TLVBlock: oscar.TLVBlock{
+				TLVList: room.TLVList(),
+			},
+		},
+	}
 }
