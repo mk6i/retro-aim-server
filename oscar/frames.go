@@ -17,7 +17,7 @@ type FlapFrame struct {
 	PayloadLength uint16
 }
 
-func (f FlapFrame) SNACBuffer(r io.Reader) (io.Reader, error) {
+func (f FlapFrame) SNACBuffer(r io.Reader) (*bytes.Buffer, error) {
 	b := make([]byte, f.PayloadLength)
 	if _, err := r.Read(b); err != nil {
 		return nil, err

@@ -190,7 +190,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 		{
 			name:             "don't transmit message from sender to recipient because recipient doesn't exist",
 			blockedState:     BlockedNo,
-			recipRetrieveErr: errSessNotFound,
+			recipRetrieveErr: ErrSessNotFound,
 			senderSession: &Session{
 				ScreenName: "sender-screen-name",
 				Warning:    10,

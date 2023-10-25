@@ -125,15 +125,28 @@ func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, f
 		conn.Close()
 	}()
 
-	onClientReady := func(sess *server.Session, sm server.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
+	onClientReady := func(sess *server.Session, sm server.SessionManager) ([]server.XMessage, error) {
 		if err := server.NotifyArrival(sess, sm, fm); err != nil {
-			return err
+			return []server.XMessage{}, err
 		}
-		return server.GetAllOnlineBuddies(w, sess, sm, fm, sequence)
+		buddies, err := fm.Buddies(sess.ScreenName)
+		if err != nil {
+			return []server.XMessage{}, err
+		}
+		for _, buddy := range buddies {
+			err := server.NotifyBuddyArrived(buddy, sess.ScreenName, sm)
+			switch {
+			case errors.Is(err, server.ErrSessNotFound):
+				continue
+			case err != nil:
+				return []server.XMessage{}, err
+			}
+		}
+		return []server.XMessage{}, nil
 	}
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D}
-	if err := server.ReadBos(cfg, onClientReady, sess, seq, sm, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
+	if err := server.ReadBos(cfg, onClientReady, sess, seq, sm, fm, cr, conn, foodGroups); err != nil {
 		switch {
 		case errors.Is(io.EOF, err):
 			fallthrough
@@ -175,15 +188,15 @@ func handleChatConnection(cfg server.Config, fm *server.FeedbagStore, cr *server
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D, 0x000E}
 
-	onClientReady := func(sess *server.Session, sm server.SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
-		if err := server.SendChatRoomInfoUpdate(room, w, sequence); err != nil {
-			return err
-		}
+	onClientReady := func(sess *server.Session, sm server.SessionManager) ([]server.XMessage, error) {
 		server.AlertUserJoined(sess, sm)
-		return server.SetOnlineChatUsers(sm, w, sequence)
+		return []server.XMessage{
+			server.SendChatRoomInfoUpdateTmp(room),
+			server.SetOnlineChatUsersTmp(sm),
+		}, nil
 	}
 
-	if err := server.ReadBos(cfg, onClientReady, chatSess, seq, room.SessionManager, fm, cr, conn, foodGroups); err != nil && err != io.EOF {
+	if err := server.ReadBos(cfg, onClientReady, chatSess, seq, room.SessionManager, fm, cr, conn, foodGroups); err != nil {
 		if err != io.EOF {
 			fmt.Printf("user disconnected with error: %s\n", err.Error())
 		} else {

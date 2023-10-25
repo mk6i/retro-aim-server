@@ -10,7 +10,7 @@ import (
 )
 
 type OServiceHandler interface {
-	ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, onReadyCB OnReadyCB, sess *Session, sm SessionManager, r io.Reader, w io.Writer, sequence *uint32) error
+	ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, onReadyCB OnReadyCB, sess *Session, sm SessionManager) ([]XMessage, error)
 	ClientVersionsHandler(snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) XMessage
 	IdleNotificationHandler(sess *Session, sm SessionManager, fm *FeedbagStore, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error
 	RateParamsQueryHandler() XMessage
@@ -37,7 +37,16 @@ func (rt OServiceRouter) RouteOService(cfg Config, ready OnReadyCB, cr *ChatRegi
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
 			return err
 		}
-		return rt.ClientOnlineHandler(inSNAC, ready, sess, sm, r, w, sequence)
+		batch, err := rt.ClientOnlineHandler(inSNAC, ready, sess, sm)
+		for _, msg := range batch {
+			switch {
+			case err != nil:
+				return err
+			case batch != nil:
+				return writeOutSNAC(SNACFrame, msg.snacFrame, msg.snacOut, sequence, w)
+			}
+		}
+		return nil
 	case oscar.OServiceServiceRequest:
 		inSNAC := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -198,57 +207,13 @@ func (s OServiceService) UserInfoQueryHandler(sess *Session) XMessage {
 	}
 }
 
-type OnReadyCB func(sess *Session, sm SessionManager, r io.Reader, w io.Writer, sequence *uint32) error
+type OnReadyCB func(sess *Session, sm SessionManager) ([]XMessage, error)
 
-func (s OServiceService) ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, onReadyCB OnReadyCB, sess *Session, sm SessionManager, r io.Reader, w io.Writer, sequence *uint32) error {
+func (s OServiceService) ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, onReadyCB OnReadyCB, sess *Session, sm SessionManager) ([]XMessage, error) {
 	for _, version := range snacPayloadIn.GroupVersions {
 		fmt.Printf("ClientOnlineHandler read SNAC client messageType: %+v\n", version)
 	}
-	return onReadyCB(sess, sm, r, w, sequence)
-}
-
-func GetAllOnlineBuddies(w io.Writer, sess *Session, sm SessionManager, fm FeedbagManager, sequence *uint32) error {
-	screenNames, err := fm.Buddies(sess.ScreenName)
-	if err != nil {
-		return err
-	}
-	for _, screenName := range screenNames {
-		if err := NotifyBuddyOnline(w, screenName, sm, sequence); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func NotifyBuddyOnline(w io.Writer, screenName string, sm SessionManager, sequence *uint32) error {
-	sess, err := sm.RetrieveByScreenName(screenName)
-	if err != nil {
-		if errors.Is(err, errSessNotFound) {
-			// buddy isn't online
-			return nil
-		}
-		return err
-	}
-	if sess.Invisible() {
-		// don't tell user this buddy is online
-		return nil
-	}
-
-	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: BUDDY,
-		SubGroup:  BuddyArrived,
-	}
-	snacPayloadOut := oscar.SNAC_0x03_0x0A_BuddyArrived{
-		TLVUserInfo: oscar.TLVUserInfo{
-			ScreenName:   screenName,
-			WarningLevel: sess.GetWarning(),
-			TLVBlock: oscar.TLVBlock{
-				TLVList: sess.GetUserInfo(),
-			},
-		},
-	}
-
-	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
+	return onReadyCB(sess, sm)
 }
 
 func (s OServiceService) SetUserInfoFieldsHandler(sess *Session, sm SessionManager, fm *FeedbagStore, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (XMessage, error) {

@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	errSessNotFound = errors.New("session was not found")
+	ErrSessNotFound = errors.New("session was not found")
 	ErrSignedOff    = errors.New("user signed off")
 )
 
@@ -264,7 +264,7 @@ func (s *InMemorySessionManager) RetrieveByScreenName(screenName string) (*Sessi
 			return sess, nil
 		}
 	}
-	return nil, fmt.Errorf("%w: %s", errSessNotFound, screenName)
+	return nil, fmt.Errorf("%w: %s", ErrSessNotFound, screenName)
 }
 
 func (s *InMemorySessionManager) retrieveByScreenNames(screenNames []string) []*Session {
