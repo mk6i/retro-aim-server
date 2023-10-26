@@ -350,6 +350,16 @@ type SNAC_0x09_0x03_PDRightsReply struct {
 //
 
 const (
+	ChatNavErr                 uint16 = 0x0001
+	ChatNavRequestChatRights   uint16 = 0x0002
+	ChatNavRequestExchangeInfo uint16 = 0x0003
+	ChatNavRequestRoomInfo     uint16 = 0x0004
+	ChatNavRequestMoreRoomInfo uint16 = 0x0005
+	ChatNavRequestOccupantList uint16 = 0x0006
+	ChatNavSearchForRoom       uint16 = 0x0007
+	ChatNavCreateRoom          uint16 = 0x0008
+	ChatNavNavInfo             uint16 = 0x0009
+
 	ChatNavTLVRedirect     uint16 = 0x01
 	ChatNavTLVMaxRooms     uint16 = 0x02
 	ChatNavTLVExchangeInfo uint16 = 0x03

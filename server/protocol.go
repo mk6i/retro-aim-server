@@ -318,6 +318,7 @@ func NewRouter() Router {
 		LocateRouter:   NewLocateRouter(),
 		OServiceRouter: NewOServiceRouter(),
 		FeedbagRouter:  NewFeedbagRouter(),
+		ChatNavRouter:  NewChatNavRouter(),
 	}
 }
 
@@ -326,6 +327,7 @@ type Router struct {
 	LocateRouter
 	OServiceRouter
 	FeedbagRouter
+	ChatNavRouter
 }
 
 func (rt *Router) routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader) error {
@@ -341,7 +343,7 @@ func (rt *Router) routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionM
 	case PD:
 		return routePD(snac, buf, rw, sequence)
 	case CHAT_NAV:
-		return routeChatNav(sess, cr, snac, buf, rw, sequence)
+		return rt.RouteChatNav(sess, cr, snac, buf, rw, sequence)
 	case FEEDBAG:
 		return rt.RouteFeedbag(sm, sess, fm, snac, buf, rw, sequence)
 	case BUCP:
