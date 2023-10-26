@@ -13,3 +13,4 @@ packages:
       LocateHandler:
       OServiceHandler:
       FeedbagHandler:
+      ChatNavHandler:
