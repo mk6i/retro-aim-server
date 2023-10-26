@@ -128,7 +128,7 @@ func (s LocateService) UserInfoQuery2Handler(sess *Session, sm SessionManager, f
 	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.ScreenName)
 	switch {
 	case err != nil:
-		return XMessage{}, nil
+		return XMessage{}, err
 	case blocked != BlockedNo:
 		return XMessage{
 			snacFrame: oscar.SnacFrame{

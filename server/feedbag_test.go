@@ -433,10 +433,8 @@ func TestInsertItemHandler(t *testing.T) {
 						},
 						snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
 							TLVUserInfo: oscar.TLVUserInfo{
-								ScreenName: "user_screen_name",
-								TLVBlock: oscar.TLVBlock{
-									TLVList: defaultSess.GetUserInfo(),
-								},
+								ScreenName:   "user_screen_name",
+								WarningLevel: 0,
 							},
 						},
 					},
@@ -450,10 +448,8 @@ func TestInsertItemHandler(t *testing.T) {
 						},
 						snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
 							TLVUserInfo: oscar.TLVUserInfo{
-								ScreenName: "buddy_1",
-								TLVBlock: oscar.TLVBlock{
-									TLVList: defaultSess.GetUserInfo(),
-								},
+								ScreenName:   "buddy_1",
+								WarningLevel: 0,
 							},
 						},
 					},
