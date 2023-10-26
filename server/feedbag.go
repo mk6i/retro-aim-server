@@ -351,8 +351,18 @@ func (s FeedbagService) DeleteItemHandler(sm SessionManager, sess *Session, fm F
 
 	for _, item := range snacPayloadIn.Items {
 		if item.ClassID == oscar.FeedbagClassIDDeny {
-			// notify previously blocked users that user is back online
-			if err := NotifyArrival(sess, sm, fm); err != nil {
+			err := NotifyBuddyArrived(item.Name, sess.ScreenName, sm)
+			switch {
+			case errors.Is(err, ErrSessNotFound):
+				continue
+			case err != nil:
+				return XMessage{}, err
+			}
+			err = NotifyBuddyArrived(sess.ScreenName, item.Name, sm)
+			switch {
+			case errors.Is(err, ErrSessNotFound):
+				continue
+			case err != nil:
 				return XMessage{}, err
 			}
 		}
@@ -380,14 +390,11 @@ func (s FeedbagService) StartClusterHandler(oscar.SNAC_0x13_0x11_FeedbagStartClu
 func NotifyBuddyArrived(screenNameFrom, screenNameTo string, sm SessionManager) error {
 	sess, err := sm.RetrieveByScreenName(screenNameFrom)
 	switch {
-	case errors.Is(err, ErrSessNotFound):
-		fallthrough
-	case sess.Invisible(): // don't tell user this buddy is online
-		return nil
 	case err != nil:
 		return err
+	case sess.Invisible(): // don't tell user this buddy is online
+		return nil
 	}
-
 	sm.SendToScreenName(screenNameTo, XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: BUDDY,
@@ -416,7 +423,12 @@ func NotifyBuddyDeparted(screenNameFrom, screenNameTo string, sm SessionManager)
 			SubGroup:  BuddyDeparted,
 		},
 		snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
-			TLVUserInfo: sess.GetTLVUserInfo(),
+			TLVUserInfo: oscar.TLVUserInfo{
+				// don't include the TLV block, otherwise the AIM client fails
+				// to process the block event
+				ScreenName:   sess.ScreenName,
+				WarningLevel: sess.GetWarning(),
+			},
 		},
 	})
 
