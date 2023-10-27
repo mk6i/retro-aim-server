@@ -569,7 +569,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		// input is the request payload
 		input XMessage
 		// output is the response payload
-		output XMessage
+		output *XMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -586,7 +586,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 					Channel: 1,
 				},
 			},
-			output: XMessage{}, // empty SNAC
+			output: nil,
 		},
 		{
 			name: "receive ICBMParameterQuery, return ICBMParameterReply",
@@ -597,7 +597,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 				},
 				snacOut: struct{}{}, // empty SNAC
 			},
-			output: XMessage{
+			output: &XMessage{
 				snacFrame: oscar.SnacFrame{
 					FoodGroup: ICBM,
 					SubGroup:  oscar.ICBMParameterReply,
@@ -618,7 +618,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 					ScreenName: "recipient-screen-name",
 				},
 			},
-			output: XMessage{
+			output: &XMessage{
 				snacFrame: oscar.SnacFrame{
 					FoodGroup: ICBM,
 					SubGroup:  oscar.ICBMHostAck,
@@ -627,6 +627,19 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 					ChannelID: 4,
 				},
 			},
+		},
+		{
+			name: "receive ICBMChannelMsgToHost, return no reply",
+			input: XMessage{
+				snacFrame: oscar.SnacFrame{
+					FoodGroup: ICBM,
+					SubGroup:  oscar.ICBMChannelMsgToHost,
+				},
+				snacOut: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ScreenName: "recipient-screen-name",
+				},
+			},
+			output: nil,
 		},
 		{
 			name: "receive ICBMEvilRequest, return ICBMEvilReply",
@@ -639,7 +652,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 					ScreenName: "recipient-screen-name",
 				},
 			},
-			output: XMessage{
+			output: &XMessage{
 				snacFrame: oscar.SnacFrame{
 					FoodGroup: ICBM,
 					SubGroup:  oscar.ICBMEvilReply,
@@ -660,7 +673,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 					Code: 4,
 				},
 			},
-			output: XMessage{}, // empty SNAC
+			output: nil,
 		},
 		{
 			name: "receive ICBMClientEvent, return no response",
@@ -673,7 +686,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 					ScreenName: "recipient-screen-name",
 				},
 			},
-			output: XMessage{}, // empty SNAC
+			output: nil,
 		},
 		{
 			name: "receive ICBMMissedCalls, expect ErrUnsupportedSubGroup",
@@ -684,7 +697,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 				},
 				snacOut: struct{}{}, // empty SNAC
 			},
-			output:    XMessage{}, // empty SNAC
+			output:    nil,
 			expectErr: ErrUnsupportedSubGroup,
 		},
 	}
@@ -694,20 +707,22 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			svc := NewMockICBMHandler(t)
 			svc.EXPECT().
 				ChannelMsgToHostHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
-				Return(&tc.output, tc.handlerErr).
+				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
 				ClientEventHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.handlerErr).
 				Maybe()
-			svc.EXPECT().
-				EvilRequestHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
-				Return(tc.output, tc.handlerErr).
-				Maybe()
-			svc.EXPECT().
-				ParameterQueryHandler().
-				Return(tc.output).
-				Maybe()
+			if tc.output != nil {
+				svc.EXPECT().
+					EvilRequestHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+					Return(*tc.output, tc.handlerErr).
+					Maybe()
+				svc.EXPECT().
+					ParameterQueryHandler().
+					Return(*tc.output).
+					Maybe()
+			}
 
 			router := ICBMRouter{
 				ICBMHandler: svc,
@@ -725,8 +740,10 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 				return
 			}
 
-			if tc.output.snacFrame == (oscar.SnacFrame{}) {
-				return // handler doesn't return response
+			if tc.output == nil {
+				// make sure no response was sent
+				assert.Empty(t, bufOut.Bytes())
+				return
 			}
 
 			// make sure the sequence number was incremented

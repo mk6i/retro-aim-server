@@ -319,6 +319,7 @@ func NewRouter() Router {
 		OServiceRouter: NewOServiceRouter(),
 		FeedbagRouter:  NewFeedbagRouter(),
 		ChatNavRouter:  NewChatNavRouter(),
+		ChatRouter:     NewChatRouter(),
 	}
 }
 
@@ -328,6 +329,7 @@ type Router struct {
 	OServiceRouter
 	FeedbagRouter
 	ChatNavRouter
+	ChatRouter
 }
 
 func (rt *Router) routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader) error {
@@ -349,7 +351,7 @@ func (rt *Router) routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionM
 	case BUCP:
 		return routeBUCP()
 	case CHAT:
-		return routeChat(sess, sm, snac, buf, rw, sequence)
+		return rt.RouteChat(sess, sm, snac, buf, rw, sequence)
 	default:
 		return ErrUnsupportedFoodGroup
 	}

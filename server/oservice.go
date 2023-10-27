@@ -10,7 +10,7 @@ import (
 )
 
 type OServiceHandler interface {
-	ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, onReadyCB OnReadyCB, sess *Session, sm SessionManager) ([]XMessage, error)
+	ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, onReadyCB OnReadyCB, sess *Session, sm SessionManager) error
 	ClientVersionsHandler(snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) XMessage
 	IdleNotificationHandler(sess *Session, sm SessionManager, fm *FeedbagStore, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error
 	RateParamsQueryHandler() XMessage
@@ -37,16 +37,7 @@ func (rt OServiceRouter) RouteOService(cfg Config, ready OnReadyCB, cr *ChatRegi
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
 			return err
 		}
-		batch, err := rt.ClientOnlineHandler(inSNAC, ready, sess, sm)
-		for _, msg := range batch {
-			switch {
-			case err != nil:
-				return err
-			case batch != nil:
-				return writeOutSNAC(SNACFrame, msg.snacFrame, msg.snacOut, sequence, w)
-			}
-		}
-		return nil
+		return rt.ClientOnlineHandler(inSNAC, ready, sess, sm)
 	case oscar.OServiceServiceRequest:
 		inSNAC := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -207,9 +198,9 @@ func (s OServiceService) UserInfoQueryHandler(sess *Session) XMessage {
 	}
 }
 
-type OnReadyCB func(sess *Session, sm SessionManager) ([]XMessage, error)
+type OnReadyCB func(sess *Session, sm SessionManager) error
 
-func (s OServiceService) ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, onReadyCB OnReadyCB, sess *Session, sm SessionManager) ([]XMessage, error) {
+func (s OServiceService) ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, onReadyCB OnReadyCB, sess *Session, sm SessionManager) error {
 	for _, version := range snacPayloadIn.GroupVersions {
 		fmt.Printf("ClientOnlineHandler read SNAC client messageType: %+v\n", version)
 	}

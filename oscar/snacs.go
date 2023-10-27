@@ -387,6 +387,49 @@ type SNAC_0x0D_0x09_TLVExchangeInfo struct {
 //
 
 const (
+	ChatErr                uint16 = 0x0001
+	ChatRoomInfoUpdate     uint16 = 0x0002
+	ChatUsersJoined        uint16 = 0x0003
+	ChatUsersLeft          uint16 = 0x0004
+	ChatChannelMsgToHost   uint16 = 0x0005
+	ChatChannelMsgToClient uint16 = 0x0006
+	ChatEvilRequest        uint16 = 0x0007
+	ChatEvilReply          uint16 = 0x0008
+	ChatClientErr          uint16 = 0x0009
+	ChatPauseRoomReq       uint16 = 0x000A
+	ChatPauseRoomAck       uint16 = 0x000B
+	ChatResumeRoom         uint16 = 0x000C
+	ChatShowMyRow          uint16 = 0x000D
+	ChatShowRowByUsername  uint16 = 0x000E
+	ChatShowRowByNumber    uint16 = 0x000F
+	ChatShowRowByName      uint16 = 0x0010
+	ChatRowInfo            uint16 = 0x0011
+	ChatListRows           uint16 = 0x0012
+	ChatRowListInfo        uint16 = 0x0013
+	ChatMoreRows           uint16 = 0x0014
+	ChatMoveToRow          uint16 = 0x0015
+	ChatToggleChat         uint16 = 0x0016
+	ChatSendQuestion       uint16 = 0x0017
+	ChatSendComment        uint16 = 0x0018
+	ChatTallyVote          uint16 = 0x0019
+	ChatAcceptBid          uint16 = 0x001A
+	ChatSendInvite         uint16 = 0x001B
+	ChatDeclineInvite      uint16 = 0x001C
+	ChatAcceptInvite       uint16 = 0x001D
+	ChatNotifyMessage      uint16 = 0x001E
+	ChatGotoRow            uint16 = 0x001F
+	ChatStageUserJoin      uint16 = 0x0020
+	ChatStageUserLeft      uint16 = 0x0021
+	ChatUnnamedSnac22      uint16 = 0x0022
+	ChatClose              uint16 = 0x0023
+	ChatUserBan            uint16 = 0x0024
+	ChatUserUnban          uint16 = 0x0025
+	ChatJoined             uint16 = 0x0026
+	ChatUnnamedSnac27      uint16 = 0x0027
+	ChatUnnamedSnac28      uint16 = 0x0028
+	ChatUnnamedSnac29      uint16 = 0x0029
+	ChatRoomInfoOwner      uint16 = 0x0030
+
 	ChatTLVPublicWhisperFlag    uint16 = 0x01
 	ChatTLVSenderInformation    uint16 = 0x03
 	ChatTLVEnableReflectionFlag uint16 = 0x06
