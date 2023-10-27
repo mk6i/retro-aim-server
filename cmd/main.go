@@ -125,13 +125,13 @@ func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, f
 		conn.Close()
 	}()
 
-	onClientReady := func(sess *server.Session, sm server.SessionManager) ([]server.XMessage, error) {
+	onClientReady := func(sess *server.Session, sm server.SessionManager) error {
 		if err := server.NotifyArrival(sess, sm, fm); err != nil {
-			return []server.XMessage{}, err
+			return err
 		}
 		buddies, err := fm.Buddies(sess.ScreenName)
 		if err != nil {
-			return []server.XMessage{}, err
+			return err
 		}
 		for _, buddy := range buddies {
 			err := server.NotifyBuddyArrived(buddy, sess.ScreenName, sm)
@@ -139,10 +139,10 @@ func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, f
 			case errors.Is(err, server.ErrSessNotFound):
 				continue
 			case err != nil:
-				return []server.XMessage{}, err
+				return err
 			}
 		}
-		return []server.XMessage{}, nil
+		return nil
 	}
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D}
@@ -188,12 +188,11 @@ func handleChatConnection(cfg server.Config, fm *server.FeedbagStore, cr *server
 
 	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D, 0x000E}
 
-	onClientReady := func(sess *server.Session, sm server.SessionManager) ([]server.XMessage, error) {
+	onClientReady := func(sess *server.Session, sm server.SessionManager) error {
+		server.SendChatRoomInfoUpdate(sess, sm, room)
 		server.AlertUserJoined(sess, sm)
-		return []server.XMessage{
-			server.SendChatRoomInfoUpdateTmp(room),
-			server.SetOnlineChatUsersTmp(sm),
-		}, nil
+		server.SetOnlineChatUsers(sess, sm)
+		return nil
 	}
 
 	if err := server.ReadBos(cfg, onClientReady, chatSess, seq, room.SessionManager, fm, cr, conn, foodGroups); err != nil {

@@ -43,15 +43,10 @@ func (rt *ICBMRouter) RouteICBM(sm SessionManager, fm FeedbagManager, sess *Sess
 			return err
 		}
 		outSNAC, err := rt.ChannelMsgToHostHandler(sm, fm, sess, inSNAC)
-		if err != nil {
+		if err != nil || outSNAC == nil {
 			return err
 		}
-		if outSNAC != nil {
-			if err := writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w); err != nil {
-				return err
-			}
-		}
-		return nil
+		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
 	case oscar.ICBMEvilRequest:
 		inSNAC := oscar.SNAC_0x04_0x08_ICBMEvilRequest{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {

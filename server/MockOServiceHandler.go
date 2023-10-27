@@ -21,29 +21,17 @@ func (_m *MockOServiceHandler) EXPECT() *MockOServiceHandler_Expecter {
 }
 
 // ClientOnlineHandler provides a mock function with given fields: snacPayloadIn, onReadyCB, sess, sm
-func (_m *MockOServiceHandler) ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, onReadyCB OnReadyCB, sess *Session, sm SessionManager) ([]XMessage, error) {
+func (_m *MockOServiceHandler) ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, onReadyCB OnReadyCB, sess *Session, sm SessionManager) error {
 	ret := _m.Called(snacPayloadIn, onReadyCB, sess, sm)
 
-	var r0 []XMessage
-	var r1 error
-	if rf, ok := ret.Get(0).(func(oscar.SNAC_0x01_0x02_OServiceClientOnline, OnReadyCB, *Session, SessionManager) ([]XMessage, error)); ok {
-		return rf(snacPayloadIn, onReadyCB, sess, sm)
-	}
-	if rf, ok := ret.Get(0).(func(oscar.SNAC_0x01_0x02_OServiceClientOnline, OnReadyCB, *Session, SessionManager) []XMessage); ok {
+	var r0 error
+	if rf, ok := ret.Get(0).(func(oscar.SNAC_0x01_0x02_OServiceClientOnline, OnReadyCB, *Session, SessionManager) error); ok {
 		r0 = rf(snacPayloadIn, onReadyCB, sess, sm)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]XMessage)
-		}
+		r0 = ret.Error(0)
 	}
 
-	if rf, ok := ret.Get(1).(func(oscar.SNAC_0x01_0x02_OServiceClientOnline, OnReadyCB, *Session, SessionManager) error); ok {
-		r1 = rf(snacPayloadIn, onReadyCB, sess, sm)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // MockOServiceHandler_ClientOnlineHandler_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ClientOnlineHandler'
@@ -67,12 +55,12 @@ func (_c *MockOServiceHandler_ClientOnlineHandler_Call) Run(run func(snacPayload
 	return _c
 }
 
-func (_c *MockOServiceHandler_ClientOnlineHandler_Call) Return(_a0 []XMessage, _a1 error) *MockOServiceHandler_ClientOnlineHandler_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockOServiceHandler_ClientOnlineHandler_Call) Return(_a0 error) *MockOServiceHandler_ClientOnlineHandler_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockOServiceHandler_ClientOnlineHandler_Call) RunAndReturn(run func(oscar.SNAC_0x01_0x02_OServiceClientOnline, OnReadyCB, *Session, SessionManager) ([]XMessage, error)) *MockOServiceHandler_ClientOnlineHandler_Call {
+func (_c *MockOServiceHandler_ClientOnlineHandler_Call) RunAndReturn(run func(oscar.SNAC_0x01_0x02_OServiceClientOnline, OnReadyCB, *Session, SessionManager) error) *MockOServiceHandler_ClientOnlineHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
