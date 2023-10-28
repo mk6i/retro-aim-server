@@ -103,7 +103,7 @@ func (s OServiceService) WriteOServiceHostOnline(w io.Writer, sequence *uint32) 
 		SubGroup:  oscar.OServiceHostOnline,
 	}
 	snacPayloadOut := oscar.SNAC_0x01_0x03_OServiceHostOnline{
-		FoodGroups: []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0013, 0x000D},
+		FoodGroups: []uint16{OSERVICE, LOCATE, BUDDY, ICBM, FEEDBAG, CHAT_NAV},
 	}
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
@@ -339,7 +339,7 @@ func (s OServiceServiceForChat) WriteOServiceHostOnline(w io.Writer, sequence *u
 		SubGroup:  oscar.OServiceHostOnline,
 	}
 	snacPayloadOut := oscar.SNAC_0x01_0x03_OServiceHostOnline{
-		FoodGroups: []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0013, 0x000D, 0x000E},
+		FoodGroups: []uint16{OSERVICE, CHAT},
 	}
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
