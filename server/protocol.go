@@ -346,8 +346,6 @@ func (rt *Router) routeIncomingRequests(cfg Config, sm SessionManager, sess *Ses
 		return routeBuddy(snac, buf, rw, sequence)
 	case ICBM:
 		return rt.RouteICBM(sm, fm, sess, snac, buf, rw, sequence)
-	case PD:
-		return routePD(snac, buf, rw, sequence)
 	case CHAT_NAV:
 		return rt.RouteChatNav(sess, cr, snac, buf, rw, sequence)
 	case FEEDBAG:
