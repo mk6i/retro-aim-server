@@ -79,7 +79,7 @@ func NotifyArrival(sess *Session, sm SessionManager, fm FeedbagManager) error {
 
 	sm.BroadcastToScreenNames(screenNames, XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: BUDDY,
+			FoodGroup: oscar.BUDDY,
 			SubGroup:  BuddyArrived,
 		},
 		snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
@@ -104,7 +104,7 @@ func NotifyDeparture(sess *Session, sm SessionManager, fm *FeedbagStore) error {
 
 	sm.BroadcastToScreenNames(screenNames, XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: BUDDY,
+			FoodGroup: oscar.BUDDY,
 			SubGroup:  BuddyDeparted,
 		},
 		snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{

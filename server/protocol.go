@@ -159,33 +159,6 @@ func VerifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error) {
 	return &cookie, seq, err
 }
 
-const (
-	OSERVICE      uint16 = 0x0001
-	LOCATE        uint16 = 0x0002
-	BUDDY         uint16 = 0x0003
-	ICBM          uint16 = 0x0004
-	ADVERT        uint16 = 0x0005
-	INVITE        uint16 = 0x0006
-	ADMIN         uint16 = 0x0007
-	POPUP         uint16 = 0x0008
-	PD            uint16 = 0x0009
-	USER_LOOKUP   uint16 = 0x000A
-	STATS         uint16 = 0x000B
-	TRANSLATE     uint16 = 0x000C
-	CHAT_NAV      uint16 = 0x000D
-	CHAT          uint16 = 0x000E
-	ODIR          uint16 = 0x000F
-	BART          uint16 = 0x0010
-	FEEDBAG       uint16 = 0x0013
-	ICQ           uint16 = 0x0015
-	BUCP          uint16 = 0x0017
-	ALERT         uint16 = 0x0018
-	PLUGIN        uint16 = 0x0022
-	UNNAMED_FG_24 uint16 = 0x0024
-	MDIR          uint16 = 0x0025
-	ARS           uint16 = 0x044A
-)
-
 type IncomingMessage struct {
 	flap oscar.FlapFrame
 	snac oscar.SnacFrame
@@ -338,21 +311,21 @@ type Router struct {
 
 func (rt *Router) routeIncomingRequests(cfg Config, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader, room ChatRoom) error {
 	switch snac.FoodGroup {
-	case OSERVICE:
+	case oscar.OSERVICE:
 		return rt.RouteOService(cfg, cr, sm, fm, sess, room, snac, buf, rw, sequence)
-	case LOCATE:
+	case oscar.LOCATE:
 		return rt.RouteLocate(sess, sm, fm, snac, buf, rw, sequence)
-	case BUDDY:
+	case oscar.BUDDY:
 		return routeBuddy(snac, buf, rw, sequence)
-	case ICBM:
+	case oscar.ICBM:
 		return rt.RouteICBM(sm, fm, sess, snac, buf, rw, sequence)
-	case CHAT_NAV:
+	case oscar.CHAT_NAV:
 		return rt.RouteChatNav(sess, cr, snac, buf, rw, sequence)
-	case FEEDBAG:
+	case oscar.FEEDBAG:
 		return rt.RouteFeedbag(sm, sess, fm, snac, buf, rw, sequence)
-	case BUCP:
+	case oscar.BUCP:
 		return routeBUCP()
-	case CHAT:
+	case oscar.CHAT:
 		return rt.RouteChat(sess, sm, snac, buf, rw, sequence)
 	default:
 		return ErrUnsupportedFoodGroup

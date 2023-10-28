@@ -64,7 +64,7 @@ func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io
 	default:
 		// can't find user, return login error
 		snacFrameOut := oscar.SnacFrame{
-			FoodGroup: BUCP,
+			FoodGroup: oscar.BUCP,
 			SubGroup:  BUCPLoginResponse,
 		}
 		snacPayloadOut := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
@@ -76,7 +76,7 @@ func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io
 	}
 
 	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: BUCP,
+		FoodGroup: oscar.BUCP,
 		SubGroup:  BUCPChallengeResponse,
 	}
 	snacPayloadOut := oscar.SNAC_0x17_0x07_BUCPChallengeResponse{
@@ -162,7 +162,7 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sm SessionManager, fm *FeedbagSt
 	}
 
 	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: BUCP,
+		FoodGroup: oscar.BUCP,
 		SubGroup:  BUCPLoginResponse,
 	}
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)

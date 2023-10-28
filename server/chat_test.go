@@ -45,7 +45,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 			},
 			expectSNACToParticipants: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT,
+					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatChannelMsgToClient,
 				},
 				snacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
@@ -73,7 +73,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 			},
 			expectOutput: &XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT,
+					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatChannelMsgToClient,
 				},
 				snacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
@@ -119,7 +119,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 			},
 			expectSNACToParticipants: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT,
+					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatChannelMsgToClient,
 				},
 				snacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
@@ -186,7 +186,7 @@ func TestChatRouter_RouteChat(t *testing.T) {
 			name: "receive ChatChannelMsgToHost, return ChatChannelMsgToClient",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT,
+					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatChannelMsgToHost,
 				},
 				snacOut: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
@@ -195,7 +195,7 @@ func TestChatRouter_RouteChat(t *testing.T) {
 			},
 			output: &XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT,
+					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatChannelMsgToClient,
 				},
 				snacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
@@ -207,7 +207,7 @@ func TestChatRouter_RouteChat(t *testing.T) {
 			name: "receive ChatChannelMsgToHost, return no response",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT,
+					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatChannelMsgToHost,
 				},
 				snacOut: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
@@ -220,7 +220,7 @@ func TestChatRouter_RouteChat(t *testing.T) {
 			name: "receive ChatRowListInfo, return ErrUnsupportedSubGroup",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT,
+					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatRowListInfo,
 				},
 				snacOut: struct{}{},

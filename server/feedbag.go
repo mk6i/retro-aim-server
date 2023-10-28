@@ -105,7 +105,7 @@ type FeedbagService struct {
 func (s FeedbagService) RightsQueryHandler() XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: FEEDBAG,
+			FoodGroup: oscar.FEEDBAG,
 			SubGroup:  oscar.FeedbagRightsReply,
 		},
 		snacOut: oscar.SNAC_0x13_0x03_FeedbagRightsReply{
@@ -200,7 +200,7 @@ func (s FeedbagService) QueryHandler(sess *Session, fm FeedbagManager) (XMessage
 
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: FEEDBAG,
+			FoodGroup: oscar.FEEDBAG,
 			SubGroup:  oscar.FeedbagReply,
 		},
 		snacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
@@ -227,7 +227,7 @@ func (s FeedbagService) QueryIfModifiedHandler(sess *Session, fm FeedbagManager,
 		if lm.Before(time.Unix(int64(snacPayloadIn.LastUpdate), 0)) {
 			return XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: FEEDBAG,
+					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagReplyNotModified,
 				},
 				snacOut: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
@@ -240,7 +240,7 @@ func (s FeedbagService) QueryIfModifiedHandler(sess *Session, fm FeedbagManager,
 
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: FEEDBAG,
+			FoodGroup: oscar.FEEDBAG,
 			SubGroup:  oscar.FeedbagReply,
 		},
 		snacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
@@ -258,7 +258,7 @@ func (s FeedbagService) InsertItemHandler(sm SessionManager, sess *Session, fm F
 		if item.ClassID == 3 && item.Name == sess.ScreenName {
 			return XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: FEEDBAG,
+					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagErr,
 				},
 				snacOut: oscar.SnacError{
@@ -305,7 +305,7 @@ func (s FeedbagService) InsertItemHandler(sm SessionManager, sess *Session, fm F
 
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: FEEDBAG,
+			FoodGroup: oscar.FEEDBAG,
 			SubGroup:  oscar.FeedbagStatus,
 		},
 		snacOut: snacPayloadOut,
@@ -337,7 +337,7 @@ func (s FeedbagService) UpdateItemHandler(sm SessionManager, sess *Session, fm F
 
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: FEEDBAG,
+			FoodGroup: oscar.FEEDBAG,
 			SubGroup:  oscar.FeedbagStatus,
 		},
 		snacOut: snacPayloadOut,
@@ -375,7 +375,7 @@ func (s FeedbagService) DeleteItemHandler(sm SessionManager, sess *Session, fm F
 
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: FEEDBAG,
+			FoodGroup: oscar.FEEDBAG,
 			SubGroup:  oscar.FeedbagStatus,
 		},
 		snacOut: snacPayloadOut,
@@ -397,7 +397,7 @@ func NotifyBuddyArrived(screenNameFrom, screenNameTo string, sm SessionManager) 
 	}
 	sm.SendToScreenName(screenNameTo, XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: BUDDY,
+			FoodGroup: oscar.BUDDY,
 			SubGroup:  BuddyArrived,
 		},
 		snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
@@ -419,7 +419,7 @@ func NotifyBuddyDeparted(screenNameFrom, screenNameTo string, sm SessionManager)
 
 	sm.SendToScreenName(screenNameTo, XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: BUDDY,
+			FoodGroup: oscar.BUDDY,
 			SubGroup:  BuddyDeparted,
 		},
 		snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{

@@ -49,7 +49,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 				},
 			},
 			expectSnacFrame: oscar.SnacFrame{
-				FoodGroup: BUCP,
+				FoodGroup: oscar.BUCP,
 				SubGroup:  BUCPLoginResponse,
 			},
 			expectSNACBody: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
@@ -93,7 +93,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 				},
 			},
 			expectSnacFrame: oscar.SnacFrame{
-				FoodGroup: BUCP,
+				FoodGroup: oscar.BUCP,
 				SubGroup:  BUCPLoginResponse,
 			},
 			expectSNACBody: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
@@ -136,7 +136,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 				},
 			},
 			expectSnacFrame: oscar.SnacFrame{
-				FoodGroup: BUCP,
+				FoodGroup: oscar.BUCP,
 				SubGroup:  BUCPLoginResponse,
 			},
 			expectSNACBody: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
@@ -236,7 +236,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 				},
 			},
 			expectSnacFrame: oscar.SnacFrame{
-				FoodGroup: BUCP,
+				FoodGroup: oscar.BUCP,
 				SubGroup:  BUCPChallengeResponse,
 			},
 			expectSNACBody: oscar.SNAC_0x17_0x07_BUCPChallengeResponse{
@@ -265,7 +265,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 				},
 			},
 			expectSnacFrame: oscar.SnacFrame{
-				FoodGroup: BUCP,
+				FoodGroup: oscar.BUCP,
 				SubGroup:  BUCPChallengeResponse,
 			},
 			expectSNACBody: oscar.SNAC_0x17_0x07_BUCPChallengeResponse{
@@ -293,7 +293,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 				},
 			},
 			expectSnacFrame: oscar.SnacFrame{
-				FoodGroup: BUCP,
+				FoodGroup: oscar.BUCP,
 				SubGroup:  BUCPLoginResponse,
 			},
 			expectSNACBody: oscar.SNAC_0x17_0x03_BUCPLoginResponse{

@@ -74,7 +74,7 @@ type LocateService struct {
 func (s LocateService) RightsQueryHandler() XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: LOCATE,
+			FoodGroup: oscar.LOCATE,
 			SubGroup:  oscar.LocateRightsReply,
 		},
 		snacOut: oscar.SNAC_0x02_0x03_LocateRightsReply{
@@ -132,7 +132,7 @@ func (s LocateService) UserInfoQuery2Handler(sess *Session, sm SessionManager, f
 	case blocked != BlockedNo:
 		return XMessage{
 			snacFrame: oscar.SnacFrame{
-				FoodGroup: LOCATE,
+				FoodGroup: oscar.LOCATE,
 				SubGroup:  oscar.LocateErr,
 			},
 			snacOut: oscar.SnacError{
@@ -146,7 +146,7 @@ func (s LocateService) UserInfoQuery2Handler(sess *Session, sm SessionManager, f
 	case errors.Is(err, ErrSessNotFound):
 		return XMessage{
 			snacFrame: oscar.SnacFrame{
-				FoodGroup: LOCATE,
+				FoodGroup: oscar.LOCATE,
 				SubGroup:  oscar.LocateErr,
 			},
 			snacOut: oscar.SnacError{
@@ -191,7 +191,7 @@ func (s LocateService) UserInfoQuery2Handler(sess *Session, sm SessionManager, f
 
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: LOCATE,
+			FoodGroup: oscar.LOCATE,
 			SubGroup:  oscar.LocateUserInfoReply,
 		},
 		snacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
@@ -206,7 +206,7 @@ func (s LocateService) UserInfoQuery2Handler(sess *Session, sm SessionManager, f
 func (s LocateService) SetDirInfoHandler() XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: LOCATE,
+			FoodGroup: oscar.LOCATE,
 			SubGroup:  oscar.LocateSetDirReply,
 		},
 		snacOut: oscar.SNAC_0x02_0x0A_LocateSetDirReply{
@@ -218,7 +218,7 @@ func (s LocateService) SetDirInfoHandler() XMessage {
 func (s LocateService) SetKeywordInfoHandler() XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: LOCATE,
+			FoodGroup: oscar.LOCATE,
 			SubGroup:  oscar.LocateSetKeywordReply,
 		},
 		snacOut: oscar.SNAC_0x02_0x10_LocateSetKeywordReply{

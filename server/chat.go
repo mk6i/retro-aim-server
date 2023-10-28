@@ -42,7 +42,7 @@ type ChatService struct {
 
 func (s ChatService) ChannelMsgToHostHandler(sess *Session, sm SessionManager, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*XMessage, error) {
 	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: CHAT,
+		FoodGroup: oscar.CHAT,
 		SubGroup:  oscar.ChatChannelMsgToClient,
 	}
 	snacPayloadOut := oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
@@ -97,7 +97,7 @@ func SetOnlineChatUsers(sess *Session, sm SessionManager) {
 
 	sm.SendToScreenName(sess.ScreenName, XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: CHAT,
+			FoodGroup: oscar.CHAT,
 			SubGroup:  oscar.ChatUsersJoined,
 		},
 		snacOut: snacPayloadOut,
@@ -107,7 +107,7 @@ func SetOnlineChatUsers(sess *Session, sm SessionManager) {
 func AlertUserJoined(sess *Session, sm SessionManager) {
 	sm.BroadcastExcept(sess, XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: CHAT,
+			FoodGroup: oscar.CHAT,
 			SubGroup:  oscar.ChatUsersJoined,
 		},
 		snacOut: oscar.SNAC_0x0E_0x03_ChatUsersJoined{
@@ -127,7 +127,7 @@ func AlertUserJoined(sess *Session, sm SessionManager) {
 func AlertUserLeft(sess *Session, sm SessionManager) {
 	sm.BroadcastExcept(sess, XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: CHAT,
+			FoodGroup: oscar.CHAT,
 			SubGroup:  oscar.ChatUsersLeft,
 		},
 		snacOut: oscar.SNAC_0x0E_0x04_ChatUsersLeft{
@@ -147,7 +147,7 @@ func AlertUserLeft(sess *Session, sm SessionManager) {
 func SendChatRoomInfoUpdate(sess *Session, sm SessionManager, room ChatRoom) {
 	sm.SendToScreenName(sess.ScreenName, XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: CHAT,
+			FoodGroup: oscar.CHAT,
 			SubGroup:  oscar.ChatRoomInfoUpdate,
 		},
 		snacOut: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
