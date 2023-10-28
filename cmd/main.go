@@ -60,13 +60,14 @@ func listenBOS(cfg server.Config, sm *server.InMemorySessionManager, fm *server.
 
 	fmt.Printf("BOS server listening on %s\n", server.Address(cfg.OSCARHost, cfg.BOSPort))
 
+	router := server.NewRouter()
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		go handleBOSConnection(cfg, sm, fm, cr, conn)
+		go handleBOSConnection(cfg, sm, fm, cr, conn, router)
 	}
 }
 
@@ -79,13 +80,14 @@ func listenChat(cfg server.Config, fm *server.FeedbagStore, cr *server.ChatRegis
 
 	fmt.Printf("Chat server listening on %s\n", server.Address(cfg.OSCARHost, cfg.ChatPort))
 
+	router := server.NewRouterForChat()
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		go handleChatConnection(cfg, fm, cr, conn)
+		go handleChatConnection(cfg, fm, cr, conn, router)
 	}
 }
 
@@ -111,7 +113,7 @@ func handleAuthConnection(cfg server.Config, sm *server.InMemorySessionManager, 
 	}
 }
 
-func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, fm *server.FeedbagStore, cr *server.ChatRegistry, conn net.Conn) {
+func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, fm *server.FeedbagStore, cr *server.ChatRegistry, conn net.Conn, router server.Router) {
 	sess, seq, err := server.VerifyLogin(sm, conn)
 	if err != nil {
 		fmt.Printf("user disconnected with error: %s\n", err.Error())
@@ -125,28 +127,7 @@ func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, f
 		conn.Close()
 	}()
 
-	onClientReady := func(sess *server.Session, sm server.SessionManager) error {
-		if err := server.NotifyArrival(sess, sm, fm); err != nil {
-			return err
-		}
-		buddies, err := fm.Buddies(sess.ScreenName)
-		if err != nil {
-			return err
-		}
-		for _, buddy := range buddies {
-			err := server.NotifyBuddyArrived(buddy, sess.ScreenName, sm)
-			switch {
-			case errors.Is(err, server.ErrSessNotFound):
-				continue
-			case err != nil:
-				return err
-			}
-		}
-		return nil
-	}
-
-	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D}
-	if err := server.ReadBos(cfg, onClientReady, sess, seq, sm, fm, cr, conn, foodGroups); err != nil {
+	if err := server.ReadBos(cfg, sess, seq, sm, fm, cr, conn, server.ChatRoom{}, router); err != nil {
 		switch {
 		case errors.Is(io.EOF, err):
 			fallthrough
@@ -158,7 +139,7 @@ func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, f
 	}
 }
 
-func handleChatConnection(cfg server.Config, fm *server.FeedbagStore, cr *server.ChatRegistry, conn net.Conn) {
+func handleChatConnection(cfg server.Config, fm *server.FeedbagStore, cr *server.ChatRegistry, conn net.Conn, router server.Router) {
 	cookie, seq, err := server.VerifyChatLogin(conn)
 	if err != nil {
 		fmt.Printf("user disconnected with error: %s\n", err.Error())
@@ -186,16 +167,7 @@ func handleChatConnection(cfg server.Config, fm *server.FeedbagStore, cr *server
 		conn.Close()
 	}()
 
-	foodGroups := []uint16{0x0001, 0x0002, 0x0003, 0x0004, 0x0009, 0x0013, 0x000D, 0x000E}
-
-	onClientReady := func(sess *server.Session, sm server.SessionManager) error {
-		server.SendChatRoomInfoUpdate(sess, sm, room)
-		server.AlertUserJoined(sess, sm)
-		server.SetOnlineChatUsers(sess, sm)
-		return nil
-	}
-
-	if err := server.ReadBos(cfg, onClientReady, chatSess, seq, room.SessionManager, fm, cr, conn, foodGroups); err != nil {
+	if err := server.ReadBos(cfg, chatSess, seq, room.SessionManager, fm, cr, conn, room, router); err != nil {
 		if err != io.EOF {
 			fmt.Printf("user disconnected with error: %s\n", err.Error())
 		} else {

@@ -272,8 +272,8 @@ func Signout(sess *Session, sm SessionManager, fm *FeedbagStore) {
 	sm.Remove(sess)
 }
 
-func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter, foodGroups []uint16) error {
-	if err := WriteOServiceHostOnline(foodGroups, rwc, &seq); err != nil {
+func ReadBos(cfg Config, sess *Session, seq uint32, sm SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter, room ChatRoom, router Router) error {
+	if err := router.WriteOServiceHostOnline(rwc, &seq); err != nil {
 		return err
 	}
 
@@ -282,12 +282,10 @@ func ReadBos(cfg Config, ready OnReadyCB, sess *Session, seq uint32, sm SessionM
 	errCh := make(chan error, 1)
 	go readIncomingRequests(rwc, msgCh, errCh)
 
-	router := NewRouter()
-
 	for {
 		select {
 		case m := <-msgCh:
-			if err := router.routeIncomingRequests(cfg, ready, sm, sess, fm, cr, rwc, &seq, m.snac, m.buf); err != nil {
+			if err := router.routeIncomingRequests(cfg, sm, sess, fm, cr, rwc, &seq, m.snac, m.buf, room); err != nil {
 				switch {
 				case errors.Is(err, ErrUnsupportedSubGroup) || errors.Is(err, ErrUnsupportedFoodGroup):
 					if err := sendInvalidSNACErr(m.snac, rwc, &seq); err != nil {
@@ -323,6 +321,12 @@ func NewRouter() Router {
 	}
 }
 
+func NewRouterForChat() Router {
+	r := NewRouter()
+	r.OServiceRouter = NewOServiceRouterForChat()
+	return r
+}
+
 type Router struct {
 	ICBMRouter
 	LocateRouter
@@ -332,10 +336,10 @@ type Router struct {
 	ChatRouter
 }
 
-func (rt *Router) routeIncomingRequests(cfg Config, ready OnReadyCB, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader) error {
+func (rt *Router) routeIncomingRequests(cfg Config, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader, room ChatRoom) error {
 	switch snac.FoodGroup {
 	case OSERVICE:
-		return rt.RouteOService(cfg, ready, cr, sm, fm, sess, snac, buf, rw, sequence)
+		return rt.RouteOService(cfg, cr, sm, fm, sess, room, snac, buf, rw, sequence)
 	case LOCATE:
 		return rt.RouteLocate(sess, sm, fm, snac, buf, rw, sequence)
 	case BUDDY:

@@ -410,7 +410,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				ClientOnlineHandler(tc.input.snacOut, mock.Anything, mock.Anything, mock.Anything).
+				ClientOnlineHandler(tc.input.snacOut, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 				Return(tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
@@ -431,7 +431,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteOService(Config{}, nil, nil, nil, nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteOService(Config{}, nil, nil, nil, nil, ChatRoom{}, tc.input.snacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
