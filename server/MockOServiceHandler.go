@@ -3,6 +3,8 @@
 package server
 
 import (
+	io "io"
+
 	oscar "github.com/mkaminski/goaim/oscar"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,13 +22,13 @@ func (_m *MockOServiceHandler) EXPECT() *MockOServiceHandler_Expecter {
 	return &MockOServiceHandler_Expecter{mock: &_m.Mock}
 }
 
-// ClientOnlineHandler provides a mock function with given fields: snacPayloadIn, onReadyCB, sess, sm
-func (_m *MockOServiceHandler) ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, onReadyCB OnReadyCB, sess *Session, sm SessionManager) error {
-	ret := _m.Called(snacPayloadIn, onReadyCB, sess, sm)
+// ClientOnlineHandler provides a mock function with given fields: snacPayloadIn, sess, sm, fm, room
+func (_m *MockOServiceHandler) ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *Session, sm SessionManager, fm FeedbagManager, room ChatRoom) error {
+	ret := _m.Called(snacPayloadIn, sess, sm, fm, room)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(oscar.SNAC_0x01_0x02_OServiceClientOnline, OnReadyCB, *Session, SessionManager) error); ok {
-		r0 = rf(snacPayloadIn, onReadyCB, sess, sm)
+	if rf, ok := ret.Get(0).(func(oscar.SNAC_0x01_0x02_OServiceClientOnline, *Session, SessionManager, FeedbagManager, ChatRoom) error); ok {
+		r0 = rf(snacPayloadIn, sess, sm, fm, room)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -41,16 +43,17 @@ type MockOServiceHandler_ClientOnlineHandler_Call struct {
 
 // ClientOnlineHandler is a helper method to define mock.On call
 //   - snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline
-//   - onReadyCB OnReadyCB
 //   - sess *Session
 //   - sm SessionManager
-func (_e *MockOServiceHandler_Expecter) ClientOnlineHandler(snacPayloadIn interface{}, onReadyCB interface{}, sess interface{}, sm interface{}) *MockOServiceHandler_ClientOnlineHandler_Call {
-	return &MockOServiceHandler_ClientOnlineHandler_Call{Call: _e.mock.On("ClientOnlineHandler", snacPayloadIn, onReadyCB, sess, sm)}
+//   - fm FeedbagManager
+//   - room ChatRoom
+func (_e *MockOServiceHandler_Expecter) ClientOnlineHandler(snacPayloadIn interface{}, sess interface{}, sm interface{}, fm interface{}, room interface{}) *MockOServiceHandler_ClientOnlineHandler_Call {
+	return &MockOServiceHandler_ClientOnlineHandler_Call{Call: _e.mock.On("ClientOnlineHandler", snacPayloadIn, sess, sm, fm, room)}
 }
 
-func (_c *MockOServiceHandler_ClientOnlineHandler_Call) Run(run func(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, onReadyCB OnReadyCB, sess *Session, sm SessionManager)) *MockOServiceHandler_ClientOnlineHandler_Call {
+func (_c *MockOServiceHandler_ClientOnlineHandler_Call) Run(run func(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *Session, sm SessionManager, fm FeedbagManager, room ChatRoom)) *MockOServiceHandler_ClientOnlineHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(oscar.SNAC_0x01_0x02_OServiceClientOnline), args[1].(OnReadyCB), args[2].(*Session), args[3].(SessionManager))
+		run(args[0].(oscar.SNAC_0x01_0x02_OServiceClientOnline), args[1].(*Session), args[2].(SessionManager), args[3].(FeedbagManager), args[4].(ChatRoom))
 	})
 	return _c
 }
@@ -60,7 +63,7 @@ func (_c *MockOServiceHandler_ClientOnlineHandler_Call) Return(_a0 error) *MockO
 	return _c
 }
 
-func (_c *MockOServiceHandler_ClientOnlineHandler_Call) RunAndReturn(run func(oscar.SNAC_0x01_0x02_OServiceClientOnline, OnReadyCB, *Session, SessionManager) error) *MockOServiceHandler_ClientOnlineHandler_Call {
+func (_c *MockOServiceHandler_ClientOnlineHandler_Call) RunAndReturn(run func(oscar.SNAC_0x01_0x02_OServiceClientOnline, *Session, SessionManager, FeedbagManager, ChatRoom) error) *MockOServiceHandler_ClientOnlineHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -374,6 +377,49 @@ func (_c *MockOServiceHandler_UserInfoQueryHandler_Call) Return(_a0 XMessage) *M
 }
 
 func (_c *MockOServiceHandler_UserInfoQueryHandler_Call) RunAndReturn(run func(*Session) XMessage) *MockOServiceHandler_UserInfoQueryHandler_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteOServiceHostOnline provides a mock function with given fields: w, sequence
+func (_m *MockOServiceHandler) WriteOServiceHostOnline(w io.Writer, sequence *uint32) error {
+	ret := _m.Called(w, sequence)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(io.Writer, *uint32) error); ok {
+		r0 = rf(w, sequence)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockOServiceHandler_WriteOServiceHostOnline_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteOServiceHostOnline'
+type MockOServiceHandler_WriteOServiceHostOnline_Call struct {
+	*mock.Call
+}
+
+// WriteOServiceHostOnline is a helper method to define mock.On call
+//   - w io.Writer
+//   - sequence *uint32
+func (_e *MockOServiceHandler_Expecter) WriteOServiceHostOnline(w interface{}, sequence interface{}) *MockOServiceHandler_WriteOServiceHostOnline_Call {
+	return &MockOServiceHandler_WriteOServiceHostOnline_Call{Call: _e.mock.On("WriteOServiceHostOnline", w, sequence)}
+}
+
+func (_c *MockOServiceHandler_WriteOServiceHostOnline_Call) Run(run func(w io.Writer, sequence *uint32)) *MockOServiceHandler_WriteOServiceHostOnline_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(io.Writer), args[1].(*uint32))
+	})
+	return _c
+}
+
+func (_c *MockOServiceHandler_WriteOServiceHostOnline_Call) Return(_a0 error) *MockOServiceHandler_WriteOServiceHostOnline_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockOServiceHandler_WriteOServiceHostOnline_Call) RunAndReturn(run func(io.Writer, *uint32) error) *MockOServiceHandler_WriteOServiceHostOnline_Call {
 	_c.Call.Return(run)
 	return _c
 }
