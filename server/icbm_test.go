@@ -52,7 +52,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			},
 			expectSNACToClient: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMChannelMsgToclient,
 				},
 				snacOut: oscar.SNAC_0x04_0x07_ICBMChannelMsgToClient{
@@ -76,7 +76,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			},
 			expectOutput: &XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMHostAck,
 				},
 				snacOut: oscar.SNAC_0x04_0x0C_ICBMHostAck{
@@ -103,7 +103,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			},
 			expectSNACToClient: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMChannelMsgToclient,
 				},
 				snacOut: oscar.SNAC_0x04_0x07_ICBMChannelMsgToClient{
@@ -147,7 +147,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			},
 			expectOutput: &XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
 				},
 				snacOut: oscar.SnacError{
@@ -179,7 +179,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			},
 			expectOutput: &XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
 				},
 				snacOut: oscar.SnacError{
@@ -212,7 +212,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			},
 			expectOutput: &XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
 				},
 				snacOut: oscar.SnacError{
@@ -280,7 +280,7 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			},
 			expectSNACToClient: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMClientEvent,
 				},
 				snacOut: oscar.SNAC_0x04_0x14_ICBMClientEvent{
@@ -364,7 +364,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			recipientScreenName: "recipient-screen-name",
 			broadcastMessage: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: BUDDY,
+					FoodGroup: oscar.BUDDY,
 					SubGroup:  BuddyArrived,
 				},
 				snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
@@ -384,7 +384,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			},
 			expectSNACToClient: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceEvilNotification,
 				},
 				snacOut: oscar.SNAC_0x01_0x10_OServiceEvilNotificationAnon{
@@ -393,7 +393,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			},
 			expectOutput: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMEvilReply,
 				},
 				snacOut: oscar.SNAC_0x04_0x09_ICBMEvilReply{
@@ -412,7 +412,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			recipientBuddies:    []string{"buddy1", "buddy2"},
 			broadcastMessage: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: BUDDY,
+					FoodGroup: oscar.BUDDY,
 					SubGroup:  BuddyArrived,
 				},
 				snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
@@ -431,7 +431,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			},
 			expectSNACToClient: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceEvilNotification,
 				},
 				snacOut: oscar.SNAC_0x01_0x10_OServiceEvilNotification{
@@ -444,7 +444,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			},
 			expectOutput: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMEvilReply,
 				},
 				snacOut: oscar.SNAC_0x04_0x09_ICBMEvilReply{
@@ -467,7 +467,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			},
 			expectOutput: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
 				},
 				snacOut: oscar.SnacError{
@@ -489,7 +489,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			},
 			expectOutput: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
 				},
 				snacOut: oscar.SnacError{
@@ -509,7 +509,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			},
 			expectOutput: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
 				},
 				snacOut: oscar.SnacError{
@@ -579,7 +579,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			name: "receive ICBMAddParameters SNAC, return no response",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMAddParameters,
 				},
 				snacOut: oscar.SNAC_0x04_0x02_ICBMAddParameters{
@@ -592,14 +592,14 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			name: "receive ICBMParameterQuery, return ICBMParameterReply",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMParameterQuery,
 				},
 				snacOut: struct{}{}, // empty SNAC
 			},
 			output: &XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMParameterReply,
 				},
 				snacOut: oscar.SNAC_0x04_0x05_ICBMParameterReply{
@@ -611,7 +611,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			name: "receive ICBMChannelMsgToHost, return ICBMHostAck",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMChannelMsgToHost,
 				},
 				snacOut: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
@@ -620,7 +620,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			},
 			output: &XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMHostAck,
 				},
 				snacOut: oscar.SNAC_0x04_0x0C_ICBMHostAck{
@@ -632,7 +632,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			name: "receive ICBMChannelMsgToHost, return no reply",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMChannelMsgToHost,
 				},
 				snacOut: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
@@ -645,7 +645,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			name: "receive ICBMEvilRequest, return ICBMEvilReply",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMEvilRequest,
 				},
 				snacOut: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
@@ -654,7 +654,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			},
 			output: &XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMEvilReply,
 				},
 				snacOut: oscar.SNAC_0x04_0x09_ICBMEvilReply{
@@ -666,7 +666,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			name: "receive ICBMClientErr, return no response",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMClientErr,
 				},
 				snacOut: oscar.SNAC_0x04_0x0B_ICBMClientErr{
@@ -679,7 +679,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			name: "receive ICBMClientEvent, return no response",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMClientEvent,
 				},
 				snacOut: oscar.SNAC_0x04_0x14_ICBMClientEvent{
@@ -692,7 +692,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			name: "receive ICBMMissedCalls, expect ErrUnsupportedSubGroup",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: ICBM,
+					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMMissedCalls,
 				},
 				snacOut: struct{}{}, // empty SNAC

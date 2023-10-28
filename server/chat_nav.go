@@ -65,7 +65,7 @@ type ChatCookie struct {
 func (s ChatNavService) RequestChatRightsHandler() XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: CHAT_NAV,
+			FoodGroup: oscar.CHAT_NAV,
 			SubGroup:  oscar.ChatNavNavInfo,
 		},
 		snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
@@ -151,7 +151,7 @@ func (s ChatNavService) CreateRoomHandler(sess *Session, cr *ChatRegistry, newCh
 
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: CHAT_NAV,
+			FoodGroup: oscar.CHAT_NAV,
 			SubGroup:  oscar.ChatNavNavInfo,
 		},
 		snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
@@ -183,7 +183,7 @@ func (s ChatNavService) RequestRoomInfoHandler(cr *ChatRegistry, snacPayloadIn o
 
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: CHAT_NAV,
+			FoodGroup: oscar.CHAT_NAV,
 			SubGroup:  oscar.ChatNavNavInfo,
 		},
 		snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{

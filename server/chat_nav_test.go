@@ -76,7 +76,7 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 	//
 	expectSNAC := XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: CHAT_NAV,
+			FoodGroup: oscar.CHAT_NAV,
 			SubGroup:  oscar.ChatNavNavInfo,
 		},
 		snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
@@ -119,14 +119,14 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			name: "receive ChatNavRequestChatRights, return ChatNavNavInfo",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT_NAV,
+					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavRequestChatRights,
 				},
 				snacOut: struct{}{},
 			},
 			output: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT_NAV,
+					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavNavInfo,
 				},
 				snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
@@ -145,7 +145,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			name: "receive ChatNavRequestRoomInfo, return ChatNavNavInfo",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT_NAV,
+					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavRequestRoomInfo,
 				},
 				snacOut: oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
@@ -154,7 +154,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			},
 			output: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT_NAV,
+					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavNavInfo,
 				},
 				snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
@@ -173,7 +173,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			name: "receive ChatNavCreateRoom, return ChatNavNavInfo",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT_NAV,
+					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavCreateRoom,
 				},
 				snacOut: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
@@ -182,7 +182,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			},
 			output: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT_NAV,
+					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavNavInfo,
 				},
 				snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
@@ -201,7 +201,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			name: "receive ChatNavRequestOccupantList, return ErrUnsupportedSubGroup",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: CHAT_NAV,
+					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavRequestOccupantList,
 				},
 				snacOut: struct{}{},

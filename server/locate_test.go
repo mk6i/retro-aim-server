@@ -62,7 +62,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			},
 			expectOutput: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateUserInfoReply,
 				},
 				snacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
@@ -106,7 +106,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			},
 			expectOutput: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateUserInfoReply,
 				},
 				snacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
@@ -161,7 +161,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			},
 			expectOutput: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateUserInfoReply,
 				},
 				snacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
@@ -208,7 +208,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			},
 			expectOutput: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateUserInfoReply,
 				},
 				snacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
@@ -242,7 +242,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			},
 			expectOutput: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateErr,
 				},
 				snacOut: oscar.SnacError{
@@ -269,7 +269,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			},
 			expectOutput: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateErr,
 				},
 				snacOut: oscar.SnacError{
@@ -326,14 +326,14 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			name: "receive LocateRightsQuery, return LocateRightsReply",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateRightsQuery,
 				},
 				snacOut: struct{}{},
 			},
 			output: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateRightsReply,
 				},
 				snacOut: oscar.SNAC_0x02_0x03_LocateRightsReply{
@@ -352,7 +352,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			name: "receive LocateSetInfo, return no response",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateSetInfo,
 				},
 				snacOut: oscar.SNAC_0x02_0x04_LocateSetInfo{
@@ -374,7 +374,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			name: "receive LocateSetDirInfo, return LocateSetDirReply",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateSetDirInfo,
 				},
 				snacOut: oscar.SNAC_0x02_0x09_LocateSetDirInfo{
@@ -390,7 +390,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			},
 			output: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateSetDirReply,
 				},
 				snacOut: oscar.SNAC_0x02_0x0A_LocateSetDirReply{
@@ -402,7 +402,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			name: "receive LocateGetDirInfo, return no response",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateGetDirInfo,
 				},
 				snacOut: oscar.SNAC_0x02_0x0B_LocateGetDirInfo{
@@ -417,7 +417,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			name: "receive LocateSetKeywordInfo, return LocateSetKeywordReply",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateSetKeywordInfo,
 				},
 				snacOut: oscar.SNAC_0x02_0x0F_LocateSetKeywordInfo{
@@ -433,7 +433,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			},
 			output: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateSetKeywordReply,
 				},
 				snacOut: oscar.SNAC_0x02_0x10_LocateSetKeywordReply{
@@ -445,7 +445,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			name: "receive LocateUserInfoQuery2, return LocateUserInfoReply",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateUserInfoQuery2,
 				},
 				snacOut: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
@@ -454,7 +454,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			},
 			output: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateUserInfoReply,
 				},
 				snacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
@@ -476,7 +476,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			name: "receive LocateGetKeywordInfo, expect ErrUnsupportedSubGroup",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: LOCATE,
+					FoodGroup: oscar.LOCATE,
 					SubGroup:  oscar.LocateGetKeywordInfo,
 				},
 				snacOut: struct{}{}, // empty SNAC

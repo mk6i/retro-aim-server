@@ -35,7 +35,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				ScreenName: "user_screen_name",
 			},
 			inputSNAC: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
-				FoodGroup: ICBM,
+				FoodGroup: oscar.ICBM,
 			},
 			expectErr: ErrUnsupportedSubGroup,
 		},
@@ -58,7 +58,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				ScreenName: "user_screen_name",
 			},
 			inputSNAC: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
-				FoodGroup: CHAT,
+				FoodGroup: oscar.CHAT,
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
 						{
@@ -74,7 +74,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			},
 			expectOutput: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceServiceResponse,
 				},
 				snacOut: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
@@ -93,7 +93,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 							},
 							{
 								TType: oscar.OServiceTLVTagsGroupID,
-								Val:   CHAT,
+								Val:   oscar.CHAT,
 							},
 							{
 								TType: oscar.OServiceTLVTagsSSLCertName,
@@ -120,7 +120,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				ScreenName: "user_screen_name",
 			},
 			inputSNAC: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
-				FoodGroup: CHAT,
+				FoodGroup: oscar.CHAT,
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
 						{
@@ -188,7 +188,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			name: "receive OServiceClientOnline, return no response",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceClientOnline,
 				},
 				snacOut: oscar.SNAC_0x01_0x02_OServiceClientOnline{
@@ -210,7 +210,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			name: "receive OServiceServiceRequest, return OServiceServiceResponse",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceServiceRequest,
 				},
 				snacOut: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
@@ -219,7 +219,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			},
 			output: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceServiceResponse,
 				},
 				snacOut: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
@@ -238,14 +238,14 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			name: "receive OServiceRateParamsQuery, return OServiceRateParamsReply",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceRateParamsQuery,
 				},
 				snacOut: struct{}{},
 			},
 			output: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceRateParamsReply,
 				},
 				snacOut: oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
@@ -267,7 +267,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			name: "receive OServiceRateParamsSubAdd, return no response",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceRateParamsSubAdd,
 				},
 				snacOut: oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd{
@@ -287,14 +287,14 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			name: "receive OServiceUserInfoQuery, return OServiceUserInfoUpdate",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceUserInfoQuery,
 				},
 				snacOut: struct{}{},
 			},
 			output: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceUserInfoUpdate,
 				},
 				snacOut: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
@@ -308,7 +308,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			name: "receive OServiceIdleNotification, return no response",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceIdleNotification,
 				},
 				snacOut: oscar.SNAC_0x01_0x11_OServiceIdleNotification{
@@ -321,7 +321,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			name: "receive OServiceClientVersions, return OServiceHostVersions",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceClientVersions,
 				},
 				snacOut: oscar.SNAC_0x01_0x17_OServiceClientVersions{
@@ -332,7 +332,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			},
 			output: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceHostVersions,
 				},
 				snacOut: oscar.SNAC_0x01_0x18_OServiceHostVersions{
@@ -346,7 +346,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			name: "receive OServiceSetUserInfoFields, return OServiceUserInfoUpdate",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceSetUserInfoFields,
 				},
 				snacOut: oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
@@ -362,7 +362,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			},
 			output: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceUserInfoUpdate,
 				},
 				snacOut: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
@@ -376,7 +376,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			name: "receive OServicePauseReq, expect ErrUnsupportedSubGroup",
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
-					FoodGroup: OSERVICE,
+					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServicePauseReq,
 				},
 				snacOut: struct{}{}, // empty SNAC

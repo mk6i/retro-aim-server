@@ -77,7 +77,7 @@ type ICBMService struct {
 func (s ICBMService) ParameterQueryHandler() XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: ICBM,
+			FoodGroup: oscar.ICBM,
 			SubGroup:  oscar.ICBMParameterReply,
 		},
 		snacOut: oscar.SNAC_0x04_0x05_ICBMParameterReply{
@@ -104,7 +104,7 @@ func (s ICBMService) ChannelMsgToHostHandler(sm SessionManager, fm FeedbagManage
 		}
 		return &XMessage{
 			snacFrame: oscar.SnacFrame{
-				FoodGroup: ICBM,
+				FoodGroup: oscar.ICBM,
 				SubGroup:  oscar.ICBMErr,
 			},
 			snacOut: oscar.SnacError{
@@ -118,7 +118,7 @@ func (s ICBMService) ChannelMsgToHostHandler(sm SessionManager, fm FeedbagManage
 	case errors.Is(err, ErrSessNotFound):
 		return &XMessage{
 			snacFrame: oscar.SnacFrame{
-				FoodGroup: ICBM,
+				FoodGroup: oscar.ICBM,
 				SubGroup:  oscar.ICBMErr,
 			},
 			snacOut: oscar.SnacError{
@@ -152,7 +152,7 @@ func (s ICBMService) ChannelMsgToHostHandler(sm SessionManager, fm FeedbagManage
 
 	sm.SendToScreenName(recipSess.ScreenName, XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: ICBM,
+			FoodGroup: oscar.ICBM,
 			SubGroup:  oscar.ICBMChannelMsgToclient,
 		},
 		snacOut: clientIM,
@@ -166,7 +166,7 @@ func (s ICBMService) ChannelMsgToHostHandler(sm SessionManager, fm FeedbagManage
 	// ack message back to sender
 	return &XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: ICBM,
+			FoodGroup: oscar.ICBM,
 			SubGroup:  oscar.ICBMHostAck,
 		},
 		snacOut: oscar.SNAC_0x04_0x0C_ICBMHostAck{
@@ -188,7 +188,7 @@ func (s ICBMService) ClientEventHandler(sm SessionManager, fm FeedbagManager, se
 	default:
 		sm.SendToScreenName(snacPayloadIn.ScreenName, XMessage{
 			snacFrame: oscar.SnacFrame{
-				FoodGroup: ICBM,
+				FoodGroup: oscar.ICBM,
 				SubGroup:  oscar.ICBMClientEvent,
 			},
 			snacOut: oscar.SNAC_0x04_0x14_ICBMClientEvent{
@@ -208,7 +208,7 @@ func (s ICBMService) EvilRequestHandler(sm SessionManager, fm FeedbagManager, se
 	if snacPayloadIn.ScreenName == sess.ScreenName {
 		return XMessage{
 			snacFrame: oscar.SnacFrame{
-				FoodGroup: ICBM,
+				FoodGroup: oscar.ICBM,
 				SubGroup:  oscar.ICBMErr,
 			},
 			snacOut: oscar.SnacError{
@@ -224,7 +224,7 @@ func (s ICBMService) EvilRequestHandler(sm SessionManager, fm FeedbagManager, se
 	if blocked != BlockedNo {
 		return XMessage{
 			snacFrame: oscar.SnacFrame{
-				FoodGroup: ICBM,
+				FoodGroup: oscar.ICBM,
 				SubGroup:  oscar.ICBMErr,
 			},
 			snacOut: oscar.SnacError{
@@ -261,7 +261,7 @@ func (s ICBMService) EvilRequestHandler(sm SessionManager, fm FeedbagManager, se
 
 	sm.SendToScreenName(recipSess.ScreenName, XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: OSERVICE,
+			FoodGroup: oscar.OSERVICE,
 			SubGroup:  oscar.OServiceEvilNotification,
 		},
 		snacOut: notif,
@@ -273,7 +273,7 @@ func (s ICBMService) EvilRequestHandler(sm SessionManager, fm FeedbagManager, se
 
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: ICBM,
+			FoodGroup: oscar.ICBM,
 			SubGroup:  oscar.ICBMEvilReply,
 		},
 		snacOut: oscar.SNAC_0x04_0x09_ICBMEvilReply{

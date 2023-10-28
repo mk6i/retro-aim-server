@@ -99,11 +99,11 @@ type OServiceService struct {
 func (s OServiceService) WriteOServiceHostOnline(w io.Writer, sequence *uint32) error {
 	fmt.Println("writeOServiceHostOnline...")
 	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: OSERVICE,
+		FoodGroup: oscar.OSERVICE,
 		SubGroup:  oscar.OServiceHostOnline,
 	}
 	snacPayloadOut := oscar.SNAC_0x01_0x03_OServiceHostOnline{
-		FoodGroups: []uint16{OSERVICE, LOCATE, BUDDY, ICBM, FEEDBAG, CHAT_NAV},
+		FoodGroups: []uint16{oscar.OSERVICE, oscar.LOCATE, oscar.BUDDY, oscar.ICBM, oscar.FEEDBAG, oscar.CHAT_NAV},
 	}
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
@@ -111,7 +111,7 @@ func (s OServiceService) WriteOServiceHostOnline(w io.Writer, sequence *uint32) 
 func (s OServiceService) ClientVersionsHandler(snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: OSERVICE,
+			FoodGroup: oscar.OSERVICE,
 			SubGroup:  oscar.OServiceHostVersions,
 		},
 		snacOut: oscar.SNAC_0x01_0x18_OServiceHostVersions{
@@ -122,7 +122,7 @@ func (s OServiceService) ClientVersionsHandler(snacPayloadIn oscar.SNAC_0x01_0x1
 
 func (s OServiceService) RateParamsQueryHandler() XMessage {
 	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: OSERVICE,
+		FoodGroup: oscar.OSERVICE,
 		SubGroup:  oscar.OServiceRateParamsReply,
 	}
 	snacPayloadOut := oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
@@ -190,7 +190,7 @@ func (s OServiceService) RateParamsQueryHandler() XMessage {
 func (s OServiceService) UserInfoQueryHandler(sess *Session) XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: OSERVICE,
+			FoodGroup: oscar.OSERVICE,
 			SubGroup:  oscar.OServiceUserInfoUpdate,
 		},
 		snacOut: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
@@ -241,7 +241,7 @@ func (s OServiceService) SetUserInfoFieldsHandler(sess *Session, sm SessionManag
 	}
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: OSERVICE,
+			FoodGroup: oscar.OSERVICE,
 			SubGroup:  oscar.OServiceUserInfoUpdate,
 		},
 		snacOut: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
@@ -260,7 +260,7 @@ func (s OServiceService) IdleNotificationHandler(sess *Session, sm SessionManage
 }
 
 func (s OServiceService) ServiceRequestHandler(cfg Config, cr *ChatRegistry, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (XMessage, error) {
-	if snacPayloadIn.FoodGroup != CHAT {
+	if snacPayloadIn.FoodGroup != oscar.CHAT {
 		return XMessage{}, ErrUnsupportedSubGroup
 	}
 
@@ -282,7 +282,7 @@ func (s OServiceService) ServiceRequestHandler(cfg Config, cr *ChatRegistry, ses
 
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
-			FoodGroup: OSERVICE,
+			FoodGroup: oscar.OSERVICE,
 			SubGroup:  oscar.OServiceServiceResponse,
 		},
 		snacOut: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
@@ -301,7 +301,7 @@ func (s OServiceService) ServiceRequestHandler(cfg Config, cr *ChatRegistry, ses
 					},
 					{
 						TType: oscar.OServiceTLVTagsGroupID,
-						Val:   CHAT,
+						Val:   oscar.CHAT,
 					},
 					{
 						TType: oscar.OServiceTLVTagsSSLCertName,
@@ -335,11 +335,11 @@ type OServiceServiceForChat struct {
 func (s OServiceServiceForChat) WriteOServiceHostOnline(w io.Writer, sequence *uint32) error {
 	fmt.Println("writeOServiceHostOnline...")
 	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: OSERVICE,
+		FoodGroup: oscar.OSERVICE,
 		SubGroup:  oscar.OServiceHostOnline,
 	}
 	snacPayloadOut := oscar.SNAC_0x01_0x03_OServiceHostOnline{
-		FoodGroups: []uint16{OSERVICE, CHAT},
+		FoodGroups: []uint16{oscar.OSERVICE, oscar.CHAT},
 	}
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
