@@ -258,6 +258,23 @@ func (s SNAC_0x02_0x15_LocateUserInfoQuery2) RequestAwayMessage() bool {
 // 0x03: Buddy
 //
 
+const (
+	BuddyErr                 uint16 = 0x0001
+	BuddyRightsQuery         uint16 = 0x0002
+	BuddyRightsReply         uint16 = 0x0003
+	BuddyAddBuddies          uint16 = 0x0004
+	BuddyDelBuddies          uint16 = 0x0005
+	BuddyWatcherListQuery    uint16 = 0x0006
+	BuddyWatcherListResponse uint16 = 0x0007
+	BuddyWatcherSubRequest   uint16 = 0x0008
+	BuddyWatcherNotification uint16 = 0x0009
+	BuddyRejectNotification  uint16 = 0x000A
+	BuddyArrived             uint16 = 0x000B
+	BuddyDeparted            uint16 = 0x000C
+	BuddyAddTempBuddies      uint16 = 0x000F
+	BuddyDelTempBuddies      uint16 = 0x0010
+)
+
 type SNAC_0x03_0x02_BuddyRightsQuery struct {
 	TLVRestBlock
 }

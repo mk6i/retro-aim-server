@@ -275,7 +275,7 @@ func (s FeedbagService) InsertItemHandler(sm SessionManager, sess *Session, fm F
 	for _, item := range snacPayloadIn.Items {
 		switch item.ClassID {
 		case oscar.FeedbagClassIdBuddy, oscar.FeedbagClassIDPermit: // add new buddy
-			err := NotifyBuddyArrived(item.Name, sess.ScreenName, sm)
+			err := UnicastArrival(item.Name, sess.ScreenName, sm)
 			switch {
 			case errors.Is(err, ErrSessNotFound):
 				continue
@@ -284,7 +284,7 @@ func (s FeedbagService) InsertItemHandler(sm SessionManager, sess *Session, fm F
 			}
 		case oscar.FeedbagClassIDDeny: // block buddy
 			// notify this user that buddy is offline
-			err := NotifyBuddyDeparted(item.Name, sess.ScreenName, sm)
+			err := UnicastDeparture(item.Name, sess.ScreenName, sm)
 			switch {
 			case errors.Is(err, ErrSessNotFound):
 				continue
@@ -292,7 +292,7 @@ func (s FeedbagService) InsertItemHandler(sm SessionManager, sess *Session, fm F
 				return XMessage{}, err
 			}
 			// notify former buddy that this user is offline
-			if err := NotifyBuddyDeparted(sess.ScreenName, item.Name, sm); err != nil {
+			if err := UnicastDeparture(sess.ScreenName, item.Name, sm); err != nil {
 				return XMessage{}, err
 			}
 		}
@@ -320,7 +320,7 @@ func (s FeedbagService) UpdateItemHandler(sm SessionManager, sess *Session, fm F
 	for _, item := range snacPayloadIn.Items {
 		switch item.ClassID {
 		case oscar.FeedbagClassIdBuddy, oscar.FeedbagClassIDPermit:
-			err := NotifyBuddyArrived(item.Name, sess.ScreenName, sm)
+			err := UnicastArrival(item.Name, sess.ScreenName, sm)
 			switch {
 			case errors.Is(err, ErrSessNotFound):
 				continue
@@ -351,14 +351,14 @@ func (s FeedbagService) DeleteItemHandler(sm SessionManager, sess *Session, fm F
 
 	for _, item := range snacPayloadIn.Items {
 		if item.ClassID == oscar.FeedbagClassIDDeny {
-			err := NotifyBuddyArrived(item.Name, sess.ScreenName, sm)
+			err := UnicastArrival(item.Name, sess.ScreenName, sm)
 			switch {
 			case errors.Is(err, ErrSessNotFound):
 				continue
 			case err != nil:
 				return XMessage{}, err
 			}
-			err = NotifyBuddyArrived(sess.ScreenName, item.Name, sm)
+			err = UnicastArrival(sess.ScreenName, item.Name, sm)
 			switch {
 			case errors.Is(err, ErrSessNotFound):
 				continue
@@ -385,52 +385,4 @@ func (s FeedbagService) DeleteItemHandler(sm SessionManager, sess *Session, fm F
 // StartClusterHandler exists to capture the SNAC input in unit tests to verify
 // it's correctly unmarshalled.
 func (s FeedbagService) StartClusterHandler(oscar.SNAC_0x13_0x11_FeedbagStartCluster) {
-}
-
-func NotifyBuddyArrived(screenNameFrom, screenNameTo string, sm SessionManager) error {
-	sess, err := sm.RetrieveByScreenName(screenNameFrom)
-	switch {
-	case err != nil:
-		return err
-	case sess.Invisible(): // don't tell user this buddy is online
-		return nil
-	}
-	sm.SendToScreenName(screenNameTo, XMessage{
-		snacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.BUDDY,
-			SubGroup:  BuddyArrived,
-		},
-		snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
-			TLVUserInfo: sess.GetTLVUserInfo(),
-		},
-	})
-
-	return nil
-}
-
-func NotifyBuddyDeparted(screenNameFrom, screenNameTo string, sm SessionManager) error {
-	sess, err := sm.RetrieveByScreenName(screenNameFrom)
-	switch {
-	case err != nil:
-		return err
-	case sess.Invisible(): // don't tell user this buddy is online
-		return nil
-	}
-
-	sm.SendToScreenName(screenNameTo, XMessage{
-		snacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.BUDDY,
-			SubGroup:  BuddyDeparted,
-		},
-		snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
-			TLVUserInfo: oscar.TLVUserInfo{
-				// don't include the TLV block, otherwise the AIM client fails
-				// to process the block event
-				ScreenName:   sess.ScreenName,
-				WarningLevel: sess.GetWarning(),
-			},
-		},
-	})
-
-	return nil
 }

@@ -239,7 +239,7 @@ func readIncomingRequests(rw io.Reader, msgCh chan IncomingMessage, errCh chan e
 }
 
 func Signout(sess *Session, sm SessionManager, fm *FeedbagStore) {
-	if err := NotifyDeparture(sess, sm, fm); err != nil {
+	if err := BroadcastDeparture(sess, sm, fm); err != nil {
 		fmt.Printf("error notifying departure: %s", err.Error())
 	}
 	sm.Remove(sess)
@@ -285,12 +285,13 @@ func ReadBos(cfg Config, sess *Session, seq uint32, sm SessionManager, fm *Feedb
 
 func NewRouter() Router {
 	return Router{
+		BuddyRouter:    NewBuddyRouter(),
+		ChatNavRouter:  NewChatNavRouter(),
+		ChatRouter:     NewChatRouter(),
+		FeedbagRouter:  NewFeedbagRouter(),
 		ICBMRouter:     NewICBMRouter(),
 		LocateRouter:   NewLocateRouter(),
 		OServiceRouter: NewOServiceRouter(),
-		FeedbagRouter:  NewFeedbagRouter(),
-		ChatNavRouter:  NewChatNavRouter(),
-		ChatRouter:     NewChatRouter(),
 	}
 }
 
@@ -301,12 +302,13 @@ func NewRouterForChat() Router {
 }
 
 type Router struct {
+	BuddyRouter
+	ChatNavRouter
+	ChatRouter
+	FeedbagRouter
 	ICBMRouter
 	LocateRouter
 	OServiceRouter
-	FeedbagRouter
-	ChatNavRouter
-	ChatRouter
 }
 
 func (rt *Router) routeIncomingRequests(cfg Config, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader, room ChatRoom) error {
@@ -316,7 +318,7 @@ func (rt *Router) routeIncomingRequests(cfg Config, sm SessionManager, sess *Ses
 	case oscar.LOCATE:
 		return rt.RouteLocate(sess, sm, fm, snac, buf, rw, sequence)
 	case oscar.BUDDY:
-		return routeBuddy(snac, buf, rw, sequence)
+		return rt.RouteBuddy(snac, buf, rw, sequence)
 	case oscar.ICBM:
 		return rt.RouteICBM(sm, fm, sess, snac, buf, rw, sequence)
 	case oscar.CHAT_NAV:

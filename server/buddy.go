@@ -1,77 +1,74 @@
 package server
 
 import (
-	"fmt"
-	"github.com/mkaminski/goaim/oscar"
 	"io"
+
+	"github.com/mkaminski/goaim/oscar"
 )
 
-const (
-	BuddyErr                 uint16 = 0x0001
-	BuddyRightsQuery                = 0x0002
-	BuddyAddBuddies                 = 0x0004
-	BuddyDelBuddies                 = 0x0005
-	BuddyWatcherListQuery           = 0x0006
-	BuddyWatcherSubRequest          = 0x0008
-	BuddyWatcherNotification        = 0x0009
-	BuddyRejectNotification         = 0x000A
-	BuddyArrived                    = 0x000B
-	BuddyDeparted                   = 0x000C
-	BuddyAddTempBuddies             = 0x000F
-	BuddyDelTempBuddies             = 0x0010
-)
+type BuddyHandler interface {
+	RightsQueryHandler() XMessage
+}
 
-func routeBuddy(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func NewBuddyRouter() BuddyRouter {
+	return BuddyRouter{
+		BuddyHandler: BuddyService{},
+	}
+}
 
-	switch snac.SubGroup {
-	case BuddyRightsQuery:
-		return SendAndReceiveBuddyRights(snac, r, w, sequence)
+type BuddyRouter struct {
+	BuddyHandler
+}
+
+func (rt *BuddyRouter) RouteBuddy(SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	switch SNACFrame.SubGroup {
+	case oscar.BuddyRightsQuery:
+		inSNAC := oscar.SNAC_0x03_0x02_BuddyRightsQuery{}
+		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
+			return err
+		}
+		outSNAC := rt.RightsQueryHandler()
+		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
 	}
 }
 
-func SendAndReceiveBuddyRights(snac oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	fmt.Printf("sendAndReceiveBuddyRights read SNAC frame: %+v\n", snac)
+type BuddyService struct {
+}
 
-	snacPayloadIn := oscar.SNAC_0x03_0x02_BuddyRightsQuery{}
-	if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
-		return err
-	}
-
-	fmt.Printf("sendAndReceiveBuddyRights read SNAC payload: %+v\n", snacPayloadIn)
-
-	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: 0x03,
-		SubGroup:  0x03,
-	}
-	snacPayloadOut := oscar.SNAC_0x03_0x03_BuddyRightsReply{
-		TLVRestBlock: oscar.TLVRestBlock{
-			TLVList: oscar.TLVList{
-				{
-					TType: 0x01,
-					Val:   uint16(100),
-				},
-				{
-					TType: 0x02,
-					Val:   uint16(100),
-				},
-				{
-					TType: 0x03,
-					Val:   uint16(100),
-				},
-				{
-					TType: 0x04,
-					Val:   uint16(100),
+func (s BuddyService) RightsQueryHandler() XMessage {
+	return XMessage{
+		snacFrame: oscar.SnacFrame{
+			FoodGroup: oscar.BUDDY,
+			SubGroup:  oscar.BuddyRightsReply,
+		},
+		snacOut: oscar.SNAC_0x03_0x03_BuddyRightsReply{
+			TLVRestBlock: oscar.TLVRestBlock{
+				TLVList: oscar.TLVList{
+					{
+						TType: 0x01,
+						Val:   uint16(100),
+					},
+					{
+						TType: 0x02,
+						Val:   uint16(100),
+					},
+					{
+						TType: 0x03,
+						Val:   uint16(100),
+					},
+					{
+						TType: 0x04,
+						Val:   uint16(100),
+					},
 				},
 			},
 		},
 	}
-
-	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func NotifyArrival(sess *Session, sm SessionManager, fm FeedbagManager) error {
+func BroadcastArrival(sess *Session, sm SessionManager, fm FeedbagManager) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName)
 	if err != nil {
 		return err
@@ -80,7 +77,7 @@ func NotifyArrival(sess *Session, sm SessionManager, fm FeedbagManager) error {
 	sm.BroadcastToScreenNames(screenNames, XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.BUDDY,
-			SubGroup:  BuddyArrived,
+			SubGroup:  oscar.BuddyArrived,
 		},
 		snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
 			TLVUserInfo: oscar.TLVUserInfo{
@@ -96,7 +93,7 @@ func NotifyArrival(sess *Session, sm SessionManager, fm FeedbagManager) error {
 	return nil
 }
 
-func NotifyDeparture(sess *Session, sm SessionManager, fm *FeedbagStore) error {
+func BroadcastDeparture(sess *Session, sm SessionManager, fm *FeedbagStore) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName)
 	if err != nil {
 		return err
@@ -105,10 +102,58 @@ func NotifyDeparture(sess *Session, sm SessionManager, fm *FeedbagStore) error {
 	sm.BroadcastToScreenNames(screenNames, XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.BUDDY,
-			SubGroup:  BuddyDeparted,
+			SubGroup:  oscar.BuddyDeparted,
 		},
 		snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
 			TLVUserInfo: oscar.TLVUserInfo{
+				ScreenName:   sess.ScreenName,
+				WarningLevel: sess.GetWarning(),
+			},
+		},
+	})
+
+	return nil
+}
+
+func UnicastArrival(srcScreenName, destScreenName string, sm SessionManager) error {
+	sess, err := sm.RetrieveByScreenName(srcScreenName)
+	switch {
+	case err != nil:
+		return err
+	case sess.Invisible(): // don't tell user this buddy is online
+		return nil
+	}
+	sm.SendToScreenName(destScreenName, XMessage{
+		snacFrame: oscar.SnacFrame{
+			FoodGroup: oscar.BUDDY,
+			SubGroup:  oscar.BuddyArrived,
+		},
+		snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
+			TLVUserInfo: sess.GetTLVUserInfo(),
+		},
+	})
+
+	return nil
+}
+
+func UnicastDeparture(srcScreenName, destScreenName string, sm SessionManager) error {
+	sess, err := sm.RetrieveByScreenName(srcScreenName)
+	switch {
+	case err != nil:
+		return err
+	case sess.Invisible(): // don't tell user this buddy is online
+		return nil
+	}
+
+	sm.SendToScreenName(destScreenName, XMessage{
+		snacFrame: oscar.SnacFrame{
+			FoodGroup: oscar.BUDDY,
+			SubGroup:  oscar.BuddyDeparted,
+		},
+		snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+			TLVUserInfo: oscar.TLVUserInfo{
+				// don't include the TLV block, otherwise the AIM client fails
+				// to process the block event
 				ScreenName:   sess.ScreenName,
 				WarningLevel: sess.GetWarning(),
 			},
