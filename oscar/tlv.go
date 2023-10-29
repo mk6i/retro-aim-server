@@ -136,7 +136,7 @@ func (s TLVList) SerializeInPlace() error {
 func (s TLVList) GetString(tType uint16) (string, bool) {
 	for _, tlv := range s {
 		if tType == tlv.TType {
-			return string(tlv.Val.([]byte)), true
+			return string(tlv.Val), true
 		}
 	}
 	return "", false
@@ -154,7 +154,7 @@ func (s TLVList) GetTLV(tType uint16) (TLV, bool) {
 func (s TLVList) GetSlice(tType uint16) ([]byte, bool) {
 	for _, tlv := range s {
 		if tType == tlv.TType {
-			return tlv.Val.([]byte), true
+			return tlv.Val, true
 		}
 	}
 	return nil, false
@@ -163,53 +163,35 @@ func (s TLVList) GetSlice(tType uint16) ([]byte, bool) {
 func (s TLVList) GetUint32(tType uint16) (uint32, bool) {
 	for _, tlv := range s {
 		if tType == tlv.TType {
-			return binary.BigEndian.Uint32(tlv.Val.([]byte)), true
+			return binary.BigEndian.Uint32(tlv.Val), true
 		}
 	}
 	return 0, false
 }
 
+func NewTLV(ttype uint16, val any) TLV {
+	t := TLV{
+		TType: ttype,
+	}
+	if err := Marshal(val, bytes.NewBuffer(t.Val)); err != nil {
+		panic(err.Error())
+	}
+	return t
+}
+
 type TLV struct {
 	TType uint16
-	Val   any
+	Val   []byte
 }
 
 func (t TLV) WriteTLV(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, t.TType); err != nil {
 		return err
 	}
-
-	var valLen uint16
-	val := t.Val
-
-	switch t.Val.(type) {
-	case uint8:
-		valLen = 1
-	case uint16:
-		valLen = 2
-	case uint32:
-		valLen = 4
-	case []uint16:
-		valLen = uint16(len(t.Val.([]uint16)) * 2)
-	case []byte:
-		valLen = uint16(len(t.Val.([]byte)))
-	case string:
-		valLen = uint16(len(t.Val.(string)))
-		val = []byte(t.Val.(string))
-	default:
-		buf := &bytes.Buffer{}
-		if err := Marshal(t.Val, buf); err != nil {
-			return err
-		}
-		valLen = uint16(buf.Len())
-		val = buf.Bytes()
-	}
-
-	if err := binary.Write(w, binary.BigEndian, valLen); err != nil {
+	if err := binary.Write(w, binary.BigEndian, uint16(len(t.Val))); err != nil {
 		return err
 	}
-
-	return binary.Write(w, binary.BigEndian, val)
+	return binary.Write(w, binary.BigEndian, t.Val)
 }
 
 func (t *TLV) Read(r io.Reader) error {
