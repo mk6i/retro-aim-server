@@ -285,6 +285,7 @@ func ReadBos(cfg Config, sess *Session, seq uint32, sm SessionManager, fm *Feedb
 
 func NewRouter() Router {
 	return Router{
+		AlertRouter:    NewAlertRouter(),
 		BuddyRouter:    NewBuddyRouter(),
 		ChatNavRouter:  NewChatNavRouter(),
 		ChatRouter:     NewChatRouter(),
@@ -302,6 +303,7 @@ func NewRouterForChat() Router {
 }
 
 type Router struct {
+	AlertRouter
 	BuddyRouter
 	ChatNavRouter
 	ChatRouter
@@ -329,6 +331,8 @@ func (rt *Router) routeIncomingRequests(cfg Config, sm SessionManager, sess *Ses
 		return routeBUCP()
 	case oscar.CHAT:
 		return rt.RouteChat(sess, sm, snac, buf, rw, sequence)
+	case oscar.ALERT:
+		return rt.RouteAlert(snac)
 	default:
 		return ErrUnsupportedFoodGroup
 	}

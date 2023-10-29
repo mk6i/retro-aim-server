@@ -711,6 +711,35 @@ type SNAC_0x17_0x07_BUCPChallengeResponse struct {
 	AuthKey string `len_prefix:"uint16"`
 }
 
+//
+// 0x18: Alert
+//
+
+var (
+	AlertErr                       uint16 = 0x0001
+	AlertSetAlertRequest           uint16 = 0x0002
+	AlertSetAlertReply             uint16 = 0x0003
+	AlertGetSubsRequest            uint16 = 0x0004
+	AlertGetSubsResponse           uint16 = 0x0005
+	AlertNotifyCapabilities        uint16 = 0x0006
+	AlertNotify                    uint16 = 0x0007
+	AlertGetRuleRequest            uint16 = 0x0008
+	AlertGetRuleReply              uint16 = 0x0009
+	AlertGetFeedRequest            uint16 = 0x000A
+	AlertGetFeedReply              uint16 = 0x000B
+	AlertRefreshFeed               uint16 = 0x000D
+	AlertEvent                     uint16 = 0x000E
+	AlertQogSnac                   uint16 = 0x000F
+	AlertRefreshFeedStock          uint16 = 0x0010
+	AlertNotifyTransport           uint16 = 0x0011
+	AlertSetAlertRequestV2         uint16 = 0x0012
+	AlertSetAlertReplyV2           uint16 = 0x0013
+	AlertTransitReply              uint16 = 0x0014
+	AlertNotifyAck                 uint16 = 0x0015
+	AlertNotifyDisplayCapabilities uint16 = 0x0016
+	AlertUserOnline                uint16 = 0x0017
+)
+
 type SnacOServiceErr struct {
 	Code uint16
 }
