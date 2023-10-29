@@ -103,7 +103,15 @@ func (s OServiceService) WriteOServiceHostOnline(w io.Writer, sequence *uint32) 
 		SubGroup:  oscar.OServiceHostOnline,
 	}
 	snacPayloadOut := oscar.SNAC_0x01_0x03_OServiceHostOnline{
-		FoodGroups: []uint16{oscar.OSERVICE, oscar.LOCATE, oscar.BUDDY, oscar.ICBM, oscar.FEEDBAG, oscar.CHAT_NAV},
+		FoodGroups: []uint16{
+			oscar.ALERT,
+			oscar.BUDDY,
+			oscar.CHAT_NAV,
+			oscar.FEEDBAG,
+			oscar.ICBM,
+			oscar.LOCATE,
+			oscar.OSERVICE,
+		},
 	}
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
@@ -201,7 +209,7 @@ func (s OServiceService) UserInfoQueryHandler(sess *Session) XMessage {
 
 func (s OServiceService) ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *Session, sm SessionManager, fm FeedbagManager, room ChatRoom) error {
 	for _, version := range snacPayloadIn.GroupVersions {
-		fmt.Printf("hahaha ClientOnlineHandler read SNAC client messageType: %+v\n", version)
+		fmt.Printf("ClientOnlineHandler read SNAC client messageType: %+v\n", version)
 	}
 	if err := BroadcastArrival(sess, sm, fm); err != nil {
 		return err
