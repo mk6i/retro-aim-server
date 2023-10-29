@@ -365,7 +365,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			broadcastMessage: XMessage{
 				snacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.BUDDY,
-					SubGroup:  BuddyArrived,
+					SubGroup:  oscar.BuddyArrived,
 				},
 				snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
 					TLVUserInfo: oscar.TLVUserInfo{
@@ -413,7 +413,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			broadcastMessage: XMessage{
 				snacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.BUDDY,
-					SubGroup:  BuddyArrived,
+					SubGroup:  oscar.BuddyArrived,
 				},
 				snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
 					TLVUserInfo: oscar.TLVUserInfo{

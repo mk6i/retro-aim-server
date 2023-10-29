@@ -6,12 +6,13 @@ dir: ./server
 packages:
   github.com/mkaminski/goaim/server:
     interfaces:
+      BuddyHandler:
+      ChatHandler:
+      ChatNavHandler:
+      FeedbagHandler:
       FeedbagManager:
-      SessionManager:
-      ProfileManager:
       ICBMHandler:
       LocateHandler:
       OServiceHandler:
-      FeedbagHandler:
-      ChatNavHandler:
-      ChatHandler:
+      ProfileManager:
+      SessionManager:

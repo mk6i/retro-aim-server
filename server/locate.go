@@ -117,7 +117,7 @@ func (s LocateService) SetInfoHandler(sess *Session, sm SessionManager, fm Feedb
 	// broadcast away message change to buddies
 	if awayMsg, hasAwayMsg := snacPayloadIn.GetString(oscar.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
 		sess.SetAwayMessage(awayMsg)
-		if err := NotifyArrival(sess, sm, fm); err != nil {
+		if err := BroadcastArrival(sess, sm, fm); err != nil {
 			return err
 		}
 	}

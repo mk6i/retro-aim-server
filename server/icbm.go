@@ -267,7 +267,7 @@ func (s ICBMService) EvilRequestHandler(sm SessionManager, fm FeedbagManager, se
 		snacOut: notif,
 	})
 
-	if err := NotifyArrival(recipSess, sm, fm); err != nil {
+	if err := BroadcastArrival(recipSess, sm, fm); err != nil {
 		return XMessage{}, nil
 	}
 

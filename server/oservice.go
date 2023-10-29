@@ -203,7 +203,7 @@ func (s OServiceService) ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_
 	for _, version := range snacPayloadIn.GroupVersions {
 		fmt.Printf("hahaha ClientOnlineHandler read SNAC client messageType: %+v\n", version)
 	}
-	if err := NotifyArrival(sess, sm, fm); err != nil {
+	if err := BroadcastArrival(sess, sm, fm); err != nil {
 		return err
 	}
 	buddies, err := fm.Buddies(sess.ScreenName)
@@ -211,7 +211,7 @@ func (s OServiceService) ClientOnlineHandler(snacPayloadIn oscar.SNAC_0x01_0x02_
 		return err
 	}
 	for _, buddy := range buddies {
-		err := NotifyBuddyArrived(buddy, sess.ScreenName, sm)
+		err := UnicastArrival(buddy, sess.ScreenName, sm)
 		switch {
 		case errors.Is(err, ErrSessNotFound):
 			continue
@@ -227,12 +227,12 @@ func (s OServiceService) SetUserInfoFieldsHandler(sess *Session, sm SessionManag
 		switch status {
 		case 0x000:
 			sess.SetInvisible(false)
-			if err := NotifyArrival(sess, sm, fm); err != nil {
+			if err := BroadcastArrival(sess, sm, fm); err != nil {
 				return XMessage{}, err
 			}
 		case 0x100:
 			sess.SetInvisible(true)
-			if err := NotifyDeparture(sess, sm, fm); err != nil {
+			if err := BroadcastDeparture(sess, sm, fm); err != nil {
 				return XMessage{}, err
 			}
 		default:
@@ -256,7 +256,7 @@ func (s OServiceService) IdleNotificationHandler(sess *Session, sm SessionManage
 	} else {
 		sess.SetIdle(time.Duration(snacPayloadIn.IdleTime) * time.Second)
 	}
-	return NotifyArrival(sess, sm, fm)
+	return BroadcastArrival(sess, sm, fm)
 }
 
 func (s OServiceService) ServiceRequestHandler(cfg Config, cr *ChatRegistry, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (XMessage, error) {

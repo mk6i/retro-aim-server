@@ -299,7 +299,7 @@ func TestInsertItemHandler(t *testing.T) {
 					msg: XMessage{
 						snacFrame: oscar.SnacFrame{
 							FoodGroup: oscar.BUDDY,
-							SubGroup:  BuddyArrived,
+							SubGroup:  oscar.BuddyArrived,
 						},
 						snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
 							TLVUserInfo: oscar.TLVUserInfo{
@@ -316,7 +316,7 @@ func TestInsertItemHandler(t *testing.T) {
 					msg: XMessage{
 						snacFrame: oscar.SnacFrame{
 							FoodGroup: oscar.BUDDY,
-							SubGroup:  BuddyArrived,
+							SubGroup:  oscar.BuddyArrived,
 						},
 						snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
 							TLVUserInfo: oscar.TLVUserInfo{
@@ -429,7 +429,7 @@ func TestInsertItemHandler(t *testing.T) {
 					msg: XMessage{
 						snacFrame: oscar.SnacFrame{
 							FoodGroup: oscar.BUDDY,
-							SubGroup:  BuddyDeparted,
+							SubGroup:  oscar.BuddyDeparted,
 						},
 						snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
 							TLVUserInfo: oscar.TLVUserInfo{
@@ -444,7 +444,7 @@ func TestInsertItemHandler(t *testing.T) {
 					msg: XMessage{
 						snacFrame: oscar.SnacFrame{
 							FoodGroup: oscar.BUDDY,
-							SubGroup:  BuddyDeparted,
+							SubGroup:  oscar.BuddyDeparted,
 						},
 						snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
 							TLVUserInfo: oscar.TLVUserInfo{
