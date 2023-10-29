@@ -3,6 +3,7 @@ package oscar
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 )
 
@@ -159,11 +160,13 @@ func NewTLV(ttype uint16, val any) TLV {
 	t := TLV{
 		TType: ttype,
 	}
-	buf := &bytes.Buffer{}
-	if err := Marshal(val, buf); err != nil {
-		panic(err.Error())
-	}
-	if buf.Len() > 0 {
+	if _, ok := val.([]byte); ok {
+		t.Val = val.([]byte)
+	} else {
+		buf := &bytes.Buffer{}
+		if err := Marshal(val, buf); err != nil {
+			panic(fmt.Sprintf("unable to create TLV: %s", err.Error()))
+		}
 		t.Val = buf.Bytes()
 	}
 	return t
