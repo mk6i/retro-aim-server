@@ -80,26 +80,11 @@ func (s LocateService) RightsQueryHandler() XMessage {
 		snacOut: oscar.SNAC_0x02_0x03_LocateRightsReply{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
-					{
-						TType: 0x01,
-						Val:   uint16(1000),
-					},
-					{
-						TType: 0x02,
-						Val:   uint16(1000),
-					},
-					{
-						TType: 0x03,
-						Val:   uint16(1000),
-					},
-					{
-						TType: 0x04,
-						Val:   uint16(1000),
-					},
-					{
-						TType: 0x05,
-						Val:   uint16(1000),
-					},
+					oscar.NewTLV(0x01, uint16(1000)),
+					oscar.NewTLV(0x02, uint16(1000)),
+					oscar.NewTLV(0x03, uint16(1000)),
+					oscar.NewTLV(0x04, uint16(1000)),
+					oscar.NewTLV(0x05, uint16(1000)),
 				},
 			},
 		},
@@ -165,27 +150,15 @@ func (s LocateService) UserInfoQuery2Handler(sess *Session, sm SessionManager, f
 			return XMessage{}, err
 		}
 		list.AddTLVList([]oscar.TLV{
-			{
-				TType: oscar.LocateTLVTagsInfoSigMime,
-				Val:   `text/aolrtf; charset="us-ascii"`,
-			},
-			{
-				TType: oscar.LocateTLVTagsInfoSigData,
-				Val:   profile,
-			},
+			oscar.NewTLV(oscar.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
+			oscar.NewTLV(oscar.LocateTLVTagsInfoSigData, profile),
 		})
 	}
 
 	if snacPayloadIn.RequestAwayMessage() {
 		list.AddTLVList([]oscar.TLV{
-			{
-				TType: oscar.LocateTLVTagsInfoUnavailableMime,
-				Val:   `text/aolrtf; charset="us-ascii"`,
-			},
-			{
-				TType: oscar.LocateTLVTagsInfoUnavailableData,
-				Val:   buddySess.GetAwayMessage(),
-			},
+			oscar.NewTLV(oscar.LocateTLVTagsInfoUnavailableMime, `text/aolrtf; charset="us-ascii"`),
+			oscar.NewTLV(oscar.LocateTLVTagsInfoUnavailableData, buddySess.GetAwayMessage()),
 		})
 	}
 

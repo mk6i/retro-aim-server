@@ -296,29 +296,14 @@ func (s OServiceService) ServiceRequestHandler(cfg Config, cr *ChatRegistry, ses
 		snacOut: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
-					{
-						TType: oscar.OServiceTLVTagsReconnectHere,
-						Val:   Address(cfg.OSCARHost, cfg.ChatPort),
-					},
-					{
-						TType: oscar.OServiceTLVTagsLoginCookie,
-						Val: ChatCookie{
-							Cookie: []byte(room.Cookie),
-							SessID: sess.ID,
-						},
-					},
-					{
-						TType: oscar.OServiceTLVTagsGroupID,
-						Val:   oscar.CHAT,
-					},
-					{
-						TType: oscar.OServiceTLVTagsSSLCertName,
-						Val:   "",
-					},
-					{
-						TType: oscar.OServiceTLVTagsSSLState,
-						Val:   uint8(0x00),
-					},
+					oscar.NewTLV(oscar.OServiceTLVTagsReconnectHere, Address(cfg.OSCARHost, cfg.ChatPort)),
+					oscar.NewTLV(oscar.OServiceTLVTagsLoginCookie, ChatCookie{
+						Cookie: []byte(room.Cookie),
+						SessID: sess.ID,
+					}),
+					oscar.NewTLV(oscar.OServiceTLVTagsGroupID, oscar.CHAT),
+					oscar.NewTLV(oscar.OServiceTLVTagsSSLCertName, ""),
+					oscar.NewTLV(oscar.OServiceTLVTagsSSLState, uint8(0x00)),
 				},
 			},
 		},

@@ -53,20 +53,10 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 					Channel: 14,
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: oscar.ChatTLVPublicWhisperFlag,
-								Val:   []byte{},
-							},
-							{
-								TType: oscar.ChatTLVEnableReflectionFlag,
-								Val:   []byte{},
-							},
-							{
-								TType: oscar.ChatTLVSenderInformation,
-								Val: newTestSession(Session{
-									ScreenName: "user_sending_chat_msg",
-								}).GetTLVUserInfo(),
-							},
+							oscar.NewTLV(oscar.ChatTLVPublicWhisperFlag, []byte{}),
+							oscar.NewTLV(oscar.ChatTLVEnableReflectionFlag, []byte{}),
+							oscar.NewTLV(oscar.ChatTLVSenderInformation,
+								newTestSession(Session{ScreenName: "user_sending_chat_msg"}).GetTLVUserInfo()),
 						},
 					},
 				},
@@ -81,20 +71,11 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 					Channel: 14,
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: oscar.ChatTLVPublicWhisperFlag,
-								Val:   []byte{},
-							},
-							{
-								TType: oscar.ChatTLVEnableReflectionFlag,
-								Val:   []byte{},
-							},
-							{
-								TType: oscar.ChatTLVSenderInformation,
-								Val: newTestSession(Session{
-									ScreenName: "user_sending_chat_msg",
-								}).GetTLVUserInfo(),
-							},
+							oscar.NewTLV(oscar.ChatTLVPublicWhisperFlag, []byte{}),
+							oscar.NewTLV(oscar.ChatTLVEnableReflectionFlag, []byte{}),
+							oscar.NewTLV(oscar.ChatTLVSenderInformation, newTestSession(Session{
+								ScreenName: "user_sending_chat_msg",
+							}).GetTLVUserInfo()),
 						},
 					},
 				},
@@ -127,16 +108,11 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 					Channel: 14,
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: oscar.ChatTLVPublicWhisperFlag,
-								Val:   []byte{},
-							},
-							{
-								TType: oscar.ChatTLVSenderInformation,
-								Val: newTestSession(Session{
+							oscar.NewTLV(oscar.ChatTLVPublicWhisperFlag, []byte{}),
+							oscar.NewTLV(oscar.ChatTLVSenderInformation,
+								newTestSession(Session{
 									ScreenName: "user_sending_chat_msg",
-								}).GetTLVUserInfo(),
-							},
+								}).GetTLVUserInfo()),
 						},
 					},
 				},

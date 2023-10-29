@@ -119,20 +119,6 @@ func (s TLVList) WriteTLV(w io.Writer) error {
 	return nil
 }
 
-// todo explain what this does
-func (s TLVList) SerializeInPlace() error {
-	for i := range s {
-		buf := &bytes.Buffer{}
-		if err := s[i].WriteTLV(buf); err != nil {
-			return err
-		}
-		if err := s[i].Read(buf); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (s TLVList) GetString(tType uint16) (string, bool) {
 	for _, tlv := range s {
 		if tType == tlv.TType {
@@ -173,8 +159,12 @@ func NewTLV(ttype uint16, val any) TLV {
 	t := TLV{
 		TType: ttype,
 	}
-	if err := Marshal(val, bytes.NewBuffer(t.Val)); err != nil {
+	buf := &bytes.Buffer{}
+	if err := Marshal(val, buf); err != nil {
 		panic(err.Error())
+	}
+	if buf.Len() > 0 {
+		t.Val = buf.Bytes()
 	}
 	return t
 }

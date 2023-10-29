@@ -116,14 +116,8 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 					}).GetTLVUserInfo(),
 					LocateInfo: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: oscar.LocateTLVTagsInfoSigMime,
-								Val:   `text/aolrtf; charset="us-ascii"`,
-							},
-							{
-								TType: oscar.LocateTLVTagsInfoSigData,
-								Val:   "this is my profile!",
-							},
+							oscar.NewTLV(oscar.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
+							oscar.NewTLV(oscar.LocateTLVTagsInfoSigData, "this is my profile!"),
 						},
 					},
 				},
@@ -171,14 +165,8 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 					}).GetTLVUserInfo(),
 					LocateInfo: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: oscar.LocateTLVTagsInfoSigMime,
-								Val:   `text/aolrtf; charset="us-ascii"`,
-							},
-							{
-								TType: oscar.LocateTLVTagsInfoSigData,
-								Val:   "this is my profile!",
-							},
+							oscar.NewTLV(oscar.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
+							oscar.NewTLV(oscar.LocateTLVTagsInfoSigData, "this is my profile!"),
 						},
 					},
 				},
@@ -218,14 +206,8 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 					}).GetTLVUserInfo(),
 					LocateInfo: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: oscar.LocateTLVTagsInfoUnavailableMime,
-								Val:   `text/aolrtf; charset="us-ascii"`,
-							},
-							{
-								TType: oscar.LocateTLVTagsInfoUnavailableData,
-								Val:   "this is my away message!",
-							},
+							oscar.NewTLV(oscar.LocateTLVTagsInfoUnavailableMime, `text/aolrtf; charset="us-ascii"`),
+							oscar.NewTLV(oscar.LocateTLVTagsInfoUnavailableData, "this is my away message!"),
 						},
 					},
 				},
@@ -339,10 +321,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 				snacOut: oscar.SNAC_0x02_0x03_LocateRightsReply{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: 0x01,
-								Val:   uint16(1000),
-							},
+							oscar.NewTLV(0x01, uint16(1000)),
 						},
 					},
 				},

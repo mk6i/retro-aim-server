@@ -43,15 +43,11 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 		DetailLevel:    3,
 		TLVBlock: oscar.TLVBlock{
 			TLVList: oscar.TLVList{
-				{
-					TType: oscar.ChatTLVRoomName,
-					Val:   "the-chat-room-name",
-				},
+				oscar.NewTLV(oscar.ChatTLVRoomName, "the-chat-room-name"),
 			},
 		},
 	}
 	svc := ChatNavService{}
-	assert.NoError(t, inputSNAC.SerializeInPlace())
 	outputSNAC, err := svc.CreateRoomHandler(userSess, cr, crf, inputSNAC)
 	assert.NoError(t, err)
 
@@ -82,9 +78,9 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 		snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
-					{
-						TType: oscar.ChatNavTLVRoomInfo,
-						Val: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+					oscar.NewTLV(
+						oscar.ChatNavTLVRoomInfo,
+						oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 							Exchange:       chatRoom.Exchange,
 							Cookie:         chatRoom.Cookie,
 							InstanceNumber: chatRoom.InstanceNumber,
@@ -93,7 +89,7 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 								TLVList: chatRoom.TLVList(),
 							},
 						},
-					},
+					),
 				},
 			},
 		},
@@ -132,10 +128,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 				snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: 0x02,
-								Val:   uint8(10),
-							},
+							oscar.NewTLV(0x02, uint8(10)),
 						},
 					},
 				},
@@ -160,10 +153,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 				snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: 0x02,
-								Val:   uint8(10),
-							},
+							oscar.NewTLV(0x02, uint8(10)),
 						},
 					},
 				},
@@ -188,10 +178,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 				snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: 0x02,
-								Val:   uint8(10),
-							},
+							oscar.NewTLV(0x02, uint8(10)),
 						},
 					},
 				},

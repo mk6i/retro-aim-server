@@ -71,52 +71,22 @@ func (s ChatNavService) RequestChatRightsHandler() XMessage {
 		snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
-					{
-						TType: 0x02,
-						Val:   uint8(10),
-					},
-					{
-						TType: 0x03,
-						Val: oscar.SNAC_0x0D_0x09_TLVExchangeInfo{
-							Identifier: 4,
-							TLVBlock: oscar.TLVBlock{
-								TLVList: oscar.TLVList{
-									{
-										TType: 0x0002,
-										Val:   uint16(0x0010),
-									},
-									{
-										TType: 0x00c9,
-										Val:   uint16(15),
-									},
-									{
-										TType: 0x00d3,
-										Val:   "default Exchange",
-									},
-									{
-										TType: 0x00d5,
-										Val:   uint8(2),
-									},
-									{
-										TType: 0xd6,
-										Val:   "us-ascii",
-									},
-									{
-										TType: 0xd7,
-										Val:   "en",
-									},
-									{
-										TType: 0xd8,
-										Val:   "us-ascii",
-									},
-									{
-										TType: 0xd9,
-										Val:   "en",
-									},
-								},
+					oscar.NewTLV(0x02, uint8(10)),
+					oscar.NewTLV(0x03, oscar.SNAC_0x0D_0x09_TLVExchangeInfo{
+						Identifier: 4,
+						TLVBlock: oscar.TLVBlock{
+							TLVList: oscar.TLVList{
+								oscar.NewTLV(0x0002, uint16(0x0010)),
+								oscar.NewTLV(0x00c9, uint16(15)),
+								oscar.NewTLV(0x00d3, "default Exchange"),
+								oscar.NewTLV(0x00d5, uint8(2)),
+								oscar.NewTLV(0xd6, "us-ascii"),
+								oscar.NewTLV(0xd7, "en"),
+								oscar.NewTLV(0xd8, "us-ascii"),
+								oscar.NewTLV(0xd9, "en"),
 							},
 						},
-					},
+					}),
 				},
 			},
 		},
@@ -157,18 +127,15 @@ func (s ChatNavService) CreateRoomHandler(sess *Session, cr *ChatRegistry, newCh
 		snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
-					{
-						TType: oscar.ChatNavTLVRoomInfo,
-						Val: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-							Exchange:       snacPayloadIn.Exchange,
-							Cookie:         room.Cookie,
-							InstanceNumber: snacPayloadIn.InstanceNumber,
-							DetailLevel:    snacPayloadIn.DetailLevel,
-							TLVBlock: oscar.TLVBlock{
-								TLVList: room.TLVList(),
-							},
+					oscar.NewTLV(oscar.ChatNavTLVRoomInfo, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+						Exchange:       snacPayloadIn.Exchange,
+						Cookie:         room.Cookie,
+						InstanceNumber: snacPayloadIn.InstanceNumber,
+						DetailLevel:    snacPayloadIn.DetailLevel,
+						TLVBlock: oscar.TLVBlock{
+							TLVList: room.TLVList(),
 						},
-					},
+					}),
 				},
 			},
 		},
@@ -189,18 +156,15 @@ func (s ChatNavService) RequestRoomInfoHandler(cr *ChatRegistry, snacPayloadIn o
 		snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
-					{
-						TType: 0x04,
-						Val: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-							Exchange:       4,
-							Cookie:         room.Cookie,
-							InstanceNumber: 100,
-							DetailLevel:    2,
-							TLVBlock: oscar.TLVBlock{
-								TLVList: room.TLVList(),
-							},
+					oscar.NewTLV(0x04, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+						Exchange:       4,
+						Cookie:         room.Cookie,
+						InstanceNumber: 100,
+						DetailLevel:    2,
+						TLVBlock: oscar.TLVBlock{
+							TLVList: room.TLVList(),
 						},
-					},
+					}),
 				},
 			},
 		},
