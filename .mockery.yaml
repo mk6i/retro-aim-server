@@ -1,18 +1,37 @@
 with-expecter: True
 mockname: "Mock{{.InterfaceName}}"
-filename: "{{.MockName}}.go"
 inpackage: True
 dir: ./server
 packages:
   github.com/mkaminski/goaim/server:
     interfaces:
       BuddyHandler:
+        config:
+          filename: "buddy_mock.go"
       ChatHandler:
+        config:
+          filename: "chat_mock.go"
       ChatNavHandler:
+        config:
+          filename: "chat_nav_mock.go"
       FeedbagHandler:
+        config:
+          filename: "feedbag_mock.go"
       FeedbagManager:
+        config:
+          filename: "feedbag_manager_mock.go"
       ICBMHandler:
+        config:
+          filename: "icbm_mock.go"
       LocateHandler:
+        config:
+          filename: "locate_mock.go"
       OServiceHandler:
+        config:
+          filename: "oservice_mock.go"
       ProfileManager:
+        config:
+          filename: "profile_manager_mock.go"
       SessionManager:
+        config:
+          filename: "session_manager_mock.go"
