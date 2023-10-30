@@ -10,6 +10,14 @@ type SnacError struct {
 	TLVRestBlock
 }
 
+const (
+	FlapFrameSignon    uint8 = 0x01
+	FlapFrameData      uint8 = 0x02
+	FlapFrameError     uint8 = 0x03
+	FlapFrameSignoff   uint8 = 0x04
+	FlapFrameKeepAlive uint8 = 0x05
+)
+
 type FlapFrame struct {
 	StartMarker   uint8
 	FrameType     uint8

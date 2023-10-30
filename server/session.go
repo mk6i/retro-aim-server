@@ -293,6 +293,20 @@ func makeSession() *Session {
 func (s *InMemorySessionManager) NewSessionWithSN(sessID string, screenName string) *Session {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
+
+	// Only allow one session at a time per screen name. A session may already
+	// exist because:
+	// 1) the user is signing on using an already logged-on screen name.
+	// 2) the session might be orphaned due to an undetected client
+	// disconnection.
+	for _, sess := range s.store {
+		if screenName == sess.ScreenName {
+			sess.Close()
+			delete(s.store, sess.ID)
+			break
+		}
+	}
+
 	sess := makeSession()
 	sess.ID = sessID
 	sess.ScreenName = screenName

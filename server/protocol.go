@@ -78,7 +78,7 @@ func Address(host string, port int) string {
 func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSignonFrame, error) {
 	flapFrameOut := oscar.FlapFrame{
 		StartMarker:   42,
-		FrameType:     1,
+		FrameType:     oscar.FlapFrameSignon,
 		Sequence:      uint16(*sequence),
 		PayloadLength: 4, // size of FlapSignonFrame
 	}
@@ -170,14 +170,6 @@ type XMessage struct {
 	snacOut   any
 }
 
-const (
-	FlapFrameSignon    uint8 = 0x01
-	FlapFrameData            = 0x02
-	FlapFrameError           = 0x03
-	FlapFrameSignoff         = 0x04
-	FlapFrameKeepAlive       = 0x05
-)
-
 func sendInvalidSNACErr(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: snac.FoodGroup,
@@ -201,10 +193,10 @@ func readIncomingRequests(rw io.Reader, msgCh chan IncomingMessage, errCh chan e
 		}
 
 		switch flap.FrameType {
-		case FlapFrameSignon:
+		case oscar.FlapFrameSignon:
 			errCh <- errors.New("shouldn't get FlapFrameSignon")
 			return
-		case FlapFrameData:
+		case oscar.FlapFrameData:
 			b := make([]byte, flap.PayloadLength)
 			if _, err := rw.Read(b); err != nil {
 				errCh <- err
@@ -223,13 +215,13 @@ func readIncomingRequests(rw io.Reader, msgCh chan IncomingMessage, errCh chan e
 				snac: snac,
 				buf:  buf,
 			}
-		case FlapFrameError:
+		case oscar.FlapFrameError:
 			errCh <- fmt.Errorf("got FlapFrameError: %v", flap)
 			return
-		case FlapFrameSignoff:
+		case oscar.FlapFrameSignoff:
 			errCh <- ErrSignedOff
 			return
-		case FlapFrameKeepAlive:
+		case oscar.FlapFrameKeepAlive:
 			fmt.Println("keepalive heartbeat")
 		default:
 			errCh <- fmt.Errorf("unknown frame type: %v", flap)
@@ -277,10 +269,20 @@ func ReadBos(cfg Config, sess *Session, seq uint32, sm SessionManager, fm *Feedb
 			if err := writeOutSNAC(oscar.SnacFrame{}, m.snacFrame, m.snacOut, &seq, rwc); err != nil {
 				return err
 			}
+		case <-sess.Closed():
+			return gracefulDisconnect(seq, rwc)
 		case err := <-errCh:
 			return err
 		}
 	}
+}
+
+func gracefulDisconnect(seq uint32, rwc io.ReadWriter) error {
+	return oscar.Marshal(oscar.FlapFrame{
+		StartMarker: 42,
+		FrameType:   oscar.FlapFrameSignoff,
+		Sequence:    uint16(seq),
+	}, rwc)
 }
 
 func NewRouter() Router {
@@ -353,7 +355,7 @@ func writeOutSNAC(originsnac oscar.SnacFrame, snacFrame oscar.SnacFrame, snacOut
 
 	flap := oscar.FlapFrame{
 		StartMarker:   42,
-		FrameType:     2,
+		FrameType:     oscar.FlapFrameData,
 		Sequence:      uint16(*sequence),
 		PayloadLength: uint16(snacBuf.Len()),
 	}

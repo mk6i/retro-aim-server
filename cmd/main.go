@@ -121,10 +121,11 @@ func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, f
 	}
 
 	defer sess.Close()
+	defer conn.Close()
+
 	go func() {
 		<-sess.Closed()
 		server.Signout(sess, sm, fm)
-		conn.Close()
 	}()
 
 	if err := server.ReadBos(cfg, sess, seq, sm, fm, cr, conn, server.ChatRoom{}, router); err != nil {
