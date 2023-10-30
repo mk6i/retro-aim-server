@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io"
 )
 
 const (
@@ -17,21 +16,6 @@ const (
 
 type TLVRestBlock struct {
 	TLVList
-}
-
-// read consumes the remainder of the read buffer
-func (s *TLVRestBlock) Read(r io.Reader) error {
-	for {
-		tlv := TLV{}
-		if err := Unmarshal(&tlv, r); err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		s.TLVList = append(s.TLVList, tlv)
-	}
-	return nil
 }
 
 type TLVBlock struct {
@@ -50,15 +34,6 @@ func (s *TLVList) AddTLV(tlv TLV) {
 
 func (s *TLVList) AddTLVList(tlvs []TLV) {
 	*s = append(*s, tlvs...)
-}
-
-func (s TLVList) WriteTLV(w io.Writer) error {
-	for _, tlv := range s {
-		if err := Marshal(tlv, w); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (s TLVList) GetString(tType uint16) (string, bool) {
