@@ -15,30 +15,9 @@ func Unmarshal(v any, r io.Reader) error {
 func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Reader) error {
 	switch v.Kind() {
 	case reflect.Struct:
-		switch v.Interface().(type) {
-		case TLVRestBlock:
-			val := TLVRestBlock{}
-			if err := val.Read(r); err != nil {
+		for i := 0; i < v.NumField(); i++ {
+			if err := unmarshal(t.Field(i).Type, v.Field(i), t.Field(i).Tag, r); err != nil {
 				return err
-			}
-			v.Set(reflect.ValueOf(val))
-		case TLVLBlock:
-			val := TLVLBlock{}
-			if err := val.Read(r); err != nil {
-				return err
-			}
-			v.Set(reflect.ValueOf(val))
-		case TLVBlock:
-			val := TLVBlock{}
-			if err := val.Read(r); err != nil {
-				return err
-			}
-			v.Set(reflect.ValueOf(val))
-		default:
-			for i := 0; i < v.NumField(); i++ {
-				if err := unmarshal(t.Field(i).Type, v.Field(i), t.Field(i).Tag, r); err != nil {
-					return err
-				}
 			}
 		}
 	case reflect.String:

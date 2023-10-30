@@ -15,24 +15,9 @@ func Marshal(v any, w io.Writer) error {
 func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer) error {
 	switch t.Kind() {
 	case reflect.Struct:
-		switch sVal := v.Interface().(type) {
-		case TLVRestBlock:
-			if err := sVal.WriteTLV(w); err != nil {
+		for i := 0; i < t.NumField(); i++ {
+			if err := marshal(t.Field(i).Type, v.Field(i), t.Field(i).Tag, w); err != nil {
 				return err
-			}
-		case TLVLBlock:
-			if err := sVal.WriteTLV(w); err != nil {
-				return err
-			}
-		case TLVBlock:
-			if err := sVal.WriteTLV(w); err != nil {
-				return err
-			}
-		default:
-			for i := 0; i < t.NumField(); i++ {
-				if err := marshal(t.Field(i).Type, v.Field(i), t.Field(i).Tag, w); err != nil {
-					return err
-				}
 			}
 		}
 	case reflect.String:

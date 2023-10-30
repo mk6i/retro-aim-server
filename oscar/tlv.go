@@ -35,70 +35,11 @@ func (s *TLVRestBlock) Read(r io.Reader) error {
 }
 
 type TLVBlock struct {
-	TLVList
-}
-
-// read consumes up to n TLVs, as specified in payload
-func (s *TLVBlock) Read(r io.Reader) error {
-	var tlvCount uint16
-	if err := binary.Read(r, binary.BigEndian, &tlvCount); err != nil {
-		return err
-	}
-	if tlvCount == 0 {
-		return nil
-	}
-	for i := uint16(0); i < tlvCount; i++ {
-		tlv := TLV{}
-		if err := Unmarshal(&tlv, r); err != nil {
-			return err
-		}
-		s.TLVList = append(s.TLVList, tlv)
-	}
-	return nil
-}
-
-func (s TLVBlock) WriteTLV(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, uint16(len(s.TLVList))); err != nil {
-		return err
-	}
-	return s.TLVList.WriteTLV(w)
+	TLVList `count_prefix:"uint16"`
 }
 
 type TLVLBlock struct {
-	TLVList
-}
-
-// read consumes up to n bytes, as specified in the payload
-func (s *TLVLBlock) Read(r io.Reader) error {
-	var tlvLen uint16
-	if err := binary.Read(r, binary.BigEndian, &tlvLen); err != nil {
-		return err
-	}
-	p := make([]byte, tlvLen)
-	if _, err := r.Read(p); err != nil {
-		return err
-	}
-	buf := bytes.NewBuffer(p)
-	for buf.Len() > 0 {
-		tlv := TLV{}
-		if err := Unmarshal(&tlv, buf); err != nil {
-			return err
-		}
-		s.TLVList = append(s.TLVList, tlv)
-	}
-	return nil
-}
-
-func (s TLVLBlock) WriteTLV(w io.Writer) error {
-	buf := &bytes.Buffer{}
-	if err := s.TLVList.WriteTLV(buf); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint16(buf.Len())); err != nil {
-		return err
-	}
-	_, err := w.Write(buf.Bytes())
-	return err
+	TLVList `len_prefix:"uint16"`
 }
 
 type TLVList []TLV

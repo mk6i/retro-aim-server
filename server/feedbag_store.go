@@ -191,7 +191,7 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]oscar.FeedbagItem, error) 
 		if err := rows.Scan(&item.GroupID, &item.ItemID, &item.ClassID, &item.Name, &attrs); err != nil {
 			return nil, err
 		}
-		err = item.TLVLBlock.Read(bytes.NewBuffer(attrs))
+		err = oscar.Unmarshal(item.TLVLBlock, bytes.NewBuffer(attrs))
 		if err != nil {
 			return items, err
 		}
