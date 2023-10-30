@@ -23,7 +23,7 @@ type TLVRestBlock struct {
 func (s *TLVRestBlock) Read(r io.Reader) error {
 	for {
 		tlv := TLV{}
-		if err := tlv.Read(r); err != nil {
+		if err := Unmarshal(&tlv, r); err != nil {
 			if err == io.EOF {
 				return nil
 			}
@@ -49,7 +49,7 @@ func (s *TLVBlock) Read(r io.Reader) error {
 	}
 	for i := uint16(0); i < tlvCount; i++ {
 		tlv := TLV{}
-		if err := tlv.Read(r); err != nil {
+		if err := Unmarshal(&tlv, r); err != nil {
 			return err
 		}
 		s.TLVList = append(s.TLVList, tlv)
@@ -81,7 +81,7 @@ func (s *TLVLBlock) Read(r io.Reader) error {
 	buf := bytes.NewBuffer(p)
 	for buf.Len() > 0 {
 		tlv := TLV{}
-		if err := tlv.Read(buf); err != nil {
+		if err := Unmarshal(&tlv, buf); err != nil {
 			return err
 		}
 		s.TLVList = append(s.TLVList, tlv)
@@ -113,7 +113,7 @@ func (s *TLVList) AddTLVList(tlvs []TLV) {
 
 func (s TLVList) WriteTLV(w io.Writer) error {
 	for _, tlv := range s {
-		if err := tlv.WriteTLV(w); err != nil {
+		if err := Marshal(tlv, w); err != nil {
 			return err
 		}
 	}
@@ -174,31 +174,5 @@ func NewTLV(ttype uint16, val any) TLV {
 
 type TLV struct {
 	TType uint16
-	Val   []byte
-}
-
-func (t TLV) WriteTLV(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, t.TType); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.BigEndian, uint16(len(t.Val))); err != nil {
-		return err
-	}
-	return binary.Write(w, binary.BigEndian, t.Val)
-}
-
-func (t *TLV) Read(r io.Reader) error {
-	if err := binary.Read(r, binary.BigEndian, &t.TType); err != nil {
-		return err
-	}
-	var tlvValLen uint16
-	if err := binary.Read(r, binary.BigEndian, &tlvValLen); err != nil {
-		return err
-	}
-	buf := make([]byte, tlvValLen)
-	if _, err := r.Read(buf); err != nil {
-		return err
-	}
-	t.Val = buf
-	return nil
+	Val   []byte `len_prefix:"uint16"`
 }
