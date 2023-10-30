@@ -191,7 +191,7 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]oscar.FeedbagItem, error) 
 		if err := rows.Scan(&item.GroupID, &item.ItemID, &item.ClassID, &item.Name, &attrs); err != nil {
 			return nil, err
 		}
-		err = item.TLVLBlock.Read(bytes.NewBuffer(attrs))
+		err = oscar.Unmarshal(&item.TLVLBlock, bytes.NewBuffer(attrs))
 		if err != nil {
 			return items, err
 		}
@@ -223,7 +223,7 @@ func (f *FeedbagStore) Upsert(screenName string, items []oscar.FeedbagItem) erro
 	for _, item := range items {
 
 		buf := &bytes.Buffer{}
-		if err := item.TLVLBlock.WriteTLV(buf); err != nil {
+		if err := oscar.Marshal(item.TLVLBlock, buf); err != nil {
 			return err
 		}
 

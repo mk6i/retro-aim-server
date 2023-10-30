@@ -102,56 +102,41 @@ func (s *Session) GetTLVUserInfo() oscar.TLVUserInfo {
 	}
 }
 
-func (s *Session) GetUserInfo() []oscar.TLV {
+func (s *Session) GetUserInfo() oscar.TLVList {
 	s.Mutex.RLock()
 	defer s.Mutex.RUnlock()
 
 	// sign-in timestamp
-	tlvs := []oscar.TLV{
-		{
-			TType: 0x03,
-			Val:   uint32(s.SignonTime.Unix()),
-		},
-	}
+	tlvs := oscar.TLVList{}
+
+	tlvs.AddTLV(oscar.NewTLV(0x03, uint32(s.SignonTime.Unix())))
 
 	// away message status
-	userFlags := oscar.TLV{
-		TType: 0x01,
-		Val:   uint16(0x0010), // AIM client
-	}
 	if s.AwayMessage != "" {
-		userFlags.Val = userFlags.Val.(uint16) | uint16(0x0020)
+		tlvs.AddTLV(oscar.NewTLV(0x01, uint16(0x0010)|uint16(0x0020)))
+	} else {
+		tlvs.AddTLV(oscar.NewTLV(0x01, uint16(0x0010)))
 	}
-	tlvs = append(tlvs, userFlags)
 
 	// invisibility status
-	status := oscar.TLV{
-		TType: 0x06,
-		Val:   uint16(0x0000),
-	}
 	if s.invisible {
-		status.Val = status.Val.(uint16) | uint16(0x0100)
+		tlvs.AddTLV(oscar.NewTLV(0x06, uint16(0x0100)))
+	} else {
+		tlvs.AddTLV(oscar.NewTLV(0x06, uint16(0x0000)))
 	}
-	tlvs = append(tlvs, status)
 
 	// idle status
-	idle := oscar.TLV{
-		TType: 0x04,
-		Val:   uint16(0),
-	}
 	if s.idle {
-		idle.Val = uint16(time.Now().Sub(s.idleTime).Seconds())
+		tlvs.AddTLV(oscar.NewTLV(0x04, uint16(time.Now().Sub(s.idleTime).Seconds())))
+	} else {
+		tlvs.AddTLV(oscar.NewTLV(0x04, uint16(0)))
 	}
-	tlvs = append(tlvs, idle)
 
 	// capabilities
-	caps := oscar.TLV{
-		TType: 0x0D,
-		Val:   []byte{},
-	}
+	var caps []byte
 	// chat capability
-	caps.Val = append(caps.Val.([]byte), CapChat...)
-	tlvs = append(tlvs, caps)
+	caps = append(caps, CapChat...)
+	tlvs.AddTLV(oscar.NewTLV(0x0D, caps))
 
 	return tlvs
 }
@@ -333,34 +318,13 @@ type ChatRoom struct {
 
 func (c ChatRoom) TLVList() []oscar.TLV {
 	return []oscar.TLV{
-		{
-			TType: 0x00c9,
-			Val:   uint16(15),
-		},
-		{
-			TType: 0x00ca,
-			Val:   uint32(c.CreateTime.Unix()),
-		},
-		{
-			TType: 0x00d1,
-			Val:   uint16(1024),
-		},
-		{
-			TType: 0x00d2,
-			Val:   uint16(100),
-		},
-		{
-			TType: 0x00d5,
-			Val:   uint8(2),
-		},
-		{
-			TType: 0x006a,
-			Val:   c.Name,
-		},
-		{
-			TType: 0x00d3,
-			Val:   c.Name,
-		},
+		oscar.NewTLV(0x00c9, uint16(15)),
+		oscar.NewTLV(0x00ca, uint32(c.CreateTime.Unix())),
+		oscar.NewTLV(0x00d1, uint16(1024)),
+		oscar.NewTLV(0x00d2, uint16(100)),
+		oscar.NewTLV(0x00d5, uint8(2)),
+		oscar.NewTLV(0x006a, c.Name),
+		oscar.NewTLV(0x00d3, c.Name),
 	}
 }
 

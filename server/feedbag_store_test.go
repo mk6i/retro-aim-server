@@ -79,10 +79,7 @@ func TestFeedbagDelete(t *testing.T) {
 			Name:    "spimmer1234",
 			TLVLBlock: oscar.TLVLBlock{
 				TLVList: oscar.TLVList{
-					{
-						TType: 0x01,
-						Val:   uint16(1000),
-					},
+					oscar.NewTLV(0x01, uint16(1000)),
 				},
 			},
 		},

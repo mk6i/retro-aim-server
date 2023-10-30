@@ -46,22 +46,10 @@ func (s BuddyService) RightsQueryHandler() XMessage {
 		snacOut: oscar.SNAC_0x03_0x03_BuddyRightsReply{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
-					{
-						TType: 0x01,
-						Val:   uint16(100),
-					},
-					{
-						TType: 0x02,
-						Val:   uint16(100),
-					},
-					{
-						TType: 0x03,
-						Val:   uint16(100),
-					},
-					{
-						TType: 0x04,
-						Val:   uint16(100),
-					},
+					oscar.NewTLV(0x01, uint16(100)),
+					oscar.NewTLV(0x02, uint16(100)),
+					oscar.NewTLV(0x03, uint16(100)),
+					oscar.NewTLV(0x04, uint16(100)),
 				},
 			},
 		},

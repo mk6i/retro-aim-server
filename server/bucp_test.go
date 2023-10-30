@@ -39,12 +39,8 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 			inputSNAC: oscar.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
-						oscar.TLV{
-							TType: oscar.TLVPasswordHash, Val: userGoodPwd.PassHash,
-						},
-						oscar.TLV{
-							TType: oscar.TLVScreenName, Val: userGoodPwd.ScreenName,
-						},
+						oscar.NewTLV(oscar.TLVPasswordHash, userGoodPwd.PassHash),
+						oscar.NewTLV(oscar.TLVScreenName, userGoodPwd.ScreenName),
 					},
 				},
 			},
@@ -55,18 +51,9 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 			expectSNACBody: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
-						{
-							TType: oscar.TLVScreenName,
-							Val:   userGoodPwd.ScreenName,
-						},
-						{
-							TType: oscar.TLVReconnectHere,
-							Val:   "127.0.0.1:1234",
-						},
-						{
-							TType: oscar.TLVAuthorizationCookie,
-							Val:   uuid.UUID{1, 2, 3}.String(),
-						},
+						oscar.NewTLV(oscar.TLVScreenName, userGoodPwd.ScreenName),
+						oscar.NewTLV(oscar.TLVReconnectHere, "127.0.0.1:1234"),
+						oscar.NewTLV(oscar.TLVAuthorizationCookie, uuid.UUID{1, 2, 3}.String()),
 					},
 				},
 			},
@@ -83,12 +70,8 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 			inputSNAC: oscar.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
-						oscar.TLV{
-							TType: oscar.TLVPasswordHash, Val: userBadPwd.PassHash,
-						},
-						oscar.TLV{
-							TType: oscar.TLVScreenName, Val: userBadPwd.ScreenName,
-						},
+						oscar.NewTLV(oscar.TLVPasswordHash, userBadPwd.PassHash),
+						oscar.NewTLV(oscar.TLVScreenName, userBadPwd.ScreenName),
 					},
 				},
 			},
@@ -99,18 +82,9 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 			expectSNACBody: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
-						{
-							TType: oscar.TLVScreenName,
-							Val:   userBadPwd.ScreenName,
-						},
-						{
-							TType: oscar.TLVReconnectHere,
-							Val:   "127.0.0.1:1234",
-						},
-						{
-							TType: oscar.TLVAuthorizationCookie,
-							Val:   uuid.UUID{1, 2, 3}.String(),
-						},
+						oscar.NewTLV(oscar.TLVScreenName, userBadPwd.ScreenName),
+						oscar.NewTLV(oscar.TLVReconnectHere, "127.0.0.1:1234"),
+						oscar.NewTLV(oscar.TLVAuthorizationCookie, uuid.UUID{1, 2, 3}.String()),
 					},
 				},
 			},
@@ -126,12 +100,8 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 			inputSNAC: oscar.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
-						oscar.TLV{
-							TType: oscar.TLVPasswordHash, Val: userBadPwd.PassHash,
-						},
-						oscar.TLV{
-							TType: oscar.TLVScreenName, Val: userBadPwd.ScreenName,
-						},
+						oscar.NewTLV(oscar.TLVPasswordHash, userBadPwd.PassHash),
+						oscar.NewTLV(oscar.TLVScreenName, userBadPwd.ScreenName),
 					},
 				},
 			},
@@ -142,14 +112,8 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 			expectSNACBody: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
-						{
-							TType: oscar.TLVScreenName,
-							Val:   userBadPwd.ScreenName,
-						},
-						{
-							TType: oscar.TLVErrorSubcode,
-							Val:   uint16(0x01),
-						},
+						oscar.NewTLV(oscar.TLVScreenName, userBadPwd.ScreenName),
+						oscar.NewTLV(oscar.TLVErrorSubcode, uint16(0x01)),
 					},
 				},
 			},
@@ -196,7 +160,6 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 			//
 			// verify output SNAC body
 			//
-			assert.NoError(t, tc.expectSNACBody.SerializeInPlace())
 			actual := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
 			assert.NoError(t, oscar.Unmarshal(&actual, output))
 			assert.Equal(t, tc.expectSNACBody, actual)
@@ -229,9 +192,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 			inputSNAC: oscar.SNAC_0x17_0x06_BUCPChallengeRequest{
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
-						oscar.TLV{
-							TType: oscar.TLVScreenName, Val: "sn_user_a",
-						},
+						oscar.NewTLV(oscar.TLVScreenName, "sn_user_a"),
 					},
 				},
 			},
@@ -258,9 +219,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 			inputSNAC: oscar.SNAC_0x17_0x06_BUCPChallengeRequest{
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
-						oscar.TLV{
-							TType: oscar.TLVScreenName, Val: "sn_user_b",
-						},
+						oscar.NewTLV(oscar.TLVScreenName, "sn_user_b"),
 					},
 				},
 			},
@@ -286,9 +245,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 			inputSNAC: oscar.SNAC_0x17_0x06_BUCPChallengeRequest{
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
-						oscar.TLV{
-							TType: oscar.TLVScreenName, Val: "sn_user_b",
-						},
+						oscar.NewTLV(oscar.TLVScreenName, "sn_user_b"),
 					},
 				},
 			},
@@ -299,10 +256,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 			expectSNACBody: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
-						{
-							TType: oscar.TLVErrorSubcode,
-							Val:   uint16(0x01),
-						},
+						oscar.NewTLV(oscar.TLVErrorSubcode, uint16(0x01)),
 					},
 				},
 			},
@@ -354,7 +308,6 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 				assert.NoError(t, oscar.Unmarshal(&actual, output))
 				assert.Equal(t, v, actual)
 			case oscar.SNAC_0x17_0x03_BUCPLoginResponse:
-				assert.NoError(t, v.SerializeInPlace())
 				actual := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
 				assert.NoError(t, oscar.Unmarshal(&actual, output))
 				assert.Equal(t, v, actual)

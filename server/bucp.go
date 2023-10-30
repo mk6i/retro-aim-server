@@ -68,10 +68,7 @@ func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io
 			SubGroup:  BUCPLoginResponse,
 		}
 		snacPayloadOut := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
-		snacPayloadOut.AddTLV(oscar.TLV{
-			TType: oscar.TLVErrorSubcode,
-			Val:   uint16(0x01),
-		})
+		snacPayloadOut.AddTLV(oscar.NewTLV(oscar.TLVErrorSubcode, uint16(0x01)))
 		return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 	}
 
@@ -135,29 +132,17 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sm SessionManager, fm *FeedbagSt
 	}
 
 	snacPayloadOut := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
-	snacPayloadOut.AddTLV(oscar.TLV{
-		TType: oscar.TLVScreenName,
-		Val:   screenName,
-	})
+	snacPayloadOut.AddTLV(oscar.NewTLV(oscar.TLVScreenName, screenName))
 
 	if loginOK {
 		sess := sm.NewSessionWithSN(newUUID().String(), screenName)
 		snacPayloadOut.AddTLVList([]oscar.TLV{
-			{
-				TType: oscar.TLVReconnectHere,
-				Val:   Address(cfg.OSCARHost, cfg.BOSPort),
-			},
-			{
-				TType: oscar.TLVAuthorizationCookie,
-				Val:   sess.ID,
-			},
+			oscar.NewTLV(oscar.TLVReconnectHere, Address(cfg.OSCARHost, cfg.BOSPort)),
+			oscar.NewTLV(oscar.TLVAuthorizationCookie, sess.ID),
 		})
 	} else {
 		snacPayloadOut.AddTLVList([]oscar.TLV{
-			{
-				TType: oscar.TLVErrorSubcode,
-				Val:   uint16(0x01),
-			},
+			oscar.NewTLV(oscar.TLVErrorSubcode, uint16(0x01)),
 		})
 	}
 

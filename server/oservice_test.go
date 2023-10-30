@@ -61,14 +61,11 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				FoodGroup: oscar.CHAT,
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
-						{
-							TType: 0x01,
-							Val: oscar.SNAC_0x01_0x04_TLVRoomInfo{
-								Exchange:       8,
-								Cookie:         []byte("the-chat-cookie"),
-								InstanceNumber: 16,
-							},
-						},
+						oscar.NewTLV(0x01, oscar.SNAC_0x01_0x04_TLVRoomInfo{
+							Exchange:       8,
+							Cookie:         []byte("the-chat-cookie"),
+							InstanceNumber: 16,
+						}),
 					},
 				},
 			},
@@ -80,29 +77,14 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				snacOut: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: oscar.OServiceTLVTagsReconnectHere,
-								Val:   "127.0.0.1:1234",
-							},
-							{
-								TType: oscar.OServiceTLVTagsLoginCookie,
-								Val: ChatCookie{
-									Cookie: []byte("the-chat-cookie"),
-									SessID: "user-sess-id",
-								},
-							},
-							{
-								TType: oscar.OServiceTLVTagsGroupID,
-								Val:   oscar.CHAT,
-							},
-							{
-								TType: oscar.OServiceTLVTagsSSLCertName,
-								Val:   "",
-							},
-							{
-								TType: oscar.OServiceTLVTagsSSLState,
-								Val:   uint8(0x00),
-							},
+							oscar.NewTLV(oscar.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
+							oscar.NewTLV(oscar.OServiceTLVTagsLoginCookie, ChatCookie{
+								Cookie: []byte("the-chat-cookie"),
+								SessID: "user-sess-id",
+							}),
+							oscar.NewTLV(oscar.OServiceTLVTagsGroupID, oscar.CHAT),
+							oscar.NewTLV(oscar.OServiceTLVTagsSSLCertName, ""),
+							oscar.NewTLV(oscar.OServiceTLVTagsSSLState, uint8(0x00)),
 						},
 					},
 				},
@@ -123,14 +105,11 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				FoodGroup: oscar.CHAT,
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
-						{
-							TType: 0x01,
-							Val: oscar.SNAC_0x01_0x04_TLVRoomInfo{
-								Exchange:       8,
-								Cookie:         []byte("the-chat-cookie"),
-								InstanceNumber: 16,
-							},
-						},
+						oscar.NewTLV(0x01, oscar.SNAC_0x01_0x04_TLVRoomInfo{
+							Exchange:       8,
+							Cookie:         []byte("the-chat-cookie"),
+							InstanceNumber: 16,
+						}),
 					},
 				},
 			},
@@ -156,7 +135,6 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			assert.NoError(t, tc.inputSNAC.SerializeInPlace())
 			svc := OServiceService{}
 			outputSNAC, err := svc.ServiceRequestHandler(tc.cfg, cr, tc.userSession, tc.inputSNAC)
 			assert.ErrorIs(t, err, tc.expectErr)
@@ -225,10 +203,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 				snacOut: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: 0x01,
-								Val:   uint16(1000),
-							},
+							oscar.NewTLV(0x01, uint16(1000)),
 						},
 					},
 				},
@@ -273,10 +248,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 				snacOut: oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: 0x01,
-								Val:   []byte{1, 2, 3, 4},
-							},
+							oscar.NewTLV(0x01, []byte{1, 2, 3, 4}),
 						},
 					},
 				},
@@ -352,10 +324,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 				snacOut: oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
-							{
-								TType: 0x01,
-								Val:   []byte{1, 2, 3, 4},
-							},
+							oscar.NewTLV(0x01, []byte{1, 2, 3, 4}),
 						},
 					},
 				},

@@ -52,16 +52,15 @@ func (s ChatService) ChannelMsgToHostHandler(sess *Session, sm SessionManager, s
 			TLVList: snacPayloadIn.TLVList,
 		},
 	}
-	snacPayloadOut.AddTLV(oscar.TLV{
-		TType: oscar.ChatTLVSenderInformation,
-		Val: oscar.TLVUserInfo{
+	snacPayloadOut.AddTLV(
+		oscar.NewTLV(oscar.ChatTLVSenderInformation, oscar.TLVUserInfo{
 			ScreenName:   sess.ScreenName,
 			WarningLevel: sess.GetWarning(),
 			TLVBlock: oscar.TLVBlock{
 				TLVList: sess.GetUserInfo(),
 			},
-		},
-	})
+		}),
+	)
 
 	// send message to all the participants except sender
 	sm.BroadcastExcept(sess, XMessage{
