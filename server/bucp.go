@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 
@@ -21,7 +22,7 @@ const (
 	BUCPRegistrationImageRequest        = 0x000C
 )
 
-func routeBUCP() error {
+func routeBUCP(context.Context) error {
 	return ErrUnsupportedSubGroup
 }
 

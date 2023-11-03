@@ -136,7 +136,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			// send input SNAC
 			//
 			svc := OServiceService{}
-			outputSNAC, err := svc.ServiceRequestHandler(tc.cfg, cr, tc.userSession, tc.inputSNAC)
+			outputSNAC, err := svc.ServiceRequestHandler(nil, tc.cfg, cr, tc.userSession, tc.inputSNAC)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -359,39 +359,42 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := NewMockOServiceHandler(t)
 			svc.EXPECT().
-				ServiceRequestHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				ServiceRequestHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				RateParamsQueryHandler().
+				RateParamsQueryHandler(mock.Anything).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				UserInfoQueryHandler(mock.Anything).
+				UserInfoQueryHandler(mock.Anything, mock.Anything).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				ClientVersionsHandler(tc.input.snacOut).
+				ClientVersionsHandler(mock.Anything, tc.input.snacOut).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				SetUserInfoFieldsHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				SetUserInfoFieldsHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				ClientOnlineHandler(tc.input.snacOut, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+				ClientOnlineHandler(mock.Anything, tc.input.snacOut, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 				Return(tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				RateParamsSubAddHandler(tc.input.snacOut).
+				RateParamsSubAddHandler(mock.Anything, tc.input.snacOut).
 				Maybe()
 			svc.EXPECT().
-				IdleNotificationHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				IdleNotificationHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.handlerErr).
 				Maybe()
 
 			router := OServiceRouter{
 				OServiceHandler: svc,
+				RouteLogger: RouteLogger{
+					Logger: NewLogger(Config{}),
+				},
 			}
 
 			bufIn := &bytes.Buffer{}
@@ -400,7 +403,7 @@ func TestOServiceRouter_RouteOService(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteOService(Config{}, nil, nil, nil, nil, ChatRoom{}, tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteOService(nil, Config{}, nil, nil, nil, nil, ChatRoom{}, tc.input.snacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

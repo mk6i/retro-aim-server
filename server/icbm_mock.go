@@ -3,6 +3,8 @@
 package server
 
 import (
+	context "context"
+
 	oscar "github.com/mkaminski/goaim/oscar"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,25 +22,25 @@ func (_m *MockICBMHandler) EXPECT() *MockICBMHandler_Expecter {
 	return &MockICBMHandler_Expecter{mock: &_m.Mock}
 }
 
-// ChannelMsgToHostHandler provides a mock function with given fields: sm, fm, sess, snacPayloadIn
-func (_m *MockICBMHandler) ChannelMsgToHostHandler(sm SessionManager, fm FeedbagManager, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*XMessage, error) {
-	ret := _m.Called(sm, fm, sess, snacPayloadIn)
+// ChannelMsgToHostHandler provides a mock function with given fields: ctx, sm, fm, sess, snacPayloadIn
+func (_m *MockICBMHandler) ChannelMsgToHostHandler(ctx context.Context, sm SessionManager, fm FeedbagManager, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*XMessage, error) {
+	ret := _m.Called(ctx, sm, fm, sess, snacPayloadIn)
 
 	var r0 *XMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*XMessage, error)); ok {
-		return rf(sm, fm, sess, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*XMessage, error)); ok {
+		return rf(ctx, sm, fm, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) *XMessage); ok {
-		r0 = rf(sm, fm, sess, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) *XMessage); ok {
+		r0 = rf(ctx, sm, fm, sess, snacPayloadIn)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*XMessage)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) error); ok {
-		r1 = rf(sm, fm, sess, snacPayloadIn)
+	if rf, ok := ret.Get(1).(func(context.Context, SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) error); ok {
+		r1 = rf(ctx, sm, fm, sess, snacPayloadIn)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -52,17 +54,18 @@ type MockICBMHandler_ChannelMsgToHostHandler_Call struct {
 }
 
 // ChannelMsgToHostHandler is a helper method to define mock.On call
+//   - ctx context.Context
 //   - sm SessionManager
 //   - fm FeedbagManager
 //   - sess *Session
 //   - snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost
-func (_e *MockICBMHandler_Expecter) ChannelMsgToHostHandler(sm interface{}, fm interface{}, sess interface{}, snacPayloadIn interface{}) *MockICBMHandler_ChannelMsgToHostHandler_Call {
-	return &MockICBMHandler_ChannelMsgToHostHandler_Call{Call: _e.mock.On("ChannelMsgToHostHandler", sm, fm, sess, snacPayloadIn)}
+func (_e *MockICBMHandler_Expecter) ChannelMsgToHostHandler(ctx interface{}, sm interface{}, fm interface{}, sess interface{}, snacPayloadIn interface{}) *MockICBMHandler_ChannelMsgToHostHandler_Call {
+	return &MockICBMHandler_ChannelMsgToHostHandler_Call{Call: _e.mock.On("ChannelMsgToHostHandler", ctx, sm, fm, sess, snacPayloadIn)}
 }
 
-func (_c *MockICBMHandler_ChannelMsgToHostHandler_Call) Run(run func(sm SessionManager, fm FeedbagManager, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost)) *MockICBMHandler_ChannelMsgToHostHandler_Call {
+func (_c *MockICBMHandler_ChannelMsgToHostHandler_Call) Run(run func(ctx context.Context, sm SessionManager, fm FeedbagManager, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost)) *MockICBMHandler_ChannelMsgToHostHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(SessionManager), args[1].(FeedbagManager), args[2].(*Session), args[3].(oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost))
+		run(args[0].(context.Context), args[1].(SessionManager), args[2].(FeedbagManager), args[3].(*Session), args[4].(oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost))
 	})
 	return _c
 }
@@ -72,18 +75,18 @@ func (_c *MockICBMHandler_ChannelMsgToHostHandler_Call) Return(_a0 *XMessage, _a
 	return _c
 }
 
-func (_c *MockICBMHandler_ChannelMsgToHostHandler_Call) RunAndReturn(run func(SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*XMessage, error)) *MockICBMHandler_ChannelMsgToHostHandler_Call {
+func (_c *MockICBMHandler_ChannelMsgToHostHandler_Call) RunAndReturn(run func(context.Context, SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*XMessage, error)) *MockICBMHandler_ChannelMsgToHostHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ClientEventHandler provides a mock function with given fields: sm, fm, sess, snacPayloadIn
-func (_m *MockICBMHandler) ClientEventHandler(sm SessionManager, fm FeedbagManager, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent) error {
-	ret := _m.Called(sm, fm, sess, snacPayloadIn)
+// ClientEventHandler provides a mock function with given fields: ctx, sm, fm, sess, snacPayloadIn
+func (_m *MockICBMHandler) ClientEventHandler(ctx context.Context, sm SessionManager, fm FeedbagManager, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent) error {
+	ret := _m.Called(ctx, sm, fm, sess, snacPayloadIn)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x14_ICBMClientEvent) error); ok {
-		r0 = rf(sm, fm, sess, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x14_ICBMClientEvent) error); ok {
+		r0 = rf(ctx, sm, fm, sess, snacPayloadIn)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -97,17 +100,18 @@ type MockICBMHandler_ClientEventHandler_Call struct {
 }
 
 // ClientEventHandler is a helper method to define mock.On call
+//   - ctx context.Context
 //   - sm SessionManager
 //   - fm FeedbagManager
 //   - sess *Session
 //   - snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent
-func (_e *MockICBMHandler_Expecter) ClientEventHandler(sm interface{}, fm interface{}, sess interface{}, snacPayloadIn interface{}) *MockICBMHandler_ClientEventHandler_Call {
-	return &MockICBMHandler_ClientEventHandler_Call{Call: _e.mock.On("ClientEventHandler", sm, fm, sess, snacPayloadIn)}
+func (_e *MockICBMHandler_Expecter) ClientEventHandler(ctx interface{}, sm interface{}, fm interface{}, sess interface{}, snacPayloadIn interface{}) *MockICBMHandler_ClientEventHandler_Call {
+	return &MockICBMHandler_ClientEventHandler_Call{Call: _e.mock.On("ClientEventHandler", ctx, sm, fm, sess, snacPayloadIn)}
 }
 
-func (_c *MockICBMHandler_ClientEventHandler_Call) Run(run func(sm SessionManager, fm FeedbagManager, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent)) *MockICBMHandler_ClientEventHandler_Call {
+func (_c *MockICBMHandler_ClientEventHandler_Call) Run(run func(ctx context.Context, sm SessionManager, fm FeedbagManager, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent)) *MockICBMHandler_ClientEventHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(SessionManager), args[1].(FeedbagManager), args[2].(*Session), args[3].(oscar.SNAC_0x04_0x14_ICBMClientEvent))
+		run(args[0].(context.Context), args[1].(SessionManager), args[2].(FeedbagManager), args[3].(*Session), args[4].(oscar.SNAC_0x04_0x14_ICBMClientEvent))
 	})
 	return _c
 }
@@ -117,28 +121,28 @@ func (_c *MockICBMHandler_ClientEventHandler_Call) Return(_a0 error) *MockICBMHa
 	return _c
 }
 
-func (_c *MockICBMHandler_ClientEventHandler_Call) RunAndReturn(run func(SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x14_ICBMClientEvent) error) *MockICBMHandler_ClientEventHandler_Call {
+func (_c *MockICBMHandler_ClientEventHandler_Call) RunAndReturn(run func(context.Context, SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x14_ICBMClientEvent) error) *MockICBMHandler_ClientEventHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// EvilRequestHandler provides a mock function with given fields: sm, fm, sess, snacPayloadIn
-func (_m *MockICBMHandler) EvilRequestHandler(sm SessionManager, fm FeedbagManager, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (XMessage, error) {
-	ret := _m.Called(sm, fm, sess, snacPayloadIn)
+// EvilRequestHandler provides a mock function with given fields: ctx, sm, fm, sess, snacPayloadIn
+func (_m *MockICBMHandler) EvilRequestHandler(ctx context.Context, sm SessionManager, fm FeedbagManager, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (XMessage, error) {
+	ret := _m.Called(ctx, sm, fm, sess, snacPayloadIn)
 
 	var r0 XMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) (XMessage, error)); ok {
-		return rf(sm, fm, sess, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) (XMessage, error)); ok {
+		return rf(ctx, sm, fm, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) XMessage); ok {
-		r0 = rf(sm, fm, sess, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) XMessage); ok {
+		r0 = rf(ctx, sm, fm, sess, snacPayloadIn)
 	} else {
 		r0 = ret.Get(0).(XMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) error); ok {
-		r1 = rf(sm, fm, sess, snacPayloadIn)
+	if rf, ok := ret.Get(1).(func(context.Context, SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) error); ok {
+		r1 = rf(ctx, sm, fm, sess, snacPayloadIn)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -152,17 +156,18 @@ type MockICBMHandler_EvilRequestHandler_Call struct {
 }
 
 // EvilRequestHandler is a helper method to define mock.On call
+//   - ctx context.Context
 //   - sm SessionManager
 //   - fm FeedbagManager
 //   - sess *Session
 //   - snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest
-func (_e *MockICBMHandler_Expecter) EvilRequestHandler(sm interface{}, fm interface{}, sess interface{}, snacPayloadIn interface{}) *MockICBMHandler_EvilRequestHandler_Call {
-	return &MockICBMHandler_EvilRequestHandler_Call{Call: _e.mock.On("EvilRequestHandler", sm, fm, sess, snacPayloadIn)}
+func (_e *MockICBMHandler_Expecter) EvilRequestHandler(ctx interface{}, sm interface{}, fm interface{}, sess interface{}, snacPayloadIn interface{}) *MockICBMHandler_EvilRequestHandler_Call {
+	return &MockICBMHandler_EvilRequestHandler_Call{Call: _e.mock.On("EvilRequestHandler", ctx, sm, fm, sess, snacPayloadIn)}
 }
 
-func (_c *MockICBMHandler_EvilRequestHandler_Call) Run(run func(sm SessionManager, fm FeedbagManager, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest)) *MockICBMHandler_EvilRequestHandler_Call {
+func (_c *MockICBMHandler_EvilRequestHandler_Call) Run(run func(ctx context.Context, sm SessionManager, fm FeedbagManager, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest)) *MockICBMHandler_EvilRequestHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(SessionManager), args[1].(FeedbagManager), args[2].(*Session), args[3].(oscar.SNAC_0x04_0x08_ICBMEvilRequest))
+		run(args[0].(context.Context), args[1].(SessionManager), args[2].(FeedbagManager), args[3].(*Session), args[4].(oscar.SNAC_0x04_0x08_ICBMEvilRequest))
 	})
 	return _c
 }
@@ -172,18 +177,18 @@ func (_c *MockICBMHandler_EvilRequestHandler_Call) Return(_a0 XMessage, _a1 erro
 	return _c
 }
 
-func (_c *MockICBMHandler_EvilRequestHandler_Call) RunAndReturn(run func(SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) (XMessage, error)) *MockICBMHandler_EvilRequestHandler_Call {
+func (_c *MockICBMHandler_EvilRequestHandler_Call) RunAndReturn(run func(context.Context, SessionManager, FeedbagManager, *Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) (XMessage, error)) *MockICBMHandler_EvilRequestHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ParameterQueryHandler provides a mock function with given fields:
-func (_m *MockICBMHandler) ParameterQueryHandler() XMessage {
-	ret := _m.Called()
+// ParameterQueryHandler provides a mock function with given fields: _a0
+func (_m *MockICBMHandler) ParameterQueryHandler(_a0 context.Context) XMessage {
+	ret := _m.Called(_a0)
 
 	var r0 XMessage
-	if rf, ok := ret.Get(0).(func() XMessage); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) XMessage); ok {
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(XMessage)
 	}
@@ -197,13 +202,14 @@ type MockICBMHandler_ParameterQueryHandler_Call struct {
 }
 
 // ParameterQueryHandler is a helper method to define mock.On call
-func (_e *MockICBMHandler_Expecter) ParameterQueryHandler() *MockICBMHandler_ParameterQueryHandler_Call {
-	return &MockICBMHandler_ParameterQueryHandler_Call{Call: _e.mock.On("ParameterQueryHandler")}
+//   - _a0 context.Context
+func (_e *MockICBMHandler_Expecter) ParameterQueryHandler(_a0 interface{}) *MockICBMHandler_ParameterQueryHandler_Call {
+	return &MockICBMHandler_ParameterQueryHandler_Call{Call: _e.mock.On("ParameterQueryHandler", _a0)}
 }
 
-func (_c *MockICBMHandler_ParameterQueryHandler_Call) Run(run func()) *MockICBMHandler_ParameterQueryHandler_Call {
+func (_c *MockICBMHandler_ParameterQueryHandler_Call) Run(run func(_a0 context.Context)) *MockICBMHandler_ParameterQueryHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -213,7 +219,7 @@ func (_c *MockICBMHandler_ParameterQueryHandler_Call) Return(_a0 XMessage) *Mock
 	return _c
 }
 
-func (_c *MockICBMHandler_ParameterQueryHandler_Call) RunAndReturn(run func() XMessage) *MockICBMHandler_ParameterQueryHandler_Call {
+func (_c *MockICBMHandler_ParameterQueryHandler_Call) RunAndReturn(run func(context.Context) XMessage) *MockICBMHandler_ParameterQueryHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }

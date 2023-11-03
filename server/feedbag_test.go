@@ -92,7 +92,7 @@ func TestQueryHandler(t *testing.T) {
 				ScreenName: tc.screenName,
 			}
 			svc := FeedbagService{}
-			outputSNAC, err := svc.QueryHandler(senderSession, fm)
+			outputSNAC, err := svc.QueryHandler(nil, senderSession, fm)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
@@ -216,7 +216,7 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 				ScreenName: tc.screenName,
 			}
 			svc := FeedbagService{}
-			outputSNAC, err := svc.QueryIfModifiedHandler(senderSession, fm, tc.inputSNAC)
+			outputSNAC, err := svc.QueryIfModifiedHandler(nil, senderSession, fm, tc.inputSNAC)
 			assert.NoError(t, err)
 			//
 			// verify output
@@ -547,14 +547,14 @@ func TestInsertItemHandler(t *testing.T) {
 			}
 			for _, n := range tc.buddyMessages {
 				sm.EXPECT().
-					SendToScreenName(n.user, n.msg).
+					SendToScreenName(mock.Anything, n.user, n.msg).
 					Maybe()
 			}
 			//
 			// send input SNAC
 			//
 			svc := FeedbagService{}
-			output, err := svc.InsertItemHandler(sm, tc.userSession, fm, tc.inputSNAC)
+			output, err := svc.InsertItemHandler(nil, sm, tc.userSession, fm, tc.inputSNAC)
 			assert.NoError(t, err)
 			//
 			// verify response
@@ -796,35 +796,38 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := NewMockFeedbagHandler(t)
 			svc.EXPECT().
-				DeleteItemHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				DeleteItemHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				QueryHandler(mock.Anything, mock.Anything).
+				QueryHandler(mock.Anything, mock.Anything, mock.Anything).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				QueryIfModifiedHandler(mock.Anything, mock.Anything, tc.input.snacOut).
+				QueryIfModifiedHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				RightsQueryHandler().
+				RightsQueryHandler(mock.Anything).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				InsertItemHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				InsertItemHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				UpdateItemHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				UpdateItemHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				StartClusterHandler(tc.input.snacOut).
+				StartClusterHandler(mock.Anything, tc.input.snacOut).
 				Maybe()
 
 			router := FeedbagRouter{
 				FeedbagHandler: svc,
+				RouteLogger: RouteLogger{
+					Logger: NewLogger(Config{}),
+				},
 			}
 
 			bufIn := &bytes.Buffer{}
@@ -833,7 +836,7 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteFeedbag(nil, nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteFeedbag(nil, nil, nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

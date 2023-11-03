@@ -3,6 +3,8 @@
 package server
 
 import (
+	context "context"
+
 	oscar "github.com/mkaminski/goaim/oscar"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,25 +22,25 @@ func (_m *MockChatHandler) EXPECT() *MockChatHandler_Expecter {
 	return &MockChatHandler_Expecter{mock: &_m.Mock}
 }
 
-// ChannelMsgToHostHandler provides a mock function with given fields: sess, sm, snacPayloadIn
-func (_m *MockChatHandler) ChannelMsgToHostHandler(sess *Session, sm SessionManager, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*XMessage, error) {
-	ret := _m.Called(sess, sm, snacPayloadIn)
+// ChannelMsgToHostHandler provides a mock function with given fields: ctx, sess, sm, snacPayloadIn
+func (_m *MockChatHandler) ChannelMsgToHostHandler(ctx context.Context, sess *Session, sm SessionManager, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*XMessage, error) {
+	ret := _m.Called(ctx, sess, sm, snacPayloadIn)
 
 	var r0 *XMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*Session, SessionManager, oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*XMessage, error)); ok {
-		return rf(sess, sm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, SessionManager, oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*XMessage, error)); ok {
+		return rf(ctx, sess, sm, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(*Session, SessionManager, oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) *XMessage); ok {
-		r0 = rf(sess, sm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, SessionManager, oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) *XMessage); ok {
+		r0 = rf(ctx, sess, sm, snacPayloadIn)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*XMessage)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*Session, SessionManager, oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) error); ok {
-		r1 = rf(sess, sm, snacPayloadIn)
+	if rf, ok := ret.Get(1).(func(context.Context, *Session, SessionManager, oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) error); ok {
+		r1 = rf(ctx, sess, sm, snacPayloadIn)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -52,16 +54,17 @@ type MockChatHandler_ChannelMsgToHostHandler_Call struct {
 }
 
 // ChannelMsgToHostHandler is a helper method to define mock.On call
+//   - ctx context.Context
 //   - sess *Session
 //   - sm SessionManager
 //   - snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost
-func (_e *MockChatHandler_Expecter) ChannelMsgToHostHandler(sess interface{}, sm interface{}, snacPayloadIn interface{}) *MockChatHandler_ChannelMsgToHostHandler_Call {
-	return &MockChatHandler_ChannelMsgToHostHandler_Call{Call: _e.mock.On("ChannelMsgToHostHandler", sess, sm, snacPayloadIn)}
+func (_e *MockChatHandler_Expecter) ChannelMsgToHostHandler(ctx interface{}, sess interface{}, sm interface{}, snacPayloadIn interface{}) *MockChatHandler_ChannelMsgToHostHandler_Call {
+	return &MockChatHandler_ChannelMsgToHostHandler_Call{Call: _e.mock.On("ChannelMsgToHostHandler", ctx, sess, sm, snacPayloadIn)}
 }
 
-func (_c *MockChatHandler_ChannelMsgToHostHandler_Call) Run(run func(sess *Session, sm SessionManager, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost)) *MockChatHandler_ChannelMsgToHostHandler_Call {
+func (_c *MockChatHandler_ChannelMsgToHostHandler_Call) Run(run func(ctx context.Context, sess *Session, sm SessionManager, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost)) *MockChatHandler_ChannelMsgToHostHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*Session), args[1].(SessionManager), args[2].(oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost))
+		run(args[0].(context.Context), args[1].(*Session), args[2].(SessionManager), args[3].(oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost))
 	})
 	return _c
 }
@@ -71,7 +74,7 @@ func (_c *MockChatHandler_ChannelMsgToHostHandler_Call) Return(_a0 *XMessage, _a
 	return _c
 }
 
-func (_c *MockChatHandler_ChannelMsgToHostHandler_Call) RunAndReturn(run func(*Session, SessionManager, oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*XMessage, error)) *MockChatHandler_ChannelMsgToHostHandler_Call {
+func (_c *MockChatHandler_ChannelMsgToHostHandler_Call) RunAndReturn(run func(context.Context, *Session, SessionManager, oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*XMessage, error)) *MockChatHandler_ChannelMsgToHostHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }

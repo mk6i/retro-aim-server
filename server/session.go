@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/mkaminski/goaim/oscar"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -181,28 +183,30 @@ func (s *Session) Closed() <-chan struct{} {
 type InMemorySessionManager struct {
 	store    map[string]*Session
 	mapMutex sync.RWMutex
+	logger   *slog.Logger
 }
 
-func NewSessionManager() *InMemorySessionManager {
+func NewSessionManager(logger *slog.Logger) *InMemorySessionManager {
 	return &InMemorySessionManager{
-		store: make(map[string]*Session),
+		logger: logger,
+		store:  make(map[string]*Session),
 	}
 }
 
-func (s *InMemorySessionManager) Broadcast(msg XMessage) {
+func (s *InMemorySessionManager) Broadcast(ctx context.Context, msg XMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
-		go s.maybeSendMessage(msg, sess)
+		go s.maybeSendMessage(ctx, msg, sess)
 	}
 }
 
-func (s *InMemorySessionManager) maybeSendMessage(msg XMessage, sess *Session) {
+func (s *InMemorySessionManager) maybeSendMessage(ctx context.Context, msg XMessage, sess *Session) {
 	switch sess.SendMessage(msg) {
 	case SessSendClosed:
-		fmt.Printf("can't send message to %s because the session was closed: %+v\n", sess.ScreenName, msg)
+		s.logger.WarnContext(ctx, "can't send notification because the user's session is closed", "recipient", sess.ScreenName, "message", msg)
 	case SessSendTimeout:
-		fmt.Printf("message to %s timed out\n", sess.ScreenName)
+		s.logger.WarnContext(ctx, "can't send notification because of send timeout", "recipient", sess.ScreenName, "message", msg)
 		sess.Close()
 	}
 }
@@ -223,14 +227,14 @@ func (s *InMemorySessionManager) Participants() []*Session {
 	return sessions
 }
 
-func (s *InMemorySessionManager) BroadcastExcept(except *Session, msg XMessage) {
+func (s *InMemorySessionManager) BroadcastExcept(ctx context.Context, except *Session, msg XMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
 		if sess == except {
 			continue
 		}
-		go s.maybeSendMessage(msg, sess)
+		go s.maybeSendMessage(ctx, msg, sess)
 	}
 }
 
@@ -266,18 +270,18 @@ func (s *InMemorySessionManager) retrieveByScreenNames(screenNames []string) []*
 	return ret
 }
 
-func (s *InMemorySessionManager) SendToScreenName(screenName string, msg XMessage) {
+func (s *InMemorySessionManager) SendToScreenName(ctx context.Context, screenName string, msg XMessage) {
 	sess, err := s.RetrieveByScreenName(screenName)
 	if err != nil {
-		fmt.Printf("error sending to screen name: %s\n", screenName)
+		s.logger.WarnContext(ctx, "can't send notification because user is not online", "recipient", screenName, "message", msg)
 		return
 	}
-	go s.maybeSendMessage(msg, sess)
+	go s.maybeSendMessage(ctx, msg, sess)
 }
 
-func (s *InMemorySessionManager) BroadcastToScreenNames(screenNames []string, msg XMessage) {
+func (s *InMemorySessionManager) BroadcastToScreenNames(ctx context.Context, screenNames []string, msg XMessage) {
 	for _, sess := range s.retrieveByScreenNames(screenNames) {
-		go s.maybeSendMessage(msg, sess)
+		go s.maybeSendMessage(ctx, msg, sess)
 	}
 }
 

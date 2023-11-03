@@ -10,11 +10,12 @@ goaim requires [go 1.21](https://go.dev/).
 
 Server configuration is set through environment variables. The following are the most useful configs:
 
-| Env Variable | Description |
-| ------------ | ----------- |
-| `OSCAR_HOST`   | The hostname that the server should bind to. If exposing to the internet, use the public IP. |
+| Env Variable   | Description                                                                                              |
+|----------------|----------------------------------------------------------------------------------------------------------|
+| `OSCAR_HOST`   | The hostname that the server should bind to. If exposing to the internet, use the public IP.             |
 | `DISABLE_AUTH` | If true, auto-create screen names at login and skip the password check. Useful for development purposes. |
-| `DB_PATH`      | The path to the SQLite database. |
+| `DB_PATH`      | The path to the SQLite database.                                                                         |
+| `LOG_LEVEL`    | Set logging granularity. Possible values: `trace`, `debug`, `info`, `warn`, `error`                      |
 
 ### Starting Up
 

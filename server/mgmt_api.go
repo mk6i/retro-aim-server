@@ -3,12 +3,15 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"net"
 	"net/http"
+	"os"
 
 	"github.com/google/uuid"
 )
 
-func StartManagementAPI(fs *FeedbagStore) {
+func StartManagementAPI(fs *FeedbagStore, logger *slog.Logger) {
 	http.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -20,10 +23,16 @@ func StartManagementAPI(fs *FeedbagStore) {
 		}
 	})
 	//todo make port configurable
-	port := 8080
-	fmt.Printf("Server is running on :%d...\n", port)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
-		panic(err)
+	addr := Address("", 8080)
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		logger.Error("unable to bind management API address address", "err", err.Error())
+		os.Exit(1)
+	}
+	logger.Info("starting management API server", "addr", addr)
+	if err := http.Serve(listener, nil); err != nil {
+		logger.Info("unable to start management API server", "err", err.Error())
+		os.Exit(1)
 	}
 }
 

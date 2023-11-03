@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -58,7 +59,11 @@ func TestAlertRouter_RouteAlert(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			router := AlertRouter{}
+			router := AlertRouter{
+				RouteLogger: RouteLogger{
+					Logger: NewLogger(Config{}),
+				},
+			}
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.snacOut, bufIn))
@@ -66,7 +71,7 @@ func TestAlertRouter_RouteAlert(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteAlert(tc.input.snacFrame)
+			err := router.RouteAlert(context.Background(), tc.input.snacFrame)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

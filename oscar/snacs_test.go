@@ -2,7 +2,6 @@ package oscar
 
 import (
 	"bytes"
-	"fmt"
 	"reflect"
 	"testing"
 )
@@ -23,7 +22,7 @@ func TestMarshal(t *testing.T) {
 	if err := Marshal(snac, buf1); err != nil {
 		t.Fatalf("error: %s", err.Error())
 	}
-	fmt.Println(buf1)
+	t.Log(buf1)
 }
 
 func TestUnmarshal(t *testing.T) {
@@ -55,9 +54,7 @@ func TestUnmarshal(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(snac1, snac2) {
-		fmt.Printf("%+v\n", snac1)
-		fmt.Printf("%+v\n", snac2)
-		t.Fatal("structs are not the same")
+		t.Fatalf("structs are not the same: %v %v", snac1, snac2)
 	}
 }
 

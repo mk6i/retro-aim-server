@@ -1,14 +1,16 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"fmt"
+	"log"
+	"log/slog"
+	"net"
+	"os"
+
 	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/mkaminski/goaim/server"
-	"io"
-	"log"
-	"net"
 )
 
 func main() {
@@ -16,29 +18,35 @@ func main() {
 	var cfg server.Config
 	err := envconfig.Process("", &cfg)
 	if err != nil {
-		log.Fatal(err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "unable to process app config: %s", err.Error())
+		os.Exit(1)
 	}
+
+	logger := server.NewLogger(cfg)
 
 	fm, err := server.NewFeedbagStore(cfg.DBPath)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("unable to create feedbag store", "err", err.Error())
+		os.Exit(1)
 	}
 
-	go server.StartManagementAPI(fm)
+	go server.StartManagementAPI(fm, logger)
 
-	sm := server.NewSessionManager()
+	sm := server.NewSessionManager(logger)
 	cr := server.NewChatRegistry()
 
-	go listenBOS(cfg, sm, fm, cr)
-	go listenChat(cfg, fm, cr)
+	go listenBOS(cfg, sm, fm, cr, logger.With("svc", "BOS"))
+	go listenChat(cfg, fm, cr, logger.With("svc", "CHAT"))
 
-	listener, err := net.Listen("tcp", server.Address("", cfg.OSCARPort))
+	addr := server.Address("", cfg.OSCARPort)
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("unable to bind OSCAR server address", "err", err.Error())
+		os.Exit(1)
 	}
 	defer listener.Close()
 
-	fmt.Printf("OSCAR server listening on %s\n", server.Address(cfg.OSCARHost, cfg.OSCARPort))
+	logger.Info("starting OSCAR server", "addr", addr)
 
 	for {
 		conn, err := listener.Accept()
@@ -51,43 +59,53 @@ func main() {
 	}
 }
 
-func listenBOS(cfg server.Config, sm *server.InMemorySessionManager, fm *server.FeedbagStore, cr *server.ChatRegistry) {
-	listener, err := net.Listen("tcp", server.Address("", cfg.BOSPort))
+func listenBOS(cfg server.Config, sm *server.InMemorySessionManager, fm *server.FeedbagStore, cr *server.ChatRegistry, logger *slog.Logger) {
+	addr := server.Address("", cfg.BOSPort)
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("unable to bind BOS server address", "err", err.Error())
+		os.Exit(1)
 	}
 	defer listener.Close()
 
-	fmt.Printf("BOS server listening on %s\n", server.Address(cfg.OSCARHost, cfg.BOSPort))
+	logger.Info("starting service", "addr", addr)
 
-	router := server.NewRouter()
+	router := server.NewRouter(logger)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		go handleBOSConnection(cfg, sm, fm, cr, conn, router)
+		ctx := context.Background()
+		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
+		logger.DebugContext(ctx, "accepted connection")
+		go handleBOSConnection(ctx, cfg, sm, fm, cr, conn, router, logger)
 	}
 }
 
-func listenChat(cfg server.Config, fm *server.FeedbagStore, cr *server.ChatRegistry) {
-	listener, err := net.Listen("tcp", server.Address("", cfg.ChatPort))
+func listenChat(cfg server.Config, fm *server.FeedbagStore, cr *server.ChatRegistry, logger *slog.Logger) {
+	addr := server.Address("", cfg.ChatPort)
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("unable to bind chat server address", "err", err.Error())
+		os.Exit(1)
 	}
 	defer listener.Close()
 
-	fmt.Printf("Chat server listening on %s\n", server.Address(cfg.OSCARHost, cfg.ChatPort))
+	logger.Info("starting service", "addr", addr)
 
-	router := server.NewRouterForChat()
+	router := server.NewRouterForChat(logger)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		go handleChatConnection(cfg, fm, cr, conn, router)
+		ctx := context.Background()
+		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
+		logger.DebugContext(ctx, "accepted connection")
+		go handleChatConnection(ctx, cfg, fm, cr, conn, router, logger)
 	}
 }
 
@@ -113,10 +131,10 @@ func handleAuthConnection(cfg server.Config, sm *server.InMemorySessionManager, 
 	}
 }
 
-func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, fm *server.FeedbagStore, cr *server.ChatRegistry, conn net.Conn, router server.Router) {
+func handleBOSConnection(ctx context.Context, cfg server.Config, sm *server.InMemorySessionManager, fm *server.FeedbagStore, cr *server.ChatRegistry, conn net.Conn, router server.Router, logger *slog.Logger) {
 	sess, seq, err := server.VerifyLogin(sm, conn)
 	if err != nil {
-		fmt.Printf("user disconnected with error: %s\n", err.Error())
+		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
 		return
 	}
 
@@ -125,54 +143,43 @@ func handleBOSConnection(cfg server.Config, sm *server.InMemorySessionManager, f
 
 	go func() {
 		<-sess.Closed()
-		server.Signout(sess, sm, fm)
+		server.Signout(ctx, logger, sess, sm, fm)
 	}()
 
-	if err := server.ReadBos(cfg, sess, seq, sm, fm, cr, conn, server.ChatRoom{}, router); err != nil {
-		switch {
-		case errors.Is(io.EOF, err):
-			fallthrough
-		case errors.Is(server.ErrSignedOff, err):
-			fmt.Println("user signed off")
-		default:
-			fmt.Printf("user disconnected with error: %s\n", err.Error())
-		}
-	}
+	ctx = context.WithValue(ctx, "screenName", sess.ScreenName)
+
+	server.ReadBos(ctx, cfg, sess, seq, sm, fm, cr, conn, server.ChatRoom{}, router, logger)
 }
 
-func handleChatConnection(cfg server.Config, fm *server.FeedbagStore, cr *server.ChatRegistry, conn net.Conn, router server.Router) {
+func handleChatConnection(ctx context.Context, cfg server.Config, fm *server.FeedbagStore, cr *server.ChatRegistry, conn net.Conn, router server.Router, logger *slog.Logger) {
 	cookie, seq, err := server.VerifyChatLogin(conn)
 	if err != nil {
-		fmt.Printf("user disconnected with error: %s\n", err.Error())
+		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
 		return
 	}
 
 	room, err := cr.Retrieve(string(cookie.Cookie))
 	if err != nil {
-		fmt.Printf("unable to find chat room: %s\n", err.Error())
+		logger.ErrorContext(ctx, "unable to find chat room", "err", err.Error())
 		return
 	}
 
 	chatSess, found := room.Retrieve(cookie.SessID)
 	if !found {
-		fmt.Printf("unable to find user for session: %s\n", cookie.SessID)
+		logger.ErrorContext(ctx, "unable to find user for session", "sessID", cookie.SessID)
 		return
 	}
 
 	defer chatSess.Close()
 	go func() {
 		<-chatSess.Closed()
-		server.AlertUserLeft(chatSess, room)
+		server.AlertUserLeft(ctx, chatSess, room)
 		room.Remove(chatSess)
 		cr.MaybeRemoveRoom(room.Cookie)
 		conn.Close()
 	}()
 
-	if err := server.ReadBos(cfg, chatSess, seq, room.SessionManager, fm, cr, conn, room, router); err != nil {
-		if err != io.EOF {
-			fmt.Printf("user disconnected with error: %s\n", err.Error())
-		} else {
-			fmt.Println("user disconnected")
-		}
-	}
+	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName)
+
+	server.ReadBos(ctx, cfg, chatSess, seq, room.SessionManager, fm, cr, conn, room, router, logger)
 }

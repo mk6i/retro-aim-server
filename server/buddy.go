@@ -1,33 +1,40 @@
 package server
 
 import (
+	"context"
 	"io"
+	"log/slog"
 
 	"github.com/mkaminski/goaim/oscar"
 )
 
 type BuddyHandler interface {
-	RightsQueryHandler() XMessage
+	RightsQueryHandler(ctx context.Context) XMessage
 }
 
-func NewBuddyRouter() BuddyRouter {
+func NewBuddyRouter(logger *slog.Logger) BuddyRouter {
 	return BuddyRouter{
 		BuddyHandler: BuddyService{},
+		RouteLogger: RouteLogger{
+			Logger: logger,
+		},
 	}
 }
 
 type BuddyRouter struct {
 	BuddyHandler
+	RouteLogger
 }
 
-func (rt *BuddyRouter) RouteBuddy(SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt *BuddyRouter) RouteBuddy(ctx context.Context, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.BuddyRightsQuery:
 		inSNAC := oscar.SNAC_0x03_0x02_BuddyRightsQuery{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
 			return err
 		}
-		outSNAC := rt.RightsQueryHandler()
+		outSNAC := rt.RightsQueryHandler(ctx)
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.snacFrame, outSNAC.snacOut)
 		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
@@ -37,7 +44,7 @@ func (rt *BuddyRouter) RouteBuddy(SNACFrame oscar.SnacFrame, r io.Reader, w io.W
 type BuddyService struct {
 }
 
-func (s BuddyService) RightsQueryHandler() XMessage {
+func (s BuddyService) RightsQueryHandler(context.Context) XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.BUDDY,
@@ -56,13 +63,13 @@ func (s BuddyService) RightsQueryHandler() XMessage {
 	}
 }
 
-func BroadcastArrival(sess *Session, sm SessionManager, fm FeedbagManager) error {
+func BroadcastArrival(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName)
 	if err != nil {
 		return err
 	}
 
-	sm.BroadcastToScreenNames(screenNames, XMessage{
+	sm.BroadcastToScreenNames(ctx, screenNames, XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.BUDDY,
 			SubGroup:  oscar.BuddyArrived,
@@ -81,13 +88,13 @@ func BroadcastArrival(sess *Session, sm SessionManager, fm FeedbagManager) error
 	return nil
 }
 
-func BroadcastDeparture(sess *Session, sm SessionManager, fm *FeedbagStore) error {
+func BroadcastDeparture(ctx context.Context, sess *Session, sm SessionManager, fm *FeedbagStore) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName)
 	if err != nil {
 		return err
 	}
 
-	sm.BroadcastToScreenNames(screenNames, XMessage{
+	sm.BroadcastToScreenNames(ctx, screenNames, XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.BUDDY,
 			SubGroup:  oscar.BuddyDeparted,
@@ -103,7 +110,7 @@ func BroadcastDeparture(sess *Session, sm SessionManager, fm *FeedbagStore) erro
 	return nil
 }
 
-func UnicastArrival(srcScreenName, destScreenName string, sm SessionManager) error {
+func UnicastArrival(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager) error {
 	sess, err := sm.RetrieveByScreenName(srcScreenName)
 	switch {
 	case err != nil:
@@ -111,7 +118,7 @@ func UnicastArrival(srcScreenName, destScreenName string, sm SessionManager) err
 	case sess.Invisible(): // don't tell user this buddy is online
 		return nil
 	}
-	sm.SendToScreenName(destScreenName, XMessage{
+	sm.SendToScreenName(ctx, destScreenName, XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.BUDDY,
 			SubGroup:  oscar.BuddyArrived,
@@ -124,7 +131,7 @@ func UnicastArrival(srcScreenName, destScreenName string, sm SessionManager) err
 	return nil
 }
 
-func UnicastDeparture(srcScreenName, destScreenName string, sm SessionManager) error {
+func UnicastDeparture(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager) error {
 	sess, err := sm.RetrieveByScreenName(srcScreenName)
 	switch {
 	case err != nil:
@@ -133,7 +140,7 @@ func UnicastDeparture(srcScreenName, destScreenName string, sm SessionManager) e
 		return nil
 	}
 
-	sm.SendToScreenName(destScreenName, XMessage{
+	sm.SendToScreenName(ctx, destScreenName, XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.BUDDY,
 			SubGroup:  oscar.BuddyDeparted,

@@ -238,13 +238,13 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 				Return(tc.recipientSession, tc.recipRetrieveErr).
 				Maybe()
 			sm.EXPECT().
-				SendToScreenName(tc.recipientSession.ScreenName, tc.expectSNACToClient).
+				SendToScreenName(mock.Anything, tc.recipientSession.ScreenName, tc.expectSNACToClient).
 				Maybe()
 			//
 			// send input SNAC
 			//
 			svc := ICBMService{}
-			outputSNAC, err := svc.ChannelMsgToHostHandler(sm, fm, tc.senderSession, tc.inputSNAC)
+			outputSNAC, err := svc.ChannelMsgToHostHandler(nil, sm, fm, tc.senderSession, tc.inputSNAC)
 			assert.NoError(t, err)
 			//
 			// verify output
@@ -314,7 +314,7 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			sm := NewMockSessionManager(t)
 			if tc.blockedState == BlockedNo {
 				sm.EXPECT().
-					SendToScreenName(tc.inputSNAC.ScreenName, tc.expectSNACToClient)
+					SendToScreenName(mock.Anything, tc.inputSNAC.ScreenName, tc.expectSNACToClient)
 			}
 			//
 			// send input SNAC
@@ -323,7 +323,7 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 				ScreenName: tc.senderScreenName,
 			}
 			svc := ICBMService{}
-			assert.NoError(t, svc.ClientEventHandler(sm, fm, senderSession, tc.inputSNAC))
+			assert.NoError(t, svc.ClientEventHandler(nil, sm, fm, senderSession, tc.inputSNAC))
 		})
 	}
 }
@@ -543,10 +543,10 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 				Return(recipSess, tc.recipRetrieveErr).
 				Maybe()
 			sm.EXPECT().
-				SendToScreenName(tc.recipientScreenName, tc.expectSNACToClient).
+				SendToScreenName(mock.Anything, tc.recipientScreenName, tc.expectSNACToClient).
 				Maybe()
 			sm.EXPECT().
-				BroadcastToScreenNames(tc.recipientBuddies, tc.broadcastMessage).
+				BroadcastToScreenNames(mock.Anything, tc.recipientBuddies, tc.broadcastMessage).
 				Maybe()
 			//
 			// send input SNAC
@@ -555,7 +555,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 				ScreenName: tc.senderSession.ScreenName,
 			}
 			svc := ICBMService{}
-			outputSNAC, err := svc.EvilRequestHandler(sm, fm, senderSession, tc.inputSNAC)
+			outputSNAC, err := svc.EvilRequestHandler(nil, sm, fm, senderSession, tc.inputSNAC)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
@@ -706,26 +706,29 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := NewMockICBMHandler(t)
 			svc.EXPECT().
-				ChannelMsgToHostHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				ChannelMsgToHostHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				ClientEventHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				ClientEventHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.handlerErr).
 				Maybe()
 			if tc.output != nil {
 				svc.EXPECT().
-					EvilRequestHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+					EvilRequestHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 					Return(*tc.output, tc.handlerErr).
 					Maybe()
 				svc.EXPECT().
-					ParameterQueryHandler().
+					ParameterQueryHandler(mock.Anything).
 					Return(*tc.output).
 					Maybe()
 			}
 
 			router := ICBMRouter{
 				ICBMHandler: svc,
+				RouteLogger: RouteLogger{
+					Logger: NewLogger(Config{}),
+				},
 			}
 
 			bufIn := &bytes.Buffer{}
@@ -734,7 +737,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteICBM(nil, nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteICBM(nil, nil, nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

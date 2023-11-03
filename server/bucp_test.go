@@ -134,7 +134,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			assert.NoError(t, fs.InsertUser(tc.userInDB))
-			sm := NewSessionManager()
+			sm := NewSessionManager(NewLogger(Config{}))
 			//
 			// send input SNAC
 			//

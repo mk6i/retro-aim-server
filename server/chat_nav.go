@@ -1,53 +1,66 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
 	"io"
+	"log/slog"
 	"time"
 )
 
 type ChatNavHandler interface {
-	CreateRoomHandler(sess *Session, cr *ChatRegistry, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (XMessage, error)
-	RequestChatRightsHandler() XMessage
-	RequestRoomInfoHandler(cr *ChatRegistry, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (XMessage, error)
+	CreateRoomHandler(ctx context.Context, sess *Session, cr *ChatRegistry, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (XMessage, error)
+	RequestChatRightsHandler(ctx context.Context) XMessage
+	RequestRoomInfoHandler(ctx context.Context, cr *ChatRegistry, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (XMessage, error)
 }
 
-func NewChatNavRouter() ChatNavRouter {
+func NewChatNavRouter(logger *slog.Logger) ChatNavRouter {
 	return ChatNavRouter{
-		ChatNavHandler: ChatNavService{},
+		ChatNavHandler: ChatNavService{
+			Logger: logger,
+		},
+		RouteLogger: RouteLogger{
+			Logger: logger,
+		},
 	}
 }
 
 type ChatNavRouter struct {
 	ChatNavHandler
+	RouteLogger
 }
 
-func (rt *ChatNavRouter) RouteChatNav(sess *Session, cr *ChatRegistry, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt *ChatNavRouter) RouteChatNav(ctx context.Context, sess *Session, cr *ChatRegistry, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.ChatNavRequestChatRights:
-		outSNAC := rt.RequestChatRightsHandler()
+		outSNAC := rt.RequestChatRightsHandler(ctx)
+		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.snacFrame, outSNAC.snacOut)
 		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
 	case oscar.ChatNavRequestRoomInfo:
 		inSNAC := oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
 			return err
 		}
-		outSNAC, err := rt.RequestRoomInfoHandler(cr, inSNAC)
+		outSNAC, err := rt.RequestRoomInfoHandler(ctx, cr, inSNAC)
 		if err != nil {
 			return err
 		}
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.snacFrame, outSNAC.snacOut)
 		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
 	case oscar.ChatNavCreateRoom:
-		snacPayloadIn := oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
-		if err := oscar.Unmarshal(&snacPayloadIn, r); err != nil {
+		inSNAC := oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
+		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
 			return err
 		}
-		outSNAC, err := rt.CreateRoomHandler(sess, cr, NewChatRoom, snacPayloadIn)
+		outSNAC, err := rt.CreateRoomHandler(ctx, sess, cr, NewChatRoom, inSNAC)
 		if err != nil {
 			return err
 		}
+		roomName, _ := inSNAC.GetString(oscar.ChatTLVRoomName)
+		rt.Logger.InfoContext(ctx, "user started a chat room", slog.String("roomName", roomName))
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.snacFrame, outSNAC.snacOut)
 		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
@@ -55,6 +68,7 @@ func (rt *ChatNavRouter) RouteChatNav(sess *Session, cr *ChatRegistry, SNACFrame
 }
 
 type ChatNavService struct {
+	Logger *slog.Logger
 }
 
 type ChatCookie struct {
@@ -62,7 +76,7 @@ type ChatCookie struct {
 	SessID string `len_prefix:"uint16"`
 }
 
-func (s ChatNavService) RequestChatRightsHandler() XMessage {
+func (s ChatNavService) RequestChatRightsHandler(context.Context) XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT_NAV,
@@ -93,23 +107,23 @@ func (s ChatNavService) RequestChatRightsHandler() XMessage {
 	}
 }
 
-func NewChatRoom() ChatRoom {
+func NewChatRoom(logger *slog.Logger) ChatRoom {
 	return ChatRoom{
 		Cookie:         uuid.New().String(),
 		CreateTime:     time.Now(),
-		SessionManager: NewSessionManager(),
+		SessionManager: NewSessionManager(logger),
 	}
 }
 
-type ChatRoomFactory func() ChatRoom
+type ChatRoomFactory func(logger *slog.Logger) ChatRoom
 
-func (s ChatNavService) CreateRoomHandler(sess *Session, cr *ChatRegistry, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (XMessage, error) {
+func (s ChatNavService) CreateRoomHandler(_ context.Context, sess *Session, cr *ChatRegistry, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (XMessage, error) {
 	name, hasName := snacPayloadIn.GetString(oscar.ChatTLVRoomName)
 	if !hasName {
 		return XMessage{}, errors.New("unable to find chat name")
 	}
 
-	room := newChatRoom()
+	room := newChatRoom(s.Logger)
 	room.DetailLevel = snacPayloadIn.DetailLevel
 	room.Exchange = snacPayloadIn.Exchange
 	room.InstanceNumber = snacPayloadIn.InstanceNumber
@@ -142,7 +156,7 @@ func (s ChatNavService) CreateRoomHandler(sess *Session, cr *ChatRegistry, newCh
 	}, nil
 }
 
-func (s ChatNavService) RequestRoomInfoHandler(cr *ChatRegistry, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (XMessage, error) {
+func (s ChatNavService) RequestRoomInfoHandler(_ context.Context, cr *ChatRegistry, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (XMessage, error) {
 	room, err := cr.Retrieve(string(snacPayloadIn.Cookie))
 	if err != nil {
 		return XMessage{}, err

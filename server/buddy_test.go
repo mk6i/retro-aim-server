@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
@@ -73,12 +74,15 @@ func TestBuddyRouter_RouteBuddy(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := NewMockBuddyHandler(t)
 			svc.EXPECT().
-				RightsQueryHandler().
+				RightsQueryHandler(mock.Anything).
 				Return(tc.output).
 				Maybe()
 
 			router := BuddyRouter{
 				BuddyHandler: svc,
+				RouteLogger: RouteLogger{
+					Logger: NewLogger(Config{}),
+				},
 			}
 
 			bufIn := &bytes.Buffer{}
@@ -87,7 +91,7 @@ func TestBuddyRouter_RouteBuddy(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteBuddy(tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteBuddy(nil, tc.input.snacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

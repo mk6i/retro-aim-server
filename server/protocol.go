@@ -2,11 +2,13 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
 	"io"
+	"log/slog"
 )
 
 const (
@@ -69,6 +71,7 @@ type Config struct {
 	FailFast    bool   `envconfig:"FAIL_FAST" default:"false"`
 	OSCARHost   string `envconfig:"OSCAR_HOST" required:"true"`
 	OSCARPort   int    `envconfig:"OSCAR_PORT" default:"5190"`
+	LogLevel    string `envconfig:"LOG_LEVEL" default:"info"`
 }
 
 func Address(host string, port int) string {
@@ -92,8 +95,6 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSi
 		return oscar.FlapSignonFrame{}, err
 	}
 
-	fmt.Printf("SendAndReceiveSignonFrame read FLAP: %+v\n", flapFrameOut)
-
 	// receive
 	flapFrameIn := oscar.FlapFrame{}
 	if err := oscar.Unmarshal(&flapFrameIn, rw); err != nil {
@@ -108,8 +109,6 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSi
 		return oscar.FlapSignonFrame{}, err
 	}
 
-	fmt.Printf("SendAndReceiveSignonFrame write FLAP: %+v\n", flapSignonFrameIn)
-
 	*sequence++
 
 	return flapSignonFrameIn, nil
@@ -117,7 +116,6 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSi
 
 func VerifyLogin(sm SessionManager, rw io.ReadWriter) (*Session, uint32, error) {
 	seq := uint32(100)
-	fmt.Println("VerifyLogin...")
 
 	flap, err := SendAndReceiveSignonFrame(rw, &seq)
 	if err != nil {
@@ -140,7 +138,6 @@ func VerifyLogin(sm SessionManager, rw io.ReadWriter) (*Session, uint32, error) 
 
 func VerifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error) {
 	seq := uint32(100)
-	fmt.Println("VerifyChatLogin...")
 
 	flap, err := SendAndReceiveSignonFrame(rw, &seq)
 	if err != nil {
@@ -181,7 +178,7 @@ func sendInvalidSNACErr(snac oscar.SnacFrame, w io.Writer, sequence *uint32) err
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func readIncomingRequests(rw io.Reader, msgCh chan IncomingMessage, errCh chan error) {
+func readIncomingRequests(ctx context.Context, logger *slog.Logger, rw io.Reader, msgCh chan IncomingMessage, errCh chan error) {
 	defer close(msgCh)
 	defer close(errCh)
 
@@ -222,7 +219,7 @@ func readIncomingRequests(rw io.Reader, msgCh chan IncomingMessage, errCh chan e
 			errCh <- ErrSignedOff
 			return
 		case oscar.FlapFrameKeepAlive:
-			fmt.Println("keepalive heartbeat")
+			logger.DebugContext(ctx, "keepalive heartbeat")
 		default:
 			errCh <- fmt.Errorf("unknown frame type: %v", flap)
 			return
@@ -230,51 +227,75 @@ func readIncomingRequests(rw io.Reader, msgCh chan IncomingMessage, errCh chan e
 	}
 }
 
-func Signout(sess *Session, sm SessionManager, fm *FeedbagStore) {
-	if err := BroadcastDeparture(sess, sm, fm); err != nil {
-		fmt.Printf("error notifying departure: %s", err.Error())
+func Signout(ctx context.Context, logger *slog.Logger, sess *Session, sm SessionManager, fm *FeedbagStore) {
+	if err := BroadcastDeparture(ctx, sess, sm, fm); err != nil {
+		logger.ErrorContext(ctx, "error notifying departure", "err", err.Error())
 	}
 	sm.Remove(sess)
 }
 
-func ReadBos(cfg Config, sess *Session, seq uint32, sm SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter, room ChatRoom, router Router) error {
+func ReadBos(ctx context.Context, cfg Config, sess *Session, seq uint32, sm SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter, room ChatRoom, router Router, logger *slog.Logger) {
 	if err := router.WriteOServiceHostOnline(rwc, &seq); err != nil {
-		return err
+		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
 	}
 
 	// buffered so that the go routine has room to exit
 	msgCh := make(chan IncomingMessage, 1)
 	errCh := make(chan error, 1)
-	go readIncomingRequests(rwc, msgCh, errCh)
+	go readIncomingRequests(ctx, logger, rwc, msgCh, errCh)
+
+	rl := RouteLogger{
+		Logger: logger,
+	}
 
 	for {
 		select {
 		case m := <-msgCh:
-			if err := router.routeIncomingRequests(cfg, sm, sess, fm, cr, rwc, &seq, m.snac, m.buf, room); err != nil {
-				switch {
-				case errors.Is(err, ErrUnsupportedSubGroup) || errors.Is(err, ErrUnsupportedFoodGroup):
-					if err := sendInvalidSNACErr(m.snac, rwc, &seq); err != nil {
-						return err
+			if err := router.routeIncomingRequests(ctx, cfg, sm, sess, fm, cr, rwc, &seq, m.snac, m.buf, room); err != nil {
+				if errors.Is(err, ErrUnsupportedSubGroup) || errors.Is(err, ErrUnsupportedFoodGroup) {
+					if err1 := sendInvalidSNACErr(m.snac, rwc, &seq); err1 != nil {
+						err = errors.Join(err1, err)
 					}
-					msg := fmt.Sprintf("unimplemented SNAC: %+v", m.snac)
 					if cfg.FailFast {
-						panic(msg)
+						panic(err.Error())
 					}
-					fmt.Println(msg)
-				default:
-					return err
 				}
+				logRequestError(ctx, logger, m.snac, err)
+				return
 			}
 		case m := <-sess.RecvMessage():
 			if err := writeOutSNAC(oscar.SnacFrame{}, m.snacFrame, m.snacOut, &seq, rwc); err != nil {
-				return err
+				logRequestError(ctx, logger, m.snacFrame, err)
+				return
 			}
+			rl.logRequest(ctx, m.snacFrame, m.snacOut)
 		case <-sess.Closed():
-			return gracefulDisconnect(seq, rwc)
+			if err := gracefulDisconnect(seq, rwc); err != nil {
+				logger.ErrorContext(ctx, "unable to gracefully disconnect user", "err", err)
+			}
+			return
 		case err := <-errCh:
-			return err
+			switch {
+			case errors.Is(io.EOF, err):
+				fallthrough
+			case errors.Is(ErrSignedOff, err):
+				logger.InfoContext(ctx, "client signed off")
+			default:
+				logger.ErrorContext(ctx, "client disconnected with error", "err", err)
+			}
+			return
 		}
 	}
+}
+
+func logRequestError(ctx context.Context, logger *slog.Logger, inFrame oscar.SnacFrame, err error) {
+	logger.LogAttrs(ctx, slog.LevelError, "client disconnected with error",
+		slog.Group("request",
+			slog.String("food_group", oscar.FoodGroupStr(inFrame.FoodGroup)),
+			slog.String("sub_group", oscar.SubGroupStr(inFrame.FoodGroup, inFrame.SubGroup)),
+		),
+		slog.String("err", err.Error()),
+	)
 }
 
 func gracefulDisconnect(seq uint32, rwc io.ReadWriter) error {
@@ -285,22 +306,22 @@ func gracefulDisconnect(seq uint32, rwc io.ReadWriter) error {
 	}, rwc)
 }
 
-func NewRouter() Router {
+func NewRouter(logger *slog.Logger) Router {
 	return Router{
-		AlertRouter:    NewAlertRouter(),
-		BuddyRouter:    NewBuddyRouter(),
-		ChatNavRouter:  NewChatNavRouter(),
-		ChatRouter:     NewChatRouter(),
-		FeedbagRouter:  NewFeedbagRouter(),
-		ICBMRouter:     NewICBMRouter(),
-		LocateRouter:   NewLocateRouter(),
-		OServiceRouter: NewOServiceRouter(),
+		AlertRouter:    NewAlertRouter(logger),
+		BuddyRouter:    NewBuddyRouter(logger),
+		ChatNavRouter:  NewChatNavRouter(logger),
+		ChatRouter:     NewChatRouter(logger),
+		FeedbagRouter:  NewFeedbagRouter(logger),
+		ICBMRouter:     NewICBMRouter(logger),
+		LocateRouter:   NewLocateRouter(logger),
+		OServiceRouter: NewOServiceRouter(logger),
 	}
 }
 
-func NewRouterForChat() Router {
-	r := NewRouter()
-	r.OServiceRouter = NewOServiceRouterForChat()
+func NewRouterForChat(logger *slog.Logger) Router {
+	r := NewRouter(logger)
+	r.OServiceRouter = NewOServiceRouterForChat(logger)
 	return r
 }
 
@@ -315,26 +336,26 @@ type Router struct {
 	OServiceRouter
 }
 
-func (rt *Router) routeIncomingRequests(cfg Config, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader, room ChatRoom) error {
+func (rt *Router) routeIncomingRequests(ctx context.Context, cfg Config, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader, room ChatRoom) error {
 	switch snac.FoodGroup {
 	case oscar.OSERVICE:
-		return rt.RouteOService(cfg, cr, sm, fm, sess, room, snac, buf, rw, sequence)
+		return rt.RouteOService(ctx, cfg, cr, sm, fm, sess, room, snac, buf, rw, sequence)
 	case oscar.LOCATE:
-		return rt.RouteLocate(sess, sm, fm, snac, buf, rw, sequence)
+		return rt.RouteLocate(ctx, sess, sm, fm, snac, buf, rw, sequence)
 	case oscar.BUDDY:
-		return rt.RouteBuddy(snac, buf, rw, sequence)
+		return rt.RouteBuddy(ctx, snac, buf, rw, sequence)
 	case oscar.ICBM:
-		return rt.RouteICBM(sm, fm, sess, snac, buf, rw, sequence)
+		return rt.RouteICBM(ctx, sm, fm, sess, snac, buf, rw, sequence)
 	case oscar.CHAT_NAV:
-		return rt.RouteChatNav(sess, cr, snac, buf, rw, sequence)
+		return rt.RouteChatNav(ctx, sess, cr, snac, buf, rw, sequence)
 	case oscar.FEEDBAG:
-		return rt.RouteFeedbag(sm, sess, fm, snac, buf, rw, sequence)
+		return rt.RouteFeedbag(ctx, sm, sess, fm, snac, buf, rw, sequence)
 	case oscar.BUCP:
-		return routeBUCP()
+		return routeBUCP(ctx)
 	case oscar.CHAT:
-		return rt.RouteChat(sess, sm, snac, buf, rw, sequence)
+		return rt.RouteChat(ctx, sess, sm, snac, buf, rw, sequence)
 	case oscar.ALERT:
-		return rt.RouteAlert(snac)
+		return rt.RouteAlert(ctx, snac)
 	default:
 		return ErrUnsupportedFoodGroup
 	}
@@ -360,13 +381,9 @@ func writeOutSNAC(originsnac oscar.SnacFrame, snacFrame oscar.SnacFrame, snacOut
 		PayloadLength: uint16(snacBuf.Len()),
 	}
 
-	fmt.Printf(" write FLAP: %+v\n", flap)
-
 	if err := oscar.Marshal(flap, w); err != nil {
 		return err
 	}
-
-	fmt.Printf(" write SNAC: %+v\n", snacOut)
 
 	expectLen := snacBuf.Len()
 	c, err := w.Write(snacBuf.Bytes())

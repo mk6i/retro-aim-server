@@ -2,6 +2,8 @@ package server
 
 import (
 	"bytes"
+	"context"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -25,7 +27,7 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 	sm.EXPECT().NewSessionWithSN(userSess.ID, userSess.ScreenName).
 		Return(&Session{})
 
-	crf := func() ChatRoom {
+	crf := func(logger *slog.Logger) ChatRoom {
 		return ChatRoom{
 			Cookie:         "dummy-cookie",
 			CreateTime:     time.UnixMilli(0),
@@ -48,7 +50,7 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 		},
 	}
 	svc := ChatNavService{}
-	outputSNAC, err := svc.CreateRoomHandler(userSess, cr, crf, inputSNAC)
+	outputSNAC, err := svc.CreateRoomHandler(context.Background(), userSess, cr, crf, inputSNAC)
 	assert.NoError(t, err)
 
 	//
@@ -202,20 +204,23 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := NewMockChatNavHandler(t)
 			svc.EXPECT().
-				RequestChatRightsHandler().
+				RequestChatRightsHandler(mock.Anything).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				RequestRoomInfoHandler(mock.Anything, tc.input.snacOut).
+				RequestRoomInfoHandler(mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				CreateRoomHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				CreateRoomHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
 			router := ChatNavRouter{
 				ChatNavHandler: svc,
+				RouteLogger: RouteLogger{
+					Logger: NewLogger(Config{}),
+				},
 			}
 
 			bufIn := &bytes.Buffer{}
@@ -224,7 +229,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteChatNav(nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteChatNav(nil, nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

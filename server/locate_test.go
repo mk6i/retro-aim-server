@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -284,7 +285,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			}
 
 			svc := LocateService{}
-			outputSNAC, err := svc.UserInfoQuery2Handler(tc.userSession, sm, fm, pm, tc.inputSNAC)
+			outputSNAC, err := svc.UserInfoQuery2Handler(context.Background(), tc.userSession, sm, fm, pm, tc.inputSNAC)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
@@ -469,28 +470,31 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := NewMockLocateHandler(t)
 			svc.EXPECT().
-				RightsQueryHandler().
+				RightsQueryHandler(mock.Anything).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				SetDirInfoHandler().
+				SetDirInfoHandler(mock.Anything).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				SetInfoHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				SetInfoHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				SetKeywordInfoHandler().
+				SetKeywordInfoHandler(mock.Anything).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				UserInfoQuery2Handler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				UserInfoQuery2Handler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
 			router := LocateRouter{
 				LocateHandler: svc,
+				RouteLogger: RouteLogger{
+					Logger: NewLogger(Config{}),
+				},
 			}
 
 			bufIn := &bytes.Buffer{}
@@ -499,7 +503,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteLocate(nil, nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteLocate(nil, nil, nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

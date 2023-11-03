@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"database/sql"
 	"errors"
@@ -399,15 +400,15 @@ type FeedbagManager interface {
 }
 
 type SessionManager interface {
-	BroadcastToScreenNames(screenNames []string, msg XMessage)
+	BroadcastToScreenNames(ctx context.Context, screenNames []string, msg XMessage)
 	Empty() bool
 	NewSessionWithSN(sessID string, screenName string) *Session
 	Remove(sess *Session)
 	Retrieve(ID string) (*Session, bool)
 	RetrieveByScreenName(screenName string) (*Session, error)
-	SendToScreenName(screenName string, msg XMessage)
-	Broadcast(msg XMessage)
-	BroadcastExcept(except *Session, msg XMessage)
+	SendToScreenName(ctx context.Context, screenName string, msg XMessage)
+	Broadcast(ctx context.Context, msg XMessage)
+	BroadcastExcept(ctx context.Context, except *Session, msg XMessage)
 	Participants() []*Session
 }
 
