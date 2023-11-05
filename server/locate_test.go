@@ -229,7 +229,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 					SubGroup:  oscar.LocateErr,
 				},
 				snacOut: oscar.SnacError{
-					Code: ErrorCodeNotLoggedOn,
+					Code: oscar.ErrorCodeNotLoggedOn,
 				},
 			},
 		},
@@ -256,7 +256,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 					SubGroup:  oscar.LocateErr,
 				},
 				snacOut: oscar.SnacError{
-					Code: ErrorCodeNotLoggedOn,
+					Code: oscar.ErrorCodeNotLoggedOn,
 				},
 			},
 		},

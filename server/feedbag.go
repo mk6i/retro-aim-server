@@ -244,7 +244,7 @@ func (s FeedbagService) InsertItemHandler(ctx context.Context, sm SessionManager
 					SubGroup:  oscar.FeedbagErr,
 				},
 				snacOut: oscar.SnacError{
-					Code: ErrorCodeNotSupportedByHost,
+					Code: oscar.ErrorCodeNotSupportedByHost,
 				},
 			}, nil
 		}

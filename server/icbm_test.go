@@ -151,7 +151,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 					SubGroup:  oscar.ICBMErr,
 				},
 				snacOut: oscar.SnacError{
-					Code: ErrorCodeInLocalPermitDeny,
+					Code: oscar.ErrorCodeInLocalPermitDeny,
 				},
 			},
 		},
@@ -183,7 +183,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 					SubGroup:  oscar.ICBMErr,
 				},
 				snacOut: oscar.SnacError{
-					Code: ErrorCodeNotLoggedOn,
+					Code: oscar.ErrorCodeNotLoggedOn,
 				},
 			},
 		},
@@ -216,7 +216,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 					SubGroup:  oscar.ICBMErr,
 				},
 				snacOut: oscar.SnacError{
-					Code: ErrorCodeNotLoggedOn,
+					Code: oscar.ErrorCodeNotLoggedOn,
 				},
 			},
 		},
@@ -471,7 +471,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 					SubGroup:  oscar.ICBMErr,
 				},
 				snacOut: oscar.SnacError{
-					Code: ErrorCodeNotLoggedOn,
+					Code: oscar.ErrorCodeNotLoggedOn,
 				},
 			},
 		},
@@ -493,7 +493,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 					SubGroup:  oscar.ICBMErr,
 				},
 				snacOut: oscar.SnacError{
-					Code: ErrorCodeNotLoggedOn,
+					Code: oscar.ErrorCodeNotLoggedOn,
 				},
 			},
 		},
@@ -513,7 +513,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 					SubGroup:  oscar.ICBMErr,
 				},
 				snacOut: oscar.SnacError{
-					Code: ErrorCodeNotSupportedByHost,
+					Code: oscar.ErrorCodeNotSupportedByHost,
 				},
 			},
 		},

@@ -133,7 +133,7 @@ func (s LocateService) UserInfoQuery2Handler(ctx context.Context, sess *Session,
 				SubGroup:  oscar.LocateErr,
 			},
 			snacOut: oscar.SnacError{
-				Code: ErrorCodeNotLoggedOn,
+				Code: oscar.ErrorCodeNotLoggedOn,
 			},
 		}, nil
 	}
@@ -147,7 +147,7 @@ func (s LocateService) UserInfoQuery2Handler(ctx context.Context, sess *Session,
 				SubGroup:  oscar.LocateErr,
 			},
 			snacOut: oscar.SnacError{
-				Code: ErrorCodeNotLoggedOn,
+				Code: oscar.ErrorCodeNotLoggedOn,
 			},
 		}, nil
 	case err != nil:

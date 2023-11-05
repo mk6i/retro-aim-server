@@ -518,7 +518,7 @@ func TestInsertItemHandler(t *testing.T) {
 					SubGroup:  oscar.FeedbagErr,
 				},
 				snacOut: oscar.SnacError{
-					Code: ErrorCodeNotSupportedByHost,
+					Code: oscar.ErrorCodeNotSupportedByHost,
 				},
 			},
 		},

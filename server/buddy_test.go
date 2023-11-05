@@ -61,7 +61,7 @@ func TestBuddyRouter_RouteBuddy(t *testing.T) {
 			input: XMessage{
 				snacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.BUDDY,
-					SubGroup:  ErrorCodeReplyTooBig,
+					SubGroup:  oscar.ErrorCodeReplyTooBig,
 				},
 				snacOut: struct{}{}, // empty SNAC
 			},

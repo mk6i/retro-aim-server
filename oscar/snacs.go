@@ -32,6 +32,45 @@ const (
 )
 
 //
+// General Error Codes
+//
+
+const (
+	ErrorCodeInvalidSnac          uint16 = 0x01
+	ErrorCodeRateToHost           uint16 = 0x02
+	ErrorCodeRateToClient         uint16 = 0x03
+	ErrorCodeNotLoggedOn          uint16 = 0x04
+	ErrorCodeServiceUnavailable   uint16 = 0x05
+	ErrorCodeServiceNotDefined    uint16 = 0x06
+	ErrorCodeObsoleteSnac         uint16 = 0x07
+	ErrorCodeNotSupportedByHost   uint16 = 0x08
+	ErrorCodeNotSupportedByClient uint16 = 0x09
+	ErrorCodeRefusedByClient      uint16 = 0x0A
+	ErrorCodeReplyTooBig          uint16 = 0x0B
+	ErrorCodeResponsesLost        uint16 = 0x0C
+	ErrorCodeRequestDenied        uint16 = 0x0D
+	ErrorCodeBustedSnacPayload    uint16 = 0x0E
+	ErrorCodeInsufficientRights   uint16 = 0x0F
+	ErrorCodeInLocalPermitDeny    uint16 = 0x10
+	ErrorCodeTooEvilSender        uint16 = 0x11
+	ErrorCodeTooEvilReceiver      uint16 = 0x12
+	ErrorCodeUserTempUnavail      uint16 = 0x13
+	ErrorCodeNoMatch              uint16 = 0x14
+	ErrorCodeListOverflow         uint16 = 0x15
+	ErrorCodeRequestAmbigous      uint16 = 0x16
+	ErrorCodeQueueFull            uint16 = 0x17
+	ErrorCodeNotWhileOnAol        uint16 = 0x18
+	ErrorCodeQueryFail            uint16 = 0x19
+	ErrorCodeTimeout              uint16 = 0x1A
+	ErrorCodeErrorText            uint16 = 0x1B
+	ErrorCodeGeneralFailure       uint16 = 0x1C
+	ErrorCodeProgress             uint16 = 0x1D
+	ErrorCodeInFreeArea           uint16 = 0x1E
+	ErrorCodeRestrictedByPc       uint16 = 0x1F
+	ErrorCodeRemoteRestrictedByPc uint16 = 0x20
+)
+
+//
 // 0x01: OService
 //
 

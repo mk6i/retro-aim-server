@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/google/uuid"
@@ -152,4 +153,82 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sm SessionManager, fm *FeedbagSt
 		SubGroup:  BUCPLoginResponse,
 	}
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSignonFrame, error) {
+	flapFrameOut := oscar.FlapFrame{
+		StartMarker:   42,
+		FrameType:     oscar.FlapFrameSignon,
+		Sequence:      uint16(*sequence),
+		PayloadLength: 4, // size of FlapSignonFrame
+	}
+	if err := oscar.Marshal(flapFrameOut, rw); err != nil {
+		return oscar.FlapSignonFrame{}, err
+	}
+	flapSignonFrameOut := oscar.FlapSignonFrame{
+		FlapVersion: 1,
+	}
+	if err := oscar.Marshal(flapSignonFrameOut, rw); err != nil {
+		return oscar.FlapSignonFrame{}, err
+	}
+
+	// receive
+	flapFrameIn := oscar.FlapFrame{}
+	if err := oscar.Unmarshal(&flapFrameIn, rw); err != nil {
+		return oscar.FlapSignonFrame{}, err
+	}
+	b := make([]byte, flapFrameIn.PayloadLength)
+	if _, err := rw.Read(b); err != nil {
+		return oscar.FlapSignonFrame{}, err
+	}
+	flapSignonFrameIn := oscar.FlapSignonFrame{}
+	if err := oscar.Unmarshal(&flapSignonFrameIn, bytes.NewBuffer(b)); err != nil {
+		return oscar.FlapSignonFrame{}, err
+	}
+
+	*sequence++
+
+	return flapSignonFrameIn, nil
+}
+
+func VerifyLogin(sm SessionManager, rw io.ReadWriter) (*Session, uint32, error) {
+	seq := uint32(100)
+
+	flap, err := SendAndReceiveSignonFrame(rw, &seq)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var ok bool
+	ID, ok := flap.GetSlice(oscar.OServiceTLVTagsLoginCookie)
+	if !ok {
+		return nil, 0, errors.New("unable to get session ID from payload")
+	}
+
+	sess, ok := sm.Retrieve(string(ID))
+	if !ok {
+		return nil, 0, fmt.Errorf("unable to find session by ID %s", ID)
+	}
+
+	return sess, seq, nil
+}
+
+func VerifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error) {
+	seq := uint32(100)
+
+	flap, err := SendAndReceiveSignonFrame(rw, &seq)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var ok bool
+	buf, ok := flap.GetSlice(oscar.OServiceTLVTagsLoginCookie)
+	if !ok {
+		return nil, 0, errors.New("unable to get session ID from payload")
+	}
+
+	cookie := ChatCookie{}
+	err = oscar.Unmarshal(&cookie, bytes.NewBuffer(buf))
+
+	return &cookie, seq, err
 }

@@ -111,9 +111,9 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sm SessionMana
 	}
 
 	if blocked != BlockedNo {
-		code := ErrorCodeNotLoggedOn
+		code := oscar.ErrorCodeNotLoggedOn
 		if blocked == BlockedA {
-			code = ErrorCodeInLocalPermitDeny
+			code = oscar.ErrorCodeInLocalPermitDeny
 		}
 		return &XMessage{
 			snacFrame: oscar.SnacFrame{
@@ -135,7 +135,7 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sm SessionMana
 				SubGroup:  oscar.ICBMErr,
 			},
 			snacOut: oscar.SnacError{
-				Code: ErrorCodeNotLoggedOn,
+				Code: oscar.ErrorCodeNotLoggedOn,
 			},
 		}, nil
 	case err != nil:
@@ -225,7 +225,7 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sm SessionManager, 
 				SubGroup:  oscar.ICBMErr,
 			},
 			snacOut: oscar.SnacError{
-				Code: ErrorCodeNotSupportedByHost,
+				Code: oscar.ErrorCodeNotSupportedByHost,
 			},
 		}, nil
 	}
@@ -241,7 +241,7 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sm SessionManager, 
 				SubGroup:  oscar.ICBMErr,
 			},
 			snacOut: oscar.SnacError{
-				Code: ErrorCodeNotLoggedOn,
+				Code: oscar.ErrorCodeNotLoggedOn,
 			},
 		}, nil
 	}
