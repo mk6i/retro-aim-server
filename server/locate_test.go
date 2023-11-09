@@ -284,8 +284,12 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 					Maybe()
 			}
 
-			svc := LocateService{}
-			outputSNAC, err := svc.UserInfoQuery2Handler(context.Background(), tc.userSession, sm, fm, pm, tc.inputSNAC)
+			svc := LocateService{
+				sm: sm,
+				fm: fm,
+				pm: pm,
+			}
+			outputSNAC, err := svc.UserInfoQuery2Handler(context.Background(), tc.userSession, tc.inputSNAC)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
@@ -478,7 +482,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				SetInfoHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				SetInfoHandler(mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
@@ -486,7 +490,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				UserInfoQuery2Handler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				UserInfoQuery2Handler(mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
@@ -503,7 +507,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteLocate(nil, nil, nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteLocate(nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

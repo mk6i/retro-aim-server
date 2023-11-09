@@ -88,7 +88,7 @@ func BroadcastArrival(ctx context.Context, sess *Session, sm SessionManager, fm 
 	return nil
 }
 
-func BroadcastDeparture(ctx context.Context, sess *Session, sm SessionManager, fm *FeedbagStore) error {
+func BroadcastDeparture(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName)
 	if err != nil {
 		return err

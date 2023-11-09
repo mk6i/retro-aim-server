@@ -22,23 +22,23 @@ func (_m *MockChatNavHandler) EXPECT() *MockChatNavHandler_Expecter {
 	return &MockChatNavHandler_Expecter{mock: &_m.Mock}
 }
 
-// CreateRoomHandler provides a mock function with given fields: ctx, sess, cr, newChatRoom, snacPayloadIn
-func (_m *MockChatNavHandler) CreateRoomHandler(ctx context.Context, sess *Session, cr *ChatRegistry, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (XMessage, error) {
-	ret := _m.Called(ctx, sess, cr, newChatRoom, snacPayloadIn)
+// CreateRoomHandler provides a mock function with given fields: ctx, sess, newChatRoom, snacPayloadIn
+func (_m *MockChatNavHandler) CreateRoomHandler(ctx context.Context, sess *Session, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (XMessage, error) {
+	ret := _m.Called(ctx, sess, newChatRoom, snacPayloadIn)
 
 	var r0 XMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *Session, *ChatRegistry, ChatRoomFactory, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (XMessage, error)); ok {
-		return rf(ctx, sess, cr, newChatRoom, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, ChatRoomFactory, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (XMessage, error)); ok {
+		return rf(ctx, sess, newChatRoom, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *Session, *ChatRegistry, ChatRoomFactory, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) XMessage); ok {
-		r0 = rf(ctx, sess, cr, newChatRoom, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, ChatRoomFactory, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) XMessage); ok {
+		r0 = rf(ctx, sess, newChatRoom, snacPayloadIn)
 	} else {
 		r0 = ret.Get(0).(XMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *Session, *ChatRegistry, ChatRoomFactory, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) error); ok {
-		r1 = rf(ctx, sess, cr, newChatRoom, snacPayloadIn)
+	if rf, ok := ret.Get(1).(func(context.Context, *Session, ChatRoomFactory, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) error); ok {
+		r1 = rf(ctx, sess, newChatRoom, snacPayloadIn)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -54,16 +54,15 @@ type MockChatNavHandler_CreateRoomHandler_Call struct {
 // CreateRoomHandler is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sess *Session
-//   - cr *ChatRegistry
 //   - newChatRoom ChatRoomFactory
 //   - snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate
-func (_e *MockChatNavHandler_Expecter) CreateRoomHandler(ctx interface{}, sess interface{}, cr interface{}, newChatRoom interface{}, snacPayloadIn interface{}) *MockChatNavHandler_CreateRoomHandler_Call {
-	return &MockChatNavHandler_CreateRoomHandler_Call{Call: _e.mock.On("CreateRoomHandler", ctx, sess, cr, newChatRoom, snacPayloadIn)}
+func (_e *MockChatNavHandler_Expecter) CreateRoomHandler(ctx interface{}, sess interface{}, newChatRoom interface{}, snacPayloadIn interface{}) *MockChatNavHandler_CreateRoomHandler_Call {
+	return &MockChatNavHandler_CreateRoomHandler_Call{Call: _e.mock.On("CreateRoomHandler", ctx, sess, newChatRoom, snacPayloadIn)}
 }
 
-func (_c *MockChatNavHandler_CreateRoomHandler_Call) Run(run func(ctx context.Context, sess *Session, cr *ChatRegistry, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate)) *MockChatNavHandler_CreateRoomHandler_Call {
+func (_c *MockChatNavHandler_CreateRoomHandler_Call) Run(run func(ctx context.Context, sess *Session, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate)) *MockChatNavHandler_CreateRoomHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*Session), args[2].(*ChatRegistry), args[3].(ChatRoomFactory), args[4].(oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate))
+		run(args[0].(context.Context), args[1].(*Session), args[2].(ChatRoomFactory), args[3].(oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate))
 	})
 	return _c
 }
@@ -73,7 +72,7 @@ func (_c *MockChatNavHandler_CreateRoomHandler_Call) Return(_a0 XMessage, _a1 er
 	return _c
 }
 
-func (_c *MockChatNavHandler_CreateRoomHandler_Call) RunAndReturn(run func(context.Context, *Session, *ChatRegistry, ChatRoomFactory, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (XMessage, error)) *MockChatNavHandler_CreateRoomHandler_Call {
+func (_c *MockChatNavHandler_CreateRoomHandler_Call) RunAndReturn(run func(context.Context, *Session, ChatRoomFactory, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (XMessage, error)) *MockChatNavHandler_CreateRoomHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -120,23 +119,23 @@ func (_c *MockChatNavHandler_RequestChatRightsHandler_Call) RunAndReturn(run fun
 	return _c
 }
 
-// RequestRoomInfoHandler provides a mock function with given fields: ctx, cr, snacPayloadIn
-func (_m *MockChatNavHandler) RequestRoomInfoHandler(ctx context.Context, cr *ChatRegistry, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (XMessage, error) {
-	ret := _m.Called(ctx, cr, snacPayloadIn)
+// RequestRoomInfoHandler provides a mock function with given fields: ctx, snacPayloadIn
+func (_m *MockChatNavHandler) RequestRoomInfoHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (XMessage, error) {
+	ret := _m.Called(ctx, snacPayloadIn)
 
 	var r0 XMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *ChatRegistry, oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (XMessage, error)); ok {
-		return rf(ctx, cr, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (XMessage, error)); ok {
+		return rf(ctx, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *ChatRegistry, oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) XMessage); ok {
-		r0 = rf(ctx, cr, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) XMessage); ok {
+		r0 = rf(ctx, snacPayloadIn)
 	} else {
 		r0 = ret.Get(0).(XMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *ChatRegistry, oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) error); ok {
-		r1 = rf(ctx, cr, snacPayloadIn)
+	if rf, ok := ret.Get(1).(func(context.Context, oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) error); ok {
+		r1 = rf(ctx, snacPayloadIn)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -151,15 +150,14 @@ type MockChatNavHandler_RequestRoomInfoHandler_Call struct {
 
 // RequestRoomInfoHandler is a helper method to define mock.On call
 //   - ctx context.Context
-//   - cr *ChatRegistry
 //   - snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo
-func (_e *MockChatNavHandler_Expecter) RequestRoomInfoHandler(ctx interface{}, cr interface{}, snacPayloadIn interface{}) *MockChatNavHandler_RequestRoomInfoHandler_Call {
-	return &MockChatNavHandler_RequestRoomInfoHandler_Call{Call: _e.mock.On("RequestRoomInfoHandler", ctx, cr, snacPayloadIn)}
+func (_e *MockChatNavHandler_Expecter) RequestRoomInfoHandler(ctx interface{}, snacPayloadIn interface{}) *MockChatNavHandler_RequestRoomInfoHandler_Call {
+	return &MockChatNavHandler_RequestRoomInfoHandler_Call{Call: _e.mock.On("RequestRoomInfoHandler", ctx, snacPayloadIn)}
 }
 
-func (_c *MockChatNavHandler_RequestRoomInfoHandler_Call) Run(run func(ctx context.Context, cr *ChatRegistry, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo)) *MockChatNavHandler_RequestRoomInfoHandler_Call {
+func (_c *MockChatNavHandler_RequestRoomInfoHandler_Call) Run(run func(ctx context.Context, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo)) *MockChatNavHandler_RequestRoomInfoHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*ChatRegistry), args[2].(oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo))
+		run(args[0].(context.Context), args[1].(oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo))
 	})
 	return _c
 }
@@ -169,7 +167,7 @@ func (_c *MockChatNavHandler_RequestRoomInfoHandler_Call) Return(_a0 XMessage, _
 	return _c
 }
 
-func (_c *MockChatNavHandler_RequestRoomInfoHandler_Call) RunAndReturn(run func(context.Context, *ChatRegistry, oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (XMessage, error)) *MockChatNavHandler_RequestRoomInfoHandler_Call {
+func (_c *MockChatNavHandler_RequestRoomInfoHandler_Call) RunAndReturn(run func(context.Context, oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (XMessage, error)) *MockChatNavHandler_RequestRoomInfoHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }

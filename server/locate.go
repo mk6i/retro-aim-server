@@ -12,14 +12,18 @@ import (
 type LocateHandler interface {
 	RightsQueryHandler(ctx context.Context) XMessage
 	SetDirInfoHandler(ctx context.Context) XMessage
-	SetInfoHandler(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager, pm ProfileManager, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error
+	SetInfoHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error
 	SetKeywordInfoHandler(ctx context.Context) XMessage
-	UserInfoQuery2Handler(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager, pm ProfileManager, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (XMessage, error)
+	UserInfoQuery2Handler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (XMessage, error)
 }
 
-func NewLocateRouter(logger *slog.Logger) LocateRouter {
+func NewLocateRouter(logger *slog.Logger, sm SessionManager, fm FeedbagManager, pm ProfileManager) LocateRouter {
 	return LocateRouter{
-		LocateHandler: LocateService{},
+		LocateHandler: LocateService{
+			sm: sm,
+			fm: fm,
+			pm: pm,
+		},
 		RouteLogger: RouteLogger{
 			Logger: logger,
 		},
@@ -31,7 +35,7 @@ type LocateRouter struct {
 	RouteLogger
 }
 
-func (rt LocateRouter) RouteLocate(ctx context.Context, sess *Session, sm SessionManager, fm *FeedbagStore, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt LocateRouter) RouteLocate(ctx context.Context, sess *Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.LocateRightsQuery:
 		outSNAC := rt.RightsQueryHandler(ctx)
@@ -43,7 +47,7 @@ func (rt LocateRouter) RouteLocate(ctx context.Context, sess *Session, sm Sessio
 			return err
 		}
 		rt.logRequest(ctx, SNACFrame, inSNAC)
-		return rt.SetInfoHandler(ctx, sess, sm, fm, fm, inSNAC)
+		return rt.SetInfoHandler(ctx, sess, inSNAC)
 	case oscar.LocateSetDirInfo:
 		inSNAC := oscar.SNAC_0x02_0x09_LocateSetDirInfo{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -69,7 +73,7 @@ func (rt LocateRouter) RouteLocate(ctx context.Context, sess *Session, sm Sessio
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
 			return err
 		}
-		outSNAC, err := rt.UserInfoQuery2Handler(ctx, sess, sm, fm, fm, inSNAC)
+		outSNAC, err := rt.UserInfoQuery2Handler(ctx, sess, inSNAC)
 		if err != nil {
 			return err
 		}
@@ -81,6 +85,9 @@ func (rt LocateRouter) RouteLocate(ctx context.Context, sess *Session, sm Sessio
 }
 
 type LocateService struct {
+	sm SessionManager
+	fm FeedbagManager
+	pm ProfileManager
 }
 
 func (s LocateService) RightsQueryHandler(context.Context) XMessage {
@@ -103,10 +110,10 @@ func (s LocateService) RightsQueryHandler(context.Context) XMessage {
 	}
 }
 
-func (s LocateService) SetInfoHandler(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager, pm ProfileManager, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error {
+func (s LocateService) SetInfoHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error {
 	// update profile
 	if profile, hasProfile := snacPayloadIn.GetString(oscar.LocateTLVTagsInfoSigData); hasProfile {
-		if err := pm.UpsertProfile(sess.ScreenName, profile); err != nil {
+		if err := s.pm.UpsertProfile(sess.ScreenName, profile); err != nil {
 			return err
 		}
 	}
@@ -114,15 +121,15 @@ func (s LocateService) SetInfoHandler(ctx context.Context, sess *Session, sm Ses
 	// broadcast away message change to buddies
 	if awayMsg, hasAwayMsg := snacPayloadIn.GetString(oscar.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
 		sess.SetAwayMessage(awayMsg)
-		if err := BroadcastArrival(ctx, sess, sm, fm); err != nil {
+		if err := BroadcastArrival(ctx, sess, s.sm, s.fm); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s LocateService) UserInfoQuery2Handler(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager, pm ProfileManager, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (XMessage, error) {
-	blocked, err := fm.Blocked(sess.ScreenName, snacPayloadIn.ScreenName)
+func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (XMessage, error) {
+	blocked, err := s.fm.Blocked(sess.ScreenName, snacPayloadIn.ScreenName)
 	switch {
 	case err != nil:
 		return XMessage{}, err
@@ -138,7 +145,7 @@ func (s LocateService) UserInfoQuery2Handler(ctx context.Context, sess *Session,
 		}, nil
 	}
 
-	buddySess, err := sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
+	buddySess, err := s.sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
 	switch {
 	case errors.Is(err, ErrSessNotFound):
 		return XMessage{
@@ -157,7 +164,7 @@ func (s LocateService) UserInfoQuery2Handler(ctx context.Context, sess *Session,
 	var list oscar.TLVList
 
 	if snacPayloadIn.RequestProfile() {
-		profile, err := pm.RetrieveProfile(snacPayloadIn.ScreenName)
+		profile, err := s.pm.RetrieveProfile(snacPayloadIn.ScreenName)
 		if err != nil {
 			return XMessage{}, err
 		}
@@ -188,7 +195,7 @@ func (s LocateService) UserInfoQuery2Handler(ctx context.Context, sess *Session,
 	}, nil
 }
 
-func (s LocateService) SetDirInfoHandler(ctx context.Context) XMessage {
+func (s LocateService) SetDirInfoHandler(_ context.Context) XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.LOCATE,
@@ -200,7 +207,7 @@ func (s LocateService) SetDirInfoHandler(ctx context.Context) XMessage {
 	}
 }
 
-func (s LocateService) SetKeywordInfoHandler(ctx context.Context) XMessage {
+func (s LocateService) SetKeywordInfoHandler(_ context.Context) XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.LOCATE,

@@ -12,24 +12,26 @@ import (
 )
 
 type OServiceHandler interface {
-	WriteOServiceHostOnline(w io.Writer, sequence *uint32) error
-	ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *Session, sm SessionManager, fm FeedbagManager, room ChatRoom) error
 	ClientVersionsHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) XMessage
-	IdleNotificationHandler(ctx context.Context, sess *Session, sm SessionManager, fm *FeedbagStore, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error
+	IdleNotificationHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error
 	RateParamsQueryHandler(ctx context.Context) XMessage
 	RateParamsSubAddHandler(context.Context, oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd)
-	ServiceRequestHandler(ctx context.Context, cfg Config, cr *ChatRegistry, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (XMessage, error)
-	SetUserInfoFieldsHandler(ctx context.Context, sess *Session, sm SessionManager, fm *FeedbagStore, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (XMessage, error)
+	SetUserInfoFieldsHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (XMessage, error)
 	UserInfoQueryHandler(ctx context.Context, sess *Session) XMessage
 }
 
-func NewOServiceRouter(logger *slog.Logger) OServiceRouter {
-	return OServiceRouter{
-		OServiceHandler: OServiceService{},
-		RouteLogger: RouteLogger{
-			Logger: logger,
-		},
-	}
+type OServiceBOSHandler interface {
+	OServiceHandler
+	WriteOServiceHostOnline(w io.Writer, sequence *uint32) error
+	ServiceRequestHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (XMessage, error)
+	ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *Session) error
+}
+
+type OServiceChatHandler interface {
+	OServiceHandler
+	WriteOServiceHostOnline(w io.Writer, sequence *uint32) error
+	ServiceRequestHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (XMessage, error)
+	ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *Session, room ChatRoom) error
 }
 
 type OServiceRouter struct {
@@ -37,30 +39,8 @@ type OServiceRouter struct {
 	RouteLogger
 }
 
-func (rt OServiceRouter) RouteOService(ctx context.Context, cfg Config, cr *ChatRegistry, sm SessionManager, fm *FeedbagStore, sess *Session, room ChatRoom, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt OServiceRouter) RouteOService(ctx context.Context, sess *Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
-	case oscar.OServiceClientOnline:
-		inSNAC := oscar.SNAC_0x01_0x02_OServiceClientOnline{}
-		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
-			return err
-		}
-		rt.Logger.InfoContext(ctx, "user signed on")
-		rt.logRequest(ctx, SNACFrame, inSNAC)
-		return rt.ClientOnlineHandler(ctx, inSNAC, sess, sm, fm, room)
-	case oscar.OServiceServiceRequest:
-		inSNAC := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
-		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
-			return err
-		}
-		outSNAC, err := rt.ServiceRequestHandler(ctx, cfg, cr, sess, inSNAC)
-		switch {
-		case errors.Is(err, ErrUnsupportedSubGroup):
-			return sendInvalidSNACErr(SNACFrame, w, sequence)
-		case err != nil:
-			return err
-		}
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.snacFrame, outSNAC.snacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
 	case oscar.OServiceRateParamsQuery:
 		outSNAC := rt.RateParamsQueryHandler(ctx)
 		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.snacFrame, outSNAC.snacOut)
@@ -83,7 +63,7 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, cfg Config, cr *Chat
 			return err
 		}
 		rt.logRequest(ctx, SNACFrame, inSNAC)
-		return rt.IdleNotificationHandler(ctx, sess, sm, fm, inSNAC)
+		return rt.IdleNotificationHandler(ctx, sess, inSNAC)
 	case oscar.OServiceClientVersions:
 		inSNAC := oscar.SNAC_0x01_0x17_OServiceClientVersions{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -97,7 +77,7 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, cfg Config, cr *Chat
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
 			return err
 		}
-		outSNAC, err := rt.SetUserInfoFieldsHandler(ctx, sess, sm, fm, inSNAC)
+		outSNAC, err := rt.SetUserInfoFieldsHandler(ctx, sess, inSNAC)
 		if err != nil {
 			return err
 		}
@@ -108,29 +88,101 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, cfg Config, cr *Chat
 	}
 }
 
-type OServiceService struct {
-}
-
-func (s OServiceService) WriteOServiceHostOnline(w io.Writer, sequence *uint32) error {
-	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: oscar.OSERVICE,
-		SubGroup:  oscar.OServiceHostOnline,
+func NewOServiceRouterForBOS(logger *slog.Logger, cfg Config, fm FeedbagManager, sm SessionManager, cr *ChatRegistry) OServiceBOSRouter {
+	oss := OServiceService{
+		cfg: cfg,
+		fm:  fm,
+		sm:  sm,
 	}
-	snacPayloadOut := oscar.SNAC_0x01_0x03_OServiceHostOnline{
-		FoodGroups: []uint16{
-			oscar.ALERT,
-			oscar.BUDDY,
-			oscar.CHAT_NAV,
-			oscar.FEEDBAG,
-			oscar.ICBM,
-			oscar.LOCATE,
-			oscar.OSERVICE,
+	return OServiceBOSRouter{
+		OServiceRouter: OServiceRouter{
+			OServiceHandler: oss,
+			RouteLogger: RouteLogger{
+				Logger: logger,
+			},
+		},
+		OServiceBOSHandler: OServiceServiceForBOS{
+			OServiceService: oss,
+			cr:              cr,
 		},
 	}
-	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func (s OServiceService) ClientVersionsHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) XMessage {
+type OServiceBOSRouter struct {
+	OServiceRouter
+	OServiceBOSHandler
+}
+
+func (rt OServiceBOSRouter) RouteOService(ctx context.Context, sess *Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	switch SNACFrame.SubGroup {
+	case oscar.OServiceServiceRequest:
+		inSNAC := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
+		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
+			return err
+		}
+		outSNAC, err := rt.ServiceRequestHandler(ctx, sess, inSNAC)
+		switch {
+		case errors.Is(err, ErrUnsupportedSubGroup):
+			return sendInvalidSNACErr(SNACFrame, w, sequence)
+		case err != nil:
+			return err
+		}
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.snacFrame, outSNAC.snacOut)
+		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
+	case oscar.OServiceClientOnline:
+		inSNAC := oscar.SNAC_0x01_0x02_OServiceClientOnline{}
+		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
+			return err
+		}
+		rt.Logger.InfoContext(ctx, "user signed on")
+		rt.logRequest(ctx, SNACFrame, inSNAC)
+		return rt.OServiceBOSHandler.ClientOnlineHandler(ctx, inSNAC, sess)
+	default:
+		return rt.OServiceRouter.RouteOService(ctx, sess, SNACFrame, r, w, sequence)
+	}
+}
+
+type OServiceChatRouter struct {
+	OServiceRouter
+	OServiceChatHandler
+}
+
+func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *Session, room ChatRoom, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	switch SNACFrame.SubGroup {
+	case oscar.OServiceServiceRequest:
+		inSNAC := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
+		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
+			return err
+		}
+		outSNAC, err := rt.ServiceRequestHandler(ctx, sess, inSNAC)
+		switch {
+		case errors.Is(err, ErrUnsupportedSubGroup):
+			return sendInvalidSNACErr(SNACFrame, w, sequence)
+		case err != nil:
+			return err
+		}
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.snacFrame, outSNAC.snacOut)
+		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
+	case oscar.OServiceClientOnline:
+		inSNAC := oscar.SNAC_0x01_0x02_OServiceClientOnline{}
+		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
+			return err
+		}
+		rt.Logger.InfoContext(ctx, "user signed on")
+		rt.logRequest(ctx, SNACFrame, inSNAC)
+		return rt.OServiceChatHandler.ClientOnlineHandler(ctx, inSNAC, sess, room)
+	default:
+		return rt.OServiceRouter.RouteOService(ctx, sess, SNACFrame, r, w, sequence)
+	}
+}
+
+type OServiceService struct {
+	cfg Config
+	fm  FeedbagManager
+	sm  SessionManager
+}
+
+func (s OServiceService) ClientVersionsHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.OSERVICE,
@@ -142,7 +194,7 @@ func (s OServiceService) ClientVersionsHandler(ctx context.Context, snacPayloadI
 	}
 }
 
-func (s OServiceService) RateParamsQueryHandler(ctx context.Context) XMessage {
+func (s OServiceService) RateParamsQueryHandler(_ context.Context) XMessage {
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: oscar.OSERVICE,
 		SubGroup:  oscar.OServiceRateParamsReply,
@@ -209,7 +261,7 @@ func (s OServiceService) RateParamsQueryHandler(ctx context.Context) XMessage {
 	}
 }
 
-func (s OServiceService) UserInfoQueryHandler(ctx context.Context, sess *Session) XMessage {
+func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *Session) XMessage {
 	return XMessage{
 		snacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.OSERVICE,
@@ -221,37 +273,17 @@ func (s OServiceService) UserInfoQueryHandler(ctx context.Context, sess *Session
 	}
 }
 
-func (s OServiceService) ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *Session, sm SessionManager, fm FeedbagManager, room ChatRoom) error {
-	if err := BroadcastArrival(ctx, sess, sm, fm); err != nil {
-		return err
-	}
-	buddies, err := fm.Buddies(sess.ScreenName)
-	if err != nil {
-		return err
-	}
-	for _, buddy := range buddies {
-		err := UnicastArrival(ctx, buddy, sess.ScreenName, sm)
-		switch {
-		case errors.Is(err, ErrSessNotFound):
-			continue
-		case err != nil:
-			return err
-		}
-	}
-	return nil
-}
-
-func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *Session, sm SessionManager, fm *FeedbagStore, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (XMessage, error) {
+func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (XMessage, error) {
 	if status, hasStatus := snacPayloadIn.GetUint32(0x06); hasStatus {
 		switch status {
 		case 0x000:
 			sess.SetInvisible(false)
-			if err := BroadcastArrival(ctx, sess, sm, fm); err != nil {
+			if err := BroadcastArrival(ctx, sess, s.sm, s.fm); err != nil {
 				return XMessage{}, err
 			}
 		case 0x100:
 			sess.SetInvisible(true)
-			if err := BroadcastDeparture(ctx, sess, sm, fm); err != nil {
+			if err := BroadcastDeparture(ctx, sess, s.sm, s.fm); err != nil {
 				return XMessage{}, err
 			}
 		default:
@@ -269,16 +301,26 @@ func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *Ses
 	}, nil
 }
 
-func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *Session, sm SessionManager, fm *FeedbagStore, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error {
+func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error {
 	if snacPayloadIn.IdleTime == 0 {
 		sess.SetActive()
 	} else {
 		sess.SetIdle(time.Duration(snacPayloadIn.IdleTime) * time.Second)
 	}
-	return BroadcastArrival(ctx, sess, sm, fm)
+	return BroadcastArrival(ctx, sess, s.sm, s.fm)
 }
 
-func (s OServiceService) ServiceRequestHandler(ctx context.Context, cfg Config, cr *ChatRegistry, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (XMessage, error) {
+// RateParamsSubAddHandler exists to capture the SNAC input in unit tests to
+// verify it's correctly unmarshalled.
+func (s OServiceService) RateParamsSubAddHandler(context.Context, oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd) {
+}
+
+type OServiceServiceForBOS struct {
+	OServiceService
+	cr *ChatRegistry
+}
+
+func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (XMessage, error) {
 	if snacPayloadIn.FoodGroup != oscar.CHAT {
 		return XMessage{}, ErrUnsupportedSubGroup
 	}
@@ -293,7 +335,7 @@ func (s OServiceService) ServiceRequestHandler(ctx context.Context, cfg Config, 
 		return XMessage{}, err
 	}
 
-	room, err := cr.Retrieve(string(roomSnac.Cookie))
+	room, err := s.cr.Retrieve(string(roomSnac.Cookie))
 	if err != nil {
 		return XMessage{}, ErrUnsupportedSubGroup
 	}
@@ -307,7 +349,7 @@ func (s OServiceService) ServiceRequestHandler(ctx context.Context, cfg Config, 
 		snacOut: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
-					oscar.NewTLV(oscar.OServiceTLVTagsReconnectHere, Address(cfg.OSCARHost, cfg.ChatPort)),
+					oscar.NewTLV(oscar.OServiceTLVTagsReconnectHere, Address(s.cfg.OSCARHost, s.cfg.ChatPort)),
 					oscar.NewTLV(oscar.OServiceTLVTagsLoginCookie, ChatCookie{
 						Cookie: []byte(room.Cookie),
 						SessID: sess.ID,
@@ -321,16 +363,60 @@ func (s OServiceService) ServiceRequestHandler(ctx context.Context, cfg Config, 
 	}, nil
 }
 
-// RateParamsSubAddHandler exists to capture the SNAC input in unit tests to
-// verify it's correctly unmarshalled.
-func (s OServiceService) RateParamsSubAddHandler(context.Context, oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd) {
+func (s OServiceServiceForBOS) WriteOServiceHostOnline(w io.Writer, sequence *uint32) error {
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: oscar.OSERVICE,
+		SubGroup:  oscar.OServiceHostOnline,
+	}
+	snacPayloadOut := oscar.SNAC_0x01_0x03_OServiceHostOnline{
+		FoodGroups: []uint16{
+			oscar.ALERT,
+			oscar.BUDDY,
+			oscar.CHAT_NAV,
+			oscar.FEEDBAG,
+			oscar.ICBM,
+			oscar.LOCATE,
+			oscar.OSERVICE,
+		},
+	}
+	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func NewOServiceRouterForChat(logger *slog.Logger) OServiceRouter {
-	return OServiceRouter{
-		OServiceHandler: OServiceServiceForChat{},
-		RouteLogger: RouteLogger{
-			Logger: logger,
+func (s OServiceServiceForBOS) ClientOnlineHandler(ctx context.Context, _ oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *Session) error {
+	if err := BroadcastArrival(ctx, sess, s.sm, s.fm); err != nil {
+		return err
+	}
+	buddies, err := s.fm.Buddies(sess.ScreenName)
+	if err != nil {
+		return err
+	}
+	for _, buddy := range buddies {
+		err := UnicastArrival(ctx, buddy, sess.ScreenName, s.sm)
+		switch {
+		case errors.Is(err, ErrSessNotFound):
+			continue
+		case err != nil:
+			return err
+		}
+	}
+	return nil
+}
+
+func NewOServiceRouterForChat(logger *slog.Logger, cfg Config, fm FeedbagManager, sm SessionManager) OServiceChatRouter {
+	oss := OServiceService{
+		cfg: cfg,
+		fm:  fm,
+		sm:  sm,
+	}
+	return OServiceChatRouter{
+		OServiceRouter: OServiceRouter{
+			OServiceHandler: oss,
+			RouteLogger: RouteLogger{
+				Logger: logger,
+			},
+		},
+		OServiceChatHandler: OServiceServiceForChat{
+			OServiceService: oss,
 		},
 	}
 }
@@ -338,6 +424,10 @@ func NewOServiceRouterForChat(logger *slog.Logger) OServiceRouter {
 type OServiceServiceForChat struct {
 	OServiceService
 	RouteLogger
+}
+
+func (s OServiceServiceForChat) ServiceRequestHandler(_ context.Context, _ *Session, _ oscar.SNAC_0x01_0x04_OServiceServiceRequest) (XMessage, error) {
+	return XMessage{}, ErrUnsupportedSubGroup
 }
 
 func (s OServiceServiceForChat) WriteOServiceHostOnline(w io.Writer, sequence *uint32) error {
@@ -351,9 +441,9 @@ func (s OServiceServiceForChat) WriteOServiceHostOnline(w io.Writer, sequence *u
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *Session, sm SessionManager, fm FeedbagManager, room ChatRoom) error {
-	SendChatRoomInfoUpdate(ctx, sess, sm, room)
-	AlertUserJoined(ctx, sess, sm)
-	SetOnlineChatUsers(ctx, sess, sm)
+func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, _ oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *Session, room ChatRoom) error {
+	SendChatRoomInfoUpdate(ctx, sess, room)
+	AlertUserJoined(ctx, sess, room)
+	SetOnlineChatUsers(ctx, sess, room)
 	return nil
 }

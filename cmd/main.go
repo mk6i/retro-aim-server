@@ -35,11 +35,13 @@ func main() {
 		wg.Done()
 	}()
 	go func() {
-		server.ListenBOS(cfg, sm, fm, cr, logger.With("svc", "BOS"))
+		router := server.NewBOSServiceRouter(logger, cfg, fm, sm, cr, fm)
+		server.ListenBOS(cfg, router, logger.With("svc", "BOS"))
 		wg.Done()
 	}()
 	go func() {
-		server.ListenChat(cfg, fm, cr, logger.With("svc", "CHAT"))
+		router := server.NewChatServiceRouter(logger, cfg, fm, sm)
+		server.ListenChat(cfg, router, cr, logger.With("svc", "CHAT"))
 		wg.Done()
 	}()
 	go func() {

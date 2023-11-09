@@ -91,11 +91,9 @@ func Signout(ctx context.Context, logger *slog.Logger, sess *Session, sm Session
 	sm.Remove(sess)
 }
 
-func ReadBos(ctx context.Context, cfg Config, sess *Session, seq uint32, sm SessionManager, fm *FeedbagStore, cr *ChatRegistry, rwc io.ReadWriter, room ChatRoom, router Router, logger *slog.Logger) {
-	if err := router.WriteOServiceHostOnline(rwc, &seq); err != nil {
-		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
-	}
+type RouteSig func(ctx context.Context, rwc io.ReadWriter, u *uint32, snac oscar.SnacFrame, buf io.Reader) error
 
+func ReadBos(ctx context.Context, cfg Config, sess *Session, seq uint32, rwc io.ReadWriter, logger *slog.Logger, fn RouteSig) {
 	// buffered so that the go routine has room to exit
 	msgCh := make(chan IncomingMessage, 1)
 	errCh := make(chan error, 1)
@@ -108,7 +106,7 @@ func ReadBos(ctx context.Context, cfg Config, sess *Session, seq uint32, sm Sess
 	for {
 		select {
 		case m := <-msgCh:
-			if err := router.routeIncomingRequests(ctx, cfg, sm, sess, fm, cr, rwc, &seq, m.snac, m.buf, room); err != nil {
+			if err := fn(ctx, rwc, &seq, m.snac, m.buf); err != nil {
 				if errors.Is(err, ErrUnsupportedSubGroup) || errors.Is(err, ErrUnsupportedFoodGroup) {
 					if err1 := sendInvalidSNACErr(m.snac, rwc, &seq); err1 != nil {
 						err = errors.Join(err1, err)
@@ -163,7 +161,7 @@ func gracefulDisconnect(seq uint32, rwc io.ReadWriter) error {
 	}, rwc)
 }
 
-func HandleChatConnection(ctx context.Context, cfg Config, fm *FeedbagStore, cr *ChatRegistry, conn net.Conn, router Router, logger *slog.Logger) {
+func HandleChatConnection(ctx context.Context, cfg Config, cr *ChatRegistry, conn net.Conn, router ChatServiceRouter, logger *slog.Logger) {
 	cookie, seq, err := VerifyChatLogin(conn)
 	if err != nil {
 		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
@@ -193,7 +191,14 @@ func HandleChatConnection(ctx context.Context, cfg Config, fm *FeedbagStore, cr 
 
 	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName)
 
-	ReadBos(ctx, cfg, chatSess, seq, room.SessionManager, fm, cr, conn, room, router, logger)
+	if err := router.WriteOServiceHostOnline(conn, &seq); err != nil {
+		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
+	}
+
+	fn := func(ctx context.Context, rwc io.ReadWriter, u *uint32, snac oscar.SnacFrame, buf io.Reader) error {
+		return router.Route(ctx, chatSess, rwc, u, snac, buf, room)
+	}
+	ReadBos(ctx, cfg, chatSess, seq, conn, logger, fn)
 }
 
 func HandleAuthConnection(cfg Config, sm *InMemorySessionManager, fm *FeedbagStore, conn net.Conn) {
@@ -218,8 +223,8 @@ func HandleAuthConnection(cfg Config, sm *InMemorySessionManager, fm *FeedbagSto
 	}
 }
 
-func HandleBOSConnection(ctx context.Context, cfg Config, sm *InMemorySessionManager, fm *FeedbagStore, cr *ChatRegistry, conn net.Conn, router Router, logger *slog.Logger) {
-	sess, seq, err := VerifyLogin(sm, conn)
+func HandleBOSConnection(ctx context.Context, cfg Config, conn net.Conn, router BOSServiceRouter, logger *slog.Logger) {
+	sess, seq, err := router.VerifyLogin(conn)
 	if err != nil {
 		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
 		return
@@ -230,15 +235,22 @@ func HandleBOSConnection(ctx context.Context, cfg Config, sm *InMemorySessionMan
 
 	go func() {
 		<-sess.Closed()
-		Signout(ctx, logger, sess, sm, fm)
+		router.Signout(ctx, logger, sess)
 	}()
 
 	ctx = context.WithValue(ctx, "screenName", sess.ScreenName)
 
-	ReadBos(ctx, cfg, sess, seq, sm, fm, cr, conn, ChatRoom{}, router, logger)
+	if err := router.WriteOServiceHostOnline(conn, &seq); err != nil {
+		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
+	}
+
+	fn := func(ctx context.Context, rwc io.ReadWriter, u *uint32, snac oscar.SnacFrame, buf io.Reader) error {
+		return router.Route(ctx, sess, rwc, u, snac, buf)
+	}
+	ReadBos(ctx, cfg, sess, seq, conn, logger, fn)
 }
 
-func ListenChat(cfg Config, fm *FeedbagStore, cr *ChatRegistry, logger *slog.Logger) {
+func ListenChat(cfg Config, router ChatServiceRouter, cr *ChatRegistry, logger *slog.Logger) {
 	addr := Address("", cfg.ChatPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -249,7 +261,6 @@ func ListenChat(cfg Config, fm *FeedbagStore, cr *ChatRegistry, logger *slog.Log
 
 	logger.Info("starting service", "addr", addr)
 
-	router := NewRouterForChat(logger)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -259,11 +270,11 @@ func ListenChat(cfg Config, fm *FeedbagStore, cr *ChatRegistry, logger *slog.Log
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 		logger.DebugContext(ctx, "accepted connection")
-		go HandleChatConnection(ctx, cfg, fm, cr, conn, router, logger)
+		go HandleChatConnection(ctx, cfg, cr, conn, router, logger)
 	}
 }
 
-func ListenBOS(cfg Config, sm *InMemorySessionManager, fm *FeedbagStore, cr *ChatRegistry, logger *slog.Logger) {
+func ListenBOS(cfg Config, router BOSServiceRouter, logger *slog.Logger) {
 	addr := Address("", cfg.BOSPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -274,7 +285,6 @@ func ListenBOS(cfg Config, sm *InMemorySessionManager, fm *FeedbagStore, cr *Cha
 
 	logger.Info("starting service", "addr", addr)
 
-	router := NewRouter(logger)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -284,7 +294,7 @@ func ListenBOS(cfg Config, sm *InMemorySessionManager, fm *FeedbagStore, cr *Cha
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 		logger.DebugContext(ctx, "accepted connection")
-		go HandleBOSConnection(ctx, cfg, sm, fm, cr, conn, router, logger)
+		go HandleBOSConnection(ctx, cfg, conn, router, logger)
 	}
 }
 

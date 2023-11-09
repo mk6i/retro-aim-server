@@ -3,64 +3,97 @@ package server
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"github.com/mkaminski/goaim/oscar"
 	"io"
 	"log/slog"
+	"net"
 )
 
-func NewRouter(logger *slog.Logger) Router {
-	return Router{
-		AlertRouter:    NewAlertRouter(logger),
-		BuddyRouter:    NewBuddyRouter(logger),
-		ChatNavRouter:  NewChatNavRouter(logger),
-		ChatRouter:     NewChatRouter(logger),
-		FeedbagRouter:  NewFeedbagRouter(logger),
-		ICBMRouter:     NewICBMRouter(logger),
-		LocateRouter:   NewLocateRouter(logger),
-		OServiceRouter: NewOServiceRouter(logger),
+func NewBOSServiceRouter(logger *slog.Logger, cfg Config, fm FeedbagManager, sm SessionManager, cr *ChatRegistry, pm ProfileManager) BOSServiceRouter {
+	return BOSServiceRouter{
+		AlertRouter:       NewAlertRouter(logger),
+		BuddyRouter:       NewBuddyRouter(logger),
+		ChatNavRouter:     NewChatNavRouter(logger, cr),
+		FeedbagRouter:     NewFeedbagRouter(logger, sm, fm),
+		ICBMRouter:        NewICBMRouter(logger, sm, fm),
+		LocateRouter:      NewLocateRouter(logger, sm, fm, pm),
+		OServiceBOSRouter: NewOServiceRouterForBOS(logger, cfg, fm, sm, cr),
+		sm:                sm,
+		fm:                fm,
 	}
 }
 
-func NewRouterForChat(logger *slog.Logger) Router {
-	r := NewRouter(logger)
-	r.OServiceRouter = NewOServiceRouterForChat(logger)
-	return r
+func NewChatServiceRouter(logger *slog.Logger, cfg Config, fm FeedbagManager, sm SessionManager) ChatServiceRouter {
+	return ChatServiceRouter{
+		OServiceChatRouter: NewOServiceRouterForChat(logger, cfg, fm, sm),
+		ChatRouter:         NewChatRouter(logger),
+	}
 }
 
-type Router struct {
+type BOSServiceRouter struct {
 	AlertRouter
 	BuddyRouter
 	ChatNavRouter
-	ChatRouter
 	FeedbagRouter
 	ICBMRouter
 	LocateRouter
-	OServiceRouter
+	OServiceBOSRouter
+	sm SessionManager
+	fm FeedbagManager
 }
 
-func (rt *Router) routeIncomingRequests(ctx context.Context, cfg Config, sm SessionManager, sess *Session, fm *FeedbagStore, cr *ChatRegistry, rw io.ReadWriter, sequence *uint32, snac oscar.SnacFrame, buf io.Reader, room ChatRoom) error {
+func (rt *BOSServiceRouter) Route(ctx context.Context, sess *Session, w io.Writer, sequence *uint32, snac oscar.SnacFrame, buf io.Reader) error {
 	switch snac.FoodGroup {
 	case oscar.OSERVICE:
-		return rt.RouteOService(ctx, cfg, cr, sm, fm, sess, room, snac, buf, rw, sequence)
+		return rt.RouteOService(ctx, sess, snac, buf, w, sequence)
 	case oscar.LOCATE:
-		return rt.RouteLocate(ctx, sess, sm, fm, snac, buf, rw, sequence)
+		return rt.RouteLocate(ctx, sess, snac, buf, w, sequence)
 	case oscar.BUDDY:
-		return rt.RouteBuddy(ctx, snac, buf, rw, sequence)
+		return rt.RouteBuddy(ctx, snac, buf, w, sequence)
 	case oscar.ICBM:
-		return rt.RouteICBM(ctx, sm, fm, sess, snac, buf, rw, sequence)
+		return rt.RouteICBM(ctx, sess, snac, buf, w, sequence)
 	case oscar.CHAT_NAV:
-		return rt.RouteChatNav(ctx, sess, cr, snac, buf, rw, sequence)
+		return rt.RouteChatNav(ctx, sess, snac, buf, w, sequence)
 	case oscar.FEEDBAG:
-		return rt.RouteFeedbag(ctx, sm, sess, fm, snac, buf, rw, sequence)
+		return rt.RouteFeedbag(ctx, sess, snac, buf, w, sequence)
 	case oscar.BUCP:
 		return routeBUCP(ctx)
-	case oscar.CHAT:
-		return rt.RouteChat(ctx, sess, sm, snac, buf, rw, sequence)
 	case oscar.ALERT:
 		return rt.RouteAlert(ctx, snac)
 	default:
 		return ErrUnsupportedFoodGroup
 	}
+}
+
+func (rt *BOSServiceRouter) Signout(ctx context.Context, logger *slog.Logger, sess *Session) {
+	if err := BroadcastDeparture(ctx, sess, rt.sm, rt.fm); err != nil {
+		logger.ErrorContext(ctx, "error notifying departure", "err", err.Error())
+	}
+	rt.sm.Remove(sess)
+}
+
+func (rt *BOSServiceRouter) VerifyLogin(conn net.Conn) (*Session, uint32, error) {
+	seq := uint32(100)
+
+	flap, err := SendAndReceiveSignonFrame(conn, &seq)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var ok bool
+	ID, ok := flap.GetSlice(oscar.OServiceTLVTagsLoginCookie)
+	if !ok {
+		return nil, 0, errors.New("unable to get session ID from payload")
+	}
+
+	sess, ok := rt.sm.Retrieve(string(ID))
+	if !ok {
+		return nil, 0, fmt.Errorf("unable to find session by ID %s", ID)
+	}
+
+	return sess, seq, nil
 }
 
 func writeOutSNAC(originsnac oscar.SnacFrame, snacFrame oscar.SnacFrame, snacOut any, sequence *uint32, w io.Writer) error {
@@ -109,4 +142,20 @@ func sendInvalidSNACErr(snac oscar.SnacFrame, w io.Writer, sequence *uint32) err
 		Code: oscar.ErrorCodeInvalidSnac,
 	}
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
+}
+
+type ChatServiceRouter struct {
+	ChatRouter
+	OServiceChatRouter
+}
+
+func (rt *ChatServiceRouter) Route(ctx context.Context, sess *Session, w io.Writer, sequence *uint32, snac oscar.SnacFrame, buf io.Reader, room ChatRoom) error {
+	switch snac.FoodGroup {
+	case oscar.OSERVICE:
+		return rt.RouteOService(ctx, sess, room, snac, buf, w, sequence)
+	case oscar.CHAT:
+		return rt.RouteChat(ctx, sess, room, snac, buf, w, sequence)
+	default:
+		return ErrUnsupportedFoodGroup
+	}
 }

@@ -106,13 +106,13 @@ func (_c *MockLocateHandler_SetDirInfoHandler_Call) RunAndReturn(run func(contex
 	return _c
 }
 
-// SetInfoHandler provides a mock function with given fields: ctx, sess, sm, fm, pm, snacPayloadIn
-func (_m *MockLocateHandler) SetInfoHandler(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager, pm ProfileManager, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error {
-	ret := _m.Called(ctx, sess, sm, fm, pm, snacPayloadIn)
+// SetInfoHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
+func (_m *MockLocateHandler) SetInfoHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error {
+	ret := _m.Called(ctx, sess, snacPayloadIn)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *Session, SessionManager, FeedbagManager, ProfileManager, oscar.SNAC_0x02_0x04_LocateSetInfo) error); ok {
-		r0 = rf(ctx, sess, sm, fm, pm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, oscar.SNAC_0x02_0x04_LocateSetInfo) error); ok {
+		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -128,17 +128,14 @@ type MockLocateHandler_SetInfoHandler_Call struct {
 // SetInfoHandler is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sess *Session
-//   - sm SessionManager
-//   - fm FeedbagManager
-//   - pm ProfileManager
 //   - snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo
-func (_e *MockLocateHandler_Expecter) SetInfoHandler(ctx interface{}, sess interface{}, sm interface{}, fm interface{}, pm interface{}, snacPayloadIn interface{}) *MockLocateHandler_SetInfoHandler_Call {
-	return &MockLocateHandler_SetInfoHandler_Call{Call: _e.mock.On("SetInfoHandler", ctx, sess, sm, fm, pm, snacPayloadIn)}
+func (_e *MockLocateHandler_Expecter) SetInfoHandler(ctx interface{}, sess interface{}, snacPayloadIn interface{}) *MockLocateHandler_SetInfoHandler_Call {
+	return &MockLocateHandler_SetInfoHandler_Call{Call: _e.mock.On("SetInfoHandler", ctx, sess, snacPayloadIn)}
 }
 
-func (_c *MockLocateHandler_SetInfoHandler_Call) Run(run func(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager, pm ProfileManager, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo)) *MockLocateHandler_SetInfoHandler_Call {
+func (_c *MockLocateHandler_SetInfoHandler_Call) Run(run func(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo)) *MockLocateHandler_SetInfoHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*Session), args[2].(SessionManager), args[3].(FeedbagManager), args[4].(ProfileManager), args[5].(oscar.SNAC_0x02_0x04_LocateSetInfo))
+		run(args[0].(context.Context), args[1].(*Session), args[2].(oscar.SNAC_0x02_0x04_LocateSetInfo))
 	})
 	return _c
 }
@@ -148,7 +145,7 @@ func (_c *MockLocateHandler_SetInfoHandler_Call) Return(_a0 error) *MockLocateHa
 	return _c
 }
 
-func (_c *MockLocateHandler_SetInfoHandler_Call) RunAndReturn(run func(context.Context, *Session, SessionManager, FeedbagManager, ProfileManager, oscar.SNAC_0x02_0x04_LocateSetInfo) error) *MockLocateHandler_SetInfoHandler_Call {
+func (_c *MockLocateHandler_SetInfoHandler_Call) RunAndReturn(run func(context.Context, *Session, oscar.SNAC_0x02_0x04_LocateSetInfo) error) *MockLocateHandler_SetInfoHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -195,23 +192,23 @@ func (_c *MockLocateHandler_SetKeywordInfoHandler_Call) RunAndReturn(run func(co
 	return _c
 }
 
-// UserInfoQuery2Handler provides a mock function with given fields: ctx, sess, sm, fm, pm, snacPayloadIn
-func (_m *MockLocateHandler) UserInfoQuery2Handler(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager, pm ProfileManager, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (XMessage, error) {
-	ret := _m.Called(ctx, sess, sm, fm, pm, snacPayloadIn)
+// UserInfoQuery2Handler provides a mock function with given fields: ctx, sess, snacPayloadIn
+func (_m *MockLocateHandler) UserInfoQuery2Handler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (XMessage, error) {
+	ret := _m.Called(ctx, sess, snacPayloadIn)
 
 	var r0 XMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *Session, SessionManager, FeedbagManager, ProfileManager, oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (XMessage, error)); ok {
-		return rf(ctx, sess, sm, fm, pm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (XMessage, error)); ok {
+		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *Session, SessionManager, FeedbagManager, ProfileManager, oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) XMessage); ok {
-		r0 = rf(ctx, sess, sm, fm, pm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) XMessage); ok {
+		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
 		r0 = ret.Get(0).(XMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *Session, SessionManager, FeedbagManager, ProfileManager, oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) error); ok {
-		r1 = rf(ctx, sess, sm, fm, pm, snacPayloadIn)
+	if rf, ok := ret.Get(1).(func(context.Context, *Session, oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) error); ok {
+		r1 = rf(ctx, sess, snacPayloadIn)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -227,17 +224,14 @@ type MockLocateHandler_UserInfoQuery2Handler_Call struct {
 // UserInfoQuery2Handler is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sess *Session
-//   - sm SessionManager
-//   - fm FeedbagManager
-//   - pm ProfileManager
 //   - snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2
-func (_e *MockLocateHandler_Expecter) UserInfoQuery2Handler(ctx interface{}, sess interface{}, sm interface{}, fm interface{}, pm interface{}, snacPayloadIn interface{}) *MockLocateHandler_UserInfoQuery2Handler_Call {
-	return &MockLocateHandler_UserInfoQuery2Handler_Call{Call: _e.mock.On("UserInfoQuery2Handler", ctx, sess, sm, fm, pm, snacPayloadIn)}
+func (_e *MockLocateHandler_Expecter) UserInfoQuery2Handler(ctx interface{}, sess interface{}, snacPayloadIn interface{}) *MockLocateHandler_UserInfoQuery2Handler_Call {
+	return &MockLocateHandler_UserInfoQuery2Handler_Call{Call: _e.mock.On("UserInfoQuery2Handler", ctx, sess, snacPayloadIn)}
 }
 
-func (_c *MockLocateHandler_UserInfoQuery2Handler_Call) Run(run func(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager, pm ProfileManager, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2)) *MockLocateHandler_UserInfoQuery2Handler_Call {
+func (_c *MockLocateHandler_UserInfoQuery2Handler_Call) Run(run func(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2)) *MockLocateHandler_UserInfoQuery2Handler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*Session), args[2].(SessionManager), args[3].(FeedbagManager), args[4].(ProfileManager), args[5].(oscar.SNAC_0x02_0x15_LocateUserInfoQuery2))
+		run(args[0].(context.Context), args[1].(*Session), args[2].(oscar.SNAC_0x02_0x15_LocateUserInfoQuery2))
 	})
 	return _c
 }
@@ -247,7 +241,7 @@ func (_c *MockLocateHandler_UserInfoQuery2Handler_Call) Return(_a0 XMessage, _a1
 	return _c
 }
 
-func (_c *MockLocateHandler_UserInfoQuery2Handler_Call) RunAndReturn(run func(context.Context, *Session, SessionManager, FeedbagManager, ProfileManager, oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (XMessage, error)) *MockLocateHandler_UserInfoQuery2Handler_Call {
+func (_c *MockLocateHandler_UserInfoQuery2Handler_Call) RunAndReturn(run func(context.Context, *Session, oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (XMessage, error)) *MockLocateHandler_UserInfoQuery2Handler_Call {
 	_c.Call.Return(run)
 	return _c
 }

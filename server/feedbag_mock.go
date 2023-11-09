@@ -22,23 +22,23 @@ func (_m *MockFeedbagHandler) EXPECT() *MockFeedbagHandler_Expecter {
 	return &MockFeedbagHandler_Expecter{mock: &_m.Mock}
 }
 
-// DeleteItemHandler provides a mock function with given fields: ctx, sm, sess, fm, snacPayloadIn
-func (_m *MockFeedbagHandler) DeleteItemHandler(ctx context.Context, sm SessionManager, sess *Session, fm FeedbagManager, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (XMessage, error) {
-	ret := _m.Called(ctx, sm, sess, fm, snacPayloadIn)
+// DeleteItemHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
+func (_m *MockFeedbagHandler) DeleteItemHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (XMessage, error) {
+	ret := _m.Called(ctx, sess, snacPayloadIn)
 
 	var r0 XMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, SessionManager, *Session, FeedbagManager, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (XMessage, error)); ok {
-		return rf(ctx, sm, sess, fm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (XMessage, error)); ok {
+		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, SessionManager, *Session, FeedbagManager, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) XMessage); ok {
-		r0 = rf(ctx, sm, sess, fm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) XMessage); ok {
+		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
 		r0 = ret.Get(0).(XMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, SessionManager, *Session, FeedbagManager, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) error); ok {
-		r1 = rf(ctx, sm, sess, fm, snacPayloadIn)
+	if rf, ok := ret.Get(1).(func(context.Context, *Session, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) error); ok {
+		r1 = rf(ctx, sess, snacPayloadIn)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -53,17 +53,15 @@ type MockFeedbagHandler_DeleteItemHandler_Call struct {
 
 // DeleteItemHandler is a helper method to define mock.On call
 //   - ctx context.Context
-//   - sm SessionManager
 //   - sess *Session
-//   - fm FeedbagManager
 //   - snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem
-func (_e *MockFeedbagHandler_Expecter) DeleteItemHandler(ctx interface{}, sm interface{}, sess interface{}, fm interface{}, snacPayloadIn interface{}) *MockFeedbagHandler_DeleteItemHandler_Call {
-	return &MockFeedbagHandler_DeleteItemHandler_Call{Call: _e.mock.On("DeleteItemHandler", ctx, sm, sess, fm, snacPayloadIn)}
+func (_e *MockFeedbagHandler_Expecter) DeleteItemHandler(ctx interface{}, sess interface{}, snacPayloadIn interface{}) *MockFeedbagHandler_DeleteItemHandler_Call {
+	return &MockFeedbagHandler_DeleteItemHandler_Call{Call: _e.mock.On("DeleteItemHandler", ctx, sess, snacPayloadIn)}
 }
 
-func (_c *MockFeedbagHandler_DeleteItemHandler_Call) Run(run func(ctx context.Context, sm SessionManager, sess *Session, fm FeedbagManager, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem)) *MockFeedbagHandler_DeleteItemHandler_Call {
+func (_c *MockFeedbagHandler_DeleteItemHandler_Call) Run(run func(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem)) *MockFeedbagHandler_DeleteItemHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(SessionManager), args[2].(*Session), args[3].(FeedbagManager), args[4].(oscar.SNAC_0x13_0x0A_FeedbagDeleteItem))
+		run(args[0].(context.Context), args[1].(*Session), args[2].(oscar.SNAC_0x13_0x0A_FeedbagDeleteItem))
 	})
 	return _c
 }
@@ -73,28 +71,28 @@ func (_c *MockFeedbagHandler_DeleteItemHandler_Call) Return(_a0 XMessage, _a1 er
 	return _c
 }
 
-func (_c *MockFeedbagHandler_DeleteItemHandler_Call) RunAndReturn(run func(context.Context, SessionManager, *Session, FeedbagManager, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (XMessage, error)) *MockFeedbagHandler_DeleteItemHandler_Call {
+func (_c *MockFeedbagHandler_DeleteItemHandler_Call) RunAndReturn(run func(context.Context, *Session, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (XMessage, error)) *MockFeedbagHandler_DeleteItemHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// InsertItemHandler provides a mock function with given fields: ctx, sm, sess, fm, snacPayloadIn
-func (_m *MockFeedbagHandler) InsertItemHandler(ctx context.Context, sm SessionManager, sess *Session, fm FeedbagManager, snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem) (XMessage, error) {
-	ret := _m.Called(ctx, sm, sess, fm, snacPayloadIn)
+// InsertItemHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
+func (_m *MockFeedbagHandler) InsertItemHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem) (XMessage, error) {
+	ret := _m.Called(ctx, sess, snacPayloadIn)
 
 	var r0 XMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, SessionManager, *Session, FeedbagManager, oscar.SNAC_0x13_0x08_FeedbagInsertItem) (XMessage, error)); ok {
-		return rf(ctx, sm, sess, fm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, oscar.SNAC_0x13_0x08_FeedbagInsertItem) (XMessage, error)); ok {
+		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, SessionManager, *Session, FeedbagManager, oscar.SNAC_0x13_0x08_FeedbagInsertItem) XMessage); ok {
-		r0 = rf(ctx, sm, sess, fm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, oscar.SNAC_0x13_0x08_FeedbagInsertItem) XMessage); ok {
+		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
 		r0 = ret.Get(0).(XMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, SessionManager, *Session, FeedbagManager, oscar.SNAC_0x13_0x08_FeedbagInsertItem) error); ok {
-		r1 = rf(ctx, sm, sess, fm, snacPayloadIn)
+	if rf, ok := ret.Get(1).(func(context.Context, *Session, oscar.SNAC_0x13_0x08_FeedbagInsertItem) error); ok {
+		r1 = rf(ctx, sess, snacPayloadIn)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -109,17 +107,15 @@ type MockFeedbagHandler_InsertItemHandler_Call struct {
 
 // InsertItemHandler is a helper method to define mock.On call
 //   - ctx context.Context
-//   - sm SessionManager
 //   - sess *Session
-//   - fm FeedbagManager
 //   - snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem
-func (_e *MockFeedbagHandler_Expecter) InsertItemHandler(ctx interface{}, sm interface{}, sess interface{}, fm interface{}, snacPayloadIn interface{}) *MockFeedbagHandler_InsertItemHandler_Call {
-	return &MockFeedbagHandler_InsertItemHandler_Call{Call: _e.mock.On("InsertItemHandler", ctx, sm, sess, fm, snacPayloadIn)}
+func (_e *MockFeedbagHandler_Expecter) InsertItemHandler(ctx interface{}, sess interface{}, snacPayloadIn interface{}) *MockFeedbagHandler_InsertItemHandler_Call {
+	return &MockFeedbagHandler_InsertItemHandler_Call{Call: _e.mock.On("InsertItemHandler", ctx, sess, snacPayloadIn)}
 }
 
-func (_c *MockFeedbagHandler_InsertItemHandler_Call) Run(run func(ctx context.Context, sm SessionManager, sess *Session, fm FeedbagManager, snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem)) *MockFeedbagHandler_InsertItemHandler_Call {
+func (_c *MockFeedbagHandler_InsertItemHandler_Call) Run(run func(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem)) *MockFeedbagHandler_InsertItemHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(SessionManager), args[2].(*Session), args[3].(FeedbagManager), args[4].(oscar.SNAC_0x13_0x08_FeedbagInsertItem))
+		run(args[0].(context.Context), args[1].(*Session), args[2].(oscar.SNAC_0x13_0x08_FeedbagInsertItem))
 	})
 	return _c
 }
@@ -129,28 +125,28 @@ func (_c *MockFeedbagHandler_InsertItemHandler_Call) Return(_a0 XMessage, _a1 er
 	return _c
 }
 
-func (_c *MockFeedbagHandler_InsertItemHandler_Call) RunAndReturn(run func(context.Context, SessionManager, *Session, FeedbagManager, oscar.SNAC_0x13_0x08_FeedbagInsertItem) (XMessage, error)) *MockFeedbagHandler_InsertItemHandler_Call {
+func (_c *MockFeedbagHandler_InsertItemHandler_Call) RunAndReturn(run func(context.Context, *Session, oscar.SNAC_0x13_0x08_FeedbagInsertItem) (XMessage, error)) *MockFeedbagHandler_InsertItemHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// QueryHandler provides a mock function with given fields: ctx, sess, fm
-func (_m *MockFeedbagHandler) QueryHandler(ctx context.Context, sess *Session, fm FeedbagManager) (XMessage, error) {
-	ret := _m.Called(ctx, sess, fm)
+// QueryHandler provides a mock function with given fields: ctx, sess
+func (_m *MockFeedbagHandler) QueryHandler(ctx context.Context, sess *Session) (XMessage, error) {
+	ret := _m.Called(ctx, sess)
 
 	var r0 XMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *Session, FeedbagManager) (XMessage, error)); ok {
-		return rf(ctx, sess, fm)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session) (XMessage, error)); ok {
+		return rf(ctx, sess)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *Session, FeedbagManager) XMessage); ok {
-		r0 = rf(ctx, sess, fm)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session) XMessage); ok {
+		r0 = rf(ctx, sess)
 	} else {
 		r0 = ret.Get(0).(XMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *Session, FeedbagManager) error); ok {
-		r1 = rf(ctx, sess, fm)
+	if rf, ok := ret.Get(1).(func(context.Context, *Session) error); ok {
+		r1 = rf(ctx, sess)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -166,14 +162,13 @@ type MockFeedbagHandler_QueryHandler_Call struct {
 // QueryHandler is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sess *Session
-//   - fm FeedbagManager
-func (_e *MockFeedbagHandler_Expecter) QueryHandler(ctx interface{}, sess interface{}, fm interface{}) *MockFeedbagHandler_QueryHandler_Call {
-	return &MockFeedbagHandler_QueryHandler_Call{Call: _e.mock.On("QueryHandler", ctx, sess, fm)}
+func (_e *MockFeedbagHandler_Expecter) QueryHandler(ctx interface{}, sess interface{}) *MockFeedbagHandler_QueryHandler_Call {
+	return &MockFeedbagHandler_QueryHandler_Call{Call: _e.mock.On("QueryHandler", ctx, sess)}
 }
 
-func (_c *MockFeedbagHandler_QueryHandler_Call) Run(run func(ctx context.Context, sess *Session, fm FeedbagManager)) *MockFeedbagHandler_QueryHandler_Call {
+func (_c *MockFeedbagHandler_QueryHandler_Call) Run(run func(ctx context.Context, sess *Session)) *MockFeedbagHandler_QueryHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*Session), args[2].(FeedbagManager))
+		run(args[0].(context.Context), args[1].(*Session))
 	})
 	return _c
 }
@@ -183,28 +178,28 @@ func (_c *MockFeedbagHandler_QueryHandler_Call) Return(_a0 XMessage, _a1 error) 
 	return _c
 }
 
-func (_c *MockFeedbagHandler_QueryHandler_Call) RunAndReturn(run func(context.Context, *Session, FeedbagManager) (XMessage, error)) *MockFeedbagHandler_QueryHandler_Call {
+func (_c *MockFeedbagHandler_QueryHandler_Call) RunAndReturn(run func(context.Context, *Session) (XMessage, error)) *MockFeedbagHandler_QueryHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// QueryIfModifiedHandler provides a mock function with given fields: ctx, sess, fm, snacPayloadIn
-func (_m *MockFeedbagHandler) QueryIfModifiedHandler(ctx context.Context, sess *Session, fm FeedbagManager, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (XMessage, error) {
-	ret := _m.Called(ctx, sess, fm, snacPayloadIn)
+// QueryIfModifiedHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
+func (_m *MockFeedbagHandler) QueryIfModifiedHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (XMessage, error) {
+	ret := _m.Called(ctx, sess, snacPayloadIn)
 
 	var r0 XMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *Session, FeedbagManager, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (XMessage, error)); ok {
-		return rf(ctx, sess, fm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (XMessage, error)); ok {
+		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *Session, FeedbagManager, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) XMessage); ok {
-		r0 = rf(ctx, sess, fm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) XMessage); ok {
+		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
 		r0 = ret.Get(0).(XMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *Session, FeedbagManager, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) error); ok {
-		r1 = rf(ctx, sess, fm, snacPayloadIn)
+	if rf, ok := ret.Get(1).(func(context.Context, *Session, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) error); ok {
+		r1 = rf(ctx, sess, snacPayloadIn)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -220,15 +215,14 @@ type MockFeedbagHandler_QueryIfModifiedHandler_Call struct {
 // QueryIfModifiedHandler is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sess *Session
-//   - fm FeedbagManager
 //   - snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified
-func (_e *MockFeedbagHandler_Expecter) QueryIfModifiedHandler(ctx interface{}, sess interface{}, fm interface{}, snacPayloadIn interface{}) *MockFeedbagHandler_QueryIfModifiedHandler_Call {
-	return &MockFeedbagHandler_QueryIfModifiedHandler_Call{Call: _e.mock.On("QueryIfModifiedHandler", ctx, sess, fm, snacPayloadIn)}
+func (_e *MockFeedbagHandler_Expecter) QueryIfModifiedHandler(ctx interface{}, sess interface{}, snacPayloadIn interface{}) *MockFeedbagHandler_QueryIfModifiedHandler_Call {
+	return &MockFeedbagHandler_QueryIfModifiedHandler_Call{Call: _e.mock.On("QueryIfModifiedHandler", ctx, sess, snacPayloadIn)}
 }
 
-func (_c *MockFeedbagHandler_QueryIfModifiedHandler_Call) Run(run func(ctx context.Context, sess *Session, fm FeedbagManager, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified)) *MockFeedbagHandler_QueryIfModifiedHandler_Call {
+func (_c *MockFeedbagHandler_QueryIfModifiedHandler_Call) Run(run func(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified)) *MockFeedbagHandler_QueryIfModifiedHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*Session), args[2].(FeedbagManager), args[3].(oscar.SNAC_0x13_0x05_FeedbagQueryIfModified))
+		run(args[0].(context.Context), args[1].(*Session), args[2].(oscar.SNAC_0x13_0x05_FeedbagQueryIfModified))
 	})
 	return _c
 }
@@ -238,7 +232,7 @@ func (_c *MockFeedbagHandler_QueryIfModifiedHandler_Call) Return(_a0 XMessage, _
 	return _c
 }
 
-func (_c *MockFeedbagHandler_QueryIfModifiedHandler_Call) RunAndReturn(run func(context.Context, *Session, FeedbagManager, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (XMessage, error)) *MockFeedbagHandler_QueryIfModifiedHandler_Call {
+func (_c *MockFeedbagHandler_QueryIfModifiedHandler_Call) RunAndReturn(run func(context.Context, *Session, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (XMessage, error)) *MockFeedbagHandler_QueryIfModifiedHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -319,23 +313,23 @@ func (_c *MockFeedbagHandler_StartClusterHandler_Call) RunAndReturn(run func(con
 	return _c
 }
 
-// UpdateItemHandler provides a mock function with given fields: ctx, sm, sess, fm, snacPayloadIn
-func (_m *MockFeedbagHandler) UpdateItemHandler(ctx context.Context, sm SessionManager, sess *Session, fm FeedbagManager, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (XMessage, error) {
-	ret := _m.Called(ctx, sm, sess, fm, snacPayloadIn)
+// UpdateItemHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
+func (_m *MockFeedbagHandler) UpdateItemHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (XMessage, error) {
+	ret := _m.Called(ctx, sess, snacPayloadIn)
 
 	var r0 XMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, SessionManager, *Session, FeedbagManager, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (XMessage, error)); ok {
-		return rf(ctx, sm, sess, fm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (XMessage, error)); ok {
+		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, SessionManager, *Session, FeedbagManager, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) XMessage); ok {
-		r0 = rf(ctx, sm, sess, fm, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *Session, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) XMessage); ok {
+		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
 		r0 = ret.Get(0).(XMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, SessionManager, *Session, FeedbagManager, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) error); ok {
-		r1 = rf(ctx, sm, sess, fm, snacPayloadIn)
+	if rf, ok := ret.Get(1).(func(context.Context, *Session, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) error); ok {
+		r1 = rf(ctx, sess, snacPayloadIn)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -350,17 +344,15 @@ type MockFeedbagHandler_UpdateItemHandler_Call struct {
 
 // UpdateItemHandler is a helper method to define mock.On call
 //   - ctx context.Context
-//   - sm SessionManager
 //   - sess *Session
-//   - fm FeedbagManager
 //   - snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem
-func (_e *MockFeedbagHandler_Expecter) UpdateItemHandler(ctx interface{}, sm interface{}, sess interface{}, fm interface{}, snacPayloadIn interface{}) *MockFeedbagHandler_UpdateItemHandler_Call {
-	return &MockFeedbagHandler_UpdateItemHandler_Call{Call: _e.mock.On("UpdateItemHandler", ctx, sm, sess, fm, snacPayloadIn)}
+func (_e *MockFeedbagHandler_Expecter) UpdateItemHandler(ctx interface{}, sess interface{}, snacPayloadIn interface{}) *MockFeedbagHandler_UpdateItemHandler_Call {
+	return &MockFeedbagHandler_UpdateItemHandler_Call{Call: _e.mock.On("UpdateItemHandler", ctx, sess, snacPayloadIn)}
 }
 
-func (_c *MockFeedbagHandler_UpdateItemHandler_Call) Run(run func(ctx context.Context, sm SessionManager, sess *Session, fm FeedbagManager, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem)) *MockFeedbagHandler_UpdateItemHandler_Call {
+func (_c *MockFeedbagHandler_UpdateItemHandler_Call) Run(run func(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem)) *MockFeedbagHandler_UpdateItemHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(SessionManager), args[2].(*Session), args[3].(FeedbagManager), args[4].(oscar.SNAC_0x13_0x09_FeedbagUpdateItem))
+		run(args[0].(context.Context), args[1].(*Session), args[2].(oscar.SNAC_0x13_0x09_FeedbagUpdateItem))
 	})
 	return _c
 }
@@ -370,7 +362,7 @@ func (_c *MockFeedbagHandler_UpdateItemHandler_Call) Return(_a0 XMessage, _a1 er
 	return _c
 }
 
-func (_c *MockFeedbagHandler_UpdateItemHandler_Call) RunAndReturn(run func(context.Context, SessionManager, *Session, FeedbagManager, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (XMessage, error)) *MockFeedbagHandler_UpdateItemHandler_Call {
+func (_c *MockFeedbagHandler_UpdateItemHandler_Call) RunAndReturn(run func(context.Context, *Session, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (XMessage, error)) *MockFeedbagHandler_UpdateItemHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }

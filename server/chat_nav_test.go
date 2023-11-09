@@ -49,8 +49,10 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 			},
 		},
 	}
-	svc := ChatNavService{}
-	outputSNAC, err := svc.CreateRoomHandler(context.Background(), userSess, cr, crf, inputSNAC)
+	svc := ChatNavService{
+		cr: cr,
+	}
+	outputSNAC, err := svc.CreateRoomHandler(context.Background(), userSess, crf, inputSNAC)
 	assert.NoError(t, err)
 
 	//
@@ -208,11 +210,11 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				RequestRoomInfoHandler(mock.Anything, mock.Anything, tc.input.snacOut).
+				RequestRoomInfoHandler(mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				CreateRoomHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				CreateRoomHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
@@ -229,7 +231,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteChatNav(nil, nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteChatNav(nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

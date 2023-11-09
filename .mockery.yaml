@@ -29,6 +29,12 @@ packages:
       OServiceHandler:
         config:
           filename: "oservice_mock.go"
+      OServiceBOSHandler:
+        config:
+          filename: "oservice_bos_mock.go"
+      OServiceChatHandler:
+        config:
+          filename: "oservice_chat_mock.go"
       ProfileManager:
         config:
           filename: "profile_manager_mock.go"
