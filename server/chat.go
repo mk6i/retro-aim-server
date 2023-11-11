@@ -91,7 +91,7 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *Session,
 	return ret, nil
 }
 
-func SetOnlineChatUsers(ctx context.Context, sess *Session, sm SessionManager) {
+func SetOnlineChatUsers(ctx context.Context, sess *Session, sm ChatRoom) {
 	snacPayloadOut := oscar.SNAC_0x0E_0x03_ChatUsersJoined{}
 	sessions := sm.Participants()
 

@@ -90,13 +90,31 @@ func (rt RouteLogger) logRequestAndResponse(ctx context.Context, inFrame oscar.S
 	}
 }
 
+func (rt RouteLogger) logRequestError(ctx context.Context, inFrame oscar.SnacFrame, err error) {
+	logRequestError(ctx, rt.Logger, inFrame, err)
+}
+
+func logRequestError(ctx context.Context, logger *slog.Logger, inFrame oscar.SnacFrame, err error) {
+	logger.LogAttrs(ctx, slog.LevelError, "client request error",
+		slog.Group("request",
+			slog.String("food_group", oscar.FoodGroupStr(inFrame.FoodGroup)),
+			slog.String("sub_group", oscar.SubGroupStr(inFrame.FoodGroup, inFrame.SubGroup)),
+		),
+		slog.String("err", err.Error()),
+	)
+}
+
 func (rt RouteLogger) logRequest(ctx context.Context, inFrame oscar.SnacFrame, inSNAC any) {
+	logRequest(ctx, rt.Logger, inFrame, inSNAC)
+}
+
+func logRequest(ctx context.Context, logger *slog.Logger, inFrame oscar.SnacFrame, inSNAC any) {
 	const msg = "client request"
 	switch {
-	case rt.Logger.Enabled(ctx, LevelTrace):
-		rt.Logger.LogAttrs(ctx, LevelTrace, msg, SNACLogGroupWithPayload("request", inFrame, inSNAC))
-	case rt.Logger.Enabled(ctx, slog.LevelDebug):
-		rt.Logger.LogAttrs(ctx, slog.LevelDebug, msg, slog.Group("request", SNACLogGroup("request", inFrame)))
+	case logger.Enabled(ctx, LevelTrace):
+		logger.LogAttrs(ctx, LevelTrace, msg, SNACLogGroupWithPayload("request", inFrame, inSNAC))
+	case logger.Enabled(ctx, slog.LevelDebug):
+		logger.LogAttrs(ctx, slog.LevelDebug, msg, slog.Group("request", SNACLogGroup("request", inFrame)))
 	}
 }
 

@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/mkaminski/goaim/oscar"
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/mkaminski/goaim/oscar"
 )
 
 var (
@@ -22,11 +23,10 @@ const (
 	SessSendOK SessSendStatus = iota
 	// SessSendClosed indicates send did not complete because session is closed
 	SessSendClosed
-	// SessSendTimeout indicates send timed out due to blocked recipient
-	SessSendTimeout
+	// SessQueueFull indicates send failed due to full queue -- client is likely
+	// dead
+	SessQueueFull
 )
-
-const sendTimeout = 10 * time.Second
 
 type Session struct {
 	ID          string
@@ -40,7 +40,6 @@ type Session struct {
 	invisible   bool
 	idle        bool
 	idleTime    time.Time
-	sendTimeout time.Duration
 	closed      bool
 }
 
@@ -156,13 +155,18 @@ func (s *Session) RecvMessage() chan XMessage {
 }
 
 func (s *Session) SendMessage(msg XMessage) SessSendStatus {
+	s.Mutex.Lock()
+	if s.closed {
+		return SessSendClosed
+	}
+	s.Mutex.Unlock()
 	select {
 	case s.msgCh <- msg:
 		return SessSendOK
 	case <-s.stopCh:
 		return SessSendClosed
-	case <-time.After(s.sendTimeout):
-		return SessSendTimeout
+	default:
+		return SessQueueFull
 	}
 }
 
@@ -197,7 +201,7 @@ func (s *InMemorySessionManager) Broadcast(ctx context.Context, msg XMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
-		go s.maybeSendMessage(ctx, msg, sess)
+		s.maybeSendMessage(ctx, msg, sess)
 	}
 }
 
@@ -205,8 +209,8 @@ func (s *InMemorySessionManager) maybeSendMessage(ctx context.Context, msg XMess
 	switch sess.SendMessage(msg) {
 	case SessSendClosed:
 		s.logger.WarnContext(ctx, "can't send notification because the user's session is closed", "recipient", sess.ScreenName, "message", msg)
-	case SessSendTimeout:
-		s.logger.WarnContext(ctx, "can't send notification because of send timeout", "recipient", sess.ScreenName, "message", msg)
+	case SessQueueFull:
+		s.logger.WarnContext(ctx, "can't send notification because queue is full", "recipient", sess.ScreenName, "message", msg)
 		sess.Close()
 	}
 }
@@ -234,7 +238,7 @@ func (s *InMemorySessionManager) BroadcastExcept(ctx context.Context, except *Se
 		if sess == except {
 			continue
 		}
-		go s.maybeSendMessage(ctx, msg, sess)
+		s.maybeSendMessage(ctx, msg, sess)
 	}
 }
 
@@ -276,21 +280,20 @@ func (s *InMemorySessionManager) SendToScreenName(ctx context.Context, screenNam
 		s.logger.WarnContext(ctx, "can't send notification because user is not online", "recipient", screenName, "message", msg)
 		return
 	}
-	go s.maybeSendMessage(ctx, msg, sess)
+	s.maybeSendMessage(ctx, msg, sess)
 }
 
 func (s *InMemorySessionManager) BroadcastToScreenNames(ctx context.Context, screenNames []string, msg XMessage) {
 	for _, sess := range s.retrieveByScreenNames(screenNames) {
-		go s.maybeSendMessage(ctx, msg, sess)
+		s.maybeSendMessage(ctx, msg, sess)
 	}
 }
 
 func makeSession() *Session {
 	return &Session{
-		msgCh:       make(chan XMessage, 1),
-		stopCh:      make(chan struct{}),
-		sendTimeout: sendTimeout,
-		SignonTime:  time.Now(),
+		msgCh:      make(chan XMessage, 1000),
+		stopCh:     make(chan struct{}),
+		SignonTime: time.Now(),
 	}
 }
 

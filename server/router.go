@@ -5,10 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/mkaminski/goaim/oscar"
 	"io"
 	"log/slog"
 	"net"
+
+	"github.com/mkaminski/goaim/oscar"
 )
 
 func NewBOSServiceRouter(logger *slog.Logger, cfg Config, fm FeedbagManager, sm SessionManager, cr *ChatRegistry, pm ProfileManager) BOSServiceRouter {
@@ -22,6 +23,10 @@ func NewBOSServiceRouter(logger *slog.Logger, cfg Config, fm FeedbagManager, sm 
 		OServiceBOSRouter: NewOServiceRouterForBOS(logger, cfg, fm, sm, cr),
 		sm:                sm,
 		fm:                fm,
+		cfg:               cfg,
+		RouteLogger: RouteLogger{
+			Logger: logger,
+		},
 	}
 }
 
@@ -29,6 +34,10 @@ func NewChatServiceRouter(logger *slog.Logger, cfg Config, fm FeedbagManager, sm
 	return ChatServiceRouter{
 		OServiceChatRouter: NewOServiceRouterForChat(logger, cfg, fm, sm),
 		ChatRouter:         NewChatRouter(logger),
+		cfg:                cfg,
+		RouteLogger: RouteLogger{
+			Logger: logger,
+		},
 	}
 }
 
@@ -40,31 +49,55 @@ type BOSServiceRouter struct {
 	ICBMRouter
 	LocateRouter
 	OServiceBOSRouter
-	sm SessionManager
-	fm FeedbagManager
+	sm  SessionManager
+	fm  FeedbagManager
+	cfg Config
+	RouteLogger
 }
 
-func (rt *BOSServiceRouter) Route(ctx context.Context, sess *Session, w io.Writer, sequence *uint32, snac oscar.SnacFrame, buf io.Reader) error {
-	switch snac.FoodGroup {
-	case oscar.OSERVICE:
-		return rt.RouteOService(ctx, sess, snac, buf, w, sequence)
-	case oscar.LOCATE:
-		return rt.RouteLocate(ctx, sess, snac, buf, w, sequence)
-	case oscar.BUDDY:
-		return rt.RouteBuddy(ctx, snac, buf, w, sequence)
-	case oscar.ICBM:
-		return rt.RouteICBM(ctx, sess, snac, buf, w, sequence)
-	case oscar.CHAT_NAV:
-		return rt.RouteChatNav(ctx, sess, snac, buf, w, sequence)
-	case oscar.FEEDBAG:
-		return rt.RouteFeedbag(ctx, sess, snac, buf, w, sequence)
-	case oscar.BUCP:
-		return routeBUCP(ctx)
-	case oscar.ALERT:
-		return rt.RouteAlert(ctx, snac)
-	default:
-		return ErrUnsupportedFoodGroup
+func (rt *BOSServiceRouter) Route(ctx context.Context, sess *Session, r io.Reader, w io.Writer, sequence *uint32) error {
+	snac := oscar.SnacFrame{}
+	if err := oscar.Unmarshal(&snac, r); err != nil {
+		return err
 	}
+
+	err := func() error {
+		switch snac.FoodGroup {
+		case oscar.OSERVICE:
+			return rt.RouteOService(ctx, sess, snac, r, w, sequence)
+		case oscar.LOCATE:
+			return rt.RouteLocate(ctx, sess, snac, r, w, sequence)
+		case oscar.BUDDY:
+			return rt.RouteBuddy(ctx, snac, r, w, sequence)
+		case oscar.ICBM:
+			return rt.RouteICBM(ctx, sess, snac, r, w, sequence)
+		case oscar.CHAT_NAV:
+			return rt.RouteChatNav(ctx, sess, snac, r, w, sequence)
+		case oscar.FEEDBAG:
+			return rt.RouteFeedbag(ctx, sess, snac, r, w, sequence)
+		case oscar.BUCP:
+			return routeBUCP(ctx)
+		case oscar.ALERT:
+			return rt.RouteAlert(ctx, snac)
+		default:
+			return ErrUnsupportedSubGroup
+		}
+	}()
+
+	if err != nil {
+		rt.logRequestError(ctx, snac, err)
+		if errors.Is(err, ErrUnsupportedSubGroup) {
+			if err1 := sendInvalidSNACErr(snac, w, sequence); err1 != nil {
+				err = errors.Join(err1, err)
+			}
+			if rt.cfg.FailFast {
+				panic(err.Error())
+			}
+			return nil
+		}
+	}
+
+	return err
 }
 
 func (rt *BOSServiceRouter) Signout(ctx context.Context, logger *slog.Logger, sess *Session) {
@@ -147,15 +180,39 @@ func sendInvalidSNACErr(snac oscar.SnacFrame, w io.Writer, sequence *uint32) err
 type ChatServiceRouter struct {
 	ChatRouter
 	OServiceChatRouter
+	cfg Config
+	RouteLogger
 }
 
-func (rt *ChatServiceRouter) Route(ctx context.Context, sess *Session, w io.Writer, sequence *uint32, snac oscar.SnacFrame, buf io.Reader, room ChatRoom) error {
-	switch snac.FoodGroup {
-	case oscar.OSERVICE:
-		return rt.RouteOService(ctx, sess, room, snac, buf, w, sequence)
-	case oscar.CHAT:
-		return rt.RouteChat(ctx, sess, room, snac, buf, w, sequence)
-	default:
-		return ErrUnsupportedFoodGroup
+func (rt *ChatServiceRouter) Route(ctx context.Context, sess *Session, r io.Reader, w io.Writer, sequence *uint32, room ChatRoom) error {
+	snac := oscar.SnacFrame{}
+	if err := oscar.Unmarshal(&snac, r); err != nil {
+		return err
 	}
+
+	err := func() error {
+		switch snac.FoodGroup {
+		case oscar.OSERVICE:
+			return rt.RouteOService(ctx, sess, room, snac, r, w, sequence)
+		case oscar.CHAT:
+			return rt.RouteChat(ctx, sess, room, snac, r, w, sequence)
+		default:
+			return ErrUnsupportedSubGroup
+		}
+	}()
+
+	if err != nil {
+		rt.logRequestError(ctx, snac, err)
+		if errors.Is(err, ErrUnsupportedSubGroup) {
+			if err1 := sendInvalidSNACErr(snac, w, sequence); err1 != nil {
+				err = errors.Join(err1, err)
+			}
+			if rt.cfg.FailFast {
+				panic(err.Error())
+			}
+			return nil
+		}
+	}
+
+	return err
 }

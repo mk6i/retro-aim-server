@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"log/slog"
@@ -16,120 +15,99 @@ import (
 )
 
 var (
-	CapChat, _ = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
+	CapChat, _             = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
+	ErrUnsupportedSubGroup = errors.New("unimplemented subgroup, your client version may be unsupported")
 )
 
-var (
-	ErrUnsupportedFoodGroup = errors.New("unimplemented food group, your client version may be unsupported")
-	ErrUnsupportedSubGroup  = errors.New("unimplemented subgroup, your client version may be unsupported")
+type (
+	XMessage struct {
+		snacFrame oscar.SnacFrame
+		snacOut   any
+	}
+	incomingMessage struct {
+		flap    oscar.FlapFrame
+		payload *bytes.Buffer
+	}
+	alertHandler     func(ctx context.Context, msg XMessage, w io.Writer, u *uint32) error
+	clientReqHandler func(ctx context.Context, r io.Reader, w io.Writer, u *uint32) error
 )
 
-type IncomingMessage struct {
-	flap oscar.FlapFrame
-	snac oscar.SnacFrame
-	buf  io.Reader
-}
-
-type XMessage struct {
-	snacFrame oscar.SnacFrame
-	snacOut   any
-}
-
-func readIncomingRequests(ctx context.Context, logger *slog.Logger, rw io.Reader, msgCh chan IncomingMessage, errCh chan error) {
+func consumeFLAPFrames(r io.Reader, msgCh chan incomingMessage, errCh chan error) {
 	defer close(msgCh)
 	defer close(errCh)
 
 	for {
-		flap := oscar.FlapFrame{}
-		if err := oscar.Unmarshal(&flap, rw); err != nil {
+		in := incomingMessage{}
+		if err := oscar.Unmarshal(&in.flap, r); err != nil {
 			errCh <- err
 			return
 		}
 
-		switch flap.FrameType {
-		case oscar.FlapFrameSignon:
-			errCh <- errors.New("shouldn't get FlapFrameSignon")
-			return
-		case oscar.FlapFrameData:
-			b := make([]byte, flap.PayloadLength)
-			if _, err := rw.Read(b); err != nil {
+		if in.flap.FrameType == oscar.FlapFrameData {
+			buf := make([]byte, in.flap.PayloadLength)
+			if _, err := r.Read(buf); err != nil {
 				errCh <- err
 				return
 			}
-
-			snac := oscar.SnacFrame{}
-			buf := bytes.NewBuffer(b)
-			if err := oscar.Unmarshal(&snac, buf); err != nil {
-				errCh <- err
-				return
-			}
-
-			msgCh <- IncomingMessage{
-				flap: flap,
-				snac: snac,
-				buf:  buf,
-			}
-		case oscar.FlapFrameError:
-			errCh <- fmt.Errorf("got FlapFrameError: %v", flap)
-			return
-		case oscar.FlapFrameSignoff:
-			errCh <- ErrSignedOff
-			return
-		case oscar.FlapFrameKeepAlive:
-			logger.DebugContext(ctx, "keepalive heartbeat")
-		default:
-			errCh <- fmt.Errorf("unknown frame type: %v", flap)
-			return
+			in.payload = bytes.NewBuffer(buf)
 		}
+
+		msgCh <- in
 	}
 }
 
-func Signout(ctx context.Context, logger *slog.Logger, sess *Session, sm SessionManager, fm *FeedbagStore) {
-	if err := BroadcastDeparture(ctx, sess, sm, fm); err != nil {
-		logger.ErrorContext(ctx, "error notifying departure", "err", err.Error())
-	}
-	sm.Remove(sess)
-}
-
-type RouteSig func(ctx context.Context, rwc io.ReadWriter, u *uint32, snac oscar.SnacFrame, buf io.Reader) error
-
-func ReadBos(ctx context.Context, cfg Config, sess *Session, seq uint32, rwc io.ReadWriter, logger *slog.Logger, fn RouteSig) {
+func dispatchIncomingMessages(ctx context.Context, sess *Session, seq uint32, rw io.ReadWriter, logger *slog.Logger, fn clientReqHandler, alertHandler alertHandler) {
 	// buffered so that the go routine has room to exit
-	msgCh := make(chan IncomingMessage, 1)
-	errCh := make(chan error, 1)
-	go readIncomingRequests(ctx, logger, rwc, msgCh, errCh)
-
-	rl := RouteLogger{
-		Logger: logger,
-	}
+	msgCh := make(chan incomingMessage, 1)
+	readErrCh := make(chan error, 1)
+	go consumeFLAPFrames(rw, msgCh, readErrCh)
 
 	for {
 		select {
 		case m := <-msgCh:
-			if err := fn(ctx, rwc, &seq, m.snac, m.buf); err != nil {
-				if errors.Is(err, ErrUnsupportedSubGroup) || errors.Is(err, ErrUnsupportedFoodGroup) {
-					if err1 := sendInvalidSNACErr(m.snac, rwc, &seq); err1 != nil {
-						err = errors.Join(err1, err)
-					}
-					if cfg.FailFast {
-						panic(err.Error())
-					}
+			switch m.flap.FrameType {
+			case oscar.FlapFrameData:
+				// route a client request to the appropriate service handler. the
+				// handler may write a response to the client connection.
+				if err := fn(ctx, m.payload, rw, &seq); err != nil {
+					return
 				}
-				logRequestError(ctx, logger, m.snac, err)
+			case oscar.FlapFrameSignon:
+				logger.ErrorContext(ctx, "shouldn't get FlapFrameSignon", "flap", m.flap)
+			case oscar.FlapFrameError:
+				logger.ErrorContext(ctx, "got FlapFrameError", "flap", m.flap)
+				return
+			case oscar.FlapFrameSignoff:
+				logger.InfoContext(ctx, "got FlapFrameSignoff", "flap", m.flap)
+				return
+			case oscar.FlapFrameKeepAlive:
+				logger.DebugContext(ctx, "keepalive heartbeat")
+			default:
+				logger.ErrorContext(ctx, "got unknown FLAP frame type", "flap", m.flap)
 				return
 			}
 		case m := <-sess.RecvMessage():
-			if err := writeOutSNAC(oscar.SnacFrame{}, m.snacFrame, m.snacOut, &seq, rwc); err != nil {
+			// forward a notification sent from another client to this client
+			if err := alertHandler(ctx, m, rw, &seq); err != nil {
 				logRequestError(ctx, logger, m.snacFrame, err)
 				return
 			}
-			rl.logRequest(ctx, m.snacFrame, m.snacOut)
+			logRequest(ctx, logger, m.snacFrame, m.snacOut)
 		case <-sess.Closed():
-			if err := gracefulDisconnect(seq, rwc); err != nil {
+			// gracefully disconnect so that the client does not try to
+			// reconnect when the connection closes.
+			flap := oscar.FlapFrame{
+				StartMarker:   42,
+				FrameType:     oscar.FlapFrameSignoff,
+				Sequence:      uint16(seq),
+				PayloadLength: uint16(0),
+			}
+			if err := oscar.Marshal(flap, rw); err != nil {
 				logger.ErrorContext(ctx, "unable to gracefully disconnect user", "err", err)
 			}
 			return
-		case err := <-errCh:
+		case err := <-readErrCh:
+			// handle a read error
 			switch {
 			case errors.Is(io.EOF, err):
 				fallthrough
@@ -143,26 +121,8 @@ func ReadBos(ctx context.Context, cfg Config, sess *Session, seq uint32, rwc io.
 	}
 }
 
-func logRequestError(ctx context.Context, logger *slog.Logger, inFrame oscar.SnacFrame, err error) {
-	logger.LogAttrs(ctx, slog.LevelError, "client disconnected with error",
-		slog.Group("request",
-			slog.String("food_group", oscar.FoodGroupStr(inFrame.FoodGroup)),
-			slog.String("sub_group", oscar.SubGroupStr(inFrame.FoodGroup, inFrame.SubGroup)),
-		),
-		slog.String("err", err.Error()),
-	)
-}
-
-func gracefulDisconnect(seq uint32, rwc io.ReadWriter) error {
-	return oscar.Marshal(oscar.FlapFrame{
-		StartMarker: 42,
-		FrameType:   oscar.FlapFrameSignoff,
-		Sequence:    uint16(seq),
-	}, rwc)
-}
-
-func HandleChatConnection(ctx context.Context, cfg Config, cr *ChatRegistry, conn net.Conn, router ChatServiceRouter, logger *slog.Logger) {
-	cookie, seq, err := VerifyChatLogin(conn)
+func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWriter, router ChatServiceRouter, logger *slog.Logger) {
+	cookie, seq, err := VerifyChatLogin(rw)
 	if err != nil {
 		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
 		return
@@ -186,19 +146,21 @@ func HandleChatConnection(ctx context.Context, cfg Config, cr *ChatRegistry, con
 		AlertUserLeft(ctx, chatSess, room)
 		room.Remove(chatSess)
 		cr.MaybeRemoveRoom(room.Cookie)
-		conn.Close()
 	}()
 
 	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName)
 
-	if err := router.WriteOServiceHostOnline(conn, &seq); err != nil {
+	if err := router.WriteOServiceHostOnline(rw, &seq); err != nil {
 		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
 	}
 
-	fn := func(ctx context.Context, rwc io.ReadWriter, u *uint32, snac oscar.SnacFrame, buf io.Reader) error {
-		return router.Route(ctx, chatSess, rwc, u, snac, buf, room)
+	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
+		return router.Route(ctx, chatSess, r, w, seq, room)
 	}
-	ReadBos(ctx, cfg, chatSess, seq, conn, logger, fn)
+	fnAlertHandler := func(ctx context.Context, msg XMessage, w io.Writer, seq *uint32) error {
+		return writeOutSNAC(oscar.SnacFrame{}, msg.snacFrame, msg.snacOut, seq, w)
+	}
+	dispatchIncomingMessages(ctx, chatSess, seq, rw, logger, fnClientReqHandler, fnAlertHandler)
 }
 
 func HandleAuthConnection(cfg Config, sm *InMemorySessionManager, fm *FeedbagStore, conn net.Conn) {
@@ -223,7 +185,7 @@ func HandleAuthConnection(cfg Config, sm *InMemorySessionManager, fm *FeedbagSto
 	}
 }
 
-func HandleBOSConnection(ctx context.Context, cfg Config, conn net.Conn, router BOSServiceRouter, logger *slog.Logger) {
+func HandleBOSConnection(ctx context.Context, conn net.Conn, router BOSServiceRouter, logger *slog.Logger) {
 	sess, seq, err := router.VerifyLogin(conn)
 	if err != nil {
 		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
@@ -244,10 +206,13 @@ func HandleBOSConnection(ctx context.Context, cfg Config, conn net.Conn, router 
 		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
 	}
 
-	fn := func(ctx context.Context, rwc io.ReadWriter, u *uint32, snac oscar.SnacFrame, buf io.Reader) error {
-		return router.Route(ctx, sess, rwc, u, snac, buf)
+	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
+		return router.Route(ctx, sess, r, w, seq)
 	}
-	ReadBos(ctx, cfg, sess, seq, conn, logger, fn)
+	fnAlertHandler := func(ctx context.Context, msg XMessage, w io.Writer, seq *uint32) error {
+		return writeOutSNAC(oscar.SnacFrame{}, msg.snacFrame, msg.snacOut, seq, w)
+	}
+	dispatchIncomingMessages(ctx, sess, seq, conn, logger, fnClientReqHandler, fnAlertHandler)
 }
 
 func ListenChat(cfg Config, router ChatServiceRouter, cr *ChatRegistry, logger *slog.Logger) {
@@ -270,7 +235,10 @@ func ListenChat(cfg Config, router ChatServiceRouter, cr *ChatRegistry, logger *
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 		logger.DebugContext(ctx, "accepted connection")
-		go HandleChatConnection(ctx, cfg, cr, conn, router, logger)
+		go func() {
+			HandleChatConnection(ctx, cr, conn, router, logger)
+			conn.Close()
+		}()
 	}
 }
 
@@ -294,7 +262,7 @@ func ListenBOS(cfg Config, router BOSServiceRouter, logger *slog.Logger) {
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 		logger.DebugContext(ctx, "accepted connection")
-		go HandleBOSConnection(ctx, cfg, conn, router, logger)
+		go HandleBOSConnection(ctx, conn, router, logger)
 	}
 }
 
