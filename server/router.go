@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/mkaminski/goaim/user"
 	"io"
 	"log/slog"
 	"net"
@@ -55,7 +56,7 @@ type BOSServiceRouter struct {
 	RouteLogger
 }
 
-func (rt *BOSServiceRouter) Route(ctx context.Context, sess *Session, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt *BOSServiceRouter) Route(ctx context.Context, sess *user.Session, r io.Reader, w io.Writer, sequence *uint32) error {
 	snac := oscar.SnacFrame{}
 	if err := oscar.Unmarshal(&snac, r); err != nil {
 		return err
@@ -100,14 +101,14 @@ func (rt *BOSServiceRouter) Route(ctx context.Context, sess *Session, r io.Reade
 	return err
 }
 
-func (rt *BOSServiceRouter) Signout(ctx context.Context, logger *slog.Logger, sess *Session) {
+func (rt *BOSServiceRouter) Signout(ctx context.Context, logger *slog.Logger, sess *user.Session) {
 	if err := BroadcastDeparture(ctx, sess, rt.sm, rt.fm); err != nil {
 		logger.ErrorContext(ctx, "error notifying departure", "err", err.Error())
 	}
 	rt.sm.Remove(sess)
 }
 
-func (rt *BOSServiceRouter) VerifyLogin(conn net.Conn) (*Session, uint32, error) {
+func (rt *BOSServiceRouter) VerifyLogin(conn net.Conn) (*user.Session, uint32, error) {
 	seq := uint32(100)
 
 	flap, err := SendAndReceiveSignonFrame(conn, &seq)
@@ -118,12 +119,12 @@ func (rt *BOSServiceRouter) VerifyLogin(conn net.Conn) (*Session, uint32, error)
 	var ok bool
 	ID, ok := flap.GetSlice(oscar.OServiceTLVTagsLoginCookie)
 	if !ok {
-		return nil, 0, errors.New("unable to get session ID from payload")
+		return nil, 0, errors.New("unable to get session id from payload")
 	}
 
 	sess, ok := rt.sm.Retrieve(string(ID))
 	if !ok {
-		return nil, 0, fmt.Errorf("unable to find session by ID %s", ID)
+		return nil, 0, fmt.Errorf("unable to find session by id %s", ID)
 	}
 
 	return sess, seq, nil
@@ -184,7 +185,7 @@ type ChatServiceRouter struct {
 	RouteLogger
 }
 
-func (rt *ChatServiceRouter) Route(ctx context.Context, sess *Session, r io.Reader, w io.Writer, sequence *uint32, room ChatRoom) error {
+func (rt *ChatServiceRouter) Route(ctx context.Context, sess *user.Session, r io.Reader, w io.Writer, sequence *uint32, room ChatRoom) error {
 	snac := oscar.SnacFrame{}
 	if err := oscar.Unmarshal(&snac, r); err != nil {
 		return err

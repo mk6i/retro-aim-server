@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"github.com/mkaminski/goaim/user"
 	"github.com/stretchr/testify/mock"
 	"testing"
 
@@ -15,19 +16,17 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 		// name is the unit test name
 		name string
 		// userSession is the session of the user sending the chat message
-		userSession *Session
+		userSession *user.Session
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost
 		// expectSNACToParticipants is the message the server broadcast to chat
 		// room participants (except the sender)
-		expectSNACToParticipants XMessage
-		expectOutput             *XMessage
+		expectSNACToParticipants oscar.XMessage
+		expectOutput             *oscar.XMessage
 	}{
 		{
-			name: "send chat room message, expect acknowledgement to sender client",
-			userSession: newTestSession(Session{
-				ScreenName: "user_sending_chat_msg",
-			}),
+			name:        "send chat room message, expect acknowledgement to sender client",
+			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime),
 			inputSNAC: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
 				Cookie:  1234,
 				Channel: 14,
@@ -44,12 +43,12 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 					},
 				},
 			},
-			expectSNACToParticipants: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectSNACToParticipants: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatChannelMsgToClient,
 				},
-				snacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+				SnacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
 					Cookie:  1234,
 					Channel: 14,
 					TLVRestBlock: oscar.TLVRestBlock{
@@ -57,36 +56,32 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 							oscar.NewTLV(oscar.ChatTLVPublicWhisperFlag, []byte{}),
 							oscar.NewTLV(oscar.ChatTLVEnableReflectionFlag, []byte{}),
 							oscar.NewTLV(oscar.ChatTLVSenderInformation,
-								newTestSession(Session{ScreenName: "user_sending_chat_msg"}).GetTLVUserInfo()),
+								newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
 						},
 					},
 				},
 			},
-			expectOutput: &XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: &oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatChannelMsgToClient,
 				},
-				snacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+				SnacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
 					Cookie:  1234,
 					Channel: 14,
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(oscar.ChatTLVPublicWhisperFlag, []byte{}),
 							oscar.NewTLV(oscar.ChatTLVEnableReflectionFlag, []byte{}),
-							oscar.NewTLV(oscar.ChatTLVSenderInformation, newTestSession(Session{
-								ScreenName: "user_sending_chat_msg",
-							}).GetTLVUserInfo()),
+							oscar.NewTLV(oscar.ChatTLVSenderInformation, newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
 						},
 					},
 				},
 			},
 		},
 		{
-			name: "send chat room message, don't expect acknowledgement to sender client",
-			userSession: newTestSession(Session{
-				ScreenName: "user_sending_chat_msg",
-			}),
+			name:        "send chat room message, don't expect acknowledgement to sender client",
+			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime),
 			inputSNAC: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
 				Cookie:  1234,
 				Channel: 14,
@@ -99,26 +94,24 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 					},
 				},
 			},
-			expectSNACToParticipants: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectSNACToParticipants: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatChannelMsgToClient,
 				},
-				snacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+				SnacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
 					Cookie:  1234,
 					Channel: 14,
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(oscar.ChatTLVPublicWhisperFlag, []byte{}),
 							oscar.NewTLV(oscar.ChatTLVSenderInformation,
-								newTestSession(Session{
-									ScreenName: "user_sending_chat_msg",
-								}).GetTLVUserInfo()),
+								newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
 						},
 					},
 				},
 			},
-			expectOutput: &XMessage{},
+			expectOutput: &oscar.XMessage{},
 		},
 	}
 
@@ -138,7 +131,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, room, tc.inputSNAC)
 			assert.NoError(t, err)
 
-			if tc.expectOutput.snacFrame == (oscar.SnacFrame{}) {
+			if tc.expectOutput.SnacFrame == (oscar.SnacFrame{}) {
 				return // handler doesn't return response
 			}
 
@@ -152,9 +145,9 @@ func TestChatRouter_RouteChat(t *testing.T) {
 		// name is the unit test name
 		name string
 		// input is the request payload
-		input XMessage
+		input oscar.XMessage
 		// output is the response payload
-		output *XMessage
+		output *oscar.XMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -162,33 +155,33 @@ func TestChatRouter_RouteChat(t *testing.T) {
 	}{
 		{
 			name: "receive ChatChannelMsgToHost, return ChatChannelMsgToClient",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatChannelMsgToHost,
 				},
-				snacOut: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+				SnacOut: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
 					Channel: 4,
 				},
 			},
-			output: &XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: &oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatChannelMsgToClient,
 				},
-				snacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+				SnacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
 					Channel: 4,
 				},
 			},
 		},
 		{
 			name: "receive ChatChannelMsgToHost, return no response",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatChannelMsgToHost,
 				},
-				snacOut: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+				SnacOut: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
 					Channel: 4,
 				},
 			},
@@ -196,12 +189,12 @@ func TestChatRouter_RouteChat(t *testing.T) {
 		},
 		{
 			name: "receive ChatRowListInfo, return ErrUnsupportedSubGroup",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT,
 					SubGroup:  oscar.ChatRowListInfo,
 				},
-				snacOut: struct{}{},
+				SnacOut: struct{}{},
 			},
 			output:    nil,
 			expectErr: ErrUnsupportedSubGroup,
@@ -212,7 +205,7 @@ func TestChatRouter_RouteChat(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := NewMockChatHandler(t)
 			svc.EXPECT().
-				ChannelMsgToHostHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				ChannelMsgToHostHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
@@ -224,12 +217,12 @@ func TestChatRouter_RouteChat(t *testing.T) {
 			}
 
 			bufIn := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.input.snacOut, bufIn))
+			assert.NoError(t, oscar.Marshal(tc.input.SnacOut, bufIn))
 
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteChat(nil, nil, ChatRoom{}, tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteChat(nil, nil, ChatRoom{}, tc.input.SnacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -255,11 +248,11 @@ func TestChatRouter_RouteChat(t *testing.T) {
 			// verify the SNAC frame
 			snacFrame := oscar.SnacFrame{}
 			assert.NoError(t, oscar.Unmarshal(&snacFrame, flapBuf))
-			assert.Equal(t, tc.output.snacFrame, snacFrame)
+			assert.Equal(t, tc.output.SnacFrame, snacFrame)
 
 			// verify the SNAC message
 			snacBuf := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.output.snacOut, snacBuf))
+			assert.NoError(t, oscar.Marshal(tc.output.SnacOut, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), flapBuf.Bytes())
 		})
 	}

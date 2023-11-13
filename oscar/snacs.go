@@ -796,3 +796,8 @@ type FeedbagItem struct {
 	ClassID uint16
 	TLVLBlock
 }
+
+type XMessage struct {
+	SnacFrame SnacFrame
+	SnacOut   any
+}

@@ -2,10 +2,12 @@ package server
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
@@ -17,28 +19,22 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 		// recipRetrieveErr is the error returned by the recipient session
 		// lookup
 		recipRetrieveErr error
-		senderSession    *Session
-		recipientSession *Session
+		senderSession    *user.Session
+		recipientSession *user.Session
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost
 		// expectSNACToClient is the SNAC sent from the server to the
 		// recipient client
-		expectSNACToClient XMessage
+		expectSNACToClient oscar.XMessage
 		// inputSNAC is the SNAC frame sent from the server to the recipient
 		// client
-		expectOutput *XMessage
+		expectOutput *oscar.XMessage
 	}{
 		{
-			name:         "transmit message from sender to recipient, ack message back to sender",
-			blockedState: BlockedNo,
-			senderSession: &Session{
-				ScreenName: "sender-screen-name",
-				Warning:    10,
-			},
-			recipientSession: &Session{
-				ScreenName: "recipient-screen-name",
-				Warning:    20,
-			},
+			name:             "transmit message from sender to recipient, ack message back to sender",
+			blockedState:     BlockedNo,
+			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
+			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
 			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 				ScreenName: "recipient-screen-name",
 				TLVRestBlock: oscar.TLVRestBlock{
@@ -50,12 +46,12 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 					},
 				},
 			},
-			expectSNACToClient: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectSNACToClient: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMChannelMsgToclient,
 				},
-				snacOut: oscar.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+				SnacOut: oscar.SNAC_0x04_0x07_ICBMChannelMsgToClient{
 					TLVUserInfo: oscar.TLVUserInfo{
 						ScreenName:   "sender-screen-name",
 						WarningLevel: 10,
@@ -74,39 +70,33 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: &XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: &oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMHostAck,
 				},
-				snacOut: oscar.SNAC_0x04_0x0C_ICBMHostAck{
+				SnacOut: oscar.SNAC_0x04_0x0C_ICBMHostAck{
 					ScreenName: "recipient-screen-name",
 				},
 			},
 		},
 		{
-			name:         "transmit message from sender to recipient, don't ack message back to sender",
-			blockedState: BlockedNo,
-			senderSession: &Session{
-				ScreenName: "sender-screen-name",
-				Warning:    10,
-			},
-			recipientSession: &Session{
-				ScreenName: "recipient-screen-name",
-				Warning:    20,
-			},
+			name:             "transmit message from sender to recipient, don't ack message back to sender",
+			blockedState:     BlockedNo,
+			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
+			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
 			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 				ScreenName: "recipient-screen-name",
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{},
 				},
 			},
-			expectSNACToClient: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectSNACToClient: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMChannelMsgToclient,
 				},
-				snacOut: oscar.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+				SnacOut: oscar.SNAC_0x04_0x07_ICBMChannelMsgToClient{
 					TLVUserInfo: oscar.TLVUserInfo{
 						ScreenName:   "sender-screen-name",
 						WarningLevel: 10,
@@ -124,16 +114,10 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			expectOutput: nil,
 		},
 		{
-			name:         "don't transmit message from sender to recipient because sender has blocked recipient",
-			blockedState: BlockedA,
-			senderSession: &Session{
-				ScreenName: "sender-screen-name",
-				Warning:    10,
-			},
-			recipientSession: &Session{
-				ScreenName: "recipient-screen-name",
-				Warning:    20,
-			},
+			name:             "don't transmit message from sender to recipient because sender has blocked recipient",
+			blockedState:     BlockedA,
+			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
+			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
 			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 				ScreenName: "recipient-screen-name",
 				TLVRestBlock: oscar.TLVRestBlock{
@@ -145,27 +129,21 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: &XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: &oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
 				},
-				snacOut: oscar.SnacError{
+				SnacOut: oscar.SnacError{
 					Code: oscar.ErrorCodeInLocalPermitDeny,
 				},
 			},
 		},
 		{
-			name:         "don't transmit message from sender to recipient because recipient has blocked sender",
-			blockedState: BlockedB,
-			senderSession: &Session{
-				ScreenName: "sender-screen-name",
-				Warning:    10,
-			},
-			recipientSession: &Session{
-				ScreenName: "recipient-screen-name",
-				Warning:    20,
-			},
+			name:             "don't transmit message from sender to recipient because recipient has blocked sender",
+			blockedState:     BlockedB,
+			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
+			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
 			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 				ScreenName: "recipient-screen-name",
 				TLVRestBlock: oscar.TLVRestBlock{
@@ -177,12 +155,12 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: &XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: &oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
 				},
-				snacOut: oscar.SnacError{
+				SnacOut: oscar.SnacError{
 					Code: oscar.ErrorCodeNotLoggedOn,
 				},
 			},
@@ -191,14 +169,8 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			name:             "don't transmit message from sender to recipient because recipient doesn't exist",
 			blockedState:     BlockedNo,
 			recipRetrieveErr: ErrSessNotFound,
-			senderSession: &Session{
-				ScreenName: "sender-screen-name",
-				Warning:    10,
-			},
-			recipientSession: &Session{
-				ScreenName: "recipient-screen-name",
-				Warning:    20,
-			},
+			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
+			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
 			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 				ScreenName: "recipient-screen-name",
 				TLVRestBlock: oscar.TLVRestBlock{
@@ -210,12 +182,12 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: &XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: &oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
 				},
-				snacOut: oscar.SnacError{
+				SnacOut: oscar.SnacError{
 					Code: oscar.ErrorCodeNotLoggedOn,
 				},
 			},
@@ -229,16 +201,16 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			//
 			fm := NewMockFeedbagManager(t)
 			fm.EXPECT().
-				Blocked(tc.senderSession.ScreenName, tc.recipientSession.ScreenName).
+				Blocked(tc.senderSession.ScreenName(), tc.recipientSession.ScreenName()).
 				Return(tc.blockedState, nil).
 				Maybe()
 			sm := NewMockSessionManager(t)
 			sm.EXPECT().
-				RetrieveByScreenName(tc.recipientSession.ScreenName).
+				RetrieveByScreenName(tc.recipientSession.ScreenName()).
 				Return(tc.recipientSession, tc.recipRetrieveErr).
 				Maybe()
 			sm.EXPECT().
-				SendToScreenName(mock.Anything, tc.recipientSession.ScreenName, tc.expectSNACToClient).
+				SendToScreenName(mock.Anything, tc.recipientSession.ScreenName(), tc.expectSNACToClient).
 				Maybe()
 			//
 			// send input SNAC
@@ -269,7 +241,7 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 		inputSNAC oscar.SNAC_0x04_0x14_ICBMClientEvent
 		// expectSNACToClient is the SNAC sent from the server to the
 		// recipient client
-		expectSNACToClient XMessage
+		expectSNACToClient oscar.XMessage
 	}{
 		{
 			name:             "transmit message from sender to recipient",
@@ -281,12 +253,12 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 				ScreenName: "recipient-screen-name",
 				Event:      12,
 			},
-			expectSNACToClient: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectSNACToClient: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMClientEvent,
 				},
-				snacOut: oscar.SNAC_0x04_0x14_ICBMClientEvent{
+				SnacOut: oscar.SNAC_0x04_0x14_ICBMClientEvent{
 					Cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
 					ChannelID:  42,
 					ScreenName: "sender-screen-name",
@@ -322,9 +294,7 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			senderSession := &Session{
-				ScreenName: tc.senderScreenName,
-			}
+			senderSession := newTestSession(tc.senderScreenName)
 			svc := ICBMService{
 				sm: sm,
 				fm: fm,
@@ -335,8 +305,6 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 }
 
 func TestSendAndReceiveEvilRequest(t *testing.T) {
-	defaultSess := &Session{}
-
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -346,39 +314,37 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 		// lookup
 		recipRetrieveErr error
 		// senderScreenName is the session name of the user sending the IM
-		senderSession *Session
+		senderSession *user.Session
 		// recipientScreenName is the screen name of the user receiving the IM
 		recipientScreenName string
 		// recipientBuddies is a list of the recipient's buddies that get
 		// updated warning level
 		recipientBuddies []string
-		broadcastMessage XMessage
+		broadcastMessage oscar.XMessage
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC oscar.SNAC_0x04_0x08_ICBMEvilRequest
 		// expectSNACToClient is the SNAC sent from the server to the
 		// recipient client
-		expectSNACToClient XMessage
+		expectSNACToClient oscar.XMessage
 
-		expectOutput XMessage
+		expectOutput oscar.XMessage
 	}{
 		{
-			name:         "transmit anonymous warning from sender to recipient",
-			blockedState: BlockedNo,
-			senderSession: &Session{
-				ScreenName: "sender-screen-name",
-			},
+			name:                "transmit anonymous warning from sender to recipient",
+			blockedState:        BlockedNo,
+			senderSession:       newTestSession("sender-screen-name"),
 			recipientScreenName: "recipient-screen-name",
-			broadcastMessage: XMessage{
-				snacFrame: oscar.SnacFrame{
+			broadcastMessage: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.BUDDY,
 					SubGroup:  oscar.BuddyArrived,
 				},
-				snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
+				SnacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
 					TLVUserInfo: oscar.TLVUserInfo{
 						ScreenName:   "recipient-screen-name",
 						WarningLevel: evilDeltaAnon,
 						TLVBlock: oscar.TLVBlock{
-							TLVList: defaultSess.GetUserInfo(),
+							TLVList: newTestSession("", sessOptCannedSignonTime).UserInfo(),
 						},
 					},
 				},
@@ -388,45 +354,43 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 				SendAs:     1, // make it anonymous
 				ScreenName: "recipient-screen-name",
 			},
-			expectSNACToClient: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectSNACToClient: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceEvilNotification,
 				},
-				snacOut: oscar.SNAC_0x01_0x10_OServiceEvilNotificationAnon{
+				SnacOut: oscar.SNAC_0x01_0x10_OServiceEvilNotificationAnon{
 					NewEvil: evilDeltaAnon,
 				},
 			},
-			expectOutput: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMEvilReply,
 				},
-				snacOut: oscar.SNAC_0x04_0x09_ICBMEvilReply{
+				SnacOut: oscar.SNAC_0x04_0x09_ICBMEvilReply{
 					EvilDeltaApplied: 30,
 					UpdatedEvilValue: 30,
 				},
 			},
 		},
 		{
-			name:         "transmit non-anonymous warning from sender to recipient",
-			blockedState: BlockedNo,
-			senderSession: &Session{
-				ScreenName: "sender-screen-name",
-			},
+			name:                "transmit non-anonymous warning from sender to recipient",
+			blockedState:        BlockedNo,
+			senderSession:       newTestSession("sender-screen-name"),
 			recipientScreenName: "recipient-screen-name",
 			recipientBuddies:    []string{"buddy1", "buddy2"},
-			broadcastMessage: XMessage{
-				snacFrame: oscar.SnacFrame{
+			broadcastMessage: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.BUDDY,
 					SubGroup:  oscar.BuddyArrived,
 				},
-				snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
+				SnacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
 					TLVUserInfo: oscar.TLVUserInfo{
 						ScreenName:   "recipient-screen-name",
 						WarningLevel: evilDelta,
 						TLVBlock: oscar.TLVBlock{
-							TLVList: defaultSess.GetUserInfo(),
+							TLVList: newTestSession("", sessOptCannedSignonTime).UserInfo(),
 						},
 					},
 				},
@@ -435,12 +399,12 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 				SendAs:     0, // make it identified
 				ScreenName: "recipient-screen-name",
 			},
-			expectSNACToClient: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectSNACToClient: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.OSERVICE,
 					SubGroup:  oscar.OServiceEvilNotification,
 				},
-				snacOut: oscar.SNAC_0x01_0x10_OServiceEvilNotification{
+				SnacOut: oscar.SNAC_0x01_0x10_OServiceEvilNotification{
 					NewEvil: evilDelta,
 					TLVUserInfo: oscar.TLVUserInfo{
 						ScreenName:   "sender-screen-name",
@@ -448,77 +412,71 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMEvilReply,
 				},
-				snacOut: oscar.SNAC_0x04_0x09_ICBMEvilReply{
+				SnacOut: oscar.SNAC_0x04_0x09_ICBMEvilReply{
 					EvilDeltaApplied: 100,
 					UpdatedEvilValue: 100,
 				},
 			},
 		},
 		{
-			name:         "don't transmit non-anonymous warning from sender to recipient because sender has blocked recipient",
-			blockedState: BlockedA,
-			senderSession: &Session{
-				ScreenName: "sender-screen-name",
-			},
+			name:                "don't transmit non-anonymous warning from sender to recipient because sender has blocked recipient",
+			blockedState:        BlockedA,
+			senderSession:       newTestSession("sender-screen-name"),
 			recipientScreenName: "recipient-screen-name",
 			recipientBuddies:    []string{"buddy1", "buddy2"},
 			inputSNAC: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
 				SendAs:     0, // make it identified
 				ScreenName: "recipient-screen-name",
 			},
-			expectOutput: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
 				},
-				snacOut: oscar.SnacError{
+				SnacOut: oscar.SnacError{
 					Code: oscar.ErrorCodeNotLoggedOn,
 				},
 			},
 		},
 		{
-			name:         "don't transmit non-anonymous warning from sender to recipient because recipient has blocked sender",
-			blockedState: BlockedB,
-			senderSession: &Session{
-				ScreenName: "sender-screen-name",
-			},
+			name:                "don't transmit non-anonymous warning from sender to recipient because recipient has blocked sender",
+			blockedState:        BlockedB,
+			senderSession:       newTestSession("sender-screen-name"),
 			recipientScreenName: "recipient-screen-name",
 			recipientBuddies:    []string{"buddy1", "buddy2"},
 			inputSNAC: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
 				SendAs:     0, // make it identified
 				ScreenName: "recipient-screen-name",
 			},
-			expectOutput: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
 				},
-				snacOut: oscar.SnacError{
+				SnacOut: oscar.SnacError{
 					Code: oscar.ErrorCodeNotLoggedOn,
 				},
 			},
 		},
 		{
-			name: "don't let users block themselves",
-			senderSession: &Session{
-				ScreenName: "sender-screen-name",
-			},
+			name:                "don't let users block themselves",
+			senderSession:       newTestSession("sender-screen-name"),
 			recipientScreenName: "sender-screen-name",
 			inputSNAC: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
 				SendAs:     0, // make it identified
 				ScreenName: "sender-screen-name",
 			},
-			expectOutput: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
 				},
-				snacOut: oscar.SnacError{
+				SnacOut: oscar.SnacError{
 					Code: oscar.ErrorCodeNotSupportedByHost,
 				},
 			},
@@ -532,17 +490,14 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			//
 			fm := NewMockFeedbagManager(t)
 			fm.EXPECT().
-				Blocked(tc.senderSession.ScreenName, tc.recipientScreenName).
+				Blocked(tc.senderSession.ScreenName(), tc.recipientScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
 			fm.EXPECT().
 				InterestedUsers(tc.recipientScreenName).
 				Return(tc.recipientBuddies, nil).
 				Maybe()
-			recipSess := &Session{
-				ScreenName: tc.recipientScreenName,
-				Warning:    0,
-			}
+			recipSess := newTestSession(tc.recipientScreenName, sessOptCannedSignonTime)
 			sm := NewMockSessionManager(t)
 			sm.EXPECT().
 				RetrieveByScreenName(tc.recipientScreenName).
@@ -557,9 +512,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			senderSession := &Session{
-				ScreenName: tc.senderSession.ScreenName,
-			}
+			senderSession := newTestSession(tc.senderSession.ScreenName())
 			svc := ICBMService{
 				sm: sm,
 				fm: fm,
@@ -576,9 +529,9 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		// name is the unit test name
 		name string
 		// input is the request payload
-		input XMessage
+		input oscar.XMessage
 		// output is the response payload
-		output *XMessage
+		output *oscar.XMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -586,12 +539,12 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 	}{
 		{
 			name: "receive ICBMAddParameters SNAC, return no response",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMAddParameters,
 				},
-				snacOut: oscar.SNAC_0x04_0x02_ICBMAddParameters{
+				SnacOut: oscar.SNAC_0x04_0x02_ICBMAddParameters{
 					Channel: 1,
 				},
 			},
@@ -599,52 +552,52 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		},
 		{
 			name: "receive ICBMParameterQuery, return ICBMParameterReply",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMParameterQuery,
 				},
-				snacOut: struct{}{}, // empty SNAC
+				SnacOut: struct{}{}, // empty SNAC
 			},
-			output: &XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: &oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMParameterReply,
 				},
-				snacOut: oscar.SNAC_0x04_0x05_ICBMParameterReply{
+				SnacOut: oscar.SNAC_0x04_0x05_ICBMParameterReply{
 					MaxSlots: 100,
 				},
 			},
 		},
 		{
 			name: "receive ICBMChannelMsgToHost, return ICBMHostAck",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMChannelMsgToHost,
 				},
-				snacOut: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				SnacOut: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 					ScreenName: "recipient-screen-name",
 				},
 			},
-			output: &XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: &oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMHostAck,
 				},
-				snacOut: oscar.SNAC_0x04_0x0C_ICBMHostAck{
+				SnacOut: oscar.SNAC_0x04_0x0C_ICBMHostAck{
 					ChannelID: 4,
 				},
 			},
 		},
 		{
 			name: "receive ICBMChannelMsgToHost, return no reply",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMChannelMsgToHost,
 				},
-				snacOut: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				SnacOut: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 					ScreenName: "recipient-screen-name",
 				},
 			},
@@ -652,33 +605,33 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		},
 		{
 			name: "receive ICBMEvilRequest, return ICBMEvilReply",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMEvilRequest,
 				},
-				snacOut: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
+				SnacOut: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
 					ScreenName: "recipient-screen-name",
 				},
 			},
-			output: &XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: &oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMEvilReply,
 				},
-				snacOut: oscar.SNAC_0x04_0x09_ICBMEvilReply{
+				SnacOut: oscar.SNAC_0x04_0x09_ICBMEvilReply{
 					EvilDeltaApplied: 100,
 				},
 			},
 		},
 		{
 			name: "receive ICBMClientErr, return no response",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMClientErr,
 				},
-				snacOut: oscar.SNAC_0x04_0x0B_ICBMClientErr{
+				SnacOut: oscar.SNAC_0x04_0x0B_ICBMClientErr{
 					Code: 4,
 				},
 			},
@@ -686,12 +639,12 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		},
 		{
 			name: "receive ICBMClientEvent, return no response",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMClientEvent,
 				},
-				snacOut: oscar.SNAC_0x04_0x14_ICBMClientEvent{
+				SnacOut: oscar.SNAC_0x04_0x14_ICBMClientEvent{
 					ScreenName: "recipient-screen-name",
 				},
 			},
@@ -699,12 +652,12 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		},
 		{
 			name: "receive ICBMMissedCalls, expect ErrUnsupportedSubGroup",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMMissedCalls,
 				},
-				snacOut: struct{}{}, // empty SNAC
+				SnacOut: struct{}{}, // empty SNAC
 			},
 			output:    nil,
 			expectErr: ErrUnsupportedSubGroup,
@@ -715,16 +668,16 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := NewMockICBMHandler(t)
 			svc.EXPECT().
-				ChannelMsgToHostHandler(mock.Anything, mock.Anything, tc.input.snacOut).
+				ChannelMsgToHostHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				ClientEventHandler(mock.Anything, mock.Anything, tc.input.snacOut).
+				ClientEventHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.handlerErr).
 				Maybe()
 			if tc.output != nil {
 				svc.EXPECT().
-					EvilRequestHandler(mock.Anything, mock.Anything, tc.input.snacOut).
+					EvilRequestHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 					Return(*tc.output, tc.handlerErr).
 					Maybe()
 				svc.EXPECT().
@@ -741,12 +694,12 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			}
 
 			bufIn := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.input.snacOut, bufIn))
+			assert.NoError(t, oscar.Marshal(tc.input.SnacOut, bufIn))
 
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteICBM(nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteICBM(nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -769,11 +722,11 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			// verify the SNAC frame
 			snacFrame := oscar.SnacFrame{}
 			assert.NoError(t, oscar.Unmarshal(&snacFrame, bufOut))
-			assert.Equal(t, tc.output.snacFrame, snacFrame)
+			assert.Equal(t, tc.output.SnacFrame, snacFrame)
 
 			// verify the SNAC message
 			snacBuf := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.output.snacOut, snacBuf))
+			assert.NoError(t, oscar.Marshal(tc.output.SnacOut, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), bufOut.Bytes())
 		})
 	}

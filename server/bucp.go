@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/mkaminski/goaim/user"
 	"io"
 
 	"github.com/google/uuid"
@@ -140,7 +141,7 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sm SessionManager, fm *FeedbagSt
 		sess := sm.NewSessionWithSN(newUUID().String(), screenName)
 		snacPayloadOut.AddTLVList([]oscar.TLV{
 			oscar.NewTLV(oscar.TLVReconnectHere, Address(cfg.OSCARHost, cfg.BOSPort)),
-			oscar.NewTLV(oscar.TLVAuthorizationCookie, sess.ID),
+			oscar.NewTLV(oscar.TLVAuthorizationCookie, sess.ID()),
 		})
 	} else {
 		snacPayloadOut.AddTLVList([]oscar.TLV{
@@ -191,7 +192,7 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSi
 	return flapSignonFrameIn, nil
 }
 
-func VerifyLogin(sm SessionManager, rw io.ReadWriter) (*Session, uint32, error) {
+func VerifyLogin(sm SessionManager, rw io.ReadWriter) (*user.Session, uint32, error) {
 	seq := uint32(100)
 
 	flap, err := SendAndReceiveSignonFrame(rw, &seq)
@@ -202,12 +203,12 @@ func VerifyLogin(sm SessionManager, rw io.ReadWriter) (*Session, uint32, error) 
 	var ok bool
 	ID, ok := flap.GetSlice(oscar.OServiceTLVTagsLoginCookie)
 	if !ok {
-		return nil, 0, errors.New("unable to get session ID from payload")
+		return nil, 0, errors.New("unable to get session id from payload")
 	}
 
 	sess, ok := sm.Retrieve(string(ID))
 	if !ok {
-		return nil, 0, fmt.Errorf("unable to find session by ID %s", ID)
+		return nil, 0, fmt.Errorf("unable to find session by id %s", ID)
 	}
 
 	return sess, seq, nil
@@ -224,7 +225,7 @@ func VerifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error) {
 	var ok bool
 	buf, ok := flap.GetSlice(oscar.OServiceTLVTagsLoginCookie)
 	if !ok {
-		return nil, 0, errors.New("unable to get session ID from payload")
+		return nil, 0, errors.New("unable to get session id from payload")
 	}
 
 	cookie := ChatCookie{}

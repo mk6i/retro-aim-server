@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/user"
 )
 
 var feedbagDDL = `
@@ -400,16 +401,16 @@ type FeedbagManager interface {
 }
 
 type SessionManager interface {
-	BroadcastToScreenNames(ctx context.Context, screenNames []string, msg XMessage)
+	BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.XMessage)
 	Empty() bool
-	NewSessionWithSN(sessID string, screenName string) *Session
-	Remove(sess *Session)
-	Retrieve(ID string) (*Session, bool)
-	RetrieveByScreenName(screenName string) (*Session, error)
-	SendToScreenName(ctx context.Context, screenName string, msg XMessage)
-	Broadcast(ctx context.Context, msg XMessage)
-	BroadcastExcept(ctx context.Context, except *Session, msg XMessage)
-	Participants() []*Session
+	NewSessionWithSN(sessID string, screenName string) *user.Session
+	Remove(sess *user.Session)
+	Retrieve(ID string) (*user.Session, bool)
+	RetrieveByScreenName(screenName string) (*user.Session, error)
+	SendToScreenName(ctx context.Context, screenName string, msg oscar.XMessage)
+	Broadcast(ctx context.Context, msg oscar.XMessage)
+	BroadcastExcept(ctx context.Context, except *user.Session, msg oscar.XMessage)
+	Participants() []*user.Session
 }
 
 type ProfileManager interface {

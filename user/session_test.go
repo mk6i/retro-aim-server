@@ -1,6 +1,7 @@
-package server
+package user
 
 import (
+	"github.com/mkaminski/goaim/oscar"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -8,21 +9,21 @@ import (
 
 func TestSession_SendMessage_SessSendOK(t *testing.T) {
 	s := Session{
-		msgCh:  make(chan XMessage, 1),
+		msgCh:  make(chan oscar.XMessage, 1),
 		stopCh: make(chan struct{}),
 	}
-	if res := s.SendMessage(XMessage{}); res != SessSendOK {
+	if res := s.SendMessage(oscar.XMessage{}); res != SessSendOK {
 		t.Fatalf("expected SessSendOK, got %+v", res)
 	}
 }
 
 func TestSession_SendMessage_SessSendClosed(t *testing.T) {
 	s := Session{
-		msgCh:  make(chan XMessage, 1),
+		msgCh:  make(chan oscar.XMessage, 1),
 		stopCh: make(chan struct{}),
 	}
 	s.Close()
-	if res := s.SendMessage(XMessage{}); res != SessSendClosed {
+	if res := s.SendMessage(oscar.XMessage{}); res != SessSendClosed {
 		t.Fatalf("expected SessSendClosed, got %+v", res)
 	}
 }
@@ -30,13 +31,13 @@ func TestSession_SendMessage_SessSendClosed(t *testing.T) {
 func TestSession_SendMessage_SessQueueFull(t *testing.T) {
 	bufSize := 10
 	s := Session{
-		msgCh:  make(chan XMessage, bufSize),
+		msgCh:  make(chan oscar.XMessage, bufSize),
 		stopCh: make(chan struct{}),
 	}
 	for i := 0; i < bufSize; i++ {
-		assert.Equal(t, SessSendOK, s.SendMessage(XMessage{}))
+		assert.Equal(t, SessSendOK, s.SendMessage(oscar.XMessage{}))
 	}
-	assert.Equal(t, SessQueueFull, s.SendMessage(XMessage{}))
+	assert.Equal(t, SessQueueFull, s.SendMessage(oscar.XMessage{}))
 }
 
 func TestSession_Close_Twice(t *testing.T) {

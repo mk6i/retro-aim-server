@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -21,19 +22,19 @@ func TestQueryHandler(t *testing.T) {
 		lastModified time.Time
 		// expectOutput is the SNAC payload sent from the server to the
 		// recipient client
-		expectOutput XMessage
+		expectOutput oscar.XMessage
 	}{
 		{
 			name:         "retrieve empty feedbag",
 			screenName:   "user_screen_name",
 			feedbagItems: []oscar.FeedbagItem{},
 			lastModified: time.UnixMilli(0),
-			expectOutput: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagReply,
 				},
-				snacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
+				SnacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
 					Items: []oscar.FeedbagItem{},
 				},
 			},
@@ -50,12 +51,12 @@ func TestQueryHandler(t *testing.T) {
 				},
 			},
 			lastModified: time.UnixMilli(1696472198082),
-			expectOutput: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagReply,
 				},
-				snacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
+				SnacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
 					Version: 0,
 					Items: []oscar.FeedbagItem{
 						{
@@ -88,9 +89,7 @@ func TestQueryHandler(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			senderSession := &Session{
-				ScreenName: tc.screenName,
-			}
+			senderSession := newTestSession(tc.screenName)
 			svc := FeedbagService{
 				fm: fm,
 			}
@@ -115,7 +114,7 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 		inputSNAC oscar.SNAC_0x13_0x05_FeedbagQueryIfModified
 		// expectOutput is the SNAC payload sent from the server to the
 		// recipient client
-		expectOutput XMessage
+		expectOutput oscar.XMessage
 	}{
 		{
 			name:         "retrieve empty feedbag",
@@ -125,12 +124,12 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 			inputSNAC: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
 				LastUpdate: uint32(time.UnixMilli(100000).Unix()),
 			},
-			expectOutput: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagReply,
 				},
-				snacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
+				SnacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
 					Items: []oscar.FeedbagItem{},
 				},
 			},
@@ -150,12 +149,12 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 			inputSNAC: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
 				LastUpdate: uint32(time.UnixMilli(100000).Unix()),
 			},
-			expectOutput: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagReply,
 				},
-				snacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
+				SnacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
 					Version: 0,
 					Items: []oscar.FeedbagItem{
 						{
@@ -184,12 +183,12 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 			inputSNAC: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
 				LastUpdate: uint32(time.UnixMilli(200000).Unix()),
 			},
-			expectOutput: XMessage{
-				snacFrame: oscar.SnacFrame{
+			expectOutput: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagReplyNotModified,
 				},
-				snacOut: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
+				SnacOut: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
 					LastUpdate: uint32(time.UnixMilli(100000).Unix()),
 					Count:      2,
 				},
@@ -214,9 +213,7 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			senderSession := &Session{
-				ScreenName: tc.screenName,
-			}
+			senderSession := newTestSession(tc.screenName)
 			svc := FeedbagService{
 				fm: fm,
 			}
@@ -231,34 +228,31 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 }
 
 func TestInsertItemHandler(t *testing.T) {
-	defaultSess := &Session{}
 	cases := []struct {
 		// name is the unit test name
 		name string
 		// userSession is the session of the user managing buddy list
-		userSession *Session
+		userSession *user.Session
 		// feedbagItems is the list of items in user's buddy list
 		feedbagItems []oscar.FeedbagItem
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC oscar.SNAC_0x13_0x08_FeedbagInsertItem
 		// screenNameLookups is the list of user's online buddies
 		screenNameLookups map[string]struct {
-			sess *Session
+			sess *user.Session
 			err  error
 		}
 		// clientResponse is the message returned to the client
-		clientResponse XMessage
+		clientResponse oscar.XMessage
 		// buddyMessages are events forwarded to buddy clients
 		buddyMessages []struct {
 			user string
-			msg  XMessage
+			msg  oscar.XMessage
 		}
 	}{
 		{
-			name: "user adds 2 online buddies, expect OK response",
-			userSession: &Session{
-				ScreenName: "user_screen_name",
-			},
+			name:        "user adds 2 online buddies, expect OK response",
+			userSession: newTestSession("user_screen_name"),
 			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
 				Items: []oscar.FeedbagItem{
 					{
@@ -272,44 +266,44 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *Session
+				sess *user.Session
 				err  error
 			}{
 				"user_screen_name": {
-					sess: &Session{ScreenName: "user_screen_name"},
+					sess: newTestSession("user_screen_name", sessOptCannedSignonTime),
 				},
 				"buddy_1_online": {
-					sess: &Session{ScreenName: "buddy_1_online"},
+					sess: newTestSession("buddy_1_online", sessOptCannedSignonTime),
 				},
 				"buddy_2_online": {
-					sess: &Session{ScreenName: "buddy_2_online"},
+					sess: newTestSession("buddy_2_online", sessOptCannedSignonTime),
 				},
 			},
-			clientResponse: XMessage{
-				snacFrame: oscar.SnacFrame{
+			clientResponse: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagStatus,
 				},
-				snacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
+				SnacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{0x0000, 0x0000},
 				},
 			},
 			buddyMessages: []struct {
 				user string
-				msg  XMessage
+				msg  oscar.XMessage
 			}{
 				{
 					user: "user_screen_name",
-					msg: XMessage{
-						snacFrame: oscar.SnacFrame{
+					msg: oscar.XMessage{
+						SnacFrame: oscar.SnacFrame{
 							FoodGroup: oscar.BUDDY,
 							SubGroup:  oscar.BuddyArrived,
 						},
-						snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
+						SnacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
 							TLVUserInfo: oscar.TLVUserInfo{
 								ScreenName: "buddy_1_online",
 								TLVBlock: oscar.TLVBlock{
-									TLVList: defaultSess.GetUserInfo(),
+									TLVList: newTestSession("", sessOptCannedSignonTime).UserInfo(),
 								},
 							},
 						},
@@ -317,16 +311,16 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 				{
 					user: "user_screen_name",
-					msg: XMessage{
-						snacFrame: oscar.SnacFrame{
+					msg: oscar.XMessage{
+						SnacFrame: oscar.SnacFrame{
 							FoodGroup: oscar.BUDDY,
 							SubGroup:  oscar.BuddyArrived,
 						},
-						snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
+						SnacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
 							TLVUserInfo: oscar.TLVUserInfo{
 								ScreenName: "buddy_2_online",
 								TLVBlock: oscar.TLVBlock{
-									TLVList: defaultSess.GetUserInfo(),
+									TLVList: newTestSession("", sessOptCannedSignonTime).UserInfo(),
 								},
 							},
 						},
@@ -335,10 +329,8 @@ func TestInsertItemHandler(t *testing.T) {
 			},
 		},
 		{
-			name: "user adds an offline buddy, expect OK response and 0 buddy arrived events",
-			userSession: &Session{
-				ScreenName: "user_screen_name",
-			},
+			name:        "user adds an offline buddy, expect OK response and 0 buddy arrived events",
+			userSession: newTestSession("user_screen_name"),
 			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
 				Items: []oscar.FeedbagItem{
 					{
@@ -348,28 +340,26 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *Session
+				sess *user.Session
 				err  error
 			}{
 				"buddy_offline": {
 					err: ErrSessNotFound,
 				},
 			},
-			clientResponse: XMessage{
-				snacFrame: oscar.SnacFrame{
+			clientResponse: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagStatus,
 				},
-				snacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
+				SnacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{0x0000},
 				},
 			},
 		},
 		{
-			name: "users adds an invisible buddy, expect OK response and 0 buddy arrived events",
-			userSession: &Session{
-				ScreenName: "user_screen_name",
-			},
+			name:        "users adds an invisible buddy, expect OK response and 0 buddy arrived events",
+			userSession: newTestSession("user_screen_name"),
 			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
 				Items: []oscar.FeedbagItem{
 					{
@@ -379,22 +369,19 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *Session
+				sess *user.Session
 				err  error
 			}{
 				"invisible_buddy_online": {
-					sess: &Session{
-						ScreenName: "invisible_buddy_online",
-						invisible:  true,
-					},
+					sess: newTestSession("invisible_buddy_online", sessOptInvisible),
 				},
 			},
-			clientResponse: XMessage{
-				snacFrame: oscar.SnacFrame{
+			clientResponse: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagStatus,
 				},
-				snacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
+				SnacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{0x0000},
 				},
 			},
@@ -402,9 +389,7 @@ func TestInsertItemHandler(t *testing.T) {
 		{
 			name: "user blocks buddy currently online, expect OK response, buddy departed event client, 1 buddy " +
 				"departed event sent to buddy",
-			userSession: &Session{
-				ScreenName: "user_screen_name",
-			},
+			userSession: newTestSession("user_screen_name"),
 			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
 				Items: []oscar.FeedbagItem{
 					{
@@ -414,28 +399,28 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *Session
+				sess *user.Session
 				err  error
 			}{
 				"user_screen_name": {
-					sess: &Session{ScreenName: "user_screen_name"},
+					sess: newTestSession("user_screen_name"),
 				},
 				"buddy_1": {
-					sess: &Session{ScreenName: "buddy_1"},
+					sess: newTestSession("buddy_1"),
 				},
 			},
 			buddyMessages: []struct {
 				user string
-				msg  XMessage
+				msg  oscar.XMessage
 			}{
 				{
 					user: "buddy_1",
-					msg: XMessage{
-						snacFrame: oscar.SnacFrame{
+					msg: oscar.XMessage{
+						SnacFrame: oscar.SnacFrame{
 							FoodGroup: oscar.BUDDY,
 							SubGroup:  oscar.BuddyDeparted,
 						},
-						snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+						SnacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
 							TLVUserInfo: oscar.TLVUserInfo{
 								ScreenName:   "user_screen_name",
 								WarningLevel: 0,
@@ -445,12 +430,12 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 				{
 					user: "user_screen_name",
-					msg: XMessage{
-						snacFrame: oscar.SnacFrame{
+					msg: oscar.XMessage{
+						SnacFrame: oscar.SnacFrame{
 							FoodGroup: oscar.BUDDY,
 							SubGroup:  oscar.BuddyDeparted,
 						},
-						snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+						SnacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
 							TLVUserInfo: oscar.TLVUserInfo{
 								ScreenName:   "buddy_1",
 								WarningLevel: 0,
@@ -459,21 +444,19 @@ func TestInsertItemHandler(t *testing.T) {
 					},
 				},
 			},
-			clientResponse: XMessage{
-				snacFrame: oscar.SnacFrame{
+			clientResponse: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagStatus,
 				},
-				snacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
+				SnacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{0x0000},
 				},
 			},
 		},
 		{
-			name: "user blocks buddy currently offline, expect OK response and no buddy departed events",
-			userSession: &Session{
-				ScreenName: "user_screen_name",
-			},
+			name:        "user blocks buddy currently offline, expect OK response and no buddy departed events",
+			userSession: newTestSession("user_screen_name"),
 			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
 				Items: []oscar.FeedbagItem{
 					{
@@ -483,31 +466,29 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *Session
+				sess *user.Session
 				err  error
 			}{
 				"user_screen_name": {
-					sess: &Session{ScreenName: "user_screen_name"},
+					sess: newTestSession("user_screen_name"),
 				},
 				"buddy_1": {
 					err: ErrSessNotFound,
 				},
 			},
-			clientResponse: XMessage{
-				snacFrame: oscar.SnacFrame{
+			clientResponse: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagStatus,
 				},
-				snacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
+				SnacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{0x0000},
 				},
 			},
 		},
 		{
-			name: "user tries to block themselves, expect feedback error",
-			userSession: &Session{
-				ScreenName: "user_screen_name",
-			},
+			name:        "user tries to block themselves, expect feedback error",
+			userSession: newTestSession("user_screen_name"),
 			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
 				Items: []oscar.FeedbagItem{
 					{
@@ -516,12 +497,12 @@ func TestInsertItemHandler(t *testing.T) {
 					},
 				},
 			},
-			clientResponse: XMessage{
-				snacFrame: oscar.SnacFrame{
+			clientResponse: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagErr,
 				},
-				snacOut: oscar.SnacError{
+				SnacOut: oscar.SnacError{
 					Code: oscar.ErrorCodeNotSupportedByHost,
 				},
 			},
@@ -535,11 +516,11 @@ func TestInsertItemHandler(t *testing.T) {
 			//
 			fm := NewMockFeedbagManager(t)
 			fm.EXPECT().
-				Upsert(tc.userSession.ScreenName, tc.inputSNAC.Items).
+				Upsert(tc.userSession.ScreenName(), tc.inputSNAC.Items).
 				Return(nil).
 				Maybe()
 			fm.EXPECT().
-				Buddies(tc.userSession.ScreenName).
+				Buddies(tc.userSession.ScreenName()).
 				Return([]string{}, nil).
 				Maybe()
 			sm := NewMockSessionManager(t)
@@ -576,9 +557,9 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 		// name is the unit test name
 		name string
 		// input is the request payload
-		input XMessage
+		input oscar.XMessage
 		// output is the response payload
-		output XMessage
+		output oscar.XMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -586,12 +567,12 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 	}{
 		{
 			name: "receive FeedbagRightsQuery, return FeedbagRightsReply",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagRightsQuery,
 				},
-				snacOut: oscar.SNAC_0x13_0x02_FeedbagRightsQuery{
+				SnacOut: oscar.SNAC_0x13_0x02_FeedbagRightsQuery{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -602,12 +583,12 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 					},
 				},
 			},
-			output: XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagRightsReply,
 				},
-				snacOut: oscar.SNAC_0x13_0x03_FeedbagRightsReply{
+				SnacOut: oscar.SNAC_0x13_0x03_FeedbagRightsReply{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -621,12 +602,12 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 		},
 		{
 			name: "receive FeedbagQuery, return FeedbagReply",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagQuery,
 				},
-				snacOut: oscar.SNAC_0x13_0x02_FeedbagRightsQuery{
+				SnacOut: oscar.SNAC_0x13_0x02_FeedbagRightsQuery{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -637,56 +618,56 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 					},
 				},
 			},
-			output: XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagReply,
 				},
-				snacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
+				SnacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
 					Version: 4,
 				},
 			},
 		},
 		{
 			name: "receive FeedbagQueryIfModified, return FeedbagRightsReply",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagQueryIfModified,
 				},
-				snacOut: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
+				SnacOut: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
 					LastUpdate: 1234,
 				},
 			},
-			output: XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagReply,
 				},
-				snacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
+				SnacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
 					LastUpdate: 1234,
 				},
 			},
 		},
 		{
 			name: "receive FeedbagUse, return no response",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagUse,
 				},
-				snacOut: struct{}{},
+				SnacOut: struct{}{},
 			},
-			output: XMessage{},
+			output: oscar.XMessage{},
 		},
 		{
 			name: "receive FeedbagInsertItem, return BuddyArrived and FeedbagStatus",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagInsertItem,
 				},
-				snacOut: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
+				SnacOut: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
 					Items: []oscar.FeedbagItem{
 						{
 							Name: "my-item",
@@ -694,24 +675,24 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 					},
 				},
 			},
-			output: XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagStatus,
 				},
-				snacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
+				SnacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{1234},
 				},
 			},
 		},
 		{
 			name: "receive FeedbagUpdateItem, return BuddyArrived and FeedbagStatus",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagUpdateItem,
 				},
-				snacOut: oscar.SNAC_0x13_0x09_FeedbagUpdateItem{
+				SnacOut: oscar.SNAC_0x13_0x09_FeedbagUpdateItem{
 					Items: []oscar.FeedbagItem{
 						{
 							Name: "my-item",
@@ -719,24 +700,24 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 					},
 				},
 			},
-			output: XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagStatus,
 				},
-				snacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
+				SnacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{1234},
 				},
 			},
 		},
 		{
 			name: "receive FeedbagDeleteItem, return FeedbagStatus",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagDeleteItem,
 				},
-				snacOut: oscar.SNAC_0x13_0x0A_FeedbagDeleteItem{
+				SnacOut: oscar.SNAC_0x13_0x0A_FeedbagDeleteItem{
 					Items: []oscar.FeedbagItem{
 						{
 							Name: "my-item",
@@ -744,24 +725,24 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 					},
 				},
 			},
-			output: XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagStatus,
 				},
-				snacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
+				SnacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{1234},
 				},
 			},
 		},
 		{
 			name: "receive FeedbagStartCluster, return no response",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagStartCluster,
 				},
-				snacOut: oscar.SNAC_0x13_0x11_FeedbagStartCluster{
+				SnacOut: oscar.SNAC_0x13_0x11_FeedbagStartCluster{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -772,29 +753,29 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 					},
 				},
 			},
-			output: XMessage{},
+			output: oscar.XMessage{},
 		},
 		{
 			name: "receive FeedbagEndCluster, return no response",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagEndCluster,
 				},
-				snacOut: struct{}{},
+				SnacOut: struct{}{},
 			},
-			output: XMessage{},
+			output: oscar.XMessage{},
 		},
 		{
 			name: "receive FeedbagDeleteUser, return ErrUnsupportedSubGroup",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.FEEDBAG,
 					SubGroup:  oscar.FeedbagDeleteUser,
 				},
-				snacOut: struct{}{},
+				SnacOut: struct{}{},
 			},
-			output:    XMessage{},
+			output:    oscar.XMessage{},
 			expectErr: ErrUnsupportedSubGroup,
 		},
 	}
@@ -803,7 +784,7 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := NewMockFeedbagHandler(t)
 			svc.EXPECT().
-				DeleteItemHandler(mock.Anything, mock.Anything, tc.input.snacOut).
+				DeleteItemHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
@@ -811,7 +792,7 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				QueryIfModifiedHandler(mock.Anything, mock.Anything, tc.input.snacOut).
+				QueryIfModifiedHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
@@ -819,15 +800,15 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				InsertItemHandler(mock.Anything, mock.Anything, tc.input.snacOut).
+				InsertItemHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				UpdateItemHandler(mock.Anything, mock.Anything, tc.input.snacOut).
+				UpdateItemHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				StartClusterHandler(mock.Anything, tc.input.snacOut).
+				StartClusterHandler(mock.Anything, tc.input.SnacOut).
 				Maybe()
 
 			router := FeedbagRouter{
@@ -838,18 +819,18 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 			}
 
 			bufIn := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.input.snacOut, bufIn))
+			assert.NoError(t, oscar.Marshal(tc.input.SnacOut, bufIn))
 
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteFeedbag(nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteFeedbag(nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
 			}
 
-			if tc.output.snacFrame == (oscar.SnacFrame{}) {
+			if tc.output.SnacFrame == (oscar.SnacFrame{}) {
 				return
 			}
 
@@ -867,11 +848,11 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 			// verify the SNAC frame
 			snacFrame := oscar.SnacFrame{}
 			assert.NoError(t, oscar.Unmarshal(&snacFrame, flapBuf))
-			assert.Equal(t, tc.output.snacFrame, snacFrame)
+			assert.Equal(t, tc.output.SnacFrame, snacFrame)
 
 			// verify the SNAC message
 			snacBuf := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.output.snacOut, snacBuf))
+			assert.NoError(t, oscar.Marshal(tc.output.SnacOut, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), flapBuf.Bytes())
 		})
 	}

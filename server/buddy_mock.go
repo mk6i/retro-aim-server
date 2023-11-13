@@ -5,6 +5,7 @@ package server
 import (
 	context "context"
 
+	oscar "github.com/mkaminski/goaim/oscar"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -22,14 +23,14 @@ func (_m *MockBuddyHandler) EXPECT() *MockBuddyHandler_Expecter {
 }
 
 // RightsQueryHandler provides a mock function with given fields: ctx
-func (_m *MockBuddyHandler) RightsQueryHandler(ctx context.Context) XMessage {
+func (_m *MockBuddyHandler) RightsQueryHandler(ctx context.Context) oscar.XMessage {
 	ret := _m.Called(ctx)
 
-	var r0 XMessage
-	if rf, ok := ret.Get(0).(func(context.Context) XMessage); ok {
+	var r0 oscar.XMessage
+	if rf, ok := ret.Get(0).(func(context.Context) oscar.XMessage); ok {
 		r0 = rf(ctx)
 	} else {
-		r0 = ret.Get(0).(XMessage)
+		r0 = ret.Get(0).(oscar.XMessage)
 	}
 
 	return r0
@@ -53,12 +54,12 @@ func (_c *MockBuddyHandler_RightsQueryHandler_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockBuddyHandler_RightsQueryHandler_Call) Return(_a0 XMessage) *MockBuddyHandler_RightsQueryHandler_Call {
+func (_c *MockBuddyHandler_RightsQueryHandler_Call) Return(_a0 oscar.XMessage) *MockBuddyHandler_RightsQueryHandler_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockBuddyHandler_RightsQueryHandler_Call) RunAndReturn(run func(context.Context) XMessage) *MockBuddyHandler_RightsQueryHandler_Call {
+func (_c *MockBuddyHandler_RightsQueryHandler_Call) RunAndReturn(run func(context.Context) oscar.XMessage) *MockBuddyHandler_RightsQueryHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }

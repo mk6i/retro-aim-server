@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"github.com/mkaminski/goaim/user"
 	"log/slog"
 	"testing"
 	"time"
@@ -16,16 +17,13 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 	//
 	// build dependencies
 	//
-	userSess := newTestSession(Session{
-		ID:         "sess-id",
-		ScreenName: "user-screen-name",
-	})
+	userSess := newTestSession("user-screen-name", sessOptCannedID)
 
 	cr := NewChatRegistry()
 
 	sm := NewMockSessionManager(t)
-	sm.EXPECT().NewSessionWithSN(userSess.ID, userSess.ScreenName).
-		Return(&Session{})
+	sm.EXPECT().NewSessionWithSN(userSess.ID(), userSess.ScreenName()).
+		Return(&user.Session{})
 
 	crf := func(logger *slog.Logger) ChatRoom {
 		return ChatRoom{
@@ -74,12 +72,12 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 	//
 	// send input SNAC
 	//
-	expectSNAC := XMessage{
-		snacFrame: oscar.SnacFrame{
+	expectSNAC := oscar.XMessage{
+		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT_NAV,
 			SubGroup:  oscar.ChatNavNavInfo,
 		},
-		snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+		SnacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(
@@ -107,9 +105,9 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 		// name is the unit test name
 		name string
 		// input is the request payload
-		input XMessage
+		input oscar.XMessage
 		// output is the response payload
-		output XMessage
+		output oscar.XMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -117,19 +115,19 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 	}{
 		{
 			name: "receive ChatNavRequestChatRights, return ChatNavNavInfo",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavRequestChatRights,
 				},
-				snacOut: struct{}{},
+				SnacOut: struct{}{},
 			},
-			output: XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavNavInfo,
 				},
-				snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+				SnacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(0x02, uint8(10)),
@@ -140,21 +138,21 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 		},
 		{
 			name: "receive ChatNavRequestRoomInfo, return ChatNavNavInfo",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavRequestRoomInfo,
 				},
-				snacOut: oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
+				SnacOut: oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
 					Exchange: 1,
 				},
 			},
-			output: XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavNavInfo,
 				},
-				snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+				SnacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(0x02, uint8(10)),
@@ -165,21 +163,21 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 		},
 		{
 			name: "receive ChatNavCreateRoom, return ChatNavNavInfo",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavCreateRoom,
 				},
-				snacOut: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+				SnacOut: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 					Exchange: 1,
 				},
 			},
-			output: XMessage{
-				snacFrame: oscar.SnacFrame{
+			output: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavNavInfo,
 				},
-				snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+				SnacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(0x02, uint8(10)),
@@ -190,14 +188,14 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 		},
 		{
 			name: "receive ChatNavRequestOccupantList, return ErrUnsupportedSubGroup",
-			input: XMessage{
-				snacFrame: oscar.SnacFrame{
+			input: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.CHAT_NAV,
 					SubGroup:  oscar.ChatNavRequestOccupantList,
 				},
-				snacOut: struct{}{},
+				SnacOut: struct{}{},
 			},
-			output:    XMessage{},
+			output:    oscar.XMessage{},
 			expectErr: ErrUnsupportedSubGroup,
 		},
 	}
@@ -210,11 +208,11 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				RequestRoomInfoHandler(mock.Anything, tc.input.snacOut).
+				RequestRoomInfoHandler(mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				CreateRoomHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.snacOut).
+				CreateRoomHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
@@ -226,18 +224,18 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			}
 
 			bufIn := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.input.snacOut, bufIn))
+			assert.NoError(t, oscar.Marshal(tc.input.SnacOut, bufIn))
 
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteChatNav(nil, nil, tc.input.snacFrame, bufIn, bufOut, &seq)
+			err := router.RouteChatNav(nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
 			}
 
-			if tc.output.snacFrame == (oscar.SnacFrame{}) {
+			if tc.output.SnacFrame == (oscar.SnacFrame{}) {
 				return
 			}
 
@@ -255,11 +253,11 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			// verify the SNAC frame
 			snacFrame := oscar.SnacFrame{}
 			assert.NoError(t, oscar.Unmarshal(&snacFrame, flapBuf))
-			assert.Equal(t, tc.output.snacFrame, snacFrame)
+			assert.Equal(t, tc.output.SnacFrame, snacFrame)
 
 			// verify the SNAC message
 			snacBuf := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.output.snacOut, snacBuf))
+			assert.NoError(t, oscar.Marshal(tc.output.SnacOut, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), flapBuf.Bytes())
 		})
 	}

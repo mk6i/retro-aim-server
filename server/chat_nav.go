@@ -5,15 +5,16 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/user"
 	"io"
 	"log/slog"
 	"time"
 )
 
 type ChatNavHandler interface {
-	CreateRoomHandler(ctx context.Context, sess *Session, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (XMessage, error)
-	RequestChatRightsHandler(ctx context.Context) XMessage
-	RequestRoomInfoHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (XMessage, error)
+	CreateRoomHandler(ctx context.Context, sess *user.Session, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error)
+	RequestChatRightsHandler(ctx context.Context) oscar.XMessage
+	RequestRoomInfoHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (oscar.XMessage, error)
 }
 
 func NewChatNavRouter(logger *slog.Logger, cr *ChatRegistry) ChatNavRouter {
@@ -33,12 +34,12 @@ type ChatNavRouter struct {
 	RouteLogger
 }
 
-func (rt *ChatNavRouter) RouteChatNav(ctx context.Context, sess *Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt *ChatNavRouter) RouteChatNav(ctx context.Context, sess *user.Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.ChatNavRequestChatRights:
 		outSNAC := rt.RequestChatRightsHandler(ctx)
-		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.snacFrame, outSNAC.snacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.SnacFrame, outSNAC.SnacOut)
+		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.ChatNavRequestRoomInfo:
 		inSNAC := oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -48,8 +49,8 @@ func (rt *ChatNavRouter) RouteChatNav(ctx context.Context, sess *Session, SNACFr
 		if err != nil {
 			return err
 		}
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.snacFrame, outSNAC.snacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
+		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.ChatNavCreateRoom:
 		inSNAC := oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -61,8 +62,8 @@ func (rt *ChatNavRouter) RouteChatNav(ctx context.Context, sess *Session, SNACFr
 		}
 		roomName, _ := inSNAC.GetString(oscar.ChatTLVRoomName)
 		rt.Logger.InfoContext(ctx, "user started a chat room", slog.String("roomName", roomName))
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.snacFrame, outSNAC.snacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
+		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
 	}
@@ -78,13 +79,13 @@ type ChatCookie struct {
 	SessID string `len_prefix:"uint16"`
 }
 
-func (s ChatNavService) RequestChatRightsHandler(context.Context) XMessage {
-	return XMessage{
-		snacFrame: oscar.SnacFrame{
+func (s ChatNavService) RequestChatRightsHandler(context.Context) oscar.XMessage {
+	return oscar.XMessage{
+		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT_NAV,
 			SubGroup:  oscar.ChatNavNavInfo,
 		},
-		snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+		SnacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(0x02, uint8(10)),
@@ -119,10 +120,10 @@ func NewChatRoom(logger *slog.Logger) ChatRoom {
 
 type ChatRoomFactory func(logger *slog.Logger) ChatRoom
 
-func (s ChatNavService) CreateRoomHandler(_ context.Context, sess *Session, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (XMessage, error) {
+func (s ChatNavService) CreateRoomHandler(_ context.Context, sess *user.Session, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error) {
 	name, hasName := snacPayloadIn.GetString(oscar.ChatTLVRoomName)
 	if !hasName {
-		return XMessage{}, errors.New("unable to find chat name")
+		return oscar.XMessage{}, errors.New("unable to find chat name")
 	}
 
 	room := newChatRoom(s.Logger)
@@ -133,14 +134,14 @@ func (s ChatNavService) CreateRoomHandler(_ context.Context, sess *Session, newC
 	s.cr.Register(room)
 
 	// add user to chat room
-	room.NewSessionWithSN(sess.ID, sess.ScreenName)
+	room.NewSessionWithSN(sess.ID(), sess.ScreenName())
 
-	return XMessage{
-		snacFrame: oscar.SnacFrame{
+	return oscar.XMessage{
+		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT_NAV,
 			SubGroup:  oscar.ChatNavNavInfo,
 		},
-		snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+		SnacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(oscar.ChatNavTLVRoomInfo, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
@@ -158,18 +159,18 @@ func (s ChatNavService) CreateRoomHandler(_ context.Context, sess *Session, newC
 	}, nil
 }
 
-func (s ChatNavService) RequestRoomInfoHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (XMessage, error) {
+func (s ChatNavService) RequestRoomInfoHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (oscar.XMessage, error) {
 	room, err := s.cr.Retrieve(string(snacPayloadIn.Cookie))
 	if err != nil {
-		return XMessage{}, err
+		return oscar.XMessage{}, err
 	}
 
-	return XMessage{
-		snacFrame: oscar.SnacFrame{
+	return oscar.XMessage{
+		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT_NAV,
 			SubGroup:  oscar.ChatNavNavInfo,
 		},
-		snacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+		SnacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(0x04, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{

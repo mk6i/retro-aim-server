@@ -25,24 +25,24 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 	bobSess := room.NewSessionWithSN("bob-sess-id", "bob")
 	cr.Register(room)
 
-	msgIn := []XMessage{
+	msgIn := []oscar.XMessage{
 		{
-			snacFrame: oscar.SnacFrame{
+			SnacFrame: oscar.SnacFrame{
 				FoodGroup: oscar.CHAT,
 				SubGroup:  oscar.ChatUsersJoined,
 			},
-			snacOut: oscar.SNAC_0x0E_0x03_ChatUsersJoined{
+			SnacOut: oscar.SNAC_0x0E_0x03_ChatUsersJoined{
 				Users: []oscar.TLVUserInfo{
-					bobSess.GetTLVUserInfo(),
+					bobSess.TLVUserInfo(),
 				},
 			},
 		},
 		{
-			snacFrame: oscar.SnacFrame{
+			SnacFrame: oscar.SnacFrame{
 				FoodGroup: oscar.CHAT,
 				SubGroup:  oscar.ChatUsersLeft,
 			},
-			snacOut: oscar.SNAC_0x0E_0x03_ChatUsersJoined{
+			SnacOut: oscar.SNAC_0x0E_0x03_ChatUsersJoined{
 				Users: []oscar.TLVUserInfo{},
 			},
 		},
@@ -55,8 +55,8 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(msgIn))
 
-	var msgOut []XMessage
-	alertHandler := func(ctx context.Context, msg XMessage, w io.Writer, u *uint32) error {
+	var msgOut []oscar.XMessage
+	alertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, u *uint32) error {
 		msgOut = append(msgOut, msg)
 		wg.Done()
 		return nil
@@ -123,7 +123,7 @@ func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 		wg.Done()
 		return err
 	}
-	alertHandler := func(ctx context.Context, msg XMessage, w io.Writer, u *uint32) error {
+	alertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, u *uint32) error {
 		return nil
 	}
 
@@ -157,7 +157,7 @@ func TestHandleChatConnection_SessionClosed(t *testing.T) {
 		t.Fatal("not expecting any output")
 		return nil
 	}
-	alertHandler := func(ctx context.Context, msg XMessage, w io.Writer, u *uint32) error {
+	alertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, u *uint32) error {
 		t.Fatal("not expecting any alerts")
 		return nil
 	}

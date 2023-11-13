@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"github.com/mkaminski/goaim/user"
 	"io"
 	"log/slog"
 
@@ -9,7 +10,7 @@ import (
 )
 
 type BuddyHandler interface {
-	RightsQueryHandler(ctx context.Context) XMessage
+	RightsQueryHandler(ctx context.Context) oscar.XMessage
 }
 
 func NewBuddyRouter(logger *slog.Logger) BuddyRouter {
@@ -34,8 +35,8 @@ func (rt *BuddyRouter) RouteBuddy(ctx context.Context, SNACFrame oscar.SnacFrame
 			return err
 		}
 		outSNAC := rt.RightsQueryHandler(ctx)
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.snacFrame, outSNAC.snacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.snacFrame, outSNAC.snacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
+		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
 	}
@@ -44,13 +45,13 @@ func (rt *BuddyRouter) RouteBuddy(ctx context.Context, SNACFrame oscar.SnacFrame
 type BuddyService struct {
 }
 
-func (s BuddyService) RightsQueryHandler(context.Context) XMessage {
-	return XMessage{
-		snacFrame: oscar.SnacFrame{
+func (s BuddyService) RightsQueryHandler(context.Context) oscar.XMessage {
+	return oscar.XMessage{
+		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.BUDDY,
 			SubGroup:  oscar.BuddyRightsReply,
 		},
-		snacOut: oscar.SNAC_0x03_0x03_BuddyRightsReply{
+		SnacOut: oscar.SNAC_0x03_0x03_BuddyRightsReply{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(0x01, uint16(100)),
@@ -63,23 +64,23 @@ func (s BuddyService) RightsQueryHandler(context.Context) XMessage {
 	}
 }
 
-func BroadcastArrival(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager) error {
-	screenNames, err := fm.InterestedUsers(sess.ScreenName)
+func BroadcastArrival(ctx context.Context, sess *user.Session, sm SessionManager, fm FeedbagManager) error {
+	screenNames, err := fm.InterestedUsers(sess.ScreenName())
 	if err != nil {
 		return err
 	}
 
-	sm.BroadcastToScreenNames(ctx, screenNames, XMessage{
-		snacFrame: oscar.SnacFrame{
+	sm.BroadcastToScreenNames(ctx, screenNames, oscar.XMessage{
+		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.BUDDY,
 			SubGroup:  oscar.BuddyArrived,
 		},
-		snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
+		SnacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
 			TLVUserInfo: oscar.TLVUserInfo{
-				ScreenName:   sess.ScreenName,
-				WarningLevel: sess.GetWarning(),
+				ScreenName:   sess.ScreenName(),
+				WarningLevel: sess.Warning(),
 				TLVBlock: oscar.TLVBlock{
-					TLVList: sess.GetUserInfo(),
+					TLVList: sess.UserInfo(),
 				},
 			},
 		},
@@ -88,21 +89,21 @@ func BroadcastArrival(ctx context.Context, sess *Session, sm SessionManager, fm 
 	return nil
 }
 
-func BroadcastDeparture(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager) error {
-	screenNames, err := fm.InterestedUsers(sess.ScreenName)
+func BroadcastDeparture(ctx context.Context, sess *user.Session, sm SessionManager, fm FeedbagManager) error {
+	screenNames, err := fm.InterestedUsers(sess.ScreenName())
 	if err != nil {
 		return err
 	}
 
-	sm.BroadcastToScreenNames(ctx, screenNames, XMessage{
-		snacFrame: oscar.SnacFrame{
+	sm.BroadcastToScreenNames(ctx, screenNames, oscar.XMessage{
+		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.BUDDY,
 			SubGroup:  oscar.BuddyDeparted,
 		},
-		snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+		SnacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
 			TLVUserInfo: oscar.TLVUserInfo{
-				ScreenName:   sess.ScreenName,
-				WarningLevel: sess.GetWarning(),
+				ScreenName:   sess.ScreenName(),
+				WarningLevel: sess.Warning(),
 			},
 		},
 	})
@@ -118,13 +119,13 @@ func UnicastArrival(ctx context.Context, srcScreenName, destScreenName string, s
 	case sess.Invisible(): // don't tell user this buddy is online
 		return nil
 	}
-	sm.SendToScreenName(ctx, destScreenName, XMessage{
-		snacFrame: oscar.SnacFrame{
+	sm.SendToScreenName(ctx, destScreenName, oscar.XMessage{
+		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.BUDDY,
 			SubGroup:  oscar.BuddyArrived,
 		},
-		snacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
-			TLVUserInfo: sess.GetTLVUserInfo(),
+		SnacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
+			TLVUserInfo: sess.TLVUserInfo(),
 		},
 	})
 
@@ -140,17 +141,17 @@ func UnicastDeparture(ctx context.Context, srcScreenName, destScreenName string,
 		return nil
 	}
 
-	sm.SendToScreenName(ctx, destScreenName, XMessage{
-		snacFrame: oscar.SnacFrame{
+	sm.SendToScreenName(ctx, destScreenName, oscar.XMessage{
+		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.BUDDY,
 			SubGroup:  oscar.BuddyDeparted,
 		},
-		snacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+		SnacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
 			TLVUserInfo: oscar.TLVUserInfo{
 				// don't include the TLV block, otherwise the AIM client fails
 				// to process the block event
-				ScreenName:   sess.ScreenName,
-				WarningLevel: sess.GetWarning(),
+				ScreenName:   sess.ScreenName(),
+				WarningLevel: sess.Warning(),
 			},
 		},
 	})

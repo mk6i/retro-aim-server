@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/mkaminski/goaim/user"
 	"io"
 	"log"
 	"log/slog"
@@ -15,20 +16,15 @@ import (
 )
 
 var (
-	CapChat, _             = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
 	ErrUnsupportedSubGroup = errors.New("unimplemented subgroup, your client version may be unsupported")
 )
 
 type (
-	XMessage struct {
-		snacFrame oscar.SnacFrame
-		snacOut   any
-	}
 	incomingMessage struct {
 		flap    oscar.FlapFrame
 		payload *bytes.Buffer
 	}
-	alertHandler     func(ctx context.Context, msg XMessage, w io.Writer, u *uint32) error
+	alertHandler     func(ctx context.Context, msg oscar.XMessage, w io.Writer, u *uint32) error
 	clientReqHandler func(ctx context.Context, r io.Reader, w io.Writer, u *uint32) error
 )
 
@@ -56,7 +52,7 @@ func consumeFLAPFrames(r io.Reader, msgCh chan incomingMessage, errCh chan error
 	}
 }
 
-func dispatchIncomingMessages(ctx context.Context, sess *Session, seq uint32, rw io.ReadWriter, logger *slog.Logger, fn clientReqHandler, alertHandler alertHandler) {
+func dispatchIncomingMessages(ctx context.Context, sess *user.Session, seq uint32, rw io.ReadWriter, logger *slog.Logger, fn clientReqHandler, alertHandler alertHandler) {
 	// buffered so that the go routine has room to exit
 	msgCh := make(chan incomingMessage, 1)
 	readErrCh := make(chan error, 1)
@@ -89,10 +85,10 @@ func dispatchIncomingMessages(ctx context.Context, sess *Session, seq uint32, rw
 		case m := <-sess.RecvMessage():
 			// forward a notification sent from another client to this client
 			if err := alertHandler(ctx, m, rw, &seq); err != nil {
-				logRequestError(ctx, logger, m.snacFrame, err)
+				logRequestError(ctx, logger, m.SnacFrame, err)
 				return
 			}
-			logRequest(ctx, logger, m.snacFrame, m.snacOut)
+			logRequest(ctx, logger, m.SnacFrame, m.SnacOut)
 		case <-sess.Closed():
 			// gracefully disconnect so that the client does not try to
 			// reconnect when the connection closes.
@@ -148,7 +144,7 @@ func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWrite
 		cr.MaybeRemoveRoom(room.Cookie)
 	}()
 
-	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName)
+	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName())
 
 	if err := router.WriteOServiceHostOnline(rw, &seq); err != nil {
 		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
@@ -157,8 +153,8 @@ func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWrite
 	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
 		return router.Route(ctx, chatSess, r, w, seq, room)
 	}
-	fnAlertHandler := func(ctx context.Context, msg XMessage, w io.Writer, seq *uint32) error {
-		return writeOutSNAC(oscar.SnacFrame{}, msg.snacFrame, msg.snacOut, seq, w)
+	fnAlertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, seq *uint32) error {
+		return writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, seq, w)
 	}
 	dispatchIncomingMessages(ctx, chatSess, seq, rw, logger, fnClientReqHandler, fnAlertHandler)
 }
@@ -200,7 +196,7 @@ func HandleBOSConnection(ctx context.Context, conn net.Conn, router BOSServiceRo
 		router.Signout(ctx, logger, sess)
 	}()
 
-	ctx = context.WithValue(ctx, "screenName", sess.ScreenName)
+	ctx = context.WithValue(ctx, "screenName", sess.ScreenName())
 
 	if err := router.WriteOServiceHostOnline(conn, &seq); err != nil {
 		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
@@ -209,8 +205,8 @@ func HandleBOSConnection(ctx context.Context, conn net.Conn, router BOSServiceRo
 	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
 		return router.Route(ctx, sess, r, w, seq)
 	}
-	fnAlertHandler := func(ctx context.Context, msg XMessage, w io.Writer, seq *uint32) error {
-		return writeOutSNAC(oscar.SnacFrame{}, msg.snacFrame, msg.snacOut, seq, w)
+	fnAlertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, seq *uint32) error {
+		return writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, seq, w)
 	}
 	dispatchIncomingMessages(ctx, sess, seq, conn, logger, fnClientReqHandler, fnAlertHandler)
 }
