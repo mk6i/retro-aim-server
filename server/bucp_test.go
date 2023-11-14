@@ -12,7 +12,7 @@ import (
 )
 
 func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
-	userGoodPwd := User{
+	userGoodPwd := user.User{
 		ScreenName: "sn_user_a",
 		AuthKey:    "auth_key_user",
 	}
@@ -23,7 +23,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 	cases := []struct {
 		name            string
 		cfg             Config
-		userInDB        User
+		userInDB        user.User
 		sessionUUID     uuid.UUID
 		inputSNAC       oscar.SNAC_0x17_0x02_BUCPLoginRequest
 		expectSnacFrame oscar.SnacFrame
@@ -130,7 +130,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 			defer func() {
 				assert.NoError(t, os.Remove(testFile))
 			}()
-			fs, err := NewFeedbagStore(testFile)
+			fs, err := user.NewSQLiteFeedbagStore(testFile)
 			if err != nil {
 				assert.NoError(t, err)
 			}
@@ -173,7 +173,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 	cases := []struct {
 		name            string
 		cfg             Config
-		userInDB        User
+		userInDB        user.User
 		fnNewUUID       uuid.UUID
 		inputSNAC       oscar.SNAC_0x17_0x06_BUCPChallengeRequest
 		expectSnacFrame oscar.SnacFrame
@@ -185,7 +185,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				BOSPort:   1234,
 			},
-			userInDB: User{
+			userInDB: user.User{
 				ScreenName: "sn_user_a",
 				AuthKey:    "auth_key_user_a",
 			},
@@ -212,7 +212,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 				BOSPort:     1234,
 				DisableAuth: true,
 			},
-			userInDB: User{
+			userInDB: user.User{
 				ScreenName: "sn_user_a",
 				AuthKey:    "auth_key_user_a",
 			},
@@ -238,7 +238,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				BOSPort:   1234,
 			},
-			userInDB: User{
+			userInDB: user.User{
 				ScreenName: "sn_user_a",
 				AuthKey:    "auth_key_user_a",
 			},
@@ -273,7 +273,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 			defer func() {
 				assert.NoError(t, os.Remove(testFile))
 			}()
-			fs, err := NewFeedbagStore(testFile)
+			fs, err := user.NewSQLiteFeedbagStore(testFile)
 			if err != nil {
 				assert.NoError(t, err)
 			}

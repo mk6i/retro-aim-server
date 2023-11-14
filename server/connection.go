@@ -159,7 +159,7 @@ func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWrite
 	dispatchIncomingMessages(ctx, chatSess, seq, rw, logger, fnClientReqHandler, fnAlertHandler)
 }
 
-func HandleAuthConnection(cfg Config, sm *user.InMemorySessionManager, fm *FeedbagStore, conn net.Conn) {
+func HandleAuthConnection(cfg Config, sm *user.InMemorySessionManager, fm *user.SQLiteFeedbagStore, conn net.Conn) {
 	defer conn.Close()
 	seq := uint32(100)
 	_, err := SendAndReceiveSignonFrame(conn, &seq)
@@ -262,7 +262,7 @@ func ListenBOS(cfg Config, router BOSServiceRouter, logger *slog.Logger) {
 	}
 }
 
-func ListenBUCPLogin(cfg Config, err error, logger *slog.Logger, sm *user.InMemorySessionManager, fm *FeedbagStore) {
+func ListenBUCPLogin(cfg Config, err error, logger *slog.Logger, sm *user.InMemorySessionManager, fm *user.SQLiteFeedbagStore) {
 	addr := Address("", cfg.OSCARPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {

@@ -15,7 +15,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		// name is the unit test name
 		name string
 		// blockedState is the response to the sender/recipient block check
-		blockedState BlockedState
+		blockedState user.BlockedState
 		// screenNameLookups is the list of user session lookups
 		screenNameLookups map[string]struct {
 			sess *user.Session
@@ -34,7 +34,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 	}{
 		{
 			name:         "request user info, expect user info response",
-			blockedState: BlockedNo,
+			blockedState: user.BlockedNo,
 			screenNameLookups: map[string]struct {
 				sess *user.Session
 				err  error
@@ -66,7 +66,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info + profile, expect user info response + profile",
-			blockedState: BlockedNo,
+			blockedState: user.BlockedNo,
 			screenNameLookups: map[string]struct {
 				sess *user.Session
 				err  error
@@ -112,7 +112,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info + profile, expect user info response + profile",
-			blockedState: BlockedNo,
+			blockedState: user.BlockedNo,
 			screenNameLookups: map[string]struct {
 				sess *user.Session
 				err  error
@@ -158,7 +158,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info + away message, expect user info response + away message",
-			blockedState: BlockedNo,
+			blockedState: user.BlockedNo,
 			screenNameLookups: map[string]struct {
 				sess *user.Session
 				err  error
@@ -196,7 +196,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info of user who blocked requester, expect not logged in error",
-			blockedState: BlockedB,
+			blockedState: user.BlockedB,
 			userSession:  newTestSession("user_screen_name"),
 			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
 				ScreenName: "requested-user",
@@ -213,7 +213,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info of user who does not exist, expect not logged in error",
-			blockedState: BlockedNo,
+			blockedState: user.BlockedNo,
 			screenNameLookups: map[string]struct {
 				sess *user.Session
 				err  error

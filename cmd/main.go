@@ -18,7 +18,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fm, err := server.NewFeedbagStore(cfg.DBPath)
+	fm, err := user.NewSQLiteFeedbagStore(cfg.DBPath)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "unable to create feedbag store: %s", err.Error())
 		os.Exit(1)

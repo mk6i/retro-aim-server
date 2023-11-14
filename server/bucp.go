@@ -28,7 +28,7 @@ func routeBUCP(context.Context) error {
 	return ErrUnsupportedSubGroup
 }
 
-func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
+func ReceiveAndSendAuthChallenge(cfg Config, fm *user.SQLiteFeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
 	flap := oscar.FlapFrame{}
 	if err := oscar.Unmarshal(&flap, r); err != nil {
 		return err
@@ -85,7 +85,7 @@ func ReceiveAndSendAuthChallenge(cfg Config, fm *FeedbagStore, r io.Reader, w io
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveAndSendBUCPLoginRequest(cfg Config, sm SessionManager, fm *FeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
+func ReceiveAndSendBUCPLoginRequest(cfg Config, sm SessionManager, fm *user.SQLiteFeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
 	flap := oscar.FlapFrame{}
 	if err := oscar.Unmarshal(&flap, r); err != nil {
 		return err
@@ -124,7 +124,7 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sm SessionManager, fm *FeedbagSt
 		loginOK = true
 	case cfg.DisableAuth:
 		// login failed but let them in anyway
-		newUser, err := NewStubUser(screenName)
+		newUser, err := user.NewStubUser(screenName)
 		if err != nil {
 			return err
 		}

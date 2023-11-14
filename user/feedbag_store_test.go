@@ -1,11 +1,12 @@
-package server
+package user
 
 import (
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/mkaminski/goaim/oscar"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFeedbagStore(t *testing.T) {
@@ -20,7 +21,7 @@ func TestFeedbagStore(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
@@ -66,7 +67,7 @@ func TestFeedbagDelete(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
@@ -129,7 +130,7 @@ func TestLastModifiedEmpty(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
@@ -153,7 +154,7 @@ func TestLastModifiedNotEmpty(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
@@ -189,7 +190,7 @@ func TestProfile(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
@@ -251,7 +252,7 @@ func TestProfileNonExistent(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
@@ -271,7 +272,7 @@ func TestInterestedUsers(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
@@ -301,7 +302,7 @@ func TestFeedbagStoreBuddiesBlockedUser(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
@@ -331,7 +332,7 @@ func TestFeedbagStoreBlockedA(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
@@ -361,7 +362,7 @@ func TestFeedbagStoreBlockedB(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
@@ -391,7 +392,7 @@ func TestFeedbagStoreBlockedNoBlocked(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
@@ -420,7 +421,7 @@ func TestGetUser(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}
@@ -456,7 +457,7 @@ func TestGetUserNotFound(t *testing.T) {
 		}
 	}()
 
-	f, err := NewFeedbagStore(testFile)
+	f, err := NewSQLiteFeedbagStore(testFile)
 	if err != nil {
 		t.Fatalf("failed to create new feedbag store: %s", err.Error())
 	}

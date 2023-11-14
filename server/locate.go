@@ -133,7 +133,7 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *user.Sessi
 	switch {
 	case err != nil:
 		return oscar.XMessage{}, err
-	case blocked != BlockedNo:
+	case blocked != user.BlockedNo:
 		return oscar.XMessage{
 			SnacFrame: oscar.SnacFrame{
 				FoodGroup: oscar.LOCATE,

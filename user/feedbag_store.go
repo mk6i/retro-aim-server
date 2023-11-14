@@ -1,8 +1,7 @@
-package server
+package user
 
 import (
 	"bytes"
-	"context"
 	"crypto/md5"
 	"database/sql"
 	"errors"
@@ -12,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/user"
 )
 
 var feedbagDDL = `
@@ -40,7 +38,15 @@ var feedbagDDL = `
 	);
 `
 
-func NewFeedbagStore(dbFile string) (*FeedbagStore, error) {
+type BlockedState int
+
+const (
+	BlockedNo BlockedState = iota
+	BlockedA
+	BlockedB
+)
+
+func NewSQLiteFeedbagStore(dbFile string) (*SQLiteFeedbagStore, error) {
 	db, err := sql.Open("sqlite3", dbFile)
 	if err != nil {
 		return nil, err
@@ -48,7 +54,7 @@ func NewFeedbagStore(dbFile string) (*FeedbagStore, error) {
 	if _, err := db.Exec(feedbagDDL); err != nil {
 		return nil, err
 	}
-	return &FeedbagStore{db: db}, nil
+	return &SQLiteFeedbagStore{db: db}, nil
 }
 
 func NewStubUser(screenName string) (User, error) {
@@ -91,11 +97,11 @@ func (u *User) HashPassword(passwd string) error {
 	return nil
 }
 
-type FeedbagStore struct {
+type SQLiteFeedbagStore struct {
 	db *sql.DB
 }
 
-func (f *FeedbagStore) Users() ([]*User, error) {
+func (f *SQLiteFeedbagStore) Users() ([]*User, error) {
 	q := `SELECT ScreenName FROM user`
 	rows, err := f.db.Query(q)
 	if err != nil {
@@ -119,7 +125,7 @@ func (f *FeedbagStore) Users() ([]*User, error) {
 	return users, nil
 }
 
-func (f *FeedbagStore) GetUser(screenName string) (*User, error) {
+func (f *SQLiteFeedbagStore) GetUser(screenName string) (*User, error) {
 	q := `
 		SELECT 
 			ScreenName, 
@@ -136,7 +142,7 @@ func (f *FeedbagStore) GetUser(screenName string) (*User, error) {
 	return u, err
 }
 
-func (f *FeedbagStore) InsertUser(u User) error {
+func (f *SQLiteFeedbagStore) InsertUser(u User) error {
 	q := `
 		INSERT INTO user (ScreenName, authKey, passHash)
 		VALUES (?, ?, ?)
@@ -145,7 +151,7 @@ func (f *FeedbagStore) InsertUser(u User) error {
 	return err
 }
 
-func (f *FeedbagStore) UpsertUser(u User) error {
+func (f *SQLiteFeedbagStore) UpsertUser(u User) error {
 	q := `
 		INSERT INTO user (ScreenName, authKey, passHash)
 		VALUES (?, ?, ?)
@@ -155,7 +161,7 @@ func (f *FeedbagStore) UpsertUser(u User) error {
 	return err
 }
 
-func (f *FeedbagStore) Delete(screenName string, items []oscar.FeedbagItem) error {
+func (f *SQLiteFeedbagStore) Delete(screenName string, items []oscar.FeedbagItem) error {
 	// todo add transaction
 	q := `DELETE FROM feedbag WHERE ScreenName = ? AND itemID = ?`
 
@@ -168,7 +174,7 @@ func (f *FeedbagStore) Delete(screenName string, items []oscar.FeedbagItem) erro
 	return nil
 }
 
-func (f *FeedbagStore) Retrieve(screenName string) ([]oscar.FeedbagItem, error) {
+func (f *SQLiteFeedbagStore) Retrieve(screenName string) ([]oscar.FeedbagItem, error) {
 	q := `
 		SELECT 
 			groupID,
@@ -203,14 +209,14 @@ func (f *FeedbagStore) Retrieve(screenName string) ([]oscar.FeedbagItem, error) 
 	return items, nil
 }
 
-func (f *FeedbagStore) LastModified(screenName string) (time.Time, error) {
+func (f *SQLiteFeedbagStore) LastModified(screenName string) (time.Time, error) {
 	var lastModified sql.NullInt64
 	q := `SELECT MAX(lastModified) FROM feedbag WHERE ScreenName = ?`
 	err := f.db.QueryRow(q, screenName).Scan(&lastModified)
 	return time.Unix(lastModified.Int64, 0), err
 }
 
-func (f *FeedbagStore) Upsert(screenName string, items []oscar.FeedbagItem) error {
+func (f *SQLiteFeedbagStore) Upsert(screenName string, items []oscar.FeedbagItem) error {
 
 	q := `
 		INSERT INTO feedbag (ScreenName, groupID, itemID, classID, name, attributes, lastModified)
@@ -246,7 +252,7 @@ func (f *FeedbagStore) Upsert(screenName string, items []oscar.FeedbagItem) erro
 
 // InterestedUsers returns all users who have screenName in their buddy list.
 // Exclude users who are on screenName's block list.
-func (f *FeedbagStore) InterestedUsers(screenName string) ([]string, error) {
+func (f *SQLiteFeedbagStore) InterestedUsers(screenName string) ([]string, error) {
 	q := `
 		SELECT f.ScreenName
 		FROM feedbag f
@@ -278,7 +284,7 @@ func (f *FeedbagStore) InterestedUsers(screenName string) ([]string, error) {
 
 // Buddies returns all user's buddies. Don't return a buddy if screenName
 // blocked them.
-func (f *FeedbagStore) Buddies(screenName string) ([]string, error) {
+func (f *SQLiteFeedbagStore) Buddies(screenName string) ([]string, error) {
 	q := `
 		SELECT f.name
 		FROM feedbag f
@@ -307,18 +313,10 @@ func (f *FeedbagStore) Buddies(screenName string) ([]string, error) {
 	return items, nil
 }
 
-type BlockedState int
-
-const (
-	BlockedNo BlockedState = iota
-	BlockedA
-	BlockedB
-)
-
 // Blocked informs whether there is a blocking relationship between sn1 and
 // sn2. Return BlockedA if sn1 blocked sn2, BlockedB if sn2 blocked sn1, or
 // BlockedNo if neither screen name blocked the other.
-func (f *FeedbagStore) Blocked(sn1, sn2 string) (BlockedState, error) {
+func (f *SQLiteFeedbagStore) Blocked(sn1, sn2 string) (BlockedState, error) {
 	q := `
 		SELECT EXISTS(SELECT 1
 					  FROM feedbag f
@@ -365,7 +363,7 @@ func (f *FeedbagStore) Blocked(sn1, sn2 string) (BlockedState, error) {
 
 // RetrieveProfile fetches a user profile. Return empty string if the user
 // does not exist or has no profile.
-func (f *FeedbagStore) RetrieveProfile(screenName string) (string, error) {
+func (f *SQLiteFeedbagStore) RetrieveProfile(screenName string) (string, error) {
 	q := `
 		SELECT IFNULL(body, '')
 		FROM profile
@@ -379,7 +377,7 @@ func (f *FeedbagStore) RetrieveProfile(screenName string) (string, error) {
 	return profile, nil
 }
 
-func (f *FeedbagStore) UpsertProfile(screenName string, body string) error {
+func (f *SQLiteFeedbagStore) UpsertProfile(screenName string, body string) error {
 	q := `
 		INSERT INTO profile (ScreenName, body)
 		VALUES (?, ?)
@@ -388,32 +386,4 @@ func (f *FeedbagStore) UpsertProfile(screenName string, body string) error {
 	`
 	_, err := f.db.Exec(q, screenName, body)
 	return err
-}
-
-type FeedbagManager interface {
-	Blocked(sn1, sn2 string) (BlockedState, error)
-	Buddies(screenName string) ([]string, error)
-	Delete(screenName string, items []oscar.FeedbagItem) error
-	InterestedUsers(screenName string) ([]string, error)
-	LastModified(screenName string) (time.Time, error)
-	Retrieve(screenName string) ([]oscar.FeedbagItem, error)
-	Upsert(screenName string, items []oscar.FeedbagItem) error
-}
-
-type SessionManager interface {
-	BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.XMessage)
-	Empty() bool
-	NewSessionWithSN(sessID string, screenName string) *user.Session
-	Remove(sess *user.Session)
-	Retrieve(ID string) (*user.Session, bool)
-	RetrieveByScreenName(screenName string) *user.Session
-	SendToScreenName(ctx context.Context, screenName string, msg oscar.XMessage)
-	Broadcast(ctx context.Context, msg oscar.XMessage)
-	BroadcastExcept(ctx context.Context, except *user.Session, msg oscar.XMessage)
-	Participants() []*user.Session
-}
-
-type ProfileManager interface {
-	RetrieveProfile(screenName string) (string, error)
-	UpsertProfile(screenName string, body string) error
 }

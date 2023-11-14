@@ -115,9 +115,9 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *user.Ses
 		return nil, err
 	}
 
-	if blocked != BlockedNo {
+	if blocked != user.BlockedNo {
 		code := oscar.ErrorCodeNotLoggedOn
-		if blocked == BlockedA {
+		if blocked == user.BlockedA {
 			code = oscar.ErrorCodeInLocalPermitDeny
 		}
 		return &oscar.XMessage{
@@ -198,7 +198,7 @@ func (s ICBMService) ClientEventHandler(ctx context.Context, sess *user.Session,
 	switch {
 	case err != nil:
 		return err
-	case blocked != BlockedNo:
+	case blocked != user.BlockedNo:
 		return nil
 	default:
 		s.sm.SendToScreenName(ctx, snacPayloadIn.ScreenName, oscar.XMessage{
@@ -236,7 +236,7 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *user.Session,
 	if err != nil {
 		return oscar.XMessage{}, nil
 	}
-	if blocked != BlockedNo {
+	if blocked != user.BlockedNo {
 		return oscar.XMessage{
 			SnacFrame: oscar.SnacFrame{
 				FoodGroup: oscar.ICBM,
