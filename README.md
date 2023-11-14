@@ -1,10 +1,10 @@
-# goaim
+# Retro AIM Server
 
-goaim is a server implementation of the OSCAR protocol that supports AIM versions 5.0-5.9.
+Retro AIM Server is a server implementation of the OSCAR protocol that supports AIM versions 5.0-5.9.
 
 ## How to run
 
-goaim requires [go 1.21](https://go.dev/).
+Retro AIM Server requires [go 1.21](https://go.dev/).
 
 ### Configuration
 
