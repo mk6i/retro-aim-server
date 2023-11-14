@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"github.com/mkaminski/goaim/user"
 	"io"
 	"log/slog"
@@ -132,9 +131,8 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *user.Ses
 		}, nil
 	}
 
-	recipSess, err := s.sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
-	switch {
-	case errors.Is(err, ErrSessNotFound):
+	recipSess := s.sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
+	if recipSess == nil {
 		return &oscar.XMessage{
 			SnacFrame: oscar.SnacFrame{
 				FoodGroup: oscar.ICBM,
@@ -144,8 +142,6 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *user.Ses
 				Code: oscar.ErrorCodeNotLoggedOn,
 			},
 		}, nil
-	case err != nil:
-		return nil, err
 	}
 
 	clientIM := oscar.SNAC_0x04_0x07_ICBMChannelMsgToClient{
@@ -252,8 +248,8 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *user.Session,
 		}, nil
 	}
 
-	recipSess, err := s.sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
-	if err != nil {
+	recipSess := s.sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
+	if recipSess == nil {
 		return oscar.XMessage{}, nil
 	}
 

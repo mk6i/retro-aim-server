@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/mkaminski/goaim/user"
 	"os"
 	"sync"
 
@@ -24,7 +25,7 @@ func main() {
 	}
 
 	logger := server.NewLogger(cfg)
-	sm := server.NewSessionManager(logger)
+	sm := user.NewSessionManager(logger)
 	cr := server.NewChatRegistry()
 
 	wg := sync.WaitGroup{}

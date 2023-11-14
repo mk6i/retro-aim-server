@@ -168,9 +168,8 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 		{
 			name:             "don't transmit message from sender to recipient because recipient doesn't exist",
 			blockedState:     BlockedNo,
-			recipRetrieveErr: ErrSessNotFound,
 			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
-			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
+			recipientSession: nil,
 			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 				ScreenName: "recipient-screen-name",
 				TLVRestBlock: oscar.TLVRestBlock{
@@ -201,17 +200,19 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			//
 			fm := NewMockFeedbagManager(t)
 			fm.EXPECT().
-				Blocked(tc.senderSession.ScreenName(), tc.recipientSession.ScreenName()).
+				Blocked(tc.senderSession.ScreenName(), tc.inputSNAC.ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
 			sm := NewMockSessionManager(t)
 			sm.EXPECT().
-				RetrieveByScreenName(tc.recipientSession.ScreenName()).
-				Return(tc.recipientSession, tc.recipRetrieveErr).
+				RetrieveByScreenName(tc.inputSNAC.ScreenName).
+				Return(tc.recipientSession).
 				Maybe()
-			sm.EXPECT().
-				SendToScreenName(mock.Anything, tc.recipientSession.ScreenName(), tc.expectSNACToClient).
-				Maybe()
+			if tc.recipientSession != nil {
+				sm.EXPECT().
+					SendToScreenName(mock.Anything, tc.recipientSession.ScreenName(), tc.expectSNACToClient).
+					Maybe()
+			}
 			//
 			// send input SNAC
 			//
@@ -501,7 +502,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			sm := NewMockSessionManager(t)
 			sm.EXPECT().
 				RetrieveByScreenName(tc.recipientScreenName).
-				Return(recipSess, tc.recipRetrieveErr).
+				Return(recipSess).
 				Maybe()
 			sm.EXPECT().
 				SendToScreenName(mock.Anything, tc.recipientScreenName, tc.expectSNACToClient).

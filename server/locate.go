@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"github.com/mkaminski/goaim/user"
 	"io"
 	"log/slog"
@@ -146,9 +145,8 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *user.Sessi
 		}, nil
 	}
 
-	buddySess, err := s.sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
-	switch {
-	case errors.Is(err, ErrSessNotFound):
+	buddySess := s.sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
+	if buddySess == nil {
 		return oscar.XMessage{
 			SnacFrame: oscar.SnacFrame{
 				FoodGroup: oscar.LOCATE,
@@ -158,8 +156,6 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *user.Sessi
 				Code: oscar.ErrorCodeNotLoggedOn,
 			},
 		}, nil
-	case err != nil:
-		return oscar.XMessage{}, err
 	}
 
 	var list oscar.TLVList

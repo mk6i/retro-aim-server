@@ -406,7 +406,7 @@ type SessionManager interface {
 	NewSessionWithSN(sessID string, screenName string) *user.Session
 	Remove(sess *user.Session)
 	Retrieve(ID string) (*user.Session, bool)
-	RetrieveByScreenName(screenName string) (*user.Session, error)
+	RetrieveByScreenName(screenName string) *user.Session
 	SendToScreenName(ctx context.Context, screenName string, msg oscar.XMessage)
 	Broadcast(ctx context.Context, msg oscar.XMessage)
 	BroadcastExcept(ctx context.Context, except *user.Session, msg oscar.XMessage)

@@ -114,7 +114,7 @@ func NewChatRoom(logger *slog.Logger) ChatRoom {
 	return ChatRoom{
 		Cookie:         uuid.New().String(),
 		CreateTime:     time.Now(),
-		SessionManager: NewSessionManager(logger),
+		SessionManager: user.NewSessionManager(logger),
 	}
 }
 

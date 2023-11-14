@@ -392,13 +392,7 @@ func (s OServiceServiceForBOS) ClientOnlineHandler(ctx context.Context, _ oscar.
 		return err
 	}
 	for _, buddy := range buddies {
-		err := UnicastArrival(ctx, buddy, sess.ScreenName(), s.sm)
-		switch {
-		case errors.Is(err, ErrSessNotFound):
-			continue
-		case err != nil:
-			return err
-		}
+		UnicastArrival(ctx, buddy, sess.ScreenName(), s.sm)
 	}
 	return nil
 }

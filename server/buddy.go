@@ -111,13 +111,13 @@ func BroadcastDeparture(ctx context.Context, sess *user.Session, sm SessionManag
 	return nil
 }
 
-func UnicastArrival(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager) error {
-	sess, err := sm.RetrieveByScreenName(srcScreenName)
+func UnicastArrival(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager) {
+	sess := sm.RetrieveByScreenName(srcScreenName)
 	switch {
-	case err != nil:
-		return err
+	case sess == nil:
+		fallthrough
 	case sess.Invisible(): // don't tell user this buddy is online
-		return nil
+		return
 	}
 	sm.SendToScreenName(ctx, destScreenName, oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
@@ -128,17 +128,15 @@ func UnicastArrival(ctx context.Context, srcScreenName, destScreenName string, s
 			TLVUserInfo: sess.TLVUserInfo(),
 		},
 	})
-
-	return nil
 }
 
-func UnicastDeparture(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager) error {
-	sess, err := sm.RetrieveByScreenName(srcScreenName)
+func UnicastDeparture(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager) {
+	sess := sm.RetrieveByScreenName(srcScreenName)
 	switch {
-	case err != nil:
-		return err
+	case sess == nil:
+		fallthrough
 	case sess.Invisible(): // don't tell user this buddy is online
-		return nil
+		return
 	}
 
 	sm.SendToScreenName(ctx, destScreenName, oscar.XMessage{
@@ -155,6 +153,4 @@ func UnicastDeparture(ctx context.Context, srcScreenName, destScreenName string,
 			},
 		},
 	})
-
-	return nil
 }

@@ -345,14 +345,10 @@ func (_c *MockSessionManager_Retrieve_Call) RunAndReturn(run func(string) (*user
 }
 
 // RetrieveByScreenName provides a mock function with given fields: screenName
-func (_m *MockSessionManager) RetrieveByScreenName(screenName string) (*user.Session, error) {
+func (_m *MockSessionManager) RetrieveByScreenName(screenName string) *user.Session {
 	ret := _m.Called(screenName)
 
 	var r0 *user.Session
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (*user.Session, error)); ok {
-		return rf(screenName)
-	}
 	if rf, ok := ret.Get(0).(func(string) *user.Session); ok {
 		r0 = rf(screenName)
 	} else {
@@ -361,13 +357,7 @@ func (_m *MockSessionManager) RetrieveByScreenName(screenName string) (*user.Ses
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(screenName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // MockSessionManager_RetrieveByScreenName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RetrieveByScreenName'
@@ -388,12 +378,12 @@ func (_c *MockSessionManager_RetrieveByScreenName_Call) Run(run func(screenName 
 	return _c
 }
 
-func (_c *MockSessionManager_RetrieveByScreenName_Call) Return(_a0 *user.Session, _a1 error) *MockSessionManager_RetrieveByScreenName_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockSessionManager_RetrieveByScreenName_Call) Return(_a0 *user.Session) *MockSessionManager_RetrieveByScreenName_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockSessionManager_RetrieveByScreenName_Call) RunAndReturn(run func(string) (*user.Session, error)) *MockSessionManager_RetrieveByScreenName_Call {
+func (_c *MockSessionManager_RetrieveByScreenName_Call) RunAndReturn(run func(string) *user.Session) *MockSessionManager_RetrieveByScreenName_Call {
 	_c.Call.Return(run)
 	return _c
 }

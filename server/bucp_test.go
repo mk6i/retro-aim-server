@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"github.com/mkaminski/goaim/user"
 	"os"
 	"testing"
 
@@ -134,7 +135,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			assert.NoError(t, fs.InsertUser(tc.userInDB))
-			sm := NewSessionManager(NewLogger(Config{}))
+			sm := user.NewSessionManager(NewLogger(Config{}))
 			//
 			// send input SNAC
 			//

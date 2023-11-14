@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"github.com/mkaminski/goaim/user"
 	"io"
 	"log/slog"
@@ -263,26 +262,12 @@ func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *user.Sessio
 	for _, item := range snacPayloadIn.Items {
 		switch item.ClassID {
 		case oscar.FeedbagClassIdBuddy, oscar.FeedbagClassIDPermit: // add new buddy
-			err := UnicastArrival(ctx, item.Name, sess.ScreenName(), s.sm)
-			switch {
-			case errors.Is(err, ErrSessNotFound):
-				continue
-			case err != nil:
-				return oscar.XMessage{}, err
-			}
+			UnicastArrival(ctx, item.Name, sess.ScreenName(), s.sm)
 		case oscar.FeedbagClassIDDeny: // block buddy
 			// notify this user that buddy is offline
-			err := UnicastDeparture(ctx, item.Name, sess.ScreenName(), s.sm)
-			switch {
-			case errors.Is(err, ErrSessNotFound):
-				continue
-			case err != nil:
-				return oscar.XMessage{}, err
-			}
+			UnicastDeparture(ctx, item.Name, sess.ScreenName(), s.sm)
 			// notify former buddy that this user is offline
-			if err := UnicastDeparture(ctx, sess.ScreenName(), item.Name, s.sm); err != nil {
-				return oscar.XMessage{}, err
-			}
+			UnicastDeparture(ctx, sess.ScreenName(), item.Name, s.sm)
 		}
 	}
 
@@ -308,13 +293,7 @@ func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *user.Sessio
 	for _, item := range snacPayloadIn.Items {
 		switch item.ClassID {
 		case oscar.FeedbagClassIdBuddy, oscar.FeedbagClassIDPermit:
-			err := UnicastArrival(ctx, item.Name, sess.ScreenName(), s.sm)
-			switch {
-			case errors.Is(err, ErrSessNotFound):
-				continue
-			case err != nil:
-				return oscar.XMessage{}, err
-			}
+			UnicastArrival(ctx, item.Name, sess.ScreenName(), s.sm)
 		}
 	}
 
@@ -339,20 +318,8 @@ func (s FeedbagService) DeleteItemHandler(ctx context.Context, sess *user.Sessio
 
 	for _, item := range snacPayloadIn.Items {
 		if item.ClassID == oscar.FeedbagClassIDDeny {
-			err := UnicastArrival(ctx, item.Name, sess.ScreenName(), s.sm)
-			switch {
-			case errors.Is(err, ErrSessNotFound):
-				continue
-			case err != nil:
-				return oscar.XMessage{}, err
-			}
-			err = UnicastArrival(ctx, sess.ScreenName(), item.Name, s.sm)
-			switch {
-			case errors.Is(err, ErrSessNotFound):
-				continue
-			case err != nil:
-				return oscar.XMessage{}, err
-			}
+			UnicastArrival(ctx, item.Name, sess.ScreenName(), s.sm)
+			UnicastArrival(ctx, sess.ScreenName(), item.Name, s.sm)
 		}
 	}
 

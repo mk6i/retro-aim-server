@@ -344,7 +344,7 @@ func TestInsertItemHandler(t *testing.T) {
 				err  error
 			}{
 				"buddy_offline": {
-					err: ErrSessNotFound,
+					sess: nil,
 				},
 			},
 			clientResponse: oscar.XMessage{
@@ -455,7 +455,7 @@ func TestInsertItemHandler(t *testing.T) {
 			},
 		},
 		{
-			name:        "user blocks buddy currently offline, expect OK response and no buddy departed events",
+			name:        "user blocks buddy currently offline, expect OK response and a superfluous buddy departed events",
 			userSession: newTestSession("user_screen_name"),
 			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
 				Items: []oscar.FeedbagItem{
@@ -473,7 +473,7 @@ func TestInsertItemHandler(t *testing.T) {
 					sess: newTestSession("user_screen_name"),
 				},
 				"buddy_1": {
-					err: ErrSessNotFound,
+					sess: nil,
 				},
 			},
 			clientResponse: oscar.XMessage{
@@ -483,6 +483,26 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 				SnacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{0x0000},
+				},
+			},
+			buddyMessages: []struct {
+				user string
+				msg  oscar.XMessage
+			}{
+				{
+					user: "buddy_1",
+					msg: oscar.XMessage{
+						SnacFrame: oscar.SnacFrame{
+							FoodGroup: oscar.BUDDY,
+							SubGroup:  oscar.BuddyDeparted,
+						},
+						SnacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+							TLVUserInfo: oscar.TLVUserInfo{
+								ScreenName:   "user_screen_name",
+								WarningLevel: 0,
+							},
+						},
+					},
 				},
 			},
 		},
@@ -527,7 +547,7 @@ func TestInsertItemHandler(t *testing.T) {
 			for screenName, val := range tc.screenNameLookups {
 				sm.EXPECT().
 					RetrieveByScreenName(screenName).
-					Return(val.sess, val.err).
+					Return(val.sess).
 					Maybe()
 			}
 			for _, n := range tc.buddyMessages {

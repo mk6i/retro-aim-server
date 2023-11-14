@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/user"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"sync"
@@ -20,7 +21,7 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 
 	room := ChatRoom{
 		Name:           "test chat room!",
-		SessionManager: NewSessionManager(logger),
+		SessionManager: user.NewSessionManager(logger),
 	}
 	bobSess := room.NewSessionWithSN("bob-sess-id", "bob")
 	cr.Register(room)
@@ -88,7 +89,7 @@ func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 
 	room := ChatRoom{
 		Name:           "test chat room!",
-		SessionManager: NewSessionManager(logger),
+		SessionManager: user.NewSessionManager(logger),
 	}
 	bobSess := room.NewSessionWithSN("bob-sess-id", "bob")
 	cr.Register(room)
@@ -148,7 +149,7 @@ func TestHandleChatConnection_SessionClosed(t *testing.T) {
 
 	room := ChatRoom{
 		Name:           "test chat room!",
-		SessionManager: NewSessionManager(logger),
+		SessionManager: user.NewSessionManager(logger),
 	}
 	sess := room.NewSessionWithSN("bob-sess-id", "bob")
 	cr.Register(room)

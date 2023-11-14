@@ -219,7 +219,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 				err  error
 			}{
 				"non_existent_requested_user": {
-					err: ErrSessNotFound,
+					sess: nil,
 				},
 			},
 			userSession: newTestSession("user_screen_name"),
@@ -249,7 +249,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			for screenName, val := range tc.screenNameLookups {
 				sm.EXPECT().
 					RetrieveByScreenName(screenName).
-					Return(val.sess, val.err).
+					Return(val.sess).
 					Maybe()
 			}
 			pm := NewMockProfileManager(t)
