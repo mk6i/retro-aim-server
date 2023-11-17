@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mkaminski/goaim/user"
 	"log/slog"
 	"net"
 	"net/http"
@@ -12,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func StartManagementAPI(fs *user.SQLiteFeedbagStore, logger *slog.Logger) {
+func StartManagementAPI(fs *SQLiteFeedbagStore, logger *slog.Logger) {
 	http.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -38,7 +37,7 @@ func StartManagementAPI(fs *user.SQLiteFeedbagStore, logger *slog.Logger) {
 }
 
 // getUsers handles the GET /user endpoint.
-func getUsers(fs *user.SQLiteFeedbagStore, w http.ResponseWriter, r *http.Request) {
+func getUsers(fs *SQLiteFeedbagStore, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	users, err := fs.Users()
 	if err != nil {
@@ -52,12 +51,12 @@ func getUsers(fs *user.SQLiteFeedbagStore, w http.ResponseWriter, r *http.Reques
 }
 
 type CreateUser struct {
-	user.User
+	User
 	Password string `json:"password,omitempty"`
 }
 
 // createUser handles the POST /user endpoint.
-func createUser(fs *user.SQLiteFeedbagStore, w http.ResponseWriter, r *http.Request) {
+func createUser(fs *SQLiteFeedbagStore, w http.ResponseWriter, r *http.Request) {
 	var newUser CreateUser
 	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

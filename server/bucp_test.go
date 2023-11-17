@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"github.com/mkaminski/goaim/user"
 	"os"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 )
 
 func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
-	userGoodPwd := user.User{
+	userGoodPwd := User{
 		ScreenName: "sn_user_a",
 		AuthKey:    "auth_key_user",
 	}
@@ -23,7 +22,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 	cases := []struct {
 		name            string
 		cfg             Config
-		userInDB        user.User
+		userInDB        User
 		sessionUUID     uuid.UUID
 		inputSNAC       oscar.SNAC_0x17_0x02_BUCPLoginRequest
 		expectSnacFrame oscar.SnacFrame
@@ -130,12 +129,12 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 			defer func() {
 				assert.NoError(t, os.Remove(testFile))
 			}()
-			fs, err := user.NewSQLiteFeedbagStore(testFile)
+			fs, err := NewSQLiteFeedbagStore(testFile)
 			if err != nil {
 				assert.NoError(t, err)
 			}
 			assert.NoError(t, fs.InsertUser(tc.userInDB))
-			sm := user.NewSessionManager(NewLogger(Config{}))
+			sm := NewSessionManager(NewLogger(Config{}))
 			//
 			// send input SNAC
 			//
@@ -173,7 +172,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 	cases := []struct {
 		name            string
 		cfg             Config
-		userInDB        user.User
+		userInDB        User
 		fnNewUUID       uuid.UUID
 		inputSNAC       oscar.SNAC_0x17_0x06_BUCPChallengeRequest
 		expectSnacFrame oscar.SnacFrame
@@ -185,7 +184,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				BOSPort:   1234,
 			},
-			userInDB: user.User{
+			userInDB: User{
 				ScreenName: "sn_user_a",
 				AuthKey:    "auth_key_user_a",
 			},
@@ -212,7 +211,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 				BOSPort:     1234,
 				DisableAuth: true,
 			},
-			userInDB: user.User{
+			userInDB: User{
 				ScreenName: "sn_user_a",
 				AuthKey:    "auth_key_user_a",
 			},
@@ -238,7 +237,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				BOSPort:   1234,
 			},
-			userInDB: user.User{
+			userInDB: User{
 				ScreenName: "sn_user_a",
 				AuthKey:    "auth_key_user_a",
 			},
@@ -273,7 +272,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 			defer func() {
 				assert.NoError(t, os.Remove(testFile))
 			}()
-			fs, err := user.NewSQLiteFeedbagStore(testFile)
+			fs, err := NewSQLiteFeedbagStore(testFile)
 			if err != nil {
 				assert.NoError(t, err)
 			}

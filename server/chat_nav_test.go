@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"github.com/mkaminski/goaim/user"
 	"testing"
 	"time"
 
@@ -22,7 +21,7 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 
 	sm := NewMockChatSessionManager(t)
 	sm.EXPECT().NewSessionWithSN(userSess.ID(), userSess.ScreenName()).
-		Return(&user.Session{})
+		Return(&Session{})
 
 	chatSessMgrFactory := func() ChatSessionManager {
 		return sm

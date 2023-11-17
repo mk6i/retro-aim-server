@@ -5,14 +5,13 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/user"
 	"io"
 	"log/slog"
 	"time"
 )
 
 type ChatNavHandler interface {
-	CreateRoomHandler(ctx context.Context, sess *user.Session, newRoom func() ChatRoom, newChatSessMgr func() ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error)
+	CreateRoomHandler(ctx context.Context, sess *Session, newRoom func() ChatRoom, newChatSessMgr func() ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error)
 	RequestChatRightsHandler(ctx context.Context) oscar.XMessage
 	RequestRoomInfoHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (oscar.XMessage, error)
 }
@@ -34,7 +33,7 @@ type ChatNavRouter struct {
 	RouteLogger
 }
 
-func (rt *ChatNavRouter) RouteChatNav(ctx context.Context, sess *user.Session, newChatSessMgr func() ChatSessionManager, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt *ChatNavRouter) RouteChatNav(ctx context.Context, sess *Session, newChatSessMgr func() ChatSessionManager, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.ChatNavRequestChatRights:
 		outSNAC := rt.RequestChatRightsHandler(ctx)
@@ -116,7 +115,7 @@ func (s ChatNavService) RequestChatRightsHandler(context.Context) oscar.XMessage
 	}
 }
 
-func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *user.Session, newChatRoom func() ChatRoom, newChatSessMgr func() ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error) {
+func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *Session, newChatRoom func() ChatRoom, newChatSessMgr func() ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error) {
 	name, hasName := snacPayloadIn.GetString(oscar.ChatTLVRoomName)
 	if !hasName {
 		return oscar.XMessage{}, errors.New("unable to find chat name")

@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"github.com/mkaminski/goaim/user"
 	"github.com/stretchr/testify/mock"
 	"testing"
 
@@ -16,7 +15,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 		// name is the unit test name
 		name string
 		// userSession is the session of the user sending the chat message
-		userSession *user.Session
+		userSession *Session
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost
 		// expectSNACToParticipants is the message the server broadcast to chat

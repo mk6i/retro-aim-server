@@ -3,12 +3,11 @@ package server
 import (
 	"context"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/user"
 	"time"
 )
 
 type FeedbagManager interface {
-	Blocked(sn1, sn2 string) (user.BlockedState, error)
+	Blocked(sn1, sn2 string) (BlockedState, error)
 	Buddies(screenName string) ([]string, error)
 	Delete(screenName string, items []oscar.FeedbagItem) error
 	InterestedUsers(screenName string) ([]string, error)
@@ -21,17 +20,17 @@ type SessionManager interface {
 	Broadcast(ctx context.Context, msg oscar.XMessage)
 	BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.XMessage)
 	Empty() bool
-	NewSessionWithSN(sessID string, screenName string) *user.Session
-	Remove(sess *user.Session)
-	Retrieve(ID string) (*user.Session, bool)
-	RetrieveByScreenName(screenName string) *user.Session
+	NewSessionWithSN(sessID string, screenName string) *Session
+	Remove(sess *Session)
+	Retrieve(ID string) (*Session, bool)
+	RetrieveByScreenName(screenName string) *Session
 	SendToScreenName(ctx context.Context, screenName string, msg oscar.XMessage)
 }
 
 type ChatSessionManager interface {
 	SessionManager
-	BroadcastExcept(ctx context.Context, except *user.Session, msg oscar.XMessage)
-	Participants() []*user.Session
+	BroadcastExcept(ctx context.Context, except *Session, msg oscar.XMessage)
+	Participants() []*Session
 }
 
 type ProfileManager interface {

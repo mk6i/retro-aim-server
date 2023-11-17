@@ -2,15 +2,17 @@ package server
 
 import (
 	"context"
-	"github.com/mkaminski/goaim/user"
+	"errors"
 	"io"
 	"log/slog"
+	"sync"
+	"time"
 
 	"github.com/mkaminski/goaim/oscar"
 )
 
 type ChatHandler interface {
-	ChannelMsgToHostHandler(ctx context.Context, sess *user.Session, room ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.XMessage, error)
+	ChannelMsgToHostHandler(ctx context.Context, sess *Session, room ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.XMessage, error)
 }
 
 func NewChatRouter(logger *slog.Logger) ChatRouter {
@@ -27,7 +29,7 @@ type ChatRouter struct {
 	RouteLogger
 }
 
-func (rt *ChatRouter) RouteChat(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt *ChatRouter) RouteChat(ctx context.Context, sess *Session, chatSessMgr ChatSessionManager, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.ChatChannelMsgToHost:
 		inSNAC := oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{}
@@ -52,7 +54,7 @@ func (rt *ChatRouter) RouteChat(ctx context.Context, sess *user.Session, chatSes
 type ChatService struct {
 }
 
-func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.XMessage, error) {
+func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *Session, chatSessMgr ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.XMessage, error) {
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: oscar.CHAT,
 		SubGroup:  oscar.ChatChannelMsgToClient,
@@ -92,7 +94,7 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *user.Ses
 	return ret, nil
 }
 
-func SetOnlineChatUsers(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager) {
+func SetOnlineChatUsers(ctx context.Context, sess *Session, chatSessMgr ChatSessionManager) {
 	snacPayloadOut := oscar.SNAC_0x0E_0x03_ChatUsersJoined{}
 	sessions := chatSessMgr.Participants()
 
@@ -115,7 +117,7 @@ func SetOnlineChatUsers(ctx context.Context, sess *user.Session, chatSessMgr Cha
 	})
 }
 
-func AlertUserJoined(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager) {
+func AlertUserJoined(ctx context.Context, sess *Session, chatSessMgr ChatSessionManager) {
 	chatSessMgr.BroadcastExcept(ctx, sess, oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT,
@@ -135,7 +137,7 @@ func AlertUserJoined(ctx context.Context, sess *user.Session, chatSessMgr ChatSe
 	})
 }
 
-func AlertUserLeft(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager) {
+func AlertUserLeft(ctx context.Context, sess *Session, chatSessMgr ChatSessionManager) {
 	chatSessMgr.BroadcastExcept(ctx, sess, oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT,
@@ -155,7 +157,7 @@ func AlertUserLeft(ctx context.Context, sess *user.Session, chatSessMgr ChatSess
 	})
 }
 
-func SendChatRoomInfoUpdate(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager, room ChatRoom) {
+func SendChatRoomInfoUpdate(ctx context.Context, sess *Session, chatSessMgr ChatSessionManager, room ChatRoom) {
 	chatSessMgr.SendToScreenName(ctx, sess.ScreenName(), oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT,
@@ -171,4 +173,69 @@ func SendChatRoomInfoUpdate(ctx context.Context, sess *user.Session, chatSessMgr
 			},
 		},
 	})
+}
+
+type ChatRoom struct {
+	CreateTime     time.Time
+	DetailLevel    uint8
+	Exchange       uint16
+	Cookie         string
+	InstanceNumber uint16
+	Name           string
+}
+
+func (c ChatRoom) TLVList() []oscar.TLV {
+	return []oscar.TLV{
+		oscar.NewTLV(0x00c9, uint16(15)),
+		oscar.NewTLV(0x00ca, uint32(c.CreateTime.Unix())),
+		oscar.NewTLV(0x00d1, uint16(1024)),
+		oscar.NewTLV(0x00d2, uint16(100)),
+		oscar.NewTLV(0x00d5, uint8(2)),
+		oscar.NewTLV(0x006a, c.Name),
+		oscar.NewTLV(0x00d3, c.Name),
+	}
+}
+
+type ChatRegistry struct {
+	chatRoomStore map[string]ChatRoom
+	smStore       map[string]ChatSessionManager
+	mapMutex      sync.RWMutex
+}
+
+func NewChatRegistry() *ChatRegistry {
+	return &ChatRegistry{
+		chatRoomStore: make(map[string]ChatRoom),
+		smStore:       make(map[string]ChatSessionManager),
+	}
+}
+
+func (c *ChatRegistry) Register(room ChatRoom, sm ChatSessionManager) {
+	c.mapMutex.Lock()
+	defer c.mapMutex.Unlock()
+	c.chatRoomStore[room.Cookie] = room
+	c.smStore[room.Cookie] = sm
+}
+
+func (c *ChatRegistry) Retrieve(chatID string) (ChatRoom, ChatSessionManager, error) {
+	c.mapMutex.RLock()
+	defer c.mapMutex.RUnlock()
+	cr, found := c.chatRoomStore[chatID]
+	if !found {
+		return ChatRoom{}, nil, errors.New("unable to find chat room")
+	}
+	sm, found := c.smStore[chatID]
+	if !found {
+		panic("unable to find session manager for chat")
+	}
+	return cr, sm, nil
+}
+
+func (c *ChatRegistry) MaybeRemoveRoom(chatID string) {
+	c.mapMutex.Lock()
+	defer c.mapMutex.Unlock()
+	sm, found := c.smStore[chatID]
+	if found && sm.Empty() {
+		delete(c.chatRoomStore, chatID)
+		delete(c.smStore, chatID)
+	}
 }

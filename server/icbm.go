@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"github.com/mkaminski/goaim/user"
 	"io"
 	"log/slog"
 
@@ -15,9 +14,9 @@ const (
 )
 
 type ICBMHandler interface {
-	ChannelMsgToHostHandler(ctx context.Context, sess *user.Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.XMessage, error)
-	ClientEventHandler(ctx context.Context, sess *user.Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent) error
-	EvilRequestHandler(ctx context.Context, sess *user.Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.XMessage, error)
+	ChannelMsgToHostHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.XMessage, error)
+	ClientEventHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent) error
+	EvilRequestHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.XMessage, error)
 	ParameterQueryHandler(context.Context) oscar.XMessage
 }
 
@@ -38,7 +37,7 @@ type ICBMRouter struct {
 	RouteLogger
 }
 
-func (rt *ICBMRouter) RouteICBM(ctx context.Context, sess *user.Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt *ICBMRouter) RouteICBM(ctx context.Context, sess *Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.ICBMAddParameters:
 		inSNAC := oscar.SNAC_0x04_0x02_ICBMAddParameters{}
@@ -109,15 +108,15 @@ func (s ICBMService) ParameterQueryHandler(context.Context) oscar.XMessage {
 	}
 }
 
-func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *user.Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.XMessage, error) {
+func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.XMessage, error) {
 	blocked, err := s.fm.Blocked(sess.ScreenName(), snacPayloadIn.ScreenName)
 	if err != nil {
 		return nil, err
 	}
 
-	if blocked != user.BlockedNo {
+	if blocked != BlockedNo {
 		code := oscar.ErrorCodeNotLoggedOn
-		if blocked == user.BlockedA {
+		if blocked == BlockedA {
 			code = oscar.ErrorCodeInLocalPermitDeny
 		}
 		return &oscar.XMessage{
@@ -192,13 +191,13 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *user.Ses
 	}, nil
 }
 
-func (s ICBMService) ClientEventHandler(ctx context.Context, sess *user.Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent) error {
+func (s ICBMService) ClientEventHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent) error {
 	blocked, err := s.fm.Blocked(sess.ScreenName(), snacPayloadIn.ScreenName)
 
 	switch {
 	case err != nil:
 		return err
-	case blocked != user.BlockedNo:
+	case blocked != BlockedNo:
 		return nil
 	default:
 		s.sm.SendToScreenName(ctx, snacPayloadIn.ScreenName, oscar.XMessage{
@@ -217,7 +216,7 @@ func (s ICBMService) ClientEventHandler(ctx context.Context, sess *user.Session,
 	}
 }
 
-func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *user.Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.XMessage, error) {
+func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.XMessage, error) {
 	// don't let users warn themselves, it causes the AIM client to go into a
 	// weird state.
 	if snacPayloadIn.ScreenName == sess.ScreenName() {
@@ -236,7 +235,7 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *user.Session,
 	if err != nil {
 		return oscar.XMessage{}, nil
 	}
-	if blocked != user.BlockedNo {
+	if blocked != BlockedNo {
 		return oscar.XMessage{
 			SnacFrame: oscar.SnacFrame{
 				FoodGroup: oscar.ICBM,

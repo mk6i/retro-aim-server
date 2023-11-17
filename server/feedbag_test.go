@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -232,14 +231,14 @@ func TestInsertItemHandler(t *testing.T) {
 		// name is the unit test name
 		name string
 		// userSession is the session of the user managing buddy list
-		userSession *user.Session
+		userSession *Session
 		// feedbagItems is the list of items in user's buddy list
 		feedbagItems []oscar.FeedbagItem
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC oscar.SNAC_0x13_0x08_FeedbagInsertItem
 		// screenNameLookups is the list of user's online buddies
 		screenNameLookups map[string]struct {
-			sess *user.Session
+			sess *Session
 			err  error
 		}
 		// clientResponse is the message returned to the client
@@ -266,7 +265,7 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *user.Session
+				sess *Session
 				err  error
 			}{
 				"user_screen_name": {
@@ -340,7 +339,7 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *user.Session
+				sess *Session
 				err  error
 			}{
 				"buddy_offline": {
@@ -369,7 +368,7 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *user.Session
+				sess *Session
 				err  error
 			}{
 				"invisible_buddy_online": {
@@ -399,7 +398,7 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *user.Session
+				sess *Session
 				err  error
 			}{
 				"user_screen_name": {
@@ -466,7 +465,7 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *user.Session
+				sess *Session
 				err  error
 			}{
 				"user_screen_name": {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/mkaminski/goaim/user"
 	"os"
 	"sync"
 
@@ -18,14 +17,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	fm, err := user.NewSQLiteFeedbagStore(cfg.DBPath)
+	fm, err := server.NewSQLiteFeedbagStore(cfg.DBPath)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "unable to create feedbag store: %s", err.Error())
 		os.Exit(1)
 	}
 
 	logger := server.NewLogger(cfg)
-	sm := user.NewSessionManager(logger)
+	sm := server.NewSessionManager(logger)
 	cr := server.NewChatRegistry()
 
 	wg := sync.WaitGroup{}

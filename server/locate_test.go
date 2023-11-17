@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -15,10 +14,10 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		// name is the unit test name
 		name string
 		// blockedState is the response to the sender/recipient block check
-		blockedState user.BlockedState
+		blockedState BlockedState
 		// screenNameLookups is the list of user session lookups
 		screenNameLookups map[string]struct {
-			sess *user.Session
+			sess *Session
 			err  error
 		}
 		// screenNameLookups is the list of user session lookups
@@ -27,16 +26,16 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			err     error
 		}
 		// userSession is the session of the user requesting the user info
-		userSession *user.Session
+		userSession *Session
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC    oscar.SNAC_0x02_0x15_LocateUserInfoQuery2
 		expectOutput oscar.XMessage
 	}{
 		{
 			name:         "request user info, expect user info response",
-			blockedState: user.BlockedNo,
+			blockedState: BlockedNo,
 			screenNameLookups: map[string]struct {
-				sess *user.Session
+				sess *Session
 				err  error
 			}{
 				"requested-user": {
@@ -66,9 +65,9 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info + profile, expect user info response + profile",
-			blockedState: user.BlockedNo,
+			blockedState: BlockedNo,
 			screenNameLookups: map[string]struct {
-				sess *user.Session
+				sess *Session
 				err  error
 			}{
 				"requested-user": {
@@ -112,9 +111,9 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info + profile, expect user info response + profile",
-			blockedState: user.BlockedNo,
+			blockedState: BlockedNo,
 			screenNameLookups: map[string]struct {
-				sess *user.Session
+				sess *Session
 				err  error
 			}{
 				"requested-user": {
@@ -158,9 +157,9 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info + away message, expect user info response + away message",
-			blockedState: user.BlockedNo,
+			blockedState: BlockedNo,
 			screenNameLookups: map[string]struct {
-				sess *user.Session
+				sess *Session
 				err  error
 			}{
 				"requested-user": {
@@ -196,7 +195,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info of user who blocked requester, expect not logged in error",
-			blockedState: user.BlockedB,
+			blockedState: BlockedB,
 			userSession:  newTestSession("user_screen_name"),
 			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
 				ScreenName: "requested-user",
@@ -213,9 +212,9 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info of user who does not exist, expect not logged in error",
-			blockedState: user.BlockedNo,
+			blockedState: BlockedNo,
 			screenNameLookups: map[string]struct {
-				sess *user.Session
+				sess *Session
 				err  error
 			}{
 				"non_existent_requested_user": {

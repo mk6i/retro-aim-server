@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/mkaminski/goaim/user"
 	"io"
 	"log"
 	"log/slog"
@@ -52,7 +51,7 @@ func consumeFLAPFrames(r io.Reader, msgCh chan incomingMessage, errCh chan error
 	}
 }
 
-func dispatchIncomingMessages(ctx context.Context, sess *user.Session, seq uint32, rw io.ReadWriter, logger *slog.Logger, fn clientReqHandler, alertHandler alertHandler) {
+func dispatchIncomingMessages(ctx context.Context, sess *Session, seq uint32, rw io.ReadWriter, logger *slog.Logger, fn clientReqHandler, alertHandler alertHandler) {
 	// buffered so that the go routine has room to exit
 	msgCh := make(chan incomingMessage, 1)
 	readErrCh := make(chan error, 1)
@@ -107,8 +106,6 @@ func dispatchIncomingMessages(ctx context.Context, sess *user.Session, seq uint3
 			switch {
 			case errors.Is(io.EOF, err):
 				fallthrough
-			case errors.Is(ErrSignedOff, err):
-				logger.InfoContext(ctx, "client signed off")
 			default:
 				logger.ErrorContext(ctx, "client disconnected with error", "err", err)
 			}
@@ -159,7 +156,7 @@ func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWrite
 	dispatchIncomingMessages(ctx, chatSess, seq, rw, logger, fnClientReqHandler, fnAlertHandler)
 }
 
-func HandleAuthConnection(cfg Config, sm *user.InMemorySessionManager, fm *user.SQLiteFeedbagStore, conn net.Conn) {
+func HandleAuthConnection(cfg Config, sm *InMemorySessionManager, fm *SQLiteFeedbagStore, conn net.Conn) {
 	defer conn.Close()
 	seq := uint32(100)
 	_, err := SendAndReceiveSignonFrame(conn, &seq)
@@ -262,7 +259,7 @@ func ListenBOS(cfg Config, router BOSServiceRouter, logger *slog.Logger) {
 	}
 }
 
-func ListenBUCPLogin(cfg Config, err error, logger *slog.Logger, sm *user.InMemorySessionManager, fm *user.SQLiteFeedbagStore) {
+func ListenBUCPLogin(cfg Config, err error, logger *slog.Logger, sm *InMemorySessionManager, fm *SQLiteFeedbagStore) {
 	addr := Address("", cfg.OSCARPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {

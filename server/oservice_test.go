@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"github.com/mkaminski/goaim/user"
 	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
@@ -21,7 +20,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 		chatRoom *ChatRoom
 		// userSession is the session of the user requesting the chat service
 		// info
-		userSession *user.Session
+		userSession *Session
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC oscar.SNAC_0x01_0x04_OServiceServiceRequest
 		// expectSNACFrame is the SNAC frame sent from the server to the recipient
@@ -120,7 +119,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			if tc.chatRoom != nil {
 				sm.EXPECT().
 					NewSessionWithSN(tc.userSession.ID(), tc.userSession.ScreenName()).
-					Return(&user.Session{}).
+					Return(&Session{}).
 					Maybe()
 				cr.Register(*tc.chatRoom, sm)
 			}

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/mkaminski/goaim/user"
 	"io"
 
 	"github.com/google/uuid"
@@ -28,7 +27,7 @@ func routeBUCP(context.Context) error {
 	return ErrUnsupportedSubGroup
 }
 
-func ReceiveAndSendAuthChallenge(cfg Config, fm *user.SQLiteFeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
+func ReceiveAndSendAuthChallenge(cfg Config, fm *SQLiteFeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
 	flap := oscar.FlapFrame{}
 	if err := oscar.Unmarshal(&flap, r); err != nil {
 		return err
@@ -85,7 +84,7 @@ func ReceiveAndSendAuthChallenge(cfg Config, fm *user.SQLiteFeedbagStore, r io.R
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func ReceiveAndSendBUCPLoginRequest(cfg Config, sm SessionManager, fm *user.SQLiteFeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
+func ReceiveAndSendBUCPLoginRequest(cfg Config, sm SessionManager, fm *SQLiteFeedbagStore, r io.Reader, w io.Writer, sequence *uint32, newUUID func() uuid.UUID) error {
 	flap := oscar.FlapFrame{}
 	if err := oscar.Unmarshal(&flap, r); err != nil {
 		return err
@@ -124,7 +123,7 @@ func ReceiveAndSendBUCPLoginRequest(cfg Config, sm SessionManager, fm *user.SQLi
 		loginOK = true
 	case cfg.DisableAuth:
 		// login failed but let them in anyway
-		newUser, err := user.NewStubUser(screenName)
+		newUser, err := NewStubUser(screenName)
 		if err != nil {
 			return err
 		}
@@ -192,7 +191,7 @@ func SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSi
 	return flapSignonFrameIn, nil
 }
 
-func VerifyLogin(sm SessionManager, rw io.ReadWriter) (*user.Session, uint32, error) {
+func VerifyLogin(sm SessionManager, rw io.ReadWriter) (*Session, uint32, error) {
 	seq := uint32(100)
 
 	flap, err := SendAndReceiveSignonFrame(rw, &seq)

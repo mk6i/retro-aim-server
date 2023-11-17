@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"github.com/mkaminski/goaim/user"
 	"io"
 	"log/slog"
 
@@ -64,7 +63,7 @@ func (s BuddyService) RightsQueryHandler(context.Context) oscar.XMessage {
 	}
 }
 
-func BroadcastArrival(ctx context.Context, sess *user.Session, sm SessionManager, fm FeedbagManager) error {
+func BroadcastArrival(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName())
 	if err != nil {
 		return err
@@ -89,7 +88,7 @@ func BroadcastArrival(ctx context.Context, sess *user.Session, sm SessionManager
 	return nil
 }
 
-func BroadcastDeparture(ctx context.Context, sess *user.Session, sm SessionManager, fm FeedbagManager) error {
+func BroadcastDeparture(ctx context.Context, sess *Session, sm SessionManager, fm FeedbagManager) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName())
 	if err != nil {
 		return err

@@ -1,4 +1,4 @@
-package user
+package server
 
 import (
 	"bytes"
