@@ -24,23 +24,23 @@ func (_m *MockChatNavHandler) EXPECT() *MockChatNavHandler_Expecter {
 	return &MockChatNavHandler_Expecter{mock: &_m.Mock}
 }
 
-// CreateRoomHandler provides a mock function with given fields: ctx, sess, newChatRoom, snacPayloadIn
-func (_m *MockChatNavHandler) CreateRoomHandler(ctx context.Context, sess *user.Session, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error) {
-	ret := _m.Called(ctx, sess, newChatRoom, snacPayloadIn)
+// CreateRoomHandler provides a mock function with given fields: ctx, sess, newRoom, newChatSessMgr, snacPayloadIn
+func (_m *MockChatNavHandler) CreateRoomHandler(ctx context.Context, sess *user.Session, newRoom func() ChatRoom, newChatSessMgr func() ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error) {
+	ret := _m.Called(ctx, sess, newRoom, newChatSessMgr, snacPayloadIn)
 
 	var r0 oscar.XMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *user.Session, ChatRoomFactory, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error)); ok {
-		return rf(ctx, sess, newChatRoom, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *user.Session, func() ChatRoom, func() ChatSessionManager, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error)); ok {
+		return rf(ctx, sess, newRoom, newChatSessMgr, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *user.Session, ChatRoomFactory, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) oscar.XMessage); ok {
-		r0 = rf(ctx, sess, newChatRoom, snacPayloadIn)
+	if rf, ok := ret.Get(0).(func(context.Context, *user.Session, func() ChatRoom, func() ChatSessionManager, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) oscar.XMessage); ok {
+		r0 = rf(ctx, sess, newRoom, newChatSessMgr, snacPayloadIn)
 	} else {
 		r0 = ret.Get(0).(oscar.XMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *user.Session, ChatRoomFactory, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) error); ok {
-		r1 = rf(ctx, sess, newChatRoom, snacPayloadIn)
+	if rf, ok := ret.Get(1).(func(context.Context, *user.Session, func() ChatRoom, func() ChatSessionManager, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) error); ok {
+		r1 = rf(ctx, sess, newRoom, newChatSessMgr, snacPayloadIn)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -56,15 +56,16 @@ type MockChatNavHandler_CreateRoomHandler_Call struct {
 // CreateRoomHandler is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sess *user.Session
-//   - newChatRoom ChatRoomFactory
+//   - newRoom func() ChatRoom
+//   - newChatSessMgr func() ChatSessionManager
 //   - snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate
-func (_e *MockChatNavHandler_Expecter) CreateRoomHandler(ctx interface{}, sess interface{}, newChatRoom interface{}, snacPayloadIn interface{}) *MockChatNavHandler_CreateRoomHandler_Call {
-	return &MockChatNavHandler_CreateRoomHandler_Call{Call: _e.mock.On("CreateRoomHandler", ctx, sess, newChatRoom, snacPayloadIn)}
+func (_e *MockChatNavHandler_Expecter) CreateRoomHandler(ctx interface{}, sess interface{}, newRoom interface{}, newChatSessMgr interface{}, snacPayloadIn interface{}) *MockChatNavHandler_CreateRoomHandler_Call {
+	return &MockChatNavHandler_CreateRoomHandler_Call{Call: _e.mock.On("CreateRoomHandler", ctx, sess, newRoom, newChatSessMgr, snacPayloadIn)}
 }
 
-func (_c *MockChatNavHandler_CreateRoomHandler_Call) Run(run func(ctx context.Context, sess *user.Session, newChatRoom ChatRoomFactory, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate)) *MockChatNavHandler_CreateRoomHandler_Call {
+func (_c *MockChatNavHandler_CreateRoomHandler_Call) Run(run func(ctx context.Context, sess *user.Session, newRoom func() ChatRoom, newChatSessMgr func() ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate)) *MockChatNavHandler_CreateRoomHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*user.Session), args[2].(ChatRoomFactory), args[3].(oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate))
+		run(args[0].(context.Context), args[1].(*user.Session), args[2].(func() ChatRoom), args[3].(func() ChatSessionManager), args[4].(oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate))
 	})
 	return _c
 }
@@ -74,7 +75,7 @@ func (_c *MockChatNavHandler_CreateRoomHandler_Call) Return(_a0 oscar.XMessage, 
 	return _c
 }
 
-func (_c *MockChatNavHandler_CreateRoomHandler_Call) RunAndReturn(run func(context.Context, *user.Session, ChatRoomFactory, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error)) *MockChatNavHandler_CreateRoomHandler_Call {
+func (_c *MockChatNavHandler_CreateRoomHandler_Call) RunAndReturn(run func(context.Context, *user.Session, func() ChatRoom, func() ChatSessionManager, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error)) *MockChatNavHandler_CreateRoomHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }

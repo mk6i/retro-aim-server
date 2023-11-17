@@ -20,11 +20,11 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 	logger := NewLogger(cfg)
 
 	room := ChatRoom{
-		Name:           "test chat room!",
-		SessionManager: user.NewSessionManager(logger),
+		Name: "test chat room!",
 	}
-	bobSess := room.NewSessionWithSN("bob-sess-id", "bob")
-	cr.Register(room)
+	sm := user.NewSessionManager(logger)
+	sess := sm.NewSessionWithSN("bob-sess-id", "bob")
+	cr.Register(room, sm)
 
 	msgIn := []oscar.XMessage{
 		{
@@ -34,7 +34,7 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 			},
 			SnacOut: oscar.SNAC_0x0E_0x03_ChatUsersJoined{
 				Users: []oscar.TLVUserInfo{
-					bobSess.TLVUserInfo(),
+					sess.TLVUserInfo(),
 				},
 			},
 		},
@@ -65,17 +65,17 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 
 	go func() {
 		wg.Wait()
-		bobSess.Close()
+		sess.Close()
 	}()
 
 	pr, _ := io.Pipe()
 	rw := bufio.NewReadWriter(bufio.NewReader(pr), bufio.NewWriter(&bytes.Buffer{}))
 
 	for _, msg := range msgIn {
-		room.SendToScreenName(ctx, "bob", msg)
+		sm.SendToScreenName(ctx, "bob", msg)
 	}
 
-	dispatchIncomingMessages(ctx, bobSess, uint32(0), rw, logger, routeSig, alertHandler)
+	dispatchIncomingMessages(ctx, sess, uint32(0), rw, logger, routeSig, alertHandler)
 
 	assert.Equal(t, msgIn, msgOut)
 }
@@ -88,11 +88,11 @@ func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 	logger := NewLogger(cfg)
 
 	room := ChatRoom{
-		Name:           "test chat room!",
-		SessionManager: user.NewSessionManager(logger),
+		Name: "test chat room!",
 	}
-	bobSess := room.NewSessionWithSN("bob-sess-id", "bob")
-	cr.Register(room)
+	sm := user.NewSessionManager(logger)
+	sess := sm.NewSessionWithSN("bob-sess-id", "bob")
+	cr.Register(room, sm)
 
 	payloads := [][]byte{
 		{'a', 'b', 'c', 'd'},
@@ -135,7 +135,7 @@ func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 		pw.Close()
 	}()
 
-	dispatchIncomingMessages(ctx, bobSess, uint32(0), rw, logger, routeSig, alertHandler)
+	dispatchIncomingMessages(ctx, sess, uint32(0), rw, logger, routeSig, alertHandler)
 
 	assert.Equal(t, payloads, msgOut)
 }
@@ -148,11 +148,11 @@ func TestHandleChatConnection_SessionClosed(t *testing.T) {
 	logger := NewLogger(cfg)
 
 	room := ChatRoom{
-		Name:           "test chat room!",
-		SessionManager: user.NewSessionManager(logger),
+		Name: "test chat room!",
 	}
-	sess := room.NewSessionWithSN("bob-sess-id", "bob")
-	cr.Register(room)
+	sm := user.NewSessionManager(logger)
+	sess := sm.NewSessionWithSN("bob-sess-id", "bob")
+	cr.Register(room, sm)
 
 	routeSig := func(ctx context.Context, buf io.Reader, w io.Writer, u *uint32) error {
 		t.Fatal("not expecting any output")

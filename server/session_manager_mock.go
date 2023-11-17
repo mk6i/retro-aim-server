@@ -58,41 +58,6 @@ func (_c *MockSessionManager_Broadcast_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// BroadcastExcept provides a mock function with given fields: ctx, except, msg
-func (_m *MockSessionManager) BroadcastExcept(ctx context.Context, except *user.Session, msg oscar.XMessage) {
-	_m.Called(ctx, except, msg)
-}
-
-// MockSessionManager_BroadcastExcept_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BroadcastExcept'
-type MockSessionManager_BroadcastExcept_Call struct {
-	*mock.Call
-}
-
-// BroadcastExcept is a helper method to define mock.On call
-//   - ctx context.Context
-//   - except *user.Session
-//   - msg oscar.XMessage
-func (_e *MockSessionManager_Expecter) BroadcastExcept(ctx interface{}, except interface{}, msg interface{}) *MockSessionManager_BroadcastExcept_Call {
-	return &MockSessionManager_BroadcastExcept_Call{Call: _e.mock.On("BroadcastExcept", ctx, except, msg)}
-}
-
-func (_c *MockSessionManager_BroadcastExcept_Call) Run(run func(ctx context.Context, except *user.Session, msg oscar.XMessage)) *MockSessionManager_BroadcastExcept_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*user.Session), args[2].(oscar.XMessage))
-	})
-	return _c
-}
-
-func (_c *MockSessionManager_BroadcastExcept_Call) Return() *MockSessionManager_BroadcastExcept_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockSessionManager_BroadcastExcept_Call) RunAndReturn(run func(context.Context, *user.Session, oscar.XMessage)) *MockSessionManager_BroadcastExcept_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // BroadcastToScreenNames provides a mock function with given fields: ctx, screenNames, msg
 func (_m *MockSessionManager) BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.XMessage) {
 	_m.Called(ctx, screenNames, msg)
@@ -210,49 +175,6 @@ func (_c *MockSessionManager_NewSessionWithSN_Call) Return(_a0 *user.Session) *M
 }
 
 func (_c *MockSessionManager_NewSessionWithSN_Call) RunAndReturn(run func(string, string) *user.Session) *MockSessionManager_NewSessionWithSN_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Participants provides a mock function with given fields:
-func (_m *MockSessionManager) Participants() []*user.Session {
-	ret := _m.Called()
-
-	var r0 []*user.Session
-	if rf, ok := ret.Get(0).(func() []*user.Session); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*user.Session)
-		}
-	}
-
-	return r0
-}
-
-// MockSessionManager_Participants_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Participants'
-type MockSessionManager_Participants_Call struct {
-	*mock.Call
-}
-
-// Participants is a helper method to define mock.On call
-func (_e *MockSessionManager_Expecter) Participants() *MockSessionManager_Participants_Call {
-	return &MockSessionManager_Participants_Call{Call: _e.mock.On("Participants")}
-}
-
-func (_c *MockSessionManager_Participants_Call) Run(run func()) *MockSessionManager_Participants_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockSessionManager_Participants_Call) Return(_a0 []*user.Session) *MockSessionManager_Participants_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockSessionManager_Participants_Call) RunAndReturn(run func() []*user.Session) *MockSessionManager_Participants_Call {
 	_c.Call.Return(run)
 	return _c
 }

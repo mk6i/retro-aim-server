@@ -124,13 +124,13 @@ func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWrite
 		return
 	}
 
-	room, err := cr.Retrieve(string(cookie.Cookie))
+	room, chatSessMgr, err := cr.Retrieve(string(cookie.Cookie))
 	if err != nil {
 		logger.ErrorContext(ctx, "unable to find chat room", "err", err.Error())
 		return
 	}
 
-	chatSess, found := room.Retrieve(cookie.SessID)
+	chatSess, found := chatSessMgr.Retrieve(cookie.SessID)
 	if !found {
 		logger.ErrorContext(ctx, "unable to find user for session", "sessID", cookie.SessID)
 		return
@@ -139,8 +139,8 @@ func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWrite
 	defer chatSess.Close()
 	go func() {
 		<-chatSess.Closed()
-		AlertUserLeft(ctx, chatSess, room)
-		room.Remove(chatSess)
+		AlertUserLeft(ctx, chatSess, chatSessMgr)
+		chatSessMgr.Remove(chatSess)
 		cr.MaybeRemoveRoom(room.Cookie)
 	}()
 
@@ -151,7 +151,7 @@ func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWrite
 	}
 
 	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
-		return router.Route(ctx, chatSess, r, w, seq, room)
+		return router.Route(ctx, chatSess, r, w, seq, chatSessMgr, room)
 	}
 	fnAlertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, seq *uint32) error {
 		return writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, seq, w)

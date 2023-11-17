@@ -28,6 +28,7 @@ func NewBOSServiceRouter(logger *slog.Logger, cfg Config, fm FeedbagManager, sm 
 		RouteLogger: RouteLogger{
 			Logger: logger,
 		},
+		NewChatSessMgr: func() ChatSessionManager { return user.NewSessionManager(logger) },
 	}
 }
 
@@ -54,6 +55,7 @@ type BOSServiceRouter struct {
 	fm  FeedbagManager
 	cfg Config
 	RouteLogger
+	NewChatSessMgr func() ChatSessionManager
 }
 
 func (rt *BOSServiceRouter) Route(ctx context.Context, sess *user.Session, r io.Reader, w io.Writer, sequence *uint32) error {
@@ -73,7 +75,7 @@ func (rt *BOSServiceRouter) Route(ctx context.Context, sess *user.Session, r io.
 		case oscar.ICBM:
 			return rt.RouteICBM(ctx, sess, snac, r, w, sequence)
 		case oscar.CHAT_NAV:
-			return rt.RouteChatNav(ctx, sess, snac, r, w, sequence)
+			return rt.RouteChatNav(ctx, sess, rt.NewChatSessMgr, snac, r, w, sequence)
 		case oscar.FEEDBAG:
 			return rt.RouteFeedbag(ctx, sess, snac, r, w, sequence)
 		case oscar.BUCP:
@@ -185,7 +187,7 @@ type ChatServiceRouter struct {
 	RouteLogger
 }
 
-func (rt *ChatServiceRouter) Route(ctx context.Context, sess *user.Session, r io.Reader, w io.Writer, sequence *uint32, room ChatRoom) error {
+func (rt *ChatServiceRouter) Route(ctx context.Context, sess *user.Session, r io.Reader, w io.Writer, sequence *uint32, chatSessMgr ChatSessionManager, room ChatRoom) error {
 	snac := oscar.SnacFrame{}
 	if err := oscar.Unmarshal(&snac, r); err != nil {
 		return err
@@ -194,9 +196,9 @@ func (rt *ChatServiceRouter) Route(ctx context.Context, sess *user.Session, r io
 	err := func() error {
 		switch snac.FoodGroup {
 		case oscar.OSERVICE:
-			return rt.RouteOService(ctx, sess, room, snac, r, w, sequence)
+			return rt.RouteOService(ctx, sess, chatSessMgr, room, snac, r, w, sequence)
 		case oscar.CHAT:
-			return rt.RouteChat(ctx, sess, room, snac, r, w, sequence)
+			return rt.RouteChat(ctx, sess, chatSessMgr, snac, r, w, sequence)
 		default:
 			return ErrUnsupportedSubGroup
 		}

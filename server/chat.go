@@ -10,7 +10,7 @@ import (
 )
 
 type ChatHandler interface {
-	ChannelMsgToHostHandler(ctx context.Context, sess *user.Session, room ChatRoom, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.XMessage, error)
+	ChannelMsgToHostHandler(ctx context.Context, sess *user.Session, room ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.XMessage, error)
 }
 
 func NewChatRouter(logger *slog.Logger) ChatRouter {
@@ -27,14 +27,14 @@ type ChatRouter struct {
 	RouteLogger
 }
 
-func (rt *ChatRouter) RouteChat(ctx context.Context, sess *user.Session, room ChatRoom, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt *ChatRouter) RouteChat(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.ChatChannelMsgToHost:
 		inSNAC := oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
 			return err
 		}
-		outSNAC, err := rt.ChannelMsgToHostHandler(ctx, sess, room, inSNAC)
+		outSNAC, err := rt.ChannelMsgToHostHandler(ctx, sess, chatSessMgr, inSNAC)
 		if err != nil {
 			return err
 		}
@@ -52,7 +52,7 @@ func (rt *ChatRouter) RouteChat(ctx context.Context, sess *user.Session, room Ch
 type ChatService struct {
 }
 
-func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *user.Session, room ChatRoom, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.XMessage, error) {
+func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.XMessage, error) {
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: oscar.CHAT,
 		SubGroup:  oscar.ChatChannelMsgToClient,
@@ -75,7 +75,7 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *user.Ses
 	)
 
 	// send message to all the participants except sender
-	room.BroadcastExcept(ctx, sess, oscar.XMessage{
+	chatSessMgr.BroadcastExcept(ctx, sess, oscar.XMessage{
 		SnacFrame: snacFrameOut,
 		SnacOut:   snacPayloadOut,
 	})
@@ -92,9 +92,9 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *user.Ses
 	return ret, nil
 }
 
-func SetOnlineChatUsers(ctx context.Context, sess *user.Session, sm ChatRoom) {
+func SetOnlineChatUsers(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager) {
 	snacPayloadOut := oscar.SNAC_0x0E_0x03_ChatUsersJoined{}
-	sessions := sm.Participants()
+	sessions := chatSessMgr.Participants()
 
 	for _, uSess := range sessions {
 		snacPayloadOut.Users = append(snacPayloadOut.Users, oscar.TLVUserInfo{
@@ -106,7 +106,7 @@ func SetOnlineChatUsers(ctx context.Context, sess *user.Session, sm ChatRoom) {
 		})
 	}
 
-	sm.SendToScreenName(ctx, sess.ScreenName(), oscar.XMessage{
+	chatSessMgr.SendToScreenName(ctx, sess.ScreenName(), oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT,
 			SubGroup:  oscar.ChatUsersJoined,
@@ -115,8 +115,8 @@ func SetOnlineChatUsers(ctx context.Context, sess *user.Session, sm ChatRoom) {
 	})
 }
 
-func AlertUserJoined(ctx context.Context, sess *user.Session, sm SessionManager) {
-	sm.BroadcastExcept(ctx, sess, oscar.XMessage{
+func AlertUserJoined(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager) {
+	chatSessMgr.BroadcastExcept(ctx, sess, oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT,
 			SubGroup:  oscar.ChatUsersJoined,
@@ -135,8 +135,8 @@ func AlertUserJoined(ctx context.Context, sess *user.Session, sm SessionManager)
 	})
 }
 
-func AlertUserLeft(ctx context.Context, sess *user.Session, sm SessionManager) {
-	sm.BroadcastExcept(ctx, sess, oscar.XMessage{
+func AlertUserLeft(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager) {
+	chatSessMgr.BroadcastExcept(ctx, sess, oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT,
 			SubGroup:  oscar.ChatUsersLeft,
@@ -155,8 +155,8 @@ func AlertUserLeft(ctx context.Context, sess *user.Session, sm SessionManager) {
 	})
 }
 
-func SendChatRoomInfoUpdate(ctx context.Context, sess *user.Session, room ChatRoom) {
-	room.SendToScreenName(ctx, sess.ScreenName(), oscar.XMessage{
+func SendChatRoomInfoUpdate(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager, room ChatRoom) {
+	chatSessMgr.SendToScreenName(ctx, sess.ScreenName(), oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT,
 			SubGroup:  oscar.ChatRoomInfoUpdate,

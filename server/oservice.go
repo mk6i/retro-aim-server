@@ -32,7 +32,7 @@ type OServiceChatHandler interface {
 	OServiceHandler
 	WriteOServiceHostOnline(w io.Writer, sequence *uint32) error
 	ServiceRequestHandler(ctx context.Context, sess *user.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error)
-	ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *user.Session, room ChatRoom) error
+	ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *user.Session, chatSessMgr ChatSessionManager, room ChatRoom) error
 }
 
 type OServiceRouter struct {
@@ -148,7 +148,7 @@ type OServiceChatRouter struct {
 	OServiceChatHandler
 }
 
-func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *user.Session, room ChatRoom, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *user.Session, chatSessMgr ChatSessionManager, room ChatRoom, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.OServiceServiceRequest:
 		inSNAC := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
@@ -171,7 +171,7 @@ func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *user.Sessi
 		}
 		rt.Logger.InfoContext(ctx, "user signed on")
 		rt.logRequest(ctx, SNACFrame, inSNAC)
-		return rt.OServiceChatHandler.ClientOnlineHandler(ctx, inSNAC, sess, room)
+		return rt.OServiceChatHandler.ClientOnlineHandler(ctx, inSNAC, sess, chatSessMgr, room)
 	default:
 		return rt.OServiceRouter.RouteOService(ctx, sess, SNACFrame, r, w, sequence)
 	}
@@ -336,11 +336,11 @@ func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *us
 		return oscar.XMessage{}, err
 	}
 
-	room, err := s.cr.Retrieve(string(roomSnac.Cookie))
+	room, chatSessMgr, err := s.cr.Retrieve(string(roomSnac.Cookie))
 	if err != nil {
 		return oscar.XMessage{}, ErrUnsupportedSubGroup
 	}
-	room.NewSessionWithSN(sess.ID(), sess.ScreenName())
+	chatSessMgr.NewSessionWithSN(sess.ID(), sess.ScreenName())
 
 	return oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
@@ -436,9 +436,9 @@ func (s OServiceServiceForChat) WriteOServiceHostOnline(w io.Writer, sequence *u
 	return writeOutSNAC(oscar.SnacFrame{}, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
-func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, _ oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *user.Session, room ChatRoom) error {
-	SendChatRoomInfoUpdate(ctx, sess, room)
-	AlertUserJoined(ctx, sess, room)
-	SetOnlineChatUsers(ctx, sess, room)
+func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, _ oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *user.Session, chatSessMgr ChatSessionManager, room ChatRoom) error {
+	SendChatRoomInfoUpdate(ctx, sess, chatSessMgr, room)
+	AlertUserJoined(ctx, sess, chatSessMgr)
+	SetOnlineChatUsers(ctx, sess, chatSessMgr)
 	return nil
 }

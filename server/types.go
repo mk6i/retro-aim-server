@@ -19,15 +19,19 @@ type FeedbagManager interface {
 
 type SessionManager interface {
 	Broadcast(ctx context.Context, msg oscar.XMessage)
-	BroadcastExcept(ctx context.Context, except *user.Session, msg oscar.XMessage)
 	BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.XMessage)
 	Empty() bool
 	NewSessionWithSN(sessID string, screenName string) *user.Session
-	Participants() []*user.Session
 	Remove(sess *user.Session)
 	Retrieve(ID string) (*user.Session, bool)
 	RetrieveByScreenName(screenName string) *user.Session
 	SendToScreenName(ctx context.Context, screenName string, msg oscar.XMessage)
+}
+
+type ChatSessionManager interface {
+	SessionManager
+	BroadcastExcept(ctx context.Context, except *user.Session, msg oscar.XMessage)
+	Participants() []*user.Session
 }
 
 type ProfileManager interface {

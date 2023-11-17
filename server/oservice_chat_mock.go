@@ -26,13 +26,13 @@ func (_m *MockOServiceChatHandler) EXPECT() *MockOServiceChatHandler_Expecter {
 	return &MockOServiceChatHandler_Expecter{mock: &_m.Mock}
 }
 
-// ClientOnlineHandler provides a mock function with given fields: ctx, snacPayloadIn, sess, room
-func (_m *MockOServiceChatHandler) ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *user.Session, room ChatRoom) error {
-	ret := _m.Called(ctx, snacPayloadIn, sess, room)
+// ClientOnlineHandler provides a mock function with given fields: ctx, snacPayloadIn, sess, chatSessMgr, room
+func (_m *MockOServiceChatHandler) ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *user.Session, chatSessMgr ChatSessionManager, room ChatRoom) error {
+	ret := _m.Called(ctx, snacPayloadIn, sess, chatSessMgr, room)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, oscar.SNAC_0x01_0x02_OServiceClientOnline, *user.Session, ChatRoom) error); ok {
-		r0 = rf(ctx, snacPayloadIn, sess, room)
+	if rf, ok := ret.Get(0).(func(context.Context, oscar.SNAC_0x01_0x02_OServiceClientOnline, *user.Session, ChatSessionManager, ChatRoom) error); ok {
+		r0 = rf(ctx, snacPayloadIn, sess, chatSessMgr, room)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -49,14 +49,15 @@ type MockOServiceChatHandler_ClientOnlineHandler_Call struct {
 //   - ctx context.Context
 //   - snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline
 //   - sess *user.Session
+//   - chatSessMgr ChatSessionManager
 //   - room ChatRoom
-func (_e *MockOServiceChatHandler_Expecter) ClientOnlineHandler(ctx interface{}, snacPayloadIn interface{}, sess interface{}, room interface{}) *MockOServiceChatHandler_ClientOnlineHandler_Call {
-	return &MockOServiceChatHandler_ClientOnlineHandler_Call{Call: _e.mock.On("ClientOnlineHandler", ctx, snacPayloadIn, sess, room)}
+func (_e *MockOServiceChatHandler_Expecter) ClientOnlineHandler(ctx interface{}, snacPayloadIn interface{}, sess interface{}, chatSessMgr interface{}, room interface{}) *MockOServiceChatHandler_ClientOnlineHandler_Call {
+	return &MockOServiceChatHandler_ClientOnlineHandler_Call{Call: _e.mock.On("ClientOnlineHandler", ctx, snacPayloadIn, sess, chatSessMgr, room)}
 }
 
-func (_c *MockOServiceChatHandler_ClientOnlineHandler_Call) Run(run func(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *user.Session, room ChatRoom)) *MockOServiceChatHandler_ClientOnlineHandler_Call {
+func (_c *MockOServiceChatHandler_ClientOnlineHandler_Call) Run(run func(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *user.Session, chatSessMgr ChatSessionManager, room ChatRoom)) *MockOServiceChatHandler_ClientOnlineHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(oscar.SNAC_0x01_0x02_OServiceClientOnline), args[2].(*user.Session), args[3].(ChatRoom))
+		run(args[0].(context.Context), args[1].(oscar.SNAC_0x01_0x02_OServiceClientOnline), args[2].(*user.Session), args[3].(ChatSessionManager), args[4].(ChatRoom))
 	})
 	return _c
 }
@@ -66,7 +67,7 @@ func (_c *MockOServiceChatHandler_ClientOnlineHandler_Call) Return(_a0 error) *M
 	return _c
 }
 
-func (_c *MockOServiceChatHandler_ClientOnlineHandler_Call) RunAndReturn(run func(context.Context, oscar.SNAC_0x01_0x02_OServiceClientOnline, *user.Session, ChatRoom) error) *MockOServiceChatHandler_ClientOnlineHandler_Call {
+func (_c *MockOServiceChatHandler_ClientOnlineHandler_Call) RunAndReturn(run func(context.Context, oscar.SNAC_0x01_0x02_OServiceClientOnline, *user.Session, ChatSessionManager, ChatRoom) error) *MockOServiceChatHandler_ClientOnlineHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }

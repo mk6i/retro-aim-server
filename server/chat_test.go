@@ -120,15 +120,14 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			crm := NewMockSessionManager(t)
+			crm := NewMockChatSessionManager(t)
 			crm.EXPECT().
 				BroadcastExcept(mock.Anything, tc.userSession, tc.expectSNACToParticipants)
 			//
 			// send input SNAC
 			//
 			svc := ChatService{}
-			room := ChatRoom{SessionManager: crm}
-			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, room, tc.inputSNAC)
+			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, crm, tc.inputSNAC)
 			assert.NoError(t, err)
 
 			if tc.expectOutput.SnacFrame == (oscar.SnacFrame{}) {
@@ -222,7 +221,7 @@ func TestChatRouter_RouteChat(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteChat(nil, nil, ChatRoom{}, tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteChat(nil, nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

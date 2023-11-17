@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"github.com/mkaminski/goaim/user"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -21,15 +20,18 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 
 	cr := NewChatRegistry()
 
-	sm := NewMockSessionManager(t)
+	sm := NewMockChatSessionManager(t)
 	sm.EXPECT().NewSessionWithSN(userSess.ID(), userSess.ScreenName()).
 		Return(&user.Session{})
 
-	crf := func(logger *slog.Logger) ChatRoom {
+	chatSessMgrFactory := func() ChatSessionManager {
+		return sm
+	}
+
+	newChatRoom := func() ChatRoom {
 		return ChatRoom{
-			Cookie:         "dummy-cookie",
-			CreateTime:     time.UnixMilli(0),
-			SessionManager: sm,
+			Cookie:     "dummy-cookie",
+			CreateTime: time.UnixMilli(0),
 		}
 	}
 
@@ -50,14 +52,13 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 	svc := ChatNavService{
 		cr: cr,
 	}
-	outputSNAC, err := svc.CreateRoomHandler(context.Background(), userSess, crf, inputSNAC)
+	outputSNAC, err := svc.CreateRoomHandler(context.Background(), userSess, newChatRoom, chatSessMgrFactory, inputSNAC)
 	assert.NoError(t, err)
 
 	//
 	// verify chat room created by handler
 	//
 	expectChatRoom := ChatRoom{
-		SessionManager: sm,
 		Cookie:         "dummy-cookie",
 		CreateTime:     time.UnixMilli(0),
 		DetailLevel:    3,
@@ -65,7 +66,7 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 		InstanceNumber: 2,
 		Name:           "the-chat-room-name",
 	}
-	chatRoom, err := cr.Retrieve("dummy-cookie")
+	chatRoom, _, err := cr.Retrieve("dummy-cookie")
 	assert.NoError(t, err)
 	assert.Equal(t, expectChatRoom, chatRoom)
 
@@ -212,7 +213,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				CreateRoomHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.SnacOut).
+				CreateRoomHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
@@ -229,7 +230,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteChatNav(nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteChatNav(nil, nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

@@ -115,15 +115,14 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			sm := NewMockSessionManager(t)
+			sm := NewMockChatSessionManager(t)
 			cr := NewChatRegistry()
 			if tc.chatRoom != nil {
 				sm.EXPECT().
 					NewSessionWithSN(tc.userSession.ID(), tc.userSession.ScreenName()).
 					Return(&user.Session{}).
 					Maybe()
-				tc.chatRoom.SessionManager = sm
-				cr.Register(*tc.chatRoom)
+				cr.Register(*tc.chatRoom, sm)
 			}
 			//
 			// send input SNAC
@@ -682,7 +681,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svcBOS.EXPECT().
-				ClientOnlineHandler(mock.Anything, tc.input.SnacOut, mock.Anything, mock.Anything).
+				ClientOnlineHandler(mock.Anything, tc.input.SnacOut, mock.Anything, mock.Anything, mock.Anything).
 				Return(tc.handlerErr).
 				Maybe()
 
@@ -702,7 +701,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteOService(nil, nil, ChatRoom{}, tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteOService(nil, nil, nil, ChatRoom{}, tc.input.SnacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
