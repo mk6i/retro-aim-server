@@ -8,7 +8,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mkaminski/goaim/oscar"
 )
@@ -55,21 +54,6 @@ func NewSQLiteFeedbagStore(dbFile string) (*SQLiteFeedbagStore, error) {
 		return nil, err
 	}
 	return &SQLiteFeedbagStore{db: db}, nil
-}
-
-func NewStubUser(screenName string) (User, error) {
-	u := User{ScreenName: screenName}
-
-	uid, err := uuid.NewRandom()
-	if err != nil {
-		return u, err
-	}
-	u.AuthKey = uid.String()
-
-	if err := u.HashPassword("welcome1"); err != nil {
-		return u, err
-	}
-	return u, u.HashPassword("welcome1")
 }
 
 type User struct {

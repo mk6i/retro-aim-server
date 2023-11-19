@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+type UserManager interface {
+	GetUser(screenName string) (*User, error)
+	UpsertUser(u User) error
+}
+
 type FeedbagManager interface {
 	Blocked(sn1, sn2 string) (BlockedState, error)
 	Buddies(screenName string) ([]string, error)

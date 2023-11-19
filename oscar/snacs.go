@@ -734,6 +734,18 @@ type SNAC_0x13_0x11_FeedbagStartCluster struct {
 // 0x17: BUCP
 //
 
+const (
+	BUCPErr                      uint16 = 0x0001
+	BUCPLoginRequest             uint16 = 0x0002
+	BUCPLoginResponse            uint16 = 0x0003
+	BUCPRegisterRequest          uint16 = 0x0004
+	BUCPChallengeRequest         uint16 = 0x0006
+	BUCPChallengeResponse        uint16 = 0x0007
+	BUCPAsasnRequest             uint16 = 0x0008
+	BUCPSecuridRequest           uint16 = 0x000A
+	BUCPRegistrationImageRequest uint16 = 0x000C
+)
+
 type SNAC_0x17_0x02_BUCPLoginRequest struct {
 	TLVRestBlock
 }

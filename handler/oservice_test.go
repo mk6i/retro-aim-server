@@ -1,12 +1,151 @@
-package server
+package handler
 
 import (
 	"bytes"
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/server"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
+	"time"
 )
+
+func TestReceiveAndSendServiceRequest(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// cfg is the application config
+		cfg server.Config
+		// chatRoom is the chat room the user connects to
+		chatRoom *server.ChatRoom
+		// userSession is the session of the user requesting the chat service
+		// info
+		userSession *server.Session
+		// inputSNAC is the SNAC sent by the sender client
+		inputSNAC oscar.SNAC_0x01_0x04_OServiceServiceRequest
+		// expectSNACFrame is the SNAC frame sent from the server to the recipient
+		// client
+		expectOutput oscar.XMessage
+		// expectErr is the expected error returned by the router
+		expectErr error
+	}{
+		{
+			name:        "request info for ICBM service, return invalid SNAC err",
+			userSession: newTestSession("user_screen_name"),
+			inputSNAC: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
+				FoodGroup: oscar.ICBM,
+			},
+			expectErr: server.ErrUnsupportedSubGroup,
+		},
+		{
+			name: "request info for connecting to chat room, return chat service and chat room metadata",
+			cfg: server.Config{
+				OSCARHost: "127.0.0.1",
+				ChatPort:  1234,
+			},
+			chatRoom: &server.ChatRoom{
+				CreateTime:     time.UnixMilli(0),
+				DetailLevel:    4,
+				Exchange:       8,
+				Cookie:         "the-chat-cookie",
+				InstanceNumber: 16,
+				Name:           "my new chat",
+			},
+			userSession: newTestSession("user_screen_name", sessOptCannedID),
+			inputSNAC: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
+				FoodGroup: oscar.CHAT,
+				TLVRestBlock: oscar.TLVRestBlock{
+					TLVList: oscar.TLVList{
+						oscar.NewTLV(0x01, oscar.SNAC_0x01_0x04_TLVRoomInfo{
+							Exchange:       8,
+							Cookie:         []byte("the-chat-cookie"),
+							InstanceNumber: 16,
+						}),
+					},
+				},
+			},
+			expectOutput: oscar.XMessage{
+				SnacFrame: oscar.SnacFrame{
+					FoodGroup: oscar.OSERVICE,
+					SubGroup:  oscar.OServiceServiceResponse,
+				},
+				SnacOut: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							oscar.NewTLV(oscar.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
+							oscar.NewTLV(oscar.OServiceTLVTagsLoginCookie, server.ChatCookie{
+								Cookie: []byte("the-chat-cookie"),
+								SessID: "user-sess-id",
+							}),
+							oscar.NewTLV(oscar.OServiceTLVTagsGroupID, oscar.CHAT),
+							oscar.NewTLV(oscar.OServiceTLVTagsSSLCertName, ""),
+							oscar.NewTLV(oscar.OServiceTLVTagsSSLState, uint8(0x00)),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "request info for connecting to non-existent chat room, return SNAC error",
+			cfg: server.Config{
+				OSCARHost: "127.0.0.1",
+				ChatPort:  1234,
+			},
+			chatRoom:    nil,
+			userSession: newTestSession("user_screen_name", sessOptCannedID),
+			inputSNAC: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
+				FoodGroup: oscar.CHAT,
+				TLVRestBlock: oscar.TLVRestBlock{
+					TLVList: oscar.TLVList{
+						oscar.NewTLV(0x01, oscar.SNAC_0x01_0x04_TLVRoomInfo{
+							Exchange:       8,
+							Cookie:         []byte("the-chat-cookie"),
+							InstanceNumber: 16,
+						}),
+					},
+				},
+			},
+			expectErr: server.ErrUnsupportedSubGroup,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			//
+			// initialize dependencies
+			//
+			sm := server.NewMockChatSessionManager(t)
+			cr := server.NewChatRegistry()
+			if tc.chatRoom != nil {
+				sm.EXPECT().
+					NewSessionWithSN(tc.userSession.ID(), tc.userSession.ScreenName()).
+					Return(&server.Session{}).
+					Maybe()
+				cr.Register(*tc.chatRoom, sm)
+			}
+			//
+			// send input SNAC
+			//
+			svc := OServiceServiceForBOS{
+				OServiceService: OServiceService{
+					cfg: tc.cfg,
+					sm:  sm,
+				},
+				cr: cr,
+			}
+
+			outputSNAC, err := svc.ServiceRequestHandler(nil, tc.userSession, tc.inputSNAC)
+			assert.ErrorIs(t, err, tc.expectErr)
+			if tc.expectErr != nil {
+				return
+			}
+			//
+			// verify output
+			//
+			assert.Equal(t, tc.expectOutput, outputSNAC)
+		})
+	}
+}
 
 func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 	cases := []struct {
@@ -210,13 +349,13 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 				SnacOut: struct{}{}, // empty SNAC
 			},
 			output:    oscar.XMessage{}, // empty SNAC
-			expectErr: ErrUnsupportedSubGroup,
+			expectErr: server.ErrUnsupportedSubGroup,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := NewMockOServiceHandler(t)
+			svc := server.NewMockOServiceHandler(t)
 			svc.EXPECT().
 				RateParamsQueryHandler(mock.Anything).
 				Return(tc.output).
@@ -241,7 +380,7 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 				Return(tc.handlerErr).
 				Maybe()
 
-			svcBOS := NewMockOServiceBOSHandler(t)
+			svcBOS := server.NewMockOServiceBOSHandler(t)
 			svcBOS.EXPECT().
 				ServiceRequestHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
@@ -251,11 +390,11 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 				Return(tc.handlerErr).
 				Maybe()
 
-			router := OServiceBOSRouter{
-				OServiceRouter: OServiceRouter{
+			router := server.OServiceBOSRouter{
+				OServiceRouter: server.OServiceRouter{
 					OServiceHandler: svc,
-					RouteLogger: RouteLogger{
-						Logger: NewLogger(Config{}),
+					RouteLogger: server.RouteLogger{
+						Logger: server.NewLogger(server.Config{}),
 					},
 				},
 				OServiceBOSHandler: svcBOS,
@@ -504,13 +643,13 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 				SnacOut: struct{}{}, // empty SNAC
 			},
 			output:    oscar.XMessage{}, // empty SNAC
-			expectErr: ErrUnsupportedSubGroup,
+			expectErr: server.ErrUnsupportedSubGroup,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := NewMockOServiceHandler(t)
+			svc := server.NewMockOServiceHandler(t)
 			svc.EXPECT().
 				RateParamsQueryHandler(mock.Anything).
 				Return(tc.output).
@@ -535,7 +674,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 				Return(tc.handlerErr).
 				Maybe()
 
-			svcBOS := NewMockOServiceChatHandler(t)
+			svcBOS := server.NewMockOServiceChatHandler(t)
 			svcBOS.EXPECT().
 				ServiceRequestHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
@@ -545,11 +684,11 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 				Return(tc.handlerErr).
 				Maybe()
 
-			router := OServiceChatRouter{
-				OServiceRouter: OServiceRouter{
+			router := server.OServiceChatRouter{
+				OServiceRouter: server.OServiceRouter{
 					OServiceHandler: svc,
-					RouteLogger: RouteLogger{
-						Logger: NewLogger(Config{}),
+					RouteLogger: server.RouteLogger{
+						Logger: server.NewLogger(server.Config{}),
 					},
 				},
 				OServiceChatHandler: svcBOS,
@@ -561,7 +700,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteOService(nil, nil, nil, ChatRoom{}, tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteOService(nil, nil, nil, server.ChatRoom{}, tc.input.SnacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

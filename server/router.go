@@ -4,37 +4,17 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
+	"github.com/google/uuid"
+	"github.com/mkaminski/goaim/oscar"
 	"io"
 	"log/slog"
 	"net"
-
-	"github.com/mkaminski/goaim/oscar"
 )
 
-func NewBOSServiceRouter(logger *slog.Logger, cfg Config, fm FeedbagManager, sm SessionManager, cr *ChatRegistry, pm ProfileManager) BOSServiceRouter {
-	return BOSServiceRouter{
-		AlertRouter:       NewAlertRouter(logger),
-		BuddyRouter:       NewBuddyRouter(logger),
-		ChatNavRouter:     NewChatNavRouter(logger, cr),
-		FeedbagRouter:     NewFeedbagRouter(logger, sm, fm),
-		ICBMRouter:        NewICBMRouter(logger, sm, fm),
-		LocateRouter:      NewLocateRouter(logger, sm, fm, pm),
-		OServiceBOSRouter: NewOServiceRouterForBOS(logger, cfg, fm, sm, cr),
-		sm:                sm,
-		fm:                fm,
-		cfg:               cfg,
-		RouteLogger: RouteLogger{
-			Logger: logger,
-		},
-		NewChatSessMgr: func() ChatSessionManager { return NewSessionManager(logger) },
-	}
-}
-
-func NewChatServiceRouter(logger *slog.Logger, cfg Config, fm FeedbagManager, sm SessionManager) ChatServiceRouter {
+func NewChatServiceRouter(logger *slog.Logger, cfg Config, oserviceHandler OServiceHandler, chatHandler ChatHandler, oserviceChatHandler OServiceChatHandler) ChatServiceRouter {
 	return ChatServiceRouter{
-		OServiceChatRouter: NewOServiceRouterForChat(logger, cfg, fm, sm),
-		ChatRouter:         NewChatRouter(logger),
+		OServiceChatRouter: NewOServiceRouterForChat(logger, oserviceHandler, oserviceChatHandler),
+		ChatRouter:         NewChatRouter(logger, chatHandler),
 		cfg:                cfg,
 		RouteLogger: RouteLogger{
 			Logger: logger,
@@ -42,17 +22,26 @@ func NewChatServiceRouter(logger *slog.Logger, cfg Config, fm FeedbagManager, sm
 	}
 }
 
+type AuthHandler interface {
+	Signout(ctx context.Context, sess *Session) error
+	VerifyLogin(conn net.Conn) (*Session, uint32, error)
+	VerifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error)
+	SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSignonFrame, error)
+	ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID) (oscar.XMessage, error)
+	ReceiveAndSendAuthChallenge(snacPayloadIn oscar.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (oscar.XMessage, error)
+	SignoutChat(ctx context.Context, cr *ChatRegistry, chatRoom ChatRoom, chatSessManager ChatSessionManager, sess *Session)
+}
+
 type BOSServiceRouter struct {
 	AlertRouter
+	AuthHandler
 	BuddyRouter
 	ChatNavRouter
 	FeedbagRouter
 	ICBMRouter
 	LocateRouter
 	OServiceBOSRouter
-	sm  SessionManager
-	fm  FeedbagManager
-	cfg Config
+	Cfg Config
 	RouteLogger
 	NewChatSessMgr func() ChatSessionManager
 }
@@ -92,7 +81,7 @@ func (rt *BOSServiceRouter) Route(ctx context.Context, sess *Session, r io.Reade
 			if err1 := sendInvalidSNACErr(snac, w, sequence); err1 != nil {
 				err = errors.Join(err1, err)
 			}
-			if rt.cfg.FailFast {
+			if rt.Cfg.FailFast {
 				panic(err.Error())
 			}
 			return nil
@@ -100,35 +89,6 @@ func (rt *BOSServiceRouter) Route(ctx context.Context, sess *Session, r io.Reade
 	}
 
 	return err
-}
-
-func (rt *BOSServiceRouter) Signout(ctx context.Context, logger *slog.Logger, sess *Session) {
-	if err := BroadcastDeparture(ctx, sess, rt.sm, rt.fm); err != nil {
-		logger.ErrorContext(ctx, "error notifying departure", "err", err.Error())
-	}
-	rt.sm.Remove(sess)
-}
-
-func (rt *BOSServiceRouter) VerifyLogin(conn net.Conn) (*Session, uint32, error) {
-	seq := uint32(100)
-
-	flap, err := SendAndReceiveSignonFrame(conn, &seq)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var ok bool
-	ID, ok := flap.GetSlice(oscar.OServiceTLVTagsLoginCookie)
-	if !ok {
-		return nil, 0, errors.New("unable to get session id from payload")
-	}
-
-	sess, ok := rt.sm.Retrieve(string(ID))
-	if !ok {
-		return nil, 0, fmt.Errorf("unable to find session by id %s", ID)
-	}
-
-	return sess, seq, nil
 }
 
 func writeOutSNAC(originsnac oscar.SnacFrame, snacFrame oscar.SnacFrame, snacOut any, sequence *uint32, w io.Writer) error {

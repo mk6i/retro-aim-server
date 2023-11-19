@@ -44,3 +44,6 @@ packages:
       ChatSessionManager:
         config:
           filename: "chat_session_manager_mock.go"
+      UserManager:
+        config:
+          filename: "user_manager_manager_mock.go"

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/mkaminski/goaim/handler"
 	"os"
 	"sync"
 
@@ -35,17 +36,46 @@ func main() {
 		wg.Done()
 	}()
 	go func() {
-		router := server.NewBOSServiceRouter(logger, cfg, fm, sm, cr, fm)
-		server.ListenBOS(cfg, router, logger.With("svc", "BOS"))
+		authHandler := handler.NewAuthService(sm, fm, fm, cfg)
+		buddyHandler := handler.NewBuddyService()
+		oserviceHandler := handler.NewOServiceService(cfg, sm, fm)
+		oserviceBOSHandler := handler.NewOServiceServiceForBOS(*oserviceHandler, cr)
+		locateHandler := handler.NewLocateService(sm, fm, fm)
+		chatNavHandler := handler.NewChatNavService(logger, cr)
+		feedbagHandler := handler.NewFeedbagService(sm, fm)
+		icbmHandler := handler.NewICBMService(sm, fm)
+
+		router := server.BOSServiceRouter{
+			AlertRouter:       server.NewAlertRouter(logger),
+			AuthHandler:       authHandler,
+			BuddyRouter:       server.NewBuddyRouter(logger, buddyHandler),
+			ChatNavRouter:     server.NewChatNavRouter(chatNavHandler, logger),
+			FeedbagRouter:     server.NewFeedbagRouter(logger, feedbagHandler),
+			ICBMRouter:        server.NewICBMRouter(logger, icbmHandler),
+			LocateRouter:      server.NewLocateRouter(locateHandler, logger),
+			OServiceBOSRouter: server.NewOServiceRouterForBOS(logger, oserviceHandler, oserviceBOSHandler),
+			Cfg:               cfg,
+			RouteLogger: server.RouteLogger{
+				Logger: logger,
+			},
+			NewChatSessMgr: func() server.ChatSessionManager { return server.NewSessionManager(logger) },
+		}
+
+		server.ListenBOS(cfg, router, authHandler, logger.With("svc", "BOS"))
 		wg.Done()
 	}()
 	go func() {
-		router := server.NewChatServiceRouter(logger, cfg, fm, sm)
-		server.ListenChat(cfg, router, cr, logger.With("svc", "CHAT"))
+		authHandler := handler.NewAuthService(sm, fm, fm, cfg)
+		oserviceHandler := handler.NewOServiceService(cfg, sm, fm)
+		chatHandler := handler.NewChatService()
+		oserviceChatHandler := handler.NewOServiceServiceForChat(*oserviceHandler)
+		router := server.NewChatServiceRouter(logger, cfg, oserviceHandler, *chatHandler, oserviceChatHandler)
+		server.ListenChat(cfg, router, cr, authHandler, logger.With("svc", "CHAT"))
 		wg.Done()
 	}()
 	go func() {
-		server.ListenBUCPLogin(cfg, err, logger, sm, fm)
+		authHandler := handler.NewAuthService(sm, fm, fm, cfg)
+		server.ListenBUCPLogin(cfg, err, logger, authHandler)
 		wg.Done()
 	}()
 

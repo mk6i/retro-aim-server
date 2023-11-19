@@ -114,8 +114,8 @@ func dispatchIncomingMessages(ctx context.Context, sess *Session, seq uint32, rw
 	}
 }
 
-func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWriter, router ChatServiceRouter, logger *slog.Logger) {
-	cookie, seq, err := VerifyChatLogin(rw)
+func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWriter, router ChatServiceRouter, authHandler AuthHandler, logger *slog.Logger) {
+	cookie, seq, err := authHandler.VerifyChatLogin(rw)
 	if err != nil {
 		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
 		return
@@ -136,15 +136,15 @@ func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWrite
 	defer chatSess.Close()
 	go func() {
 		<-chatSess.Closed()
-		AlertUserLeft(ctx, chatSess, chatSessMgr)
-		chatSessMgr.Remove(chatSess)
-		cr.MaybeRemoveRoom(room.Cookie)
+		authHandler.SignoutChat(ctx, cr, room, chatSessMgr, chatSess)
 	}()
 
 	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName())
 
-	if err := router.WriteOServiceHostOnline(rw, &seq); err != nil {
+	msg := router.WriteOServiceHostOnline()
+	if err := writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, rw); err != nil {
 		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
+		return
 	}
 
 	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
@@ -156,30 +156,85 @@ func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWrite
 	dispatchIncomingMessages(ctx, chatSess, seq, rw, logger, fnClientReqHandler, fnAlertHandler)
 }
 
-func HandleAuthConnection(cfg Config, sm *InMemorySessionManager, fm *SQLiteFeedbagStore, conn net.Conn) {
+func HandleAuthConnection(authHandler AuthHandler, conn net.Conn) {
 	defer conn.Close()
 	seq := uint32(100)
-	_, err := SendAndReceiveSignonFrame(conn, &seq)
+	_, err := authHandler.SendAndReceiveSignonFrame(conn, &seq)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	err = ReceiveAndSendAuthChallenge(cfg, fm, conn, conn, &seq, uuid.New)
-	if err != nil {
+	flap := oscar.FlapFrame{}
+	if err := oscar.Unmarshal(&flap, conn); err != nil {
+		log.Println(err)
+		return
+	}
+	b := make([]byte, flap.PayloadLength)
+	if _, err := conn.Read(b); err != nil {
+		log.Println(err)
+		return
+	}
+	snac := oscar.SnacFrame{}
+	buf := bytes.NewBuffer(b)
+	if err := oscar.Unmarshal(&snac, buf); err != nil {
 		log.Println(err)
 		return
 	}
 
-	err = ReceiveAndSendBUCPLoginRequest(cfg, sm, fm, conn, conn, &seq, uuid.New)
+	snacPayloadIn := oscar.SNAC_0x17_0x06_BUCPChallengeRequest{}
+	if err := oscar.Unmarshal(&snacPayloadIn, buf); err != nil {
+		log.Println(err)
+		return
+	}
+
+	msg, err := authHandler.ReceiveAndSendAuthChallenge(snacPayloadIn, uuid.New)
 	if err != nil {
+		log.Println(err)
+		return
+	}
+	if err := writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, conn); err != nil {
+		log.Println(err)
+		return
+	}
+
+	flap = oscar.FlapFrame{}
+	if err := oscar.Unmarshal(&flap, conn); err != nil {
+		log.Println(err)
+		return
+	}
+	snac = oscar.SnacFrame{}
+	b = make([]byte, flap.PayloadLength)
+	if _, err := conn.Read(b); err != nil {
+		log.Println(err)
+		return
+	}
+	buf = bytes.NewBuffer(b)
+	if err := oscar.Unmarshal(&snac, buf); err != nil {
+		log.Println(err)
+		return
+	}
+
+	snacPayloadIn2 := oscar.SNAC_0x17_0x02_BUCPLoginRequest{}
+	if err := oscar.Unmarshal(&snacPayloadIn2, buf); err != nil {
+		log.Println(err)
+		return
+	}
+
+	msg, err = authHandler.ReceiveAndSendBUCPLoginRequest(snacPayloadIn2, uuid.New)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if err := writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, conn); err != nil {
 		log.Println(err)
 		return
 	}
 }
 
-func HandleBOSConnection(ctx context.Context, conn net.Conn, router BOSServiceRouter, logger *slog.Logger) {
-	sess, seq, err := router.VerifyLogin(conn)
+func HandleBOSConnection(ctx context.Context, conn net.Conn, router BOSServiceRouter, authHandler AuthHandler, logger *slog.Logger) {
+	// todo why is conn net.Conn but handleChat is rw?
+	sess, seq, err := authHandler.VerifyLogin(conn)
 	if err != nil {
 		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
 		return
@@ -190,13 +245,17 @@ func HandleBOSConnection(ctx context.Context, conn net.Conn, router BOSServiceRo
 
 	go func() {
 		<-sess.Closed()
-		router.Signout(ctx, logger, sess)
+		if err := authHandler.Signout(ctx, sess); err != nil {
+			logger.ErrorContext(ctx, "error notifying departure", "err", err.Error())
+		}
 	}()
 
 	ctx = context.WithValue(ctx, "screenName", sess.ScreenName())
 
-	if err := router.WriteOServiceHostOnline(conn, &seq); err != nil {
+	msg := router.WriteOServiceHostOnline()
+	if err := writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, conn); err != nil {
 		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
+		return
 	}
 
 	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
@@ -208,7 +267,7 @@ func HandleBOSConnection(ctx context.Context, conn net.Conn, router BOSServiceRo
 	dispatchIncomingMessages(ctx, sess, seq, conn, logger, fnClientReqHandler, fnAlertHandler)
 }
 
-func ListenChat(cfg Config, router ChatServiceRouter, cr *ChatRegistry, logger *slog.Logger) {
+func ListenChat(cfg Config, router ChatServiceRouter, cr *ChatRegistry, authHandler AuthHandler, logger *slog.Logger) {
 	addr := Address("", cfg.ChatPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -229,13 +288,13 @@ func ListenChat(cfg Config, router ChatServiceRouter, cr *ChatRegistry, logger *
 		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 		logger.DebugContext(ctx, "accepted connection")
 		go func() {
-			HandleChatConnection(ctx, cr, conn, router, logger)
+			HandleChatConnection(ctx, cr, conn, router, authHandler, logger)
 			conn.Close()
 		}()
 	}
 }
 
-func ListenBOS(cfg Config, router BOSServiceRouter, logger *slog.Logger) {
+func ListenBOS(cfg Config, router BOSServiceRouter, authHandler AuthHandler, logger *slog.Logger) {
 	addr := Address("", cfg.BOSPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -255,11 +314,11 @@ func ListenBOS(cfg Config, router BOSServiceRouter, logger *slog.Logger) {
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 		logger.DebugContext(ctx, "accepted connection")
-		go HandleBOSConnection(ctx, conn, router, logger)
+		go HandleBOSConnection(ctx, conn, router, authHandler, logger)
 	}
 }
 
-func ListenBUCPLogin(cfg Config, err error, logger *slog.Logger, sm *InMemorySessionManager, fm *SQLiteFeedbagStore) {
+func ListenBUCPLogin(cfg Config, err error, logger *slog.Logger, authHandler AuthHandler) {
 	addr := Address("", cfg.OSCARPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -277,6 +336,6 @@ func ListenBUCPLogin(cfg Config, err error, logger *slog.Logger, sm *InMemorySes
 			continue
 		}
 
-		go HandleAuthConnection(cfg, sm, fm, conn)
+		go HandleAuthConnection(authHandler, conn)
 	}
 }
