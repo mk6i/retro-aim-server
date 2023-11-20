@@ -4,13 +4,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
 func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
-	userGoodPwd := server.User{
+	userGoodPwd := state.User{
 		ScreenName: "sn_user_a",
 		AuthKey:    "auth_key_user",
 	}
@@ -21,7 +22,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 	cases := []struct {
 		name        string
 		cfg         server.Config
-		userInDB    server.User
+		userInDB    state.User
 		sessionUUID uuid.UUID
 		inputSNAC   oscar.SNAC_0x17_0x02_BUCPLoginRequest
 		// expectOutput is the SNAC payload sent from the server to the
@@ -129,7 +130,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			sess := newTestSession(tc.userInDB.ScreenName, sessOptID(tc.sessionUUID.String()))
-			um := server.NewMockUserManager(t)
+			um := NewMockUserManager(t)
 			um.EXPECT().
 				GetUser(tc.userInDB.ScreenName).
 				Return(&userGoodPwd, nil).
@@ -138,7 +139,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 				UpsertUser(mock.Anything).
 				Return(nil).
 				Maybe()
-			sm := server.NewMockSessionManager(t)
+			sm := NewMockSessionManager(t)
 			sm.EXPECT().
 				NewSessionWithSN(tc.sessionUUID.String(), tc.userInDB.ScreenName).
 				Return(sess).
@@ -162,7 +163,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 	cases := []struct {
 		name         string
 		cfg          server.Config
-		userInDB     *server.User
+		userInDB     *state.User
 		fnNewUUID    uuid.UUID
 		inputSNAC    oscar.SNAC_0x17_0x06_BUCPChallengeRequest
 		expectOutput oscar.XMessage
@@ -173,7 +174,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				BOSPort:   1234,
 			},
-			userInDB: &server.User{
+			userInDB: &state.User{
 				ScreenName: "sn_user_a",
 				AuthKey:    "auth_key_user_a",
 			},
@@ -254,7 +255,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			um := server.NewMockUserManager(t)
+			um := NewMockUserManager(t)
 			um.EXPECT().
 				GetUser(string(tc.inputSNAC.TLVList[0].Val)).
 				Return(tc.userInDB, nil).

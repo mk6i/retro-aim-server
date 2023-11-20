@@ -3,17 +3,20 @@ package handler
 import (
 	"context"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 )
 
-func NewChatService() *ChatService {
-	return &ChatService{}
+func NewChatService(chatRegistry *state.ChatRegistry) *ChatService {
+	return &ChatService{
+		chatRegistry: chatRegistry,
+	}
 }
 
 type ChatService struct {
+	chatRegistry *state.ChatRegistry
 }
 
-func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *server.Session, chatSessMgr server.ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.XMessage, error) {
+func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, chatID string, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.XMessage, error) {
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: oscar.CHAT,
 		SubGroup:  oscar.ChatChannelMsgToClient,
@@ -35,8 +38,13 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *server.S
 		}),
 	)
 
+	_, chatSessMgr, err := s.chatRegistry.Retrieve(chatID)
+	if err != nil {
+		return nil, err
+	}
+
 	// send message to all the participants except sender
-	chatSessMgr.BroadcastExcept(ctx, sess, oscar.XMessage{
+	chatSessMgr.(ChatSessionManager).BroadcastExcept(ctx, sess, oscar.XMessage{
 		SnacFrame: snacFrameOut,
 		SnacOut:   snacPayloadOut,
 	})
@@ -53,7 +61,7 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *server.S
 	return ret, nil
 }
 
-func setOnlineChatUsers(ctx context.Context, sess *server.Session, chatSessMgr server.ChatSessionManager) {
+func setOnlineChatUsers(ctx context.Context, sess *state.Session, chatSessMgr ChatSessionManager) {
 	snacPayloadOut := oscar.SNAC_0x0E_0x03_ChatUsersJoined{}
 	sessions := chatSessMgr.Participants()
 
@@ -76,7 +84,7 @@ func setOnlineChatUsers(ctx context.Context, sess *server.Session, chatSessMgr s
 	})
 }
 
-func alertUserJoined(ctx context.Context, sess *server.Session, chatSessMgr server.ChatSessionManager) {
+func alertUserJoined(ctx context.Context, sess *state.Session, chatSessMgr ChatSessionManager) {
 	chatSessMgr.BroadcastExcept(ctx, sess, oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT,
@@ -96,7 +104,7 @@ func alertUserJoined(ctx context.Context, sess *server.Session, chatSessMgr serv
 	})
 }
 
-func alertUserLeft(ctx context.Context, sess *server.Session, chatSessMgr server.ChatSessionManager) {
+func alertUserLeft(ctx context.Context, sess *state.Session, chatSessMgr ChatSessionManager) {
 	chatSessMgr.BroadcastExcept(ctx, sess, oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT,
@@ -116,7 +124,7 @@ func alertUserLeft(ctx context.Context, sess *server.Session, chatSessMgr server
 	})
 }
 
-func sendChatRoomInfoUpdate(ctx context.Context, sess *server.Session, chatSessMgr server.ChatSessionManager, room server.ChatRoom) {
+func sendChatRoomInfoUpdate(ctx context.Context, sess *state.Session, chatSessMgr ChatSessionManager, room state.ChatRoom) {
 	chatSessMgr.SendToScreenName(ctx, sess.ScreenName(), oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.CHAT,

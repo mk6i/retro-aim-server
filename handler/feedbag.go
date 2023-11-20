@@ -3,17 +3,17 @@ package handler
 import (
 	"context"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 	"time"
 )
 
-func NewFeedbagService(sm server.SessionManager, fm server.FeedbagManager) *FeedbagService {
+func NewFeedbagService(sm SessionManager, fm FeedbagManager) *FeedbagService {
 	return &FeedbagService{sm: sm, fm: fm}
 }
 
 type FeedbagService struct {
-	sm server.SessionManager
-	fm server.FeedbagManager
+	sm SessionManager
+	fm FeedbagManager
 }
 
 func (s FeedbagService) RightsQueryHandler(context.Context) oscar.XMessage {
@@ -64,7 +64,7 @@ func (s FeedbagService) RightsQueryHandler(context.Context) oscar.XMessage {
 	}
 }
 
-func (s FeedbagService) QueryHandler(_ context.Context, sess *server.Session) (oscar.XMessage, error) {
+func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session) (oscar.XMessage, error) {
 	fb, err := s.fm.Retrieve(sess.ScreenName())
 	if err != nil {
 		return oscar.XMessage{}, err
@@ -92,7 +92,7 @@ func (s FeedbagService) QueryHandler(_ context.Context, sess *server.Session) (o
 	}, nil
 }
 
-func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *server.Session, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.XMessage, error) {
+func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.XMessage, error) {
 	fb, err := s.fm.Retrieve(sess.ScreenName())
 	if err != nil {
 		return oscar.XMessage{}, err
@@ -132,7 +132,7 @@ func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *server.S
 	}, nil
 }
 
-func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *server.Session, snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.XMessage, error) {
+func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.XMessage, error) {
 	for _, item := range snacPayloadIn.Items {
 		// don't let users block themselves, it causes the AIM client to go
 		// into a weird state.
@@ -179,7 +179,7 @@ func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *server.Sess
 	}, nil
 }
 
-func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *server.Session, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.XMessage, error) {
+func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.XMessage, error) {
 	if err := s.fm.Upsert(sess.ScreenName(), snacPayloadIn.Items); err != nil {
 		return oscar.XMessage{}, nil
 	}
@@ -205,7 +205,7 @@ func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *server.Sess
 	}, nil
 }
 
-func (s FeedbagService) DeleteItemHandler(ctx context.Context, sess *server.Session, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.XMessage, error) {
+func (s FeedbagService) DeleteItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.XMessage, error) {
 	if err := s.fm.Delete(sess.ScreenName(), snacPayloadIn.Items); err != nil {
 		return oscar.XMessage{}, err
 	}

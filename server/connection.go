@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/state"
 )
 
 var (
@@ -51,11 +52,15 @@ func consumeFLAPFrames(r io.Reader, msgCh chan incomingMessage, errCh chan error
 	}
 }
 
-func dispatchIncomingMessages(ctx context.Context, sess *Session, seq uint32, rw io.ReadWriter, logger *slog.Logger, fn clientReqHandler, alertHandler alertHandler) {
+func dispatchIncomingMessages(ctx context.Context, sess *state.Session, seq uint32, rw io.ReadWriter, logger *slog.Logger, fn clientReqHandler, alertHandler alertHandler) {
 	// buffered so that the go routine has room to exit
 	msgCh := make(chan incomingMessage, 1)
 	readErrCh := make(chan error, 1)
 	go consumeFLAPFrames(rw, msgCh, readErrCh)
+
+	defer func() {
+		logger.InfoContext(ctx, "user disconnected")
+	}()
 
 	for {
 		select {
@@ -102,11 +107,7 @@ func dispatchIncomingMessages(ctx context.Context, sess *Session, seq uint32, rw
 			}
 			return
 		case err := <-readErrCh:
-			// handle a read error
-			switch {
-			case errors.Is(io.EOF, err):
-				fallthrough
-			default:
+			if !errors.Is(io.EOF, err) {
 				logger.ErrorContext(ctx, "client disconnected with error", "err", err)
 			}
 			return
@@ -114,29 +115,35 @@ func dispatchIncomingMessages(ctx context.Context, sess *Session, seq uint32, rw
 	}
 }
 
-func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWriter, router ChatServiceRouter, authHandler AuthHandler, logger *slog.Logger) {
+type sessionRetriever interface {
+	Retrieve(ID string) (*state.Session, bool)
+}
+
+func HandleChatConnection(ctx context.Context, cr *state.ChatRegistry, rw io.ReadWriter, router ChatServiceRouter, authHandler AuthHandler, logger *slog.Logger) {
 	cookie, seq, err := authHandler.VerifyChatLogin(rw)
 	if err != nil {
 		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
 		return
 	}
 
-	room, chatSessMgr, err := cr.Retrieve(string(cookie.Cookie))
+	_, chatSessMgr, err := cr.Retrieve(string(cookie.Cookie))
 	if err != nil {
 		logger.ErrorContext(ctx, "unable to find chat room", "err", err.Error())
 		return
 	}
 
-	chatSess, found := chatSessMgr.Retrieve(cookie.SessID)
+	chatSess, found := chatSessMgr.(sessionRetriever).Retrieve(cookie.SessID)
 	if !found {
 		logger.ErrorContext(ctx, "unable to find user for session", "sessID", cookie.SessID)
 		return
 	}
 
+	chatID := string(cookie.Cookie)
+
 	defer chatSess.Close()
 	go func() {
 		<-chatSess.Closed()
-		authHandler.SignoutChat(ctx, cr, room, chatSessMgr, chatSess)
+		authHandler.SignoutChat(ctx, chatSess, chatID)
 	}()
 
 	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName())
@@ -148,7 +155,7 @@ func HandleChatConnection(ctx context.Context, cr *ChatRegistry, rw io.ReadWrite
 	}
 
 	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
-		return router.Route(ctx, chatSess, r, w, seq, chatSessMgr, room)
+		return router.Route(ctx, chatSess, r, w, seq, chatID)
 	}
 	fnAlertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, seq *uint32) error {
 		return writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, seq, w)
@@ -267,7 +274,7 @@ func HandleBOSConnection(ctx context.Context, conn net.Conn, router BOSServiceRo
 	dispatchIncomingMessages(ctx, sess, seq, conn, logger, fnClientReqHandler, fnAlertHandler)
 }
 
-func ListenChat(cfg Config, router ChatServiceRouter, cr *ChatRegistry, authHandler AuthHandler, logger *slog.Logger) {
+func ListenChat(cfg Config, router ChatServiceRouter, cr *state.ChatRegistry, authHandler AuthHandler, logger *slog.Logger) {
 	addr := Address("", cfg.ChatPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {

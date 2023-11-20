@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"sync"
@@ -15,13 +16,13 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 
 	ctx := context.Background()
 	cfg := Config{}
-	cr := NewChatRegistry()
+	cr := state.NewChatRegistry()
 	logger := NewLogger(cfg)
 
-	room := ChatRoom{
+	room := state.ChatRoom{
 		Name: "test chat room!",
 	}
-	sm := NewSessionManager(logger)
+	sm := state.NewSessionManager(logger)
 	sess := sm.NewSessionWithSN("bob-sess-id", "bob")
 	cr.Register(room, sm)
 
@@ -83,13 +84,13 @@ func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 
 	ctx := context.Background()
 	cfg := Config{}
-	cr := NewChatRegistry()
+	cr := state.NewChatRegistry()
 	logger := NewLogger(cfg)
 
-	room := ChatRoom{
+	room := state.ChatRoom{
 		Name: "test chat room!",
 	}
-	sm := NewSessionManager(logger)
+	sm := state.NewSessionManager(logger)
 	sess := sm.NewSessionWithSN("bob-sess-id", "bob")
 	cr.Register(room, sm)
 
@@ -143,13 +144,13 @@ func TestHandleChatConnection_SessionClosed(t *testing.T) {
 
 	ctx := context.Background()
 	cfg := Config{}
-	cr := NewChatRegistry()
+	cr := state.NewChatRegistry()
 	logger := NewLogger(cfg)
 
-	room := ChatRoom{
+	room := state.ChatRoom{
 		Name: "test chat room!",
 	}
-	sm := NewSessionManager(logger)
+	sm := state.NewSessionManager(logger)
 	sess := sm.NewSessionWithSN("bob-sess-id", "bob")
 	cr.Register(room, sm)
 

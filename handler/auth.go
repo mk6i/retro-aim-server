@@ -8,21 +8,23 @@ import (
 	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 	"io"
 	"net"
 )
 
-func NewAuthService(sm server.SessionManager, fm server.FeedbagManager, um server.UserManager, cfg server.Config) *AuthService {
+func NewAuthService(cfg server.Config, sm SessionManager, fm FeedbagManager, um UserManager, cr *state.ChatRegistry) *AuthService {
 	return &AuthService{
 		sm:  sm,
 		fm:  fm,
 		um:  um,
 		cfg: cfg,
+		cr:  cr,
 	}
 }
 
-func newStubUser(screenName string) (server.User, error) {
-	u := server.User{ScreenName: screenName}
+func newStubUser(screenName string) (state.User, error) {
+	u := state.User{ScreenName: screenName}
 
 	uid, err := uuid.NewRandom()
 	if err != nil {
@@ -37,13 +39,14 @@ func newStubUser(screenName string) (server.User, error) {
 }
 
 type AuthService struct {
-	sm  server.SessionManager
-	fm  server.FeedbagManager
-	um  server.UserManager
+	sm  SessionManager
+	fm  FeedbagManager
+	um  UserManager
 	cfg server.Config
+	cr  *state.ChatRegistry
 }
 
-func (s AuthService) Signout(ctx context.Context, sess *server.Session) error {
+func (s AuthService) Signout(ctx context.Context, sess *state.Session) error {
 	if err := broadcastDeparture(ctx, sess, s.sm, s.fm); err != nil {
 		return err
 	}
@@ -51,13 +54,20 @@ func (s AuthService) Signout(ctx context.Context, sess *server.Session) error {
 	return nil
 }
 
-func (s AuthService) SignoutChat(ctx context.Context, cr *server.ChatRegistry, chatRoom server.ChatRoom, chatSessManager server.ChatSessionManager, sess *server.Session) {
-	alertUserLeft(ctx, sess, chatSessManager)
-	chatSessManager.Remove(sess)
-	cr.MaybeRemoveRoom(chatRoom.Cookie)
+func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session, chatID string) {
+	chatRoom, chatSessMgr, err := s.cr.Retrieve(chatID)
+	if err != nil {
+		fmt.Println("error getting chat room to remove")
+		return
+	}
+	alertUserLeft(ctx, sess, chatSessMgr.(ChatSessionManager))
+	chatSessMgr.(ChatSessionManager).Remove(sess)
+	if chatSessMgr.(ChatSessionManager).Empty() {
+		s.cr.RemoveRoom(chatRoom.Cookie)
+	}
 }
 
-func (s AuthService) VerifyLogin(conn net.Conn) (*server.Session, uint32, error) {
+func (s AuthService) VerifyLogin(conn net.Conn) (*state.Session, uint32, error) {
 	seq := uint32(100)
 
 	flap, err := s.SendAndReceiveSignonFrame(conn, &seq)

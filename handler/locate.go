@@ -3,10 +3,10 @@ package handler
 import (
 	"context"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 )
 
-func NewLocateService(sm server.SessionManager, fm server.FeedbagManager, pm server.ProfileManager) LocateService {
+func NewLocateService(sm SessionManager, fm FeedbagManager, pm ProfileManager) LocateService {
 	return LocateService{
 		sm: sm,
 		fm: fm,
@@ -15,9 +15,9 @@ func NewLocateService(sm server.SessionManager, fm server.FeedbagManager, pm ser
 }
 
 type LocateService struct {
-	sm server.SessionManager
-	fm server.FeedbagManager
-	pm server.ProfileManager
+	sm SessionManager
+	fm FeedbagManager
+	pm ProfileManager
 }
 
 func (s LocateService) RightsQueryHandler(context.Context) oscar.XMessage {
@@ -40,7 +40,7 @@ func (s LocateService) RightsQueryHandler(context.Context) oscar.XMessage {
 	}
 }
 
-func (s LocateService) SetInfoHandler(ctx context.Context, sess *server.Session, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error {
+func (s LocateService) SetInfoHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error {
 	// update profile
 	if profile, hasProfile := snacPayloadIn.GetString(oscar.LocateTLVTagsInfoSigData); hasProfile {
 		if err := s.pm.UpsertProfile(sess.ScreenName(), profile); err != nil {
@@ -58,12 +58,12 @@ func (s LocateService) SetInfoHandler(ctx context.Context, sess *server.Session,
 	return nil
 }
 
-func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *server.Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.XMessage, error) {
+func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.XMessage, error) {
 	blocked, err := s.fm.Blocked(sess.ScreenName(), snacPayloadIn.ScreenName)
 	switch {
 	case err != nil:
 		return oscar.XMessage{}, err
-	case blocked != server.BlockedNo:
+	case blocked != state.BlockedNo:
 		return oscar.XMessage{
 			SnacFrame: oscar.SnacFrame{
 				FoodGroup: oscar.LOCATE,

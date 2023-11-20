@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"github.com/mkaminski/goaim/state"
 	"io"
 	"log/slog"
 
@@ -9,9 +10,9 @@ import (
 )
 
 type ICBMHandler interface {
-	ChannelMsgToHostHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.XMessage, error)
-	ClientEventHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent) error
-	EvilRequestHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.XMessage, error)
+	ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.XMessage, error)
+	ClientEventHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent) error
+	EvilRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.XMessage, error)
 	ParameterQueryHandler(context.Context) oscar.XMessage
 }
 
@@ -29,7 +30,7 @@ type ICBMRouter struct {
 	RouteLogger
 }
 
-func (rt *ICBMRouter) RouteICBM(ctx context.Context, sess *Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt *ICBMRouter) RouteICBM(ctx context.Context, sess *state.Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.ICBMAddParameters:
 		inSNAC := oscar.SNAC_0x04_0x02_ICBMAddParameters{}

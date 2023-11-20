@@ -3,18 +3,19 @@ package server
 import (
 	"context"
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/state"
 	"io"
 	"log/slog"
 )
 
 type FeedbagHandler interface {
-	DeleteItemHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.XMessage, error)
-	InsertItemHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.XMessage, error)
-	QueryHandler(ctx context.Context, sess *Session) (oscar.XMessage, error)
-	QueryIfModifiedHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.XMessage, error)
+	DeleteItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.XMessage, error)
+	InsertItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.XMessage, error)
+	QueryHandler(ctx context.Context, sess *state.Session) (oscar.XMessage, error)
+	QueryIfModifiedHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.XMessage, error)
 	RightsQueryHandler(context.Context) oscar.XMessage
 	StartClusterHandler(context.Context, oscar.SNAC_0x13_0x11_FeedbagStartCluster)
-	UpdateItemHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.XMessage, error)
+	UpdateItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.XMessage, error)
 }
 
 func NewFeedbagRouter(logger *slog.Logger, handler FeedbagHandler) FeedbagRouter {
@@ -31,7 +32,7 @@ type FeedbagRouter struct {
 	RouteLogger
 }
 
-func (rt FeedbagRouter) RouteFeedbag(ctx context.Context, sess *Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt FeedbagRouter) RouteFeedbag(ctx context.Context, sess *state.Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.FeedbagRightsQuery:
 		inSNAC := oscar.SNAC_0x13_0x02_FeedbagRightsQuery{}

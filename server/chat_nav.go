@@ -2,15 +2,14 @@ package server
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/state"
 	"io"
 	"log/slog"
-	"time"
 )
 
 type ChatNavHandler interface {
-	CreateRoomHandler(ctx context.Context, sess *Session, newRoom func() ChatRoom, newChatSessMgr func() ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error)
+	CreateRoomHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error)
 	RequestChatRightsHandler(ctx context.Context) oscar.XMessage
 	RequestRoomInfoHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (oscar.XMessage, error)
 }
@@ -29,7 +28,7 @@ type ChatNavRouter struct {
 	RouteLogger
 }
 
-func (rt *ChatNavRouter) RouteChatNav(ctx context.Context, sess *Session, newChatSessMgr func() ChatSessionManager, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt *ChatNavRouter) RouteChatNav(ctx context.Context, sess *state.Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.ChatNavRequestChatRights:
 		outSNAC := rt.RequestChatRightsHandler(ctx)
@@ -51,13 +50,7 @@ func (rt *ChatNavRouter) RouteChatNav(ctx context.Context, sess *Session, newCha
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
 			return err
 		}
-		newChatRoom := func() ChatRoom {
-			return ChatRoom{
-				Cookie:     uuid.New().String(),
-				CreateTime: time.Now(),
-			}
-		}
-		outSNAC, err := rt.CreateRoomHandler(ctx, sess, newChatRoom, newChatSessMgr, inSNAC)
+		outSNAC, err := rt.CreateRoomHandler(ctx, sess, inSNAC)
 		if err != nil {
 			return err
 		}

@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -13,10 +13,10 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		// name is the unit test name
 		name string
 		// blockedState is the response to the sender/recipient block check
-		blockedState server.BlockedState
+		blockedState state.BlockedState
 		// screenNameLookups is the list of user session lookups
 		screenNameLookups map[string]struct {
-			sess *server.Session
+			sess *state.Session
 			err  error
 		}
 		// screenNameLookups is the list of user session lookups
@@ -25,16 +25,16 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			err     error
 		}
 		// userSession is the session of the user requesting the user info
-		userSession *server.Session
+		userSession *state.Session
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC    oscar.SNAC_0x02_0x15_LocateUserInfoQuery2
 		expectOutput oscar.XMessage
 	}{
 		{
 			name:         "request user info, expect user info response",
-			blockedState: server.BlockedNo,
+			blockedState: state.BlockedNo,
 			screenNameLookups: map[string]struct {
-				sess *server.Session
+				sess *state.Session
 				err  error
 			}{
 				"requested-user": {
@@ -64,9 +64,9 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info + profile, expect user info response + profile",
-			blockedState: server.BlockedNo,
+			blockedState: state.BlockedNo,
 			screenNameLookups: map[string]struct {
-				sess *server.Session
+				sess *state.Session
 				err  error
 			}{
 				"requested-user": {
@@ -110,9 +110,9 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info + profile, expect user info response + profile",
-			blockedState: server.BlockedNo,
+			blockedState: state.BlockedNo,
 			screenNameLookups: map[string]struct {
-				sess *server.Session
+				sess *state.Session
 				err  error
 			}{
 				"requested-user": {
@@ -156,9 +156,9 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info + away message, expect user info response + away message",
-			blockedState: server.BlockedNo,
+			blockedState: state.BlockedNo,
 			screenNameLookups: map[string]struct {
-				sess *server.Session
+				sess *state.Session
 				err  error
 			}{
 				"requested-user": {
@@ -194,7 +194,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info of user who blocked requester, expect not logged in error",
-			blockedState: server.BlockedB,
+			blockedState: state.BlockedB,
 			userSession:  newTestSession("user_screen_name"),
 			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
 				ScreenName: "requested-user",
@@ -211,9 +211,9 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		},
 		{
 			name:         "request user info of user who does not exist, expect not logged in error",
-			blockedState: server.BlockedNo,
+			blockedState: state.BlockedNo,
 			screenNameLookups: map[string]struct {
-				sess *server.Session
+				sess *state.Session
 				err  error
 			}{
 				"non_existent_requested_user": {
@@ -238,19 +238,19 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			fm := server.NewMockFeedbagManager(t)
+			fm := NewMockFeedbagManager(t)
 			fm.EXPECT().
 				Blocked(tc.userSession.ScreenName(), tc.inputSNAC.ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
-			sm := server.NewMockSessionManager(t)
+			sm := NewMockSessionManager(t)
 			for screenName, val := range tc.screenNameLookups {
 				sm.EXPECT().
 					RetrieveByScreenName(screenName).
 					Return(val.sess).
 					Maybe()
 			}
-			pm := server.NewMockProfileManager(t)
+			pm := NewMockProfileManager(t)
 			for screenName, val := range tc.profileLookups {
 				pm.EXPECT().
 					RetrieveProfile(screenName).

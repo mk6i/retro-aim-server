@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -13,12 +13,12 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 		// name is the unit test name
 		name string
 		// blockedState is the response to the sender/recipient block check
-		blockedState server.BlockedState
+		blockedState state.BlockedState
 		// recipRetrieveErr is the error returned by the recipient session
 		// lookup
 		recipRetrieveErr error
-		senderSession    *server.Session
-		recipientSession *server.Session
+		senderSession    *state.Session
+		recipientSession *state.Session
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost
 		// expectSNACToClient is the SNAC sent from the server to the
@@ -30,7 +30,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 	}{
 		{
 			name:             "transmit message from sender to recipient, ack message back to sender",
-			blockedState:     server.BlockedNo,
+			blockedState:     state.BlockedNo,
 			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
 			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
 			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
@@ -80,7 +80,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 		},
 		{
 			name:             "transmit message from sender to recipient, don't ack message back to sender",
-			blockedState:     server.BlockedNo,
+			blockedState:     state.BlockedNo,
 			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
 			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
 			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
@@ -113,7 +113,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 		},
 		{
 			name:             "don't transmit message from sender to recipient because sender has blocked recipient",
-			blockedState:     server.BlockedA,
+			blockedState:     state.BlockedA,
 			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
 			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
 			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
@@ -139,7 +139,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 		},
 		{
 			name:             "don't transmit message from sender to recipient because recipient has blocked sender",
-			blockedState:     server.BlockedB,
+			blockedState:     state.BlockedB,
 			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
 			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
 			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
@@ -165,7 +165,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 		},
 		{
 			name:             "don't transmit message from sender to recipient because recipient doesn't exist",
-			blockedState:     server.BlockedNo,
+			blockedState:     state.BlockedNo,
 			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
 			recipientSession: nil,
 			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
@@ -196,12 +196,12 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := server.NewMockFeedbagManager(t)
+			fm := NewMockFeedbagManager(t)
 			fm.EXPECT().
 				Blocked(tc.senderSession.ScreenName(), tc.inputSNAC.ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
-			sm := server.NewMockSessionManager(t)
+			sm := NewMockSessionManager(t)
 			sm.EXPECT().
 				RetrieveByScreenName(tc.inputSNAC.ScreenName).
 				Return(tc.recipientSession).
@@ -233,7 +233,7 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 		// name is the unit test name
 		name string
 		// blockedState is the response to the sender/recipient block check
-		blockedState server.BlockedState
+		blockedState state.BlockedState
 		// senderScreenName is the screen name of the user sending the event
 		senderScreenName string
 		// inputSNAC is the SNAC sent by the sender client
@@ -244,7 +244,7 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 	}{
 		{
 			name:             "transmit message from sender to recipient",
-			blockedState:     server.BlockedNo,
+			blockedState:     state.BlockedNo,
 			senderScreenName: "sender-screen-name",
 			inputSNAC: oscar.SNAC_0x04_0x14_ICBMClientEvent{
 				Cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
@@ -267,7 +267,7 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 		},
 		{
 			name:             "don't transmit message from sender to recipient because sender has blocked recipient",
-			blockedState:     server.BlockedA,
+			blockedState:     state.BlockedA,
 			senderScreenName: "sender-screen-name",
 			inputSNAC: oscar.SNAC_0x04_0x14_ICBMClientEvent{
 				ScreenName: "recipient-screen-name",
@@ -280,13 +280,13 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := server.NewMockFeedbagManager(t)
+			fm := NewMockFeedbagManager(t)
 			fm.EXPECT().
 				Blocked(tc.senderScreenName, tc.inputSNAC.ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
-			sm := server.NewMockSessionManager(t)
-			if tc.blockedState == server.BlockedNo {
+			sm := NewMockSessionManager(t)
+			if tc.blockedState == state.BlockedNo {
 				sm.EXPECT().
 					SendToScreenName(mock.Anything, tc.inputSNAC.ScreenName, tc.expectSNACToClient)
 			}
@@ -308,12 +308,12 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 		// name is the unit test name
 		name string
 		// blockedState is the response to the sender/recipient block check
-		blockedState server.BlockedState
+		blockedState state.BlockedState
 		// recipRetrieveErr is the error returned by the recipient session
 		// lookup
 		recipRetrieveErr error
 		// senderScreenName is the session name of the user sending the IM
-		senderSession *server.Session
+		senderSession *state.Session
 		// recipientScreenName is the screen name of the user receiving the IM
 		recipientScreenName string
 		// recipientBuddies is a list of the recipient's buddies that get
@@ -330,7 +330,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 	}{
 		{
 			name:                "transmit anonymous warning from sender to recipient",
-			blockedState:        server.BlockedNo,
+			blockedState:        state.BlockedNo,
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientScreenName: "recipient-screen-name",
 			broadcastMessage: oscar.XMessage{
@@ -375,7 +375,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 		},
 		{
 			name:                "transmit non-anonymous warning from sender to recipient",
-			blockedState:        server.BlockedNo,
+			blockedState:        state.BlockedNo,
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientScreenName: "recipient-screen-name",
 			recipientBuddies:    []string{"buddy1", "buddy2"},
@@ -424,7 +424,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 		},
 		{
 			name:                "don't transmit non-anonymous warning from sender to recipient because sender has blocked recipient",
-			blockedState:        server.BlockedA,
+			blockedState:        state.BlockedA,
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientScreenName: "recipient-screen-name",
 			recipientBuddies:    []string{"buddy1", "buddy2"},
@@ -444,7 +444,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 		},
 		{
 			name:                "don't transmit non-anonymous warning from sender to recipient because recipient has blocked sender",
-			blockedState:        server.BlockedB,
+			blockedState:        state.BlockedB,
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientScreenName: "recipient-screen-name",
 			recipientBuddies:    []string{"buddy1", "buddy2"},
@@ -487,7 +487,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := server.NewMockFeedbagManager(t)
+			fm := NewMockFeedbagManager(t)
 			fm.EXPECT().
 				Blocked(tc.senderSession.ScreenName(), tc.recipientScreenName).
 				Return(tc.blockedState, nil).
@@ -497,7 +497,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 				Return(tc.recipientBuddies, nil).
 				Maybe()
 			recipSess := newTestSession(tc.recipientScreenName, sessOptCannedSignonTime)
-			sm := server.NewMockSessionManager(t)
+			sm := NewMockSessionManager(t)
 			sm.EXPECT().
 				RetrieveByScreenName(tc.recipientScreenName).
 				Return(recipSess).

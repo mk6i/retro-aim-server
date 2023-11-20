@@ -4,31 +4,32 @@ import (
 	"context"
 	"errors"
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/state"
 	"io"
 	"log/slog"
 )
 
 type OServiceHandler interface {
 	ClientVersionsHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.XMessage
-	IdleNotificationHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error
+	IdleNotificationHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error
 	RateParamsQueryHandler(ctx context.Context) oscar.XMessage
 	RateParamsSubAddHandler(context.Context, oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd)
-	SetUserInfoFieldsHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error)
-	UserInfoQueryHandler(ctx context.Context, sess *Session) oscar.XMessage
+	SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error)
+	UserInfoQueryHandler(ctx context.Context, sess *state.Session) oscar.XMessage
 }
 
 type OServiceBOSHandler interface {
 	OServiceHandler
 	WriteOServiceHostOnline() oscar.XMessage
-	ServiceRequestHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error)
-	ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *Session) error
+	ServiceRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error)
+	ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error
 }
 
 type OServiceChatHandler interface {
 	OServiceHandler
 	WriteOServiceHostOnline() oscar.XMessage
-	ServiceRequestHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error)
-	ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *Session, chatSessMgr ChatSessionManager, room ChatRoom) error
+	ServiceRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error)
+	ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session, chatID string) error
 }
 
 type OServiceRouter struct {
@@ -36,7 +37,7 @@ type OServiceRouter struct {
 	RouteLogger
 }
 
-func (rt OServiceRouter) RouteOService(ctx context.Context, sess *Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.OServiceRateParamsQuery:
 		outSNAC := rt.RateParamsQueryHandler(ctx)
@@ -102,7 +103,7 @@ type OServiceBOSRouter struct {
 	OServiceBOSHandler
 }
 
-func (rt OServiceBOSRouter) RouteOService(ctx context.Context, sess *Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt OServiceBOSRouter) RouteOService(ctx context.Context, sess *state.Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.OServiceServiceRequest:
 		inSNAC := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
@@ -148,7 +149,7 @@ type OServiceChatRouter struct {
 	OServiceChatHandler
 }
 
-func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *Session, chatSessMgr ChatSessionManager, room ChatRoom, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *state.Session, chatID string, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.OServiceServiceRequest:
 		inSNAC := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
@@ -171,7 +172,7 @@ func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *Session, c
 		}
 		rt.Logger.InfoContext(ctx, "user signed on")
 		rt.logRequest(ctx, SNACFrame, inSNAC)
-		return rt.OServiceChatHandler.ClientOnlineHandler(ctx, inSNAC, sess, chatSessMgr, room)
+		return rt.OServiceChatHandler.ClientOnlineHandler(ctx, inSNAC, sess, chatID)
 	default:
 		return rt.OServiceRouter.RouteOService(ctx, sess, SNACFrame, r, w, sequence)
 	}

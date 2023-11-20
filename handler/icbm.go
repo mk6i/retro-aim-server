@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 )
 
 const (
@@ -11,13 +11,13 @@ const (
 	evilDeltaAnon = uint16(30)
 )
 
-func NewICBMService(sm server.SessionManager, fm server.FeedbagManager) *ICBMService {
+func NewICBMService(sm SessionManager, fm FeedbagManager) *ICBMService {
 	return &ICBMService{sm: sm, fm: fm}
 }
 
 type ICBMService struct {
-	sm server.SessionManager
-	fm server.FeedbagManager
+	sm SessionManager
+	fm FeedbagManager
 }
 
 func (s ICBMService) ParameterQueryHandler(context.Context) oscar.XMessage {
@@ -37,15 +37,15 @@ func (s ICBMService) ParameterQueryHandler(context.Context) oscar.XMessage {
 	}
 }
 
-func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *server.Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.XMessage, error) {
+func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.XMessage, error) {
 	blocked, err := s.fm.Blocked(sess.ScreenName(), snacPayloadIn.ScreenName)
 	if err != nil {
 		return nil, err
 	}
 
-	if blocked != server.BlockedNo {
+	if blocked != state.BlockedNo {
 		code := oscar.ErrorCodeNotLoggedOn
-		if blocked == server.BlockedA {
+		if blocked == state.BlockedA {
 			code = oscar.ErrorCodeInLocalPermitDeny
 		}
 		return &oscar.XMessage{
@@ -120,13 +120,13 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *server.S
 	}, nil
 }
 
-func (s ICBMService) ClientEventHandler(ctx context.Context, sess *server.Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent) error {
+func (s ICBMService) ClientEventHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent) error {
 	blocked, err := s.fm.Blocked(sess.ScreenName(), snacPayloadIn.ScreenName)
 
 	switch {
 	case err != nil:
 		return err
-	case blocked != server.BlockedNo:
+	case blocked != state.BlockedNo:
 		return nil
 	default:
 		s.sm.SendToScreenName(ctx, snacPayloadIn.ScreenName, oscar.XMessage{
@@ -145,7 +145,7 @@ func (s ICBMService) ClientEventHandler(ctx context.Context, sess *server.Sessio
 	}
 }
 
-func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *server.Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.XMessage, error) {
+func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.XMessage, error) {
 	// don't let users warn themselves, it causes the AIM client to go into a
 	// weird state.
 	if snacPayloadIn.ScreenName == sess.ScreenName() {
@@ -164,7 +164,7 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *server.Sessio
 	if err != nil {
 		return oscar.XMessage{}, nil
 	}
-	if blocked != server.BlockedNo {
+	if blocked != state.BlockedNo {
 		return oscar.XMessage{
 			SnacFrame: oscar.SnacFrame{
 				FoodGroup: oscar.ICBM,

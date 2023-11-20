@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -15,22 +15,11 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 	//
 	userSess := newTestSession("user-screen-name", sessOptCannedID)
 
-	cr := server.NewChatRegistry()
+	cr := state.NewChatRegistry()
 
-	sm := server.NewMockChatSessionManager(t)
+	sm := NewMockChatSessionManager(t)
 	sm.EXPECT().NewSessionWithSN(userSess.ID(), userSess.ScreenName()).
-		Return(&server.Session{})
-
-	chatSessMgrFactory := func() server.ChatSessionManager {
-		return sm
-	}
-
-	newChatRoom := func() server.ChatRoom {
-		return server.ChatRoom{
-			Cookie:     "dummy-cookie",
-			CreateTime: time.UnixMilli(0),
-		}
-	}
+		Return(&state.Session{})
 
 	//
 	// send input SNAC
@@ -48,14 +37,23 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 	}
 	svc := ChatNavService{
 		cr: cr,
+		newChatRoom: func() state.ChatRoom {
+			return state.ChatRoom{
+				Cookie:     "dummy-cookie",
+				CreateTime: time.UnixMilli(0),
+			}
+		},
+		newChatSessMgr: func() ChatSessionManager {
+			return sm
+		},
 	}
-	outputSNAC, err := svc.CreateRoomHandler(context.Background(), userSess, newChatRoom, chatSessMgrFactory, inputSNAC)
+	outputSNAC, err := svc.CreateRoomHandler(context.Background(), userSess, inputSNAC)
 	assert.NoError(t, err)
 
 	//
 	// verify chat room created by handler
 	//
-	expectChatRoom := server.ChatRoom{
+	expectChatRoom := state.ChatRoom{
 		Cookie:         "dummy-cookie",
 		CreateTime:     time.UnixMilli(0),
 		DetailLevel:    3,

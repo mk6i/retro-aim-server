@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -17,10 +18,10 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 		// cfg is the application config
 		cfg server.Config
 		// chatRoom is the chat room the user connects to
-		chatRoom *server.ChatRoom
+		chatRoom *state.ChatRoom
 		// userSession is the session of the user requesting the chat service
 		// info
-		userSession *server.Session
+		userSession *state.Session
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC oscar.SNAC_0x01_0x04_OServiceServiceRequest
 		// expectSNACFrame is the SNAC frame sent from the server to the recipient
@@ -43,7 +44,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				ChatPort:  1234,
 			},
-			chatRoom: &server.ChatRoom{
+			chatRoom: &state.ChatRoom{
 				CreateTime:     time.UnixMilli(0),
 				DetailLevel:    4,
 				Exchange:       8,
@@ -114,12 +115,12 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			sm := server.NewMockChatSessionManager(t)
-			cr := server.NewChatRegistry()
+			sm := NewMockChatSessionManager(t)
+			cr := state.NewChatRegistry()
 			if tc.chatRoom != nil {
 				sm.EXPECT().
 					NewSessionWithSN(tc.userSession.ID(), tc.userSession.ScreenName()).
-					Return(&server.Session{}).
+					Return(&state.Session{}).
 					Maybe()
 				cr.Register(*tc.chatRoom, sm)
 			}
@@ -680,7 +681,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svcBOS.EXPECT().
-				ClientOnlineHandler(mock.Anything, tc.input.SnacOut, mock.Anything, mock.Anything, mock.Anything).
+				ClientOnlineHandler(mock.Anything, tc.input.SnacOut, mock.Anything, mock.Anything).
 				Return(tc.handlerErr).
 				Maybe()
 
@@ -700,7 +701,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteOService(nil, nil, nil, server.ChatRoom{}, tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteOService(nil, nil, "", tc.input.SnacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

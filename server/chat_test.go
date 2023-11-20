@@ -91,7 +91,7 @@ func TestChatRouter_RouteChat(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteChat(nil, nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteChat(nil, nil, "", tc.input.SnacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

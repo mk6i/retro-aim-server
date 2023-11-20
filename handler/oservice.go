@@ -7,17 +7,18 @@ import (
 	"fmt"
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 	"time"
 )
 
-func NewOServiceService(cfg server.Config, sm server.SessionManager, fm server.FeedbagManager) *OServiceService {
+func NewOServiceService(cfg server.Config, sm SessionManager, fm FeedbagManager) *OServiceService {
 	return &OServiceService{cfg: cfg, sm: sm, fm: fm}
 }
 
 type OServiceService struct {
 	cfg server.Config
-	fm  server.FeedbagManager
-	sm  server.SessionManager
+	fm  FeedbagManager
+	sm  SessionManager
 }
 
 func (s OServiceService) ClientVersionsHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.XMessage {
@@ -99,7 +100,7 @@ func (s OServiceService) RateParamsQueryHandler(_ context.Context) oscar.XMessag
 	}
 }
 
-func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *server.Session) oscar.XMessage {
+func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Session) oscar.XMessage {
 	return oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.OSERVICE,
@@ -111,7 +112,7 @@ func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *server.Se
 	}
 }
 
-func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *server.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error) {
+func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error) {
 	if status, hasStatus := snacPayloadIn.GetUint32(0x06); hasStatus {
 		switch status {
 		case 0x000:
@@ -139,7 +140,7 @@ func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *ser
 	}, nil
 }
 
-func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *server.Session, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error {
+func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error {
 	if snacPayloadIn.IdleTime == 0 {
 		sess.SetActive()
 	} else {
@@ -153,16 +154,16 @@ func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *serv
 func (s OServiceService) RateParamsSubAddHandler(context.Context, oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd) {
 }
 
-func NewOServiceServiceForBOS(oserviceService OServiceService, cr *server.ChatRegistry) *OServiceServiceForBOS {
+func NewOServiceServiceForBOS(oserviceService OServiceService, cr *state.ChatRegistry) *OServiceServiceForBOS {
 	return &OServiceServiceForBOS{OServiceService: oserviceService, cr: cr}
 }
 
 type OServiceServiceForBOS struct {
 	OServiceService
-	cr *server.ChatRegistry
+	cr *state.ChatRegistry
 }
 
-func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *server.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error) {
+func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error) {
 	if snacPayloadIn.FoodGroup != oscar.CHAT {
 		return oscar.XMessage{}, server.ErrUnsupportedSubGroup
 	}
@@ -181,7 +182,7 @@ func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *se
 	if err != nil {
 		return oscar.XMessage{}, server.ErrUnsupportedSubGroup
 	}
-	chatSessMgr.NewSessionWithSN(sess.ID(), sess.ScreenName())
+	chatSessMgr.(ChatSessionManager).NewSessionWithSN(sess.ID(), sess.ScreenName())
 
 	return oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
@@ -225,7 +226,7 @@ func (s OServiceServiceForBOS) WriteOServiceHostOnline() oscar.XMessage {
 	}
 }
 
-func (s OServiceServiceForBOS) ClientOnlineHandler(ctx context.Context, _ oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *server.Session) error {
+func (s OServiceServiceForBOS) ClientOnlineHandler(ctx context.Context, _ oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
 	if err := broadcastArrival(ctx, sess, s.sm, s.fm); err != nil {
 		return err
 	}
@@ -239,15 +240,19 @@ func (s OServiceServiceForBOS) ClientOnlineHandler(ctx context.Context, _ oscar.
 	return nil
 }
 
-func NewOServiceServiceForChat(oserviceService OServiceService) *OServiceServiceForChat {
-	return &OServiceServiceForChat{OServiceService: oserviceService}
+func NewOServiceServiceForChat(oserviceService OServiceService, chatRegistry *state.ChatRegistry) *OServiceServiceForChat {
+	return &OServiceServiceForChat{
+		OServiceService: oserviceService,
+		chatRegistry:    chatRegistry,
+	}
 }
 
 type OServiceServiceForChat struct {
 	OServiceService
+	chatRegistry *state.ChatRegistry
 }
 
-func (s OServiceServiceForChat) ServiceRequestHandler(_ context.Context, _ *server.Session, _ oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error) {
+func (s OServiceServiceForChat) ServiceRequestHandler(_ context.Context, _ *state.Session, _ oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error) {
 	return oscar.XMessage{}, server.ErrUnsupportedSubGroup
 }
 
@@ -263,9 +268,13 @@ func (s OServiceServiceForChat) WriteOServiceHostOnline() oscar.XMessage {
 	}
 }
 
-func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, _ oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *server.Session, chatSessMgr server.ChatSessionManager, room server.ChatRoom) error {
-	sendChatRoomInfoUpdate(ctx, sess, chatSessMgr, room)
-	alertUserJoined(ctx, sess, chatSessMgr)
-	setOnlineChatUsers(ctx, sess, chatSessMgr)
+func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, _ oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session, chatID string) error {
+	room, chatSessMgr, err := s.chatRegistry.Retrieve(chatID)
+	if err != nil {
+		return err
+	}
+	sendChatRoomInfoUpdate(ctx, sess, chatSessMgr.(ChatSessionManager), room)
+	alertUserJoined(ctx, sess, chatSessMgr.(ChatSessionManager))
+	setOnlineChatUsers(ctx, sess, chatSessMgr.(ChatSessionManager))
 	return nil
 }

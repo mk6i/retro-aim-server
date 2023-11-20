@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"github.com/mkaminski/goaim/state"
 	"io"
 	"log/slog"
 
@@ -11,9 +12,9 @@ import (
 type LocateHandler interface {
 	RightsQueryHandler(ctx context.Context) oscar.XMessage
 	SetDirInfoHandler(ctx context.Context) oscar.XMessage
-	SetInfoHandler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error
+	SetInfoHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error
 	SetKeywordInfoHandler(ctx context.Context) oscar.XMessage
-	UserInfoQuery2Handler(ctx context.Context, sess *Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.XMessage, error)
+	UserInfoQuery2Handler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.XMessage, error)
 }
 
 func NewLocateRouter(handler LocateHandler, logger *slog.Logger) LocateRouter {
@@ -30,7 +31,7 @@ type LocateRouter struct {
 	RouteLogger
 }
 
-func (rt LocateRouter) RouteLocate(ctx context.Context, sess *Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt LocateRouter) RouteLocate(ctx context.Context, sess *state.Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.LocateRightsQuery:
 		outSNAC := rt.RightsQueryHandler(ctx)

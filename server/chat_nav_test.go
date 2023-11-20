@@ -120,7 +120,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				CreateRoomHandler(mock.Anything, mock.Anything, mock.Anything, mock.Anything, tc.input.SnacOut).
+				CreateRoomHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
@@ -137,7 +137,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteChatNav(nil, nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteChatNav(nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

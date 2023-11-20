@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -76,7 +76,7 @@ func TestQueryHandler(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := server.NewMockFeedbagManager(t)
+			fm := NewMockFeedbagManager(t)
 			fm.EXPECT().
 				Retrieve(tc.screenName).
 				Return(tc.feedbagItems, nil).
@@ -200,7 +200,7 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := server.NewMockFeedbagManager(t)
+			fm := NewMockFeedbagManager(t)
 			fm.EXPECT().
 				Retrieve(tc.screenName).
 				Return(tc.feedbagItems, nil).
@@ -231,14 +231,14 @@ func TestInsertItemHandler(t *testing.T) {
 		// name is the unit test name
 		name string
 		// userSession is the session of the user managing buddy list
-		userSession *server.Session
+		userSession *state.Session
 		// feedbagItems is the list of items in user's buddy list
 		feedbagItems []oscar.FeedbagItem
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC oscar.SNAC_0x13_0x08_FeedbagInsertItem
 		// screenNameLookups is the list of user's online buddies
 		screenNameLookups map[string]struct {
-			sess *server.Session
+			sess *state.Session
 			err  error
 		}
 		// clientResponse is the message returned to the client
@@ -265,7 +265,7 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *server.Session
+				sess *state.Session
 				err  error
 			}{
 				"user_screen_name": {
@@ -339,7 +339,7 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *server.Session
+				sess *state.Session
 				err  error
 			}{
 				"buddy_offline": {
@@ -368,7 +368,7 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *server.Session
+				sess *state.Session
 				err  error
 			}{
 				"invisible_buddy_online": {
@@ -398,7 +398,7 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *server.Session
+				sess *state.Session
 				err  error
 			}{
 				"user_screen_name": {
@@ -465,7 +465,7 @@ func TestInsertItemHandler(t *testing.T) {
 				},
 			},
 			screenNameLookups: map[string]struct {
-				sess *server.Session
+				sess *state.Session
 				err  error
 			}{
 				"user_screen_name": {
@@ -533,7 +533,7 @@ func TestInsertItemHandler(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := server.NewMockFeedbagManager(t)
+			fm := NewMockFeedbagManager(t)
 			fm.EXPECT().
 				Upsert(tc.userSession.ScreenName(), tc.inputSNAC.Items).
 				Return(nil).
@@ -542,7 +542,7 @@ func TestInsertItemHandler(t *testing.T) {
 				Buddies(tc.userSession.ScreenName()).
 				Return([]string{}, nil).
 				Maybe()
-			sm := server.NewMockSessionManager(t)
+			sm := NewMockSessionManager(t)
 			for screenName, val := range tc.screenNameLookups {
 				sm.EXPECT().
 					RetrieveByScreenName(screenName).

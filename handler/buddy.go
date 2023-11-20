@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 )
 
 func NewBuddyService() *BuddyService {
@@ -32,7 +32,7 @@ func (s BuddyService) RightsQueryHandler(context.Context) oscar.XMessage {
 	}
 }
 
-func broadcastArrival(ctx context.Context, sess *server.Session, sm server.SessionManager, fm server.FeedbagManager) error {
+func broadcastArrival(ctx context.Context, sess *state.Session, sm SessionManager, fm FeedbagManager) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName())
 	if err != nil {
 		return err
@@ -57,7 +57,7 @@ func broadcastArrival(ctx context.Context, sess *server.Session, sm server.Sessi
 	return nil
 }
 
-func broadcastDeparture(ctx context.Context, sess *server.Session, sm server.SessionManager, fm server.FeedbagManager) error {
+func broadcastDeparture(ctx context.Context, sess *state.Session, sm SessionManager, fm FeedbagManager) error {
 	screenNames, err := fm.InterestedUsers(sess.ScreenName())
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func broadcastDeparture(ctx context.Context, sess *server.Session, sm server.Ses
 	return nil
 }
 
-func unicastArrival(ctx context.Context, srcScreenName, destScreenName string, sm server.SessionManager) {
+func unicastArrival(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager, ) {
 	sess := sm.RetrieveByScreenName(srcScreenName)
 	switch {
 	case sess == nil:
@@ -98,7 +98,7 @@ func unicastArrival(ctx context.Context, srcScreenName, destScreenName string, s
 	})
 }
 
-func unicastDeparture(ctx context.Context, srcScreenName, destScreenName string, sm server.SessionManager) {
+func unicastDeparture(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager, ) {
 	sess := sm.RetrieveByScreenName(srcScreenName)
 	switch {
 	case sess == nil:

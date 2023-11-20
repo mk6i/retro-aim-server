@@ -1,7 +1,7 @@
 with-expecter: True
+dir: "{{.InterfaceDir}}"
 mockname: "Mock{{.InterfaceName}}"
 inpackage: True
-dir: ./server
 packages:
   github.com/mkaminski/goaim/server:
     interfaces:
@@ -17,9 +17,6 @@ packages:
       FeedbagHandler:
         config:
           filename: "feedbag_mock.go"
-      FeedbagManager:
-        config:
-          filename: "feedbag_manager_mock.go"
       ICBMHandler:
         config:
           filename: "icbm_mock.go"
@@ -35,6 +32,14 @@ packages:
       OServiceChatHandler:
         config:
           filename: "oservice_chat_mock.go"
+  github.com/mkaminski/goaim/handler:
+    interfaces:
+      FeedbagManager:
+        config:
+          filename: "feedbag_manager_mock.go"
+      UserManager:
+        config:
+          filename: "user_manager_manager_mock.go"
       ProfileManager:
         config:
           filename: "profile_manager_mock.go"
@@ -44,6 +49,3 @@ packages:
       ChatSessionManager:
         config:
           filename: "chat_session_manager_mock.go"
-      UserManager:
-        config:
-          filename: "user_manager_manager_mock.go"

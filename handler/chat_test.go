@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -14,7 +14,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 		// name is the unit test name
 		name string
 		// userSession is the session of the user sending the chat message
-		userSession *server.Session
+		userSession *state.Session
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost
 		// expectSNACToParticipants is the message the server broadcast to chat
@@ -115,17 +115,18 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			//
-			// initialize dependencies
-			//
-			crm := server.NewMockChatSessionManager(t)
-			crm.EXPECT().
+			chatID := "the-chat-id"
+
+			chatSessMgr := NewMockChatSessionManager(t)
+			chatSessMgr.EXPECT().
 				BroadcastExcept(mock.Anything, tc.userSession, tc.expectSNACToParticipants)
-			//
-			// send input SNAC
-			//
-			svc := ChatService{}
-			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, crm, tc.inputSNAC)
+
+			svc := ChatService{
+				chatRegistry: state.NewChatRegistry(),
+			}
+			svc.chatRegistry.Register(state.ChatRoom{Cookie: chatID}, chatSessMgr)
+
+			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, chatID, tc.inputSNAC)
 			assert.NoError(t, err)
 
 			if tc.expectOutput.SnacFrame == (oscar.SnacFrame{}) {

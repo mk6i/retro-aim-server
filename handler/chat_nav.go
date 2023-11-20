@@ -3,18 +3,34 @@ package handler
 import (
 	"context"
 	"errors"
+	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/server"
+	"github.com/mkaminski/goaim/state"
 	"log/slog"
+	"time"
 )
 
-func NewChatNavService(logger *slog.Logger, cr *server.ChatRegistry) *ChatNavService {
-	return &ChatNavService{Logger: logger, cr: cr}
+func NewChatRoom() state.ChatRoom {
+	return state.ChatRoom{
+		Cookie:     uuid.New().String(),
+		CreateTime: time.Now(),
+	}
+}
+
+func NewChatNavService(logger *slog.Logger, cr *state.ChatRegistry, newChatRoom func() state.ChatRoom, newChatSessMgr func() ChatSessionManager) *ChatNavService {
+	return &ChatNavService{
+		Logger:         logger,
+		cr:             cr,
+		newChatRoom:    newChatRoom,
+		newChatSessMgr: newChatSessMgr,
+	}
 }
 
 type ChatNavService struct {
-	Logger *slog.Logger
-	cr     *server.ChatRegistry
+	Logger         *slog.Logger
+	cr             *state.ChatRegistry
+	newChatRoom    func() state.ChatRoom
+	newChatSessMgr func() ChatSessionManager
 }
 
 func (s ChatNavService) RequestChatRightsHandler(context.Context) oscar.XMessage {
@@ -48,19 +64,19 @@ func (s ChatNavService) RequestChatRightsHandler(context.Context) oscar.XMessage
 	}
 }
 
-func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *server.Session, newChatRoom func() server.ChatRoom, newChatSessMgr func() server.ChatSessionManager, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error) {
+func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error) {
 	name, hasName := snacPayloadIn.GetString(oscar.ChatTLVRoomName)
 	if !hasName {
 		return oscar.XMessage{}, errors.New("unable to find chat name")
 	}
 
-	room := newChatRoom()
+	room := s.newChatRoom()
 	room.DetailLevel = snacPayloadIn.DetailLevel
 	room.Exchange = snacPayloadIn.Exchange
 	room.InstanceNumber = snacPayloadIn.InstanceNumber
 	room.Name = name
 
-	chatSessMgr := newChatSessMgr()
+	chatSessMgr := s.newChatSessMgr()
 
 	s.cr.Register(room, chatSessMgr)
 
