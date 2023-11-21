@@ -8,12 +8,12 @@ import (
 )
 
 func NewFeedbagService(sm SessionManager, fm FeedbagManager) *FeedbagService {
-	return &FeedbagService{sm: sm, fm: fm}
+	return &FeedbagService{sessionManager: sm, feedbagManager: fm}
 }
 
 type FeedbagService struct {
-	sm SessionManager
-	fm FeedbagManager
+	sessionManager SessionManager
+	feedbagManager FeedbagManager
 }
 
 func (s FeedbagService) RightsQueryHandler(context.Context) oscar.XMessage {
@@ -65,7 +65,7 @@ func (s FeedbagService) RightsQueryHandler(context.Context) oscar.XMessage {
 }
 
 func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session) (oscar.XMessage, error) {
-	fb, err := s.fm.Retrieve(sess.ScreenName())
+	fb, err := s.feedbagManager.Retrieve(sess.ScreenName())
 	if err != nil {
 		return oscar.XMessage{}, err
 	}
@@ -73,7 +73,7 @@ func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session) (os
 	lm := time.UnixMilli(0)
 
 	if len(fb) > 0 {
-		lm, err = s.fm.LastModified(sess.ScreenName())
+		lm, err = s.feedbagManager.LastModified(sess.ScreenName())
 		if err != nil {
 			return oscar.XMessage{}, err
 		}
@@ -93,7 +93,7 @@ func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session) (os
 }
 
 func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.XMessage, error) {
-	fb, err := s.fm.Retrieve(sess.ScreenName())
+	fb, err := s.feedbagManager.Retrieve(sess.ScreenName())
 	if err != nil {
 		return oscar.XMessage{}, err
 	}
@@ -101,7 +101,7 @@ func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *state.Se
 	lm := time.UnixMilli(0)
 
 	if len(fb) > 0 {
-		lm, err = s.fm.LastModified(sess.ScreenName())
+		lm, err = s.feedbagManager.LastModified(sess.ScreenName())
 		if err != nil {
 			return oscar.XMessage{}, err
 		}
@@ -149,19 +149,19 @@ func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Sessi
 		}
 	}
 
-	if err := s.fm.Upsert(sess.ScreenName(), snacPayloadIn.Items); err != nil {
+	if err := s.feedbagManager.Upsert(sess.ScreenName(), snacPayloadIn.Items); err != nil {
 		return oscar.XMessage{}, nil
 	}
 
 	for _, item := range snacPayloadIn.Items {
 		switch item.ClassID {
 		case oscar.FeedbagClassIdBuddy, oscar.FeedbagClassIDPermit: // add new buddy
-			unicastArrival(ctx, item.Name, sess.ScreenName(), s.sm)
+			unicastArrival(ctx, item.Name, sess.ScreenName(), s.sessionManager)
 		case oscar.FeedbagClassIDDeny: // block buddy
 			// notify this user that buddy is offline
-			unicastDeparture(ctx, item.Name, sess.ScreenName(), s.sm)
+			unicastDeparture(ctx, item.Name, sess.ScreenName(), s.sessionManager)
 			// notify former buddy that this user is offline
-			unicastDeparture(ctx, sess.ScreenName(), item.Name, s.sm)
+			unicastDeparture(ctx, sess.ScreenName(), item.Name, s.sessionManager)
 		}
 	}
 
@@ -180,14 +180,14 @@ func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Sessi
 }
 
 func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.XMessage, error) {
-	if err := s.fm.Upsert(sess.ScreenName(), snacPayloadIn.Items); err != nil {
+	if err := s.feedbagManager.Upsert(sess.ScreenName(), snacPayloadIn.Items); err != nil {
 		return oscar.XMessage{}, nil
 	}
 
 	for _, item := range snacPayloadIn.Items {
 		switch item.ClassID {
 		case oscar.FeedbagClassIdBuddy, oscar.FeedbagClassIDPermit:
-			unicastArrival(ctx, item.Name, sess.ScreenName(), s.sm)
+			unicastArrival(ctx, item.Name, sess.ScreenName(), s.sessionManager)
 		}
 	}
 
@@ -206,14 +206,14 @@ func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *state.Sessi
 }
 
 func (s FeedbagService) DeleteItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.XMessage, error) {
-	if err := s.fm.Delete(sess.ScreenName(), snacPayloadIn.Items); err != nil {
+	if err := s.feedbagManager.Delete(sess.ScreenName(), snacPayloadIn.Items); err != nil {
 		return oscar.XMessage{}, err
 	}
 
 	for _, item := range snacPayloadIn.Items {
 		if item.ClassID == oscar.FeedbagClassIDDeny {
-			unicastArrival(ctx, item.Name, sess.ScreenName(), s.sm)
-			unicastArrival(ctx, sess.ScreenName(), item.Name, s.sm)
+			unicastArrival(ctx, item.Name, sess.ScreenName(), s.sessionManager)
+			unicastArrival(ctx, sess.ScreenName(), item.Name, s.sessionManager)
 		}
 	}
 

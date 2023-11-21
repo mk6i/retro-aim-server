@@ -238,19 +238,19 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			fm := NewMockFeedbagManager(t)
+			fm := newMockFeedbagManager(t)
 			fm.EXPECT().
 				Blocked(tc.userSession.ScreenName(), tc.inputSNAC.ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
-			sm := NewMockSessionManager(t)
+			sm := newMockSessionManager(t)
 			for screenName, val := range tc.screenNameLookups {
 				sm.EXPECT().
 					RetrieveByScreenName(screenName).
 					Return(val.sess).
 					Maybe()
 			}
-			pm := NewMockProfileManager(t)
+			pm := newMockProfileManager(t)
 			for screenName, val := range tc.profileLookups {
 				pm.EXPECT().
 					RetrieveProfile(screenName).
@@ -259,9 +259,9 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			}
 
 			svc := LocateService{
-				sm: sm,
-				fm: fm,
-				pm: pm,
+				sessionManager: sm,
+				feedbagManager: fm,
+				profileManager: pm,
 			}
 			outputSNAC, err := svc.UserInfoQuery2Handler(context.Background(), tc.userSession, tc.inputSNAC)
 			assert.NoError(t, err)

@@ -117,7 +117,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			chatID := "the-chat-id"
 
-			chatSessMgr := NewMockChatSessionManager(t)
+			chatSessMgr := newMockChatSessionManager(t)
 			chatSessMgr.EXPECT().
 				BroadcastExcept(mock.Anything, tc.userSession, tc.expectSNACToParticipants)
 

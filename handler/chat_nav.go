@@ -19,16 +19,16 @@ func NewChatRoom() state.ChatRoom {
 
 func NewChatNavService(logger *slog.Logger, cr *state.ChatRegistry, newChatRoom func() state.ChatRoom, newChatSessMgr func() ChatSessionManager) *ChatNavService {
 	return &ChatNavService{
-		Logger:         logger,
-		cr:             cr,
-		newChatRoom:    newChatRoom,
+		logger:         logger,
+		chatRegistry:   cr,
+		newChatRoom:    NewChatRoom,
 		newChatSessMgr: newChatSessMgr,
 	}
 }
 
 type ChatNavService struct {
-	Logger         *slog.Logger
-	cr             *state.ChatRegistry
+	logger         *slog.Logger
+	chatRegistry   *state.ChatRegistry
 	newChatRoom    func() state.ChatRoom
 	newChatSessMgr func() ChatSessionManager
 }
@@ -78,7 +78,7 @@ func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *state.Sessi
 
 	chatSessMgr := s.newChatSessMgr()
 
-	s.cr.Register(room, chatSessMgr)
+	s.chatRegistry.Register(room, chatSessMgr)
 
 	// add user to chat room
 	chatSessMgr.NewSessionWithSN(sess.ID(), sess.ScreenName())
@@ -107,7 +107,7 @@ func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *state.Sessi
 }
 
 func (s ChatNavService) RequestRoomInfoHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (oscar.XMessage, error) {
-	room, _, err := s.cr.Retrieve(string(snacPayloadIn.Cookie))
+	room, _, err := s.chatRegistry.Retrieve(string(snacPayloadIn.Cookie))
 	if err != nil {
 		return oscar.XMessage{}, err
 	}

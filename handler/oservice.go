@@ -11,17 +11,17 @@ import (
 	"time"
 )
 
-func NewOServiceService(cfg server.Config, sm SessionManager, fm FeedbagManager) *OServiceService {
-	return &OServiceService{cfg: cfg, sm: sm, fm: fm}
+func NewOServiceService(cfg server.Config, sm SessionManager, fm FeedbagManager) *oServiceService {
+	return &oServiceService{cfg: cfg, sm: sm, fm: fm}
 }
 
-type OServiceService struct {
+type oServiceService struct {
 	cfg server.Config
 	fm  FeedbagManager
 	sm  SessionManager
 }
 
-func (s OServiceService) ClientVersionsHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.XMessage {
+func (s oServiceService) ClientVersionsHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.XMessage {
 	return oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.OSERVICE,
@@ -33,7 +33,7 @@ func (s OServiceService) ClientVersionsHandler(_ context.Context, snacPayloadIn 
 	}
 }
 
-func (s OServiceService) RateParamsQueryHandler(_ context.Context) oscar.XMessage {
+func (s oServiceService) RateParamsQueryHandler(_ context.Context) oscar.XMessage {
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: oscar.OSERVICE,
 		SubGroup:  oscar.OServiceRateParamsReply,
@@ -100,7 +100,7 @@ func (s OServiceService) RateParamsQueryHandler(_ context.Context) oscar.XMessag
 	}
 }
 
-func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Session) oscar.XMessage {
+func (s oServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Session) oscar.XMessage {
 	return oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.OSERVICE,
@@ -112,7 +112,7 @@ func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Ses
 	}
 }
 
-func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error) {
+func (s oServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error) {
 	if status, hasStatus := snacPayloadIn.GetUint32(0x06); hasStatus {
 		switch status {
 		case 0x000:
@@ -140,7 +140,7 @@ func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *sta
 	}, nil
 }
 
-func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error {
+func (s oServiceService) IdleNotificationHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error {
 	if snacPayloadIn.IdleTime == 0 {
 		sess.SetActive()
 	} else {
@@ -151,15 +151,18 @@ func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *stat
 
 // RateParamsSubAddHandler exists to capture the SNAC input in unit tests to
 // verify it's correctly unmarshalled.
-func (s OServiceService) RateParamsSubAddHandler(context.Context, oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd) {
+func (s oServiceService) RateParamsSubAddHandler(context.Context, oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd) {
 }
 
-func NewOServiceServiceForBOS(oserviceService OServiceService, cr *state.ChatRegistry) *OServiceServiceForBOS {
-	return &OServiceServiceForBOS{OServiceService: oserviceService, cr: cr}
+func NewOServiceServiceForBOS(oserviceService oServiceService, cr *state.ChatRegistry) *OServiceServiceForBOS {
+	return &OServiceServiceForBOS{
+		oServiceService: oserviceService,
+		cr:              cr,
+	}
 }
 
 type OServiceServiceForBOS struct {
-	OServiceService
+	oServiceService
 	cr *state.ChatRegistry
 }
 
@@ -240,15 +243,15 @@ func (s OServiceServiceForBOS) ClientOnlineHandler(ctx context.Context, _ oscar.
 	return nil
 }
 
-func NewOServiceServiceForChat(oserviceService OServiceService, chatRegistry *state.ChatRegistry) *OServiceServiceForChat {
+func NewOServiceServiceForChat(oserviceService oServiceService, chatRegistry *state.ChatRegistry) *OServiceServiceForChat {
 	return &OServiceServiceForChat{
-		OServiceService: oserviceService,
+		oServiceService: oserviceService,
 		chatRegistry:    chatRegistry,
 	}
 }
 
 type OServiceServiceForChat struct {
-	OServiceService
+	oServiceService
 	chatRegistry *state.ChatRegistry
 }
 

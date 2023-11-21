@@ -110,7 +110,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := NewMockChatNavHandler(t)
+			svc := newMockChatNavHandler(t)
 			svc.EXPECT().
 				RequestChatRightsHandler(mock.Anything).
 				Return(tc.output).

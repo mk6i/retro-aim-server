@@ -46,10 +46,13 @@ func (rt *ICBMRouter) RouteICBM(ctx context.Context, sess *state.Session, SNACFr
 			return err
 		}
 		outSNAC, err := rt.ChannelMsgToHostHandler(ctx, sess, inSNAC)
-		if err != nil || outSNAC == nil {
+		if err != nil {
 			return err
 		}
 		rt.Logger.InfoContext(ctx, "user sent an IM", slog.String("recipient", inSNAC.ScreenName))
+		if outSNAC == nil {
+			return nil
+		}
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
 		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.ICBMEvilRequest:

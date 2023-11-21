@@ -151,7 +151,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := NewMockICBMHandler(t)
+			svc := newMockICBMHandler(t)
 			svc.EXPECT().
 				ChannelMsgToHostHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).

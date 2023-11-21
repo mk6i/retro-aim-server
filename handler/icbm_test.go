@@ -196,12 +196,12 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := NewMockFeedbagManager(t)
+			fm := newMockFeedbagManager(t)
 			fm.EXPECT().
 				Blocked(tc.senderSession.ScreenName(), tc.inputSNAC.ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
-			sm := NewMockSessionManager(t)
+			sm := newMockSessionManager(t)
 			sm.EXPECT().
 				RetrieveByScreenName(tc.inputSNAC.ScreenName).
 				Return(tc.recipientSession).
@@ -215,8 +215,8 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			// send input SNAC
 			//
 			svc := ICBMService{
-				sm: sm,
-				fm: fm,
+				sessionManager: sm,
+				feedbagManager: fm,
 			}
 			outputSNAC, err := svc.ChannelMsgToHostHandler(nil, tc.senderSession, tc.inputSNAC)
 			assert.NoError(t, err)
@@ -280,12 +280,12 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := NewMockFeedbagManager(t)
+			fm := newMockFeedbagManager(t)
 			fm.EXPECT().
 				Blocked(tc.senderScreenName, tc.inputSNAC.ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
-			sm := NewMockSessionManager(t)
+			sm := newMockSessionManager(t)
 			if tc.blockedState == state.BlockedNo {
 				sm.EXPECT().
 					SendToScreenName(mock.Anything, tc.inputSNAC.ScreenName, tc.expectSNACToClient)
@@ -295,8 +295,8 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			//
 			senderSession := newTestSession(tc.senderScreenName)
 			svc := ICBMService{
-				sm: sm,
-				fm: fm,
+				sessionManager: sm,
+				feedbagManager: fm,
 			}
 			assert.NoError(t, svc.ClientEventHandler(nil, senderSession, tc.inputSNAC))
 		})
@@ -487,7 +487,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := NewMockFeedbagManager(t)
+			fm := newMockFeedbagManager(t)
 			fm.EXPECT().
 				Blocked(tc.senderSession.ScreenName(), tc.recipientScreenName).
 				Return(tc.blockedState, nil).
@@ -497,7 +497,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 				Return(tc.recipientBuddies, nil).
 				Maybe()
 			recipSess := newTestSession(tc.recipientScreenName, sessOptCannedSignonTime)
-			sm := NewMockSessionManager(t)
+			sm := newMockSessionManager(t)
 			sm.EXPECT().
 				RetrieveByScreenName(tc.recipientScreenName).
 				Return(recipSess).
@@ -513,8 +513,8 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			//
 			senderSession := newTestSession(tc.senderSession.ScreenName())
 			svc := ICBMService{
-				sm: sm,
-				fm: fm,
+				sessionManager: sm,
+				feedbagManager: fm,
 			}
 			outputSNAC, err := svc.EvilRequestHandler(nil, senderSession, tc.inputSNAC)
 			assert.NoError(t, err)

@@ -238,7 +238,7 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := NewMockFeedbagHandler(t)
+			svc := newMockFeedbagHandler(t)
 			svc.EXPECT().
 				DeleteItemHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).

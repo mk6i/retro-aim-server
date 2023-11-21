@@ -1,6 +1,6 @@
 with-expecter: True
 dir: "{{.InterfaceDir}}"
-mockname: "Mock{{.InterfaceName}}"
+mockname: "mock{{.InterfaceName}}"
 inpackage: True
 packages:
   github.com/mkaminski/goaim/server:

@@ -47,7 +47,7 @@ func main() {
 		feedbagHandler := handler.NewFeedbagService(sm, fm)
 		icbmHandler := handler.NewICBMService(sm, fm)
 
-		router := server.BOSServiceRouter{
+		bosService := server.BOSService{
 			AlertRouter:       server.NewAlertRouter(logger),
 			AuthHandler:       authHandler,
 			BuddyRouter:       server.NewBuddyRouter(logger, buddyHandler),
@@ -61,8 +61,7 @@ func main() {
 				Logger: logger,
 			},
 		}
-
-		server.ListenBOS(cfg, router, authHandler, logger.With("svc", "BOS"))
+		server.ListenBOS(cfg, bosService, logger.With("svc", "BOS"))
 		wg.Done()
 	}()
 	go func() {
@@ -70,8 +69,17 @@ func main() {
 		oserviceHandler := handler.NewOServiceService(cfg, sm, fm)
 		chatHandler := handler.NewChatService(cr)
 		oserviceChatHandler := handler.NewOServiceServiceForChat(*oserviceHandler, cr)
-		router := server.NewChatServiceRouter(logger, cfg, oserviceHandler, *chatHandler, oserviceChatHandler)
-		server.ListenChat(cfg, router, cr, authHandler, logger.With("svc", "CHAT"))
+
+		chatService := server.ChatService{
+			AuthHandler:        authHandler,
+			OServiceChatRouter: server.NewOServiceRouterForChat(logger, oserviceHandler, oserviceChatHandler),
+			ChatRouter:         server.NewChatRouter(logger, chatHandler),
+			Config:             cfg,
+			RouteLogger: server.RouteLogger{
+				Logger: logger,
+			},
+		}
+		server.ListenChat(cfg, chatService, logger.With("svc", "CHAT"))
 		wg.Done()
 	}()
 	go func() {

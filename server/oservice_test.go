@@ -216,7 +216,7 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := NewMockOServiceHandler(t)
+			svc := newMockOServiceHandler(t)
 			svc.EXPECT().
 				RateParamsQueryHandler(mock.Anything).
 				Return(tc.output).
@@ -241,7 +241,7 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 				Return(tc.handlerErr).
 				Maybe()
 
-			svcBOS := NewMockOServiceBOSHandler(t)
+			svcBOS := newMockOServiceBOSHandler(t)
 			svcBOS.EXPECT().
 				ServiceRequestHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).
@@ -510,7 +510,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := NewMockOServiceHandler(t)
+			svc := newMockOServiceHandler(t)
 			svc.EXPECT().
 				RateParamsQueryHandler(mock.Anything).
 				Return(tc.output).
@@ -535,7 +535,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 				Return(tc.handlerErr).
 				Maybe()
 
-			svcBOS := NewMockOServiceChatHandler(t)
+			svcBOS := newMockOServiceChatHandler(t)
 			svcBOS.EXPECT().
 				ServiceRequestHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
 				Return(tc.output, tc.handlerErr).

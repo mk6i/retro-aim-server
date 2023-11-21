@@ -72,7 +72,7 @@ func TestBuddyRouter_RouteBuddy(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := NewMockBuddyHandler(t)
+			svc := newMockBuddyHandler(t)
 			svc.EXPECT().
 				RightsQueryHandler(mock.Anything).
 				Return(tc.output).

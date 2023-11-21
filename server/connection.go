@@ -115,47 +115,37 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, seq uint
 	}
 }
 
-type sessionRetriever interface {
-	Retrieve(ID string) (*state.Session, bool)
-}
-
-func HandleChatConnection(ctx context.Context, cr *state.ChatRegistry, rw io.ReadWriter, router ChatServiceRouter, authHandler AuthHandler, logger *slog.Logger) {
-	cookie, seq, err := authHandler.VerifyChatLogin(rw)
+func handleChatConnection(ctx context.Context, rw io.ReadWriter, serviceManager ChatServiceManager, logger *slog.Logger) {
+	cookie, seq, err := serviceManager.VerifyChatLogin(rw)
 	if err != nil {
 		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
 		return
 	}
 
-	_, chatSessMgr, err := cr.Retrieve(string(cookie.Cookie))
+	chatID := string(cookie.Cookie)
+
+	chatSess, err := serviceManager.RetrieveChatSession(ctx, chatID, cookie.SessID)
 	if err != nil {
 		logger.ErrorContext(ctx, "unable to find chat room", "err", err.Error())
 		return
 	}
 
-	chatSess, found := chatSessMgr.(sessionRetriever).Retrieve(cookie.SessID)
-	if !found {
-		logger.ErrorContext(ctx, "unable to find user for session", "sessID", cookie.SessID)
-		return
-	}
-
-	chatID := string(cookie.Cookie)
-
 	defer chatSess.Close()
 	go func() {
 		<-chatSess.Closed()
-		authHandler.SignoutChat(ctx, chatSess, chatID)
+		serviceManager.SignoutChat(ctx, chatSess, chatID)
 	}()
 
 	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName())
 
-	msg := router.WriteOServiceHostOnline()
+	msg := serviceManager.WriteOServiceHostOnline()
 	if err := writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, rw); err != nil {
 		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
 		return
 	}
 
 	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
-		return router.Route(ctx, chatSess, r, w, seq, chatID)
+		return serviceManager.Route(ctx, chatSess, r, w, seq, chatID)
 	}
 	fnAlertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, seq *uint32) error {
 		return writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, seq, w)
@@ -163,7 +153,7 @@ func HandleChatConnection(ctx context.Context, cr *state.ChatRegistry, rw io.Rea
 	dispatchIncomingMessages(ctx, chatSess, seq, rw, logger, fnClientReqHandler, fnAlertHandler)
 }
 
-func HandleAuthConnection(authHandler AuthHandler, conn net.Conn) {
+func handleAuthConnection(authHandler AuthHandler, conn net.Conn) {
 	defer conn.Close()
 	seq := uint32(100)
 	_, err := authHandler.SendAndReceiveSignonFrame(conn, &seq)
@@ -239,9 +229,9 @@ func HandleAuthConnection(authHandler AuthHandler, conn net.Conn) {
 	}
 }
 
-func HandleBOSConnection(ctx context.Context, conn net.Conn, router BOSServiceRouter, authHandler AuthHandler, logger *slog.Logger) {
+func handleBOSConnection(ctx context.Context, conn net.Conn, serviceManager BOSServiceManager, logger *slog.Logger) {
 	// todo why is conn net.Conn but handleChat is rw?
-	sess, seq, err := authHandler.VerifyLogin(conn)
+	sess, seq, err := serviceManager.VerifyLogin(conn)
 	if err != nil {
 		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
 		return
@@ -252,21 +242,21 @@ func HandleBOSConnection(ctx context.Context, conn net.Conn, router BOSServiceRo
 
 	go func() {
 		<-sess.Closed()
-		if err := authHandler.Signout(ctx, sess); err != nil {
+		if err := serviceManager.Signout(ctx, sess); err != nil {
 			logger.ErrorContext(ctx, "error notifying departure", "err", err.Error())
 		}
 	}()
 
 	ctx = context.WithValue(ctx, "screenName", sess.ScreenName())
 
-	msg := router.WriteOServiceHostOnline()
+	msg := serviceManager.WriteOServiceHostOnline()
 	if err := writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, conn); err != nil {
 		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
 		return
 	}
 
 	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
-		return router.Route(ctx, sess, r, w, seq)
+		return serviceManager.Route(ctx, sess, r, w, seq)
 	}
 	fnAlertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, seq *uint32) error {
 		return writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, seq, w)
@@ -274,7 +264,7 @@ func HandleBOSConnection(ctx context.Context, conn net.Conn, router BOSServiceRo
 	dispatchIncomingMessages(ctx, sess, seq, conn, logger, fnClientReqHandler, fnAlertHandler)
 }
 
-func ListenChat(cfg Config, router ChatServiceRouter, cr *state.ChatRegistry, authHandler AuthHandler, logger *slog.Logger) {
+func ListenChat(cfg Config, router ChatServiceManager, logger *slog.Logger) {
 	addr := Address("", cfg.ChatPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -295,13 +285,13 @@ func ListenChat(cfg Config, router ChatServiceRouter, cr *state.ChatRegistry, au
 		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 		logger.DebugContext(ctx, "accepted connection")
 		go func() {
-			HandleChatConnection(ctx, cr, conn, router, authHandler, logger)
+			handleChatConnection(ctx, conn, router, logger)
 			conn.Close()
 		}()
 	}
 }
 
-func ListenBOS(cfg Config, router BOSServiceRouter, authHandler AuthHandler, logger *slog.Logger) {
+func ListenBOS(cfg Config, router BOSServiceManager, logger *slog.Logger) {
 	addr := Address("", cfg.BOSPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -321,7 +311,7 @@ func ListenBOS(cfg Config, router BOSServiceRouter, authHandler AuthHandler, log
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 		logger.DebugContext(ctx, "accepted connection")
-		go HandleBOSConnection(ctx, conn, router, authHandler, logger)
+		go handleBOSConnection(ctx, conn, router, logger)
 	}
 }
 
@@ -343,6 +333,6 @@ func ListenBUCPLogin(cfg Config, err error, logger *slog.Logger, authHandler Aut
 			continue
 		}
 
-		go HandleAuthConnection(authHandler, conn)
+		go handleAuthConnection(authHandler, conn)
 	}
 }

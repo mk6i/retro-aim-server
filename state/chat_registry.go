@@ -2,9 +2,10 @@ package state
 
 import (
 	"errors"
-	"github.com/mkaminski/goaim/oscar"
 	"sync"
 	"time"
+
+	"github.com/mkaminski/goaim/oscar"
 )
 
 type ChatRegistry struct {

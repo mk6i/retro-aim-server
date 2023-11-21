@@ -8,16 +8,16 @@ import (
 
 func NewLocateService(sm SessionManager, fm FeedbagManager, pm ProfileManager) LocateService {
 	return LocateService{
-		sm: sm,
-		fm: fm,
-		pm: pm,
+		sessionManager: sm,
+		feedbagManager: fm,
+		profileManager: pm,
 	}
 }
 
 type LocateService struct {
-	sm SessionManager
-	fm FeedbagManager
-	pm ProfileManager
+	sessionManager SessionManager
+	feedbagManager FeedbagManager
+	profileManager ProfileManager
 }
 
 func (s LocateService) RightsQueryHandler(context.Context) oscar.XMessage {
@@ -43,7 +43,7 @@ func (s LocateService) RightsQueryHandler(context.Context) oscar.XMessage {
 func (s LocateService) SetInfoHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error {
 	// update profile
 	if profile, hasProfile := snacPayloadIn.GetString(oscar.LocateTLVTagsInfoSigData); hasProfile {
-		if err := s.pm.UpsertProfile(sess.ScreenName(), profile); err != nil {
+		if err := s.profileManager.UpsertProfile(sess.ScreenName(), profile); err != nil {
 			return err
 		}
 	}
@@ -51,7 +51,7 @@ func (s LocateService) SetInfoHandler(ctx context.Context, sess *state.Session, 
 	// broadcast away message change to buddies
 	if awayMsg, hasAwayMsg := snacPayloadIn.GetString(oscar.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
 		sess.SetAwayMessage(awayMsg)
-		if err := broadcastArrival(ctx, sess, s.sm, s.fm); err != nil {
+		if err := broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
 			return err
 		}
 	}
@@ -59,7 +59,7 @@ func (s LocateService) SetInfoHandler(ctx context.Context, sess *state.Session, 
 }
 
 func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.XMessage, error) {
-	blocked, err := s.fm.Blocked(sess.ScreenName(), snacPayloadIn.ScreenName)
+	blocked, err := s.feedbagManager.Blocked(sess.ScreenName(), snacPayloadIn.ScreenName)
 	switch {
 	case err != nil:
 		return oscar.XMessage{}, err
@@ -75,7 +75,7 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Sess
 		}, nil
 	}
 
-	buddySess := s.sm.RetrieveByScreenName(snacPayloadIn.ScreenName)
+	buddySess := s.sessionManager.RetrieveByScreenName(snacPayloadIn.ScreenName)
 	if buddySess == nil {
 		return oscar.XMessage{
 			SnacFrame: oscar.SnacFrame{
@@ -91,7 +91,7 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Sess
 	var list oscar.TLVList
 
 	if snacPayloadIn.RequestProfile() {
-		profile, err := s.pm.RetrieveProfile(snacPayloadIn.ScreenName)
+		profile, err := s.profileManager.RetrieveProfile(snacPayloadIn.ScreenName)
 		if err != nil {
 			return oscar.XMessage{}, err
 		}

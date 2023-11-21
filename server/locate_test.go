@@ -184,7 +184,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := NewMockLocateHandler(t)
+			svc := newMockLocateHandler(t)
 			svc.EXPECT().
 				RightsQueryHandler(mock.Anything).
 				Return(tc.output).

@@ -76,7 +76,7 @@ func TestQueryHandler(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := NewMockFeedbagManager(t)
+			fm := newMockFeedbagManager(t)
 			fm.EXPECT().
 				Retrieve(tc.screenName).
 				Return(tc.feedbagItems, nil).
@@ -90,7 +90,7 @@ func TestQueryHandler(t *testing.T) {
 			//
 			senderSession := newTestSession(tc.screenName)
 			svc := FeedbagService{
-				fm: fm,
+				feedbagManager: fm,
 			}
 			outputSNAC, err := svc.QueryHandler(nil, senderSession)
 			assert.NoError(t, err)
@@ -200,7 +200,7 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := NewMockFeedbagManager(t)
+			fm := newMockFeedbagManager(t)
 			fm.EXPECT().
 				Retrieve(tc.screenName).
 				Return(tc.feedbagItems, nil).
@@ -214,7 +214,7 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 			//
 			senderSession := newTestSession(tc.screenName)
 			svc := FeedbagService{
-				fm: fm,
+				feedbagManager: fm,
 			}
 			outputSNAC, err := svc.QueryIfModifiedHandler(nil, senderSession, tc.inputSNAC)
 			assert.NoError(t, err)
@@ -533,7 +533,7 @@ func TestInsertItemHandler(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := NewMockFeedbagManager(t)
+			fm := newMockFeedbagManager(t)
 			fm.EXPECT().
 				Upsert(tc.userSession.ScreenName(), tc.inputSNAC.Items).
 				Return(nil).
@@ -542,7 +542,7 @@ func TestInsertItemHandler(t *testing.T) {
 				Buddies(tc.userSession.ScreenName()).
 				Return([]string{}, nil).
 				Maybe()
-			sm := NewMockSessionManager(t)
+			sm := newMockSessionManager(t)
 			for screenName, val := range tc.screenNameLookups {
 				sm.EXPECT().
 					RetrieveByScreenName(screenName).
@@ -558,8 +558,8 @@ func TestInsertItemHandler(t *testing.T) {
 			// send input SNAC
 			//
 			svc := FeedbagService{
-				fm: fm,
-				sm: sm,
+				feedbagManager: fm,
+				sessionManager: sm,
 			}
 			output, err := svc.InsertItemHandler(nil, tc.userSession, tc.inputSNAC)
 			assert.NoError(t, err)

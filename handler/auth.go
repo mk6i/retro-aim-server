@@ -15,47 +15,44 @@ import (
 
 func NewAuthService(cfg server.Config, sm SessionManager, fm FeedbagManager, um UserManager, cr *state.ChatRegistry) *AuthService {
 	return &AuthService{
-		sm:  sm,
-		fm:  fm,
-		um:  um,
-		cfg: cfg,
-		cr:  cr,
+		sessionManager: sm,
+		feedbagManager: fm,
+		config:         cfg,
+		userManager:    um,
+		chatRegistry:   cr,
 	}
-}
-
-func newStubUser(screenName string) (state.User, error) {
-	u := state.User{ScreenName: screenName}
-
-	uid, err := uuid.NewRandom()
-	if err != nil {
-		return u, err
-	}
-	u.AuthKey = uid.String()
-
-	if err := u.HashPassword("welcome1"); err != nil {
-		return u, err
-	}
-	return u, u.HashPassword("welcome1")
 }
 
 type AuthService struct {
-	sm  SessionManager
-	fm  FeedbagManager
-	um  UserManager
-	cfg server.Config
-	cr  *state.ChatRegistry
+	sessionManager SessionManager
+	feedbagManager FeedbagManager
+	userManager    UserManager
+	config         server.Config
+	chatRegistry   *state.ChatRegistry
+}
+
+func (s AuthService) RetrieveChatSession(ctx context.Context, chatID string, sessID string) (*state.Session, error) {
+	_, chatSessMgr, err := s.chatRegistry.Retrieve(chatID)
+	if err != nil {
+		return nil, err
+	}
+	chatSess, found := chatSessMgr.(ChatSessionManager).Retrieve(sessID)
+	if !found {
+		return nil, fmt.Errorf("unable to find user for session. chat id: %s, sess id: %s", chatID, sessID)
+	}
+	return chatSess, nil
 }
 
 func (s AuthService) Signout(ctx context.Context, sess *state.Session) error {
-	if err := broadcastDeparture(ctx, sess, s.sm, s.fm); err != nil {
+	if err := broadcastDeparture(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
 		return err
 	}
-	s.sm.Remove(sess)
+	s.sessionManager.Remove(sess)
 	return nil
 }
 
 func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session, chatID string) {
-	chatRoom, chatSessMgr, err := s.cr.Retrieve(chatID)
+	chatRoom, chatSessMgr, err := s.chatRegistry.Retrieve(chatID)
 	if err != nil {
 		fmt.Println("error getting chat room to remove")
 		return
@@ -63,7 +60,7 @@ func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session, chatI
 	alertUserLeft(ctx, sess, chatSessMgr.(ChatSessionManager))
 	chatSessMgr.(ChatSessionManager).Remove(sess)
 	if chatSessMgr.(ChatSessionManager).Empty() {
-		s.cr.RemoveRoom(chatRoom.Cookie)
+		s.chatRegistry.RemoveRoom(chatRoom.Cookie)
 	}
 }
 
@@ -81,7 +78,7 @@ func (s AuthService) VerifyLogin(conn net.Conn) (*state.Session, uint32, error) 
 		return nil, 0, errors.New("unable to get session id from payload")
 	}
 
-	sess, ok := s.sm.Retrieve(string(ID))
+	sess, ok := s.sessionManager.Retrieve(string(ID))
 	if !ok {
 		return nil, 0, fmt.Errorf("unable to find session by id %s", ID)
 	}
@@ -153,14 +150,14 @@ func (s AuthService) ReceiveAndSendAuthChallenge(snacPayloadIn oscar.SNAC_0x17_0
 
 	var authKey string
 
-	u, err := s.um.GetUser(screenName)
+	u, err := s.userManager.GetUser(screenName)
 	switch {
 	case err != nil:
 		return oscar.XMessage{}, err
 	case u != nil:
 		// user lookup succeeded
 		authKey = u.AuthKey
-	case s.cfg.DisableAuth:
+	case s.config.DisableAuth:
 		// can't find user, generate stub auth key
 		authKey = newUUID().String()
 	default:
@@ -201,20 +198,20 @@ func (s AuthService) ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x1
 
 	loginOK := false
 
-	u, err := s.um.GetUser(screenName)
+	u, err := s.userManager.GetUser(screenName)
 	switch {
 	case err != nil:
 		return oscar.XMessage{}, err
 	case u != nil && bytes.Equal(u.PassHash, md5Hash):
 		// password check succeeded
 		loginOK = true
-	case s.cfg.DisableAuth:
+	case s.config.DisableAuth:
 		// login failed but let them in anyway
 		newUser, err := newStubUser(screenName)
 		if err != nil {
 			return oscar.XMessage{}, err
 		}
-		if err := s.um.UpsertUser(newUser); err != nil {
+		if err := s.userManager.UpsertUser(newUser); err != nil {
 			return oscar.XMessage{}, err
 		}
 		loginOK = true
@@ -224,9 +221,9 @@ func (s AuthService) ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x1
 	snacPayloadOut.AddTLV(oscar.NewTLV(oscar.TLVScreenName, screenName))
 
 	if loginOK {
-		sess := s.sm.NewSessionWithSN(newUUID().String(), screenName)
+		sess := s.sessionManager.NewSessionWithSN(newUUID().String(), screenName)
 		snacPayloadOut.AddTLVList([]oscar.TLV{
-			oscar.NewTLV(oscar.TLVReconnectHere, server.Address(s.cfg.OSCARHost, s.cfg.BOSPort)),
+			oscar.NewTLV(oscar.TLVReconnectHere, server.Address(s.config.OSCARHost, s.config.BOSPort)),
 			oscar.NewTLV(oscar.TLVAuthorizationCookie, sess.ID()),
 		})
 	} else {
@@ -242,4 +239,19 @@ func (s AuthService) ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x1
 		},
 		SnacOut: snacPayloadOut,
 	}, nil
+}
+
+func newStubUser(screenName string) (state.User, error) {
+	u := state.User{ScreenName: screenName}
+
+	uid, err := uuid.NewRandom()
+	if err != nil {
+		return u, err
+	}
+	u.AuthKey = uid.String()
+
+	if err := u.HashPassword("welcome1"); err != nil {
+		return u, err
+	}
+	return u, u.HashPassword("welcome1")
 }

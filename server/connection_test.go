@@ -16,15 +16,10 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 
 	ctx := context.Background()
 	cfg := Config{}
-	cr := state.NewChatRegistry()
 	logger := NewLogger(cfg)
 
-	room := state.ChatRoom{
-		Name: "test chat room!",
-	}
 	sm := state.NewSessionManager(logger)
 	sess := sm.NewSessionWithSN("bob-sess-id", "bob")
-	cr.Register(room, sm)
 
 	msgIn := []oscar.XMessage{
 		{
@@ -84,15 +79,10 @@ func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 
 	ctx := context.Background()
 	cfg := Config{}
-	cr := state.NewChatRegistry()
 	logger := NewLogger(cfg)
 
-	room := state.ChatRoom{
-		Name: "test chat room!",
-	}
 	sm := state.NewSessionManager(logger)
 	sess := sm.NewSessionWithSN("bob-sess-id", "bob")
-	cr.Register(room, sm)
 
 	payloads := [][]byte{
 		{'a', 'b', 'c', 'd'},
@@ -144,15 +134,10 @@ func TestHandleChatConnection_SessionClosed(t *testing.T) {
 
 	ctx := context.Background()
 	cfg := Config{}
-	cr := state.NewChatRegistry()
 	logger := NewLogger(cfg)
 
-	room := state.ChatRoom{
-		Name: "test chat room!",
-	}
 	sm := state.NewSessionManager(logger)
 	sess := sm.NewSessionWithSN("bob-sess-id", "bob")
-	cr.Register(room, sm)
 
 	routeSig := func(ctx context.Context, buf io.Reader, w io.Writer, u *uint32) error {
 		t.Fatal("not expecting any output")

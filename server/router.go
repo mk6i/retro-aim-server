@@ -8,32 +8,21 @@ import (
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/state"
 	"io"
-	"log/slog"
 	"net"
 )
 
-func NewChatServiceRouter(logger *slog.Logger, cfg Config, oserviceHandler OServiceHandler, chatHandler ChatHandler, oserviceChatHandler OServiceChatHandler) ChatServiceRouter {
-	return ChatServiceRouter{
-		OServiceChatRouter: NewOServiceRouterForChat(logger, oserviceHandler, oserviceChatHandler),
-		ChatRouter:         NewChatRouter(logger, chatHandler),
-		cfg:                cfg,
-		RouteLogger: RouteLogger{
-			Logger: logger,
-		},
-	}
-}
-
 type AuthHandler interface {
-	Signout(ctx context.Context, sess *state.Session) error
-	VerifyLogin(conn net.Conn) (*state.Session, uint32, error)
-	VerifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error)
-	SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSignonFrame, error)
-	ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID) (oscar.XMessage, error)
 	ReceiveAndSendAuthChallenge(snacPayloadIn oscar.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (oscar.XMessage, error)
+	ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID) (oscar.XMessage, error)
+	RetrieveChatSession(ctx context.Context, chatID string, sessID string) (*state.Session, error)
+	SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSignonFrame, error)
+	Signout(ctx context.Context, sess *state.Session) error
 	SignoutChat(ctx context.Context, sess *state.Session, chatID string)
+	VerifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error)
+	VerifyLogin(conn net.Conn) (*state.Session, uint32, error)
 }
 
-type BOSServiceRouter struct {
+type BOSService struct {
 	AlertRouter
 	AuthHandler
 	BuddyRouter
@@ -46,7 +35,14 @@ type BOSServiceRouter struct {
 	RouteLogger
 }
 
-func (rt *BOSServiceRouter) Route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32) error {
+type BOSServiceManager interface {
+	Route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32) error
+	Signout(ctx context.Context, sess *state.Session) error
+	VerifyLogin(conn net.Conn) (*state.Session, uint32, error)
+	WriteOServiceHostOnline() oscar.XMessage
+}
+
+func (rt BOSService) Route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32) error {
 	snac := oscar.SnacFrame{}
 	if err := oscar.Unmarshal(&snac, r); err != nil {
 		return err
@@ -82,6 +78,55 @@ func (rt *BOSServiceRouter) Route(ctx context.Context, sess *state.Session, r io
 				err = errors.Join(err1, err)
 			}
 			if rt.Cfg.FailFast {
+				panic(err.Error())
+			}
+			return nil
+		}
+	}
+
+	return err
+}
+
+type ChatService struct {
+	AuthHandler
+	ChatRouter
+	Config Config
+	OServiceChatRouter
+	RouteLogger
+}
+
+type ChatServiceManager interface {
+	RetrieveChatSession(ctx context.Context, chatID string, sessID string) (*state.Session, error)
+	Route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32, chatID string) error
+	SignoutChat(ctx context.Context, sess *state.Session, chatID string)
+	VerifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error)
+	WriteOServiceHostOnline() oscar.XMessage
+}
+
+func (rt ChatService) Route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32, chatID string) error {
+	snac := oscar.SnacFrame{}
+	if err := oscar.Unmarshal(&snac, r); err != nil {
+		return err
+	}
+
+	err := func() error {
+		switch snac.FoodGroup {
+		case oscar.OSERVICE:
+			return rt.RouteOService(ctx, sess, chatID, snac, r, w, sequence)
+		case oscar.CHAT:
+			return rt.RouteChat(ctx, sess, chatID, snac, r, w, sequence)
+		default:
+			return ErrUnsupportedSubGroup
+		}
+	}()
+
+	if err != nil {
+		rt.logRequestError(ctx, snac, err)
+		if errors.Is(err, ErrUnsupportedSubGroup) {
+			if err1 := sendInvalidSNACErr(snac, w, sequence); err1 != nil {
+				err = errors.Join(err1, err)
+			}
+			if rt.Config.FailFast {
 				panic(err.Error())
 			}
 			return nil
@@ -137,44 +182,4 @@ func sendInvalidSNACErr(snac oscar.SnacFrame, w io.Writer, sequence *uint32) err
 		Code: oscar.ErrorCodeInvalidSnac,
 	}
 	return writeOutSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
-}
-
-type ChatServiceRouter struct {
-	ChatRouter
-	OServiceChatRouter
-	cfg Config
-	RouteLogger
-}
-
-func (rt *ChatServiceRouter) Route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32, chatID string) error {
-	snac := oscar.SnacFrame{}
-	if err := oscar.Unmarshal(&snac, r); err != nil {
-		return err
-	}
-
-	err := func() error {
-		switch snac.FoodGroup {
-		case oscar.OSERVICE:
-			return rt.RouteOService(ctx, sess, chatID, snac, r, w, sequence)
-		case oscar.CHAT:
-			return rt.RouteChat(ctx, sess, chatID, snac, r, w, sequence)
-		default:
-			return ErrUnsupportedSubGroup
-		}
-	}()
-
-	if err != nil {
-		rt.logRequestError(ctx, snac, err)
-		if errors.Is(err, ErrUnsupportedSubGroup) {
-			if err1 := sendInvalidSNACErr(snac, w, sequence); err1 != nil {
-				err = errors.Join(err1, err)
-			}
-			if rt.cfg.FailFast {
-				panic(err.Error())
-			}
-			return nil
-		}
-	}
-
-	return err
 }

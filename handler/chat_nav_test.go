@@ -17,7 +17,7 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 
 	cr := state.NewChatRegistry()
 
-	sm := NewMockChatSessionManager(t)
+	sm := newMockChatSessionManager(t)
 	sm.EXPECT().NewSessionWithSN(userSess.ID(), userSess.ScreenName()).
 		Return(&state.Session{})
 
@@ -36,7 +36,7 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 		},
 	}
 	svc := ChatNavService{
-		cr: cr,
+		chatRegistry: cr,
 		newChatRoom: func() state.ChatRoom {
 			return state.ChatRoom{
 				Cookie:     "dummy-cookie",
