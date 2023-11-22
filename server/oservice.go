@@ -42,7 +42,7 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session,
 	case oscar.OServiceRateParamsQuery:
 		outSNAC := rt.RateParamsQueryHandler(ctx)
 		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.Frame, outSNAC.Body)
-		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
+		return sendSNAC(SNACFrame.RequestID, outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.OServiceRateParamsSubAdd:
 		inSNAC := oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -54,7 +54,7 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session,
 	case oscar.OServiceUserInfoQuery:
 		outSNAC := rt.UserInfoQueryHandler(ctx, sess)
 		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.Frame, outSNAC.Body)
-		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
+		return sendSNAC(SNACFrame.RequestID, outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.OServiceIdleNotification:
 		inSNAC := oscar.SNAC_0x01_0x11_OServiceIdleNotification{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -69,7 +69,7 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session,
 		}
 		outSNAC := rt.ClientVersionsHandler(ctx, inSNAC)
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.Frame, outSNAC.Body)
-		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
+		return sendSNAC(SNACFrame.RequestID, outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.OServiceSetUserInfoFields:
 		inSNAC := oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -80,7 +80,7 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session,
 			return err
 		}
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.Frame, outSNAC.Body)
-		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
+		return sendSNAC(SNACFrame.RequestID, outSNAC.Frame, outSNAC.Body, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
 	}
@@ -118,7 +118,7 @@ func (rt OServiceBOSRouter) RouteOService(ctx context.Context, sess *state.Sessi
 			return err
 		}
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.Frame, outSNAC.Body)
-		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
+		return sendSNAC(SNACFrame.RequestID, outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.OServiceClientOnline:
 		inSNAC := oscar.SNAC_0x01_0x02_OServiceClientOnline{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {

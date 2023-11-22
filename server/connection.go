@@ -24,16 +24,14 @@ type (
 	clientReqHandler func(ctx context.Context, r io.Reader, w io.Writer, u *uint32) error
 )
 
-func sendSNAC(originsnac oscar.SNACFrame, snacFrame oscar.SNACFrame, snacOut any, sequence *uint32, w io.Writer) error {
-	if originsnac.RequestID != 0 {
-		snacFrame.RequestID = originsnac.RequestID
-	}
+func sendSNAC(requestID uint32, frame oscar.SNACFrame, body any, sequence *uint32, w io.Writer) error {
+	frame.RequestID = requestID
 
 	snacBuf := &bytes.Buffer{}
-	if err := oscar.Marshal(snacFrame, snacBuf); err != nil {
+	if err := oscar.Marshal(frame, snacBuf); err != nil {
 		return err
 	}
-	if err := oscar.Marshal(snacOut, snacBuf); err != nil {
+	if err := oscar.Marshal(body, snacBuf); err != nil {
 		return err
 	}
 
@@ -61,15 +59,15 @@ func sendSNAC(originsnac oscar.SNACFrame, snacFrame oscar.SNACFrame, snacOut any
 	return nil
 }
 
-func sendInvalidSNACErr(snac oscar.SNACFrame, w io.Writer, sequence *uint32) error {
+func sendInvalidSNACErr(frame oscar.SNACFrame, w io.Writer, sequence *uint32) error {
 	snacFrameOut := oscar.SNACFrame{
-		FoodGroup: snac.FoodGroup,
+		FoodGroup: frame.FoodGroup,
 		SubGroup:  0x01, // error subgroup for all SNACs
 	}
 	snacPayloadOut := oscar.SNACError{
 		Code: oscar.ErrorCodeInvalidSnac,
 	}
-	return sendSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
+	return sendSNAC(frame.RequestID, snacFrameOut, snacPayloadOut, sequence, w)
 }
 
 func consumeFLAPFrames(r io.Reader, msgCh chan incomingMessage, errCh chan error) {

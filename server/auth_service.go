@@ -66,7 +66,7 @@ func (rt AuthService) handleAuthConnection(rwc io.ReadWriteCloser) {
 		rt.Logger.Error(err.Error())
 		return
 	}
-	if err := sendSNAC(oscar.SNACFrame{}, msg.Frame, msg.Body, &seq, rwc); err != nil {
+	if err := sendSNAC(0, msg.Frame, msg.Body, &seq, rwc); err != nil {
 		rt.Logger.Error(err.Error())
 		return
 	}
@@ -99,7 +99,7 @@ func (rt AuthService) handleAuthConnection(rwc io.ReadWriteCloser) {
 		rt.Logger.Error(err.Error())
 		return
 	}
-	if err := sendSNAC(oscar.SNACFrame{}, msg.Frame, msg.Body, &seq, rwc); err != nil {
+	if err := sendSNAC(0, msg.Frame, msg.Body, &seq, rwc); err != nil {
 		rt.Logger.Error(err.Error())
 		return
 	}

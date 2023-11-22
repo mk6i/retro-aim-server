@@ -68,7 +68,7 @@ func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 	ctx = context.WithValue(ctx, "screenName", sess.ScreenName())
 
 	msg := rt.WriteOServiceHostOnline()
-	if err := sendSNAC(oscar.SNACFrame{}, msg.Frame, msg.Body, &seq, rwc); err != nil {
+	if err := sendSNAC(0, msg.Frame, msg.Body, &seq, rwc); err != nil {
 		rt.Logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
 		return
 	}
@@ -77,7 +77,7 @@ func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 		return rt.route(ctx, sess, r, w, seq)
 	}
 	fnAlertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, seq *uint32) error {
-		return sendSNAC(oscar.SNACFrame{}, msg.Frame, msg.Body, seq, w)
+		return sendSNAC(0, msg.Frame, msg.Body, seq, w)
 	}
 	dispatchIncomingMessages(ctx, sess, seq, rwc, rt.Logger, fnClientReqHandler, fnAlertHandler)
 }

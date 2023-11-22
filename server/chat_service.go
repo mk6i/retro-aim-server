@@ -70,7 +70,7 @@ func (rt ChatService) handleNewConnection(ctx context.Context, rw io.ReadWriter)
 	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName())
 
 	msg := rt.WriteOServiceHostOnline()
-	if err := sendSNAC(oscar.SNACFrame{}, msg.Frame, msg.Body, &seq, rw); err != nil {
+	if err := sendSNAC(0, msg.Frame, msg.Body, &seq, rw); err != nil {
 		rt.Logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
 		return
 	}
@@ -79,7 +79,7 @@ func (rt ChatService) handleNewConnection(ctx context.Context, rw io.ReadWriter)
 		return rt.route(ctx, chatSess, r, w, seq, chatID)
 	}
 	fnAlertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, seq *uint32) error {
-		return sendSNAC(oscar.SNACFrame{}, msg.Frame, msg.Body, seq, w)
+		return sendSNAC(0, msg.Frame, msg.Body, seq, w)
 	}
 	dispatchIncomingMessages(ctx, chatSess, seq, rw, rt.Logger, fnClientReqHandler, fnAlertHandler)
 }
