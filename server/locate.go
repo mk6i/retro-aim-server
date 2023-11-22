@@ -10,11 +10,11 @@ import (
 )
 
 type LocateHandler interface {
-	RightsQueryHandler(ctx context.Context) oscar.XMessage
-	SetDirInfoHandler(ctx context.Context) oscar.XMessage
+	RightsQueryHandler(ctx context.Context) oscar.SNACMessage
+	SetDirInfoHandler(ctx context.Context) oscar.SNACMessage
 	SetInfoHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error
-	SetKeywordInfoHandler(ctx context.Context) oscar.XMessage
-	UserInfoQuery2Handler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.XMessage, error)
+	SetKeywordInfoHandler(ctx context.Context) oscar.SNACMessage
+	UserInfoQuery2Handler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.SNACMessage, error)
 }
 
 func NewLocateRouter(handler LocateHandler, logger *slog.Logger) LocateRouter {
@@ -31,12 +31,12 @@ type LocateRouter struct {
 	RouteLogger
 }
 
-func (rt LocateRouter) RouteLocate(ctx context.Context, sess *state.Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt LocateRouter) RouteLocate(ctx context.Context, sess *state.Session, SNACFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.LocateRightsQuery:
 		outSNAC := rt.RightsQueryHandler(ctx)
-		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.LocateSetInfo:
 		inSNAC := oscar.SNAC_0x02_0x04_LocateSetInfo{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -50,8 +50,8 @@ func (rt LocateRouter) RouteLocate(ctx context.Context, sess *state.Session, SNA
 			return err
 		}
 		outSNAC := rt.SetDirInfoHandler(ctx)
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.LocateGetDirInfo:
 		inSNAC := oscar.SNAC_0x02_0x0B_LocateGetDirInfo{}
 		rt.logRequest(ctx, SNACFrame, inSNAC)
@@ -62,8 +62,8 @@ func (rt LocateRouter) RouteLocate(ctx context.Context, sess *state.Session, SNA
 			return err
 		}
 		outSNAC := rt.SetKeywordInfoHandler(ctx)
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.LocateUserInfoQuery2:
 		inSNAC := oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -73,8 +73,8 @@ func (rt LocateRouter) RouteLocate(ctx context.Context, sess *state.Session, SNA
 		if err != nil {
 			return err
 		}
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
 	}

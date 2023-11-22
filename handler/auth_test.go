@@ -28,7 +28,7 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 		inputSNAC   oscar.SNAC_0x17_0x02_BUCPLoginRequest
 		// expectOutput is the SNAC payload sent from the server to the
 		// recipient client
-		expectOutput oscar.XMessage
+		expectOutput oscar.SNACMessage
 	}{
 		{
 			name: "login with valid password, expect OK login response",
@@ -46,12 +46,12 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.BUCP,
 					SubGroup:  oscar.BUCPLoginResponse,
 				},
-				SnacOut: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
+				Body: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(oscar.TLVScreenName, userGoodPwd.ScreenName),
@@ -79,12 +79,12 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.BUCP,
 					SubGroup:  oscar.BUCPLoginResponse,
 				},
-				SnacOut: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
+				Body: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(oscar.TLVScreenName, userBadPwd.ScreenName),
@@ -111,12 +111,12 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.BUCP,
 					SubGroup:  oscar.BUCPLoginResponse,
 				},
-				SnacOut: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
+				Body: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(oscar.TLVScreenName, userBadPwd.ScreenName),
@@ -167,7 +167,7 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 		userInDB     *state.User
 		fnNewUUID    uuid.UUID
 		inputSNAC    oscar.SNAC_0x17_0x06_BUCPChallengeRequest
-		expectOutput oscar.XMessage
+		expectOutput oscar.SNACMessage
 	}{
 		{
 			name: "login with valid username, expect OK login response",
@@ -187,12 +187,12 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.BUCP,
 					SubGroup:  oscar.BUCPChallengeResponse,
 				},
-				SnacOut: oscar.SNAC_0x17_0x07_BUCPChallengeResponse{
+				Body: oscar.SNAC_0x17_0x07_BUCPChallengeResponse{
 					AuthKey: "auth_key_user_a",
 				},
 			},
@@ -213,12 +213,12 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.BUCP,
 					SubGroup:  oscar.BUCPChallengeResponse,
 				},
-				SnacOut: oscar.SNAC_0x17_0x07_BUCPChallengeResponse{
+				Body: oscar.SNAC_0x17_0x07_BUCPChallengeResponse{
 					AuthKey: uuid.UUID{1, 2, 3}.String(),
 				},
 			},
@@ -238,12 +238,12 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.BUCP,
 					SubGroup:  oscar.BUCPLoginResponse,
 				},
-				SnacOut: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
+				Body: oscar.SNAC_0x17_0x03_BUCPLoginResponse{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(oscar.TLVErrorSubcode, uint16(0x01)),

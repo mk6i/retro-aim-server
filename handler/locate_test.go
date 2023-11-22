@@ -29,7 +29,7 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		userSession *state.Session
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC    oscar.SNAC_0x02_0x15_LocateUserInfoQuery2
-		expectOutput oscar.XMessage
+		expectOutput oscar.SNACMessage
 	}{
 		{
 			name:         "request user info, expect user info response",
@@ -49,12 +49,12 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 				Type2:      0,
 				ScreenName: "requested-user",
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateUserInfoReply,
 				},
-				SnacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
+				Body: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
 					TLVUserInfo: newTestSession("requested-user",
 						sessOptCannedSignonTime,
 						sessOptCannedAwayMessage).
@@ -90,12 +90,12 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 				Type2:      oscar.LocateType2Sig | 2048,
 				ScreenName: "requested-user",
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateUserInfoReply,
 				},
-				SnacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
+				Body: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
 					TLVUserInfo: newTestSession("requested-user",
 						sessOptCannedSignonTime,
 						sessOptCannedAwayMessage).
@@ -136,12 +136,12 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 				Type2:      oscar.LocateType2Sig | 2048,
 				ScreenName: "requested-user",
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateUserInfoReply,
 				},
-				SnacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
+				Body: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
 					TLVUserInfo: newTestSession("requested-user",
 						sessOptCannedSignonTime,
 						sessOptCannedAwayMessage).
@@ -174,12 +174,12 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 				Type2:      oscar.LocateType2Unavailable | 2048,
 				ScreenName: "requested-user",
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateUserInfoReply,
 				},
-				SnacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
+				Body: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
 					TLVUserInfo: newTestSession("requested-user",
 						sessOptCannedSignonTime,
 						sessOptCannedAwayMessage).
@@ -200,12 +200,12 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
 				ScreenName: "requested-user",
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateErr,
 				},
-				SnacOut: oscar.SnacError{
+				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeNotLoggedOn,
 				},
 			},
@@ -225,12 +225,12 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
 				ScreenName: "non_existent_requested_user",
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateErr,
 				},
-				SnacOut: oscar.SnacError{
+				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeNotLoggedOn,
 				},
 			},

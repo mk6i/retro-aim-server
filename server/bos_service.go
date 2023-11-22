@@ -68,7 +68,7 @@ func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 	ctx = context.WithValue(ctx, "screenName", sess.ScreenName())
 
 	msg := rt.WriteOServiceHostOnline()
-	if err := sendSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, rwc); err != nil {
+	if err := sendSNAC(oscar.SNACFrame{}, msg.Frame, msg.Body, &seq, rwc); err != nil {
 		rt.Logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
 		return
 	}
@@ -76,35 +76,35 @@ func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
 		return rt.route(ctx, sess, r, w, seq)
 	}
-	fnAlertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, seq *uint32) error {
-		return sendSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, seq, w)
+	fnAlertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, seq *uint32) error {
+		return sendSNAC(oscar.SNACFrame{}, msg.Frame, msg.Body, seq, w)
 	}
 	dispatchIncomingMessages(ctx, sess, seq, rwc, rt.Logger, fnClientReqHandler, fnAlertHandler)
 }
 
 func (rt BOSService) route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32) error {
-	snac := oscar.SnacFrame{}
+	snac := oscar.SNACFrame{}
 	if err := oscar.Unmarshal(&snac, r); err != nil {
 		return err
 	}
 
 	err := func() error {
 		switch snac.FoodGroup {
-		case oscar.OSERVICE:
+		case oscar.OService:
 			return rt.RouteOService(ctx, sess, snac, r, w, sequence)
-		case oscar.LOCATE:
+		case oscar.Locate:
 			return rt.RouteLocate(ctx, sess, snac, r, w, sequence)
-		case oscar.BUDDY:
+		case oscar.Buddy:
 			return rt.RouteBuddy(ctx, snac, r, w, sequence)
 		case oscar.ICBM:
 			return rt.RouteICBM(ctx, sess, snac, r, w, sequence)
-		case oscar.CHAT_NAV:
+		case oscar.ChatNav:
 			return rt.RouteChatNav(ctx, sess, snac, r, w, sequence)
-		case oscar.FEEDBAG:
+		case oscar.Feedbag:
 			return rt.RouteFeedbag(ctx, sess, snac, r, w, sequence)
 		case oscar.BUCP:
 			return routeBUCP(ctx)
-		case oscar.ALERT:
+		case oscar.Alert:
 			return rt.RouteAlert(ctx, snac)
 		default:
 			return ErrUnsupportedSubGroup

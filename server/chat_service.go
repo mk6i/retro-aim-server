@@ -70,7 +70,7 @@ func (rt ChatService) handleNewConnection(ctx context.Context, rw io.ReadWriter)
 	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName())
 
 	msg := rt.WriteOServiceHostOnline()
-	if err := sendSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, rw); err != nil {
+	if err := sendSNAC(oscar.SNACFrame{}, msg.Frame, msg.Body, &seq, rw); err != nil {
 		rt.Logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
 		return
 	}
@@ -78,23 +78,23 @@ func (rt ChatService) handleNewConnection(ctx context.Context, rw io.ReadWriter)
 	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
 		return rt.route(ctx, chatSess, r, w, seq, chatID)
 	}
-	fnAlertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, seq *uint32) error {
-		return sendSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, seq, w)
+	fnAlertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, seq *uint32) error {
+		return sendSNAC(oscar.SNACFrame{}, msg.Frame, msg.Body, seq, w)
 	}
 	dispatchIncomingMessages(ctx, chatSess, seq, rw, rt.Logger, fnClientReqHandler, fnAlertHandler)
 }
 
 func (rt ChatService) route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32, chatID string) error {
-	snac := oscar.SnacFrame{}
+	snac := oscar.SNACFrame{}
 	if err := oscar.Unmarshal(&snac, r); err != nil {
 		return err
 	}
 
 	err := func() error {
 		switch snac.FoodGroup {
-		case oscar.OSERVICE:
+		case oscar.OService:
 			return rt.RouteOService(ctx, sess, chatID, snac, r, w, sequence)
-		case oscar.CHAT:
+		case oscar.Chat:
 			return rt.RouteChat(ctx, sess, chatID, snac, r, w, sequence)
 		default:
 			return ErrUnsupportedSubGroup

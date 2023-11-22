@@ -14,9 +14,9 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 		// name is the unit test name
 		name string
 		// input is the request payload
-		input oscar.XMessage
+		input oscar.SNACMessage
 		// output is the response payload
-		output oscar.XMessage
+		output oscar.SNACMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -24,12 +24,12 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 	}{
 		{
 			name: "receive FeedbagRightsQuery, return FeedbagRightsReply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagRightsQuery,
 				},
-				SnacOut: oscar.SNAC_0x13_0x02_FeedbagRightsQuery{
+				Body: oscar.SNAC_0x13_0x02_FeedbagRightsQuery{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -40,12 +40,12 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagRightsReply,
 				},
-				SnacOut: oscar.SNAC_0x13_0x03_FeedbagRightsReply{
+				Body: oscar.SNAC_0x13_0x03_FeedbagRightsReply{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -59,12 +59,12 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 		},
 		{
 			name: "receive FeedbagQuery, return FeedbagReply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagQuery,
 				},
-				SnacOut: oscar.SNAC_0x13_0x02_FeedbagRightsQuery{
+				Body: oscar.SNAC_0x13_0x02_FeedbagRightsQuery{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -75,56 +75,56 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagReply,
 				},
-				SnacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
+				Body: oscar.SNAC_0x13_0x06_FeedbagReply{
 					Version: 4,
 				},
 			},
 		},
 		{
 			name: "receive FeedbagQueryIfModified, return FeedbagRightsReply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagQueryIfModified,
 				},
-				SnacOut: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
+				Body: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
 					LastUpdate: 1234,
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagReply,
 				},
-				SnacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
+				Body: oscar.SNAC_0x13_0x06_FeedbagReply{
 					LastUpdate: 1234,
 				},
 			},
 		},
 		{
 			name: "receive FeedbagUse, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagUse,
 				},
-				SnacOut: struct{}{},
+				Body: struct{}{},
 			},
-			output: oscar.XMessage{},
+			output: oscar.SNACMessage{},
 		},
 		{
 			name: "receive FeedbagInsertItem, return BuddyArrived and FeedbagStatus",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagInsertItem,
 				},
-				SnacOut: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
+				Body: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
 					Items: []oscar.FeedbagItem{
 						{
 							Name: "my-item",
@@ -132,24 +132,24 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagStatus,
 				},
-				SnacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
+				Body: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{1234},
 				},
 			},
 		},
 		{
 			name: "receive FeedbagUpdateItem, return BuddyArrived and FeedbagStatus",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagUpdateItem,
 				},
-				SnacOut: oscar.SNAC_0x13_0x09_FeedbagUpdateItem{
+				Body: oscar.SNAC_0x13_0x09_FeedbagUpdateItem{
 					Items: []oscar.FeedbagItem{
 						{
 							Name: "my-item",
@@ -157,24 +157,24 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagStatus,
 				},
-				SnacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
+				Body: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{1234},
 				},
 			},
 		},
 		{
 			name: "receive FeedbagDeleteItem, return FeedbagStatus",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagDeleteItem,
 				},
-				SnacOut: oscar.SNAC_0x13_0x0A_FeedbagDeleteItem{
+				Body: oscar.SNAC_0x13_0x0A_FeedbagDeleteItem{
 					Items: []oscar.FeedbagItem{
 						{
 							Name: "my-item",
@@ -182,24 +182,24 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagStatus,
 				},
-				SnacOut: oscar.SNAC_0x13_0x0E_FeedbagStatus{
+				Body: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{1234},
 				},
 			},
 		},
 		{
 			name: "receive FeedbagStartCluster, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagStartCluster,
 				},
-				SnacOut: oscar.SNAC_0x13_0x11_FeedbagStartCluster{
+				Body: oscar.SNAC_0x13_0x11_FeedbagStartCluster{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -210,29 +210,29 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{},
+			output: oscar.SNACMessage{},
 		},
 		{
 			name: "receive FeedbagEndCluster, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagEndCluster,
 				},
-				SnacOut: struct{}{},
+				Body: struct{}{},
 			},
-			output: oscar.XMessage{},
+			output: oscar.SNACMessage{},
 		},
 		{
 			name: "receive FeedbagDeleteUser, return ErrUnsupportedSubGroup",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagDeleteUser,
 				},
-				SnacOut: struct{}{},
+				Body: struct{}{},
 			},
-			output:    oscar.XMessage{},
+			output:    oscar.SNACMessage{},
 			expectErr: ErrUnsupportedSubGroup,
 		},
 	}
@@ -241,7 +241,7 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newMockFeedbagHandler(t)
 			svc.EXPECT().
-				DeleteItemHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				DeleteItemHandler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
@@ -249,7 +249,7 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				QueryIfModifiedHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				QueryIfModifiedHandler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
@@ -257,15 +257,15 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				InsertItemHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				InsertItemHandler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				UpdateItemHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				UpdateItemHandler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				StartClusterHandler(mock.Anything, tc.input.SnacOut).
+				StartClusterHandler(mock.Anything, tc.input.Body).
 				Maybe()
 
 			router := FeedbagRouter{
@@ -276,23 +276,23 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 			}
 
 			bufIn := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.input.SnacOut, bufIn))
+			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))
 
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteFeedbag(nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteFeedbag(nil, nil, tc.input.Frame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
 			}
 
-			if tc.output.SnacFrame == (oscar.SnacFrame{}) {
+			if tc.output.Frame == (oscar.SNACFrame{}) {
 				return
 			}
 
 			// verify the FLAP frame
-			flap := oscar.FlapFrame{}
+			flap := oscar.FLAPFrame{}
 			assert.NoError(t, oscar.Unmarshal(&flap, bufOut))
 
 			// make sure the sequence increments
@@ -303,13 +303,13 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 			assert.NoError(t, err)
 
 			// verify the SNAC frame
-			snacFrame := oscar.SnacFrame{}
+			snacFrame := oscar.SNACFrame{}
 			assert.NoError(t, oscar.Unmarshal(&snacFrame, flapBuf))
-			assert.Equal(t, tc.output.SnacFrame, snacFrame)
+			assert.Equal(t, tc.output.Frame, snacFrame)
 
 			// verify the SNAC message
 			snacBuf := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.output.SnacOut, snacBuf))
+			assert.NoError(t, oscar.Marshal(tc.output.Body, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), flapBuf.Bytes())
 		})
 	}

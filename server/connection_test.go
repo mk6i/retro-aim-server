@@ -22,24 +22,24 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 	sm := state.NewSessionManager(logger)
 	sess := sm.NewSessionWithSN("bob-sess-id", "bob")
 
-	msgIn := []oscar.XMessage{
+	msgIn := []oscar.SNACMessage{
 		{
-			SnacFrame: oscar.SnacFrame{
-				FoodGroup: oscar.CHAT,
+			Frame: oscar.SNACFrame{
+				FoodGroup: oscar.Chat,
 				SubGroup:  oscar.ChatUsersJoined,
 			},
-			SnacOut: oscar.SNAC_0x0E_0x03_ChatUsersJoined{
+			Body: oscar.SNAC_0x0E_0x03_ChatUsersJoined{
 				Users: []oscar.TLVUserInfo{
 					sess.TLVUserInfo(),
 				},
 			},
 		},
 		{
-			SnacFrame: oscar.SnacFrame{
-				FoodGroup: oscar.CHAT,
+			Frame: oscar.SNACFrame{
+				FoodGroup: oscar.Chat,
 				SubGroup:  oscar.ChatUsersLeft,
 			},
-			SnacOut: oscar.SNAC_0x0E_0x03_ChatUsersJoined{
+			Body: oscar.SNAC_0x0E_0x03_ChatUsersJoined{
 				Users: []oscar.TLVUserInfo{},
 			},
 		},
@@ -52,8 +52,8 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(msgIn))
 
-	var msgOut []oscar.XMessage
-	alertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, u *uint32) error {
+	var msgOut []oscar.SNACMessage
+	alertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, u *uint32) error {
 		msgOut = append(msgOut, msg)
 		wg.Done()
 		return nil
@@ -94,9 +94,9 @@ func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 	_, pw2 := io.Pipe()
 	go func() {
 		for _, buf := range payloads {
-			flap := oscar.FlapFrame{
+			flap := oscar.FLAPFrame{
 				StartMarker:   42,
-				FrameType:     oscar.FlapFrameData,
+				FrameType:     oscar.FLAPFrameData,
 				PayloadLength: uint16(len(buf)),
 			}
 			assert.NoError(t, oscar.Marshal(flap, pw))
@@ -115,7 +115,7 @@ func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 		wg.Done()
 		return err
 	}
-	alertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, u *uint32) error {
+	alertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, u *uint32) error {
 		return nil
 	}
 
@@ -144,7 +144,7 @@ func TestHandleChatConnection_SessionClosed(t *testing.T) {
 		t.Fatal("not expecting any output")
 		return nil
 	}
-	alertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, u *uint32) error {
+	alertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, u *uint32) error {
 		t.Fatal("not expecting any alerts")
 		return nil
 	}
@@ -163,7 +163,7 @@ func TestHandleChatConnection_SessionClosed(t *testing.T) {
 
 	go dispatchIncomingMessages(ctx, sess, 0, in, logger, routeSig, alertHandler)
 
-	flap := oscar.FlapFrame{}
+	flap := oscar.FLAPFrame{}
 	assert.NoError(t, oscar.Unmarshal(&flap, pr2))
-	assert.Equal(t, oscar.FlapFrameSignoff, flap.FrameType)
+	assert.Equal(t, oscar.FLAPFrameSignoff, flap.FrameType)
 }

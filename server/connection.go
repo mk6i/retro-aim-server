@@ -17,14 +17,14 @@ var (
 
 type (
 	incomingMessage struct {
-		flap    oscar.FlapFrame
+		flap    oscar.FLAPFrame
 		payload *bytes.Buffer
 	}
-	alertHandler     func(ctx context.Context, msg oscar.XMessage, w io.Writer, u *uint32) error
+	alertHandler     func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, u *uint32) error
 	clientReqHandler func(ctx context.Context, r io.Reader, w io.Writer, u *uint32) error
 )
 
-func sendSNAC(originsnac oscar.SnacFrame, snacFrame oscar.SnacFrame, snacOut any, sequence *uint32, w io.Writer) error {
+func sendSNAC(originsnac oscar.SNACFrame, snacFrame oscar.SNACFrame, snacOut any, sequence *uint32, w io.Writer) error {
 	if originsnac.RequestID != 0 {
 		snacFrame.RequestID = originsnac.RequestID
 	}
@@ -37,9 +37,9 @@ func sendSNAC(originsnac oscar.SnacFrame, snacFrame oscar.SnacFrame, snacOut any
 		return err
 	}
 
-	flap := oscar.FlapFrame{
+	flap := oscar.FLAPFrame{
 		StartMarker:   42,
-		FrameType:     oscar.FlapFrameData,
+		FrameType:     oscar.FLAPFrameData,
 		Sequence:      uint16(*sequence),
 		PayloadLength: uint16(snacBuf.Len()),
 	}
@@ -61,12 +61,12 @@ func sendSNAC(originsnac oscar.SnacFrame, snacFrame oscar.SnacFrame, snacOut any
 	return nil
 }
 
-func sendInvalidSNACErr(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
-	snacFrameOut := oscar.SnacFrame{
+func sendInvalidSNACErr(snac oscar.SNACFrame, w io.Writer, sequence *uint32) error {
+	snacFrameOut := oscar.SNACFrame{
 		FoodGroup: snac.FoodGroup,
 		SubGroup:  0x01, // error subgroup for all SNACs
 	}
-	snacPayloadOut := oscar.SnacError{
+	snacPayloadOut := oscar.SNACError{
 		Code: oscar.ErrorCodeInvalidSnac,
 	}
 	return sendSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
@@ -83,7 +83,7 @@ func consumeFLAPFrames(r io.Reader, msgCh chan incomingMessage, errCh chan error
 			return
 		}
 
-		if in.flap.FrameType == oscar.FlapFrameData {
+		if in.flap.FrameType == oscar.FLAPFrameData {
 			buf := make([]byte, in.flap.PayloadLength)
 			if _, err := r.Read(buf); err != nil {
 				errCh <- err
@@ -110,21 +110,21 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, seq uint
 		select {
 		case m := <-msgCh:
 			switch m.flap.FrameType {
-			case oscar.FlapFrameData:
+			case oscar.FLAPFrameData:
 				// route a client request to the appropriate service handler. the
 				// handler may write a response to the client connection.
 				if err := fn(ctx, m.payload, rw, &seq); err != nil {
 					return
 				}
-			case oscar.FlapFrameSignon:
-				logger.ErrorContext(ctx, "shouldn't get FlapFrameSignon", "flap", m.flap)
-			case oscar.FlapFrameError:
-				logger.ErrorContext(ctx, "got FlapFrameError", "flap", m.flap)
+			case oscar.FLAPFrameSignon:
+				logger.ErrorContext(ctx, "shouldn't get FLAPFrameSignon", "flap", m.flap)
+			case oscar.FLAPFrameError:
+				logger.ErrorContext(ctx, "got FLAPFrameError", "flap", m.flap)
 				return
-			case oscar.FlapFrameSignoff:
-				logger.InfoContext(ctx, "got FlapFrameSignoff", "flap", m.flap)
+			case oscar.FLAPFrameSignoff:
+				logger.InfoContext(ctx, "got FLAPFrameSignoff", "flap", m.flap)
 				return
-			case oscar.FlapFrameKeepAlive:
+			case oscar.FLAPFrameKeepAlive:
 				logger.DebugContext(ctx, "keepalive heartbeat")
 			default:
 				logger.ErrorContext(ctx, "got unknown FLAP frame type", "flap", m.flap)
@@ -133,16 +133,16 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, seq uint
 		case m := <-sess.RecvMessage():
 			// forward a notification sent from another client to this client
 			if err := alertHandler(ctx, m, rw, &seq); err != nil {
-				logRequestError(ctx, logger, m.SnacFrame, err)
+				logRequestError(ctx, logger, m.Frame, err)
 				return
 			}
-			logRequest(ctx, logger, m.SnacFrame, m.SnacOut)
+			logRequest(ctx, logger, m.Frame, m.Body)
 		case <-sess.Closed():
 			// gracefully disconnect so that the client does not try to
 			// reconnect when the connection closes.
-			flap := oscar.FlapFrame{
+			flap := oscar.FLAPFrame{
 				StartMarker:   42,
-				FrameType:     oscar.FlapFrameSignoff,
+				FrameType:     oscar.FLAPFrameSignoff,
 				Sequence:      uint16(seq),
 				PayloadLength: uint16(0),
 			}

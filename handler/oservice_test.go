@@ -25,7 +25,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 		inputSNAC oscar.SNAC_0x01_0x04_OServiceServiceRequest
 		// expectSNACFrame is the SNAC frame sent from the server to the recipient
 		// client
-		expectOutput oscar.XMessage
+		expectOutput oscar.SNACMessage
 		// expectErr is the expected error returned by the router
 		expectErr error
 	}{
@@ -53,7 +53,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			},
 			userSession: newTestSession("user_screen_name", sessOptCannedID),
 			inputSNAC: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
-				FoodGroup: oscar.CHAT,
+				FoodGroup: oscar.Chat,
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
 						oscar.NewTLV(0x01, oscar.SNAC_0x01_0x04_TLVRoomInfo{
@@ -64,12 +64,12 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceServiceResponse,
 				},
-				SnacOut: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
+				Body: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(oscar.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
@@ -77,7 +77,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 								Cookie: []byte("the-chat-cookie"),
 								SessID: "user-sess-id",
 							}),
-							oscar.NewTLV(oscar.OServiceTLVTagsGroupID, oscar.CHAT),
+							oscar.NewTLV(oscar.OServiceTLVTagsGroupID, oscar.Chat),
 							oscar.NewTLV(oscar.OServiceTLVTagsSSLCertName, ""),
 							oscar.NewTLV(oscar.OServiceTLVTagsSSLState, uint8(0x00)),
 						},
@@ -94,7 +94,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			chatRoom:    nil,
 			userSession: newTestSession("user_screen_name", sessOptCannedID),
 			inputSNAC: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
-				FoodGroup: oscar.CHAT,
+				FoodGroup: oscar.Chat,
 				TLVRestBlock: oscar.TLVRestBlock{
 					TLVList: oscar.TLVList{
 						oscar.NewTLV(0x01, oscar.SNAC_0x01_0x04_TLVRoomInfo{

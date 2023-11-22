@@ -21,13 +21,13 @@ type LocateService struct {
 	profileManager ProfileManager
 }
 
-func (s LocateService) RightsQueryHandler(context.Context) oscar.XMessage {
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.LOCATE,
+func (s LocateService) RightsQueryHandler(context.Context) oscar.SNACMessage {
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Locate,
 			SubGroup:  oscar.LocateRightsReply,
 		},
-		SnacOut: oscar.SNAC_0x02_0x03_LocateRightsReply{
+		Body: oscar.SNAC_0x02_0x03_LocateRightsReply{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(0x01, uint16(1000)),
@@ -59,18 +59,18 @@ func (s LocateService) SetInfoHandler(ctx context.Context, sess *state.Session, 
 	return nil
 }
 
-func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.XMessage, error) {
+func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.SNACMessage, error) {
 	blocked, err := s.feedbagManager.Blocked(sess.ScreenName(), snacPayloadIn.ScreenName)
 	switch {
 	case err != nil:
-		return oscar.XMessage{}, err
+		return oscar.SNACMessage{}, err
 	case blocked != state.BlockedNo:
-		return oscar.XMessage{
-			SnacFrame: oscar.SnacFrame{
-				FoodGroup: oscar.LOCATE,
+		return oscar.SNACMessage{
+			Frame: oscar.SNACFrame{
+				FoodGroup: oscar.Locate,
 				SubGroup:  oscar.LocateErr,
 			},
-			SnacOut: oscar.SnacError{
+			Body: oscar.SNACError{
 				Code: oscar.ErrorCodeNotLoggedOn,
 			},
 		}, nil
@@ -78,12 +78,12 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Sess
 
 	buddySess := s.sessionManager.RetrieveByScreenName(snacPayloadIn.ScreenName)
 	if buddySess == nil {
-		return oscar.XMessage{
-			SnacFrame: oscar.SnacFrame{
-				FoodGroup: oscar.LOCATE,
+		return oscar.SNACMessage{
+			Frame: oscar.SNACFrame{
+				FoodGroup: oscar.Locate,
 				SubGroup:  oscar.LocateErr,
 			},
-			SnacOut: oscar.SnacError{
+			Body: oscar.SNACError{
 				Code: oscar.ErrorCodeNotLoggedOn,
 			},
 		}, nil
@@ -94,7 +94,7 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Sess
 	if snacPayloadIn.RequestProfile() {
 		profile, err := s.profileManager.RetrieveProfile(snacPayloadIn.ScreenName)
 		if err != nil {
-			return oscar.XMessage{}, err
+			return oscar.SNACMessage{}, err
 		}
 		list.AddTLVList([]oscar.TLV{
 			oscar.NewTLV(oscar.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
@@ -109,12 +109,12 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Sess
 		})
 	}
 
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.LOCATE,
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Locate,
 			SubGroup:  oscar.LocateUserInfoReply,
 		},
-		SnacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
+		Body: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
 			TLVUserInfo: buddySess.TLVUserInfo(),
 			LocateInfo: oscar.TLVRestBlock{
 				TLVList: list,
@@ -123,25 +123,25 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Sess
 	}, nil
 }
 
-func (s LocateService) SetDirInfoHandler(_ context.Context) oscar.XMessage {
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.LOCATE,
+func (s LocateService) SetDirInfoHandler(_ context.Context) oscar.SNACMessage {
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Locate,
 			SubGroup:  oscar.LocateSetDirReply,
 		},
-		SnacOut: oscar.SNAC_0x02_0x0A_LocateSetDirReply{
+		Body: oscar.SNAC_0x02_0x0A_LocateSetDirReply{
 			Result: 1,
 		},
 	}
 }
 
-func (s LocateService) SetKeywordInfoHandler(_ context.Context) oscar.XMessage {
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.LOCATE,
+func (s LocateService) SetKeywordInfoHandler(_ context.Context) oscar.SNACMessage {
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Locate,
 			SubGroup:  oscar.LocateSetKeywordReply,
 		},
-		SnacOut: oscar.SNAC_0x02_0x10_LocateSetKeywordReply{
+		Body: oscar.SNAC_0x02_0x10_LocateSetKeywordReply{
 			Unknown: 1,
 		},
 	}

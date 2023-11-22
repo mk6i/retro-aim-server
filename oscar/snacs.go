@@ -5,30 +5,30 @@ package oscar
 //
 
 const (
-	OSERVICE      uint16 = 0x0001
-	LOCATE        uint16 = 0x0002
-	BUDDY         uint16 = 0x0003
-	ICBM          uint16 = 0x0004
-	ADVERT        uint16 = 0x0005
-	INVITE        uint16 = 0x0006
-	ADMIN         uint16 = 0x0007
-	POPUP         uint16 = 0x0008
-	PD            uint16 = 0x0009
-	USER_LOOKUP   uint16 = 0x000A
-	STATS         uint16 = 0x000B
-	TRANSLATE     uint16 = 0x000C
-	CHAT_NAV      uint16 = 0x000D
-	CHAT          uint16 = 0x000E
-	ODIR          uint16 = 0x000F
-	BART          uint16 = 0x0010
-	FEEDBAG       uint16 = 0x0013
-	ICQ           uint16 = 0x0015
-	BUCP          uint16 = 0x0017
-	ALERT         uint16 = 0x0018
-	PLUGIN        uint16 = 0x0022
-	UNNAMED_FG_24 uint16 = 0x0024
-	MDIR          uint16 = 0x0025
-	ARS           uint16 = 0x044A
+	OService    uint16 = 0x0001
+	Locate      uint16 = 0x0002
+	Buddy       uint16 = 0x0003
+	ICBM        uint16 = 0x0004
+	Advert      uint16 = 0x0005
+	Invite      uint16 = 0x0006
+	Admin       uint16 = 0x0007
+	Popup       uint16 = 0x0008
+	PD          uint16 = 0x0009
+	UserLookup  uint16 = 0x000A
+	Stats       uint16 = 0x000B
+	Translate   uint16 = 0x000C
+	ChatNav     uint16 = 0x000D
+	Chat        uint16 = 0x000E
+	ODir        uint16 = 0x000F
+	BART        uint16 = 0x0010
+	Feedbag     uint16 = 0x0013
+	ICQ         uint16 = 0x0015
+	BUCP        uint16 = 0x0017
+	Alert       uint16 = 0x0018
+	Plugin      uint16 = 0x0022
+	UnnamedFG24 uint16 = 0x0024
+	MDir        uint16 = 0x0025
+	ARS         uint16 = 0x044A
 )
 
 //
@@ -791,7 +791,7 @@ var (
 	AlertUserOnline                uint16 = 0x0017
 )
 
-type SnacOServiceErr struct {
+type SNACOServiceErr struct {
 	Code uint16
 }
 
@@ -807,9 +807,4 @@ type FeedbagItem struct {
 	ItemID  uint16
 	ClassID uint16
 	TLVLBlock
-}
-
-type XMessage struct {
-	SnacFrame SnacFrame
-	SnacOut   any
 }

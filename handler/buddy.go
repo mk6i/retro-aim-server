@@ -14,13 +14,13 @@ func NewBuddyService() *BuddyService {
 type BuddyService struct {
 }
 
-func (s BuddyService) RightsQueryHandler(context.Context) oscar.XMessage {
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.BUDDY,
+func (s BuddyService) RightsQueryHandler(context.Context) oscar.SNACMessage {
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyRightsReply,
 		},
-		SnacOut: oscar.SNAC_0x03_0x03_BuddyRightsReply{
+		Body: oscar.SNAC_0x03_0x03_BuddyRightsReply{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(0x01, uint16(100)),
@@ -39,12 +39,12 @@ func broadcastArrival(ctx context.Context, sess *state.Session, sm SessionManage
 		return err
 	}
 
-	sm.BroadcastToScreenNames(ctx, screenNames, oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.BUDDY,
+	sm.BroadcastToScreenNames(ctx, screenNames, oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyArrived,
 		},
-		SnacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
+		Body: oscar.SNAC_0x03_0x0A_BuddyArrived{
 			TLVUserInfo: oscar.TLVUserInfo{
 				ScreenName:   sess.ScreenName(),
 				WarningLevel: sess.Warning(),
@@ -64,12 +64,12 @@ func broadcastDeparture(ctx context.Context, sess *state.Session, sm SessionMana
 		return err
 	}
 
-	sm.BroadcastToScreenNames(ctx, screenNames, oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.BUDDY,
+	sm.BroadcastToScreenNames(ctx, screenNames, oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyDeparted,
 		},
-		SnacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+		Body: oscar.SNAC_0x03_0x0B_BuddyDeparted{
 			TLVUserInfo: oscar.TLVUserInfo{
 				ScreenName:   sess.ScreenName(),
 				WarningLevel: sess.Warning(),
@@ -88,12 +88,12 @@ func unicastArrival(ctx context.Context, srcScreenName, destScreenName string, s
 	case sess.Invisible(): // don't tell user this buddy is online
 		return
 	}
-	sm.SendToScreenName(ctx, destScreenName, oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.BUDDY,
+	sm.SendToScreenName(ctx, destScreenName, oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyArrived,
 		},
-		SnacOut: oscar.SNAC_0x03_0x0A_BuddyArrived{
+		Body: oscar.SNAC_0x03_0x0A_BuddyArrived{
 			TLVUserInfo: sess.TLVUserInfo(),
 		},
 	})
@@ -108,12 +108,12 @@ func unicastDeparture(ctx context.Context, srcScreenName, destScreenName string,
 		return
 	}
 
-	sm.SendToScreenName(ctx, destScreenName, oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.BUDDY,
+	sm.SendToScreenName(ctx, destScreenName, oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyDeparted,
 		},
-		SnacOut: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+		Body: oscar.SNAC_0x03_0x0B_BuddyDeparted{
 			TLVUserInfo: oscar.TLVUserInfo{
 				// don't include the TLV block, otherwise the AIM client fails
 				// to process the block event

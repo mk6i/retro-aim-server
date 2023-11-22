@@ -20,8 +20,8 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 		inputSNAC oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost
 		// expectSNACToParticipants is the message the server broadcast to chat
 		// room participants (except the sender)
-		expectSNACToParticipants oscar.XMessage
-		expectOutput             *oscar.XMessage
+		expectSNACToParticipants oscar.SNACMessage
+		expectOutput             *oscar.SNACMessage
 	}{
 		{
 			name:        "send chat room message, expect acknowledgement to sender client",
@@ -42,12 +42,12 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 					},
 				},
 			},
-			expectSNACToParticipants: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.CHAT,
+			expectSNACToParticipants: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Chat,
 					SubGroup:  oscar.ChatChannelMsgToClient,
 				},
-				SnacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+				Body: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
 					Cookie:  1234,
 					Channel: 14,
 					TLVRestBlock: oscar.TLVRestBlock{
@@ -60,12 +60,12 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: &oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.CHAT,
+			expectOutput: &oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Chat,
 					SubGroup:  oscar.ChatChannelMsgToClient,
 				},
-				SnacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+				Body: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
 					Cookie:  1234,
 					Channel: 14,
 					TLVRestBlock: oscar.TLVRestBlock{
@@ -93,12 +93,12 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 					},
 				},
 			},
-			expectSNACToParticipants: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.CHAT,
+			expectSNACToParticipants: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Chat,
 					SubGroup:  oscar.ChatChannelMsgToClient,
 				},
-				SnacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+				Body: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
 					Cookie:  1234,
 					Channel: 14,
 					TLVRestBlock: oscar.TLVRestBlock{
@@ -110,7 +110,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: &oscar.XMessage{},
+			expectOutput: &oscar.SNACMessage{},
 		},
 	}
 
@@ -130,7 +130,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, chatID, tc.inputSNAC)
 			assert.NoError(t, err)
 
-			if tc.expectOutput.SnacFrame == (oscar.SnacFrame{}) {
+			if tc.expectOutput.Frame == (oscar.SNACFrame{}) {
 				return // handler doesn't return response
 			}
 

@@ -14,9 +14,9 @@ func TestBuddyRouter_RouteBuddy(t *testing.T) {
 		// name is the unit test name
 		name string
 		// input is the request payload
-		input oscar.XMessage
+		input oscar.SNACMessage
 		// output is the response payload
-		output oscar.XMessage
+		output oscar.SNACMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -24,12 +24,12 @@ func TestBuddyRouter_RouteBuddy(t *testing.T) {
 	}{
 		{
 			name: "receive BuddyRightsQuery, return BuddyRightsReply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.BUDDY,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Buddy,
 					SubGroup:  oscar.BuddyRightsQuery,
 				},
-				SnacOut: oscar.SNAC_0x03_0x02_BuddyRightsQuery{
+				Body: oscar.SNAC_0x03_0x02_BuddyRightsQuery{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -40,12 +40,12 @@ func TestBuddyRouter_RouteBuddy(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.BUDDY,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Buddy,
 					SubGroup:  oscar.BuddyRightsReply,
 				},
-				SnacOut: oscar.SNAC_0x03_0x03_BuddyRightsReply{
+				Body: oscar.SNAC_0x03_0x03_BuddyRightsReply{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -59,14 +59,14 @@ func TestBuddyRouter_RouteBuddy(t *testing.T) {
 		},
 		{
 			name: "receive ErrorCodeReplyTooBig, expect ErrUnsupportedSubGroup",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.BUDDY,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Buddy,
 					SubGroup:  oscar.ErrorCodeReplyTooBig,
 				},
-				SnacOut: struct{}{}, // empty SNAC
+				Body: struct{}{}, // empty SNAC
 			},
-			output:    oscar.XMessage{},
+			output:    oscar.SNACMessage{},
 			expectErr: ErrUnsupportedSubGroup,
 		},
 	}
@@ -87,25 +87,25 @@ func TestBuddyRouter_RouteBuddy(t *testing.T) {
 			}
 
 			bufIn := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.input.SnacOut, bufIn))
+			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))
 
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteBuddy(nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteBuddy(nil, tc.input.Frame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
 			}
 
-			if tc.output == (oscar.XMessage{}) {
+			if tc.output == (oscar.SNACMessage{}) {
 				// make sure no response was sent
 				assert.Empty(t, bufOut.Bytes())
 				return
 			}
 
 			// verify the FLAP frame
-			flap := oscar.FlapFrame{}
+			flap := oscar.FLAPFrame{}
 			assert.NoError(t, oscar.Unmarshal(&flap, bufOut))
 
 			// make sure the sequence number was incremented
@@ -115,13 +115,13 @@ func TestBuddyRouter_RouteBuddy(t *testing.T) {
 			assert.NoError(t, err)
 
 			// verify the SNAC frame
-			snacFrame := oscar.SnacFrame{}
+			snacFrame := oscar.SNACFrame{}
 			assert.NoError(t, oscar.Unmarshal(&snacFrame, flapBuf))
-			assert.Equal(t, tc.output.SnacFrame, snacFrame)
+			assert.Equal(t, tc.output.Frame, snacFrame)
 
 			// verify the SNAC message
 			snacBuf := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.output.SnacOut, snacBuf))
+			assert.NoError(t, oscar.Marshal(tc.output.Body, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), flapBuf.Bytes())
 		})
 	}

@@ -29,7 +29,7 @@ type Session struct {
 	idle        bool
 	idleTime    time.Time
 	invisible   bool
-	msgCh       chan oscar.XMessage
+	msgCh       chan oscar.SNACMessage
 	mutex       sync.RWMutex
 	screenName  string
 	signonTime  time.Time
@@ -176,11 +176,11 @@ func (s *Session) Warning() uint16 {
 	return w
 }
 
-func (s *Session) RecvMessage() chan oscar.XMessage {
+func (s *Session) RecvMessage() chan oscar.SNACMessage {
 	return s.msgCh
 }
 
-func (s *Session) SendMessage(msg oscar.XMessage) SessSendStatus {
+func (s *Session) SendMessage(msg oscar.SNACMessage) SessSendStatus {
 	s.mutex.Lock()
 	if s.closed {
 		return SessSendClosed
@@ -212,7 +212,7 @@ func (s *Session) Closed() <-chan struct{} {
 
 func NewSession() *Session {
 	return &Session{
-		msgCh:      make(chan oscar.XMessage, 1000),
+		msgCh:      make(chan oscar.SNACMessage, 1000),
 		stopCh:     make(chan struct{}),
 		signonTime: time.Now(),
 	}

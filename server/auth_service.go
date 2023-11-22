@@ -13,10 +13,10 @@ import (
 )
 
 type AuthHandler interface {
-	ReceiveAndSendAuthChallenge(snacPayloadIn oscar.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (oscar.XMessage, error)
-	ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID) (oscar.XMessage, error)
+	ReceiveAndSendAuthChallenge(snacPayloadIn oscar.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (oscar.SNACMessage, error)
+	ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID) (oscar.SNACMessage, error)
 	RetrieveChatSession(ctx context.Context, chatID string, sessID string) (*state.Session, error)
-	SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSignonFrame, error)
+	SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FLAPSignonFrame, error)
 	Signout(ctx context.Context, sess *state.Session) error
 	SignoutChat(ctx context.Context, sess *state.Session, chatID string)
 	VerifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error)
@@ -38,7 +38,7 @@ func (rt AuthService) handleAuthConnection(rwc io.ReadWriteCloser) {
 		return
 	}
 
-	flap := oscar.FlapFrame{}
+	flap := oscar.FLAPFrame{}
 	if err := oscar.Unmarshal(&flap, rwc); err != nil {
 		rt.Logger.Error(err.Error())
 		return
@@ -48,7 +48,7 @@ func (rt AuthService) handleAuthConnection(rwc io.ReadWriteCloser) {
 		rt.Logger.Error(err.Error())
 		return
 	}
-	snac := oscar.SnacFrame{}
+	snac := oscar.SNACFrame{}
 	buf := bytes.NewBuffer(b)
 	if err := oscar.Unmarshal(&snac, buf); err != nil {
 		rt.Logger.Error(err.Error())
@@ -66,17 +66,17 @@ func (rt AuthService) handleAuthConnection(rwc io.ReadWriteCloser) {
 		rt.Logger.Error(err.Error())
 		return
 	}
-	if err := sendSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, rwc); err != nil {
+	if err := sendSNAC(oscar.SNACFrame{}, msg.Frame, msg.Body, &seq, rwc); err != nil {
 		rt.Logger.Error(err.Error())
 		return
 	}
 
-	flap = oscar.FlapFrame{}
+	flap = oscar.FLAPFrame{}
 	if err := oscar.Unmarshal(&flap, rwc); err != nil {
 		rt.Logger.Error(err.Error())
 		return
 	}
-	snac = oscar.SnacFrame{}
+	snac = oscar.SNACFrame{}
 	b = make([]byte, flap.PayloadLength)
 	if _, err := rwc.Read(b); err != nil {
 		rt.Logger.Error(err.Error())
@@ -99,7 +99,7 @@ func (rt AuthService) handleAuthConnection(rwc io.ReadWriteCloser) {
 		rt.Logger.Error(err.Error())
 		return
 	}
-	if err := sendSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, rwc); err != nil {
+	if err := sendSNAC(oscar.SNACFrame{}, msg.Frame, msg.Body, &seq, rwc); err != nil {
 		rt.Logger.Error(err.Error())
 		return
 	}

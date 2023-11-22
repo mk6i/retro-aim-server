@@ -14,9 +14,9 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		// name is the unit test name
 		name string
 		// input is the request payload
-		input oscar.XMessage
+		input oscar.SNACMessage
 		// output is the response payload
-		output *oscar.XMessage
+		output *oscar.SNACMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -24,12 +24,12 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 	}{
 		{
 			name: "receive ICBMAddParameters SNAC, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMAddParameters,
 				},
-				SnacOut: oscar.SNAC_0x04_0x02_ICBMAddParameters{
+				Body: oscar.SNAC_0x04_0x02_ICBMAddParameters{
 					Channel: 1,
 				},
 			},
@@ -37,52 +37,52 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		},
 		{
 			name: "receive ICBMParameterQuery, return ICBMParameterReply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMParameterQuery,
 				},
-				SnacOut: struct{}{}, // empty SNAC
+				Body: struct{}{}, // empty SNAC
 			},
-			output: &oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			output: &oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMParameterReply,
 				},
-				SnacOut: oscar.SNAC_0x04_0x05_ICBMParameterReply{
+				Body: oscar.SNAC_0x04_0x05_ICBMParameterReply{
 					MaxSlots: 100,
 				},
 			},
 		},
 		{
 			name: "receive ICBMChannelMsgToHost, return ICBMHostAck",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMChannelMsgToHost,
 				},
-				SnacOut: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				Body: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 					ScreenName: "recipient-screen-name",
 				},
 			},
-			output: &oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			output: &oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMHostAck,
 				},
-				SnacOut: oscar.SNAC_0x04_0x0C_ICBMHostAck{
+				Body: oscar.SNAC_0x04_0x0C_ICBMHostAck{
 					ChannelID: 4,
 				},
 			},
 		},
 		{
 			name: "receive ICBMChannelMsgToHost, return no reply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMChannelMsgToHost,
 				},
-				SnacOut: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				Body: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 					ScreenName: "recipient-screen-name",
 				},
 			},
@@ -90,33 +90,33 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		},
 		{
 			name: "receive ICBMEvilRequest, return ICBMEvilReply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMEvilRequest,
 				},
-				SnacOut: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
+				Body: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
 					ScreenName: "recipient-screen-name",
 				},
 			},
-			output: &oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			output: &oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMEvilReply,
 				},
-				SnacOut: oscar.SNAC_0x04_0x09_ICBMEvilReply{
+				Body: oscar.SNAC_0x04_0x09_ICBMEvilReply{
 					EvilDeltaApplied: 100,
 				},
 			},
 		},
 		{
 			name: "receive ICBMClientErr, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMClientErr,
 				},
-				SnacOut: oscar.SNAC_0x04_0x0B_ICBMClientErr{
+				Body: oscar.SNAC_0x04_0x0B_ICBMClientErr{
 					Code: 4,
 				},
 			},
@@ -124,12 +124,12 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		},
 		{
 			name: "receive ICBMClientEvent, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMClientEvent,
 				},
-				SnacOut: oscar.SNAC_0x04_0x14_ICBMClientEvent{
+				Body: oscar.SNAC_0x04_0x14_ICBMClientEvent{
 					ScreenName: "recipient-screen-name",
 				},
 			},
@@ -137,12 +137,12 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		},
 		{
 			name: "receive ICBMMissedCalls, expect ErrUnsupportedSubGroup",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMMissedCalls,
 				},
-				SnacOut: struct{}{}, // empty SNAC
+				Body: struct{}{}, // empty SNAC
 			},
 			output:    nil,
 			expectErr: ErrUnsupportedSubGroup,
@@ -153,16 +153,16 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newMockICBMHandler(t)
 			svc.EXPECT().
-				ChannelMsgToHostHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				ChannelMsgToHostHandler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				ClientEventHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				ClientEventHandler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.handlerErr).
 				Maybe()
 			if tc.output != nil {
 				svc.EXPECT().
-					EvilRequestHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+					EvilRequestHandler(mock.Anything, mock.Anything, tc.input.Body).
 					Return(*tc.output, tc.handlerErr).
 					Maybe()
 				svc.EXPECT().
@@ -179,12 +179,12 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			}
 
 			bufIn := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.input.SnacOut, bufIn))
+			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))
 
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteICBM(nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteICBM(nil, nil, tc.input.Frame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -200,18 +200,18 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			assert.Equal(t, uint32(2), seq)
 
 			// verify the FLAP frame
-			flap := oscar.FlapFrame{}
+			flap := oscar.FLAPFrame{}
 			assert.NoError(t, oscar.Unmarshal(&flap, bufOut))
 			assert.Equal(t, uint16(1), flap.Sequence)
 
 			// verify the SNAC frame
-			snacFrame := oscar.SnacFrame{}
+			snacFrame := oscar.SNACFrame{}
 			assert.NoError(t, oscar.Unmarshal(&snacFrame, bufOut))
-			assert.Equal(t, tc.output.SnacFrame, snacFrame)
+			assert.Equal(t, tc.output.Frame, snacFrame)
 
 			// verify the SNAC message
 			snacBuf := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.output.SnacOut, snacBuf))
+			assert.NoError(t, oscar.Marshal(tc.output.Body, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), bufOut.Bytes())
 		})
 	}

@@ -25,18 +25,18 @@ func (_m *mockFeedbagHandler) EXPECT() *mockFeedbagHandler_Expecter {
 }
 
 // DeleteItemHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
-func (_m *mockFeedbagHandler) DeleteItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.XMessage, error) {
+func (_m *mockFeedbagHandler) DeleteItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, snacPayloadIn)
 
-	var r0 oscar.XMessage
+	var r0 oscar.SNACMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.XMessage, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.SNACMessage, error)); ok {
 		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) oscar.XMessage); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) oscar.SNACMessage); ok {
 		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) error); ok {
@@ -68,29 +68,29 @@ func (_c *mockFeedbagHandler_DeleteItemHandler_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *mockFeedbagHandler_DeleteItemHandler_Call) Return(_a0 oscar.XMessage, _a1 error) *mockFeedbagHandler_DeleteItemHandler_Call {
+func (_c *mockFeedbagHandler_DeleteItemHandler_Call) Return(_a0 oscar.SNACMessage, _a1 error) *mockFeedbagHandler_DeleteItemHandler_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockFeedbagHandler_DeleteItemHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.XMessage, error)) *mockFeedbagHandler_DeleteItemHandler_Call {
+func (_c *mockFeedbagHandler_DeleteItemHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.SNACMessage, error)) *mockFeedbagHandler_DeleteItemHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // InsertItemHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
-func (_m *mockFeedbagHandler) InsertItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.XMessage, error) {
+func (_m *mockFeedbagHandler) InsertItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, snacPayloadIn)
 
-	var r0 oscar.XMessage
+	var r0 oscar.SNACMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.XMessage, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.SNACMessage, error)); ok {
 		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x08_FeedbagInsertItem) oscar.XMessage); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x08_FeedbagInsertItem) oscar.SNACMessage); ok {
 		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x08_FeedbagInsertItem) error); ok {
@@ -122,29 +122,29 @@ func (_c *mockFeedbagHandler_InsertItemHandler_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *mockFeedbagHandler_InsertItemHandler_Call) Return(_a0 oscar.XMessage, _a1 error) *mockFeedbagHandler_InsertItemHandler_Call {
+func (_c *mockFeedbagHandler_InsertItemHandler_Call) Return(_a0 oscar.SNACMessage, _a1 error) *mockFeedbagHandler_InsertItemHandler_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockFeedbagHandler_InsertItemHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.XMessage, error)) *mockFeedbagHandler_InsertItemHandler_Call {
+func (_c *mockFeedbagHandler_InsertItemHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.SNACMessage, error)) *mockFeedbagHandler_InsertItemHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // QueryHandler provides a mock function with given fields: ctx, sess
-func (_m *mockFeedbagHandler) QueryHandler(ctx context.Context, sess *state.Session) (oscar.XMessage, error) {
+func (_m *mockFeedbagHandler) QueryHandler(ctx context.Context, sess *state.Session) (oscar.SNACMessage, error) {
 	ret := _m.Called(ctx, sess)
 
-	var r0 oscar.XMessage
+	var r0 oscar.SNACMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session) (oscar.XMessage, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session) (oscar.SNACMessage, error)); ok {
 		return rf(ctx, sess)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session) oscar.XMessage); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session) oscar.SNACMessage); ok {
 		r0 = rf(ctx, sess)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, *state.Session) error); ok {
@@ -175,29 +175,29 @@ func (_c *mockFeedbagHandler_QueryHandler_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *mockFeedbagHandler_QueryHandler_Call) Return(_a0 oscar.XMessage, _a1 error) *mockFeedbagHandler_QueryHandler_Call {
+func (_c *mockFeedbagHandler_QueryHandler_Call) Return(_a0 oscar.SNACMessage, _a1 error) *mockFeedbagHandler_QueryHandler_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockFeedbagHandler_QueryHandler_Call) RunAndReturn(run func(context.Context, *state.Session) (oscar.XMessage, error)) *mockFeedbagHandler_QueryHandler_Call {
+func (_c *mockFeedbagHandler_QueryHandler_Call) RunAndReturn(run func(context.Context, *state.Session) (oscar.SNACMessage, error)) *mockFeedbagHandler_QueryHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // QueryIfModifiedHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
-func (_m *mockFeedbagHandler) QueryIfModifiedHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.XMessage, error) {
+func (_m *mockFeedbagHandler) QueryIfModifiedHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, snacPayloadIn)
 
-	var r0 oscar.XMessage
+	var r0 oscar.SNACMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.XMessage, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.SNACMessage, error)); ok {
 		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) oscar.XMessage); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) oscar.SNACMessage); ok {
 		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) error); ok {
@@ -229,25 +229,25 @@ func (_c *mockFeedbagHandler_QueryIfModifiedHandler_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *mockFeedbagHandler_QueryIfModifiedHandler_Call) Return(_a0 oscar.XMessage, _a1 error) *mockFeedbagHandler_QueryIfModifiedHandler_Call {
+func (_c *mockFeedbagHandler_QueryIfModifiedHandler_Call) Return(_a0 oscar.SNACMessage, _a1 error) *mockFeedbagHandler_QueryIfModifiedHandler_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockFeedbagHandler_QueryIfModifiedHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.XMessage, error)) *mockFeedbagHandler_QueryIfModifiedHandler_Call {
+func (_c *mockFeedbagHandler_QueryIfModifiedHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.SNACMessage, error)) *mockFeedbagHandler_QueryIfModifiedHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // RightsQueryHandler provides a mock function with given fields: _a0
-func (_m *mockFeedbagHandler) RightsQueryHandler(_a0 context.Context) oscar.XMessage {
+func (_m *mockFeedbagHandler) RightsQueryHandler(_a0 context.Context) oscar.SNACMessage {
 	ret := _m.Called(_a0)
 
-	var r0 oscar.XMessage
-	if rf, ok := ret.Get(0).(func(context.Context) oscar.XMessage); ok {
+	var r0 oscar.SNACMessage
+	if rf, ok := ret.Get(0).(func(context.Context) oscar.SNACMessage); ok {
 		r0 = rf(_a0)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	return r0
@@ -271,12 +271,12 @@ func (_c *mockFeedbagHandler_RightsQueryHandler_Call) Run(run func(_a0 context.C
 	return _c
 }
 
-func (_c *mockFeedbagHandler_RightsQueryHandler_Call) Return(_a0 oscar.XMessage) *mockFeedbagHandler_RightsQueryHandler_Call {
+func (_c *mockFeedbagHandler_RightsQueryHandler_Call) Return(_a0 oscar.SNACMessage) *mockFeedbagHandler_RightsQueryHandler_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockFeedbagHandler_RightsQueryHandler_Call) RunAndReturn(run func(context.Context) oscar.XMessage) *mockFeedbagHandler_RightsQueryHandler_Call {
+func (_c *mockFeedbagHandler_RightsQueryHandler_Call) RunAndReturn(run func(context.Context) oscar.SNACMessage) *mockFeedbagHandler_RightsQueryHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -316,18 +316,18 @@ func (_c *mockFeedbagHandler_StartClusterHandler_Call) RunAndReturn(run func(con
 }
 
 // UpdateItemHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
-func (_m *mockFeedbagHandler) UpdateItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.XMessage, error) {
+func (_m *mockFeedbagHandler) UpdateItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, snacPayloadIn)
 
-	var r0 oscar.XMessage
+	var r0 oscar.SNACMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.XMessage, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.SNACMessage, error)); ok {
 		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) oscar.XMessage); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) oscar.SNACMessage); ok {
 		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) error); ok {
@@ -359,12 +359,12 @@ func (_c *mockFeedbagHandler_UpdateItemHandler_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *mockFeedbagHandler_UpdateItemHandler_Call) Return(_a0 oscar.XMessage, _a1 error) *mockFeedbagHandler_UpdateItemHandler_Call {
+func (_c *mockFeedbagHandler_UpdateItemHandler_Call) Return(_a0 oscar.SNACMessage, _a1 error) *mockFeedbagHandler_UpdateItemHandler_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockFeedbagHandler_UpdateItemHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.XMessage, error)) *mockFeedbagHandler_UpdateItemHandler_Call {
+func (_c *mockFeedbagHandler_UpdateItemHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.SNACMessage, error)) *mockFeedbagHandler_UpdateItemHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }

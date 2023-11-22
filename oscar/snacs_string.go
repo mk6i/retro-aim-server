@@ -1,30 +1,30 @@
 package oscar
 
 var foodGroupStr = map[uint16]string{
-	OSERVICE:      "OSERVICE",
-	LOCATE:        "LOCATE",
-	BUDDY:         "BUDDY",
-	ICBM:          "ICBM",
-	ADVERT:        "ADVERT",
-	INVITE:        "INVITE",
-	ADMIN:         "ADMIN",
-	POPUP:         "POPUP",
-	PD:            "PD",
-	USER_LOOKUP:   "USER_LOOKUP",
-	STATS:         "STATS",
-	TRANSLATE:     "TRANSLATE",
-	CHAT_NAV:      "CHAT_NAV",
-	CHAT:          "CHAT",
-	ODIR:          "ODIR",
-	BART:          "BART",
-	FEEDBAG:       "FEEDBAG",
-	ICQ:           "ICQ",
-	BUCP:          "BUCP",
-	ALERT:         "ALERT",
-	PLUGIN:        "PLUGIN",
-	UNNAMED_FG_24: "UNNAMED_FG_24",
-	MDIR:          "MDIR",
-	ARS:           "ARS",
+	OService:    "OService",
+	Locate:      "Locate",
+	Buddy:       "Buddy",
+	ICBM:        "ICBM",
+	Advert:      "Advert",
+	Invite:      "Invite",
+	Admin:       "Admin",
+	Popup:       "Popup",
+	PD:          "PD",
+	UserLookup:  "UserLookup",
+	Stats:       "Stats",
+	Translate:   "Translate",
+	ChatNav:     "ChatNav",
+	Chat:        "Chat",
+	ODir:        "ODir",
+	BART:        "BART",
+	Feedbag:     "Feedbag",
+	ICQ:         "ICQ",
+	BUCP:        "BUCP",
+	Alert:       "Alert",
+	Plugin:      "Plugin",
+	UnnamedFG24: "UnnamedFG24",
+	MDir:        "MDir",
+	ARS:         "ARS",
 }
 
 func FoodGroupStr(v uint16) string {
@@ -32,7 +32,7 @@ func FoodGroupStr(v uint16) string {
 }
 
 var subGroupStr = map[uint16]map[uint16]string{
-	OSERVICE: {
+	OService: {
 		OServiceErr:               "OServiceErr",
 		OServiceClientOnline:      "OServiceClientOnline",
 		OServiceHostOnline:        "OServiceHostOnline",
@@ -69,7 +69,7 @@ var subGroupStr = map[uint16]map[uint16]string{
 		OServiceBartQuery2:        "OServiceBartQuery2",
 		OServiceBartReply2:        "OServiceBartReply2",
 	},
-	LOCATE: {
+	Locate: {
 		LocateErr:                  "LocateErr",
 		LocateRightsQuery:          "LocateRightsQuery",
 		LocateRightsReply:          "LocateRightsReply",
@@ -92,7 +92,7 @@ var subGroupStr = map[uint16]map[uint16]string{
 		LocateFindListReply:        "LocateFindListReply",
 		LocateUserInfoQuery2:       "LocateUserInfoQuery2",
 	},
-	BUDDY: {
+	Buddy: {
 		BuddyErr:                 "BuddyErr",
 		BuddyRightsQuery:         "BuddyRightsQuery",
 		BuddyRightsReply:         "BuddyRightsReply",
@@ -131,7 +131,7 @@ var subGroupStr = map[uint16]map[uint16]string{
 		ICBMClientEvent:        "ICBMClientEvent",
 		ICBMSinReply:           "ICBMSinReply",
 	},
-	CHAT_NAV: {
+	ChatNav: {
 		ChatNavErr:                 "ChatNavErr",
 		ChatNavRequestChatRights:   "ChatNavRequestChatRights",
 		ChatNavRequestExchangeInfo: "ChatNavRequestExchangeInfo",
@@ -142,7 +142,7 @@ var subGroupStr = map[uint16]map[uint16]string{
 		ChatNavCreateRoom:          "ChatNavCreateRoom",
 		ChatNavNavInfo:             "ChatNavNavInfo",
 	},
-	CHAT: {
+	Chat: {
 		ChatErr:                "ChatErr",
 		ChatRoomInfoUpdate:     "ChatRoomInfoUpdate",
 		ChatUsersJoined:        "ChatUsersJoined",
@@ -186,7 +186,7 @@ var subGroupStr = map[uint16]map[uint16]string{
 		ChatUnnamedSnac29:      "ChatUnnamedSnac29",
 		ChatRoomInfoOwner:      "ChatRoomInfoOwner",
 	},
-	FEEDBAG: {
+	Feedbag: {
 		FeedbagErr:                      "FeedbagErr",
 		FeedbagRightsQuery:              "FeedbagRightsQuery",
 		FeedbagRightsReply:              "FeedbagRightsReply",
@@ -224,7 +224,7 @@ var subGroupStr = map[uint16]map[uint16]string{
 		FeedbagIsAuthRequiredReply:      "FeedbagIsAuthRequiredReply",
 		FeedbagRecentBuddyUpdate:        "FeedbagRecentBuddyUpdate",
 	},
-	ALERT: {
+	Alert: {
 		AlertErr:                       "AlertErr",
 		AlertSetAlertRequest:           "AlertSetAlertRequest",
 		AlertSetAlertReply:             "AlertSetAlertReply",

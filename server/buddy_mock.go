@@ -23,14 +23,14 @@ func (_m *mockBuddyHandler) EXPECT() *mockBuddyHandler_Expecter {
 }
 
 // RightsQueryHandler provides a mock function with given fields: ctx
-func (_m *mockBuddyHandler) RightsQueryHandler(ctx context.Context) oscar.XMessage {
+func (_m *mockBuddyHandler) RightsQueryHandler(ctx context.Context) oscar.SNACMessage {
 	ret := _m.Called(ctx)
 
-	var r0 oscar.XMessage
-	if rf, ok := ret.Get(0).(func(context.Context) oscar.XMessage); ok {
+	var r0 oscar.SNACMessage
+	if rf, ok := ret.Get(0).(func(context.Context) oscar.SNACMessage); ok {
 		r0 = rf(ctx)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	return r0
@@ -54,12 +54,12 @@ func (_c *mockBuddyHandler_RightsQueryHandler_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *mockBuddyHandler_RightsQueryHandler_Call) Return(_a0 oscar.XMessage) *mockBuddyHandler_RightsQueryHandler_Call {
+func (_c *mockBuddyHandler_RightsQueryHandler_Call) Return(_a0 oscar.SNACMessage) *mockBuddyHandler_RightsQueryHandler_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockBuddyHandler_RightsQueryHandler_Call) RunAndReturn(run func(context.Context) oscar.XMessage) *mockBuddyHandler_RightsQueryHandler_Call {
+func (_c *mockBuddyHandler_RightsQueryHandler_Call) RunAndReturn(run func(context.Context) oscar.SNACMessage) *mockBuddyHandler_RightsQueryHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }

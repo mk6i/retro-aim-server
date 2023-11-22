@@ -34,13 +34,13 @@ type ChatNavService struct {
 	newChatSessMgr func() ChatSessionManager
 }
 
-func (s ChatNavService) RequestChatRightsHandler(context.Context) oscar.XMessage {
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.CHAT_NAV,
+func (s ChatNavService) RequestChatRightsHandler(context.Context) oscar.SNACMessage {
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.ChatNav,
 			SubGroup:  oscar.ChatNavNavInfo,
 		},
-		SnacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+		Body: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(0x02, uint8(10)),
@@ -65,10 +65,10 @@ func (s ChatNavService) RequestChatRightsHandler(context.Context) oscar.XMessage
 	}
 }
 
-func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.XMessage, error) {
+func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.SNACMessage, error) {
 	name, hasName := snacPayloadIn.GetString(oscar.ChatTLVRoomName)
 	if !hasName {
-		return oscar.XMessage{}, errors.New("unable to find chat name")
+		return oscar.SNACMessage{}, errors.New("unable to find chat name")
 	}
 
 	room := s.newChatRoom()
@@ -84,12 +84,12 @@ func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *state.Sessi
 	// add user to chat room
 	chatSessMgr.NewSessionWithSN(sess.ID(), sess.ScreenName())
 
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.CHAT_NAV,
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.ChatNav,
 			SubGroup:  oscar.ChatNavNavInfo,
 		},
-		SnacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+		Body: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(oscar.ChatNavTLVRoomInfo, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
@@ -107,18 +107,18 @@ func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *state.Sessi
 	}, nil
 }
 
-func (s ChatNavService) RequestRoomInfoHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (oscar.XMessage, error) {
+func (s ChatNavService) RequestRoomInfoHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (oscar.SNACMessage, error) {
 	room, _, err := s.chatRegistry.Retrieve(string(snacPayloadIn.Cookie))
 	if err != nil {
-		return oscar.XMessage{}, err
+		return oscar.SNACMessage{}, err
 	}
 
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.CHAT_NAV,
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.ChatNav,
 			SubGroup:  oscar.ChatNavNavInfo,
 		},
-		SnacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+		Body: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(0x04, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{

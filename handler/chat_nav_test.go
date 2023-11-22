@@ -69,12 +69,12 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 	//
 	// send input SNAC
 	//
-	expectSNAC := oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.CHAT_NAV,
+	expectSNAC := oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.ChatNav,
 			SubGroup:  oscar.ChatNavNavInfo,
 		},
-		SnacOut: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
+		Body: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(

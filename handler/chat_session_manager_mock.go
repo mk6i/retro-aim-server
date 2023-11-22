@@ -25,7 +25,7 @@ func (_m *mockChatSessionManager) EXPECT() *mockChatSessionManager_Expecter {
 }
 
 // Broadcast provides a mock function with given fields: ctx, msg
-func (_m *mockChatSessionManager) Broadcast(ctx context.Context, msg oscar.XMessage) {
+func (_m *mockChatSessionManager) Broadcast(ctx context.Context, msg oscar.SNACMessage) {
 	_m.Called(ctx, msg)
 }
 
@@ -36,14 +36,14 @@ type mockChatSessionManager_Broadcast_Call struct {
 
 // Broadcast is a helper method to define mock.On call
 //   - ctx context.Context
-//   - msg oscar.XMessage
+//   - msg oscar.SNACMessage
 func (_e *mockChatSessionManager_Expecter) Broadcast(ctx interface{}, msg interface{}) *mockChatSessionManager_Broadcast_Call {
 	return &mockChatSessionManager_Broadcast_Call{Call: _e.mock.On("Broadcast", ctx, msg)}
 }
 
-func (_c *mockChatSessionManager_Broadcast_Call) Run(run func(ctx context.Context, msg oscar.XMessage)) *mockChatSessionManager_Broadcast_Call {
+func (_c *mockChatSessionManager_Broadcast_Call) Run(run func(ctx context.Context, msg oscar.SNACMessage)) *mockChatSessionManager_Broadcast_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(oscar.XMessage))
+		run(args[0].(context.Context), args[1].(oscar.SNACMessage))
 	})
 	return _c
 }
@@ -53,13 +53,13 @@ func (_c *mockChatSessionManager_Broadcast_Call) Return() *mockChatSessionManage
 	return _c
 }
 
-func (_c *mockChatSessionManager_Broadcast_Call) RunAndReturn(run func(context.Context, oscar.XMessage)) *mockChatSessionManager_Broadcast_Call {
+func (_c *mockChatSessionManager_Broadcast_Call) RunAndReturn(run func(context.Context, oscar.SNACMessage)) *mockChatSessionManager_Broadcast_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // BroadcastExcept provides a mock function with given fields: ctx, except, msg
-func (_m *mockChatSessionManager) BroadcastExcept(ctx context.Context, except *state.Session, msg oscar.XMessage) {
+func (_m *mockChatSessionManager) BroadcastExcept(ctx context.Context, except *state.Session, msg oscar.SNACMessage) {
 	_m.Called(ctx, except, msg)
 }
 
@@ -71,14 +71,14 @@ type mockChatSessionManager_BroadcastExcept_Call struct {
 // BroadcastExcept is a helper method to define mock.On call
 //   - ctx context.Context
 //   - except *state.Session
-//   - msg oscar.XMessage
+//   - msg oscar.SNACMessage
 func (_e *mockChatSessionManager_Expecter) BroadcastExcept(ctx interface{}, except interface{}, msg interface{}) *mockChatSessionManager_BroadcastExcept_Call {
 	return &mockChatSessionManager_BroadcastExcept_Call{Call: _e.mock.On("BroadcastExcept", ctx, except, msg)}
 }
 
-func (_c *mockChatSessionManager_BroadcastExcept_Call) Run(run func(ctx context.Context, except *state.Session, msg oscar.XMessage)) *mockChatSessionManager_BroadcastExcept_Call {
+func (_c *mockChatSessionManager_BroadcastExcept_Call) Run(run func(ctx context.Context, except *state.Session, msg oscar.SNACMessage)) *mockChatSessionManager_BroadcastExcept_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session), args[2].(oscar.XMessage))
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(oscar.SNACMessage))
 	})
 	return _c
 }
@@ -88,13 +88,13 @@ func (_c *mockChatSessionManager_BroadcastExcept_Call) Return() *mockChatSession
 	return _c
 }
 
-func (_c *mockChatSessionManager_BroadcastExcept_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.XMessage)) *mockChatSessionManager_BroadcastExcept_Call {
+func (_c *mockChatSessionManager_BroadcastExcept_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNACMessage)) *mockChatSessionManager_BroadcastExcept_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // BroadcastToScreenNames provides a mock function with given fields: ctx, screenNames, msg
-func (_m *mockChatSessionManager) BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.XMessage) {
+func (_m *mockChatSessionManager) BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.SNACMessage) {
 	_m.Called(ctx, screenNames, msg)
 }
 
@@ -106,14 +106,14 @@ type mockChatSessionManager_BroadcastToScreenNames_Call struct {
 // BroadcastToScreenNames is a helper method to define mock.On call
 //   - ctx context.Context
 //   - screenNames []string
-//   - msg oscar.XMessage
+//   - msg oscar.SNACMessage
 func (_e *mockChatSessionManager_Expecter) BroadcastToScreenNames(ctx interface{}, screenNames interface{}, msg interface{}) *mockChatSessionManager_BroadcastToScreenNames_Call {
 	return &mockChatSessionManager_BroadcastToScreenNames_Call{Call: _e.mock.On("BroadcastToScreenNames", ctx, screenNames, msg)}
 }
 
-func (_c *mockChatSessionManager_BroadcastToScreenNames_Call) Run(run func(ctx context.Context, screenNames []string, msg oscar.XMessage)) *mockChatSessionManager_BroadcastToScreenNames_Call {
+func (_c *mockChatSessionManager_BroadcastToScreenNames_Call) Run(run func(ctx context.Context, screenNames []string, msg oscar.SNACMessage)) *mockChatSessionManager_BroadcastToScreenNames_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]string), args[2].(oscar.XMessage))
+		run(args[0].(context.Context), args[1].([]string), args[2].(oscar.SNACMessage))
 	})
 	return _c
 }
@@ -123,7 +123,7 @@ func (_c *mockChatSessionManager_BroadcastToScreenNames_Call) Return() *mockChat
 	return _c
 }
 
-func (_c *mockChatSessionManager_BroadcastToScreenNames_Call) RunAndReturn(run func(context.Context, []string, oscar.XMessage)) *mockChatSessionManager_BroadcastToScreenNames_Call {
+func (_c *mockChatSessionManager_BroadcastToScreenNames_Call) RunAndReturn(run func(context.Context, []string, oscar.SNACMessage)) *mockChatSessionManager_BroadcastToScreenNames_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -389,7 +389,7 @@ func (_c *mockChatSessionManager_RetrieveByScreenName_Call) RunAndReturn(run fun
 }
 
 // SendToScreenName provides a mock function with given fields: ctx, screenName, msg
-func (_m *mockChatSessionManager) SendToScreenName(ctx context.Context, screenName string, msg oscar.XMessage) {
+func (_m *mockChatSessionManager) SendToScreenName(ctx context.Context, screenName string, msg oscar.SNACMessage) {
 	_m.Called(ctx, screenName, msg)
 }
 
@@ -401,14 +401,14 @@ type mockChatSessionManager_SendToScreenName_Call struct {
 // SendToScreenName is a helper method to define mock.On call
 //   - ctx context.Context
 //   - screenName string
-//   - msg oscar.XMessage
+//   - msg oscar.SNACMessage
 func (_e *mockChatSessionManager_Expecter) SendToScreenName(ctx interface{}, screenName interface{}, msg interface{}) *mockChatSessionManager_SendToScreenName_Call {
 	return &mockChatSessionManager_SendToScreenName_Call{Call: _e.mock.On("SendToScreenName", ctx, screenName, msg)}
 }
 
-func (_c *mockChatSessionManager_SendToScreenName_Call) Run(run func(ctx context.Context, screenName string, msg oscar.XMessage)) *mockChatSessionManager_SendToScreenName_Call {
+func (_c *mockChatSessionManager_SendToScreenName_Call) Run(run func(ctx context.Context, screenName string, msg oscar.SNACMessage)) *mockChatSessionManager_SendToScreenName_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(oscar.XMessage))
+		run(args[0].(context.Context), args[1].(string), args[2].(oscar.SNACMessage))
 	})
 	return _c
 }
@@ -418,7 +418,7 @@ func (_c *mockChatSessionManager_SendToScreenName_Call) Return() *mockChatSessio
 	return _c
 }
 
-func (_c *mockChatSessionManager_SendToScreenName_Call) RunAndReturn(run func(context.Context, string, oscar.XMessage)) *mockChatSessionManager_SendToScreenName_Call {
+func (_c *mockChatSessionManager_SendToScreenName_Call) RunAndReturn(run func(context.Context, string, oscar.SNACMessage)) *mockChatSessionManager_SendToScreenName_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -14,9 +14,9 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 		// name is the unit test name
 		name string
 		// input is the request payload
-		input oscar.XMessage
+		input oscar.SNACMessage
 		// output is the response payload
-		output oscar.XMessage
+		output oscar.SNACMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -24,12 +24,12 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 	}{
 		{
 			name: "receive OServiceClientOnline, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceClientOnline,
 				},
-				SnacOut: oscar.SNAC_0x01_0x02_OServiceClientOnline{
+				Body: oscar.SNAC_0x01_0x02_OServiceClientOnline{
 					GroupVersions: []struct {
 						FoodGroup   uint16
 						Version     uint16
@@ -42,25 +42,25 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{},
+			output: oscar.SNACMessage{},
 		},
 		{
 			name: "receive OServiceServiceRequest, return OServiceServiceResponse",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceServiceRequest,
 				},
-				SnacOut: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
+				Body: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
 					FoodGroup: 10,
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceServiceResponse,
 				},
-				SnacOut: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
+				Body: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(0x01, uint16(1000)),
@@ -71,19 +71,19 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 		},
 		{
 			name: "receive OServiceRateParamsQuery, return OServiceRateParamsReply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceRateParamsQuery,
 				},
-				SnacOut: struct{}{},
+				Body: struct{}{},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceRateParamsReply,
 				},
-				SnacOut: oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
+				Body: oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
 					RateGroups: []struct {
 						ID    uint16
 						Pairs []struct {
@@ -100,12 +100,12 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 		},
 		{
 			name: "receive OServiceRateParamsSubAdd, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceRateParamsSubAdd,
 				},
-				SnacOut: oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd{
+				Body: oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(0x01, []byte{1, 2, 3, 4}),
@@ -113,23 +113,23 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{},
+			output: oscar.SNACMessage{},
 		},
 		{
 			name: "receive OServiceUserInfoQuery, return OServiceUserInfoUpdate",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceUserInfoQuery,
 				},
-				SnacOut: struct{}{},
+				Body: struct{}{},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceUserInfoUpdate,
 				},
-				SnacOut: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+				Body: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
 					TLVUserInfo: oscar.TLVUserInfo{
 						ScreenName: "screen-name",
 					},
@@ -138,36 +138,36 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 		},
 		{
 			name: "receive OServiceIdleNotification, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceIdleNotification,
 				},
-				SnacOut: oscar.SNAC_0x01_0x11_OServiceIdleNotification{
+				Body: oscar.SNAC_0x01_0x11_OServiceIdleNotification{
 					IdleTime: 10,
 				},
 			},
-			output: oscar.XMessage{},
+			output: oscar.SNACMessage{},
 		},
 		{
 			name: "receive OServiceClientVersions, return OServiceHostVersions",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceClientVersions,
 				},
-				SnacOut: oscar.SNAC_0x01_0x17_OServiceClientVersions{
+				Body: oscar.SNAC_0x01_0x17_OServiceClientVersions{
 					Versions: []uint16{
 						10,
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceHostVersions,
 				},
-				SnacOut: oscar.SNAC_0x01_0x18_OServiceHostVersions{
+				Body: oscar.SNAC_0x01_0x18_OServiceHostVersions{
 					Versions: []uint16{
 						10,
 					},
@@ -176,12 +176,12 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 		},
 		{
 			name: "receive OServiceSetUserInfoFields, return OServiceUserInfoUpdate",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceSetUserInfoFields,
 				},
-				SnacOut: oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
+				Body: oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(0x01, []byte{1, 2, 3, 4}),
@@ -189,12 +189,12 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceUserInfoUpdate,
 				},
-				SnacOut: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+				Body: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
 					TLVUserInfo: oscar.TLVUserInfo{
 						ScreenName: "screen-name",
 					},
@@ -203,14 +203,14 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 		},
 		{
 			name: "receive OServicePauseReq, expect ErrUnsupportedSubGroup",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServicePauseReq,
 				},
-				SnacOut: struct{}{}, // empty SNAC
+				Body: struct{}{}, // empty SNAC
 			},
-			output:    oscar.XMessage{}, // empty SNAC
+			output:    oscar.SNACMessage{}, // empty SNAC
 			expectErr: ErrUnsupportedSubGroup,
 		},
 	}
@@ -227,28 +227,28 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				ClientVersionsHandler(mock.Anything, tc.input.SnacOut).
+				ClientVersionsHandler(mock.Anything, tc.input.Body).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				SetUserInfoFieldsHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				SetUserInfoFieldsHandler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				RateParamsSubAddHandler(mock.Anything, tc.input.SnacOut).
+				RateParamsSubAddHandler(mock.Anything, tc.input.Body).
 				Maybe()
 			svc.EXPECT().
-				IdleNotificationHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				IdleNotificationHandler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.handlerErr).
 				Maybe()
 
 			svcBOS := newMockOServiceBOSHandler(t)
 			svcBOS.EXPECT().
-				ServiceRequestHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				ServiceRequestHandler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svcBOS.EXPECT().
-				ClientOnlineHandler(mock.Anything, tc.input.SnacOut, mock.Anything).
+				ClientOnlineHandler(mock.Anything, tc.input.Body, mock.Anything).
 				Return(tc.handlerErr).
 				Maybe()
 
@@ -263,25 +263,25 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 			}
 
 			bufIn := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.input.SnacOut, bufIn))
+			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))
 
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteOService(nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteOService(nil, nil, tc.input.Frame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
 			}
 
-			if tc.output == (oscar.XMessage{}) {
+			if tc.output == (oscar.SNACMessage{}) {
 				// make sure no response was sent
 				assert.Empty(t, bufOut.Bytes())
 				return
 			}
 
 			// verify the FLAP frame
-			flap := oscar.FlapFrame{}
+			flap := oscar.FLAPFrame{}
 			assert.NoError(t, oscar.Unmarshal(&flap, bufOut))
 
 			// make sure the sequence number was incremented
@@ -291,13 +291,13 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 			assert.NoError(t, err)
 
 			// verify the SNAC frame
-			snacFrame := oscar.SnacFrame{}
+			snacFrame := oscar.SNACFrame{}
 			assert.NoError(t, oscar.Unmarshal(&snacFrame, flapBuf))
-			assert.Equal(t, tc.output.SnacFrame, snacFrame)
+			assert.Equal(t, tc.output.Frame, snacFrame)
 
 			// verify the SNAC message
 			snacBuf := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.output.SnacOut, snacBuf))
+			assert.NoError(t, oscar.Marshal(tc.output.Body, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), flapBuf.Bytes())
 		})
 	}
@@ -308,9 +308,9 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 		// name is the unit test name
 		name string
 		// input is the request payload
-		input oscar.XMessage
+		input oscar.SNACMessage
 		// output is the response payload
-		output oscar.XMessage
+		output oscar.SNACMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -318,12 +318,12 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 	}{
 		{
 			name: "receive OServiceClientOnline, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceClientOnline,
 				},
-				SnacOut: oscar.SNAC_0x01_0x02_OServiceClientOnline{
+				Body: oscar.SNAC_0x01_0x02_OServiceClientOnline{
 					GroupVersions: []struct {
 						FoodGroup   uint16
 						Version     uint16
@@ -336,44 +336,44 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{},
+			output: oscar.SNACMessage{},
 		},
 		{
 			name: "receive OServiceServiceRequest, return OServiceErr",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceServiceRequest,
 				},
-				SnacOut: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
+				Body: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
 					FoodGroup: 10,
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceErr,
 				},
-				SnacOut: oscar.SnacError{
+				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeInvalidSnac,
 				},
 			},
 		},
 		{
 			name: "receive OServiceRateParamsQuery, return OServiceRateParamsReply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceRateParamsQuery,
 				},
-				SnacOut: struct{}{},
+				Body: struct{}{},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceRateParamsReply,
 				},
-				SnacOut: oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
+				Body: oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
 					RateGroups: []struct {
 						ID    uint16
 						Pairs []struct {
@@ -390,12 +390,12 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 		},
 		{
 			name: "receive OServiceRateParamsSubAdd, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceRateParamsSubAdd,
 				},
-				SnacOut: oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd{
+				Body: oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(0x01, []byte{1, 2, 3, 4}),
@@ -403,23 +403,23 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{},
+			output: oscar.SNACMessage{},
 		},
 		{
 			name: "receive OServiceUserInfoQuery, return OServiceUserInfoUpdate",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceUserInfoQuery,
 				},
-				SnacOut: struct{}{},
+				Body: struct{}{},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceUserInfoUpdate,
 				},
-				SnacOut: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+				Body: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
 					TLVUserInfo: oscar.TLVUserInfo{
 						ScreenName: "screen-name",
 					},
@@ -428,36 +428,36 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 		},
 		{
 			name: "receive OServiceIdleNotification, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceIdleNotification,
 				},
-				SnacOut: oscar.SNAC_0x01_0x11_OServiceIdleNotification{
+				Body: oscar.SNAC_0x01_0x11_OServiceIdleNotification{
 					IdleTime: 10,
 				},
 			},
-			output: oscar.XMessage{},
+			output: oscar.SNACMessage{},
 		},
 		{
 			name: "receive OServiceClientVersions, return OServiceHostVersions",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceClientVersions,
 				},
-				SnacOut: oscar.SNAC_0x01_0x17_OServiceClientVersions{
+				Body: oscar.SNAC_0x01_0x17_OServiceClientVersions{
 					Versions: []uint16{
 						10,
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceHostVersions,
 				},
-				SnacOut: oscar.SNAC_0x01_0x18_OServiceHostVersions{
+				Body: oscar.SNAC_0x01_0x18_OServiceHostVersions{
 					Versions: []uint16{
 						10,
 					},
@@ -466,12 +466,12 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 		},
 		{
 			name: "receive OServiceSetUserInfoFields, return OServiceUserInfoUpdate",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceSetUserInfoFields,
 				},
-				SnacOut: oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
+				Body: oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(0x01, []byte{1, 2, 3, 4}),
@@ -479,12 +479,12 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceUserInfoUpdate,
 				},
-				SnacOut: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+				Body: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
 					TLVUserInfo: oscar.TLVUserInfo{
 						ScreenName: "screen-name",
 					},
@@ -493,14 +493,14 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 		},
 		{
 			name: "receive OServicePauseReq, expect ErrUnsupportedSubGroup",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.OSERVICE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServicePauseReq,
 				},
-				SnacOut: struct{}{}, // empty SNAC
+				Body: struct{}{}, // empty SNAC
 			},
-			output:    oscar.XMessage{}, // empty SNAC
+			output:    oscar.SNACMessage{}, // empty SNAC
 			expectErr: ErrUnsupportedSubGroup,
 		},
 	}
@@ -517,24 +517,24 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				ClientVersionsHandler(mock.Anything, tc.input.SnacOut).
+				ClientVersionsHandler(mock.Anything, tc.input.Body).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				SetUserInfoFieldsHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				SetUserInfoFieldsHandler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				RateParamsSubAddHandler(mock.Anything, tc.input.SnacOut).
+				RateParamsSubAddHandler(mock.Anything, tc.input.Body).
 				Maybe()
 			svc.EXPECT().
-				IdleNotificationHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				IdleNotificationHandler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.handlerErr).
 				Maybe()
 
 			svcBOS := newMockOServiceChatHandler(t)
 			svcBOS.EXPECT().
-				ClientOnlineHandler(mock.Anything, tc.input.SnacOut, mock.Anything, mock.Anything).
+				ClientOnlineHandler(mock.Anything, tc.input.Body, mock.Anything, mock.Anything).
 				Return(tc.handlerErr).
 				Maybe()
 
@@ -549,25 +549,25 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 			}
 
 			bufIn := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.input.SnacOut, bufIn))
+			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))
 
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteOService(nil, nil, "", tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteOService(nil, nil, "", tc.input.Frame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
 			}
 
-			if tc.output == (oscar.XMessage{}) {
+			if tc.output == (oscar.SNACMessage{}) {
 				// make sure no response was sent
 				assert.Empty(t, bufOut.Bytes())
 				return
 			}
 
 			// verify the FLAP frame
-			flap := oscar.FlapFrame{}
+			flap := oscar.FLAPFrame{}
 			assert.NoError(t, oscar.Unmarshal(&flap, bufOut))
 
 			// make sure the sequence number was incremented
@@ -577,13 +577,13 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 			assert.NoError(t, err)
 
 			// verify the SNAC frame
-			snacFrame := oscar.SnacFrame{}
+			snacFrame := oscar.SNACFrame{}
 			assert.NoError(t, oscar.Unmarshal(&snacFrame, flapBuf))
-			assert.Equal(t, tc.output.SnacFrame, snacFrame)
+			assert.Equal(t, tc.output.Frame, snacFrame)
 
 			// verify the SNAC message
 			snacBuf := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.output.SnacOut, snacBuf))
+			assert.NoError(t, oscar.Marshal(tc.output.Body, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), flapBuf.Bytes())
 		})
 	}

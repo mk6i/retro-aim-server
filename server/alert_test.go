@@ -14,9 +14,9 @@ func TestAlertRouter_RouteAlert(t *testing.T) {
 		// name is the unit test name
 		name string
 		// input is the request payload
-		input oscar.XMessage
+		input oscar.SNACMessage
 		// output is the response payload
-		output oscar.XMessage
+		output oscar.SNACMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -24,36 +24,36 @@ func TestAlertRouter_RouteAlert(t *testing.T) {
 	}{
 		{
 			name: "receive AlertNotifyCapabilities, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.ALERT,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Alert,
 					SubGroup:  oscar.AlertNotifyCapabilities,
 				},
-				SnacOut: oscar.SnacFrame{},
+				Body: oscar.SNACFrame{},
 			},
-			output: oscar.XMessage{},
+			output: oscar.SNACMessage{},
 		},
 		{
 			name: "receive AlertNotifyDisplayCapabilities, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.ALERT,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Alert,
 					SubGroup:  oscar.AlertNotifyDisplayCapabilities,
 				},
-				SnacOut: oscar.SnacFrame{},
+				Body: oscar.SNACFrame{},
 			},
-			output: oscar.XMessage{},
+			output: oscar.SNACMessage{},
 		},
 		{
 			name: "receive AlertGetSubsRequest, expect ErrUnsupportedSubGroup",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.ALERT,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Alert,
 					SubGroup:  oscar.AlertGetSubsRequest,
 				},
-				SnacOut: struct{}{}, // empty SNAC
+				Body: struct{}{}, // empty SNAC
 			},
-			output:    oscar.XMessage{}, // empty SNAC
+			output:    oscar.SNACMessage{}, // empty SNAC
 			expectErr: ErrUnsupportedSubGroup,
 		},
 	}
@@ -67,25 +67,25 @@ func TestAlertRouter_RouteAlert(t *testing.T) {
 			}
 
 			bufIn := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.input.SnacOut, bufIn))
+			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))
 
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteAlert(context.Background(), tc.input.SnacFrame)
+			err := router.RouteAlert(context.Background(), tc.input.Frame)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
 			}
 
-			if tc.output == (oscar.XMessage{}) {
+			if tc.output == (oscar.SNACMessage{}) {
 				// make sure no response was sent
 				assert.Empty(t, bufOut.Bytes())
 				return
 			}
 
 			// verify the FLAP frame
-			flap := oscar.FlapFrame{}
+			flap := oscar.FLAPFrame{}
 			assert.NoError(t, oscar.Unmarshal(&flap, bufOut))
 
 			// make sure the sequence number was incremented
@@ -95,13 +95,13 @@ func TestAlertRouter_RouteAlert(t *testing.T) {
 			assert.NoError(t, err)
 
 			// verify the SNAC frame
-			snacFrame := oscar.SnacFrame{}
+			snacFrame := oscar.SNACFrame{}
 			assert.NoError(t, oscar.Unmarshal(&snacFrame, flapBuf))
-			assert.Equal(t, tc.output.SnacFrame, snacFrame)
+			assert.Equal(t, tc.output.Frame, snacFrame)
 
 			// verify the SNAC message
 			snacBuf := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.output.SnacOut, snacBuf))
+			assert.NoError(t, oscar.Marshal(tc.output.Body, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), flapBuf.Bytes())
 		})
 	}

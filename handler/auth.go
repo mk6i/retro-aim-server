@@ -86,35 +86,35 @@ func (s AuthService) VerifyLogin(rwc io.ReadWriteCloser) (*state.Session, uint32
 	return sess, seq, nil
 }
 
-func (s AuthService) SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FlapSignonFrame, error) {
-	flapFrameOut := oscar.FlapFrame{
+func (s AuthService) SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FLAPSignonFrame, error) {
+	flapFrameOut := oscar.FLAPFrame{
 		StartMarker:   42,
-		FrameType:     oscar.FlapFrameSignon,
+		FrameType:     oscar.FLAPFrameSignon,
 		Sequence:      uint16(*sequence),
-		PayloadLength: 4, // size of FlapSignonFrame
+		PayloadLength: 4, // size of FLAPSignonFrame
 	}
 	if err := oscar.Marshal(flapFrameOut, rw); err != nil {
-		return oscar.FlapSignonFrame{}, err
+		return oscar.FLAPSignonFrame{}, err
 	}
-	flapSignonFrameOut := oscar.FlapSignonFrame{
-		FlapVersion: 1,
+	flapSignonFrameOut := oscar.FLAPSignonFrame{
+		FLAPVersion: 1,
 	}
 	if err := oscar.Marshal(flapSignonFrameOut, rw); err != nil {
-		return oscar.FlapSignonFrame{}, err
+		return oscar.FLAPSignonFrame{}, err
 	}
 
 	// receive
-	flapFrameIn := oscar.FlapFrame{}
+	flapFrameIn := oscar.FLAPFrame{}
 	if err := oscar.Unmarshal(&flapFrameIn, rw); err != nil {
-		return oscar.FlapSignonFrame{}, err
+		return oscar.FLAPSignonFrame{}, err
 	}
 	b := make([]byte, flapFrameIn.PayloadLength)
 	if _, err := rw.Read(b); err != nil {
-		return oscar.FlapSignonFrame{}, err
+		return oscar.FLAPSignonFrame{}, err
 	}
-	flapSignonFrameIn := oscar.FlapSignonFrame{}
+	flapSignonFrameIn := oscar.FLAPSignonFrame{}
 	if err := oscar.Unmarshal(&flapSignonFrameIn, bytes.NewBuffer(b)); err != nil {
-		return oscar.FlapSignonFrame{}, err
+		return oscar.FLAPSignonFrame{}, err
 	}
 
 	*sequence++
@@ -142,10 +142,10 @@ func (s AuthService) VerifyChatLogin(rw io.ReadWriter) (*server.ChatCookie, uint
 	return &cookie, seq, err
 }
 
-func (s AuthService) ReceiveAndSendAuthChallenge(snacPayloadIn oscar.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (oscar.XMessage, error) {
+func (s AuthService) ReceiveAndSendAuthChallenge(snacPayloadIn oscar.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (oscar.SNACMessage, error) {
 	screenName, exists := snacPayloadIn.GetString(oscar.TLVScreenName)
 	if !exists {
-		return oscar.XMessage{}, errors.New("screen name doesn't exist in tlv")
+		return oscar.SNACMessage{}, errors.New("screen name doesn't exist in tlv")
 	}
 
 	var authKey string
@@ -153,7 +153,7 @@ func (s AuthService) ReceiveAndSendAuthChallenge(snacPayloadIn oscar.SNAC_0x17_0
 	u, err := s.userManager.GetUser(screenName)
 	switch {
 	case err != nil:
-		return oscar.XMessage{}, err
+		return oscar.SNACMessage{}, err
 	case u != nil:
 		// user lookup succeeded
 		authKey = u.AuthKey
@@ -162,38 +162,38 @@ func (s AuthService) ReceiveAndSendAuthChallenge(snacPayloadIn oscar.SNAC_0x17_0
 		authKey = newUUID().String()
 	default:
 		// can't find user, return login error
-		snacFrameOut := oscar.SnacFrame{
+		snacFrameOut := oscar.SNACFrame{
 			FoodGroup: oscar.BUCP,
 			SubGroup:  oscar.BUCPLoginResponse,
 		}
 		snacPayloadOut := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
 		snacPayloadOut.AddTLV(oscar.NewTLV(oscar.TLVErrorSubcode, uint16(0x01)))
-		return oscar.XMessage{
-			SnacFrame: snacFrameOut,
-			SnacOut:   snacPayloadOut,
+		return oscar.SNACMessage{
+			Frame: snacFrameOut,
+			Body:  snacPayloadOut,
 		}, nil
 	}
 
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.BUCP,
 			SubGroup:  oscar.BUCPChallengeResponse,
 		},
-		SnacOut: oscar.SNAC_0x17_0x07_BUCPChallengeResponse{
+		Body: oscar.SNAC_0x17_0x07_BUCPChallengeResponse{
 			AuthKey: authKey,
 		},
 	}, nil
 }
 
-func (s AuthService) ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID) (oscar.XMessage, error) {
+func (s AuthService) ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID) (oscar.SNACMessage, error) {
 
 	screenName, found := snacPayloadIn.GetString(oscar.TLVScreenName)
 	if !found {
-		return oscar.XMessage{}, errors.New("screen name doesn't exist in tlv")
+		return oscar.SNACMessage{}, errors.New("screen name doesn't exist in tlv")
 	}
 	md5Hash, found := snacPayloadIn.GetSlice(oscar.TLVPasswordHash)
 	if !found {
-		return oscar.XMessage{}, errors.New("password hash doesn't exist in tlv")
+		return oscar.SNACMessage{}, errors.New("password hash doesn't exist in tlv")
 	}
 
 	loginOK := false
@@ -201,7 +201,7 @@ func (s AuthService) ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x1
 	u, err := s.userManager.GetUser(screenName)
 	switch {
 	case err != nil:
-		return oscar.XMessage{}, err
+		return oscar.SNACMessage{}, err
 	case u != nil && bytes.Equal(u.PassHash, md5Hash):
 		// password check succeeded
 		loginOK = true
@@ -209,10 +209,10 @@ func (s AuthService) ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x1
 		// login failed but let them in anyway
 		newUser, err := newStubUser(screenName)
 		if err != nil {
-			return oscar.XMessage{}, err
+			return oscar.SNACMessage{}, err
 		}
 		if err := s.userManager.UpsertUser(newUser); err != nil {
-			return oscar.XMessage{}, err
+			return oscar.SNACMessage{}, err
 		}
 		loginOK = true
 	}
@@ -232,12 +232,12 @@ func (s AuthService) ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x1
 		})
 	}
 
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.BUCP,
 			SubGroup:  oscar.BUCPLoginResponse,
 		},
-		SnacOut: snacPayloadOut,
+		Body: snacPayloadOut,
 	}, nil
 }
 

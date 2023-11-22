@@ -69,14 +69,14 @@ func (_c *mockOServiceBOSHandler_ClientOnlineHandler_Call) RunAndReturn(run func
 }
 
 // ClientVersionsHandler provides a mock function with given fields: ctx, snacPayloadIn
-func (_m *mockOServiceBOSHandler) ClientVersionsHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.XMessage {
+func (_m *mockOServiceBOSHandler) ClientVersionsHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.SNACMessage {
 	ret := _m.Called(ctx, snacPayloadIn)
 
-	var r0 oscar.XMessage
-	if rf, ok := ret.Get(0).(func(context.Context, oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.XMessage); ok {
+	var r0 oscar.SNACMessage
+	if rf, ok := ret.Get(0).(func(context.Context, oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.SNACMessage); ok {
 		r0 = rf(ctx, snacPayloadIn)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	return r0
@@ -101,12 +101,12 @@ func (_c *mockOServiceBOSHandler_ClientVersionsHandler_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *mockOServiceBOSHandler_ClientVersionsHandler_Call) Return(_a0 oscar.XMessage) *mockOServiceBOSHandler_ClientVersionsHandler_Call {
+func (_c *mockOServiceBOSHandler_ClientVersionsHandler_Call) Return(_a0 oscar.SNACMessage) *mockOServiceBOSHandler_ClientVersionsHandler_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockOServiceBOSHandler_ClientVersionsHandler_Call) RunAndReturn(run func(context.Context, oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.XMessage) *mockOServiceBOSHandler_ClientVersionsHandler_Call {
+func (_c *mockOServiceBOSHandler_ClientVersionsHandler_Call) RunAndReturn(run func(context.Context, oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.SNACMessage) *mockOServiceBOSHandler_ClientVersionsHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -156,14 +156,14 @@ func (_c *mockOServiceBOSHandler_IdleNotificationHandler_Call) RunAndReturn(run 
 }
 
 // RateParamsQueryHandler provides a mock function with given fields: ctx
-func (_m *mockOServiceBOSHandler) RateParamsQueryHandler(ctx context.Context) oscar.XMessage {
+func (_m *mockOServiceBOSHandler) RateParamsQueryHandler(ctx context.Context) oscar.SNACMessage {
 	ret := _m.Called(ctx)
 
-	var r0 oscar.XMessage
-	if rf, ok := ret.Get(0).(func(context.Context) oscar.XMessage); ok {
+	var r0 oscar.SNACMessage
+	if rf, ok := ret.Get(0).(func(context.Context) oscar.SNACMessage); ok {
 		r0 = rf(ctx)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	return r0
@@ -187,12 +187,12 @@ func (_c *mockOServiceBOSHandler_RateParamsQueryHandler_Call) Run(run func(ctx c
 	return _c
 }
 
-func (_c *mockOServiceBOSHandler_RateParamsQueryHandler_Call) Return(_a0 oscar.XMessage) *mockOServiceBOSHandler_RateParamsQueryHandler_Call {
+func (_c *mockOServiceBOSHandler_RateParamsQueryHandler_Call) Return(_a0 oscar.SNACMessage) *mockOServiceBOSHandler_RateParamsQueryHandler_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockOServiceBOSHandler_RateParamsQueryHandler_Call) RunAndReturn(run func(context.Context) oscar.XMessage) *mockOServiceBOSHandler_RateParamsQueryHandler_Call {
+func (_c *mockOServiceBOSHandler_RateParamsQueryHandler_Call) RunAndReturn(run func(context.Context) oscar.SNACMessage) *mockOServiceBOSHandler_RateParamsQueryHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -232,18 +232,18 @@ func (_c *mockOServiceBOSHandler_RateParamsSubAddHandler_Call) RunAndReturn(run 
 }
 
 // ServiceRequestHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
-func (_m *mockOServiceBOSHandler) ServiceRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error) {
+func (_m *mockOServiceBOSHandler) ServiceRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, snacPayloadIn)
 
-	var r0 oscar.XMessage
+	var r0 oscar.SNACMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.SNACMessage, error)); ok {
 		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x04_OServiceServiceRequest) oscar.XMessage); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x04_OServiceServiceRequest) oscar.SNACMessage); ok {
 		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x04_OServiceServiceRequest) error); ok {
@@ -275,29 +275,29 @@ func (_c *mockOServiceBOSHandler_ServiceRequestHandler_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *mockOServiceBOSHandler_ServiceRequestHandler_Call) Return(_a0 oscar.XMessage, _a1 error) *mockOServiceBOSHandler_ServiceRequestHandler_Call {
+func (_c *mockOServiceBOSHandler_ServiceRequestHandler_Call) Return(_a0 oscar.SNACMessage, _a1 error) *mockOServiceBOSHandler_ServiceRequestHandler_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockOServiceBOSHandler_ServiceRequestHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error)) *mockOServiceBOSHandler_ServiceRequestHandler_Call {
+func (_c *mockOServiceBOSHandler_ServiceRequestHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.SNACMessage, error)) *mockOServiceBOSHandler_ServiceRequestHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // SetUserInfoFieldsHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
-func (_m *mockOServiceBOSHandler) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error) {
+func (_m *mockOServiceBOSHandler) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, snacPayloadIn)
 
-	var r0 oscar.XMessage
+	var r0 oscar.SNACMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.SNACMessage, error)); ok {
 		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) oscar.XMessage); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) oscar.SNACMessage); ok {
 		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) error); ok {
@@ -329,25 +329,25 @@ func (_c *mockOServiceBOSHandler_SetUserInfoFieldsHandler_Call) Run(run func(ctx
 	return _c
 }
 
-func (_c *mockOServiceBOSHandler_SetUserInfoFieldsHandler_Call) Return(_a0 oscar.XMessage, _a1 error) *mockOServiceBOSHandler_SetUserInfoFieldsHandler_Call {
+func (_c *mockOServiceBOSHandler_SetUserInfoFieldsHandler_Call) Return(_a0 oscar.SNACMessage, _a1 error) *mockOServiceBOSHandler_SetUserInfoFieldsHandler_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockOServiceBOSHandler_SetUserInfoFieldsHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error)) *mockOServiceBOSHandler_SetUserInfoFieldsHandler_Call {
+func (_c *mockOServiceBOSHandler_SetUserInfoFieldsHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.SNACMessage, error)) *mockOServiceBOSHandler_SetUserInfoFieldsHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UserInfoQueryHandler provides a mock function with given fields: ctx, sess
-func (_m *mockOServiceBOSHandler) UserInfoQueryHandler(ctx context.Context, sess *state.Session) oscar.XMessage {
+func (_m *mockOServiceBOSHandler) UserInfoQueryHandler(ctx context.Context, sess *state.Session) oscar.SNACMessage {
 	ret := _m.Called(ctx, sess)
 
-	var r0 oscar.XMessage
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session) oscar.XMessage); ok {
+	var r0 oscar.SNACMessage
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session) oscar.SNACMessage); ok {
 		r0 = rf(ctx, sess)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	return r0
@@ -372,25 +372,25 @@ func (_c *mockOServiceBOSHandler_UserInfoQueryHandler_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *mockOServiceBOSHandler_UserInfoQueryHandler_Call) Return(_a0 oscar.XMessage) *mockOServiceBOSHandler_UserInfoQueryHandler_Call {
+func (_c *mockOServiceBOSHandler_UserInfoQueryHandler_Call) Return(_a0 oscar.SNACMessage) *mockOServiceBOSHandler_UserInfoQueryHandler_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockOServiceBOSHandler_UserInfoQueryHandler_Call) RunAndReturn(run func(context.Context, *state.Session) oscar.XMessage) *mockOServiceBOSHandler_UserInfoQueryHandler_Call {
+func (_c *mockOServiceBOSHandler_UserInfoQueryHandler_Call) RunAndReturn(run func(context.Context, *state.Session) oscar.SNACMessage) *mockOServiceBOSHandler_UserInfoQueryHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // WriteOServiceHostOnline provides a mock function with given fields:
-func (_m *mockOServiceBOSHandler) WriteOServiceHostOnline() oscar.XMessage {
+func (_m *mockOServiceBOSHandler) WriteOServiceHostOnline() oscar.SNACMessage {
 	ret := _m.Called()
 
-	var r0 oscar.XMessage
-	if rf, ok := ret.Get(0).(func() oscar.XMessage); ok {
+	var r0 oscar.SNACMessage
+	if rf, ok := ret.Get(0).(func() oscar.SNACMessage); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	return r0
@@ -413,12 +413,12 @@ func (_c *mockOServiceBOSHandler_WriteOServiceHostOnline_Call) Run(run func()) *
 	return _c
 }
 
-func (_c *mockOServiceBOSHandler_WriteOServiceHostOnline_Call) Return(_a0 oscar.XMessage) *mockOServiceBOSHandler_WriteOServiceHostOnline_Call {
+func (_c *mockOServiceBOSHandler_WriteOServiceHostOnline_Call) Return(_a0 oscar.SNACMessage) *mockOServiceBOSHandler_WriteOServiceHostOnline_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockOServiceBOSHandler_WriteOServiceHostOnline_Call) RunAndReturn(run func() oscar.XMessage) *mockOServiceBOSHandler_WriteOServiceHostOnline_Call {
+func (_c *mockOServiceBOSHandler_WriteOServiceHostOnline_Call) RunAndReturn(run func() oscar.SNACMessage) *mockOServiceBOSHandler_WriteOServiceHostOnline_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -78,7 +78,7 @@ type RouteLogger struct {
 	Logger *slog.Logger
 }
 
-func (rt RouteLogger) logRequestAndResponse(ctx context.Context, inFrame oscar.SnacFrame, inSNAC any, outFrame oscar.SnacFrame, outSNAC any) {
+func (rt RouteLogger) logRequestAndResponse(ctx context.Context, inFrame oscar.SNACFrame, inSNAC any, outFrame oscar.SNACFrame, outSNAC any) {
 	msg := "client request -> server response"
 	switch {
 	case rt.Logger.Enabled(ctx, LevelTrace):
@@ -90,11 +90,11 @@ func (rt RouteLogger) logRequestAndResponse(ctx context.Context, inFrame oscar.S
 	}
 }
 
-func (rt RouteLogger) logRequestError(ctx context.Context, inFrame oscar.SnacFrame, err error) {
+func (rt RouteLogger) logRequestError(ctx context.Context, inFrame oscar.SNACFrame, err error) {
 	logRequestError(ctx, rt.Logger, inFrame, err)
 }
 
-func logRequestError(ctx context.Context, logger *slog.Logger, inFrame oscar.SnacFrame, err error) {
+func logRequestError(ctx context.Context, logger *slog.Logger, inFrame oscar.SNACFrame, err error) {
 	logger.LogAttrs(ctx, slog.LevelError, "client request error",
 		slog.Group("request",
 			slog.String("food_group", oscar.FoodGroupStr(inFrame.FoodGroup)),
@@ -104,11 +104,11 @@ func logRequestError(ctx context.Context, logger *slog.Logger, inFrame oscar.Sna
 	)
 }
 
-func (rt RouteLogger) logRequest(ctx context.Context, inFrame oscar.SnacFrame, inSNAC any) {
+func (rt RouteLogger) logRequest(ctx context.Context, inFrame oscar.SNACFrame, inSNAC any) {
 	logRequest(ctx, rt.Logger, inFrame, inSNAC)
 }
 
-func logRequest(ctx context.Context, logger *slog.Logger, inFrame oscar.SnacFrame, inSNAC any) {
+func logRequest(ctx context.Context, logger *slog.Logger, inFrame oscar.SNACFrame, inSNAC any) {
 	const msg = "client request"
 	switch {
 	case logger.Enabled(ctx, LevelTrace):
@@ -118,14 +118,14 @@ func logRequest(ctx context.Context, logger *slog.Logger, inFrame oscar.SnacFram
 	}
 }
 
-func SNACLogGroup(key string, outFrame oscar.SnacFrame) slog.Attr {
+func SNACLogGroup(key string, outFrame oscar.SNACFrame) slog.Attr {
 	return slog.Group(key,
 		slog.String("food_group", oscar.FoodGroupStr(outFrame.FoodGroup)),
 		slog.String("sub_group", oscar.SubGroupStr(outFrame.FoodGroup, outFrame.SubGroup)),
 	)
 }
 
-func SNACLogGroupWithPayload(key string, outFrame oscar.SnacFrame, outSNAC any) slog.Attr {
+func SNACLogGroupWithPayload(key string, outFrame oscar.SNACFrame, outSNAC any) slog.Attr {
 	return slog.Group(key,
 		slog.String("food_group", oscar.FoodGroupStr(outFrame.FoodGroup)),
 		slog.String("sub_group", oscar.SubGroupStr(outFrame.FoodGroup, outFrame.SubGroup)),

@@ -21,7 +21,7 @@ func NewSessionManager(logger *slog.Logger) *InMemorySessionManager {
 	}
 }
 
-func (s *InMemorySessionManager) Broadcast(ctx context.Context, msg oscar.XMessage) {
+func (s *InMemorySessionManager) Broadcast(ctx context.Context, msg oscar.SNACMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
@@ -29,7 +29,7 @@ func (s *InMemorySessionManager) Broadcast(ctx context.Context, msg oscar.XMessa
 	}
 }
 
-func (s *InMemorySessionManager) maybeSendMessage(ctx context.Context, msg oscar.XMessage, sess *Session) {
+func (s *InMemorySessionManager) maybeSendMessage(ctx context.Context, msg oscar.SNACMessage, sess *Session) {
 	switch sess.SendMessage(msg) {
 	case SessSendClosed:
 		s.logger.WarnContext(ctx, "can't send notification because the user's session is closed", "recipient", sess.ScreenName(), "message", msg)
@@ -55,7 +55,7 @@ func (s *InMemorySessionManager) Participants() []*Session {
 	return sessions
 }
 
-func (s *InMemorySessionManager) BroadcastExcept(ctx context.Context, except *Session, msg oscar.XMessage) {
+func (s *InMemorySessionManager) BroadcastExcept(ctx context.Context, except *Session, msg oscar.SNACMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
@@ -98,7 +98,7 @@ func (s *InMemorySessionManager) retrieveByScreenNames(screenNames []string) []*
 	return ret
 }
 
-func (s *InMemorySessionManager) SendToScreenName(ctx context.Context, screenName string, msg oscar.XMessage) {
+func (s *InMemorySessionManager) SendToScreenName(ctx context.Context, screenName string, msg oscar.SNACMessage) {
 	sess := s.RetrieveByScreenName(screenName)
 	if sess == nil {
 		s.logger.WarnContext(ctx, "can't send notification because user is not online", "recipient", screenName, "message", msg)
@@ -107,7 +107,7 @@ func (s *InMemorySessionManager) SendToScreenName(ctx context.Context, screenNam
 	s.maybeSendMessage(ctx, msg, sess)
 }
 
-func (s *InMemorySessionManager) BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.XMessage) {
+func (s *InMemorySessionManager) BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.SNACMessage) {
 	for _, sess := range s.retrieveByScreenNames(screenNames) {
 		s.maybeSendMessage(ctx, msg, sess)
 	}

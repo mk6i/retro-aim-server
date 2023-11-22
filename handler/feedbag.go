@@ -17,13 +17,13 @@ type FeedbagService struct {
 	feedbagManager FeedbagManager
 }
 
-func (s FeedbagService) RightsQueryHandler(context.Context) oscar.XMessage {
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.FEEDBAG,
+func (s FeedbagService) RightsQueryHandler(context.Context) oscar.SNACMessage {
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Feedbag,
 			SubGroup:  oscar.FeedbagRightsReply,
 		},
-		SnacOut: oscar.SNAC_0x13_0x03_FeedbagRightsReply{
+		Body: oscar.SNAC_0x13_0x03_FeedbagRightsReply{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(0x03, uint16(200)),
@@ -65,10 +65,10 @@ func (s FeedbagService) RightsQueryHandler(context.Context) oscar.XMessage {
 	}
 }
 
-func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session) (oscar.XMessage, error) {
+func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session) (oscar.SNACMessage, error) {
 	fb, err := s.feedbagManager.Retrieve(sess.ScreenName())
 	if err != nil {
-		return oscar.XMessage{}, err
+		return oscar.SNACMessage{}, err
 	}
 
 	lm := time.UnixMilli(0)
@@ -76,16 +76,16 @@ func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session) (os
 	if len(fb) > 0 {
 		lm, err = s.feedbagManager.LastModified(sess.ScreenName())
 		if err != nil {
-			return oscar.XMessage{}, err
+			return oscar.SNACMessage{}, err
 		}
 	}
 
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.FEEDBAG,
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Feedbag,
 			SubGroup:  oscar.FeedbagReply,
 		},
-		SnacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
+		Body: oscar.SNAC_0x13_0x06_FeedbagReply{
 			Version:    0,
 			Items:      fb,
 			LastUpdate: uint32(lm.Unix()),
@@ -93,10 +93,10 @@ func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session) (os
 	}, nil
 }
 
-func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.XMessage, error) {
+func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.SNACMessage, error) {
 	fb, err := s.feedbagManager.Retrieve(sess.ScreenName())
 	if err != nil {
-		return oscar.XMessage{}, err
+		return oscar.SNACMessage{}, err
 	}
 
 	lm := time.UnixMilli(0)
@@ -104,15 +104,15 @@ func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *state.Se
 	if len(fb) > 0 {
 		lm, err = s.feedbagManager.LastModified(sess.ScreenName())
 		if err != nil {
-			return oscar.XMessage{}, err
+			return oscar.SNACMessage{}, err
 		}
 		if lm.Before(time.Unix(int64(snacPayloadIn.LastUpdate), 0)) {
-			return oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			return oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagReplyNotModified,
 				},
-				SnacOut: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
+				Body: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
 					LastUpdate: uint32(lm.Unix()),
 					Count:      uint8(len(fb)),
 				},
@@ -120,12 +120,12 @@ func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *state.Se
 		}
 	}
 
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.FEEDBAG,
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Feedbag,
 			SubGroup:  oscar.FeedbagReply,
 		},
-		SnacOut: oscar.SNAC_0x13_0x06_FeedbagReply{
+		Body: oscar.SNAC_0x13_0x06_FeedbagReply{
 			Version:    0,
 			Items:      fb,
 			LastUpdate: uint32(lm.Unix()),
@@ -133,17 +133,17 @@ func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *state.Se
 	}, nil
 }
 
-func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.XMessage, error) {
+func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.SNACMessage, error) {
 	for _, item := range snacPayloadIn.Items {
 		// don't let users block themselves, it causes the AIM client to go
 		// into a weird state.
 		if item.ClassID == 3 && item.Name == sess.ScreenName() {
-			return oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.FEEDBAG,
+			return oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagErr,
 				},
-				SnacOut: oscar.SnacError{
+				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeNotSupportedByHost,
 				},
 			}, nil
@@ -151,7 +151,7 @@ func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Sessi
 	}
 
 	if err := s.feedbagManager.Upsert(sess.ScreenName(), snacPayloadIn.Items); err != nil {
-		return oscar.XMessage{}, nil
+		return oscar.SNACMessage{}, nil
 	}
 
 	for _, item := range snacPayloadIn.Items {
@@ -171,18 +171,18 @@ func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Sessi
 		snacPayloadOut.Results = append(snacPayloadOut.Results, 0x0000)
 	}
 
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.FEEDBAG,
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Feedbag,
 			SubGroup:  oscar.FeedbagStatus,
 		},
-		SnacOut: snacPayloadOut,
+		Body: snacPayloadOut,
 	}, nil
 }
 
-func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.XMessage, error) {
+func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.SNACMessage, error) {
 	if err := s.feedbagManager.Upsert(sess.ScreenName(), snacPayloadIn.Items); err != nil {
-		return oscar.XMessage{}, nil
+		return oscar.SNACMessage{}, nil
 	}
 
 	for _, item := range snacPayloadIn.Items {
@@ -197,18 +197,18 @@ func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *state.Sessi
 		snacPayloadOut.Results = append(snacPayloadOut.Results, 0x0000)
 	}
 
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.FEEDBAG,
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Feedbag,
 			SubGroup:  oscar.FeedbagStatus,
 		},
-		SnacOut: snacPayloadOut,
+		Body: snacPayloadOut,
 	}, nil
 }
 
-func (s FeedbagService) DeleteItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.XMessage, error) {
+func (s FeedbagService) DeleteItemHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.SNACMessage, error) {
 	if err := s.feedbagManager.Delete(sess.ScreenName(), snacPayloadIn.Items); err != nil {
-		return oscar.XMessage{}, err
+		return oscar.SNACMessage{}, err
 	}
 
 	for _, item := range snacPayloadIn.Items {
@@ -223,12 +223,12 @@ func (s FeedbagService) DeleteItemHandler(ctx context.Context, sess *state.Sessi
 		snacPayloadOut.Results = append(snacPayloadOut.Results, 0x0000) // success by default
 	}
 
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.FEEDBAG,
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.Feedbag,
 			SubGroup:  oscar.FeedbagStatus,
 		},
-		SnacOut: snacPayloadOut,
+		Body: snacPayloadOut,
 	}, nil
 }
 

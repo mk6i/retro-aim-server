@@ -25,7 +25,7 @@ func (_m *mockSessionManager) EXPECT() *mockSessionManager_Expecter {
 }
 
 // Broadcast provides a mock function with given fields: ctx, msg
-func (_m *mockSessionManager) Broadcast(ctx context.Context, msg oscar.XMessage) {
+func (_m *mockSessionManager) Broadcast(ctx context.Context, msg oscar.SNACMessage) {
 	_m.Called(ctx, msg)
 }
 
@@ -36,14 +36,14 @@ type mockSessionManager_Broadcast_Call struct {
 
 // Broadcast is a helper method to define mock.On call
 //   - ctx context.Context
-//   - msg oscar.XMessage
+//   - msg oscar.SNACMessage
 func (_e *mockSessionManager_Expecter) Broadcast(ctx interface{}, msg interface{}) *mockSessionManager_Broadcast_Call {
 	return &mockSessionManager_Broadcast_Call{Call: _e.mock.On("Broadcast", ctx, msg)}
 }
 
-func (_c *mockSessionManager_Broadcast_Call) Run(run func(ctx context.Context, msg oscar.XMessage)) *mockSessionManager_Broadcast_Call {
+func (_c *mockSessionManager_Broadcast_Call) Run(run func(ctx context.Context, msg oscar.SNACMessage)) *mockSessionManager_Broadcast_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(oscar.XMessage))
+		run(args[0].(context.Context), args[1].(oscar.SNACMessage))
 	})
 	return _c
 }
@@ -53,13 +53,13 @@ func (_c *mockSessionManager_Broadcast_Call) Return() *mockSessionManager_Broadc
 	return _c
 }
 
-func (_c *mockSessionManager_Broadcast_Call) RunAndReturn(run func(context.Context, oscar.XMessage)) *mockSessionManager_Broadcast_Call {
+func (_c *mockSessionManager_Broadcast_Call) RunAndReturn(run func(context.Context, oscar.SNACMessage)) *mockSessionManager_Broadcast_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // BroadcastToScreenNames provides a mock function with given fields: ctx, screenNames, msg
-func (_m *mockSessionManager) BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.XMessage) {
+func (_m *mockSessionManager) BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.SNACMessage) {
 	_m.Called(ctx, screenNames, msg)
 }
 
@@ -71,14 +71,14 @@ type mockSessionManager_BroadcastToScreenNames_Call struct {
 // BroadcastToScreenNames is a helper method to define mock.On call
 //   - ctx context.Context
 //   - screenNames []string
-//   - msg oscar.XMessage
+//   - msg oscar.SNACMessage
 func (_e *mockSessionManager_Expecter) BroadcastToScreenNames(ctx interface{}, screenNames interface{}, msg interface{}) *mockSessionManager_BroadcastToScreenNames_Call {
 	return &mockSessionManager_BroadcastToScreenNames_Call{Call: _e.mock.On("BroadcastToScreenNames", ctx, screenNames, msg)}
 }
 
-func (_c *mockSessionManager_BroadcastToScreenNames_Call) Run(run func(ctx context.Context, screenNames []string, msg oscar.XMessage)) *mockSessionManager_BroadcastToScreenNames_Call {
+func (_c *mockSessionManager_BroadcastToScreenNames_Call) Run(run func(ctx context.Context, screenNames []string, msg oscar.SNACMessage)) *mockSessionManager_BroadcastToScreenNames_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]string), args[2].(oscar.XMessage))
+		run(args[0].(context.Context), args[1].([]string), args[2].(oscar.SNACMessage))
 	})
 	return _c
 }
@@ -88,7 +88,7 @@ func (_c *mockSessionManager_BroadcastToScreenNames_Call) Return() *mockSessionM
 	return _c
 }
 
-func (_c *mockSessionManager_BroadcastToScreenNames_Call) RunAndReturn(run func(context.Context, []string, oscar.XMessage)) *mockSessionManager_BroadcastToScreenNames_Call {
+func (_c *mockSessionManager_BroadcastToScreenNames_Call) RunAndReturn(run func(context.Context, []string, oscar.SNACMessage)) *mockSessionManager_BroadcastToScreenNames_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -311,7 +311,7 @@ func (_c *mockSessionManager_RetrieveByScreenName_Call) RunAndReturn(run func(st
 }
 
 // SendToScreenName provides a mock function with given fields: ctx, screenName, msg
-func (_m *mockSessionManager) SendToScreenName(ctx context.Context, screenName string, msg oscar.XMessage) {
+func (_m *mockSessionManager) SendToScreenName(ctx context.Context, screenName string, msg oscar.SNACMessage) {
 	_m.Called(ctx, screenName, msg)
 }
 
@@ -323,14 +323,14 @@ type mockSessionManager_SendToScreenName_Call struct {
 // SendToScreenName is a helper method to define mock.On call
 //   - ctx context.Context
 //   - screenName string
-//   - msg oscar.XMessage
+//   - msg oscar.SNACMessage
 func (_e *mockSessionManager_Expecter) SendToScreenName(ctx interface{}, screenName interface{}, msg interface{}) *mockSessionManager_SendToScreenName_Call {
 	return &mockSessionManager_SendToScreenName_Call{Call: _e.mock.On("SendToScreenName", ctx, screenName, msg)}
 }
 
-func (_c *mockSessionManager_SendToScreenName_Call) Run(run func(ctx context.Context, screenName string, msg oscar.XMessage)) *mockSessionManager_SendToScreenName_Call {
+func (_c *mockSessionManager_SendToScreenName_Call) Run(run func(ctx context.Context, screenName string, msg oscar.SNACMessage)) *mockSessionManager_SendToScreenName_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(oscar.XMessage))
+		run(args[0].(context.Context), args[1].(string), args[2].(oscar.SNACMessage))
 	})
 	return _c
 }
@@ -340,7 +340,7 @@ func (_c *mockSessionManager_SendToScreenName_Call) Return() *mockSessionManager
 	return _c
 }
 
-func (_c *mockSessionManager_SendToScreenName_Call) RunAndReturn(run func(context.Context, string, oscar.XMessage)) *mockSessionManager_SendToScreenName_Call {
+func (_c *mockSessionManager_SendToScreenName_Call) RunAndReturn(run func(context.Context, string, oscar.SNACMessage)) *mockSessionManager_SendToScreenName_Call {
 	_c.Call.Return(run)
 	return _c
 }

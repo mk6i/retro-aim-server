@@ -14,9 +14,9 @@ func TestChatRouter_RouteChat(t *testing.T) {
 		// name is the unit test name
 		name string
 		// input is the request payload
-		input oscar.XMessage
+		input oscar.SNACMessage
 		// output is the response payload
-		output *oscar.XMessage
+		output *oscar.SNACMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -24,33 +24,33 @@ func TestChatRouter_RouteChat(t *testing.T) {
 	}{
 		{
 			name: "receive ChatChannelMsgToHost, return ChatChannelMsgToClient",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.CHAT,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Chat,
 					SubGroup:  oscar.ChatChannelMsgToHost,
 				},
-				SnacOut: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+				Body: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
 					Channel: 4,
 				},
 			},
-			output: &oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.CHAT,
+			output: &oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Chat,
 					SubGroup:  oscar.ChatChannelMsgToClient,
 				},
-				SnacOut: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+				Body: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
 					Channel: 4,
 				},
 			},
 		},
 		{
 			name: "receive ChatChannelMsgToHost, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.CHAT,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Chat,
 					SubGroup:  oscar.ChatChannelMsgToHost,
 				},
-				SnacOut: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+				Body: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
 					Channel: 4,
 				},
 			},
@@ -58,12 +58,12 @@ func TestChatRouter_RouteChat(t *testing.T) {
 		},
 		{
 			name: "receive ChatRowListInfo, return ErrUnsupportedSubGroup",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.CHAT,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Chat,
 					SubGroup:  oscar.ChatRowListInfo,
 				},
-				SnacOut: struct{}{},
+				Body: struct{}{},
 			},
 			output:    nil,
 			expectErr: ErrUnsupportedSubGroup,
@@ -74,7 +74,7 @@ func TestChatRouter_RouteChat(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newMockChatHandler(t)
 			svc.EXPECT().
-				ChannelMsgToHostHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.SnacOut).
+				ChannelMsgToHostHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
@@ -86,12 +86,12 @@ func TestChatRouter_RouteChat(t *testing.T) {
 			}
 
 			bufIn := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.input.SnacOut, bufIn))
+			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))
 
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteChat(nil, nil, "", tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteChat(nil, nil, "", tc.input.Frame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -104,7 +104,7 @@ func TestChatRouter_RouteChat(t *testing.T) {
 			}
 
 			// verify the FLAP frame
-			flap := oscar.FlapFrame{}
+			flap := oscar.FLAPFrame{}
 			assert.NoError(t, oscar.Unmarshal(&flap, bufOut))
 
 			// make sure the sequence increments
@@ -115,13 +115,13 @@ func TestChatRouter_RouteChat(t *testing.T) {
 			assert.NoError(t, err)
 
 			// verify the SNAC frame
-			snacFrame := oscar.SnacFrame{}
+			snacFrame := oscar.SNACFrame{}
 			assert.NoError(t, oscar.Unmarshal(&snacFrame, flapBuf))
-			assert.Equal(t, tc.output.SnacFrame, snacFrame)
+			assert.Equal(t, tc.output.Frame, snacFrame)
 
 			// verify the SNAC message
 			snacBuf := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.output.SnacOut, snacBuf))
+			assert.NoError(t, oscar.Marshal(tc.output.Body, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), flapBuf.Bytes())
 		})
 	}

@@ -22,21 +22,21 @@ type OServiceService struct {
 	sessionManager SessionManager
 }
 
-func (s OServiceService) ClientVersionsHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.XMessage {
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.OSERVICE,
+func (s OServiceService) ClientVersionsHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.SNACMessage {
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.OService,
 			SubGroup:  oscar.OServiceHostVersions,
 		},
-		SnacOut: oscar.SNAC_0x01_0x18_OServiceHostVersions{
+		Body: oscar.SNAC_0x01_0x18_OServiceHostVersions{
 			Versions: snacPayloadIn.Versions,
 		},
 	}
 }
 
-func (s OServiceService) RateParamsQueryHandler(_ context.Context) oscar.XMessage {
-	snacFrameOut := oscar.SnacFrame{
-		FoodGroup: oscar.OSERVICE,
+func (s OServiceService) RateParamsQueryHandler(_ context.Context) oscar.SNACMessage {
+	snacFrameOut := oscar.SNACFrame{
+		FoodGroup: oscar.OService,
 		SubGroup:  oscar.OServiceRateParamsReply,
 	}
 	snacPayloadOut := oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
@@ -95,47 +95,47 @@ func (s OServiceService) RateParamsQueryHandler(_ context.Context) oscar.XMessag
 		}
 	}
 
-	return oscar.XMessage{
-		SnacFrame: snacFrameOut,
-		SnacOut:   snacPayloadOut,
+	return oscar.SNACMessage{
+		Frame: snacFrameOut,
+		Body:  snacPayloadOut,
 	}
 }
 
-func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Session) oscar.XMessage {
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.OSERVICE,
+func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Session) oscar.SNACMessage {
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.OService,
 			SubGroup:  oscar.OServiceUserInfoUpdate,
 		},
-		SnacOut: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+		Body: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
 			TLVUserInfo: sess.TLVUserInfo(),
 		},
 	}
 }
 
-func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error) {
+func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.SNACMessage, error) {
 	if status, hasStatus := snacPayloadIn.GetUint32(0x06); hasStatus {
 		switch status {
 		case 0x000:
 			sess.SetInvisible(false)
 			if err := broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
-				return oscar.XMessage{}, err
+				return oscar.SNACMessage{}, err
 			}
 		case 0x100:
 			sess.SetInvisible(true)
 			if err := broadcastDeparture(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
-				return oscar.XMessage{}, err
+				return oscar.SNACMessage{}, err
 			}
 		default:
-			return oscar.XMessage{}, fmt.Errorf("don't know what to do with status %d", status)
+			return oscar.SNACMessage{}, fmt.Errorf("don't know what to do with status %d", status)
 		}
 	}
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.OSERVICE,
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.OService,
 			SubGroup:  oscar.OServiceUserInfoUpdate,
 		},
-		SnacOut: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+		Body: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
 			TLVUserInfo: sess.TLVUserInfo(),
 		},
 	}, nil
@@ -167,33 +167,33 @@ type OServiceServiceForBOS struct {
 	cr *state.ChatRegistry
 }
 
-func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error) {
-	if snacPayloadIn.FoodGroup != oscar.CHAT {
-		return oscar.XMessage{}, server.ErrUnsupportedSubGroup
+func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.SNACMessage, error) {
+	if snacPayloadIn.FoodGroup != oscar.Chat {
+		return oscar.SNACMessage{}, server.ErrUnsupportedSubGroup
 	}
 
 	roomMeta, ok := snacPayloadIn.GetSlice(0x01)
 	if !ok {
-		return oscar.XMessage{}, errors.New("missing room info")
+		return oscar.SNACMessage{}, errors.New("missing room info")
 	}
 
 	roomSnac := oscar.SNAC_0x01_0x04_TLVRoomInfo{}
 	if err := oscar.Unmarshal(&roomSnac, bytes.NewBuffer(roomMeta)); err != nil {
-		return oscar.XMessage{}, err
+		return oscar.SNACMessage{}, err
 	}
 
 	room, chatSessMgr, err := s.cr.Retrieve(string(roomSnac.Cookie))
 	if err != nil {
-		return oscar.XMessage{}, server.ErrUnsupportedSubGroup
+		return oscar.SNACMessage{}, server.ErrUnsupportedSubGroup
 	}
 	chatSessMgr.(ChatSessionManager).NewSessionWithSN(sess.ID(), sess.ScreenName())
 
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.OSERVICE,
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.OService,
 			SubGroup:  oscar.OServiceServiceResponse,
 		},
-		SnacOut: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
+		Body: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(oscar.OServiceTLVTagsReconnectHere, server.Address(s.cfg.OSCARHost, s.cfg.ChatPort)),
@@ -201,7 +201,7 @@ func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *st
 						Cookie: []byte(room.Cookie),
 						SessID: sess.ID(),
 					}),
-					oscar.NewTLV(oscar.OServiceTLVTagsGroupID, oscar.CHAT),
+					oscar.NewTLV(oscar.OServiceTLVTagsGroupID, oscar.Chat),
 					oscar.NewTLV(oscar.OServiceTLVTagsSSLCertName, ""),
 					oscar.NewTLV(oscar.OServiceTLVTagsSSLState, uint8(0x00)),
 				},
@@ -210,21 +210,21 @@ func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *st
 	}, nil
 }
 
-func (s OServiceServiceForBOS) WriteOServiceHostOnline() oscar.XMessage {
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.OSERVICE,
+func (s OServiceServiceForBOS) WriteOServiceHostOnline() oscar.SNACMessage {
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.OService,
 			SubGroup:  oscar.OServiceHostOnline,
 		},
-		SnacOut: oscar.SNAC_0x01_0x03_OServiceHostOnline{
+		Body: oscar.SNAC_0x01_0x03_OServiceHostOnline{
 			FoodGroups: []uint16{
-				oscar.ALERT,
-				oscar.BUDDY,
-				oscar.CHAT_NAV,
-				oscar.FEEDBAG,
+				oscar.Alert,
+				oscar.Buddy,
+				oscar.ChatNav,
+				oscar.Feedbag,
 				oscar.ICBM,
-				oscar.LOCATE,
-				oscar.OSERVICE,
+				oscar.Locate,
+				oscar.OService,
 			},
 		},
 	}
@@ -256,14 +256,14 @@ type OServiceServiceForChat struct {
 	chatRegistry *state.ChatRegistry
 }
 
-func (s OServiceServiceForChat) WriteOServiceHostOnline() oscar.XMessage {
-	return oscar.XMessage{
-		SnacFrame: oscar.SnacFrame{
-			FoodGroup: oscar.OSERVICE,
+func (s OServiceServiceForChat) WriteOServiceHostOnline() oscar.SNACMessage {
+	return oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.OService,
 			SubGroup:  oscar.OServiceHostOnline,
 		},
-		SnacOut: oscar.SNAC_0x01_0x03_OServiceHostOnline{
-			FoodGroups: []uint16{oscar.OSERVICE, oscar.CHAT},
+		Body: oscar.SNAC_0x01_0x03_OServiceHostOnline{
+			FoodGroups: []uint16{oscar.OService, oscar.Chat},
 		},
 	}
 }

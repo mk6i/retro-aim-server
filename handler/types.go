@@ -24,19 +24,19 @@ type UserManager interface {
 }
 
 type SessionManager interface {
-	Broadcast(ctx context.Context, msg oscar.XMessage)
-	BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.XMessage)
+	Broadcast(ctx context.Context, msg oscar.SNACMessage)
+	BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.SNACMessage)
 	Empty() bool
 	NewSessionWithSN(sessID string, screenName string) *state.Session
 	Remove(sess *state.Session)
 	Retrieve(ID string) (*state.Session, bool)
 	RetrieveByScreenName(screenName string) *state.Session
-	SendToScreenName(ctx context.Context, screenName string, msg oscar.XMessage)
+	SendToScreenName(ctx context.Context, screenName string, msg oscar.SNACMessage)
 }
 
 type ChatSessionManager interface {
 	SessionManager
-	BroadcastExcept(ctx context.Context, except *state.Session, msg oscar.XMessage)
+	BroadcastExcept(ctx context.Context, except *state.Session, msg oscar.SNACMessage)
 	Participants() []*state.Session
 }
 

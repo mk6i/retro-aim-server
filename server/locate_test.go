@@ -14,9 +14,9 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 		// name is the unit test name
 		name string
 		// input is the request payload
-		input oscar.XMessage
+		input oscar.SNACMessage
 		// output is the response payload
-		output oscar.XMessage
+		output oscar.SNACMessage
 		// handlerErr is the mocked handler error response
 		handlerErr error
 		// expectErr is the expected error returned by the router
@@ -24,19 +24,19 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 	}{
 		{
 			name: "receive LocateRightsQuery, return LocateRightsReply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateRightsQuery,
 				},
-				SnacOut: struct{}{},
+				Body: struct{}{},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateRightsReply,
 				},
-				SnacOut: oscar.SNAC_0x02_0x03_LocateRightsReply{
+				Body: oscar.SNAC_0x02_0x03_LocateRightsReply{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							oscar.NewTLV(0x01, uint16(1000)),
@@ -47,12 +47,12 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 		},
 		{
 			name: "receive LocateSetInfo, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateSetInfo,
 				},
-				SnacOut: oscar.SNAC_0x02_0x04_LocateSetInfo{
+				Body: oscar.SNAC_0x02_0x04_LocateSetInfo{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -63,18 +63,18 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{},
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{},
 			},
 		},
 		{
 			name: "receive LocateSetDirInfo, return LocateSetDirReply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateSetDirInfo,
 				},
-				SnacOut: oscar.SNAC_0x02_0x09_LocateSetDirInfo{
+				Body: oscar.SNAC_0x02_0x09_LocateSetDirInfo{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -85,39 +85,39 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateSetDirReply,
 				},
-				SnacOut: oscar.SNAC_0x02_0x0A_LocateSetDirReply{
+				Body: oscar.SNAC_0x02_0x0A_LocateSetDirReply{
 					Result: 1,
 				},
 			},
 		},
 		{
 			name: "receive LocateGetDirInfo, return no response",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateGetDirInfo,
 				},
-				SnacOut: oscar.SNAC_0x02_0x0B_LocateGetDirInfo{
+				Body: oscar.SNAC_0x02_0x0B_LocateGetDirInfo{
 					WatcherScreenNames: "screen-name",
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{},
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{},
 			},
 		},
 		{
 			name: "receive LocateSetKeywordInfo, return LocateSetKeywordReply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateSetKeywordInfo,
 				},
-				SnacOut: oscar.SNAC_0x02_0x0F_LocateSetKeywordInfo{
+				Body: oscar.SNAC_0x02_0x0F_LocateSetKeywordInfo{
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
@@ -128,33 +128,33 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 					},
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateSetKeywordReply,
 				},
-				SnacOut: oscar.SNAC_0x02_0x10_LocateSetKeywordReply{
+				Body: oscar.SNAC_0x02_0x10_LocateSetKeywordReply{
 					Unknown: 1,
 				},
 			},
 		},
 		{
 			name: "receive LocateUserInfoQuery2, return LocateUserInfoReply",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateUserInfoQuery2,
 				},
-				SnacOut: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
+				Body: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
 					Type2: 1,
 				},
 			},
-			output: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			output: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateUserInfoReply,
 				},
-				SnacOut: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
+				Body: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
 					TLVUserInfo: oscar.TLVUserInfo{
 						ScreenName: "screen-name",
 					},
@@ -171,14 +171,14 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 		},
 		{
 			name: "receive LocateGetKeywordInfo, expect ErrUnsupportedSubGroup",
-			input: oscar.XMessage{
-				SnacFrame: oscar.SnacFrame{
-					FoodGroup: oscar.LOCATE,
+			input: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateGetKeywordInfo,
 				},
-				SnacOut: struct{}{}, // empty SNAC
+				Body: struct{}{}, // empty SNAC
 			},
-			output:    oscar.XMessage{}, // empty SNAC
+			output:    oscar.SNACMessage{}, // empty SNAC
 			expectErr: ErrUnsupportedSubGroup,
 		},
 	}
@@ -195,7 +195,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				SetInfoHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				SetInfoHandler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
@@ -203,7 +203,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				UserInfoQuery2Handler(mock.Anything, mock.Anything, tc.input.SnacOut).
+				UserInfoQuery2Handler(mock.Anything, mock.Anything, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
@@ -215,18 +215,18 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			}
 
 			bufIn := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.input.SnacOut, bufIn))
+			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))
 
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteLocate(nil, nil, tc.input.SnacFrame, bufIn, bufOut, &seq)
+			err := router.RouteLocate(nil, nil, tc.input.Frame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
 			}
 
-			if tc.output.SnacFrame == (oscar.SnacFrame{}) {
+			if tc.output.Frame == (oscar.SNACFrame{}) {
 				return // handler doesn't return response
 			}
 
@@ -234,18 +234,18 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			assert.Equal(t, uint32(2), seq)
 
 			// verify the FLAP frame
-			flap := oscar.FlapFrame{}
+			flap := oscar.FLAPFrame{}
 			assert.NoError(t, oscar.Unmarshal(&flap, bufOut))
 			assert.Equal(t, uint16(1), flap.Sequence)
 
 			// verify the SNAC frame
-			snacFrame := oscar.SnacFrame{}
+			snacFrame := oscar.SNACFrame{}
 			assert.NoError(t, oscar.Unmarshal(&snacFrame, bufOut))
-			assert.Equal(t, tc.output.SnacFrame, snacFrame)
+			assert.Equal(t, tc.output.Frame, snacFrame)
 
 			// verify the SNAC message
 			snacBuf := &bytes.Buffer{}
-			assert.NoError(t, oscar.Marshal(tc.output.SnacOut, snacBuf))
+			assert.NoError(t, oscar.Marshal(tc.output.Body, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), bufOut.Bytes())
 		})
 	}

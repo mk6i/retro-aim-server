@@ -11,24 +11,24 @@ import (
 )
 
 type OServiceHandler interface {
-	ClientVersionsHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.XMessage
+	ClientVersionsHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.SNACMessage
 	IdleNotificationHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error
-	RateParamsQueryHandler(ctx context.Context) oscar.XMessage
+	RateParamsQueryHandler(ctx context.Context) oscar.SNACMessage
 	RateParamsSubAddHandler(context.Context, oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd)
-	SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error)
-	UserInfoQueryHandler(ctx context.Context, sess *state.Session) oscar.XMessage
+	SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.SNACMessage, error)
+	UserInfoQueryHandler(ctx context.Context, sess *state.Session) oscar.SNACMessage
 }
 
 type OServiceBOSHandler interface {
 	OServiceHandler
-	WriteOServiceHostOnline() oscar.XMessage
-	ServiceRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error)
+	WriteOServiceHostOnline() oscar.SNACMessage
+	ServiceRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.SNACMessage, error)
 	ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error
 }
 
 type OServiceChatHandler interface {
 	OServiceHandler
-	WriteOServiceHostOnline() oscar.XMessage
+	WriteOServiceHostOnline() oscar.SNACMessage
 	ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session, chatID string) error
 }
 
@@ -37,12 +37,12 @@ type OServiceRouter struct {
 	RouteLogger
 }
 
-func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session, SNACFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.OServiceRateParamsQuery:
 		outSNAC := rt.RateParamsQueryHandler(ctx)
-		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.OServiceRateParamsSubAdd:
 		inSNAC := oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -53,8 +53,8 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session,
 		return oscar.Unmarshal(&inSNAC, r)
 	case oscar.OServiceUserInfoQuery:
 		outSNAC := rt.UserInfoQueryHandler(ctx, sess)
-		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.OServiceIdleNotification:
 		inSNAC := oscar.SNAC_0x01_0x11_OServiceIdleNotification{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -68,8 +68,8 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session,
 			return err
 		}
 		outSNAC := rt.ClientVersionsHandler(ctx, inSNAC)
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.OServiceSetUserInfoFields:
 		inSNAC := oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -79,8 +79,8 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session,
 		if err != nil {
 			return err
 		}
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
 	}
@@ -103,7 +103,7 @@ type OServiceBOSRouter struct {
 	OServiceBOSHandler
 }
 
-func (rt OServiceBOSRouter) RouteOService(ctx context.Context, sess *state.Session, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt OServiceBOSRouter) RouteOService(ctx context.Context, sess *state.Session, SNACFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.OServiceServiceRequest:
 		inSNAC := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
@@ -117,8 +117,8 @@ func (rt OServiceBOSRouter) RouteOService(ctx context.Context, sess *state.Sessi
 		case err != nil:
 			return err
 		}
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(SNACFrame, outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.OServiceClientOnline:
 		inSNAC := oscar.SNAC_0x01_0x02_OServiceClientOnline{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -149,7 +149,7 @@ type OServiceChatRouter struct {
 	OServiceChatHandler
 }
 
-func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *state.Session, chatID string, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *state.Session, chatID string, SNACFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.OServiceServiceRequest:
 		return sendInvalidSNACErr(SNACFrame, w, sequence)

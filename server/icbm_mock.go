@@ -25,19 +25,19 @@ func (_m *mockICBMHandler) EXPECT() *mockICBMHandler_Expecter {
 }
 
 // ChannelMsgToHostHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
-func (_m *mockICBMHandler) ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.XMessage, error) {
+func (_m *mockICBMHandler) ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, snacPayloadIn)
 
-	var r0 *oscar.XMessage
+	var r0 *oscar.SNACMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.XMessage, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.SNACMessage, error)); ok {
 		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) *oscar.XMessage); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) *oscar.SNACMessage); ok {
 		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*oscar.XMessage)
+			r0 = ret.Get(0).(*oscar.SNACMessage)
 		}
 	}
 
@@ -70,12 +70,12 @@ func (_c *mockICBMHandler_ChannelMsgToHostHandler_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *mockICBMHandler_ChannelMsgToHostHandler_Call) Return(_a0 *oscar.XMessage, _a1 error) *mockICBMHandler_ChannelMsgToHostHandler_Call {
+func (_c *mockICBMHandler_ChannelMsgToHostHandler_Call) Return(_a0 *oscar.SNACMessage, _a1 error) *mockICBMHandler_ChannelMsgToHostHandler_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockICBMHandler_ChannelMsgToHostHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.XMessage, error)) *mockICBMHandler_ChannelMsgToHostHandler_Call {
+func (_c *mockICBMHandler_ChannelMsgToHostHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.SNACMessage, error)) *mockICBMHandler_ChannelMsgToHostHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -125,18 +125,18 @@ func (_c *mockICBMHandler_ClientEventHandler_Call) RunAndReturn(run func(context
 }
 
 // EvilRequestHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
-func (_m *mockICBMHandler) EvilRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.XMessage, error) {
+func (_m *mockICBMHandler) EvilRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, snacPayloadIn)
 
-	var r0 oscar.XMessage
+	var r0 oscar.SNACMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.XMessage, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.SNACMessage, error)); ok {
 		return rf(ctx, sess, snacPayloadIn)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) oscar.XMessage); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) oscar.SNACMessage); ok {
 		r0 = rf(ctx, sess, snacPayloadIn)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) error); ok {
@@ -168,25 +168,25 @@ func (_c *mockICBMHandler_EvilRequestHandler_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *mockICBMHandler_EvilRequestHandler_Call) Return(_a0 oscar.XMessage, _a1 error) *mockICBMHandler_EvilRequestHandler_Call {
+func (_c *mockICBMHandler_EvilRequestHandler_Call) Return(_a0 oscar.SNACMessage, _a1 error) *mockICBMHandler_EvilRequestHandler_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockICBMHandler_EvilRequestHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.XMessage, error)) *mockICBMHandler_EvilRequestHandler_Call {
+func (_c *mockICBMHandler_EvilRequestHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.SNACMessage, error)) *mockICBMHandler_EvilRequestHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ParameterQueryHandler provides a mock function with given fields: _a0
-func (_m *mockICBMHandler) ParameterQueryHandler(_a0 context.Context) oscar.XMessage {
+func (_m *mockICBMHandler) ParameterQueryHandler(_a0 context.Context) oscar.SNACMessage {
 	ret := _m.Called(_a0)
 
-	var r0 oscar.XMessage
-	if rf, ok := ret.Get(0).(func(context.Context) oscar.XMessage); ok {
+	var r0 oscar.SNACMessage
+	if rf, ok := ret.Get(0).(func(context.Context) oscar.SNACMessage); ok {
 		r0 = rf(_a0)
 	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
+		r0 = ret.Get(0).(oscar.SNACMessage)
 	}
 
 	return r0
@@ -210,12 +210,12 @@ func (_c *mockICBMHandler_ParameterQueryHandler_Call) Run(run func(_a0 context.C
 	return _c
 }
 
-func (_c *mockICBMHandler_ParameterQueryHandler_Call) Return(_a0 oscar.XMessage) *mockICBMHandler_ParameterQueryHandler_Call {
+func (_c *mockICBMHandler_ParameterQueryHandler_Call) Return(_a0 oscar.SNACMessage) *mockICBMHandler_ParameterQueryHandler_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockICBMHandler_ParameterQueryHandler_Call) RunAndReturn(run func(context.Context) oscar.XMessage) *mockICBMHandler_ParameterQueryHandler_Call {
+func (_c *mockICBMHandler_ParameterQueryHandler_Call) RunAndReturn(run func(context.Context) oscar.SNACMessage) *mockICBMHandler_ParameterQueryHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -19,7 +19,7 @@ type AlertRouter struct {
 	RouteLogger
 }
 
-func (rt *AlertRouter) RouteAlert(ctx context.Context, SNACFrame oscar.SnacFrame) error {
+func (rt *AlertRouter) RouteAlert(ctx context.Context, SNACFrame oscar.SNACFrame) error {
 	switch SNACFrame.SubGroup {
 	case oscar.AlertNotifyCapabilities:
 		fallthrough
