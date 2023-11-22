@@ -5,12 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+
 	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/server"
 	"github.com/mkaminski/goaim/state"
-	"io"
-	"net"
 )
 
 func NewAuthService(cfg server.Config, sm SessionManager, fm FeedbagManager, um UserManager, cr *state.ChatRegistry) *AuthService {
@@ -64,10 +64,10 @@ func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session, chatI
 	}
 }
 
-func (s AuthService) VerifyLogin(conn net.Conn) (*state.Session, uint32, error) {
+func (s AuthService) VerifyLogin(rwc io.ReadWriteCloser) (*state.Session, uint32, error) {
 	seq := uint32(100)
 
-	flap, err := s.SendAndReceiveSignonFrame(conn, &seq)
+	flap, err := s.SendAndReceiveSignonFrame(rwc, &seq)
 	if err != nil {
 		return nil, 0, err
 	}

@@ -232,60 +232,6 @@ func (_c *mockOServiceChatHandler_RateParamsSubAddHandler_Call) RunAndReturn(run
 	return _c
 }
 
-// ServiceRequestHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
-func (_m *mockOServiceChatHandler) ServiceRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error) {
-	ret := _m.Called(ctx, sess, snacPayloadIn)
-
-	var r0 oscar.XMessage
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error)); ok {
-		return rf(ctx, sess, snacPayloadIn)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x04_OServiceServiceRequest) oscar.XMessage); ok {
-		r0 = rf(ctx, sess, snacPayloadIn)
-	} else {
-		r0 = ret.Get(0).(oscar.XMessage)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, oscar.SNAC_0x01_0x04_OServiceServiceRequest) error); ok {
-		r1 = rf(ctx, sess, snacPayloadIn)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// mockOServiceChatHandler_ServiceRequestHandler_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ServiceRequestHandler'
-type mockOServiceChatHandler_ServiceRequestHandler_Call struct {
-	*mock.Call
-}
-
-// ServiceRequestHandler is a helper method to define mock.On call
-//   - ctx context.Context
-//   - sess *state.Session
-//   - snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest
-func (_e *mockOServiceChatHandler_Expecter) ServiceRequestHandler(ctx interface{}, sess interface{}, snacPayloadIn interface{}) *mockOServiceChatHandler_ServiceRequestHandler_Call {
-	return &mockOServiceChatHandler_ServiceRequestHandler_Call{Call: _e.mock.On("ServiceRequestHandler", ctx, sess, snacPayloadIn)}
-}
-
-func (_c *mockOServiceChatHandler_ServiceRequestHandler_Call) Run(run func(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest)) *mockOServiceChatHandler_ServiceRequestHandler_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session), args[2].(oscar.SNAC_0x01_0x04_OServiceServiceRequest))
-	})
-	return _c
-}
-
-func (_c *mockOServiceChatHandler_ServiceRequestHandler_Call) Return(_a0 oscar.XMessage, _a1 error) *mockOServiceChatHandler_ServiceRequestHandler_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *mockOServiceChatHandler_ServiceRequestHandler_Call) RunAndReturn(run func(context.Context, *state.Session, oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error)) *mockOServiceChatHandler_ServiceRequestHandler_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // SetUserInfoFieldsHandler provides a mock function with given fields: ctx, sess, snacPayloadIn
 func (_m *mockOServiceChatHandler) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error) {
 	ret := _m.Called(ctx, sess, snacPayloadIn)

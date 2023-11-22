@@ -1,12 +1,13 @@
 package handler
 
 import (
+	"testing"
+	"time"
+
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/server"
 	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestReceiveAndSendServiceRequest(t *testing.T) {
@@ -126,9 +127,9 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			// send input SNAC
 			//
 			svc := OServiceServiceForBOS{
-				oServiceService: oServiceService{
-					cfg: tc.cfg,
-					sm:  sm,
+				OServiceService: OServiceService{
+					cfg:            tc.cfg,
+					sessionManager: sm,
 				},
 				cr: cr,
 			}

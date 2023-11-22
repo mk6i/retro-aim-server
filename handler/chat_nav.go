@@ -3,11 +3,12 @@ package handler
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/state"
-	"log/slog"
-	"time"
 )
 
 func NewChatRoom() state.ChatRoom {

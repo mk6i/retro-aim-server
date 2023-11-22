@@ -2,10 +2,11 @@ package server
 
 import (
 	"context"
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
 	"io"
 	"log/slog"
+
+	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/state"
 )
 
 type ChatHandler interface {
@@ -42,7 +43,7 @@ func (rt *ChatRouter) RouteChat(ctx context.Context, sess *state.Session, chatID
 		}
 		rt.Logger.InfoContext(ctx, "user sent a chat message")
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
 	}

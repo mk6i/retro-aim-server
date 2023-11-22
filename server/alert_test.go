@@ -3,9 +3,10 @@ package server
 import (
 	"bytes"
 	"context"
+	"testing"
+
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestAlertRouter_RouteAlert(t *testing.T) {

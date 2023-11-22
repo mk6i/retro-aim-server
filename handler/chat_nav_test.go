@@ -2,11 +2,12 @@ package handler
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestSendAndReceiveCreateRoom(t *testing.T) {

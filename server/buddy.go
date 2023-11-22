@@ -35,7 +35,7 @@ func (rt *BuddyRouter) RouteBuddy(ctx context.Context, SNACFrame oscar.SnacFrame
 		}
 		outSNAC := rt.RightsQueryHandler(ctx)
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
 	}

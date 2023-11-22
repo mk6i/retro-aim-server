@@ -1,8 +1,9 @@
 package handler
 
 import (
-	"github.com/mkaminski/goaim/state"
 	"time"
+
+	"github.com/mkaminski/goaim/state"
 )
 
 // sessOptWarning sets a warning level on the session object

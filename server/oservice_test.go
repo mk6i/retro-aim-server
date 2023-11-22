@@ -2,10 +2,11 @@ package server
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
@@ -338,7 +339,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 			output: oscar.XMessage{},
 		},
 		{
-			name: "receive OServiceServiceRequest, return OServiceServiceResponse",
+			name: "receive OServiceServiceRequest, return OServiceErr",
 			input: oscar.XMessage{
 				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.OSERVICE,
@@ -351,14 +352,10 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 			output: oscar.XMessage{
 				SnacFrame: oscar.SnacFrame{
 					FoodGroup: oscar.OSERVICE,
-					SubGroup:  oscar.OServiceServiceResponse,
+					SubGroup:  oscar.OServiceErr,
 				},
-				SnacOut: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
-					TLVRestBlock: oscar.TLVRestBlock{
-						TLVList: oscar.TLVList{
-							oscar.NewTLV(0x01, uint16(1000)),
-						},
-					},
+				SnacOut: oscar.SnacError{
+					Code: oscar.ErrorCodeInvalidSnac,
 				},
 			},
 		},
@@ -536,10 +533,6 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 				Maybe()
 
 			svcBOS := newMockOServiceChatHandler(t)
-			svcBOS.EXPECT().
-				ServiceRequestHandler(mock.Anything, mock.Anything, tc.input.SnacOut).
-				Return(tc.output, tc.handlerErr).
-				Maybe()
 			svcBOS.EXPECT().
 				ClientOnlineHandler(mock.Anything, tc.input.SnacOut, mock.Anything, mock.Anything).
 				Return(tc.handlerErr).

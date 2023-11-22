@@ -2,11 +2,11 @@ package server
 
 import (
 	"context"
-	"github.com/mkaminski/goaim/state"
 	"io"
 	"log/slog"
 
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/state"
 )
 
 type LocateHandler interface {
@@ -36,7 +36,7 @@ func (rt LocateRouter) RouteLocate(ctx context.Context, sess *state.Session, SNA
 	case oscar.LocateRightsQuery:
 		outSNAC := rt.RightsQueryHandler(ctx)
 		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.LocateSetInfo:
 		inSNAC := oscar.SNAC_0x02_0x04_LocateSetInfo{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -51,7 +51,7 @@ func (rt LocateRouter) RouteLocate(ctx context.Context, sess *state.Session, SNA
 		}
 		outSNAC := rt.SetDirInfoHandler(ctx)
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.LocateGetDirInfo:
 		inSNAC := oscar.SNAC_0x02_0x0B_LocateGetDirInfo{}
 		rt.logRequest(ctx, SNACFrame, inSNAC)
@@ -63,7 +63,7 @@ func (rt LocateRouter) RouteLocate(ctx context.Context, sess *state.Session, SNA
 		}
 		outSNAC := rt.SetKeywordInfoHandler(ctx)
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.LocateUserInfoQuery2:
 		inSNAC := oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -74,7 +74,7 @@ func (rt LocateRouter) RouteLocate(ctx context.Context, sess *state.Session, SNA
 			return err
 		}
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
 	}

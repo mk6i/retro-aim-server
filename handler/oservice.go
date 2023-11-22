@@ -5,23 +5,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/server"
 	"github.com/mkaminski/goaim/state"
-	"time"
 )
 
-func NewOServiceService(cfg server.Config, sm SessionManager, fm FeedbagManager) *oServiceService {
-	return &oServiceService{cfg: cfg, sm: sm, fm: fm}
+func NewOServiceService(cfg server.Config, sm SessionManager, fm FeedbagManager) *OServiceService {
+	return &OServiceService{cfg: cfg, sessionManager: sm, feedbagManager: fm}
 }
 
-type oServiceService struct {
-	cfg server.Config
-	fm  FeedbagManager
-	sm  SessionManager
+type OServiceService struct {
+	cfg            server.Config
+	feedbagManager FeedbagManager
+	sessionManager SessionManager
 }
 
-func (s oServiceService) ClientVersionsHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.XMessage {
+func (s OServiceService) ClientVersionsHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.XMessage {
 	return oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.OSERVICE,
@@ -33,7 +34,7 @@ func (s oServiceService) ClientVersionsHandler(_ context.Context, snacPayloadIn 
 	}
 }
 
-func (s oServiceService) RateParamsQueryHandler(_ context.Context) oscar.XMessage {
+func (s OServiceService) RateParamsQueryHandler(_ context.Context) oscar.XMessage {
 	snacFrameOut := oscar.SnacFrame{
 		FoodGroup: oscar.OSERVICE,
 		SubGroup:  oscar.OServiceRateParamsReply,
@@ -100,7 +101,7 @@ func (s oServiceService) RateParamsQueryHandler(_ context.Context) oscar.XMessag
 	}
 }
 
-func (s oServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Session) oscar.XMessage {
+func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Session) oscar.XMessage {
 	return oscar.XMessage{
 		SnacFrame: oscar.SnacFrame{
 			FoodGroup: oscar.OSERVICE,
@@ -112,17 +113,17 @@ func (s oServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Ses
 	}
 }
 
-func (s oServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error) {
+func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.XMessage, error) {
 	if status, hasStatus := snacPayloadIn.GetUint32(0x06); hasStatus {
 		switch status {
 		case 0x000:
 			sess.SetInvisible(false)
-			if err := broadcastArrival(ctx, sess, s.sm, s.fm); err != nil {
+			if err := broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
 				return oscar.XMessage{}, err
 			}
 		case 0x100:
 			sess.SetInvisible(true)
-			if err := broadcastDeparture(ctx, sess, s.sm, s.fm); err != nil {
+			if err := broadcastDeparture(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
 				return oscar.XMessage{}, err
 			}
 		default:
@@ -140,29 +141,29 @@ func (s oServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *sta
 	}, nil
 }
 
-func (s oServiceService) IdleNotificationHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error {
+func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error {
 	if snacPayloadIn.IdleTime == 0 {
 		sess.SetActive()
 	} else {
 		sess.SetIdle(time.Duration(snacPayloadIn.IdleTime) * time.Second)
 	}
-	return broadcastArrival(ctx, sess, s.sm, s.fm)
+	return broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager)
 }
 
 // RateParamsSubAddHandler exists to capture the SNAC input in unit tests to
 // verify it's correctly unmarshalled.
-func (s oServiceService) RateParamsSubAddHandler(context.Context, oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd) {
+func (s OServiceService) RateParamsSubAddHandler(context.Context, oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd) {
 }
 
-func NewOServiceServiceForBOS(oserviceService oServiceService, cr *state.ChatRegistry) *OServiceServiceForBOS {
+func NewOServiceServiceForBOS(oserviceService OServiceService, cr *state.ChatRegistry) *OServiceServiceForBOS {
 	return &OServiceServiceForBOS{
-		oServiceService: oserviceService,
+		OServiceService: oserviceService,
 		cr:              cr,
 	}
 }
 
 type OServiceServiceForBOS struct {
-	oServiceService
+	OServiceService
 	cr *state.ChatRegistry
 }
 
@@ -230,33 +231,29 @@ func (s OServiceServiceForBOS) WriteOServiceHostOnline() oscar.XMessage {
 }
 
 func (s OServiceServiceForBOS) ClientOnlineHandler(ctx context.Context, _ oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
-	if err := broadcastArrival(ctx, sess, s.sm, s.fm); err != nil {
+	if err := broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
 		return err
 	}
-	buddies, err := s.fm.Buddies(sess.ScreenName())
+	buddies, err := s.feedbagManager.Buddies(sess.ScreenName())
 	if err != nil {
 		return err
 	}
 	for _, buddy := range buddies {
-		unicastArrival(ctx, buddy, sess.ScreenName(), s.sm)
+		unicastArrival(ctx, buddy, sess.ScreenName(), s.sessionManager)
 	}
 	return nil
 }
 
-func NewOServiceServiceForChat(oserviceService oServiceService, chatRegistry *state.ChatRegistry) *OServiceServiceForChat {
+func NewOServiceServiceForChat(oserviceService OServiceService, chatRegistry *state.ChatRegistry) *OServiceServiceForChat {
 	return &OServiceServiceForChat{
-		oServiceService: oserviceService,
+		OServiceService: oserviceService,
 		chatRegistry:    chatRegistry,
 	}
 }
 
 type OServiceServiceForChat struct {
-	oServiceService
+	OServiceService
 	chatRegistry *state.ChatRegistry
-}
-
-func (s OServiceServiceForChat) ServiceRequestHandler(_ context.Context, _ *state.Session, _ oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error) {
-	return oscar.XMessage{}, server.ErrUnsupportedSubGroup
 }
 
 func (s OServiceServiceForChat) WriteOServiceHostOnline() oscar.XMessage {

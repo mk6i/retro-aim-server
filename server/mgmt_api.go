@@ -3,13 +3,13 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mkaminski/goaim/state"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 
 	"github.com/google/uuid"
+	"github.com/mkaminski/goaim/state"
 )
 
 func StartManagementAPI(fs *state.SQLiteFeedbagStore, logger *slog.Logger) {

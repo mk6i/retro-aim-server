@@ -2,10 +2,11 @@ package server
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestLocateRouter_RouteLocate(t *testing.T) {

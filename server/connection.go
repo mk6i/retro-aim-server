@@ -5,12 +5,8 @@ import (
 	"context"
 	"errors"
 	"io"
-	"log"
 	"log/slog"
-	"net"
-	"os"
 
-	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/state"
 )
@@ -27,6 +23,54 @@ type (
 	alertHandler     func(ctx context.Context, msg oscar.XMessage, w io.Writer, u *uint32) error
 	clientReqHandler func(ctx context.Context, r io.Reader, w io.Writer, u *uint32) error
 )
+
+func sendSNAC(originsnac oscar.SnacFrame, snacFrame oscar.SnacFrame, snacOut any, sequence *uint32, w io.Writer) error {
+	if originsnac.RequestID != 0 {
+		snacFrame.RequestID = originsnac.RequestID
+	}
+
+	snacBuf := &bytes.Buffer{}
+	if err := oscar.Marshal(snacFrame, snacBuf); err != nil {
+		return err
+	}
+	if err := oscar.Marshal(snacOut, snacBuf); err != nil {
+		return err
+	}
+
+	flap := oscar.FlapFrame{
+		StartMarker:   42,
+		FrameType:     oscar.FlapFrameData,
+		Sequence:      uint16(*sequence),
+		PayloadLength: uint16(snacBuf.Len()),
+	}
+
+	if err := oscar.Marshal(flap, w); err != nil {
+		return err
+	}
+
+	expectLen := snacBuf.Len()
+	c, err := w.Write(snacBuf.Bytes())
+	if err != nil {
+		return err
+	}
+	if c != expectLen {
+		panic("did not write the expected # of bytes")
+	}
+
+	*sequence++
+	return nil
+}
+
+func sendInvalidSNACErr(snac oscar.SnacFrame, w io.Writer, sequence *uint32) error {
+	snacFrameOut := oscar.SnacFrame{
+		FoodGroup: snac.FoodGroup,
+		SubGroup:  0x01, // error subgroup for all SNACs
+	}
+	snacPayloadOut := oscar.SnacError{
+		Code: oscar.ErrorCodeInvalidSnac,
+	}
+	return sendSNAC(snac, snacFrameOut, snacPayloadOut, sequence, w)
+}
 
 func consumeFLAPFrames(r io.Reader, msgCh chan incomingMessage, errCh chan error) {
 	defer close(msgCh)
@@ -112,227 +156,5 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, seq uint
 			}
 			return
 		}
-	}
-}
-
-func handleChatConnection(ctx context.Context, rw io.ReadWriter, serviceManager ChatServiceManager, logger *slog.Logger) {
-	cookie, seq, err := serviceManager.VerifyChatLogin(rw)
-	if err != nil {
-		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
-		return
-	}
-
-	chatID := string(cookie.Cookie)
-
-	chatSess, err := serviceManager.RetrieveChatSession(ctx, chatID, cookie.SessID)
-	if err != nil {
-		logger.ErrorContext(ctx, "unable to find chat room", "err", err.Error())
-		return
-	}
-
-	defer chatSess.Close()
-	go func() {
-		<-chatSess.Closed()
-		serviceManager.SignoutChat(ctx, chatSess, chatID)
-	}()
-
-	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName())
-
-	msg := serviceManager.WriteOServiceHostOnline()
-	if err := writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, rw); err != nil {
-		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
-		return
-	}
-
-	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
-		return serviceManager.Route(ctx, chatSess, r, w, seq, chatID)
-	}
-	fnAlertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, seq *uint32) error {
-		return writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, seq, w)
-	}
-	dispatchIncomingMessages(ctx, chatSess, seq, rw, logger, fnClientReqHandler, fnAlertHandler)
-}
-
-func handleAuthConnection(authHandler AuthHandler, conn net.Conn) {
-	defer conn.Close()
-	seq := uint32(100)
-	_, err := authHandler.SendAndReceiveSignonFrame(conn, &seq)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	flap := oscar.FlapFrame{}
-	if err := oscar.Unmarshal(&flap, conn); err != nil {
-		log.Println(err)
-		return
-	}
-	b := make([]byte, flap.PayloadLength)
-	if _, err := conn.Read(b); err != nil {
-		log.Println(err)
-		return
-	}
-	snac := oscar.SnacFrame{}
-	buf := bytes.NewBuffer(b)
-	if err := oscar.Unmarshal(&snac, buf); err != nil {
-		log.Println(err)
-		return
-	}
-
-	snacPayloadIn := oscar.SNAC_0x17_0x06_BUCPChallengeRequest{}
-	if err := oscar.Unmarshal(&snacPayloadIn, buf); err != nil {
-		log.Println(err)
-		return
-	}
-
-	msg, err := authHandler.ReceiveAndSendAuthChallenge(snacPayloadIn, uuid.New)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	if err := writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, conn); err != nil {
-		log.Println(err)
-		return
-	}
-
-	flap = oscar.FlapFrame{}
-	if err := oscar.Unmarshal(&flap, conn); err != nil {
-		log.Println(err)
-		return
-	}
-	snac = oscar.SnacFrame{}
-	b = make([]byte, flap.PayloadLength)
-	if _, err := conn.Read(b); err != nil {
-		log.Println(err)
-		return
-	}
-	buf = bytes.NewBuffer(b)
-	if err := oscar.Unmarshal(&snac, buf); err != nil {
-		log.Println(err)
-		return
-	}
-
-	snacPayloadIn2 := oscar.SNAC_0x17_0x02_BUCPLoginRequest{}
-	if err := oscar.Unmarshal(&snacPayloadIn2, buf); err != nil {
-		log.Println(err)
-		return
-	}
-
-	msg, err = authHandler.ReceiveAndSendBUCPLoginRequest(snacPayloadIn2, uuid.New)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	if err := writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, conn); err != nil {
-		log.Println(err)
-		return
-	}
-}
-
-func handleBOSConnection(ctx context.Context, conn net.Conn, serviceManager BOSServiceManager, logger *slog.Logger) {
-	// todo why is conn net.Conn but handleChat is rw?
-	sess, seq, err := serviceManager.VerifyLogin(conn)
-	if err != nil {
-		logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
-		return
-	}
-
-	defer sess.Close()
-	defer conn.Close()
-
-	go func() {
-		<-sess.Closed()
-		if err := serviceManager.Signout(ctx, sess); err != nil {
-			logger.ErrorContext(ctx, "error notifying departure", "err", err.Error())
-		}
-	}()
-
-	ctx = context.WithValue(ctx, "screenName", sess.ScreenName())
-
-	msg := serviceManager.WriteOServiceHostOnline()
-	if err := writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, &seq, conn); err != nil {
-		logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
-		return
-	}
-
-	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
-		return serviceManager.Route(ctx, sess, r, w, seq)
-	}
-	fnAlertHandler := func(ctx context.Context, msg oscar.XMessage, w io.Writer, seq *uint32) error {
-		return writeOutSNAC(oscar.SnacFrame{}, msg.SnacFrame, msg.SnacOut, seq, w)
-	}
-	dispatchIncomingMessages(ctx, sess, seq, conn, logger, fnClientReqHandler, fnAlertHandler)
-}
-
-func ListenChat(cfg Config, router ChatServiceManager, logger *slog.Logger) {
-	addr := Address("", cfg.ChatPort)
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		logger.Error("unable to bind chat server address", "err", err.Error())
-		os.Exit(1)
-	}
-	defer listener.Close()
-
-	logger.Info("starting service", "addr", addr)
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		ctx := context.Background()
-		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
-		logger.DebugContext(ctx, "accepted connection")
-		go func() {
-			handleChatConnection(ctx, conn, router, logger)
-			conn.Close()
-		}()
-	}
-}
-
-func ListenBOS(cfg Config, router BOSServiceManager, logger *slog.Logger) {
-	addr := Address("", cfg.BOSPort)
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		logger.Error("unable to bind BOS server address", "err", err.Error())
-		os.Exit(1)
-	}
-	defer listener.Close()
-
-	logger.Info("starting service", "addr", addr)
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		ctx := context.Background()
-		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
-		logger.DebugContext(ctx, "accepted connection")
-		go handleBOSConnection(ctx, conn, router, logger)
-	}
-}
-
-func ListenBUCPLogin(cfg Config, err error, logger *slog.Logger, authHandler AuthHandler) {
-	addr := Address("", cfg.OSCARPort)
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		logger.Error("unable to bind OSCAR server address", "err", err.Error())
-		os.Exit(1)
-	}
-	defer listener.Close()
-
-	logger.Info("starting OSCAR server", "addr", addr)
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-
-		go handleAuthConnection(authHandler, conn)
 	}
 }

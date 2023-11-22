@@ -1,12 +1,13 @@
 package handler
 
 import (
+	"testing"
+	"time"
+
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
-	"time"
 )
 
 func TestQueryHandler(t *testing.T) {

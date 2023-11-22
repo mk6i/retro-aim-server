@@ -1,10 +1,11 @@
 package state
 
 import (
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/mkaminski/goaim/oscar"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSession_SendMessage_SessSendOK(t *testing.T) {

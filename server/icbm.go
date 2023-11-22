@@ -2,11 +2,11 @@ package server
 
 import (
 	"context"
-	"github.com/mkaminski/goaim/state"
 	"io"
 	"log/slog"
 
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/state"
 )
 
 type ICBMHandler interface {
@@ -39,7 +39,7 @@ func (rt *ICBMRouter) RouteICBM(ctx context.Context, sess *state.Session, SNACFr
 	case oscar.ICBMParameterQuery:
 		outSNAC := rt.ParameterQueryHandler(ctx)
 		rt.logRequestAndResponse(ctx, SNACFrame, outSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.ICBMChannelMsgToHost:
 		inSNAC := oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -54,7 +54,7 @@ func (rt *ICBMRouter) RouteICBM(ctx context.Context, sess *state.Session, SNACFr
 			return nil
 		}
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.ICBMEvilRequest:
 		inSNAC := oscar.SNAC_0x04_0x08_ICBMEvilRequest{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -65,7 +65,7 @@ func (rt *ICBMRouter) RouteICBM(ctx context.Context, sess *state.Session, SNACFr
 			return err
 		}
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.ICBMClientErr:
 		inSNAC := oscar.SNAC_0x04_0x0B_ICBMClientErr{}
 		rt.logRequest(ctx, SNACFrame, inSNAC)

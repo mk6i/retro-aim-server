@@ -2,9 +2,10 @@ package handler
 
 import (
 	"context"
+	"time"
+
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/state"
-	"time"
 )
 
 type FeedbagManager interface {

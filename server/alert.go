@@ -2,8 +2,9 @@ package server
 
 import (
 	"context"
-	"github.com/mkaminski/goaim/oscar"
 	"log/slog"
+
+	"github.com/mkaminski/goaim/oscar"
 )
 
 func NewAlertRouter(logger *slog.Logger) AlertRouter {

@@ -3,10 +3,11 @@ package server
 import (
 	"context"
 	"errors"
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
 	"io"
 	"log/slog"
+
+	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/state"
 )
 
 type OServiceHandler interface {
@@ -28,7 +29,6 @@ type OServiceBOSHandler interface {
 type OServiceChatHandler interface {
 	OServiceHandler
 	WriteOServiceHostOnline() oscar.XMessage
-	ServiceRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.XMessage, error)
 	ClientOnlineHandler(ctx context.Context, snacPayloadIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session, chatID string) error
 }
 
@@ -42,7 +42,7 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session,
 	case oscar.OServiceRateParamsQuery:
 		outSNAC := rt.RateParamsQueryHandler(ctx)
 		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.OServiceRateParamsSubAdd:
 		inSNAC := oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -54,7 +54,7 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session,
 	case oscar.OServiceUserInfoQuery:
 		outSNAC := rt.UserInfoQueryHandler(ctx, sess)
 		rt.logRequestAndResponse(ctx, SNACFrame, nil, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.OServiceIdleNotification:
 		inSNAC := oscar.SNAC_0x01_0x11_OServiceIdleNotification{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -69,7 +69,7 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session,
 		}
 		outSNAC := rt.ClientVersionsHandler(ctx, inSNAC)
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.OServiceSetUserInfoFields:
 		inSNAC := oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -80,7 +80,7 @@ func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session,
 			return err
 		}
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
 	}
@@ -118,7 +118,7 @@ func (rt OServiceBOSRouter) RouteOService(ctx context.Context, sess *state.Sessi
 			return err
 		}
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.OServiceClientOnline:
 		inSNAC := oscar.SNAC_0x01_0x02_OServiceClientOnline{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -152,19 +152,7 @@ type OServiceChatRouter struct {
 func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *state.Session, chatID string, SNACFrame oscar.SnacFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch SNACFrame.SubGroup {
 	case oscar.OServiceServiceRequest:
-		inSNAC := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
-		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
-			return err
-		}
-		outSNAC, err := rt.ServiceRequestHandler(ctx, sess, inSNAC)
-		switch {
-		case errors.Is(err, ErrUnsupportedSubGroup):
-			return sendInvalidSNACErr(SNACFrame, w, sequence)
-		case err != nil:
-			return err
-		}
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendInvalidSNACErr(SNACFrame, w, sequence)
 	case oscar.OServiceClientOnline:
 		inSNAC := oscar.SNAC_0x01_0x02_OServiceClientOnline{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {

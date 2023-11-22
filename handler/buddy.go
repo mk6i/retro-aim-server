@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/state"
 )
@@ -79,7 +80,7 @@ func broadcastDeparture(ctx context.Context, sess *state.Session, sm SessionMana
 	return nil
 }
 
-func unicastArrival(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager, ) {
+func unicastArrival(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager) {
 	sess := sm.RetrieveByScreenName(srcScreenName)
 	switch {
 	case sess == nil:
@@ -98,7 +99,7 @@ func unicastArrival(ctx context.Context, srcScreenName, destScreenName string, s
 	})
 }
 
-func unicastDeparture(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager, ) {
+func unicastDeparture(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager) {
 	sess := sm.RetrieveByScreenName(srcScreenName)
 	switch {
 	case sess == nil:

@@ -2,10 +2,11 @@ package handler
 
 import (
 	"context"
+	"testing"
+
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestSendAndReceiveUserInfoQuery2(t *testing.T) {

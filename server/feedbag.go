@@ -2,10 +2,11 @@ package server
 
 import (
 	"context"
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
 	"io"
 	"log/slog"
+
+	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/state"
 )
 
 type FeedbagHandler interface {
@@ -41,14 +42,14 @@ func (rt FeedbagRouter) RouteFeedbag(ctx context.Context, sess *state.Session, S
 		}
 		outSNAC := rt.RightsQueryHandler(ctx)
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.FeedbagQuery:
 		inSNAC, err := rt.QueryHandler(ctx, sess)
 		if err != nil {
 			return err
 		}
 		rt.logRequest(ctx, SNACFrame, inSNAC)
-		return writeOutSNAC(SNACFrame, inSNAC.SnacFrame, inSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, inSNAC.SnacFrame, inSNAC.SnacOut, sequence, w)
 	case oscar.FeedbagQueryIfModified:
 		inSNAC := oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -59,7 +60,7 @@ func (rt FeedbagRouter) RouteFeedbag(ctx context.Context, sess *state.Session, S
 			return err
 		}
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.FeedbagUse:
 		rt.logRequest(ctx, SNACFrame, nil)
 		return nil
@@ -73,7 +74,7 @@ func (rt FeedbagRouter) RouteFeedbag(ctx context.Context, sess *state.Session, S
 			return err
 		}
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.FeedbagUpdateItem:
 		inSNAC := oscar.SNAC_0x13_0x09_FeedbagUpdateItem{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -84,7 +85,7 @@ func (rt FeedbagRouter) RouteFeedbag(ctx context.Context, sess *state.Session, S
 			return err
 		}
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.FeedbagDeleteItem:
 		inSNAC := oscar.SNAC_0x13_0x0A_FeedbagDeleteItem{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
@@ -95,7 +96,7 @@ func (rt FeedbagRouter) RouteFeedbag(ctx context.Context, sess *state.Session, S
 			return err
 		}
 		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.SnacFrame, outSNAC.SnacOut)
-		return writeOutSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
+		return sendSNAC(SNACFrame, outSNAC.SnacFrame, outSNAC.SnacOut, sequence, w)
 	case oscar.FeedbagStartCluster:
 		inSNAC := oscar.SNAC_0x13_0x11_FeedbagStartCluster{}
 		if err := oscar.Unmarshal(&inSNAC, r); err != nil {

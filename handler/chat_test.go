@@ -2,11 +2,12 @@ package handler
 
 import (
 	"context"
+	"testing"
+
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {

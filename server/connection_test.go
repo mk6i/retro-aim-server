@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"sync"
 	"testing"
+
+	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/state"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHandleChatConnection_Notification(t *testing.T) {

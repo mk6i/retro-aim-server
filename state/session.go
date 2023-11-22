@@ -1,10 +1,11 @@
 package state
 
 import (
-	"github.com/google/uuid"
-	"github.com/mkaminski/goaim/oscar"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/mkaminski/goaim/oscar"
 )
 
 var CapChat, _ = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()

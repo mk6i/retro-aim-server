@@ -57,7 +57,7 @@ func TestFeedbagStore(t *testing.T) {
 
 func TestFeedbagDelete(t *testing.T) {
 
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 	const screenName = "sn2day"
 
 	defer func() {
@@ -120,7 +120,7 @@ func TestFeedbagDelete(t *testing.T) {
 
 func TestLastModifiedEmpty(t *testing.T) {
 
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 	const screenName = "sn2day"
 
 	defer func() {
@@ -144,7 +144,7 @@ func TestLastModifiedEmpty(t *testing.T) {
 
 func TestLastModifiedNotEmpty(t *testing.T) {
 
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 	const screenName = "sn2day"
 
 	defer func() {
@@ -180,7 +180,7 @@ func TestLastModifiedNotEmpty(t *testing.T) {
 
 func TestProfile(t *testing.T) {
 
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 	const screenName = "sn2day"
 
 	defer func() {
@@ -242,7 +242,7 @@ func TestProfile(t *testing.T) {
 
 func TestProfileNonExistent(t *testing.T) {
 
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 	const screenName = "sn2day"
 
 	defer func() {
@@ -263,7 +263,7 @@ func TestProfileNonExistent(t *testing.T) {
 }
 
 func TestInterestedUsers(t *testing.T) {
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 
 	defer func() {
 		err := os.Remove(testFile)
@@ -293,7 +293,7 @@ func TestInterestedUsers(t *testing.T) {
 }
 
 func TestFeedbagStoreBuddiesBlockedUser(t *testing.T) {
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 
 	defer func() {
 		err := os.Remove(testFile)
@@ -323,7 +323,7 @@ func TestFeedbagStoreBuddiesBlockedUser(t *testing.T) {
 }
 
 func TestFeedbagStoreBlockedA(t *testing.T) {
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 
 	defer func() {
 		err := os.Remove(testFile)
@@ -353,7 +353,7 @@ func TestFeedbagStoreBlockedA(t *testing.T) {
 }
 
 func TestFeedbagStoreBlockedB(t *testing.T) {
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 
 	defer func() {
 		err := os.Remove(testFile)
@@ -383,7 +383,7 @@ func TestFeedbagStoreBlockedB(t *testing.T) {
 }
 
 func TestFeedbagStoreBlockedNoBlocked(t *testing.T) {
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 
 	defer func() {
 		err := os.Remove(testFile)
@@ -412,7 +412,7 @@ func TestFeedbagStoreBlockedNoBlocked(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 
 	defer func() {
 		err := os.Remove(testFile)
@@ -448,7 +448,7 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestGetUserNotFound(t *testing.T) {
-	const testFile string = "/Users/mike/dev/goaim/aim_test.db"
+	const testFile string = "aim_test.db"
 
 	defer func() {
 		err := os.Remove(testFile)

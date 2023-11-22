@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+
 	"github.com/mkaminski/goaim/oscar"
 	"github.com/mkaminski/goaim/state"
 )
