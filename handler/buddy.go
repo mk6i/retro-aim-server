@@ -14,11 +14,12 @@ func NewBuddyService() *BuddyService {
 type BuddyService struct {
 }
 
-func (s BuddyService) RightsQueryHandler(context.Context) oscar.SNACMessage {
+func (s BuddyService) RightsQueryHandler(_ context.Context, frameIn oscar.SNACFrame) oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyRightsReply,
+			RequestID: frameIn.RequestID,
 		},
 		Body: oscar.SNAC_0x03_0x03_BuddyRightsReply{
 			TLVRestBlock: oscar.TLVRestBlock{

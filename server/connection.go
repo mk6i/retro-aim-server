@@ -24,9 +24,7 @@ type (
 	clientReqHandler func(ctx context.Context, r io.Reader, w io.Writer, u *uint32) error
 )
 
-func sendSNAC(requestID uint32, frame oscar.SNACFrame, body any, sequence *uint32, w io.Writer) error {
-	frame.RequestID = requestID
-
+func sendSNAC(frame oscar.SNACFrame, body any, sequence *uint32, w io.Writer) error {
 	snacBuf := &bytes.Buffer{}
 	if err := oscar.Marshal(frame, snacBuf); err != nil {
 		return err
@@ -59,15 +57,16 @@ func sendSNAC(requestID uint32, frame oscar.SNACFrame, body any, sequence *uint3
 	return nil
 }
 
-func sendInvalidSNACErr(frame oscar.SNACFrame, w io.Writer, sequence *uint32) error {
-	snacFrameOut := oscar.SNACFrame{
-		FoodGroup: frame.FoodGroup,
+func sendInvalidSNACErr(frameIn oscar.SNACFrame, w io.Writer, sequence *uint32) error {
+	frameOut := oscar.SNACFrame{
+		FoodGroup: frameIn.FoodGroup,
 		SubGroup:  0x01, // error subgroup for all SNACs
+		RequestID: frameIn.RequestID,
 	}
-	snacPayloadOut := oscar.SNACError{
+	bodyOut := oscar.SNACError{
 		Code: oscar.ErrorCodeInvalidSnac,
 	}
-	return sendSNAC(frame.RequestID, snacFrameOut, snacPayloadOut, sequence, w)
+	return sendSNAC(frameOut, bodyOut, sequence, w)
 }
 
 func consumeFLAPFrames(r io.Reader, msgCh chan incomingMessage, errCh chan error) {

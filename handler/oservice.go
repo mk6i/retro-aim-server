@@ -22,24 +22,26 @@ type OServiceService struct {
 	sessionManager SessionManager
 }
 
-func (s OServiceService) ClientVersionsHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.SNACMessage {
+func (s OServiceService) ClientVersionsHandler(_ context.Context, frame oscar.SNACFrame, inBody oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.OService,
 			SubGroup:  oscar.OServiceHostVersions,
+			RequestID: frame.RequestID,
 		},
 		Body: oscar.SNAC_0x01_0x18_OServiceHostVersions{
-			Versions: snacPayloadIn.Versions,
+			Versions: inBody.Versions,
 		},
 	}
 }
 
-func (s OServiceService) RateParamsQueryHandler(_ context.Context) oscar.SNACMessage {
-	snacFrameOut := oscar.SNACFrame{
+func (s OServiceService) RateParamsQueryHandler(_ context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage {
+	frameOut := oscar.SNACFrame{
 		FoodGroup: oscar.OService,
 		SubGroup:  oscar.OServiceRateParamsReply,
+		RequestID: inFrame.RequestID,
 	}
-	snacPayloadOut := oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
+	bodyOut := oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
 		RateClasses: []struct {
 			ID              uint16
 			WindowSize      uint32
@@ -84,7 +86,7 @@ func (s OServiceService) RateParamsQueryHandler(_ context.Context) oscar.SNACMes
 
 	for i := uint16(0); i < 24; i++ { // for each food group
 		for j := uint16(0); j < 32; j++ { // for each subgroup
-			snacPayloadOut.RateGroups[0].Pairs = append(snacPayloadOut.RateGroups[0].Pairs,
+			bodyOut.RateGroups[0].Pairs = append(bodyOut.RateGroups[0].Pairs,
 				struct {
 					FoodGroup uint16
 					SubGroup  uint16
@@ -96,16 +98,17 @@ func (s OServiceService) RateParamsQueryHandler(_ context.Context) oscar.SNACMes
 	}
 
 	return oscar.SNACMessage{
-		Frame: snacFrameOut,
-		Body:  snacPayloadOut,
+		Frame: frameOut,
+		Body:  bodyOut,
 	}
 }
 
-func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Session) oscar.SNACMessage {
+func (s OServiceService) UserInfoQueryHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame) oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.OService,
 			SubGroup:  oscar.OServiceUserInfoUpdate,
+			RequestID: inFrame.RequestID,
 		},
 		Body: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
 			TLVUserInfo: sess.TLVUserInfo(),
@@ -113,8 +116,8 @@ func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Ses
 	}
 }
 
-func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.SNACMessage, error) {
-	if status, hasStatus := snacPayloadIn.GetUint32(0x06); hasStatus {
+func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.SNACMessage, error) {
+	if status, hasStatus := inBody.GetUint32(0x06); hasStatus {
 		switch status {
 		case 0x000:
 			sess.SetInvisible(false)
@@ -134,6 +137,7 @@ func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *sta
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.OService,
 			SubGroup:  oscar.OServiceUserInfoUpdate,
+			RequestID: inFrame.RequestID,
 		},
 		Body: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
 			TLVUserInfo: sess.TLVUserInfo(),
@@ -141,11 +145,11 @@ func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *sta
 	}, nil
 }
 
-func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error {
-	if snacPayloadIn.IdleTime == 0 {
+func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *state.Session, bodyIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error {
+	if bodyIn.IdleTime == 0 {
 		sess.SetActive()
 	} else {
-		sess.SetIdle(time.Duration(snacPayloadIn.IdleTime) * time.Second)
+		sess.SetIdle(time.Duration(bodyIn.IdleTime) * time.Second)
 	}
 	return broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager)
 }
@@ -167,12 +171,12 @@ type OServiceServiceForBOS struct {
 	cr *state.ChatRegistry
 }
 
-func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.SNACMessage, error) {
-	if snacPayloadIn.FoodGroup != oscar.Chat {
+func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.SNACMessage, error) {
+	if inBody.FoodGroup != oscar.Chat {
 		return oscar.SNACMessage{}, server.ErrUnsupportedSubGroup
 	}
 
-	roomMeta, ok := snacPayloadIn.GetSlice(0x01)
+	roomMeta, ok := inBody.GetSlice(0x01)
 	if !ok {
 		return oscar.SNACMessage{}, errors.New("missing room info")
 	}
@@ -192,6 +196,7 @@ func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *st
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.OService,
 			SubGroup:  oscar.OServiceServiceResponse,
+			RequestID: inFrame.RequestID,
 		},
 		Body: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
 			TLVRestBlock: oscar.TLVRestBlock{
@@ -268,7 +273,7 @@ func (s OServiceServiceForChat) WriteOServiceHostOnline() oscar.SNACMessage {
 	}
 }
 
-func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, _ oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session, chatID string) error {
+func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, bodyIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session, chatID string) error {
 	room, chatSessMgr, err := s.chatRegistry.Retrieve(chatID)
 	if err != nil {
 		return err

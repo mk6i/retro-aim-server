@@ -74,7 +74,7 @@ func TestChatRouter_RouteChat(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newMockChatHandler(t)
 			svc.EXPECT().
-				ChannelMsgToHostHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.Body).
+				ChannelMsgToHostHandler(mock.Anything, mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 

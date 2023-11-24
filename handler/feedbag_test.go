@@ -20,6 +20,8 @@ func TestQueryHandler(t *testing.T) {
 		feedbagItems []oscar.FeedbagItem
 		// lastModified is the time the buddy list was last changed
 		lastModified time.Time
+		// inputSNAC is the SNAC sent by the sender client
+		inputSNAC oscar.SNACMessage
 		// expectOutput is the SNAC payload sent from the server to the
 		// recipient client
 		expectOutput oscar.SNACMessage
@@ -29,10 +31,16 @@ func TestQueryHandler(t *testing.T) {
 			screenName:   "user_screen_name",
 			feedbagItems: []oscar.FeedbagItem{},
 			lastModified: time.UnixMilli(0),
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagReply,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x13_0x06_FeedbagReply{
 					Items: []oscar.FeedbagItem{},
@@ -51,10 +59,16 @@ func TestQueryHandler(t *testing.T) {
 				},
 			},
 			lastModified: time.UnixMilli(1696472198082),
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagReply,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x13_0x06_FeedbagReply{
 					Version: 0,
@@ -93,7 +107,7 @@ func TestQueryHandler(t *testing.T) {
 			svc := FeedbagService{
 				feedbagManager: fm,
 			}
-			outputSNAC, err := svc.QueryHandler(nil, senderSession)
+			outputSNAC, err := svc.QueryHandler(nil, senderSession, tc.inputSNAC.Frame)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
@@ -111,7 +125,7 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 		// lastModified is the time the buddy list was last changed
 		lastModified time.Time
 		// inputSNAC is the SNAC sent by the sender client
-		inputSNAC oscar.SNAC_0x13_0x05_FeedbagQueryIfModified
+		inputSNAC oscar.SNACMessage
 		// expectOutput is the SNAC payload sent from the server to the
 		// recipient client
 		expectOutput oscar.SNACMessage
@@ -121,13 +135,19 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 			screenName:   "user_screen_name",
 			feedbagItems: []oscar.FeedbagItem{},
 			lastModified: time.UnixMilli(0),
-			inputSNAC: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
-				LastUpdate: uint32(time.UnixMilli(100000).Unix()),
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
+					LastUpdate: uint32(time.UnixMilli(100000).Unix()),
+				},
 			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagReply,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x13_0x06_FeedbagReply{
 					Items: []oscar.FeedbagItem{},
@@ -146,13 +166,19 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 				},
 			},
 			lastModified: time.UnixMilli(200000),
-			inputSNAC: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
-				LastUpdate: uint32(time.UnixMilli(100000).Unix()),
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
+					LastUpdate: uint32(time.UnixMilli(100000).Unix()),
+				},
 			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagReply,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x13_0x06_FeedbagReply{
 					Version: 0,
@@ -180,13 +206,19 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 				},
 			},
 			lastModified: time.UnixMilli(100000),
-			inputSNAC: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
-				LastUpdate: uint32(time.UnixMilli(200000).Unix()),
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
+					LastUpdate: uint32(time.UnixMilli(200000).Unix()),
+				},
 			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagReplyNotModified,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x13_0x05_FeedbagQueryIfModified{
 					LastUpdate: uint32(time.UnixMilli(100000).Unix()),
@@ -217,7 +249,8 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 			svc := FeedbagService{
 				feedbagManager: fm,
 			}
-			outputSNAC, err := svc.QueryIfModifiedHandler(nil, senderSession, tc.inputSNAC)
+			outputSNAC, err := svc.QueryIfModifiedHandler(nil, senderSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(oscar.SNAC_0x13_0x05_FeedbagQueryIfModified))
 			assert.NoError(t, err)
 			//
 			// verify output
@@ -236,7 +269,7 @@ func TestInsertItemHandler(t *testing.T) {
 		// feedbagItems is the list of items in user's buddy list
 		feedbagItems []oscar.FeedbagItem
 		// inputSNAC is the SNAC sent by the sender client
-		inputSNAC oscar.SNAC_0x13_0x08_FeedbagInsertItem
+		inputSNAC oscar.SNACMessage
 		// screenNameLookups is the list of user's online buddies
 		screenNameLookups map[string]struct {
 			sess *state.Session
@@ -253,15 +286,20 @@ func TestInsertItemHandler(t *testing.T) {
 		{
 			name:        "user adds 2 online buddies, expect OK response",
 			userSession: newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
-				Items: []oscar.FeedbagItem{
-					{
-						ClassID: 2,
-						Name:    "buddy_1_online",
-					},
-					{
-						ClassID: 2,
-						Name:    "buddy_2_online",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
+					Items: []oscar.FeedbagItem{
+						{
+							ClassID: 2,
+							Name:    "buddy_1_online",
+						},
+						{
+							ClassID: 2,
+							Name:    "buddy_2_online",
+						},
 					},
 				},
 			},
@@ -283,6 +321,7 @@ func TestInsertItemHandler(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagStatus,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{0x0000, 0x0000},
@@ -331,11 +370,16 @@ func TestInsertItemHandler(t *testing.T) {
 		{
 			name:        "user adds an offline buddy, expect OK response and 0 buddy arrived events",
 			userSession: newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
-				Items: []oscar.FeedbagItem{
-					{
-						ClassID: 2,
-						Name:    "buddy_offline",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
+					Items: []oscar.FeedbagItem{
+						{
+							ClassID: 2,
+							Name:    "buddy_offline",
+						},
 					},
 				},
 			},
@@ -351,6 +395,7 @@ func TestInsertItemHandler(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagStatus,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{0x0000},
@@ -360,11 +405,16 @@ func TestInsertItemHandler(t *testing.T) {
 		{
 			name:        "users adds an invisible buddy, expect OK response and 0 buddy arrived events",
 			userSession: newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
-				Items: []oscar.FeedbagItem{
-					{
-						ClassID: 2,
-						Name:    "invisible_buddy_online",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
+					Items: []oscar.FeedbagItem{
+						{
+							ClassID: 2,
+							Name:    "invisible_buddy_online",
+						},
 					},
 				},
 			},
@@ -380,6 +430,7 @@ func TestInsertItemHandler(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagStatus,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{0x0000},
@@ -390,11 +441,16 @@ func TestInsertItemHandler(t *testing.T) {
 			name: "user blocks buddy currently online, expect OK response, buddy departed event client, 1 buddy " +
 				"departed event sent to buddy",
 			userSession: newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
-				Items: []oscar.FeedbagItem{
-					{
-						ClassID: 3,
-						Name:    "buddy_1",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
+					Items: []oscar.FeedbagItem{
+						{
+							ClassID: 3,
+							Name:    "buddy_1",
+						},
 					},
 				},
 			},
@@ -448,6 +504,7 @@ func TestInsertItemHandler(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagStatus,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{0x0000},
@@ -457,11 +514,16 @@ func TestInsertItemHandler(t *testing.T) {
 		{
 			name:        "user blocks buddy currently offline, expect OK response and a superfluous buddy departed events",
 			userSession: newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
-				Items: []oscar.FeedbagItem{
-					{
-						ClassID: 3,
-						Name:    "buddy_1",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
+					Items: []oscar.FeedbagItem{
+						{
+							ClassID: 3,
+							Name:    "buddy_1",
+						},
 					},
 				},
 			},
@@ -480,6 +542,7 @@ func TestInsertItemHandler(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagStatus,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x13_0x0E_FeedbagStatus{
 					Results: []uint16{0x0000},
@@ -509,11 +572,16 @@ func TestInsertItemHandler(t *testing.T) {
 		{
 			name:        "user tries to block themselves, expect feedback error",
 			userSession: newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
-				Items: []oscar.FeedbagItem{
-					{
-						ClassID: 3,
-						Name:    "user_screen_name",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x13_0x08_FeedbagInsertItem{
+					Items: []oscar.FeedbagItem{
+						{
+							ClassID: 3,
+							Name:    "user_screen_name",
+						},
 					},
 				},
 			},
@@ -521,6 +589,7 @@ func TestInsertItemHandler(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,
 					SubGroup:  oscar.FeedbagErr,
+					RequestID: 1234,
 				},
 				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeNotSupportedByHost,
@@ -536,7 +605,7 @@ func TestInsertItemHandler(t *testing.T) {
 			//
 			fm := newMockFeedbagManager(t)
 			fm.EXPECT().
-				Upsert(tc.userSession.ScreenName(), tc.inputSNAC.Items).
+				Upsert(tc.userSession.ScreenName(), tc.inputSNAC.Body.(oscar.SNAC_0x13_0x08_FeedbagInsertItem).Items).
 				Return(nil).
 				Maybe()
 			fm.EXPECT().
@@ -562,7 +631,8 @@ func TestInsertItemHandler(t *testing.T) {
 				feedbagManager: fm,
 				sessionManager: sm,
 			}
-			output, err := svc.InsertItemHandler(nil, tc.userSession, tc.inputSNAC)
+			output, err := svc.InsertItemHandler(nil, tc.userSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(oscar.SNAC_0x13_0x08_FeedbagInsertItem))
 			assert.NoError(t, err)
 			//
 			// verify response

@@ -25,7 +25,10 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 	//
 	// send input SNAC
 	//
-	inputSNAC := oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+	inFrame := oscar.SNACFrame{
+		RequestID: 1234,
+	}
+	inBody := oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 		Exchange:       1,
 		Cookie:         "create", // actual canned value sent by AIM client
 		InstanceNumber: 2,
@@ -48,7 +51,7 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 			return sm
 		},
 	}
-	outputSNAC, err := svc.CreateRoomHandler(context.Background(), userSess, inputSNAC)
+	outputSNAC, err := svc.CreateRoomHandler(context.Background(), userSess, inFrame, inBody)
 	assert.NoError(t, err)
 
 	//
@@ -73,6 +76,7 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.ChatNav,
 			SubGroup:  oscar.ChatNavNavInfo,
+			RequestID: 1234,
 		},
 		Body: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{

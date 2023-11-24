@@ -341,7 +341,7 @@ const (
 	ICBMParameterQuery     uint16 = 0x0004
 	ICBMParameterReply     uint16 = 0x0005
 	ICBMChannelMsgToHost   uint16 = 0x0006
-	ICBMChannelMsgToclient uint16 = 0x0007
+	ICBMChannelMsgToClient uint16 = 0x0007
 	ICBMEvilRequest        uint16 = 0x0008
 	ICBMEvilReply          uint16 = 0x0009
 	ICBMMissedCalls        uint16 = 0x000A

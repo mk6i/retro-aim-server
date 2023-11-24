@@ -21,11 +21,12 @@ type LocateService struct {
 	profileManager ProfileManager
 }
 
-func (s LocateService) RightsQueryHandler(context.Context) oscar.SNACMessage {
+func (s LocateService) RightsQueryHandler(_ context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Locate,
 			SubGroup:  oscar.LocateRightsReply,
+			RequestID: inFrame.RequestID,
 		},
 		Body: oscar.SNAC_0x02_0x03_LocateRightsReply{
 			TLVRestBlock: oscar.TLVRestBlock{
@@ -41,16 +42,16 @@ func (s LocateService) RightsQueryHandler(context.Context) oscar.SNACMessage {
 	}
 }
 
-func (s LocateService) SetInfoHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x04_LocateSetInfo) error {
+func (s LocateService) SetInfoHandler(ctx context.Context, sess *state.Session, inBody oscar.SNAC_0x02_0x04_LocateSetInfo) error {
 	// update profile
-	if profile, hasProfile := snacPayloadIn.GetString(oscar.LocateTLVTagsInfoSigData); hasProfile {
+	if profile, hasProfile := inBody.GetString(oscar.LocateTLVTagsInfoSigData); hasProfile {
 		if err := s.profileManager.UpsertProfile(sess.ScreenName(), profile); err != nil {
 			return err
 		}
 	}
 
 	// broadcast away message change to buddies
-	if awayMsg, hasAwayMsg := snacPayloadIn.GetString(oscar.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
+	if awayMsg, hasAwayMsg := inBody.GetString(oscar.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
 		sess.SetAwayMessage(awayMsg)
 		if err := broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
 			return err
@@ -59,8 +60,8 @@ func (s LocateService) SetInfoHandler(ctx context.Context, sess *state.Session, 
 	return nil
 }
 
-func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.SNACMessage, error) {
-	blocked, err := s.feedbagManager.Blocked(sess.ScreenName(), snacPayloadIn.ScreenName)
+func (s LocateService) UserInfoQuery2Handler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.SNACMessage, error) {
+	blocked, err := s.feedbagManager.Blocked(sess.ScreenName(), inBody.ScreenName)
 	switch {
 	case err != nil:
 		return oscar.SNACMessage{}, err
@@ -69,6 +70,7 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Sess
 			Frame: oscar.SNACFrame{
 				FoodGroup: oscar.Locate,
 				SubGroup:  oscar.LocateErr,
+				RequestID: inFrame.RequestID,
 			},
 			Body: oscar.SNACError{
 				Code: oscar.ErrorCodeNotLoggedOn,
@@ -76,12 +78,13 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Sess
 		}, nil
 	}
 
-	buddySess := s.sessionManager.RetrieveByScreenName(snacPayloadIn.ScreenName)
+	buddySess := s.sessionManager.RetrieveByScreenName(inBody.ScreenName)
 	if buddySess == nil {
 		return oscar.SNACMessage{
 			Frame: oscar.SNACFrame{
 				FoodGroup: oscar.Locate,
 				SubGroup:  oscar.LocateErr,
+				RequestID: inFrame.RequestID,
 			},
 			Body: oscar.SNACError{
 				Code: oscar.ErrorCodeNotLoggedOn,
@@ -91,8 +94,8 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Sess
 
 	var list oscar.TLVList
 
-	if snacPayloadIn.RequestProfile() {
-		profile, err := s.profileManager.RetrieveProfile(snacPayloadIn.ScreenName)
+	if inBody.RequestProfile() {
+		profile, err := s.profileManager.RetrieveProfile(inBody.ScreenName)
 		if err != nil {
 			return oscar.SNACMessage{}, err
 		}
@@ -102,7 +105,7 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Sess
 		})
 	}
 
-	if snacPayloadIn.RequestAwayMessage() {
+	if inBody.RequestAwayMessage() {
 		list.AddTLVList([]oscar.TLV{
 			oscar.NewTLV(oscar.LocateTLVTagsInfoUnavailableMime, `text/aolrtf; charset="us-ascii"`),
 			oscar.NewTLV(oscar.LocateTLVTagsInfoUnavailableData, buddySess.AwayMessage()),
@@ -113,6 +116,7 @@ func (s LocateService) UserInfoQuery2Handler(_ context.Context, sess *state.Sess
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Locate,
 			SubGroup:  oscar.LocateUserInfoReply,
+			RequestID: inFrame.RequestID,
 		},
 		Body: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
 			TLVUserInfo: buddySess.TLVUserInfo(),
@@ -135,11 +139,12 @@ func (s LocateService) SetDirInfoHandler(_ context.Context) oscar.SNACMessage {
 	}
 }
 
-func (s LocateService) SetKeywordInfoHandler(_ context.Context) oscar.SNACMessage {
+func (s LocateService) SetKeywordInfoHandler(_ context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Locate,
 			SubGroup:  oscar.LocateSetKeywordReply,
+			RequestID: inFrame.RequestID,
 		},
 		Body: oscar.SNAC_0x02_0x10_LocateSetKeywordReply{
 			Unknown: 1,

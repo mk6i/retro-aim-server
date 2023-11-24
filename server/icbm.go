@@ -10,10 +10,10 @@ import (
 )
 
 type ICBMHandler interface {
-	ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.SNACMessage, error)
-	ClientEventHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x14_ICBMClientEvent) error
-	EvilRequestHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.SNACMessage, error)
-	ParameterQueryHandler(context.Context) oscar.SNACMessage
+	ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.SNACMessage, error)
+	ClientEventHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x04_0x14_ICBMClientEvent) error
+	EvilRequestHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.SNACMessage, error)
+	ParameterQueryHandler(ctx context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage
 }
 
 func NewICBMRouter(logger *slog.Logger, handler ICBMHandler) ICBMRouter {
@@ -30,53 +30,53 @@ type ICBMRouter struct {
 	RouteLogger
 }
 
-func (rt *ICBMRouter) RouteICBM(ctx context.Context, sess *state.Session, SNACFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	switch SNACFrame.SubGroup {
+func (rt *ICBMRouter) RouteICBM(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	switch inFrame.SubGroup {
 	case oscar.ICBMAddParameters:
-		inSNAC := oscar.SNAC_0x04_0x02_ICBMAddParameters{}
-		rt.logRequest(ctx, SNACFrame, inSNAC)
-		return oscar.Unmarshal(&inSNAC, r)
+		inBody := oscar.SNAC_0x04_0x02_ICBMAddParameters{}
+		rt.logRequest(ctx, inFrame, inBody)
+		return oscar.Unmarshal(&inBody, r)
 	case oscar.ICBMParameterQuery:
-		outSNAC := rt.ParameterQueryHandler(ctx)
-		rt.logRequestAndResponse(ctx, SNACFrame, outSNAC, outSNAC.Frame, outSNAC.Body)
-		return sendSNAC(SNACFrame.RequestID, outSNAC.Frame, outSNAC.Body, sequence, w)
+		outSNAC := rt.ParameterQueryHandler(ctx, inFrame)
+		rt.logRequestAndResponse(ctx, inFrame, outSNAC, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.ICBMChannelMsgToHost:
-		inSNAC := oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{}
-		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
+		inBody := oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{}
+		if err := oscar.Unmarshal(&inBody, r); err != nil {
 			return err
 		}
-		outSNAC, err := rt.ChannelMsgToHostHandler(ctx, sess, inSNAC)
+		outSNAC, err := rt.ChannelMsgToHostHandler(ctx, sess, inFrame, inBody)
 		if err != nil {
 			return err
 		}
-		rt.Logger.InfoContext(ctx, "user sent an IM", slog.String("recipient", inSNAC.ScreenName))
+		rt.Logger.InfoContext(ctx, "user sent an IM", slog.String("recipient", inBody.ScreenName))
 		if outSNAC == nil {
 			return nil
 		}
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.Frame, outSNAC.Body)
-		return sendSNAC(SNACFrame.RequestID, outSNAC.Frame, outSNAC.Body, sequence, w)
+		rt.logRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.ICBMEvilRequest:
-		inSNAC := oscar.SNAC_0x04_0x08_ICBMEvilRequest{}
-		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
+		inBody := oscar.SNAC_0x04_0x08_ICBMEvilRequest{}
+		if err := oscar.Unmarshal(&inBody, r); err != nil {
 			return err
 		}
-		outSNAC, err := rt.EvilRequestHandler(ctx, sess, inSNAC)
+		outSNAC, err := rt.EvilRequestHandler(ctx, sess, inFrame, inBody)
 		if err != nil {
 			return err
 		}
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.Frame, outSNAC.Body)
-		return sendSNAC(SNACFrame.RequestID, outSNAC.Frame, outSNAC.Body, sequence, w)
+		rt.logRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.ICBMClientErr:
-		inSNAC := oscar.SNAC_0x04_0x0B_ICBMClientErr{}
-		rt.logRequest(ctx, SNACFrame, inSNAC)
-		return oscar.Unmarshal(&inSNAC, r)
+		inBody := oscar.SNAC_0x04_0x0B_ICBMClientErr{}
+		rt.logRequest(ctx, inFrame, inBody)
+		return oscar.Unmarshal(&inBody, r)
 	case oscar.ICBMClientEvent:
-		inSNAC := oscar.SNAC_0x04_0x14_ICBMClientEvent{}
-		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
+		inBody := oscar.SNAC_0x04_0x14_ICBMClientEvent{}
+		if err := oscar.Unmarshal(&inBody, r); err != nil {
 			return err
 		}
-		rt.logRequest(ctx, SNACFrame, inSNAC)
-		return rt.ClientEventHandler(ctx, sess, inSNAC)
+		rt.logRequest(ctx, inFrame, inBody)
+		return rt.ClientEventHandler(ctx, sess, inFrame, inBody)
 	default:
 		return ErrUnsupportedSubGroup
 	}

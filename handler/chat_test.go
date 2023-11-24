@@ -17,7 +17,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 		// userSession is the session of the user sending the chat message
 		userSession *state.Session
 		// inputSNAC is the SNAC sent by the sender client
-		inputSNAC oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost
+		inputSNAC oscar.SNACMessage
 		// expectSNACToParticipants is the message the server broadcast to chat
 		// room participants (except the sender)
 		expectSNACToParticipants oscar.SNACMessage
@@ -26,18 +26,23 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 		{
 			name:        "send chat room message, expect acknowledgement to sender client",
 			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime),
-			inputSNAC: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
-				Cookie:  1234,
-				Channel: 14,
-				TLVRestBlock: oscar.TLVRestBlock{
-					TLVList: oscar.TLVList{
-						{
-							TType: oscar.ChatTLVPublicWhisperFlag,
-							Val:   []byte{},
-						},
-						{
-							TType: oscar.ChatTLVEnableReflectionFlag,
-							Val:   []byte{},
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+					Cookie:  1234,
+					Channel: 14,
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: oscar.ChatTLVPublicWhisperFlag,
+								Val:   []byte{},
+							},
+							{
+								TType: oscar.ChatTLVEnableReflectionFlag,
+								Val:   []byte{},
+							},
 						},
 					},
 				},
@@ -64,6 +69,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Chat,
 					SubGroup:  oscar.ChatChannelMsgToClient,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
 					Cookie:  1234,
@@ -81,14 +87,19 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 		{
 			name:        "send chat room message, don't expect acknowledgement to sender client",
 			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime),
-			inputSNAC: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
-				Cookie:  1234,
-				Channel: 14,
-				TLVRestBlock: oscar.TLVRestBlock{
-					TLVList: oscar.TLVList{
-						{
-							TType: oscar.ChatTLVPublicWhisperFlag,
-							Val:   []byte{},
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+					Cookie:  1234,
+					Channel: 14,
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: oscar.ChatTLVPublicWhisperFlag,
+								Val:   []byte{},
+							},
 						},
 					},
 				},
@@ -127,7 +138,8 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 			}
 			svc.chatRegistry.Register(state.ChatRoom{Cookie: chatID}, chatSessMgr)
 
-			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, chatID, tc.inputSNAC)
+			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, chatID,
+				tc.inputSNAC.Frame, tc.inputSNAC.Body.(oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost))
 			assert.NoError(t, err)
 
 			if tc.expectOutput.Frame == (oscar.SNACFrame{}) {

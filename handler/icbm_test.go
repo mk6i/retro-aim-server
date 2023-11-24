@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
+func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -21,7 +21,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 		senderSession    *state.Session
 		recipientSession *state.Session
 		// inputSNAC is the SNAC sent by the sender client
-		inputSNAC oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost
+		inputSNAC oscar.SNACMessage
 		// expectSNACToClient is the SNAC sent from the server to the
 		// recipient client
 		expectSNACToClient oscar.SNACMessage
@@ -34,13 +34,18 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			blockedState:     state.BlockedNo,
 			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
 			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
-			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
-				ScreenName: "recipient-screen-name",
-				TLVRestBlock: oscar.TLVRestBlock{
-					TLVList: oscar.TLVList{
-						{
-							TType: oscar.ICBMTLVTagRequestHostAck,
-							Val:   []byte{},
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ScreenName: "recipient-screen-name",
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: oscar.ICBMTLVTagRequestHostAck,
+								Val:   []byte{},
+							},
 						},
 					},
 				},
@@ -48,7 +53,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			expectSNACToClient: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
-					SubGroup:  oscar.ICBMChannelMsgToclient,
+					SubGroup:  oscar.ICBMChannelMsgToClient,
 				},
 				Body: oscar.SNAC_0x04_0x07_ICBMChannelMsgToClient{
 					TLVUserInfo: oscar.TLVUserInfo{
@@ -73,6 +78,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMHostAck,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x04_0x0C_ICBMHostAck{
 					ScreenName: "recipient-screen-name",
@@ -84,16 +90,21 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			blockedState:     state.BlockedNo,
 			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
 			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
-			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
-				ScreenName: "recipient-screen-name",
-				TLVRestBlock: oscar.TLVRestBlock{
-					TLVList: oscar.TLVList{},
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ScreenName: "recipient-screen-name",
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{},
+					},
 				},
 			},
 			expectSNACToClient: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
-					SubGroup:  oscar.ICBMChannelMsgToclient,
+					SubGroup:  oscar.ICBMChannelMsgToClient,
 				},
 				Body: oscar.SNAC_0x04_0x07_ICBMChannelMsgToClient{
 					TLVUserInfo: oscar.TLVUserInfo{
@@ -117,13 +128,18 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			blockedState:     state.BlockedA,
 			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
 			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
-			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
-				ScreenName: "recipient-screen-name",
-				TLVRestBlock: oscar.TLVRestBlock{
-					TLVList: oscar.TLVList{
-						{
-							TType: oscar.ICBMTLVTagRequestHostAck,
-							Val:   []byte{},
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ScreenName: "recipient-screen-name",
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: oscar.ICBMTLVTagRequestHostAck,
+								Val:   []byte{},
+							},
 						},
 					},
 				},
@@ -132,6 +148,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
+					RequestID: 1234,
 				},
 				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeInLocalPermitDeny,
@@ -143,13 +160,18 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			blockedState:     state.BlockedB,
 			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
 			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
-			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
-				ScreenName: "recipient-screen-name",
-				TLVRestBlock: oscar.TLVRestBlock{
-					TLVList: oscar.TLVList{
-						{
-							TType: oscar.ICBMTLVTagRequestHostAck,
-							Val:   []byte{},
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ScreenName: "recipient-screen-name",
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: oscar.ICBMTLVTagRequestHostAck,
+								Val:   []byte{},
+							},
 						},
 					},
 				},
@@ -158,6 +180,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
+					RequestID: 1234,
 				},
 				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeNotLoggedOn,
@@ -169,13 +192,18 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			blockedState:     state.BlockedNo,
 			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
 			recipientSession: nil,
-			inputSNAC: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
-				ScreenName: "recipient-screen-name",
-				TLVRestBlock: oscar.TLVRestBlock{
-					TLVList: oscar.TLVList{
-						{
-							TType: oscar.ICBMTLVTagRequestHostAck,
-							Val:   []byte{},
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ScreenName: "recipient-screen-name",
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								TType: oscar.ICBMTLVTagRequestHostAck,
+								Val:   []byte{},
+							},
 						},
 					},
 				},
@@ -184,6 +212,7 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
+					RequestID: 1234,
 				},
 				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeNotLoggedOn,
@@ -199,12 +228,13 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 			//
 			fm := newMockFeedbagManager(t)
 			fm.EXPECT().
-				Blocked(tc.senderSession.ScreenName(), tc.inputSNAC.ScreenName).
+				Blocked(tc.senderSession.ScreenName(),
+					tc.inputSNAC.Body.(oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost).ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
 			sm := newMockSessionManager(t)
 			sm.EXPECT().
-				RetrieveByScreenName(tc.inputSNAC.ScreenName).
+				RetrieveByScreenName(tc.inputSNAC.Body.(oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost).ScreenName).
 				Return(tc.recipientSession).
 				Maybe()
 			if tc.recipientSession != nil {
@@ -219,7 +249,8 @@ func TestSendAndReceiveChannelMsgTohost(t *testing.T) {
 				sessionManager: sm,
 				feedbagManager: fm,
 			}
-			outputSNAC, err := svc.ChannelMsgToHostHandler(nil, tc.senderSession, tc.inputSNAC)
+			outputSNAC, err := svc.ChannelMsgToHostHandler(nil, tc.senderSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost))
 			assert.NoError(t, err)
 			//
 			// verify output
@@ -238,7 +269,7 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 		// senderScreenName is the screen name of the user sending the event
 		senderScreenName string
 		// inputSNAC is the SNAC sent by the sender client
-		inputSNAC oscar.SNAC_0x04_0x14_ICBMClientEvent
+		inputSNAC oscar.SNACMessage
 		// expectSNACToClient is the SNAC sent from the server to the
 		// recipient client
 		expectSNACToClient oscar.SNACMessage
@@ -247,16 +278,22 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			name:             "transmit message from sender to recipient",
 			blockedState:     state.BlockedNo,
 			senderScreenName: "sender-screen-name",
-			inputSNAC: oscar.SNAC_0x04_0x14_ICBMClientEvent{
-				Cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
-				ChannelID:  42,
-				ScreenName: "recipient-screen-name",
-				Event:      12,
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x04_0x14_ICBMClientEvent{
+					Cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+					ChannelID:  42,
+					ScreenName: "recipient-screen-name",
+					Event:      12,
+				},
 			},
 			expectSNACToClient: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMClientEvent,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x04_0x14_ICBMClientEvent{
 					Cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
@@ -270,8 +307,13 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			name:             "don't transmit message from sender to recipient because sender has blocked recipient",
 			blockedState:     state.BlockedA,
 			senderScreenName: "sender-screen-name",
-			inputSNAC: oscar.SNAC_0x04_0x14_ICBMClientEvent{
-				ScreenName: "recipient-screen-name",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x04_0x14_ICBMClientEvent{
+					ScreenName: "recipient-screen-name",
+				},
 			},
 		},
 	}
@@ -283,13 +325,14 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			//
 			fm := newMockFeedbagManager(t)
 			fm.EXPECT().
-				Blocked(tc.senderScreenName, tc.inputSNAC.ScreenName).
+				Blocked(tc.senderScreenName, tc.inputSNAC.Body.(oscar.SNAC_0x04_0x14_ICBMClientEvent).ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
 			sm := newMockSessionManager(t)
 			if tc.blockedState == state.BlockedNo {
 				sm.EXPECT().
-					SendToScreenName(mock.Anything, tc.inputSNAC.ScreenName, tc.expectSNACToClient)
+					SendToScreenName(mock.Anything, tc.inputSNAC.Body.(oscar.SNAC_0x04_0x14_ICBMClientEvent).ScreenName,
+						tc.expectSNACToClient)
 			}
 			//
 			// send input SNAC
@@ -299,7 +342,8 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 				sessionManager: sm,
 				feedbagManager: fm,
 			}
-			assert.NoError(t, svc.ClientEventHandler(nil, senderSession, tc.inputSNAC))
+			assert.NoError(t, svc.ClientEventHandler(nil, senderSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(oscar.SNAC_0x04_0x14_ICBMClientEvent)))
 		})
 	}
 }
@@ -322,7 +366,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 		recipientBuddies []string
 		broadcastMessage oscar.SNACMessage
 		// inputSNAC is the SNAC sent by the sender client
-		inputSNAC oscar.SNAC_0x04_0x08_ICBMEvilRequest
+		inputSNAC oscar.SNACMessage
 		// expectSNACToClient is the SNAC sent from the server to the
 		// recipient client
 		expectSNACToClient oscar.SNACMessage
@@ -350,9 +394,14 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 				},
 			},
 			recipientBuddies: []string{"buddy1", "buddy2"},
-			inputSNAC: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
-				SendAs:     1, // make it anonymous
-				ScreenName: "recipient-screen-name",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     1, // make it anonymous
+					ScreenName: "recipient-screen-name",
+				},
 			},
 			expectSNACToClient: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
@@ -367,6 +416,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMEvilReply,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x04_0x09_ICBMEvilReply{
 					EvilDeltaApplied: 30,
@@ -395,9 +445,14 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 					},
 				},
 			},
-			inputSNAC: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
-				SendAs:     0, // make it identified
-				ScreenName: "recipient-screen-name",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     0, // make it identified
+					ScreenName: "recipient-screen-name",
+				},
 			},
 			expectSNACToClient: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
@@ -416,6 +471,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMEvilReply,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x04_0x09_ICBMEvilReply{
 					EvilDeltaApplied: 100,
@@ -429,14 +485,20 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientScreenName: "recipient-screen-name",
 			recipientBuddies:    []string{"buddy1", "buddy2"},
-			inputSNAC: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
-				SendAs:     0, // make it identified
-				ScreenName: "recipient-screen-name",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     0, // make it identified
+					ScreenName: "recipient-screen-name",
+				},
 			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
+					RequestID: 1234,
 				},
 				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeNotLoggedOn,
@@ -449,14 +511,20 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientScreenName: "recipient-screen-name",
 			recipientBuddies:    []string{"buddy1", "buddy2"},
-			inputSNAC: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
-				SendAs:     0, // make it identified
-				ScreenName: "recipient-screen-name",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     0, // make it identified
+					ScreenName: "recipient-screen-name",
+				},
 			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
+					RequestID: 1234,
 				},
 				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeNotLoggedOn,
@@ -467,14 +535,20 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			name:                "don't let users block themselves",
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientScreenName: "sender-screen-name",
-			inputSNAC: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
-				SendAs:     0, // make it identified
-				ScreenName: "sender-screen-name",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     0, // make it identified
+					ScreenName: "sender-screen-name",
+				},
 			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.ICBM,
 					SubGroup:  oscar.ICBMErr,
+					RequestID: 1234,
 				},
 				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeNotSupportedByHost,
@@ -517,7 +591,8 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 				sessionManager: sm,
 				feedbagManager: fm,
 			}
-			outputSNAC, err := svc.EvilRequestHandler(nil, senderSession, tc.inputSNAC)
+			outputSNAC, err := svc.EvilRequestHandler(nil, senderSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(oscar.SNAC_0x04_0x08_ICBMEvilRequest))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})

@@ -28,7 +28,9 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		// userSession is the session of the user requesting the user info
 		userSession *state.Session
 		// inputSNAC is the SNAC sent by the sender client
-		inputSNAC    oscar.SNAC_0x02_0x15_LocateUserInfoQuery2
+		inputSNAC oscar.SNACMessage
+		// expectOutput is the SNAC sent from the server to the
+		// recipient client
 		expectOutput oscar.SNACMessage
 	}{
 		{
@@ -45,14 +47,20 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 				},
 			},
 			userSession: newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
-				Type2:      0,
-				ScreenName: "requested-user",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					Type2:      0,
+					ScreenName: "requested-user",
+				},
 			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateUserInfoReply,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
 					TLVUserInfo: newTestSession("requested-user",
@@ -85,15 +93,21 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 				},
 			},
 			userSession: newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
-				// 2048 is a dummy to make sure bitmask check works
-				Type2:      oscar.LocateType2Sig | 2048,
-				ScreenName: "requested-user",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					// 2048 is a dummy to make sure bitmask check works
+					Type2:      oscar.LocateType2Sig | 2048,
+					ScreenName: "requested-user",
+				},
 			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateUserInfoReply,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
 					TLVUserInfo: newTestSession("requested-user",
@@ -131,15 +145,21 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 				},
 			},
 			userSession: newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
-				// 2048 is a dummy to make sure bitmask check works
-				Type2:      oscar.LocateType2Sig | 2048,
-				ScreenName: "requested-user",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					// 2048 is a dummy to make sure bitmask check works
+					Type2:      oscar.LocateType2Sig | 2048,
+					ScreenName: "requested-user",
+				},
 			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateUserInfoReply,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
 					TLVUserInfo: newTestSession("requested-user",
@@ -169,15 +189,21 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 				},
 			},
 			userSession: newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
-				// 2048 is a dummy to make sure bitmask check works
-				Type2:      oscar.LocateType2Unavailable | 2048,
-				ScreenName: "requested-user",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					// 2048 is a dummy to make sure bitmask check works
+					Type2:      oscar.LocateType2Unavailable | 2048,
+					ScreenName: "requested-user",
+				},
 			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateUserInfoReply,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x02_0x06_LocateUserInfoReply{
 					TLVUserInfo: newTestSession("requested-user",
@@ -197,13 +223,19 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 			name:         "request user info of user who blocked requester, expect not logged in error",
 			blockedState: state.BlockedB,
 			userSession:  newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
-				ScreenName: "requested-user",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					ScreenName: "requested-user",
+				},
 			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateErr,
+					RequestID: 1234,
 				},
 				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeNotLoggedOn,
@@ -222,13 +254,19 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 				},
 			},
 			userSession: newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
-				ScreenName: "non_existent_requested_user",
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					ScreenName: "non_existent_requested_user",
+				},
 			},
 			expectOutput: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Locate,
 					SubGroup:  oscar.LocateErr,
+					RequestID: 1234,
 				},
 				Body: oscar.SNACError{
 					Code: oscar.ErrorCodeNotLoggedOn,
@@ -241,7 +279,8 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			fm := newMockFeedbagManager(t)
 			fm.EXPECT().
-				Blocked(tc.userSession.ScreenName(), tc.inputSNAC.ScreenName).
+				Blocked(tc.userSession.ScreenName(),
+					tc.inputSNAC.Body.(oscar.SNAC_0x02_0x15_LocateUserInfoQuery2).ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
 			sm := newMockSessionManager(t)
@@ -258,13 +297,13 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 					Return(val.payload, val.err).
 					Maybe()
 			}
-
 			svc := LocateService{
 				sessionManager: sm,
 				feedbagManager: fm,
 				profileManager: pm,
 			}
-			outputSNAC, err := svc.UserInfoQuery2Handler(context.Background(), tc.userSession, tc.inputSNAC)
+			outputSNAC, err := svc.UserInfoQuery2Handler(context.Background(), tc.userSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(oscar.SNAC_0x02_0x15_LocateUserInfoQuery2))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})

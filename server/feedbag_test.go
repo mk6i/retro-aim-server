@@ -241,31 +241,31 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newMockFeedbagHandler(t)
 			svc.EXPECT().
-				DeleteItemHandler(mock.Anything, mock.Anything, tc.input.Body).
+				DeleteItemHandler(mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				QueryHandler(mock.Anything, mock.Anything).
+				QueryHandler(mock.Anything, mock.Anything, tc.input.Frame).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				QueryIfModifiedHandler(mock.Anything, mock.Anything, tc.input.Body).
+				QueryIfModifiedHandler(mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				RightsQueryHandler(mock.Anything).
+				RightsQueryHandler(mock.Anything, tc.input.Frame).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				InsertItemHandler(mock.Anything, mock.Anything, tc.input.Body).
+				InsertItemHandler(mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				UpdateItemHandler(mock.Anything, mock.Anything, tc.input.Body).
+				UpdateItemHandler(mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				StartClusterHandler(mock.Anything, tc.input.Body).
+				StartClusterHandler(mock.Anything, tc.input.Frame, tc.input.Body).
 				Maybe()
 
 			router := FeedbagRouter{

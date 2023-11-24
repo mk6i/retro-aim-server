@@ -219,19 +219,19 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newMockOServiceHandler(t)
 			svc.EXPECT().
-				RateParamsQueryHandler(mock.Anything).
+				RateParamsQueryHandler(mock.Anything, tc.input.Frame).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				UserInfoQueryHandler(mock.Anything, mock.Anything).
+				UserInfoQueryHandler(mock.Anything, mock.Anything, tc.input.Frame).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				ClientVersionsHandler(mock.Anything, tc.input.Body).
+				ClientVersionsHandler(mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				SetUserInfoFieldsHandler(mock.Anything, mock.Anything, tc.input.Body).
+				SetUserInfoFieldsHandler(mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
@@ -244,7 +244,7 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 
 			svcBOS := newMockOServiceBOSHandler(t)
 			svcBOS.EXPECT().
-				ServiceRequestHandler(mock.Anything, mock.Anything, tc.input.Body).
+				ServiceRequestHandler(mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svcBOS.EXPECT().
@@ -509,19 +509,19 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newMockOServiceHandler(t)
 			svc.EXPECT().
-				RateParamsQueryHandler(mock.Anything).
+				RateParamsQueryHandler(mock.Anything, tc.input.Frame).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				UserInfoQueryHandler(mock.Anything, mock.Anything).
+				UserInfoQueryHandler(mock.Anything, mock.Anything, tc.input.Frame).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				ClientVersionsHandler(mock.Anything, tc.input.Body).
+				ClientVersionsHandler(mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				SetUserInfoFieldsHandler(mock.Anything, mock.Anything, tc.input.Body).
+				SetUserInfoFieldsHandler(mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().

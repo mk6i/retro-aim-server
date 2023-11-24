@@ -113,15 +113,15 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newMockChatNavHandler(t)
 			svc.EXPECT().
-				RequestChatRightsHandler(mock.Anything).
+				RequestChatRightsHandler(mock.Anything, tc.input.Frame).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				RequestRoomInfoHandler(mock.Anything, tc.input.Body).
+				RequestRoomInfoHandler(mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				CreateRoomHandler(mock.Anything, mock.Anything, tc.input.Body).
+				CreateRoomHandler(mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 

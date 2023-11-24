@@ -187,7 +187,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newMockLocateHandler(t)
 			svc.EXPECT().
-				RightsQueryHandler(mock.Anything).
+				RightsQueryHandler(mock.Anything, tc.input.Frame).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
@@ -199,11 +199,11 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 				Return(tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				SetKeywordInfoHandler(mock.Anything).
+				SetKeywordInfoHandler(mock.Anything, tc.input.Frame).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				UserInfoQuery2Handler(mock.Anything, mock.Anything, tc.input.Body).
+				UserInfoQuery2Handler(mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 

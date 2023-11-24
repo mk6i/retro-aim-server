@@ -115,7 +115,7 @@ var subGroupStr = map[uint16]map[uint16]string{
 		ICBMParameterQuery:     "ICBMParameterQuery",
 		ICBMParameterReply:     "ICBMParameterReply",
 		ICBMChannelMsgToHost:   "ICBMChannelMsgToHost",
-		ICBMChannelMsgToclient: "ICBMChannelMsgToclient",
+		ICBMChannelMsgToClient: "ICBMChannelMsgToClient",
 		ICBMEvilRequest:        "ICBMEvilRequest",
 		ICBMEvilReply:          "ICBMEvilReply",
 		ICBMMissedCalls:        "ICBMMissedCalls",

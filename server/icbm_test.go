@@ -153,20 +153,20 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newMockICBMHandler(t)
 			svc.EXPECT().
-				ChannelMsgToHostHandler(mock.Anything, mock.Anything, tc.input.Body).
+				ChannelMsgToHostHandler(mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 			svc.EXPECT().
-				ClientEventHandler(mock.Anything, mock.Anything, tc.input.Body).
+				ClientEventHandler(mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 				Return(tc.handlerErr).
 				Maybe()
 			if tc.output != nil {
 				svc.EXPECT().
-					EvilRequestHandler(mock.Anything, mock.Anything, tc.input.Body).
+					EvilRequestHandler(mock.Anything, mock.Anything, tc.input.Frame, tc.input.Body).
 					Return(*tc.output, tc.handlerErr).
 					Maybe()
 				svc.EXPECT().
-					ParameterQueryHandler(mock.Anything).
+					ParameterQueryHandler(mock.Anything, tc.input.Frame).
 					Return(*tc.output).
 					Maybe()
 			}

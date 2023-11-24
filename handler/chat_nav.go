@@ -34,11 +34,12 @@ type ChatNavService struct {
 	newChatSessMgr func() ChatSessionManager
 }
 
-func (s ChatNavService) RequestChatRightsHandler(context.Context) oscar.SNACMessage {
+func (s ChatNavService) RequestChatRightsHandler(_ context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.ChatNav,
 			SubGroup:  oscar.ChatNavNavInfo,
+			RequestID: inFrame.RequestID,
 		},
 		Body: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
@@ -65,16 +66,16 @@ func (s ChatNavService) RequestChatRightsHandler(context.Context) oscar.SNACMess
 	}
 }
 
-func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *state.Session, snacPayloadIn oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.SNACMessage, error) {
-	name, hasName := snacPayloadIn.GetString(oscar.ChatTLVRoomName)
+func (s ChatNavService) CreateRoomHandler(_ context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.SNACMessage, error) {
+	name, hasName := inBody.GetString(oscar.ChatTLVRoomName)
 	if !hasName {
 		return oscar.SNACMessage{}, errors.New("unable to find chat name")
 	}
 
 	room := s.newChatRoom()
-	room.DetailLevel = snacPayloadIn.DetailLevel
-	room.Exchange = snacPayloadIn.Exchange
-	room.InstanceNumber = snacPayloadIn.InstanceNumber
+	room.DetailLevel = inBody.DetailLevel
+	room.Exchange = inBody.Exchange
+	room.InstanceNumber = inBody.InstanceNumber
 	room.Name = name
 
 	chatSessMgr := s.newChatSessMgr()
@@ -88,15 +89,16 @@ func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *state.Sessi
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.ChatNav,
 			SubGroup:  oscar.ChatNavNavInfo,
+			RequestID: inFrame.RequestID,
 		},
 		Body: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
 					oscar.NewTLV(oscar.ChatNavTLVRoomInfo, oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-						Exchange:       snacPayloadIn.Exchange,
+						Exchange:       inBody.Exchange,
 						Cookie:         room.Cookie,
-						InstanceNumber: snacPayloadIn.InstanceNumber,
-						DetailLevel:    snacPayloadIn.DetailLevel,
+						InstanceNumber: inBody.InstanceNumber,
+						DetailLevel:    inBody.DetailLevel,
 						TLVBlock: oscar.TLVBlock{
 							TLVList: room.TLVList(),
 						},
@@ -107,8 +109,8 @@ func (s ChatNavService) CreateRoomHandler(ctx context.Context, sess *state.Sessi
 	}, nil
 }
 
-func (s ChatNavService) RequestRoomInfoHandler(_ context.Context, snacPayloadIn oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (oscar.SNACMessage, error) {
-	room, _, err := s.chatRegistry.Retrieve(string(snacPayloadIn.Cookie))
+func (s ChatNavService) RequestRoomInfoHandler(_ context.Context, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (oscar.SNACMessage, error) {
+	room, _, err := s.chatRegistry.Retrieve(string(inBody.Cookie))
 	if err != nil {
 		return oscar.SNACMessage{}, err
 	}
@@ -117,6 +119,7 @@ func (s ChatNavService) RequestRoomInfoHandler(_ context.Context, snacPayloadIn 
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.ChatNav,
 			SubGroup:  oscar.ChatNavNavInfo,
+			RequestID: inFrame.RequestID,
 		},
 		Body: oscar.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: oscar.TLVRestBlock{

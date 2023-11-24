@@ -17,19 +17,19 @@ type ChatService struct {
 	chatRegistry *state.ChatRegistry
 }
 
-func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, chatID string, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.SNACMessage, error) {
-	snacFrameOut := oscar.SNACFrame{
+func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, chatID string, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.SNACMessage, error) {
+	frameOut := oscar.SNACFrame{
 		FoodGroup: oscar.Chat,
 		SubGroup:  oscar.ChatChannelMsgToClient,
 	}
-	snacPayloadOut := oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
-		Cookie:  snacPayloadIn.Cookie,
-		Channel: snacPayloadIn.Channel,
+	bodyOut := oscar.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+		Cookie:  inBody.Cookie,
+		Channel: inBody.Channel,
 		TLVRestBlock: oscar.TLVRestBlock{
-			TLVList: snacPayloadIn.TLVList,
+			TLVList: inBody.TLVList,
 		},
 	}
-	snacPayloadOut.AddTLV(
+	bodyOut.AddTLV(
 		oscar.NewTLV(oscar.ChatTLVSenderInformation, oscar.TLVUserInfo{
 			ScreenName:   sess.ScreenName(),
 			WarningLevel: sess.Warning(),
@@ -46,17 +46,18 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 
 	// send message to all the participants except sender
 	chatSessMgr.(ChatSessionManager).BroadcastExcept(ctx, sess, oscar.SNACMessage{
-		Frame: snacFrameOut,
-		Body:  snacPayloadOut,
+		Frame: frameOut,
+		Body:  bodyOut,
 	})
 
 	var ret *oscar.SNACMessage
-	if _, ackMsg := snacPayloadIn.GetTLV(oscar.ChatTLVEnableReflectionFlag); ackMsg {
+	if _, ackMsg := inBody.GetTLV(oscar.ChatTLVEnableReflectionFlag); ackMsg {
 		// reflect the message back to the sender
 		ret = &oscar.SNACMessage{
-			Frame: snacFrameOut,
-			Body:  snacPayloadOut,
+			Frame: frameOut,
+			Body:  bodyOut,
 		}
+		ret.Frame.RequestID = inFrame.RequestID
 	}
 
 	return ret, nil

@@ -10,7 +10,7 @@ import (
 )
 
 type ChatHandler interface {
-	ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, chatID string, snacPayloadIn oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.SNACMessage, error)
+	ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, chatID string, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.SNACMessage, error)
 }
 
 func NewChatRouter(logger *slog.Logger, chatHandler ChatHandler) ChatRouter {
@@ -27,14 +27,14 @@ type ChatRouter struct {
 	RouteLogger
 }
 
-func (rt *ChatRouter) RouteChat(ctx context.Context, sess *state.Session, chatID string, SNACFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
-	switch SNACFrame.SubGroup {
+func (rt *ChatRouter) RouteChat(ctx context.Context, sess *state.Session, chatID string, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	switch inFrame.SubGroup {
 	case oscar.ChatChannelMsgToHost:
-		inSNAC := oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{}
-		if err := oscar.Unmarshal(&inSNAC, r); err != nil {
+		inBody := oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{}
+		if err := oscar.Unmarshal(&inBody, r); err != nil {
 			return err
 		}
-		outSNAC, err := rt.ChannelMsgToHostHandler(ctx, sess, chatID, inSNAC)
+		outSNAC, err := rt.ChannelMsgToHostHandler(ctx, sess, chatID, inFrame, inBody)
 		if err != nil {
 			return err
 		}
@@ -42,8 +42,8 @@ func (rt *ChatRouter) RouteChat(ctx context.Context, sess *state.Session, chatID
 			return nil
 		}
 		rt.Logger.InfoContext(ctx, "user sent a chat message")
-		rt.logRequestAndResponse(ctx, SNACFrame, inSNAC, outSNAC.Frame, outSNAC.Body)
-		return sendSNAC(SNACFrame.RequestID, outSNAC.Frame, outSNAC.Body, sequence, w)
+		rt.logRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
+		return sendSNAC(outSNAC.Frame, outSNAC.Body, sequence, w)
 	default:
 		return ErrUnsupportedSubGroup
 	}

@@ -22,7 +22,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 		// info
 		userSession *state.Session
 		// inputSNAC is the SNAC sent by the sender client
-		inputSNAC oscar.SNAC_0x01_0x04_OServiceServiceRequest
+		inputSNAC oscar.SNACMessage
 		// expectSNACFrame is the SNAC frame sent from the server to the recipient
 		// client
 		expectOutput oscar.SNACMessage
@@ -32,8 +32,13 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 		{
 			name:        "request info for ICBM service, return invalid SNAC err",
 			userSession: newTestSession("user_screen_name"),
-			inputSNAC: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
-				FoodGroup: oscar.ICBM,
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: oscar.ICBM,
+				},
 			},
 			expectErr: server.ErrUnsupportedSubGroup,
 		},
@@ -52,15 +57,20 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				Name:           "my new chat",
 			},
 			userSession: newTestSession("user_screen_name", sessOptCannedID),
-			inputSNAC: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
-				FoodGroup: oscar.Chat,
-				TLVRestBlock: oscar.TLVRestBlock{
-					TLVList: oscar.TLVList{
-						oscar.NewTLV(0x01, oscar.SNAC_0x01_0x04_TLVRoomInfo{
-							Exchange:       8,
-							Cookie:         []byte("the-chat-cookie"),
-							InstanceNumber: 16,
-						}),
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: oscar.Chat,
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							oscar.NewTLV(0x01, oscar.SNAC_0x01_0x04_TLVRoomInfo{
+								Exchange:       8,
+								Cookie:         []byte("the-chat-cookie"),
+								InstanceNumber: 16,
+							}),
+						},
 					},
 				},
 			},
@@ -68,6 +78,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.OService,
 					SubGroup:  oscar.OServiceServiceResponse,
+					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
 					TLVRestBlock: oscar.TLVRestBlock{
@@ -93,15 +104,20 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			},
 			chatRoom:    nil,
 			userSession: newTestSession("user_screen_name", sessOptCannedID),
-			inputSNAC: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
-				FoodGroup: oscar.Chat,
-				TLVRestBlock: oscar.TLVRestBlock{
-					TLVList: oscar.TLVList{
-						oscar.NewTLV(0x01, oscar.SNAC_0x01_0x04_TLVRoomInfo{
-							Exchange:       8,
-							Cookie:         []byte("the-chat-cookie"),
-							InstanceNumber: 16,
-						}),
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: oscar.Chat,
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							oscar.NewTLV(0x01, oscar.SNAC_0x01_0x04_TLVRoomInfo{
+								Exchange:       8,
+								Cookie:         []byte("the-chat-cookie"),
+								InstanceNumber: 16,
+							}),
+						},
 					},
 				},
 			},
@@ -134,7 +150,8 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 				cr: cr,
 			}
 
-			outputSNAC, err := svc.ServiceRequestHandler(nil, tc.userSession, tc.inputSNAC)
+			outputSNAC, err := svc.ServiceRequestHandler(nil, tc.userSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(oscar.SNAC_0x01_0x04_OServiceServiceRequest))
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

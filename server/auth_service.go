@@ -13,8 +13,8 @@ import (
 )
 
 type AuthHandler interface {
-	ReceiveAndSendAuthChallenge(snacPayloadIn oscar.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (oscar.SNACMessage, error)
-	ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID) (oscar.SNACMessage, error)
+	ReceiveAndSendAuthChallenge(bodyIn oscar.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (oscar.SNACMessage, error)
+	ReceiveAndSendBUCPLoginRequest(bodyIn oscar.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID) (oscar.SNACMessage, error)
 	RetrieveChatSession(ctx context.Context, chatID string, sessID string) (*state.Session, error)
 	SendAndReceiveSignonFrame(rw io.ReadWriter, sequence *uint32) (oscar.FLAPSignonFrame, error)
 	Signout(ctx context.Context, sess *state.Session) error
@@ -55,18 +55,18 @@ func (rt AuthService) handleAuthConnection(rwc io.ReadWriteCloser) {
 		return
 	}
 
-	snacPayloadIn := oscar.SNAC_0x17_0x06_BUCPChallengeRequest{}
-	if err := oscar.Unmarshal(&snacPayloadIn, buf); err != nil {
+	bodyIn := oscar.SNAC_0x17_0x06_BUCPChallengeRequest{}
+	if err := oscar.Unmarshal(&bodyIn, buf); err != nil {
 		rt.Logger.Error(err.Error())
 		return
 	}
 
-	msg, err := rt.ReceiveAndSendAuthChallenge(snacPayloadIn, uuid.New)
+	msg, err := rt.ReceiveAndSendAuthChallenge(bodyIn, uuid.New)
 	if err != nil {
 		rt.Logger.Error(err.Error())
 		return
 	}
-	if err := sendSNAC(0, msg.Frame, msg.Body, &seq, rwc); err != nil {
+	if err := sendSNAC(msg.Frame, msg.Body, &seq, rwc); err != nil {
 		rt.Logger.Error(err.Error())
 		return
 	}
@@ -88,18 +88,18 @@ func (rt AuthService) handleAuthConnection(rwc io.ReadWriteCloser) {
 		return
 	}
 
-	snacPayloadIn2 := oscar.SNAC_0x17_0x02_BUCPLoginRequest{}
-	if err := oscar.Unmarshal(&snacPayloadIn2, buf); err != nil {
+	bodyIn2 := oscar.SNAC_0x17_0x02_BUCPLoginRequest{}
+	if err := oscar.Unmarshal(&bodyIn2, buf); err != nil {
 		rt.Logger.Error(err.Error())
 		return
 	}
 
-	msg, err = rt.ReceiveAndSendBUCPLoginRequest(snacPayloadIn2, uuid.New)
+	msg, err = rt.ReceiveAndSendBUCPLoginRequest(bodyIn2, uuid.New)
 	if err != nil {
 		rt.Logger.Error(err.Error())
 		return
 	}
-	if err := sendSNAC(0, msg.Frame, msg.Body, &seq, rwc); err != nil {
+	if err := sendSNAC(msg.Frame, msg.Body, &seq, rwc); err != nil {
 		rt.Logger.Error(err.Error())
 		return
 	}

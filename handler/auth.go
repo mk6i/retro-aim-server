@@ -142,8 +142,8 @@ func (s AuthService) VerifyChatLogin(rw io.ReadWriter) (*server.ChatCookie, uint
 	return &cookie, seq, err
 }
 
-func (s AuthService) ReceiveAndSendAuthChallenge(snacPayloadIn oscar.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (oscar.SNACMessage, error) {
-	screenName, exists := snacPayloadIn.GetString(oscar.TLVScreenName)
+func (s AuthService) ReceiveAndSendAuthChallenge(bodyIn oscar.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (oscar.SNACMessage, error) {
+	screenName, exists := bodyIn.GetString(oscar.TLVScreenName)
 	if !exists {
 		return oscar.SNACMessage{}, errors.New("screen name doesn't exist in tlv")
 	}
@@ -185,13 +185,13 @@ func (s AuthService) ReceiveAndSendAuthChallenge(snacPayloadIn oscar.SNAC_0x17_0
 	}, nil
 }
 
-func (s AuthService) ReceiveAndSendBUCPLoginRequest(snacPayloadIn oscar.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID) (oscar.SNACMessage, error) {
+func (s AuthService) ReceiveAndSendBUCPLoginRequest(bodyIn oscar.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID) (oscar.SNACMessage, error) {
 
-	screenName, found := snacPayloadIn.GetString(oscar.TLVScreenName)
+	screenName, found := bodyIn.GetString(oscar.TLVScreenName)
 	if !found {
 		return oscar.SNACMessage{}, errors.New("screen name doesn't exist in tlv")
 	}
-	md5Hash, found := snacPayloadIn.GetSlice(oscar.TLVPasswordHash)
+	md5Hash, found := bodyIn.GetSlice(oscar.TLVPasswordHash)
 	if !found {
 		return oscar.SNACMessage{}, errors.New("password hash doesn't exist in tlv")
 	}
