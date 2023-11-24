@@ -383,7 +383,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 					FoodGroup: oscar.Buddy,
 					SubGroup:  oscar.BuddyArrived,
 				},
-				Body: oscar.SNAC_0x03_0x0A_BuddyArrived{
+				Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
 					TLVUserInfo: oscar.TLVUserInfo{
 						ScreenName:   "recipient-screen-name",
 						WarningLevel: evilDeltaAnon,
@@ -435,7 +435,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 					FoodGroup: oscar.Buddy,
 					SubGroup:  oscar.BuddyArrived,
 				},
-				Body: oscar.SNAC_0x03_0x0A_BuddyArrived{
+				Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
 					TLVUserInfo: oscar.TLVUserInfo{
 						ScreenName:   "recipient-screen-name",
 						WarningLevel: evilDelta,

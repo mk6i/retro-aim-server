@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 
@@ -152,6 +153,162 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 
 			outputSNAC, err := svc.ServiceRequestHandler(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(oscar.SNAC_0x01_0x04_OServiceServiceRequest))
+			assert.ErrorIs(t, err, tc.expectErr)
+			if tc.expectErr != nil {
+				return
+			}
+			//
+			// verify output
+			//
+			assert.Equal(t, tc.expectOutput, outputSNAC)
+		})
+	}
+}
+
+func TestSetUserInfoFieldsHandler(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// userSession is the session of the user whose info is being set
+		userSession *state.Session
+		// inputSNAC is the SNAC sent from the client to the server
+		inputSNAC oscar.SNACMessage
+		// expectOutput is the SNAC reply sent from the server back to the
+		// client
+		expectOutput oscar.SNACMessage
+		// broadcastMessage is the arrival/departure message sent to buddies
+		broadcastMessage []struct {
+			recipients []string
+			msg        oscar.SNACMessage
+		}
+		// interestedUserLookups contains all the users who have this user on
+		// their buddy list
+		interestedUserLookups map[string][]string
+		// expectErr is the expected error returned
+		expectErr error
+	}{
+		{
+			name:        "set user status to visible",
+			userSession: newTestSession("user_screen_name"),
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							oscar.NewTLV(oscar.OServiceUserInfoStatus, uint32(0x0000)),
+						},
+					},
+				},
+			},
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
+					SubGroup:  oscar.OServiceUserInfoUpdate,
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+					TLVUserInfo: newTestSession("user_screen_name").TLVUserInfo(),
+				},
+			},
+			broadcastMessage: []struct {
+				recipients []string
+				msg        oscar.SNACMessage
+			}{
+				{
+					recipients: []string{"friend1", "friend2"},
+					msg: oscar.SNACMessage{
+						Frame: oscar.SNACFrame{
+							FoodGroup: oscar.Buddy,
+							SubGroup:  oscar.BuddyArrived,
+						},
+						Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
+							TLVUserInfo: newTestSession("user_screen_name").TLVUserInfo(),
+						},
+					},
+				},
+			},
+			interestedUserLookups: map[string][]string{
+				"user_screen_name": {"friend1", "friend2"},
+			},
+		},
+		{
+			name:        "set user status to invisible",
+			userSession: newTestSession("user_screen_name"),
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							oscar.NewTLV(oscar.OServiceUserInfoStatus, uint32(0x0100)),
+						},
+					},
+				},
+			},
+			expectOutput: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					FoodGroup: oscar.OService,
+					SubGroup:  oscar.OServiceUserInfoUpdate,
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+					TLVUserInfo: newTestSession("user_screen_name", sessOptInvisible).TLVUserInfo(),
+				},
+			},
+			broadcastMessage: []struct {
+				recipients []string
+				msg        oscar.SNACMessage
+			}{
+				{
+					recipients: []string{"friend1", "friend2"},
+					msg: oscar.SNACMessage{
+						Frame: oscar.SNACFrame{
+							FoodGroup: oscar.Buddy,
+							SubGroup:  oscar.BuddyDeparted,
+						},
+						Body: oscar.SNAC_0x03_0x0C_BuddyDeparted{
+							TLVUserInfo: oscar.TLVUserInfo{
+								ScreenName:   "user_screen_name",
+								WarningLevel: 0,
+							},
+						},
+					},
+				},
+			},
+			interestedUserLookups: map[string][]string{
+				"user_screen_name": {"friend1", "friend2"},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			//
+			// initialize dependencies
+			//
+			fm := newMockFeedbagManager(t)
+			for user, friends := range tc.interestedUserLookups {
+				fm.EXPECT().
+					InterestedUsers(user).
+					Return(friends, nil).
+					Maybe()
+			}
+			sm := newMockSessionManager(t)
+			for _, broadcastMsg := range tc.broadcastMessage {
+				sm.EXPECT().BroadcastToScreenNames(mock.Anything, broadcastMsg.recipients, broadcastMsg.msg)
+			}
+			//
+			// send input SNAC
+			//
+			svc := OServiceService{
+				feedbagManager: fm,
+				sessionManager: sm,
+			}
+			outputSNAC, err := svc.SetUserInfoFieldsHandler(nil, tc.userSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields))
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

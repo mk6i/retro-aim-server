@@ -117,14 +117,14 @@ func (s OServiceService) UserInfoQueryHandler(ctx context.Context, sess *state.S
 }
 
 func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.SNACMessage, error) {
-	if status, hasStatus := inBody.GetUint32(0x06); hasStatus {
+	if status, hasStatus := inBody.GetUint32(oscar.OServiceUserInfoStatus); hasStatus {
 		switch status {
-		case 0x000:
+		case 0x0000:
 			sess.SetInvisible(false)
 			if err := broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
 				return oscar.SNACMessage{}, err
 			}
-		case 0x100:
+		case 0x0100:
 			sess.SetInvisible(true)
 			if err := broadcastDeparture(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
 				return oscar.SNACMessage{}, err

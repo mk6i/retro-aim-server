@@ -118,7 +118,7 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 			output: oscar.SNACMessage{},
 		},
 		{
-			name: "receive FeedbagInsertItem, return BuddyArrived and FeedbagStatus",
+			name: "receive FeedbagInsertItem, return FeedbagStatus",
 			input: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,
@@ -143,7 +143,7 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 			},
 		},
 		{
-			name: "receive FeedbagUpdateItem, return BuddyArrived and FeedbagStatus",
+			name: "receive FeedbagUpdateItem, return FeedbagStatus",
 			input: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Feedbag,

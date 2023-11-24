@@ -45,7 +45,7 @@ func broadcastArrival(ctx context.Context, sess *state.Session, sm SessionManage
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyArrived,
 		},
-		Body: oscar.SNAC_0x03_0x0A_BuddyArrived{
+		Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
 			TLVUserInfo: oscar.TLVUserInfo{
 				ScreenName:   sess.ScreenName(),
 				WarningLevel: sess.Warning(),
@@ -70,8 +70,10 @@ func broadcastDeparture(ctx context.Context, sess *state.Session, sm SessionMana
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyDeparted,
 		},
-		Body: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+		Body: oscar.SNAC_0x03_0x0C_BuddyDeparted{
 			TLVUserInfo: oscar.TLVUserInfo{
+				// don't include the TLV block, otherwise the AIM client fails
+				// to process the block event
 				ScreenName:   sess.ScreenName(),
 				WarningLevel: sess.Warning(),
 			},
@@ -94,7 +96,7 @@ func unicastArrival(ctx context.Context, srcScreenName, destScreenName string, s
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyArrived,
 		},
-		Body: oscar.SNAC_0x03_0x0A_BuddyArrived{
+		Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
 			TLVUserInfo: sess.TLVUserInfo(),
 		},
 	})
@@ -114,7 +116,7 @@ func unicastDeparture(ctx context.Context, srcScreenName, destScreenName string,
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyDeparted,
 		},
-		Body: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+		Body: oscar.SNAC_0x03_0x0C_BuddyDeparted{
 			TLVUserInfo: oscar.TLVUserInfo{
 				// don't include the TLV block, otherwise the AIM client fails
 				// to process the block event

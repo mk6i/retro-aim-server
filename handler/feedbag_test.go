@@ -338,7 +338,7 @@ func TestInsertItemHandler(t *testing.T) {
 							FoodGroup: oscar.Buddy,
 							SubGroup:  oscar.BuddyArrived,
 						},
-						Body: oscar.SNAC_0x03_0x0A_BuddyArrived{
+						Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
 							TLVUserInfo: oscar.TLVUserInfo{
 								ScreenName: "buddy_1_online",
 								TLVBlock: oscar.TLVBlock{
@@ -355,7 +355,7 @@ func TestInsertItemHandler(t *testing.T) {
 							FoodGroup: oscar.Buddy,
 							SubGroup:  oscar.BuddyArrived,
 						},
-						Body: oscar.SNAC_0x03_0x0A_BuddyArrived{
+						Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
 							TLVUserInfo: oscar.TLVUserInfo{
 								ScreenName: "buddy_2_online",
 								TLVBlock: oscar.TLVBlock{
@@ -476,7 +476,7 @@ func TestInsertItemHandler(t *testing.T) {
 							FoodGroup: oscar.Buddy,
 							SubGroup:  oscar.BuddyDeparted,
 						},
-						Body: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+						Body: oscar.SNAC_0x03_0x0C_BuddyDeparted{
 							TLVUserInfo: oscar.TLVUserInfo{
 								ScreenName:   "user_screen_name",
 								WarningLevel: 0,
@@ -491,7 +491,7 @@ func TestInsertItemHandler(t *testing.T) {
 							FoodGroup: oscar.Buddy,
 							SubGroup:  oscar.BuddyDeparted,
 						},
-						Body: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+						Body: oscar.SNAC_0x03_0x0C_BuddyDeparted{
 							TLVUserInfo: oscar.TLVUserInfo{
 								ScreenName:   "buddy_1",
 								WarningLevel: 0,
@@ -559,7 +559,7 @@ func TestInsertItemHandler(t *testing.T) {
 							FoodGroup: oscar.Buddy,
 							SubGroup:  oscar.BuddyDeparted,
 						},
-						Body: oscar.SNAC_0x03_0x0B_BuddyDeparted{
+						Body: oscar.SNAC_0x03_0x0C_BuddyDeparted{
 							TLVUserInfo: oscar.TLVUserInfo{
 								ScreenName:   "user_screen_name",
 								WarningLevel: 0,

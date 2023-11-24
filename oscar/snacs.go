@@ -111,6 +111,8 @@ const (
 	OServiceBartQuery2        uint16 = 0x0022
 	OServiceBartReply2        uint16 = 0x0023
 
+	OServiceUserInfoStatus uint16 = 0x06
+
 	OServiceTLVTagsReconnectHere uint16 = 0x05
 	OServiceTLVTagsLoginCookie   uint16 = 0x06
 	OServiceTLVTagsGroupID       uint16 = 0x0D
@@ -322,11 +324,11 @@ type SNAC_0x03_0x03_BuddyRightsReply struct {
 	TLVRestBlock
 }
 
-type SNAC_0x03_0x0A_BuddyArrived struct {
+type SNAC_0x03_0x0B_BuddyArrived struct {
 	TLVUserInfo
 }
 
-type SNAC_0x03_0x0B_BuddyDeparted struct {
+type SNAC_0x03_0x0C_BuddyDeparted struct {
 	TLVUserInfo
 }
 
