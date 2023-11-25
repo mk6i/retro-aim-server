@@ -320,3 +320,70 @@ func TestSetUserInfoFieldsHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestOServiceService_RateParamsQueryHandler(t *testing.T) {
+
+	svc := OServiceService{}
+
+	have := svc.RateParamsQueryHandler(nil, oscar.SNACFrame{RequestID: 1234})
+	want := oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.OService,
+			SubGroup:  oscar.OServiceRateParamsReply,
+			RequestID: 1234,
+		},
+		Body: oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
+			RateClasses: []struct {
+				ID              uint16
+				WindowSize      uint32
+				ClearLevel      uint32
+				AlertLevel      uint32
+				LimitLevel      uint32
+				DisconnectLevel uint32
+				CurrentLevel    uint32
+				MaxLevel        uint32
+				LastTime        uint32
+				CurrentState    uint8
+			}{
+				{
+					ID:              0x0001,
+					WindowSize:      0x00000050,
+					ClearLevel:      0x000009C4,
+					AlertLevel:      0x000007D0,
+					LimitLevel:      0x000005DC,
+					DisconnectLevel: 0x00000320,
+					CurrentLevel:    0x00000D69,
+					MaxLevel:        0x00001770,
+					LastTime:        0x00000000,
+					CurrentState:    0x00,
+				},
+			},
+			RateGroups: []struct {
+				ID    uint16
+				Pairs []struct {
+					FoodGroup uint16
+					SubGroup  uint16
+				} `count_prefix:"uint16"`
+			}{
+				{
+					ID: 1,
+					Pairs: []struct {
+						FoodGroup uint16
+						SubGroup  uint16
+					}{
+						{
+							FoodGroup: oscar.ICBM,
+							SubGroup:  oscar.ICBMChannelMsgToHost,
+						},
+						{
+							FoodGroup: oscar.Chat,
+							SubGroup:  oscar.ChatChannelMsgToHost,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, want, have)
+}

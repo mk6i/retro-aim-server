@@ -35,71 +35,84 @@ func (s OServiceService) ClientVersionsHandler(_ context.Context, frame oscar.SN
 	}
 }
 
+// RateParamsQueryHandler returns SNAC rate limits.
+// The purpose of this method is to provide information about rate limits that can be
+// enforced on the server side. The response consists of two main parts: rate classes and
+// rate groups. Rate classes define limits based on specific parameters, while rate groups
+// associate these limits with relevant SNAC types.
+//
+// Note: The current implementation does not enforce server-side rate limiting. Instead,
+// the provided values inform the client about the recommended client-side rate limits.
+//
+// The response only contains rate limits for sending Instant Messages (IMs)
+// and chat messages. More refined limits may be added in the future if/when server
+// rate limiting is implemented.
+//
+// Parameters:
+//   - _ (context.Context): The context is not used in this method.
+//   - inFrame (oscar.SNACFrame): The input SNAC frame containing the request details.
+//
+// Returns:
+//
+//	oscar.SNACMessage: The SNAC message containing rate limits.
 func (s OServiceService) RateParamsQueryHandler(_ context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage {
-	frameOut := oscar.SNACFrame{
-		FoodGroup: oscar.OService,
-		SubGroup:  oscar.OServiceRateParamsReply,
-		RequestID: inFrame.RequestID,
-	}
-	bodyOut := oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
-		RateClasses: []struct {
-			ID              uint16
-			WindowSize      uint32
-			ClearLevel      uint32
-			AlertLevel      uint32
-			LimitLevel      uint32
-			DisconnectLevel uint32
-			CurrentLevel    uint32
-			MaxLevel        uint32
-			LastTime        uint32 // protocol v2 only
-			CurrentState    uint8  // protocol v2 only
-		}{
-			{
-				ID:              0x0001,
-				WindowSize:      0x00000050,
-				ClearLevel:      0x000009C4,
-				AlertLevel:      0x000007D0,
-				LimitLevel:      0x000005DC,
-				DisconnectLevel: 0x00000320,
-				CurrentLevel:    0x00000D69,
-				MaxLevel:        0x00001770,
-				LastTime:        0x00000000,
-				CurrentState:    0x00,
-			},
-		},
-		RateGroups: []struct {
-			ID    uint16
-			Pairs []struct {
-				FoodGroup uint16
-				SubGroup  uint16
-			} `count_prefix:"uint16"`
-		}{
-			{
-				ID: 1,
-				Pairs: []struct {
-					FoodGroup uint16
-					SubGroup  uint16
-				}{},
-			},
-		},
-	}
-
-	for i := uint16(0); i < 24; i++ { // for each food group
-		for j := uint16(0); j < 32; j++ { // for each subgroup
-			bodyOut.RateGroups[0].Pairs = append(bodyOut.RateGroups[0].Pairs,
-				struct {
-					FoodGroup uint16
-					SubGroup  uint16
-				}{
-					FoodGroup: i,
-					SubGroup:  j,
-				})
-		}
-	}
-
 	return oscar.SNACMessage{
-		Frame: frameOut,
-		Body:  bodyOut,
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.OService,
+			SubGroup:  oscar.OServiceRateParamsReply,
+			RequestID: inFrame.RequestID,
+		},
+		Body: oscar.SNAC_0x01_0x07_OServiceRateParamsReply{
+			RateClasses: []struct {
+				ID              uint16
+				WindowSize      uint32
+				ClearLevel      uint32
+				AlertLevel      uint32
+				LimitLevel      uint32
+				DisconnectLevel uint32
+				CurrentLevel    uint32
+				MaxLevel        uint32
+				LastTime        uint32
+				CurrentState    uint8
+			}{
+				{
+					ID:              0x01,
+					WindowSize:      0x0050,
+					ClearLevel:      0x09C4,
+					AlertLevel:      0x07D0,
+					LimitLevel:      0x05DC,
+					DisconnectLevel: 0x0320,
+					CurrentLevel:    0x0D69,
+					MaxLevel:        0x1770,
+					LastTime:        0x0000,
+					CurrentState:    0x0,
+				},
+			},
+			RateGroups: []struct {
+				ID    uint16
+				Pairs []struct {
+					FoodGroup uint16
+					SubGroup  uint16
+				} `count_prefix:"uint16"`
+			}{
+				{
+					ID: 1,
+					Pairs: []struct {
+						FoodGroup uint16
+						SubGroup  uint16
+					}{
+						{
+							FoodGroup: oscar.ICBM,
+							SubGroup:  oscar.ICBMChannelMsgToHost,
+						},
+						{
+							FoodGroup: oscar.Chat,
+							SubGroup:  oscar.ChatChannelMsgToHost,
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
