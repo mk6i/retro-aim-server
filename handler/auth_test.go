@@ -131,24 +131,24 @@ func TestReceiveAndSendBUCPLoginRequest(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			sess := newTestSession(tc.userInDB.ScreenName, sessOptID(tc.sessionUUID.String()))
-			um := newMockUserManager(t)
-			um.EXPECT().
+			userManager := newMockUserManager(t)
+			userManager.EXPECT().
 				GetUser(tc.userInDB.ScreenName).
 				Return(&userGoodPwd, nil).
 				Maybe()
-			um.EXPECT().
+			userManager.EXPECT().
 				UpsertUser(mock.Anything).
 				Return(nil).
 				Maybe()
-			sm := newMockSessionManager(t)
-			sm.EXPECT().
+			sessionManager := newMockSessionManager(t)
+			sessionManager.EXPECT().
 				NewSessionWithSN(tc.sessionUUID.String(), tc.userInDB.ScreenName).
 				Return(sess).
 				Maybe()
 			svc := AuthService{
 				config:         tc.cfg,
-				sessionManager: sm,
-				userManager:    um,
+				sessionManager: sessionManager,
+				userManager:    userManager,
 			}
 			fnNewUUID := func() uuid.UUID {
 				return tc.sessionUUID
@@ -256,14 +256,14 @@ func TestReceiveAndSendAuthChallenge(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			um := newMockUserManager(t)
-			um.EXPECT().
+			userManager := newMockUserManager(t)
+			userManager.EXPECT().
 				GetUser(string(tc.inputSNAC.TLVList[0].Val)).
 				Return(tc.userInDB, nil).
 				Maybe()
 			svc := AuthService{
 				config:      tc.cfg,
-				userManager: um,
+				userManager: userManager,
 			}
 			fnNewUUID := func() uuid.UUID {
 				return tc.fnNewUUID

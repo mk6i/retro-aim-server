@@ -12,14 +12,14 @@ import (
 	"github.com/mkaminski/goaim/state"
 )
 
-func NewOServiceService(cfg server.Config, sm SessionManager, fm FeedbagManager) *OServiceService {
-	return &OServiceService{cfg: cfg, sessionManager: sm, feedbagManager: fm}
+func NewOServiceService(cfg server.Config, messageRelayer MessageRelayer, feedbagManager FeedbagManager) *OServiceService {
+	return &OServiceService{cfg: cfg, messageRelayer: messageRelayer, feedbagManager: feedbagManager}
 }
 
 type OServiceService struct {
 	cfg            server.Config
 	feedbagManager FeedbagManager
-	sessionManager SessionManager
+	messageRelayer MessageRelayer
 }
 
 func (s OServiceService) ClientVersionsHandler(_ context.Context, frame oscar.SNACFrame, inBody oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.SNACMessage {
@@ -134,12 +134,12 @@ func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *sta
 		switch status {
 		case 0x0000:
 			sess.SetInvisible(false)
-			if err := broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
+			if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
 				return oscar.SNACMessage{}, err
 			}
 		case 0x0100:
 			sess.SetInvisible(true)
-			if err := broadcastDeparture(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
+			if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
 				return oscar.SNACMessage{}, err
 			}
 		default:
@@ -164,7 +164,7 @@ func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *stat
 	} else {
 		sess.SetIdle(time.Duration(bodyIn.IdleTime) * time.Second)
 	}
-	return broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager)
+	return broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager)
 }
 
 // RateParamsSubAddHandler exists to capture the SNAC input in unit tests to
@@ -175,13 +175,13 @@ func (s OServiceService) RateParamsSubAddHandler(context.Context, oscar.SNAC_0x0
 func NewOServiceServiceForBOS(oserviceService OServiceService, cr *state.ChatRegistry) *OServiceServiceForBOS {
 	return &OServiceServiceForBOS{
 		OServiceService: oserviceService,
-		cr:              cr,
+		chatRegistry:    cr,
 	}
 }
 
 type OServiceServiceForBOS struct {
 	OServiceService
-	cr *state.ChatRegistry
+	chatRegistry *state.ChatRegistry
 }
 
 func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.SNACMessage, error) {
@@ -199,11 +199,11 @@ func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *st
 		return oscar.SNACMessage{}, err
 	}
 
-	room, chatSessMgr, err := s.cr.Retrieve(string(roomSnac.Cookie))
+	room, chatSessMgr, err := s.chatRegistry.Retrieve(string(roomSnac.Cookie))
 	if err != nil {
 		return oscar.SNACMessage{}, server.ErrUnsupportedSubGroup
 	}
-	chatSessMgr.(ChatSessionManager).NewSessionWithSN(sess.ID(), sess.ScreenName())
+	chatSessMgr.(SessionManager).NewSessionWithSN(sess.ID(), sess.ScreenName())
 
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
@@ -249,7 +249,7 @@ func (s OServiceServiceForBOS) WriteOServiceHostOnline() oscar.SNACMessage {
 }
 
 func (s OServiceServiceForBOS) ClientOnlineHandler(ctx context.Context, _ oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
-	if err := broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
+	if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
 		return err
 	}
 	buddies, err := s.feedbagManager.Buddies(sess.ScreenName())
@@ -257,7 +257,7 @@ func (s OServiceServiceForBOS) ClientOnlineHandler(ctx context.Context, _ oscar.
 		return err
 	}
 	for _, buddy := range buddies {
-		unicastArrival(ctx, buddy, sess.ScreenName(), s.sessionManager)
+		unicastArrival(ctx, buddy, sess.ScreenName(), s.messageRelayer)
 	}
 	return nil
 }
@@ -291,8 +291,8 @@ func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, bodyIn 
 	if err != nil {
 		return err
 	}
-	sendChatRoomInfoUpdate(ctx, sess, chatSessMgr.(ChatSessionManager), room)
-	alertUserJoined(ctx, sess, chatSessMgr.(ChatSessionManager))
-	setOnlineChatUsers(ctx, sess, chatSessMgr.(ChatSessionManager))
+	sendChatRoomInfoUpdate(ctx, sess, chatSessMgr.(ChatMessageRelayer), room)
+	alertUserJoined(ctx, sess, chatSessMgr.(ChatMessageRelayer))
+	setOnlineChatUsers(ctx, sess, chatSessMgr.(ChatMessageRelayer))
 	return nil
 }

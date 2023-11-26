@@ -46,6 +46,9 @@ packages:
       SessionManager:
         config:
           filename: "session_manager_mock.go"
-      ChatSessionManager:
+      MessageRelayer:
         config:
-          filename: "chat_session_manager_mock.go"
+          filename: "session_message_relayer.go"
+      ChatMessageRelayer:
+        config:
+          filename: "session_chat_message_relayer.go"

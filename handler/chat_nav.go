@@ -18,10 +18,10 @@ func NewChatRoom() state.ChatRoom {
 	}
 }
 
-func NewChatNavService(logger *slog.Logger, cr *state.ChatRegistry, newChatRoom func() state.ChatRoom, newChatSessMgr func() ChatSessionManager) *ChatNavService {
+func NewChatNavService(logger *slog.Logger, chatRegistry *state.ChatRegistry, newChatSessMgr func() SessionManager) *ChatNavService {
 	return &ChatNavService{
 		logger:         logger,
-		chatRegistry:   cr,
+		chatRegistry:   chatRegistry,
 		newChatRoom:    NewChatRoom,
 		newChatSessMgr: newChatSessMgr,
 	}
@@ -31,7 +31,7 @@ type ChatNavService struct {
 	logger         *slog.Logger
 	chatRegistry   *state.ChatRegistry
 	newChatRoom    func() state.ChatRoom
-	newChatSessMgr func() ChatSessionManager
+	newChatSessMgr func() SessionManager
 }
 
 func (s ChatNavService) RequestChatRightsHandler(_ context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage {

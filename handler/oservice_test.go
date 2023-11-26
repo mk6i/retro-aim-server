@@ -131,24 +131,23 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			sm := newMockChatSessionManager(t)
-			cr := state.NewChatRegistry()
+			sessionManager := newMockSessionManager(t)
+			chatRegistry := state.NewChatRegistry()
 			if tc.chatRoom != nil {
-				sm.EXPECT().
+				sessionManager.EXPECT().
 					NewSessionWithSN(tc.userSession.ID(), tc.userSession.ScreenName()).
 					Return(&state.Session{}).
 					Maybe()
-				cr.Register(*tc.chatRoom, sm)
+				chatRegistry.Register(*tc.chatRoom, sessionManager)
 			}
 			//
 			// send input SNAC
 			//
 			svc := OServiceServiceForBOS{
 				OServiceService: OServiceService{
-					cfg:            tc.cfg,
-					sessionManager: sm,
+					cfg: tc.cfg,
 				},
-				cr: cr,
+				chatRegistry: chatRegistry,
 			}
 
 			outputSNAC, err := svc.ServiceRequestHandler(nil, tc.userSession, tc.inputSNAC.Frame,
@@ -289,23 +288,23 @@ func TestSetUserInfoFieldsHandler(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := newMockFeedbagManager(t)
+			feedbagManager := newMockFeedbagManager(t)
 			for user, friends := range tc.interestedUserLookups {
-				fm.EXPECT().
+				feedbagManager.EXPECT().
 					InterestedUsers(user).
 					Return(friends, nil).
 					Maybe()
 			}
-			sm := newMockSessionManager(t)
+			messageRelayer := newMockMessageRelayer(t)
 			for _, broadcastMsg := range tc.broadcastMessage {
-				sm.EXPECT().BroadcastToScreenNames(mock.Anything, broadcastMsg.recipients, broadcastMsg.msg)
+				messageRelayer.EXPECT().BroadcastToScreenNames(mock.Anything, broadcastMsg.recipients, broadcastMsg.msg)
 			}
 			//
 			// send input SNAC
 			//
 			svc := OServiceService{
-				feedbagManager: fm,
-				sessionManager: sm,
+				feedbagManager: feedbagManager,
+				messageRelayer: messageRelayer,
 			}
 			outputSNAC, err := svc.SetUserInfoFieldsHandler(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields))

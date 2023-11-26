@@ -34,13 +34,13 @@ func (s BuddyService) RightsQueryHandler(_ context.Context, frameIn oscar.SNACFr
 	}
 }
 
-func broadcastArrival(ctx context.Context, sess *state.Session, sm SessionManager, fm FeedbagManager) error {
-	screenNames, err := fm.InterestedUsers(sess.ScreenName())
+func broadcastArrival(ctx context.Context, sess *state.Session, messageRelayer MessageRelayer, feedbagManager FeedbagManager) error {
+	screenNames, err := feedbagManager.InterestedUsers(sess.ScreenName())
 	if err != nil {
 		return err
 	}
 
-	sm.BroadcastToScreenNames(ctx, screenNames, oscar.SNACMessage{
+	messageRelayer.BroadcastToScreenNames(ctx, screenNames, oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyArrived,
@@ -59,13 +59,13 @@ func broadcastArrival(ctx context.Context, sess *state.Session, sm SessionManage
 	return nil
 }
 
-func broadcastDeparture(ctx context.Context, sess *state.Session, sm SessionManager, fm FeedbagManager) error {
-	screenNames, err := fm.InterestedUsers(sess.ScreenName())
+func broadcastDeparture(ctx context.Context, sess *state.Session, messageRelayer MessageRelayer, feedbagManager FeedbagManager) error {
+	screenNames, err := feedbagManager.InterestedUsers(sess.ScreenName())
 	if err != nil {
 		return err
 	}
 
-	sm.BroadcastToScreenNames(ctx, screenNames, oscar.SNACMessage{
+	messageRelayer.BroadcastToScreenNames(ctx, screenNames, oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyDeparted,
@@ -83,15 +83,15 @@ func broadcastDeparture(ctx context.Context, sess *state.Session, sm SessionMana
 	return nil
 }
 
-func unicastArrival(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager) {
-	sess := sm.RetrieveByScreenName(srcScreenName)
+func unicastArrival(ctx context.Context, srcScreenName, destScreenName string, messageRelayer MessageRelayer) {
+	sess := messageRelayer.RetrieveByScreenName(srcScreenName)
 	switch {
 	case sess == nil:
 		fallthrough
 	case sess.Invisible(): // don't tell user this buddy is online
 		return
 	}
-	sm.SendToScreenName(ctx, destScreenName, oscar.SNACMessage{
+	messageRelayer.SendToScreenName(ctx, destScreenName, oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyArrived,
@@ -102,8 +102,8 @@ func unicastArrival(ctx context.Context, srcScreenName, destScreenName string, s
 	})
 }
 
-func unicastDeparture(ctx context.Context, srcScreenName, destScreenName string, sm SessionManager) {
-	sess := sm.RetrieveByScreenName(srcScreenName)
+func unicastDeparture(ctx context.Context, srcScreenName, destScreenName string, messageRelayer MessageRelayer) {
+	sess := messageRelayer.RetrieveByScreenName(srcScreenName)
 	switch {
 	case sess == nil:
 		fallthrough
@@ -111,7 +111,7 @@ func unicastDeparture(ctx context.Context, srcScreenName, destScreenName string,
 		return
 	}
 
-	sm.SendToScreenName(ctx, destScreenName, oscar.SNACMessage{
+	messageRelayer.SendToScreenName(ctx, destScreenName, oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyDeparted,

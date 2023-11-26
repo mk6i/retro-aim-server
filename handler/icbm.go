@@ -12,12 +12,12 @@ const (
 	evilDeltaAnon = uint16(30)
 )
 
-func NewICBMService(sm SessionManager, fm FeedbagManager) *ICBMService {
-	return &ICBMService{sessionManager: sm, feedbagManager: fm}
+func NewICBMService(messageRelayer MessageRelayer, feedbagManager FeedbagManager) *ICBMService {
+	return &ICBMService{messageRelayer: messageRelayer, feedbagManager: feedbagManager}
 }
 
 type ICBMService struct {
-	sessionManager SessionManager
+	messageRelayer MessageRelayer
 	feedbagManager FeedbagManager
 }
 
@@ -62,7 +62,7 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 		}, nil
 	}
 
-	recipSess := s.sessionManager.RetrieveByScreenName(inBody.ScreenName)
+	recipSess := s.messageRelayer.RetrieveByScreenName(inBody.ScreenName)
 	if recipSess == nil {
 		return &oscar.SNACMessage{
 			Frame: oscar.SNACFrame{
@@ -97,7 +97,7 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 	// far as I can tell.
 	clientIM.AddTLVList(inBody.TLVRestBlock.TLVList)
 
-	s.sessionManager.SendToScreenName(ctx, recipSess.ScreenName(), oscar.SNACMessage{
+	s.messageRelayer.SendToScreenName(ctx, recipSess.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.ICBM,
 			SubGroup:  oscar.ICBMChannelMsgToClient,
@@ -134,7 +134,7 @@ func (s ICBMService) ClientEventHandler(ctx context.Context, sess *state.Session
 	case blocked != state.BlockedNo:
 		return nil
 	default:
-		s.sessionManager.SendToScreenName(ctx, inBody.ScreenName, oscar.SNACMessage{
+		s.messageRelayer.SendToScreenName(ctx, inBody.ScreenName, oscar.SNACMessage{
 			Frame: oscar.SNACFrame{
 				FoodGroup: oscar.ICBM,
 				SubGroup:  oscar.ICBMClientEvent,
@@ -184,7 +184,7 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *state.Session
 		}, nil
 	}
 
-	recipSess := s.sessionManager.RetrieveByScreenName(inBody.ScreenName)
+	recipSess := s.messageRelayer.RetrieveByScreenName(inBody.ScreenName)
 	if recipSess == nil {
 		return oscar.SNACMessage{}, nil
 	}
@@ -210,7 +210,7 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *state.Session
 		}
 	}
 
-	s.sessionManager.SendToScreenName(ctx, recipSess.ScreenName(), oscar.SNACMessage{
+	s.messageRelayer.SendToScreenName(ctx, recipSess.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.OService,
 			SubGroup:  oscar.OServiceEvilNotification,
@@ -218,7 +218,7 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *state.Session
 		Body: notif,
 	})
 
-	if err := broadcastArrival(ctx, recipSess, s.sessionManager, s.feedbagManager); err != nil {
+	if err := broadcastArrival(ctx, recipSess, s.messageRelayer, s.feedbagManager); err != nil {
 		return oscar.SNACMessage{}, nil
 	}
 

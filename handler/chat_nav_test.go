@@ -16,10 +16,10 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 	//
 	userSess := newTestSession("user-screen-name", sessOptCannedID)
 
-	cr := state.NewChatRegistry()
+	chatRegistry := state.NewChatRegistry()
 
-	sm := newMockChatSessionManager(t)
-	sm.EXPECT().NewSessionWithSN(userSess.ID(), userSess.ScreenName()).
+	sessionManager := newMockSessionManager(t)
+	sessionManager.EXPECT().NewSessionWithSN(userSess.ID(), userSess.ScreenName()).
 		Return(&state.Session{})
 
 	//
@@ -40,15 +40,15 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 		},
 	}
 	svc := ChatNavService{
-		chatRegistry: cr,
+		chatRegistry: chatRegistry,
 		newChatRoom: func() state.ChatRoom {
 			return state.ChatRoom{
 				Cookie:     "dummy-cookie",
 				CreateTime: time.UnixMilli(0),
 			}
 		},
-		newChatSessMgr: func() ChatSessionManager {
-			return sm
+		newChatSessMgr: func() SessionManager {
+			return sessionManager
 		},
 	}
 	outputSNAC, err := svc.CreateRoomHandler(context.Background(), userSess, inFrame, inBody)
@@ -65,7 +65,7 @@ func TestSendAndReceiveCreateRoom(t *testing.T) {
 		InstanceNumber: 2,
 		Name:           "the-chat-room-name",
 	}
-	chatRoom, _, err := cr.Retrieve("dummy-cookie")
+	chatRoom, _, err := chatRegistry.Retrieve("dummy-cookie")
 	assert.NoError(t, err)
 	assert.Equal(t, expectChatRoom, chatRoom)
 

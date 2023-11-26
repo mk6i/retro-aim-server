@@ -21,34 +21,34 @@ func main() {
 		os.Exit(1)
 	}
 
-	fm, err := state.NewSQLiteFeedbagStore(cfg.DBPath)
+	feedbagStore, err := state.NewSQLiteFeedbagStore(cfg.DBPath)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "unable to create feedbag store: %s", err.Error())
 		os.Exit(1)
 	}
 
 	logger := server.NewLogger(cfg)
-	sm := state.NewSessionManager(logger)
-	cr := state.NewChatRegistry()
+	sessionManager := state.NewSessionManager(logger)
+	chatRegistry := state.NewChatRegistry()
 
 	wg := sync.WaitGroup{}
 	wg.Add(4)
 
 	go func() {
-		server.StartManagementAPI(fm, logger)
+		server.StartManagementAPI(feedbagStore, logger)
 		wg.Done()
 	}()
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "BOS")
-		authHandler := handler.NewAuthService(cfg, sm, fm, fm, cr)
+		authHandler := handler.NewAuthService(cfg, sessionManager, feedbagStore, feedbagStore, chatRegistry)
 		buddyHandler := handler.NewBuddyService()
-		oserviceHandler := handler.NewOServiceService(cfg, sm, fm)
-		oserviceBOSHandler := handler.NewOServiceServiceForBOS(*oserviceHandler, cr)
-		locateHandler := handler.NewLocateService(sm, fm, fm)
-		newChatSessMgr := func() handler.ChatSessionManager { return state.NewSessionManager(logger) }
-		chatNavHandler := handler.NewChatNavService(logger, cr, handler.NewChatRoom, newChatSessMgr)
-		feedbagHandler := handler.NewFeedbagService(sm, fm)
-		icbmHandler := handler.NewICBMService(sm, fm)
+		oserviceHandler := handler.NewOServiceService(cfg, sessionManager, feedbagStore)
+		oserviceBOSHandler := handler.NewOServiceServiceForBOS(*oserviceHandler, chatRegistry)
+		locateHandler := handler.NewLocateService(sessionManager, feedbagStore, feedbagStore)
+		newChatSessMgr := func() handler.SessionManager { return state.NewSessionManager(logger) }
+		chatNavHandler := handler.NewChatNavService(logger, chatRegistry, newChatSessMgr)
+		feedbagHandler := handler.NewFeedbagService(sessionManager, feedbagStore)
+		icbmHandler := handler.NewICBMService(sessionManager, feedbagStore)
 
 		server.BOSService{
 			AlertRouter:       server.NewAlertRouter(logger),
@@ -68,10 +68,10 @@ func main() {
 	}(logger)
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "CHAT")
-		authHandler := handler.NewAuthService(cfg, sm, fm, fm, cr)
-		oserviceHandler := handler.NewOServiceService(cfg, sm, fm)
-		chatHandler := handler.NewChatService(cr)
-		oserviceChatHandler := handler.NewOServiceServiceForChat(*oserviceHandler, cr)
+		authHandler := handler.NewAuthService(cfg, sessionManager, feedbagStore, feedbagStore, chatRegistry)
+		oserviceHandler := handler.NewOServiceService(cfg, sessionManager, feedbagStore)
+		chatHandler := handler.NewChatService(chatRegistry)
+		oserviceChatHandler := handler.NewOServiceServiceForChat(*oserviceHandler, chatRegistry)
 
 		server.ChatService{
 			AuthHandler:        authHandler,
@@ -86,7 +86,7 @@ func main() {
 	}(logger)
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "AUTH")
-		authHandler := handler.NewAuthService(cfg, sm, fm, fm, cr)
+		authHandler := handler.NewAuthService(cfg, sessionManager, feedbagStore, feedbagStore, chatRegistry)
 
 		server.AuthService{
 			AuthHandler: authHandler,

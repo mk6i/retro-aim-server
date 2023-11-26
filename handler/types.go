@@ -24,23 +24,25 @@ type UserManager interface {
 }
 
 type SessionManager interface {
-	Broadcast(ctx context.Context, msg oscar.SNACMessage)
-	BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.SNACMessage)
 	Empty() bool
 	NewSessionWithSN(sessID string, screenName string) *state.Session
 	Remove(sess *state.Session)
 	Retrieve(ID string) (*state.Session, bool)
-	RetrieveByScreenName(screenName string) *state.Session
-	SendToScreenName(ctx context.Context, screenName string, msg oscar.SNACMessage)
-}
-
-type ChatSessionManager interface {
-	SessionManager
-	BroadcastExcept(ctx context.Context, except *state.Session, msg oscar.SNACMessage)
-	Participants() []*state.Session
 }
 
 type ProfileManager interface {
 	RetrieveProfile(screenName string) (string, error)
 	UpsertProfile(screenName string, body string) error
+}
+
+type MessageRelayer interface {
+	BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.SNACMessage)
+	RetrieveByScreenName(screenName string) *state.Session
+	SendToScreenName(ctx context.Context, screenName string, msg oscar.SNACMessage)
+}
+
+type ChatMessageRelayer interface {
+	MessageRelayer
+	BroadcastExcept(ctx context.Context, except *state.Session, msg oscar.SNACMessage)
+	Participants() []*state.Session
 }

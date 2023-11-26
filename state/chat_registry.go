@@ -21,25 +21,25 @@ func NewChatRegistry() *ChatRegistry {
 	}
 }
 
-func (c *ChatRegistry) Register(room ChatRoom, sm any) {
+func (c *ChatRegistry) Register(room ChatRoom, sessionManager any) {
 	c.mapMutex.Lock()
 	defer c.mapMutex.Unlock()
 	c.chatRoomStore[room.Cookie] = room
-	c.smStore[room.Cookie] = sm
+	c.smStore[room.Cookie] = sessionManager
 }
 
 func (c *ChatRegistry) Retrieve(chatID string) (ChatRoom, any, error) {
 	c.mapMutex.RLock()
 	defer c.mapMutex.RUnlock()
-	cr, found := c.chatRoomStore[chatID]
+	chatRoom, found := c.chatRoomStore[chatID]
 	if !found {
 		return ChatRoom{}, nil, errors.New("unable to find chat room")
 	}
-	sm, found := c.smStore[chatID]
+	sessionManager, found := c.smStore[chatID]
 	if !found {
 		panic("unable to find session manager for chat")
 	}
-	return cr, sm, nil
+	return chatRoom, sessionManager, nil
 }
 
 func (c *ChatRegistry) RemoveRoom(chatID string) {

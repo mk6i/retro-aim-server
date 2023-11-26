@@ -277,30 +277,30 @@ func TestSendAndReceiveUserInfoQuery2(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			fm := newMockFeedbagManager(t)
-			fm.EXPECT().
+			feedbagManager := newMockFeedbagManager(t)
+			feedbagManager.EXPECT().
 				Blocked(tc.userSession.ScreenName(),
 					tc.inputSNAC.Body.(oscar.SNAC_0x02_0x15_LocateUserInfoQuery2).ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
-			sm := newMockSessionManager(t)
+			messageRelayer := newMockMessageRelayer(t)
 			for screenName, val := range tc.screenNameLookups {
-				sm.EXPECT().
+				messageRelayer.EXPECT().
 					RetrieveByScreenName(screenName).
 					Return(val.sess).
 					Maybe()
 			}
-			pm := newMockProfileManager(t)
+			profileManager := newMockProfileManager(t)
 			for screenName, val := range tc.profileLookups {
-				pm.EXPECT().
+				profileManager.EXPECT().
 					RetrieveProfile(screenName).
 					Return(val.payload, val.err).
 					Maybe()
 			}
 			svc := LocateService{
-				sessionManager: sm,
-				feedbagManager: fm,
-				profileManager: pm,
+				sessionManager: messageRelayer,
+				feedbagManager: feedbagManager,
+				profileManager: profileManager,
 			}
 			outputSNAC, err := svc.UserInfoQuery2Handler(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(oscar.SNAC_0x02_0x15_LocateUserInfoQuery2))

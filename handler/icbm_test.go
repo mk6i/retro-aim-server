@@ -226,19 +226,19 @@ func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := newMockFeedbagManager(t)
-			fm.EXPECT().
+			feedbagManager := newMockFeedbagManager(t)
+			feedbagManager.EXPECT().
 				Blocked(tc.senderSession.ScreenName(),
 					tc.inputSNAC.Body.(oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost).ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
-			sm := newMockSessionManager(t)
-			sm.EXPECT().
+			messageRelayer := newMockMessageRelayer(t)
+			messageRelayer.EXPECT().
 				RetrieveByScreenName(tc.inputSNAC.Body.(oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost).ScreenName).
 				Return(tc.recipientSession).
 				Maybe()
 			if tc.recipientSession != nil {
-				sm.EXPECT().
+				messageRelayer.EXPECT().
 					SendToScreenName(mock.Anything, tc.recipientSession.ScreenName(), tc.expectSNACToClient).
 					Maybe()
 			}
@@ -246,8 +246,8 @@ func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 			// send input SNAC
 			//
 			svc := ICBMService{
-				sessionManager: sm,
-				feedbagManager: fm,
+				messageRelayer: messageRelayer,
+				feedbagManager: feedbagManager,
 			}
 			outputSNAC, err := svc.ChannelMsgToHostHandler(nil, tc.senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost))
@@ -323,14 +323,14 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := newMockFeedbagManager(t)
-			fm.EXPECT().
+			feedbagManager := newMockFeedbagManager(t)
+			feedbagManager.EXPECT().
 				Blocked(tc.senderScreenName, tc.inputSNAC.Body.(oscar.SNAC_0x04_0x14_ICBMClientEvent).ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
-			sm := newMockSessionManager(t)
+			messageRelayer := newMockMessageRelayer(t)
 			if tc.blockedState == state.BlockedNo {
-				sm.EXPECT().
+				messageRelayer.EXPECT().
 					SendToScreenName(mock.Anything, tc.inputSNAC.Body.(oscar.SNAC_0x04_0x14_ICBMClientEvent).ScreenName,
 						tc.expectSNACToClient)
 			}
@@ -339,8 +339,8 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			//
 			senderSession := newTestSession(tc.senderScreenName)
 			svc := ICBMService{
-				sessionManager: sm,
-				feedbagManager: fm,
+				messageRelayer: messageRelayer,
+				feedbagManager: feedbagManager,
 			}
 			assert.NoError(t, svc.ClientEventHandler(nil, senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(oscar.SNAC_0x04_0x14_ICBMClientEvent)))
@@ -562,25 +562,25 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := newMockFeedbagManager(t)
-			fm.EXPECT().
+			feedbagManager := newMockFeedbagManager(t)
+			feedbagManager.EXPECT().
 				Blocked(tc.senderSession.ScreenName(), tc.recipientScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
-			fm.EXPECT().
+			feedbagManager.EXPECT().
 				InterestedUsers(tc.recipientScreenName).
 				Return(tc.recipientBuddies, nil).
 				Maybe()
 			recipSess := newTestSession(tc.recipientScreenName, sessOptCannedSignonTime)
-			sm := newMockSessionManager(t)
-			sm.EXPECT().
+			messageRelayer := newMockMessageRelayer(t)
+			messageRelayer.EXPECT().
 				RetrieveByScreenName(tc.recipientScreenName).
 				Return(recipSess).
 				Maybe()
-			sm.EXPECT().
+			messageRelayer.EXPECT().
 				SendToScreenName(mock.Anything, tc.recipientScreenName, tc.expectSNACToClient).
 				Maybe()
-			sm.EXPECT().
+			messageRelayer.EXPECT().
 				BroadcastToScreenNames(mock.Anything, tc.recipientBuddies, tc.broadcastMessage).
 				Maybe()
 			//
@@ -588,8 +588,8 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			//
 			senderSession := newTestSession(tc.senderSession.ScreenName())
 			svc := ICBMService{
-				sessionManager: sm,
-				feedbagManager: fm,
+				messageRelayer: messageRelayer,
+				feedbagManager: feedbagManager,
 			}
 			outputSNAC, err := svc.EvilRequestHandler(nil, senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(oscar.SNAC_0x04_0x08_ICBMEvilRequest))

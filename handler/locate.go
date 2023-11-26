@@ -7,16 +7,16 @@ import (
 	"github.com/mkaminski/goaim/state"
 )
 
-func NewLocateService(sm SessionManager, fm FeedbagManager, pm ProfileManager) LocateService {
+func NewLocateService(messageRelayer MessageRelayer, feedbagManager FeedbagManager, profileManager ProfileManager) LocateService {
 	return LocateService{
-		sessionManager: sm,
-		feedbagManager: fm,
-		profileManager: pm,
+		sessionManager: messageRelayer,
+		feedbagManager: feedbagManager,
+		profileManager: profileManager,
 	}
 }
 
 type LocateService struct {
-	sessionManager SessionManager
+	sessionManager MessageRelayer
 	feedbagManager FeedbagManager
 	profileManager ProfileManager
 }

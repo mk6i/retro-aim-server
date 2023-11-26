@@ -8,12 +8,12 @@ import (
 	"github.com/mkaminski/goaim/state"
 )
 
-func NewFeedbagService(sm SessionManager, fm FeedbagManager) *FeedbagService {
-	return &FeedbagService{sessionManager: sm, feedbagManager: fm}
+func NewFeedbagService(messageRelayer MessageRelayer, feedbagManager FeedbagManager) *FeedbagService {
+	return &FeedbagService{messageRelayer: messageRelayer, feedbagManager: feedbagManager}
 }
 
 type FeedbagService struct {
-	sessionManager SessionManager
+	messageRelayer MessageRelayer
 	feedbagManager FeedbagManager
 }
 
@@ -162,12 +162,12 @@ func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Sessi
 	for _, item := range inBody.Items {
 		switch item.ClassID {
 		case oscar.FeedbagClassIdBuddy, oscar.FeedbagClassIDPermit: // add new buddy
-			unicastArrival(ctx, item.Name, sess.ScreenName(), s.sessionManager)
+			unicastArrival(ctx, item.Name, sess.ScreenName(), s.messageRelayer)
 		case oscar.FeedbagClassIDDeny: // block buddy
 			// notify this user that buddy is offline
-			unicastDeparture(ctx, item.Name, sess.ScreenName(), s.sessionManager)
+			unicastDeparture(ctx, item.Name, sess.ScreenName(), s.messageRelayer)
 			// notify former buddy that this user is offline
-			unicastDeparture(ctx, sess.ScreenName(), item.Name, s.sessionManager)
+			unicastDeparture(ctx, sess.ScreenName(), item.Name, s.messageRelayer)
 		}
 	}
 
@@ -194,7 +194,7 @@ func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *state.Sessi
 	for _, item := range inBody.Items {
 		switch item.ClassID {
 		case oscar.FeedbagClassIdBuddy, oscar.FeedbagClassIDPermit:
-			unicastArrival(ctx, item.Name, sess.ScreenName(), s.sessionManager)
+			unicastArrival(ctx, item.Name, sess.ScreenName(), s.messageRelayer)
 		}
 	}
 
@@ -220,8 +220,8 @@ func (s FeedbagService) DeleteItemHandler(ctx context.Context, sess *state.Sessi
 
 	for _, item := range inBody.Items {
 		if item.ClassID == oscar.FeedbagClassIDDeny {
-			unicastArrival(ctx, item.Name, sess.ScreenName(), s.sessionManager)
-			unicastArrival(ctx, sess.ScreenName(), item.Name, s.sessionManager)
+			unicastArrival(ctx, item.Name, sess.ScreenName(), s.messageRelayer)
+			unicastArrival(ctx, sess.ScreenName(), item.Name, s.messageRelayer)
 		}
 	}
 

@@ -13,18 +13,19 @@ import (
 	"github.com/mkaminski/goaim/state"
 )
 
-func NewAuthService(cfg server.Config, sm SessionManager, fm FeedbagManager, um UserManager, cr *state.ChatRegistry) *AuthService {
+func NewAuthService(cfg server.Config, sessionManager SessionManager, feedbagManager FeedbagManager, userManager UserManager, cchatRegistry *state.ChatRegistry) *AuthService {
 	return &AuthService{
-		sessionManager: sm,
-		feedbagManager: fm,
+		sessionManager: sessionManager,
+		feedbagManager: feedbagManager,
 		config:         cfg,
-		userManager:    um,
-		chatRegistry:   cr,
+		userManager:    userManager,
+		chatRegistry:   cchatRegistry,
 	}
 }
 
 type AuthService struct {
 	sessionManager SessionManager
+	messageRelayer MessageRelayer
 	feedbagManager FeedbagManager
 	userManager    UserManager
 	config         server.Config
@@ -36,7 +37,7 @@ func (s AuthService) RetrieveChatSession(ctx context.Context, chatID string, ses
 	if err != nil {
 		return nil, err
 	}
-	chatSess, found := chatSessMgr.(ChatSessionManager).Retrieve(sessID)
+	chatSess, found := chatSessMgr.(SessionManager).Retrieve(sessID)
 	if !found {
 		return nil, fmt.Errorf("unable to find user for session. chat id: %s, sess id: %s", chatID, sessID)
 	}
@@ -44,7 +45,7 @@ func (s AuthService) RetrieveChatSession(ctx context.Context, chatID string, ses
 }
 
 func (s AuthService) Signout(ctx context.Context, sess *state.Session) error {
-	if err := broadcastDeparture(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
+	if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
 		return err
 	}
 	s.sessionManager.Remove(sess)
@@ -57,9 +58,9 @@ func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session, chatI
 		fmt.Println("error getting chat room to remove")
 		return
 	}
-	alertUserLeft(ctx, sess, chatSessMgr.(ChatSessionManager))
-	chatSessMgr.(ChatSessionManager).Remove(sess)
-	if chatSessMgr.(ChatSessionManager).Empty() {
+	alertUserLeft(ctx, sess, chatSessMgr.(ChatMessageRelayer))
+	chatSessMgr.(SessionManager).Remove(sess)
+	if chatSessMgr.(SessionManager).Empty() {
 		s.chatRegistry.RemoveRoom(chatRoom.Cookie)
 	}
 }

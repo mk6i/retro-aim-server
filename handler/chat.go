@@ -45,7 +45,7 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 	}
 
 	// send message to all the participants except sender
-	chatSessMgr.(ChatSessionManager).BroadcastExcept(ctx, sess, oscar.SNACMessage{
+	chatSessMgr.(ChatMessageRelayer).BroadcastExcept(ctx, sess, oscar.SNACMessage{
 		Frame: frameOut,
 		Body:  bodyOut,
 	})
@@ -63,9 +63,9 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 	return ret, nil
 }
 
-func setOnlineChatUsers(ctx context.Context, sess *state.Session, chatSessMgr ChatSessionManager) {
+func setOnlineChatUsers(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer) {
 	snacPayloadOut := oscar.SNAC_0x0E_0x03_ChatUsersJoined{}
-	sessions := chatSessMgr.Participants()
+	sessions := chatMessageRelayer.Participants()
 
 	for _, uSess := range sessions {
 		snacPayloadOut.Users = append(snacPayloadOut.Users, oscar.TLVUserInfo{
@@ -77,7 +77,7 @@ func setOnlineChatUsers(ctx context.Context, sess *state.Session, chatSessMgr Ch
 		})
 	}
 
-	chatSessMgr.SendToScreenName(ctx, sess.ScreenName(), oscar.SNACMessage{
+	chatMessageRelayer.SendToScreenName(ctx, sess.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Chat,
 			SubGroup:  oscar.ChatUsersJoined,
@@ -86,8 +86,8 @@ func setOnlineChatUsers(ctx context.Context, sess *state.Session, chatSessMgr Ch
 	})
 }
 
-func alertUserJoined(ctx context.Context, sess *state.Session, chatSessMgr ChatSessionManager) {
-	chatSessMgr.BroadcastExcept(ctx, sess, oscar.SNACMessage{
+func alertUserJoined(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer) {
+	chatMessageRelayer.BroadcastExcept(ctx, sess, oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Chat,
 			SubGroup:  oscar.ChatUsersJoined,
@@ -106,8 +106,8 @@ func alertUserJoined(ctx context.Context, sess *state.Session, chatSessMgr ChatS
 	})
 }
 
-func alertUserLeft(ctx context.Context, sess *state.Session, chatSessMgr ChatSessionManager) {
-	chatSessMgr.BroadcastExcept(ctx, sess, oscar.SNACMessage{
+func alertUserLeft(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer) {
+	chatMessageRelayer.BroadcastExcept(ctx, sess, oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Chat,
 			SubGroup:  oscar.ChatUsersLeft,
@@ -126,8 +126,8 @@ func alertUserLeft(ctx context.Context, sess *state.Session, chatSessMgr ChatSes
 	})
 }
 
-func sendChatRoomInfoUpdate(ctx context.Context, sess *state.Session, chatSessMgr ChatSessionManager, room state.ChatRoom) {
-	chatSessMgr.SendToScreenName(ctx, sess.ScreenName(), oscar.SNACMessage{
+func sendChatRoomInfoUpdate(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer, room state.ChatRoom) {
+	chatMessageRelayer.SendToScreenName(ctx, sess.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Chat,
 			SubGroup:  oscar.ChatRoomInfoUpdate,

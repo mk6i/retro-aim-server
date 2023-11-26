@@ -91,12 +91,12 @@ func TestQueryHandler(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := newMockFeedbagManager(t)
-			fm.EXPECT().
+			feedbagManager := newMockFeedbagManager(t)
+			feedbagManager.EXPECT().
 				Retrieve(tc.screenName).
 				Return(tc.feedbagItems, nil).
 				Maybe()
-			fm.EXPECT().
+			feedbagManager.EXPECT().
 				LastModified(tc.screenName).
 				Return(tc.lastModified, nil).
 				Maybe()
@@ -105,7 +105,7 @@ func TestQueryHandler(t *testing.T) {
 			//
 			senderSession := newTestSession(tc.screenName)
 			svc := FeedbagService{
-				feedbagManager: fm,
+				feedbagManager: feedbagManager,
 			}
 			outputSNAC, err := svc.QueryHandler(nil, senderSession, tc.inputSNAC.Frame)
 			assert.NoError(t, err)
@@ -233,12 +233,12 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := newMockFeedbagManager(t)
-			fm.EXPECT().
+			feedbagManager := newMockFeedbagManager(t)
+			feedbagManager.EXPECT().
 				Retrieve(tc.screenName).
 				Return(tc.feedbagItems, nil).
 				Maybe()
-			fm.EXPECT().
+			feedbagManager.EXPECT().
 				LastModified(tc.screenName).
 				Return(tc.lastModified, nil).
 				Maybe()
@@ -247,7 +247,7 @@ func TestQueryIfModifiedHandler(t *testing.T) {
 			//
 			senderSession := newTestSession(tc.screenName)
 			svc := FeedbagService{
-				feedbagManager: fm,
+				feedbagManager: feedbagManager,
 			}
 			outputSNAC, err := svc.QueryIfModifiedHandler(nil, senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(oscar.SNAC_0x13_0x05_FeedbagQueryIfModified))
@@ -603,24 +603,24 @@ func TestInsertItemHandler(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			fm := newMockFeedbagManager(t)
-			fm.EXPECT().
+			feedbagManager := newMockFeedbagManager(t)
+			feedbagManager.EXPECT().
 				Upsert(tc.userSession.ScreenName(), tc.inputSNAC.Body.(oscar.SNAC_0x13_0x08_FeedbagInsertItem).Items).
 				Return(nil).
 				Maybe()
-			fm.EXPECT().
+			feedbagManager.EXPECT().
 				Buddies(tc.userSession.ScreenName()).
 				Return([]string{}, nil).
 				Maybe()
-			sm := newMockSessionManager(t)
+			messageRelayer := newMockMessageRelayer(t)
 			for screenName, val := range tc.screenNameLookups {
-				sm.EXPECT().
+				messageRelayer.EXPECT().
 					RetrieveByScreenName(screenName).
 					Return(val.sess).
 					Maybe()
 			}
 			for _, n := range tc.buddyMessages {
-				sm.EXPECT().
+				messageRelayer.EXPECT().
 					SendToScreenName(mock.Anything, n.user, n.msg).
 					Maybe()
 			}
@@ -628,8 +628,8 @@ func TestInsertItemHandler(t *testing.T) {
 			// send input SNAC
 			//
 			svc := FeedbagService{
-				feedbagManager: fm,
-				sessionManager: sm,
+				feedbagManager: feedbagManager,
+				messageRelayer: messageRelayer,
 			}
 			output, err := svc.InsertItemHandler(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(oscar.SNAC_0x13_0x08_FeedbagInsertItem))
