@@ -2,6 +2,19 @@
 
 Retro AIM Server is a server implementation of the OSCAR protocol that supports AIM versions 5.0-5.9.
 
+This project is currently under heavy development. Retro AIM Server supports/will support the following features:
+
+- [x] Instant Messaging
+- [x] Buddy List
+- [x] Warning
+- [x] Away Messages
+- [x] User Profiles
+- [x] Chat Rooms
+- [x] Visibility Toggle
+- [x] User Blocking
+- [ ] Buddy Icons
+- [ ] User Directory
+
 ## How to run
 
 Retro AIM Server requires [go 1.21](https://go.dev/).
