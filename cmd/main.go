@@ -40,7 +40,7 @@ func main() {
 	}()
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "BOS")
-		authHandler := handler.NewAuthService(cfg, sessionManager, feedbagStore, feedbagStore, chatRegistry)
+		authHandler := handler.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry)
 		buddyHandler := handler.NewBuddyService()
 		oserviceHandler := handler.NewOServiceService(cfg, sessionManager, feedbagStore)
 		oserviceBOSHandler := handler.NewOServiceServiceForBOS(*oserviceHandler, chatRegistry)
@@ -68,7 +68,7 @@ func main() {
 	}(logger)
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "CHAT")
-		authHandler := handler.NewAuthService(cfg, sessionManager, feedbagStore, feedbagStore, chatRegistry)
+		authHandler := handler.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry)
 		oserviceHandler := handler.NewOServiceService(cfg, sessionManager, feedbagStore)
 		chatHandler := handler.NewChatService(chatRegistry)
 		oserviceChatHandler := handler.NewOServiceServiceForChat(*oserviceHandler, chatRegistry)
@@ -86,7 +86,7 @@ func main() {
 	}(logger)
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "AUTH")
-		authHandler := handler.NewAuthService(cfg, sessionManager, feedbagStore, feedbagStore, chatRegistry)
+		authHandler := handler.NewAuthService(cfg, sessionManager, nil, feedbagStore, feedbagStore, chatRegistry)
 
 		server.AuthService{
 			AuthHandler: authHandler,

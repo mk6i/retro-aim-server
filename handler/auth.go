@@ -13,23 +13,24 @@ import (
 	"github.com/mkaminski/goaim/state"
 )
 
-func NewAuthService(cfg server.Config, sessionManager SessionManager, feedbagManager FeedbagManager, userManager UserManager, cchatRegistry *state.ChatRegistry) *AuthService {
+func NewAuthService(cfg server.Config, sessionManager SessionManager, messageRelayer MessageRelayer, feedbagManager FeedbagManager, userManager UserManager, cchatRegistry *state.ChatRegistry) *AuthService {
 	return &AuthService{
-		sessionManager: sessionManager,
-		feedbagManager: feedbagManager,
-		config:         cfg,
-		userManager:    userManager,
 		chatRegistry:   cchatRegistry,
+		config:         cfg,
+		feedbagManager: feedbagManager,
+		messageRelayer: messageRelayer,
+		sessionManager: sessionManager,
+		userManager:    userManager,
 	}
 }
 
 type AuthService struct {
-	sessionManager SessionManager
-	messageRelayer MessageRelayer
-	feedbagManager FeedbagManager
-	userManager    UserManager
-	config         server.Config
 	chatRegistry   *state.ChatRegistry
+	config         server.Config
+	feedbagManager FeedbagManager
+	messageRelayer MessageRelayer
+	sessionManager SessionManager
+	userManager    UserManager
 }
 
 func (s AuthService) RetrieveChatSession(ctx context.Context, chatID string, sessID string) (*state.Session, error) {
