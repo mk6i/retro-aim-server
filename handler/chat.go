@@ -133,10 +133,10 @@ func sendChatRoomInfoUpdate(ctx context.Context, sess *state.Session, chatMessag
 			SubGroup:  oscar.ChatRoomInfoUpdate,
 		},
 		Body: oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-			Exchange:       4,
+			Exchange:       room.Exchange,
 			Cookie:         room.Cookie,
-			InstanceNumber: 100,
-			DetailLevel:    2,
+			InstanceNumber: room.InstanceNumber,
+			DetailLevel:    room.DetailLevel,
 			TLVBlock: oscar.TLVBlock{
 				TLVList: room.TLVList(),
 			},

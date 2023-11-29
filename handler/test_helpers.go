@@ -45,6 +45,13 @@ func sessOptInvisible(session *state.Session) {
 	session.SetInvisible(true)
 }
 
+// sessOptIdle sets the idle flag to dur on the session object
+func sessOptIdle(dur time.Duration) func(session *state.Session) {
+	return func(session *state.Session) {
+		session.SetIdle(dur)
+	}
+}
+
 // newTestSession creates a session object with 0 or more functional options
 // applied
 func newTestSession(screenName string, options ...func(session *state.Session)) *state.Session {

@@ -534,7 +534,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 
 			svcBOS := newMockOServiceChatHandler(t)
 			svcBOS.EXPECT().
-				ClientOnlineHandler(mock.Anything, tc.input.Body, mock.Anything, mock.Anything).
+				ClientOnlineHandler(mock.Anything, mock.Anything, mock.Anything).
 				Return(tc.handlerErr).
 				Maybe()
 

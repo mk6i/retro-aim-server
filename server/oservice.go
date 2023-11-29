@@ -29,7 +29,7 @@ type OServiceBOSHandler interface {
 type OServiceChatHandler interface {
 	OServiceHandler
 	WriteOServiceHostOnline() oscar.SNACMessage
-	ClientOnlineHandler(ctx context.Context, bodyIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session, chatID string) error
+	ClientOnlineHandler(ctx context.Context, sess *state.Session, chatID string) error
 }
 
 type OServiceRouter struct {
@@ -160,7 +160,7 @@ func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *state.Sess
 		}
 		rt.Logger.InfoContext(ctx, "user signed on")
 		rt.logRequest(ctx, inFrame, inBody)
-		return rt.OServiceChatHandler.ClientOnlineHandler(ctx, inBody, sess, chatID)
+		return rt.OServiceChatHandler.ClientOnlineHandler(ctx, sess, chatID)
 	default:
 		return rt.OServiceRouter.RouteOService(ctx, sess, inFrame, r, w, sequence)
 	}

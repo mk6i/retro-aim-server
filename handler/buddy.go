@@ -46,13 +46,7 @@ func broadcastArrival(ctx context.Context, sess *state.Session, messageRelayer M
 			SubGroup:  oscar.BuddyArrived,
 		},
 		Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
-			TLVUserInfo: oscar.TLVUserInfo{
-				ScreenName:   sess.ScreenName(),
-				WarningLevel: sess.Warning(),
-				TLVBlock: oscar.TLVBlock{
-					TLVList: sess.UserInfo(),
-				},
-			},
+			TLVUserInfo: sess.TLVUserInfo(),
 		},
 	})
 

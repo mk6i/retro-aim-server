@@ -12,16 +12,26 @@ import (
 	"github.com/mkaminski/goaim/state"
 )
 
+// NewOServiceService creates a new instance of OServiceService.
 func NewOServiceService(cfg server.Config, messageRelayer MessageRelayer, feedbagManager FeedbagManager) *OServiceService {
 	return &OServiceService{cfg: cfg, messageRelayer: messageRelayer, feedbagManager: feedbagManager}
 }
 
+// OServiceService contains handlers for the OService food group.
 type OServiceService struct {
 	cfg            server.Config
 	feedbagManager FeedbagManager
 	messageRelayer MessageRelayer
 }
 
+// ClientVersionsHandler informs the server what food group versions the client
+// supports and returns to the client what food group versions it supports.
+// This method simply regurgitates versions supplied by the client in inBody
+// back to the client in a OServiceHostVersions SNAC. The server doesn't
+// attempt to accommodate any particular food group version. The server
+// implicitly accommodates any food group version for Windows AIM clients 5.x.
+// It returns SNAC oscar.OServiceHostVersions containing the server's supported
+// food group versions.
 func (s OServiceService) ClientVersionsHandler(_ context.Context, frame oscar.SNACFrame, inBody oscar.SNAC_0x01_0x17_OServiceClientVersions) oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
@@ -36,25 +46,19 @@ func (s OServiceService) ClientVersionsHandler(_ context.Context, frame oscar.SN
 }
 
 // RateParamsQueryHandler returns SNAC rate limits.
-// The purpose of this method is to provide information about rate limits that can be
-// enforced on the server side. The response consists of two main parts: rate classes and
-// rate groups. Rate classes define limits based on specific parameters, while rate groups
-// associate these limits with relevant SNAC types.
+// The purpose of this method is to provide information about rate limits that
+// can be enforced on the server side. The response consists of two main parts:
+// rate classes and rate groups. Rate classes define limits based on specific
+// parameters, while rate groups associate these limits with relevant SNAC
+// types.
 //
-// Note: The current implementation does not enforce server-side rate limiting. Instead,
-// the provided values inform the client about the recommended client-side rate limits.
+// Note: The current implementation does not enforce server-side rate limiting.
+// Instead, the provided values inform the client about the recommended
+// client-side rate limits.
 //
-// The response only contains rate limits for sending Instant Messages (IMs)
-// and chat messages. More refined limits may be added in the future if/when server
-// rate limiting is implemented.
-//
-// Parameters:
-//   - _ (context.Context): The context is not used in this method.
-//   - inFrame (oscar.SNACFrame): The input SNAC frame containing the request details.
-//
-// Returns:
-//
-//	oscar.SNACMessage: The SNAC message containing rate limits.
+// It returns SNAC osca.rOServiceRateParamsReply containing rate limits for
+// sending Instant Messages (IMs) and chat messages. More refined limits may be
+// added in the future if/when server rate limiting is implemented.
 func (s OServiceService) RateParamsQueryHandler(_ context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
@@ -116,7 +120,9 @@ func (s OServiceService) RateParamsQueryHandler(_ context.Context, inFrame oscar
 	}
 }
 
-func (s OServiceService) UserInfoQueryHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame) oscar.SNACMessage {
+// UserInfoQueryHandler returns SNAC oscar.OServiceUserInfoUpdate containing
+// the user's info.
+func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Session, inFrame oscar.SNACFrame) oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.OService,
@@ -129,6 +135,11 @@ func (s OServiceService) UserInfoQueryHandler(ctx context.Context, sess *state.S
 	}
 }
 
+// SetUserInfoFieldsHandler sets the user's visibility status to visible or invisible.
+// The visibility status is set according to the inFrame TLV entry under key
+// oscar.OServiceUserInfoStatus. If the value is 0x0000, set invisible. If set
+// to 0x0100, set invisible. Else, return an error for any other value.
+// It returns SNAC oscar.OServiceUserInfoUpdate containing the user's info.
 func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.SNACMessage, error) {
 	if status, hasStatus := inBody.GetUint32(oscar.OServiceUserInfoStatus); hasStatus {
 		switch status {
@@ -158,6 +169,9 @@ func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *sta
 	}, nil
 }
 
+// IdleNotificationHandler sets the user idle time.
+// Set session idle time to the value of bodyIn.IdleTime. Return a user arrival
+// message to all users who have this user on their buddy list.
 func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *state.Session, bodyIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error {
 	if bodyIn.IdleTime == 0 {
 		sess.SetActive()
@@ -172,6 +186,7 @@ func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *stat
 func (s OServiceService) RateParamsSubAddHandler(context.Context, oscar.SNAC_0x01_0x08_OServiceRateParamsSubAdd) {
 }
 
+// NewOServiceServiceForBOS creates a new instance of OServiceServiceForBOS.
 func NewOServiceServiceForBOS(oserviceService OServiceService, cr *state.ChatRegistry) *OServiceServiceForBOS {
 	return &OServiceServiceForBOS{
 		OServiceService: oserviceService,
@@ -179,11 +194,20 @@ func NewOServiceServiceForBOS(oserviceService OServiceService, cr *state.ChatReg
 	}
 }
 
+// OServiceServiceForBOS contains handlers for the OService food group for the
+// BOS service.
 type OServiceServiceForBOS struct {
 	OServiceService
 	chatRegistry *state.ChatRegistry
 }
 
+// ServiceRequestHandler configures food group settings for the current user.
+// This method only provides services for the Chat food group; return
+// server.ErrUnsupportedSubGroup for any other food group. When the chat food
+// group is specified in inFrame, add user to the chat room specified by TLV
+// 0x01.
+// It returns SNAC oscar.OServiceServiceResponse containing metadata the client
+// needs to connect to the chat service and join the chat room.
 func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x01_0x04_OServiceServiceRequest) (oscar.SNACMessage, error) {
 	if inBody.FoodGroup != oscar.Chat {
 		return oscar.SNACMessage{}, server.ErrUnsupportedSubGroup
@@ -228,6 +252,9 @@ func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *st
 	}, nil
 }
 
+// WriteOServiceHostOnline initiates the BOS protocol sequence.
+// It returns SNAC oscar.OServiceHostOnline containing the list food groups
+// supported by the BOS service.
 func (s OServiceServiceForBOS) WriteOServiceHostOnline() oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
@@ -248,6 +275,11 @@ func (s OServiceServiceForBOS) WriteOServiceHostOnline() oscar.SNACMessage {
 	}
 }
 
+// ClientOnlineHandler runs when the current user is ready to join.
+// It performs the following sequence of actions:
+//   - Announce current user's arrival to users who have the current user on
+//     their buddy list.
+//   - Send current user its buddy list
 func (s OServiceServiceForBOS) ClientOnlineHandler(ctx context.Context, _ oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
 	if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
 		return err
@@ -262,6 +294,7 @@ func (s OServiceServiceForBOS) ClientOnlineHandler(ctx context.Context, _ oscar.
 	return nil
 }
 
+// NewOServiceServiceForChat creates a new instance of OServiceServiceForChat.
 func NewOServiceServiceForChat(oserviceService OServiceService, chatRegistry *state.ChatRegistry) *OServiceServiceForChat {
 	return &OServiceServiceForChat{
 		OServiceService: oserviceService,
@@ -269,11 +302,16 @@ func NewOServiceServiceForChat(oserviceService OServiceService, chatRegistry *st
 	}
 }
 
+// OServiceServiceForChat contains handlers for the OService food group for the
+// Chat service.
 type OServiceServiceForChat struct {
 	OServiceService
 	chatRegistry *state.ChatRegistry
 }
 
+// WriteOServiceHostOnline initiates the Chat protocol sequence.
+// It returns SNAC oscar.OServiceHostOnline containing the list of food groups
+// supported by the Chat service.
 func (s OServiceServiceForChat) WriteOServiceHostOnline() oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
@@ -281,12 +319,20 @@ func (s OServiceServiceForChat) WriteOServiceHostOnline() oscar.SNACMessage {
 			SubGroup:  oscar.OServiceHostOnline,
 		},
 		Body: oscar.SNAC_0x01_0x03_OServiceHostOnline{
-			FoodGroups: []uint16{oscar.OService, oscar.Chat},
+			FoodGroups: []uint16{
+				oscar.OService,
+				oscar.Chat,
+			},
 		},
 	}
 }
 
-func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, bodyIn oscar.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session, chatID string) error {
+// ClientOnlineHandler runs when the current user is ready to join the chat.
+// Trigger the following actions:
+//   - Send current user the chat room metadata
+//   - Announce current user's arrival to other chat room participants
+//   - Send current user the chat room participant list
+func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, sess *state.Session, chatID string) error {
 	room, chatSessMgr, err := s.chatRegistry.Retrieve(chatID)
 	if err != nil {
 		return err
