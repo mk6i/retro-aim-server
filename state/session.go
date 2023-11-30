@@ -169,10 +169,10 @@ func (s *Session) UserInfo() oscar.TLVList {
 }
 
 func (s *Session) Warning() uint16 {
-	var w uint16
 	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	var w uint16
 	w = s.warning
-	s.mutex.RUnlock()
 	return w
 }
 
@@ -181,11 +181,11 @@ func (s *Session) RecvMessage() chan oscar.SNACMessage {
 }
 
 func (s *Session) SendMessage(msg oscar.SNACMessage) SessSendStatus {
-	s.mutex.Lock()
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	if s.closed {
 		return SessSendClosed
 	}
-	s.mutex.Unlock()
 	select {
 	case s.msgCh <- msg:
 		return SessSendOK
