@@ -106,12 +106,140 @@ func (s OServiceService) RateParamsQueryHandler(_ context.Context, inFrame oscar
 						SubGroup  uint16
 					}{
 						{
-							FoodGroup: oscar.ICBM,
-							SubGroup:  oscar.ICBMChannelMsgToHost,
+							FoodGroup: oscar.Buddy,
+							SubGroup:  oscar.BuddyRightsQuery,
 						},
 						{
 							FoodGroup: oscar.Chat,
 							SubGroup:  oscar.ChatChannelMsgToHost,
+						},
+						{
+							FoodGroup: oscar.ChatNav,
+							SubGroup:  oscar.ChatNavRequestChatRights,
+						},
+						{
+							FoodGroup: oscar.ChatNav,
+							SubGroup:  oscar.ChatNavRequestRoomInfo,
+						},
+						{
+							FoodGroup: oscar.ChatNav,
+							SubGroup:  oscar.ChatNavCreateRoom,
+						},
+						{
+							FoodGroup: oscar.Feedbag,
+							SubGroup:  oscar.FeedbagRightsQuery,
+						},
+						{
+							FoodGroup: oscar.Feedbag,
+							SubGroup:  oscar.FeedbagQuery,
+						},
+						{
+							FoodGroup: oscar.Feedbag,
+							SubGroup:  oscar.FeedbagQueryIfModified,
+						},
+						{
+							FoodGroup: oscar.Feedbag,
+							SubGroup:  oscar.FeedbagUse,
+						},
+						{
+							FoodGroup: oscar.Feedbag,
+							SubGroup:  oscar.FeedbagInsertItem,
+						},
+						{
+							FoodGroup: oscar.Feedbag,
+							SubGroup:  oscar.FeedbagUpdateItem,
+						},
+						{
+							FoodGroup: oscar.Feedbag,
+							SubGroup:  oscar.FeedbagDeleteItem,
+						},
+						{
+							FoodGroup: oscar.Feedbag,
+							SubGroup:  oscar.FeedbagStartCluster,
+						},
+						{
+							FoodGroup: oscar.Feedbag,
+							SubGroup:  oscar.FeedbagEndCluster,
+						},
+						{
+							FoodGroup: oscar.ICBM,
+							SubGroup:  oscar.ICBMAddParameters,
+						},
+						{
+							FoodGroup: oscar.ICBM,
+							SubGroup:  oscar.ICBMParameterQuery,
+						},
+						{
+							FoodGroup: oscar.ICBM,
+							SubGroup:  oscar.ICBMChannelMsgToHost,
+						},
+						{
+							FoodGroup: oscar.ICBM,
+							SubGroup:  oscar.ICBMEvilRequest,
+						},
+						{
+							FoodGroup: oscar.ICBM,
+							SubGroup:  oscar.ICBMClientErr,
+						},
+						{
+							FoodGroup: oscar.ICBM,
+							SubGroup:  oscar.ICBMClientEvent,
+						},
+						{
+							FoodGroup: oscar.Locate,
+							SubGroup:  oscar.LocateRightsQuery,
+						},
+						{
+							FoodGroup: oscar.Locate,
+							SubGroup:  oscar.LocateSetInfo,
+						},
+						{
+							FoodGroup: oscar.Locate,
+							SubGroup:  oscar.LocateSetDirInfo,
+						},
+						{
+							FoodGroup: oscar.Locate,
+							SubGroup:  oscar.LocateGetDirInfo,
+						},
+						{
+							FoodGroup: oscar.Locate,
+							SubGroup:  oscar.LocateSetKeywordInfo,
+						},
+						{
+							FoodGroup: oscar.Locate,
+							SubGroup:  oscar.LocateUserInfoQuery2,
+						},
+						{
+							FoodGroup: oscar.OService,
+							SubGroup:  oscar.OServiceServiceRequest,
+						},
+						{
+							FoodGroup: oscar.OService,
+							SubGroup:  oscar.OServiceClientOnline,
+						},
+						{
+							FoodGroup: oscar.OService,
+							SubGroup:  oscar.OServiceRateParamsQuery,
+						},
+						{
+							FoodGroup: oscar.OService,
+							SubGroup:  oscar.OServiceRateParamsSubAdd,
+						},
+						{
+							FoodGroup: oscar.OService,
+							SubGroup:  oscar.OServiceUserInfoQuery,
+						},
+						{
+							FoodGroup: oscar.OService,
+							SubGroup:  oscar.OServiceIdleNotification,
+						},
+						{
+							FoodGroup: oscar.OService,
+							SubGroup:  oscar.OServiceClientVersions,
+						},
+						{
+							FoodGroup: oscar.OService,
+							SubGroup:  oscar.OServiceSetUserInfoFields,
 						},
 					},
 				},
