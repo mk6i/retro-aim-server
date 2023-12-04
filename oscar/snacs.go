@@ -270,6 +270,17 @@ const (
 	LocateTLVTagsInfoSupportHostSig  uint16 = 0x0C
 	LocateTLVTagsInfoHtmlInfoData    uint16 = 0x0E
 	LocateTLVTagsInfoHtmlInfoType    uint16 = 0x0D
+
+	// LocateTLVTagsRightsMaxSigLen is the max signature length
+	LocateTLVTagsRightsMaxSigLen uint16 = 0x01
+	// LocateTLVTagsRightsMaxCapabilitiesLen is the max allowed # of full UUID capabilities
+	LocateTLVTagsRightsMaxCapabilitiesLen uint16 = 0x02
+	// LocateTLVTagsRightsMaxFindByEmailList is the maximum # of email addresses to look up at once
+	LocateTLVTagsRightsMaxFindByEmailList uint16 = 0x03
+	// LocateTLVTagsRightsMaxCertsLen is the largest CERT length for e2e crypto
+	LocateTLVTagsRightsMaxCertsLen uint16 = 0x04
+	// LocateTLVTagsRightsMaxMaxShortCapabilities is the max allowed # of short UUID capabilities allowed
+	LocateTLVTagsRightsMaxMaxShortCapabilities uint16 = 0x05
 )
 
 type SNAC_0x02_0x03_LocateRightsReply struct {
@@ -302,6 +313,7 @@ type SNAC_0x02_0x0F_LocateSetKeywordInfo struct {
 }
 
 type SNAC_0x02_0x10_LocateSetKeywordReply struct {
+	// Unknown is a field whose purpose is not known
 	Unknown uint16
 }
 

@@ -672,18 +672,6 @@ func TestOServiceServiceForBOS_ClientOnlineHandler(t *testing.T) {
 		screenName string
 		buddies    []string
 	}
-	type interestedUsersParams []struct {
-		screenName string
-		users      []string
-	}
-	type broadcastToScreenNamesParams []struct {
-		screenNames []string
-		message     oscar.SNACMessage
-	}
-	type retrieveByScreenNameParams []struct {
-		screenName string
-		sess       *state.Session
-	}
 	type sendToScreenNameParams []struct {
 		screenName string
 		message    oscar.SNACMessage

@@ -191,7 +191,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().
-				SetDirInfoHandler(mock.Anything).
+				SetDirInfoHandler(mock.Anything, tc.input.Frame).
 				Return(tc.output).
 				Maybe()
 			svc.EXPECT().

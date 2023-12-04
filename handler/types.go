@@ -9,7 +9,7 @@ import (
 )
 
 type FeedbagManager interface {
-	Blocked(sn1, sn2 string) (state.BlockedState, error)
+	Blocked(screenName1, screenName2 string) (state.BlockedState, error)
 	Buddies(screenName string) ([]string, error)
 	Delete(screenName string, items []oscar.FeedbagItem) error
 	InterestedUsers(screenName string) ([]string, error)

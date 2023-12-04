@@ -11,7 +11,7 @@ import (
 
 type LocateHandler interface {
 	RightsQueryHandler(ctx context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage
-	SetDirInfoHandler(ctx context.Context) oscar.SNACMessage
+	SetDirInfoHandler(ctx context.Context, frame oscar.SNACFrame) oscar.SNACMessage
 	SetInfoHandler(ctx context.Context, sess *state.Session, inBody oscar.SNAC_0x02_0x04_LocateSetInfo) error
 	SetKeywordInfoHandler(ctx context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage
 	UserInfoQuery2Handler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.SNACMessage, error)
@@ -49,7 +49,7 @@ func (rt LocateRouter) RouteLocate(ctx context.Context, sess *state.Session, inF
 		if err := oscar.Unmarshal(&inBody, r); err != nil {
 			return err
 		}
-		outSNAC := rt.SetDirInfoHandler(ctx)
+		outSNAC := rt.SetDirInfoHandler(ctx, inFrame)
 		rt.logRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
 		return sendSNAC(outSNAC.Frame, outSNAC.Body, sequence, w)
 	case oscar.LocateGetDirInfo:

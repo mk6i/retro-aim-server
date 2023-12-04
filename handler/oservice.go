@@ -17,7 +17,7 @@ func NewOServiceService(cfg server.Config, messageRelayer MessageRelayer, feedba
 	return &OServiceService{cfg: cfg, messageRelayer: messageRelayer, feedbagManager: feedbagManager}
 }
 
-// OServiceService contains handlers for the OService food group.
+// OServiceService provides handlers for the OService food group.
 type OServiceService struct {
 	cfg            server.Config
 	feedbagManager FeedbagManager
