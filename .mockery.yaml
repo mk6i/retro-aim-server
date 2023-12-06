@@ -7,48 +7,48 @@ packages:
     interfaces:
       BuddyHandler:
         config:
-          filename: "buddy_mock.go"
+          filename: "buddy_mock_test.go"
       ChatHandler:
         config:
-          filename: "chat_mock.go"
+          filename: "chat_mock_test.go"
       ChatNavHandler:
         config:
-          filename: "chat_nav_mock.go"
+          filename: "chat_nav_mock_test.go"
       FeedbagHandler:
         config:
-          filename: "feedbag_mock.go"
+          filename: "feedbag_mock_test.go"
       ICBMHandler:
         config:
-          filename: "icbm_mock.go"
+          filename: "icbm_mock_test.go"
       LocateHandler:
         config:
-          filename: "locate_mock.go"
+          filename: "locate_mock_test.go"
       OServiceHandler:
         config:
-          filename: "oservice_mock.go"
+          filename: "oservice_mock_test.go"
       OServiceBOSHandler:
         config:
-          filename: "oservice_bos_mock.go"
+          filename: "oservice_bos_mock_test.go"
       OServiceChatHandler:
         config:
-          filename: "oservice_chat_mock.go"
+          filename: "oservice_chat_mock_test.go"
   github.com/mkaminski/goaim/handler:
     interfaces:
       FeedbagManager:
         config:
-          filename: "feedbag_manager_mock.go"
+          filename: "feedbag_manager_mock_test.go"
       UserManager:
         config:
-          filename: "user_manager_manager_mock.go"
+          filename: "user_manager_manager_mock_test.go"
       ProfileManager:
         config:
-          filename: "profile_manager_mock.go"
+          filename: "profile_manager_mock_test.go"
       SessionManager:
         config:
-          filename: "session_manager_mock.go"
+          filename: "session_manager_mock_test.go"
       MessageRelayer:
         config:
-          filename: "session_message_relayer.go"
+          filename: "message_relayer_mock_test.go"
       ChatMessageRelayer:
         config:
-          filename: "session_chat_message_relayer.go"
+          filename: "chat_message_relayer_mock_test.go"
