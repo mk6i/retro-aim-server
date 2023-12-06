@@ -484,10 +484,18 @@ const (
 	ChatNavCreateRoom          uint16 = 0x0008
 	ChatNavNavInfo             uint16 = 0x0009
 
-	ChatNavTLVRedirect     uint16 = 0x01
-	ChatNavTLVMaxRooms     uint16 = 0x02
-	ChatNavTLVExchangeInfo uint16 = 0x03
-	ChatNavTLVRoomInfo     uint16 = 0x04
+	// referenced from protocols/oscar/family_chatnav.c in lib purple
+
+	ChatNavTLVMaxConcurrentRooms uint16 = 0x02
+	ChatNavTLVClassPerms         uint16 = 0x02
+	ChatNavTLVExchangeInfo       uint16 = 0x03
+	ChatNavTLVFlags              uint16 = 0xC9
+	ChatNavTLVExchangeDesc       uint16 = 0xD3
+	ChatNavTLVCreatePerms        uint16 = 0xD5
+	ChatNavTLVCharSet1           uint16 = 0xD6
+	ChatNavTLVLang1              uint16 = 0xD7
+	ChatNavTLVCharSet2           uint16 = 0xD8
+	ChatNavTLVLang2              uint16 = 0xD9
 )
 
 type SNAC_0x0D_0x04_ChatNavRequestRoomInfo struct {

@@ -46,7 +46,7 @@ func main() {
 		oserviceBOSHandler := handler.NewOServiceServiceForBOS(*oserviceHandler, chatRegistry)
 		locateHandler := handler.NewLocateService(sessionManager, feedbagStore, feedbagStore)
 		newChatSessMgr := func() handler.SessionManager { return state.NewSessionManager(logger) }
-		chatNavHandler := handler.NewChatNavService(logger, chatRegistry, newChatSessMgr)
+		chatNavHandler := handler.NewChatNavService(logger, chatRegistry, state.NewChatRoom, newChatSessMgr)
 		feedbagHandler := handler.NewFeedbagService(sessionManager, feedbagStore)
 		icbmHandler := handler.NewICBMService(sessionManager, feedbagStore)
 

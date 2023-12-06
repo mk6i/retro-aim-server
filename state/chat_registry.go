@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mkaminski/goaim/oscar"
 )
 
@@ -67,5 +68,13 @@ func (c ChatRoom) TLVList() []oscar.TLV {
 		oscar.NewTLV(0x00d5, uint8(2)),
 		oscar.NewTLV(0x006a, c.Name),
 		oscar.NewTLV(0x00d3, c.Name),
+	}
+}
+
+// NewChatRoom creates new state.ChatRoom objects
+func NewChatRoom() ChatRoom {
+	return ChatRoom{
+		Cookie:     uuid.New().String(),
+		CreateTime: time.Now(),
 	}
 }
