@@ -416,8 +416,12 @@ func (s OServiceServiceForBOS) ClientOnlineHandler(ctx context.Context, _ oscar.
 	if err != nil {
 		return err
 	}
-	for _, buddy := range buddies {
-		unicastArrival(ctx, buddy, sess.ScreenName(), s.messageRelayer)
+	for _, screenName := range buddies {
+		buddy := s.messageRelayer.RetrieveByScreenName(screenName)
+		if buddy == nil || buddy.Invisible() {
+			continue
+		}
+		unicastArrival(ctx, buddy, sess, s.messageRelayer)
 	}
 	return nil
 }

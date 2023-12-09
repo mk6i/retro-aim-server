@@ -20,6 +20,11 @@ type mockParams struct {
 type feedbagManagerParams struct {
 	blockedParams
 	interestedUsersParams
+	upsertParams
+	buddiesParams
+	retrieveParams
+	lastModifiedParams
+	deleteParams
 }
 
 // blockedParams is the list of parameters passed at the mock
@@ -38,11 +43,47 @@ type interestedUsersParams []struct {
 	users      []string
 }
 
+// upsertParams is the list of parameters passed at the mock
+// FeedbagManager.Upsert call site
+type upsertParams []struct {
+	screenName string
+	items      []oscar.FeedbagItem
+}
+
+// buddiesParams is the list of parameters passed at the mock
+// FeedbagManager.Buddies call site
+type buddiesParams []struct {
+	screenName string
+	results    []string
+}
+
+// retrieveParams is the list of parameters passed at the mock
+// FeedbagManager.Retrieve call site
+type retrieveParams []struct {
+	screenName string
+	results    []oscar.FeedbagItem
+}
+
+// lastModifiedParams is the list of parameters passed at the mock
+// FeedbagManager.LastModified call site
+type lastModifiedParams []struct {
+	screenName string
+	result     time.Time
+}
+
+// deleteParams is the list of parameters passed at the mock
+// FeedbagManager.Delete call site
+type deleteParams []struct {
+	screenName string
+	items      []oscar.FeedbagItem
+}
+
 // messageRelayerParams is a helper struct that contains mock parameters for
 // MessageRelayer methods
 type messageRelayerParams struct {
 	retrieveByScreenNameParams
 	broadcastToScreenNamesParams
+	sendToScreenNameParams
 }
 
 // retrieveByScreenNameParams is the list of parameters passed at the mock
@@ -57,6 +98,13 @@ type retrieveByScreenNameParams []struct {
 type broadcastToScreenNamesParams []struct {
 	screenNames []string
 	message     oscar.SNACMessage
+}
+
+// sendToScreenNameParams is the list of parameters passed at the mock
+// MessageRelayer.SendToScreenName call site
+type sendToScreenNameParams []struct {
+	screenName string
+	message    oscar.SNACMessage
 }
 
 // profileManagerParams is a helper struct that contains mock parameters for

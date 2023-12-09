@@ -698,6 +698,20 @@ const (
 	FeedbagAttributesFirstCreationTimeXc     uint16 = 0x0167
 	FeedbagAttributesPdModeXc                uint16 = 0x016E
 
+	FeedbagRightsMaxClassAttrs       uint16 = 0x02
+	FeedbagRightsMaxItemAttrs        uint16 = 0x03
+	FeedbagRightsMaxItemsByClass     uint16 = 0x04
+	FeedbagRightsMaxClientItems      uint16 = 0x05
+	FeedbagRightsMaxItemNameLen      uint16 = 0x06
+	FeedbagRightsMaxRecentBuddies    uint16 = 0x07
+	FeedbagRightsInteractionBuddies  uint16 = 0x08
+	FeedbagRightsInteractionHalfLife uint16 = 0x09
+	FeedbagRightsInteractionMaxScore uint16 = 0x0A
+	FeedbagRightsMaxUnknown0b        uint16 = 0x0B
+	FeedbagRightsMaxBuddiesPerGroup  uint16 = 0x0C
+	FeedbagRightsMaxMegaBots         uint16 = 0x0D
+	FeedbagRightsMaxSmartGroups      uint16 = 0x0E
+
 	FeedbagErr                      uint16 = 0x0001
 	FeedbagRightsQuery              uint16 = 0x0002
 	FeedbagRightsReply              uint16 = 0x0003

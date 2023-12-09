@@ -8,15 +8,23 @@ import (
 	"github.com/mkaminski/goaim/state"
 )
 
-func NewFeedbagService(messageRelayer MessageRelayer, feedbagManager FeedbagManager) *FeedbagService {
-	return &FeedbagService{messageRelayer: messageRelayer, feedbagManager: feedbagManager}
+// NewFeedbagService creates a new instance of FeedbagService.
+func NewFeedbagService(messageRelayer MessageRelayer, feedbagManager FeedbagManager) FeedbagService {
+	return FeedbagService{
+		messageRelayer: messageRelayer,
+		feedbagManager: feedbagManager,
+	}
 }
 
+// FeedbagService provides handlers for the Feedbag food group.
 type FeedbagService struct {
 	messageRelayer MessageRelayer
 	feedbagManager FeedbagManager
 }
 
+// RightsQueryHandler returns SNAC oscar.FeedbagRightsReply, which contains
+// Feedbag food group settings for the current user. The values within the SNAC
+// are not well understood but seem to make the AIM client happy.
 func (s FeedbagService) RightsQueryHandler(_ context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
@@ -27,45 +35,47 @@ func (s FeedbagService) RightsQueryHandler(_ context.Context, inFrame oscar.SNAC
 		Body: oscar.SNAC_0x13_0x03_FeedbagRightsReply{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
-					oscar.NewTLV(0x03, uint16(200)),
-					oscar.NewTLV(0x04, []uint16{
-						0x3D,
-						0x3D,
-						0x64,
-						0x64,
-						0x01,
-						0x01,
-						0x32,
-						0x00,
-						0x00,
-						0x03,
-						0x00,
-						0x00,
-						0x00,
-						0x80,
-						0xFF,
-						0x14,
-						0xC8,
-						0x01,
-						0x00,
-						0x01,
-						0x00,
+					oscar.NewTLV(oscar.FeedbagRightsMaxItemAttrs, uint16(200)),
+					oscar.NewTLV(oscar.FeedbagRightsMaxItemsByClass, []uint16{
+						0x3D, // max num of contacts
+						0x3D, // max num of groups
+						0x64, // max visible contacts
+						0x64, // max invisible contacts
+						0x01, // max vis/invis bitmasks
+						0x01, // max presense info fields
+						0x32, // limit for item type 06
+						0x00, // limit for item type 07
+						0x00, // limit for item type 08
+						0x03, // limit for item type 09
+						0x00, // limit for item type 0a
+						0x00, // limit for item type 0b
+						0x00, // limit for item type 0c
+						0x80, // limit for item type 0d
+						0xFF, // max ignore list entries
+						0x14, // limit for item type 0f
+						0xC8, // limit for item 10
+						0x01, // limit for item 11
+						0x00, // limit for item 12
+						0x01, // limit for item 13
+						0x00, // limit for item 14
 					}),
-					oscar.NewTLV(0x05, uint16(200)),
-					oscar.NewTLV(0x06, uint16(200)),
-					oscar.NewTLV(0x07, uint16(200)),
-					oscar.NewTLV(0x08, uint16(200)),
-					oscar.NewTLV(0x09, uint16(200)),
-					oscar.NewTLV(0x0A, uint16(200)),
-					oscar.NewTLV(0x0C, uint16(200)),
-					oscar.NewTLV(0x0D, uint16(200)),
-					oscar.NewTLV(0x0E, uint16(100)),
+					oscar.NewTLV(oscar.FeedbagRightsMaxClientItems, uint16(200)),
+					oscar.NewTLV(oscar.FeedbagRightsMaxItemNameLen, uint16(200)),
+					oscar.NewTLV(oscar.FeedbagRightsMaxRecentBuddies, uint16(200)),
+					oscar.NewTLV(oscar.FeedbagRightsInteractionBuddies, uint16(200)),
+					oscar.NewTLV(oscar.FeedbagRightsInteractionHalfLife, uint16(200)),
+					oscar.NewTLV(oscar.FeedbagRightsInteractionMaxScore, uint16(200)),
+					oscar.NewTLV(oscar.FeedbagRightsMaxBuddiesPerGroup, uint16(200)),
+					oscar.NewTLV(oscar.FeedbagRightsMaxMegaBots, uint16(200)),
+					oscar.NewTLV(oscar.FeedbagRightsMaxSmartGroups, uint16(100)),
 				},
 			},
 		},
 	}
 }
 
+// QueryHandler fetches the user's feedbag (aka buddy list). It returns
+// oscar.FeedbagReply, which contains feedbag entries.
 func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session, inFrame oscar.SNACFrame) (oscar.SNACMessage, error) {
 	fb, err := s.feedbagManager.Retrieve(sess.ScreenName())
 	if err != nil {
@@ -95,6 +105,10 @@ func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session, inF
 	}, nil
 }
 
+// QueryIfModifiedHandler fetches the user's feedbag (aka buddy list). It
+// returns oscar.FeedbagReplyNotModified if the feedbag was last modified
+// before inBody.LastUpdate, else return oscar.FeedbagReply, which contains
+// feedbag entries.
 func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.SNACMessage, error) {
 	fb, err := s.feedbagManager.Retrieve(sess.ScreenName())
 	if err != nil {
@@ -137,6 +151,11 @@ func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *state.Se
 	}, nil
 }
 
+// InsertItemHandler adds items to the user's feedbag (aka buddy list). Sends
+// user buddy arrival notifications for each online & visible buddy added to
+// the feedbag. Sends a buddy departure notification to blocked buddies if
+// current user is visible. It returns oscar.FeedbagStatus, which contains
+// insert confirmation.
 func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x13_0x08_FeedbagInsertItem) (oscar.SNACMessage, error) {
 	for _, item := range inBody.Items {
 		// don't let users block themselves, it causes the AIM client to go
@@ -162,12 +181,21 @@ func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Sessi
 	for _, item := range inBody.Items {
 		switch item.ClassID {
 		case oscar.FeedbagClassIdBuddy, oscar.FeedbagClassIDPermit: // add new buddy
-			unicastArrival(ctx, item.Name, sess.ScreenName(), s.messageRelayer)
+			buddy := s.messageRelayer.RetrieveByScreenName(item.Name)
+			if buddy == nil || buddy.Invisible() {
+				continue
+			}
+			unicastArrival(ctx, buddy, sess, s.messageRelayer)
 		case oscar.FeedbagClassIDDeny: // block buddy
-			// notify this user that buddy is offline
-			unicastDeparture(ctx, item.Name, sess.ScreenName(), s.messageRelayer)
-			// notify former buddy that this user is offline
-			unicastDeparture(ctx, sess.ScreenName(), item.Name, s.messageRelayer)
+			if sess.Invisible() {
+				continue // user's offline, don't send departure notification
+			}
+			blockedSess := s.messageRelayer.RetrieveByScreenName(item.Name)
+			if blockedSess == nil {
+				continue // blocked buddy is offline, nothing to do here
+			}
+			// alert blocked buddy that current user is offline
+			unicastDeparture(ctx, sess, blockedSess, s.messageRelayer)
 		}
 	}
 
@@ -186,6 +214,10 @@ func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Sessi
 	}, nil
 }
 
+// UpdateItemHandler updates items in the user's feedbag (aka buddy list).
+// Sends user buddy arrival notifications for each online & visible buddy added
+// to the feedbag. It returns oscar.FeedbagStatus, which contains update
+// confirmation.
 func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.SNACMessage, error) {
 	if err := s.feedbagManager.Upsert(sess.ScreenName(), inBody.Items); err != nil {
 		return oscar.SNACMessage{}, nil
@@ -194,7 +226,11 @@ func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *state.Sessi
 	for _, item := range inBody.Items {
 		switch item.ClassID {
 		case oscar.FeedbagClassIdBuddy, oscar.FeedbagClassIDPermit:
-			unicastArrival(ctx, item.Name, sess.ScreenName(), s.messageRelayer)
+			buddy := s.messageRelayer.RetrieveByScreenName(item.Name)
+			if buddy == nil || buddy.Invisible() {
+				continue
+			}
+			unicastArrival(ctx, buddy, sess, s.messageRelayer)
 		}
 	}
 
@@ -213,6 +249,11 @@ func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *state.Sessi
 	}, nil
 }
 
+// DeleteItemHandler removes items from feedbag (aka buddy list). Sends user
+// buddy arrival notifications for each online & visible buddy added to
+// the feedbag. Sends buddy arrival notifications to each unblocked buddy if
+// current user is visible. It returns oscar.FeedbagStatus, which contains update
+// confirmation.
 func (s FeedbagService) DeleteItemHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.SNACMessage, error) {
 	if err := s.feedbagManager.Delete(sess.ScreenName(), inBody.Items); err != nil {
 		return oscar.SNACMessage{}, err
@@ -220,8 +261,18 @@ func (s FeedbagService) DeleteItemHandler(ctx context.Context, sess *state.Sessi
 
 	for _, item := range inBody.Items {
 		if item.ClassID == oscar.FeedbagClassIDDeny {
-			unicastArrival(ctx, item.Name, sess.ScreenName(), s.messageRelayer)
-			unicastArrival(ctx, sess.ScreenName(), item.Name, s.messageRelayer)
+			unblockedSess := s.messageRelayer.RetrieveByScreenName(item.Name)
+			if unblockedSess == nil {
+				continue // unblocked user is offline, nothing to do here
+			}
+			if !sess.Invisible() {
+				// alert unblocked user that current user is online
+				unicastArrival(ctx, sess, unblockedSess, s.messageRelayer)
+			}
+			if !unblockedSess.Invisible() {
+				// alert current user that unblocked user is online
+				unicastArrival(ctx, unblockedSess, sess, s.messageRelayer)
+			}
 		}
 	}
 

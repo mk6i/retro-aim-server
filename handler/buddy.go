@@ -77,35 +77,20 @@ func broadcastDeparture(ctx context.Context, sess *state.Session, messageRelayer
 	return nil
 }
 
-func unicastArrival(ctx context.Context, srcScreenName, destScreenName string, messageRelayer MessageRelayer) {
-	sess := messageRelayer.RetrieveByScreenName(srcScreenName)
-	switch {
-	case sess == nil:
-		fallthrough
-	case sess.Invisible(): // don't tell user this buddy is online
-		return
-	}
-	messageRelayer.SendToScreenName(ctx, destScreenName, oscar.SNACMessage{
+func unicastArrival(ctx context.Context, from *state.Session, to *state.Session, messageRelayer MessageRelayer) {
+	messageRelayer.SendToScreenName(ctx, to.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyArrived,
 		},
 		Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
-			TLVUserInfo: sess.TLVUserInfo(),
+			TLVUserInfo: from.TLVUserInfo(),
 		},
 	})
 }
 
-func unicastDeparture(ctx context.Context, srcScreenName, destScreenName string, messageRelayer MessageRelayer) {
-	sess := messageRelayer.RetrieveByScreenName(srcScreenName)
-	switch {
-	case sess == nil:
-		fallthrough
-	case sess.Invisible(): // don't tell user this buddy is online
-		return
-	}
-
-	messageRelayer.SendToScreenName(ctx, destScreenName, oscar.SNACMessage{
+func unicastDeparture(ctx context.Context, from *state.Session, to *state.Session, messageRelayer MessageRelayer) {
+	messageRelayer.SendToScreenName(ctx, to.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyDeparted,
@@ -114,8 +99,8 @@ func unicastDeparture(ctx context.Context, srcScreenName, destScreenName string,
 			TLVUserInfo: oscar.TLVUserInfo{
 				// don't include the TLV block, otherwise the AIM client fails
 				// to process the block event
-				ScreenName:   sess.ScreenName(),
-				WarningLevel: sess.Warning(),
+				ScreenName:   from.ScreenName(),
+				WarningLevel: from.Warning(),
 			},
 		},
 	})

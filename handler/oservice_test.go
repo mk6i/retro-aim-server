@@ -672,10 +672,6 @@ func TestOServiceServiceForBOS_ClientOnlineHandler(t *testing.T) {
 		screenName string
 		buddies    []string
 	}
-	type sendToScreenNameParams []struct {
-		screenName string
-		message    oscar.SNACMessage
-	}
 
 	tests := []struct {
 		// name is the name of the test
@@ -779,30 +775,25 @@ func TestOServiceServiceForBOS_ClientOnlineHandler(t *testing.T) {
 			for _, params := range tt.interestedUsersParams {
 				feedbagManager.EXPECT().
 					InterestedUsers(params.screenName).
-					Return(params.users, nil).
-					Maybe()
+					Return(params.users, nil)
 			}
 			for _, params := range tt.broadcastToScreenNamesParams {
 				messageRelayer.EXPECT().
-					BroadcastToScreenNames(mock.Anything, params.screenNames, params.message).
-					Maybe()
+					BroadcastToScreenNames(mock.Anything, params.screenNames, params.message)
 			}
 			for _, params := range tt.buddyLookupParams {
 				feedbagManager.EXPECT().
 					Buddies(params.screenName).
-					Return(params.buddies, nil).
-					Maybe()
+					Return(params.buddies, nil)
 			}
 			for _, params := range tt.retrieveByScreenNameParams {
 				messageRelayer.EXPECT().
 					RetrieveByScreenName(params.screenName).
-					Return(params.sess).
-					Maybe()
+					Return(params.sess)
 			}
 			for _, params := range tt.sendToScreenNameParams {
 				messageRelayer.EXPECT().
-					SendToScreenName(mock.Anything, params.screenName, params.message).
-					Maybe()
+					SendToScreenName(mock.Anything, params.screenName, params.message)
 			}
 
 			svc := NewOServiceServiceForBOS(OServiceService{
