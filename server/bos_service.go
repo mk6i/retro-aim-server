@@ -49,9 +49,28 @@ func (rt BOSService) Start() {
 }
 
 func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) {
-	sess, seq, err := rt.VerifyLogin(rwc)
+	seq := uint32(100)
+
+	flap, err := SendAndReceiveSignonFrame(rwc, &seq)
 	if err != nil {
-		rt.Logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
+		rt.Logger.ErrorContext(ctx, "some error", "err", err.Error())
+		return
+	}
+
+	var ok bool
+	sessionID, ok := flap.GetSlice(oscar.OServiceTLVTagsLoginCookie)
+	if !ok {
+		rt.Logger.ErrorContext(ctx, "unable to get session id from payload")
+		return
+	}
+
+	sess, err := rt.RetrieveBOSSession(string(sessionID))
+	if err != nil {
+		rt.Logger.ErrorContext(ctx, "unable retrieve session", "err", err.Error())
+		return
+	}
+	if sess == nil {
+		rt.Logger.InfoContext(ctx, "session not found", "err", err.Error())
 		return
 	}
 

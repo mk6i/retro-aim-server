@@ -27,7 +27,7 @@ type SessionManager interface {
 	Empty() bool
 	NewSessionWithSN(sessID string, screenName string) *state.Session
 	Remove(sess *state.Session)
-	Retrieve(ID string) (*state.Session, bool)
+	Retrieve(ID string) *state.Session
 }
 
 type ProfileManager interface {
@@ -45,4 +45,10 @@ type ChatMessageRelayer interface {
 	MessageRelayer
 	BroadcastExcept(ctx context.Context, except *state.Session, msg oscar.SNACMessage)
 	Participants() []*state.Session
+}
+
+type ChatRegistry interface {
+	Register(room state.ChatRoom, sessionManager any)
+	Retrieve(chatID string) (state.ChatRoom, any, error)
+	RemoveRoom(chatID string)
 }

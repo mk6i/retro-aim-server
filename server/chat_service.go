@@ -47,7 +47,7 @@ func (rt ChatService) Start() {
 }
 
 func (rt ChatService) handleNewConnection(ctx context.Context, rw io.ReadWriter) {
-	cookie, seq, err := rt.VerifyChatLogin(rw)
+	cookie, seq, err := verifyChatLogin(rw)
 	if err != nil {
 		rt.Logger.ErrorContext(ctx, "user disconnected with error", "err", err.Error())
 		return
@@ -55,16 +55,22 @@ func (rt ChatService) handleNewConnection(ctx context.Context, rw io.ReadWriter)
 
 	chatID := string(cookie.Cookie)
 
-	chatSess, err := rt.RetrieveChatSession(ctx, chatID, cookie.SessID)
+	chatSess, err := rt.RetrieveChatSession(chatID, cookie.SessID)
 	if err != nil {
-		rt.Logger.ErrorContext(ctx, "unable to find chat room", "err", err.Error())
+		rt.Logger.ErrorContext(ctx, "unable retrieve session", "err", err.Error())
+		return
+	}
+	if chatSess == nil {
+		rt.Logger.InfoContext(ctx, "chat room not found", "err", err.Error())
 		return
 	}
 
 	defer chatSess.Close()
 	go func() {
 		<-chatSess.Closed()
-		rt.SignoutChat(ctx, chatSess, chatID)
+		if err := rt.SignoutChat(ctx, chatSess, chatID); err != nil {
+			rt.Logger.ErrorContext(ctx, "unable to sign out user", "err", err.Error())
+		}
 	}()
 
 	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName())

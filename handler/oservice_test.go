@@ -88,7 +88,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 							oscar.NewTLV(oscar.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
 							oscar.NewTLV(oscar.OServiceTLVTagsLoginCookie, server.ChatCookie{
 								Cookie: []byte("the-chat-cookie"),
-								SessID: "user-sess-id",
+								SessID: "user-userSession-id",
 							}),
 							oscar.NewTLV(oscar.OServiceTLVTagsGroupID, oscar.Chat),
 							oscar.NewTLV(oscar.OServiceTLVTagsSSLCertName, ""),

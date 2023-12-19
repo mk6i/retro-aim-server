@@ -10,9 +10,73 @@ import (
 // mockParams is a helper struct that centralizes mock function call parameters
 // in one place for a table test
 type mockParams struct {
+	chatMessageRelayerParams
+	chatRegistryParams
 	feedbagManagerParams
 	messageRelayerParams
 	profileManagerParams
+	sessionManagerParams
+	userManagerParams
+}
+
+type chatRegistryParams struct {
+	chatRegistryRetrieveParams
+}
+
+type chatRegistryRetrieveParams struct {
+	chatID         string
+	retChatRoom    state.ChatRoom
+	retChatSessMgr any
+}
+
+// userManagerParams is a helper struct that contains mock parameters for
+// UserManager methods
+type userManagerParams struct {
+	getUserParams
+	upsertUserParams
+}
+
+// getUserParams is the list of parameters passed at the mock
+// UserManager.GetUser call site
+type getUserParams []struct {
+	screenName string
+	result     *state.User
+	err        error
+}
+
+// upsertUserParams is the list of parameters passed at the mock
+// UserManager.UpsertUser call site
+type upsertUserParams []struct {
+	user state.User
+	err  error
+}
+
+// sessionManagerParams is a helper struct that contains mock parameters for
+// SessionManager methods
+type sessionManagerParams struct {
+	emptyParams
+	newSessionWithSNParams
+	removeParams
+}
+
+// newSessionWithSNParams is the list of parameters passed at the mock
+// SessionManager.NewSessionWithSN call site
+type newSessionWithSNParams []struct {
+	sessID     string
+	screenName string
+	result     *state.Session
+}
+
+// removeParams is the list of parameters passed at the mock
+// SessionManager.Remove call site
+type removeParams []struct {
+	sess *state.Session
+}
+
+// emptyParams is the list of parameters passed at the mock
+// SessionManager.Empty call site
+type emptyParams []struct {
+	result bool
 }
 
 // feedbagManagerParams is a helper struct that contains mock parameters for
@@ -41,6 +105,7 @@ type blockedParams []struct {
 type interestedUsersParams []struct {
 	screenName string
 	users      []string
+	err        error
 }
 
 // upsertParams is the list of parameters passed at the mock
@@ -129,6 +194,19 @@ type upsertProfileParams []struct {
 	body       any
 }
 
+// chatMessageRelayerParams is a helper struct that contains mock parameters
+// for ChatMessageRelayer methods
+type chatMessageRelayerParams struct {
+	broadcastExceptParams
+}
+
+// broadcastExceptParams is the list of parameters passed at the mock
+// ChatMessageRelayer.BroadcastExcept call site
+type broadcastExceptParams []struct {
+	except  *state.Session
+	message oscar.SNACMessage
+}
+
 // sessOptWarning sets a warning level on the session object
 func sessOptWarning(level uint16) func(session *state.Session) {
 	return func(session *state.Session) {
@@ -136,13 +214,13 @@ func sessOptWarning(level uint16) func(session *state.Session) {
 	}
 }
 
-// sessOptCannedID sets a canned session ID ("user-sess-id") on the session
+// sessOptCannedID sets a canned session ID ("user-userSession-id") on the session
 // object
 func sessOptCannedID(session *state.Session) {
-	session.SetID("user-sess-id")
+	session.SetID("user-userSession-id")
 }
 
-// sessOptCannedID sets a canned session ID ("user-sess-id") on the session
+// sessOptCannedID sets a canned session ID ("user-userSession-id") on the session
 // object
 func sessOptID(ID string) func(session *state.Session) {
 	return func(session *state.Session) {

@@ -2,6 +2,7 @@ package state
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -29,25 +30,27 @@ func (c *ChatRegistry) Register(room ChatRoom, sessionManager any) {
 	c.smStore[room.Cookie] = sessionManager
 }
 
-func (c *ChatRegistry) Retrieve(chatID string) (ChatRoom, any, error) {
+var ErrChatRoomNotFound = errors.New("chat room not found")
+
+func (c *ChatRegistry) Retrieve(cookie string) (ChatRoom, any, error) {
 	c.mapMutex.RLock()
 	defer c.mapMutex.RUnlock()
-	chatRoom, found := c.chatRoomStore[chatID]
+	chatRoom, found := c.chatRoomStore[cookie]
 	if !found {
-		return ChatRoom{}, nil, errors.New("unable to find chat room")
+		return ChatRoom{}, nil, fmt.Errorf("%w cookie: %s", ErrChatRoomNotFound, cookie)
 	}
-	sessionManager, found := c.smStore[chatID]
+	sessionManager, found := c.smStore[cookie]
 	if !found {
 		panic("unable to find session manager for chat")
 	}
 	return chatRoom, sessionManager, nil
 }
 
-func (c *ChatRegistry) RemoveRoom(chatID string) {
+func (c *ChatRegistry) RemoveRoom(cookie string) {
 	c.mapMutex.Lock()
 	defer c.mapMutex.Unlock()
-	delete(c.chatRoomStore, chatID)
-	delete(c.smStore, chatID)
+	delete(c.chatRoomStore, cookie)
+	delete(c.smStore, cookie)
 }
 
 type ChatRoom struct {

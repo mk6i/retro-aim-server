@@ -114,13 +114,7 @@ func alertUserLeft(ctx context.Context, sess *state.Session, chatMessageRelayer 
 		},
 		Body: oscar.SNAC_0x0E_0x04_ChatUsersLeft{
 			Users: []oscar.TLVUserInfo{
-				{
-					ScreenName:   sess.ScreenName(),
-					WarningLevel: sess.Warning(),
-					TLVBlock: oscar.TLVBlock{
-						TLVList: sess.UserInfo(),
-					},
-				},
+				sess.TLVUserInfo(),
 			},
 		},
 	})

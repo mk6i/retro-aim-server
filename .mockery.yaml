@@ -52,3 +52,6 @@ packages:
       ChatMessageRelayer:
         config:
           filename: "chat_message_relayer_mock_test.go"
+      ChatRegistry:
+        config:
+          filename: "chat_registry_test.go"

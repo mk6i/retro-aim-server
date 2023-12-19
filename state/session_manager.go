@@ -66,11 +66,10 @@ func (s *InMemorySessionManager) BroadcastExcept(ctx context.Context, except *Se
 	}
 }
 
-func (s *InMemorySessionManager) Retrieve(ID string) (*Session, bool) {
+func (s *InMemorySessionManager) Retrieve(ID string) *Session {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
-	sess, found := s.store[ID]
-	return sess, found
+	return s.store[ID]
 }
 
 func (s *InMemorySessionManager) RetrieveByScreenName(screenName string) *Session {
