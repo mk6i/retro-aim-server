@@ -127,7 +127,7 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, seq uint
 				logger.ErrorContext(ctx, "got unknown FLAP frame type", "flap", m.flap)
 				return
 			}
-		case m := <-sess.RecvMessage():
+		case m := <-sess.ReceiveMessage():
 			// forward a notification sent from another client to this client
 			if err := alertHandler(ctx, m, rw, &seq); err != nil {
 				logRequestError(ctx, logger, m.Frame, err)

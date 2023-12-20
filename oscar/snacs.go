@@ -111,7 +111,15 @@ const (
 	OServiceBartQuery2        uint16 = 0x0022
 	OServiceBartReply2        uint16 = 0x0023
 
-	OServiceUserInfoStatus uint16 = 0x06
+	OServiceUserInfoUserFlags uint16 = 0x01
+	OServiceUserInfoSignonTOD uint16 = 0x03
+	OServiceUserInfoIdleTime  uint16 = 0x04
+	OServiceUserInfoStatus    uint16 = 0x06
+	OServiceUserInfoOscarCaps uint16 = 0x0D
+
+	OServiceUserFlagOSCARFree   uint16 = 0x0010 // AIM (not AOL) account
+	OServiceUserFlagUnavailable uint16 = 0x0020 // user is away
+	OServiceUserFlagInvisible   uint16 = 0x0100 // user is invisible
 
 	OServiceTLVTagsReconnectHere uint16 = 0x05
 	OServiceTLVTagsLoginCookie   uint16 = 0x06

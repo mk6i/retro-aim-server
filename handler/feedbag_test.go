@@ -438,12 +438,7 @@ func TestFeedbagService_InsertItemHandler(t *testing.T) {
 									SubGroup:  oscar.BuddyArrived,
 								},
 								Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: oscar.TLVUserInfo{
-										ScreenName: "buddy_1_online",
-										TLVBlock: oscar.TLVBlock{
-											TLVList: newTestSession("", sessOptCannedSignonTime).UserInfo(),
-										},
-									},
+									TLVUserInfo: newTestSession("buddy_1_online", sessOptCannedSignonTime).TLVUserInfo(),
 								},
 							},
 						},
@@ -455,12 +450,7 @@ func TestFeedbagService_InsertItemHandler(t *testing.T) {
 									SubGroup:  oscar.BuddyArrived,
 								},
 								Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: oscar.TLVUserInfo{
-										ScreenName: "buddy_2_online",
-										TLVBlock: oscar.TLVBlock{
-											TLVList: newTestSession("", sessOptCannedSignonTime).UserInfo(),
-										},
-									},
+									TLVUserInfo: newTestSession("buddy_2_online", sessOptCannedSignonTime).TLVUserInfo(),
 								},
 							},
 						},
@@ -869,12 +859,7 @@ func TestFeedbagService_UpdateItemHandler(t *testing.T) {
 									SubGroup:  oscar.BuddyArrived,
 								},
 								Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: oscar.TLVUserInfo{
-										ScreenName: "buddy_1_online",
-										TLVBlock: oscar.TLVBlock{
-											TLVList: newTestSession("", sessOptCannedSignonTime).UserInfo(),
-										},
-									},
+									TLVUserInfo: newTestSession("buddy_1_online", sessOptCannedSignonTime).TLVUserInfo(),
 								},
 							},
 						},
@@ -886,12 +871,7 @@ func TestFeedbagService_UpdateItemHandler(t *testing.T) {
 									SubGroup:  oscar.BuddyArrived,
 								},
 								Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: oscar.TLVUserInfo{
-										ScreenName: "buddy_2_online",
-										TLVBlock: oscar.TLVBlock{
-											TLVList: newTestSession("", sessOptCannedSignonTime).UserInfo(),
-										},
-									},
+									TLVUserInfo: newTestSession("buddy_2_online", sessOptCannedSignonTime).TLVUserInfo(),
 								},
 							},
 						},

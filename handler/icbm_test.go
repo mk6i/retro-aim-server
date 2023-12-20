@@ -384,13 +384,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 					SubGroup:  oscar.BuddyArrived,
 				},
 				Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
-					TLVUserInfo: oscar.TLVUserInfo{
-						ScreenName:   "recipient-screen-name",
-						WarningLevel: evilDeltaAnon,
-						TLVBlock: oscar.TLVBlock{
-							TLVList: newTestSession("", sessOptCannedSignonTime).UserInfo(),
-						},
-					},
+					TLVUserInfo: newTestSession("recipient-screen-name", sessOptCannedSignonTime, sessOptWarning(evilDeltaAnon)).TLVUserInfo(),
 				},
 			},
 			recipientBuddies: []string{"buddy1", "buddy2"},
@@ -436,13 +430,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 					SubGroup:  oscar.BuddyArrived,
 				},
 				Body: oscar.SNAC_0x03_0x0B_BuddyArrived{
-					TLVUserInfo: oscar.TLVUserInfo{
-						ScreenName:   "recipient-screen-name",
-						WarningLevel: evilDelta,
-						TLVBlock: oscar.TLVBlock{
-							TLVList: newTestSession("", sessOptCannedSignonTime).UserInfo(),
-						},
-					},
+					TLVUserInfo: newTestSession("recipient-screen-name", sessOptCannedSignonTime, sessOptWarning(evilDelta)).TLVUserInfo(),
 				},
 			},
 			inputSNAC: oscar.SNACMessage{

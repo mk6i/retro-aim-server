@@ -210,7 +210,7 @@ type broadcastExceptParams []struct {
 // sessOptWarning sets a warning level on the session object
 func sessOptWarning(level uint16) func(session *state.Session) {
 	return func(session *state.Session) {
-		session.IncreaseWarning(level)
+		session.IncrementWarning(level)
 	}
 }
 

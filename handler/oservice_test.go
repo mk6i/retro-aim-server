@@ -860,13 +860,7 @@ func TestOServiceServiceForChat_ClientOnlineHandler(t *testing.T) {
 						},
 						Body: oscar.SNAC_0x0E_0x03_ChatUsersJoined{
 							Users: []oscar.TLVUserInfo{
-								{
-									ScreenName:   chatter1.ScreenName(),
-									WarningLevel: chatter1.Warning(),
-									TLVBlock: oscar.TLVBlock{
-										TLVList: chatter1.UserInfo(),
-									},
-								},
+								chatter1.TLVUserInfo(),
 							},
 						},
 					},

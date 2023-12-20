@@ -193,7 +193,7 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *state.Session
 	if inBody.SendAs == 1 {
 		increase = evilDeltaAnon
 	}
-	recipSess.IncreaseWarning(increase)
+	recipSess.IncrementWarning(increase)
 
 	var notif any
 	if inBody.SendAs == 0 {

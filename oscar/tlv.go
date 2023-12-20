@@ -63,6 +63,15 @@ func (s TLVList) GetSlice(tType uint16) ([]byte, bool) {
 	return nil, false
 }
 
+func (s TLVList) GetUint16(tType uint16) (uint16, bool) {
+	for _, tlv := range s {
+		if tType == tlv.TType {
+			return binary.BigEndian.Uint16(tlv.Val), true
+		}
+	}
+	return 0, false
+}
+
 func (s TLVList) GetUint32(tType uint16) (uint32, bool) {
 	for _, tlv := range s {
 		if tType == tlv.TType {

@@ -29,15 +29,7 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 			TLVList: inBody.TLVList,
 		},
 	}
-	bodyOut.AddTLV(
-		oscar.NewTLV(oscar.ChatTLVSenderInformation, oscar.TLVUserInfo{
-			ScreenName:   sess.ScreenName(),
-			WarningLevel: sess.Warning(),
-			TLVBlock: oscar.TLVBlock{
-				TLVList: sess.UserInfo(),
-			},
-		}),
-	)
+	bodyOut.AddTLV(oscar.NewTLV(oscar.ChatTLVSenderInformation, sess.TLVUserInfo()))
 
 	_, chatSessMgr, err := s.chatRegistry.Retrieve(chatID)
 	if err != nil {
@@ -68,13 +60,7 @@ func setOnlineChatUsers(ctx context.Context, sess *state.Session, chatMessageRel
 	sessions := chatMessageRelayer.Participants()
 
 	for _, uSess := range sessions {
-		snacPayloadOut.Users = append(snacPayloadOut.Users, oscar.TLVUserInfo{
-			ScreenName:   uSess.ScreenName(),
-			WarningLevel: uSess.Warning(),
-			TLVBlock: oscar.TLVBlock{
-				TLVList: uSess.UserInfo(),
-			},
-		})
+		snacPayloadOut.Users = append(snacPayloadOut.Users, uSess.TLVUserInfo())
 	}
 
 	chatMessageRelayer.SendToScreenName(ctx, sess.ScreenName(), oscar.SNACMessage{
@@ -94,13 +80,7 @@ func alertUserJoined(ctx context.Context, sess *state.Session, chatMessageRelaye
 		},
 		Body: oscar.SNAC_0x0E_0x03_ChatUsersJoined{
 			Users: []oscar.TLVUserInfo{
-				{
-					ScreenName:   sess.ScreenName(),
-					WarningLevel: sess.Warning(),
-					TLVBlock: oscar.TLVBlock{
-						TLVList: sess.UserInfo(),
-					},
-				},
+				sess.TLVUserInfo(),
 			},
 		},
 	})

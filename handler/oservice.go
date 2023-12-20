@@ -302,7 +302,7 @@ func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *sta
 // message to all users who have this user on their buddy list.
 func (s OServiceService) IdleNotificationHandler(ctx context.Context, sess *state.Session, bodyIn oscar.SNAC_0x01_0x11_OServiceIdleNotification) error {
 	if bodyIn.IdleTime == 0 {
-		sess.SetActive()
+		sess.UnsetIdle()
 	} else {
 		sess.SetIdle(time.Duration(bodyIn.IdleTime) * time.Second)
 	}

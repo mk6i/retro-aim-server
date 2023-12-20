@@ -8,8 +8,10 @@ import (
 	"github.com/mkaminski/goaim/oscar"
 )
 
-var CapChat, _ = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
+// capChat is a UID that indicates a client supports the chat capability
+var capChat, _ = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
 
+// SessSendStatus is the result of sending a message to a user.
 type SessSendStatus int
 
 const (
@@ -22,6 +24,8 @@ const (
 	SessQueueFull
 )
 
+// Session represents a user's current session. Unless stated otherwise, all
+// methods may be safely accessed by multiple goroutines.
 type Session struct {
 	awayMessage string
 	closed      bool
@@ -31,92 +35,113 @@ type Session struct {
 	invisible   bool
 	msgCh       chan oscar.SNACMessage
 	mutex       sync.RWMutex
+	nowFn       func() time.Time
 	screenName  string
 	signonTime  time.Time
 	stopCh      chan struct{}
 	warning     uint16
 }
 
-func (s *Session) IncreaseWarning(incr uint16) {
+// NewSession returns a new instance of Session. By default, the user may have
+// up to 1000 pending messages before blocking.
+func NewSession() *Session {
+	return &Session{
+		msgCh:      make(chan oscar.SNACMessage, 1000),
+		nowFn:      time.Now,
+		stopCh:     make(chan struct{}),
+		signonTime: time.Now(),
+	}
+}
+
+// IncrementWarning increments the user's warning level. To decrease, pass a
+// negative increment value.
+func (s *Session) IncrementWarning(incr uint16) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.warning += incr
 }
 
+// SetInvisible toggles the user's invisibility status.
 func (s *Session) SetInvisible(invisible bool) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.invisible = invisible
 }
 
-func (s *Session) SetScreenName(screenName string) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	s.screenName = screenName
-}
-
-func (s *Session) ScreenName() string {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	return s.screenName
-}
-
-func (s *Session) SetID(ID string) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	s.id = ID
-}
-
-func (s *Session) SetSignonTime(t time.Time) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	s.signonTime = t
-}
-
-func (s *Session) ID() string {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	return s.id
-}
-
+// Invisible returns true if the user is idle.
 func (s *Session) Invisible() bool {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.invisible
 }
 
+// SetScreenName sets the user's screen name.
+func (s *Session) SetScreenName(screenName string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.screenName = screenName
+}
+
+// ScreenName returns the user's screen name.
+func (s *Session) ScreenName() string {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.screenName
+}
+
+// SetID sets the user's session ID.
+func (s *Session) SetID(ID string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.id = ID
+}
+
+// ID returns the user's session ID.
+func (s *Session) ID() string {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.id
+}
+
+// SetSignonTime sets the user's sign-ontime.
+func (s *Session) SetSignonTime(t time.Time) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.signonTime = t
+}
+
+// SetIdle sets the user's idle state.
 func (s *Session) SetIdle(dur time.Duration) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.idle = true
 	// set the time the user became idle
-	s.idleTime = time.Now().Add(-dur)
+	s.idleTime = s.nowFn().Add(-dur)
 }
 
-func (s *Session) SetActive() {
+// UnsetIdle removes the user's idle state.
+func (s *Session) UnsetIdle() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.idle = false
 }
 
-func (s *Session) Idle() bool {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	return s.idle
-}
-
+// SetAwayMessage sets the user's away message.
 func (s *Session) SetAwayMessage(awayMessage string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.awayMessage = awayMessage
 }
 
+// AwayMessage returns the user's away message.
 func (s *Session) AwayMessage() string {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.awayMessage
 }
 
+// TLVUserInfo returns a TLV list containing session information required by
+// multiple SNAC message types that convey user information.
 func (s *Session) TLVUserInfo() oscar.TLVUserInfo {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -124,50 +149,48 @@ func (s *Session) TLVUserInfo() oscar.TLVUserInfo {
 		ScreenName:   s.screenName,
 		WarningLevel: s.warning,
 		TLVBlock: oscar.TLVBlock{
-			TLVList: s.UserInfo(),
+			TLVList: s.userInfo(),
 		},
 	}
 }
 
-func (s *Session) UserInfo() oscar.TLVList {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-
+func (s *Session) userInfo() oscar.TLVList {
 	// sign-in timestamp
 	tlvs := oscar.TLVList{}
 
-	tlvs.AddTLV(oscar.NewTLV(0x03, uint32(s.signonTime.Unix())))
+	tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoSignonTOD, uint32(s.signonTime.Unix())))
 
 	// away message status
 	if s.awayMessage != "" {
-		tlvs.AddTLV(oscar.NewTLV(0x01, uint16(0x0010)|uint16(0x0020)))
+		tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoUserFlags, oscar.OServiceUserFlagOSCARFree|oscar.OServiceUserFlagUnavailable))
 	} else {
-		tlvs.AddTLV(oscar.NewTLV(0x01, uint16(0x0010)))
+		tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoUserFlags, oscar.OServiceUserFlagOSCARFree))
 	}
 
 	// invisibility status
 	if s.invisible {
-		tlvs.AddTLV(oscar.NewTLV(0x06, uint16(0x0100)))
+		tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoStatus, oscar.OServiceUserFlagInvisible))
 	} else {
-		tlvs.AddTLV(oscar.NewTLV(0x06, uint16(0x0000)))
+		tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoStatus, uint16(0x0000)))
 	}
 
 	// idle status
 	if s.idle {
-		tlvs.AddTLV(oscar.NewTLV(0x04, uint16(time.Now().Sub(s.idleTime).Seconds())))
+		tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoIdleTime, uint16(s.nowFn().Sub(s.idleTime).Seconds())))
 	} else {
-		tlvs.AddTLV(oscar.NewTLV(0x04, uint16(0)))
+		tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoIdleTime, uint16(0)))
 	}
 
 	// capabilities
 	var caps []byte
 	// chat capability
-	caps = append(caps, CapChat...)
-	tlvs.AddTLV(oscar.NewTLV(0x0D, caps))
+	caps = append(caps, capChat...)
+	tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoOscarCaps, caps))
 
 	return tlvs
 }
 
+// Warning returns the user's warning level.
 func (s *Session) Warning() uint16 {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -176,11 +199,18 @@ func (s *Session) Warning() uint16 {
 	return w
 }
 
-func (s *Session) RecvMessage() chan oscar.SNACMessage {
+// ReceiveMessage returns a channel of messages relayed via this session. It
+// may only be read by one consumer. The channel never closes; call this method
+// in a select block along with Closed in order to detect session closure.
+func (s *Session) ReceiveMessage() chan oscar.SNACMessage {
 	return s.msgCh
 }
 
-func (s *Session) SendMessage(msg oscar.SNACMessage) SessSendStatus {
+// RelayMessage receives a SNAC message from a user and passes it on
+// asynchronously to the consumer of this session's messages. It returns
+// SessSendStatus to indicate whether the message was successfully sent or
+// not. This method is non-blocking.
+func (s *Session) RelayMessage(msg oscar.SNACMessage) SessSendStatus {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	if s.closed {
@@ -196,6 +226,10 @@ func (s *Session) SendMessage(msg oscar.SNACMessage) SessSendStatus {
 	}
 }
 
+// Close shuts down the session's ability to relay messages. Once invoked,
+// RelayMessage returns SessQueueFull and Closed returns a closed channel.
+// It is not possible to re-open message relaying once closed. It is safe to
+// call from multiple go routines.
 func (s *Session) Close() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -206,14 +240,7 @@ func (s *Session) Close() {
 	s.closed = true
 }
 
+// Closed blocks until the session is closed.
 func (s *Session) Closed() <-chan struct{} {
 	return s.stopCh
-}
-
-func NewSession() *Session {
-	return &Session{
-		msgCh:      make(chan oscar.SNACMessage, 1000),
-		stopCh:     make(chan struct{}),
-		signonTime: time.Now(),
-	}
 }

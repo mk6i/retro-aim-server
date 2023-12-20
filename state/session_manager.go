@@ -30,7 +30,7 @@ func (s *InMemorySessionManager) Broadcast(ctx context.Context, msg oscar.SNACMe
 }
 
 func (s *InMemorySessionManager) maybeSendMessage(ctx context.Context, msg oscar.SNACMessage, sess *Session) {
-	switch sess.SendMessage(msg) {
+	switch sess.RelayMessage(msg) {
 	case SessSendClosed:
 		s.logger.WarnContext(ctx, "can't send notification because the user's session is closed", "recipient", sess.ScreenName(), "message", msg)
 	case SessQueueFull:
