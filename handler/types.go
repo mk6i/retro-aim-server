@@ -50,5 +50,5 @@ type ChatMessageRelayer interface {
 type ChatRegistry interface {
 	Register(room state.ChatRoom, sessionManager any)
 	Retrieve(chatID string) (state.ChatRoom, any, error)
-	RemoveRoom(chatID string)
+	Remove(chatID string)
 }

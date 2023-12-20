@@ -10,67 +10,97 @@ import (
 	"github.com/mkaminski/goaim/oscar"
 )
 
+// ErrChatRoomNotFound indicates that a chat room lookup failed.
+var ErrChatRoomNotFound = errors.New("chat room not found")
+
+// ChatRegistry keeps track of chat rooms. A ChatRegistry is safe for
+// concurrent use by multiple goroutines.
 type ChatRegistry struct {
-	chatRoomStore map[string]ChatRoom
-	smStore       map[string]any
-	mapMutex      sync.RWMutex
+	roomStore  map[string]ChatRoom // association of cookie identifier->chat room
+	valueStore map[string]any      // association of cookie identifier->value
+	mutex      sync.RWMutex        // ensures thread-safe read-write access to stores
 }
 
+// NewChatRegistry creates a new instance of ChatRegistry
 func NewChatRegistry() *ChatRegistry {
 	return &ChatRegistry{
-		chatRoomStore: make(map[string]ChatRoom),
-		smStore:       make(map[string]any),
+		roomStore:  make(map[string]ChatRoom),
+		valueStore: make(map[string]any),
 	}
 }
 
-func (c *ChatRegistry) Register(room ChatRoom, sessionManager any) {
-	c.mapMutex.Lock()
-	defer c.mapMutex.Unlock()
-	c.chatRoomStore[room.Cookie] = room
-	c.smStore[room.Cookie] = sessionManager
+// Register adds a chat room to the registry and associates an arbitrary value
+// with the room.
+func (c *ChatRegistry) Register(chatRoom ChatRoom, value any) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.roomStore[chatRoom.Cookie] = chatRoom
+	c.valueStore[chatRoom.Cookie] = value
 }
 
-var ErrChatRoomNotFound = errors.New("chat room not found")
-
+// Retrieve retrieves a chat room and the arbitrary value associated with it.
+// Returns ErrChatRoomNotFound if the room is not registered.
 func (c *ChatRegistry) Retrieve(cookie string) (ChatRoom, any, error) {
-	c.mapMutex.RLock()
-	defer c.mapMutex.RUnlock()
-	chatRoom, found := c.chatRoomStore[cookie]
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	chatRoom, found := c.roomStore[cookie]
 	if !found {
 		return ChatRoom{}, nil, fmt.Errorf("%w cookie: %s", ErrChatRoomNotFound, cookie)
 	}
-	sessionManager, found := c.smStore[cookie]
+	value, found := c.valueStore[cookie]
 	if !found {
-		panic("unable to find session manager for chat")
+		panic("unable to find value for chat room")
 	}
-	return chatRoom, sessionManager, nil
+	return chatRoom, value, nil
 }
 
-func (c *ChatRegistry) RemoveRoom(cookie string) {
-	c.mapMutex.Lock()
-	defer c.mapMutex.Unlock()
-	delete(c.chatRoomStore, cookie)
-	delete(c.smStore, cookie)
+// Remove removes a chat room and the arbitrary value associated with it.
+func (c *ChatRegistry) Remove(cookie string) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	delete(c.roomStore, cookie)
+	delete(c.valueStore, cookie)
 }
 
+// ChatRoom is the representation of a chat room's metadata.
 type ChatRoom struct {
-	CreateTime     time.Time
-	DetailLevel    uint8
-	Exchange       uint16
-	Cookie         string
+	// Cookie is the unique chat room identifier.
+	Cookie string
+	// CreateTime indicates when the chat room was created.
+	CreateTime time.Time
+	// DetailLevel is the detail level of the chat room.  Unclear what this value means.
+	DetailLevel uint8
+	// Exchange indicates which exchange the chatroom belongs to. Typically, a canned value.
+	Exchange uint16
+	// InstanceNumber indicates which instance chatroom exists in. Typically, a canned value.
 	InstanceNumber uint16
-	Name           string
+	// Name is the name of the chat room.
+	Name string
 }
 
+// TLVList returns a TLV list of chat room metadata.
 func (c ChatRoom) TLVList() []oscar.TLV {
 	return []oscar.TLV{
-		oscar.NewTLV(0x00c9, uint16(15)),
-		oscar.NewTLV(0x00ca, uint32(c.CreateTime.Unix())),
-		oscar.NewTLV(0x00d1, uint16(1024)),
-		oscar.NewTLV(0x00d2, uint16(100)),
-		oscar.NewTLV(0x00d5, uint8(2)),
-		oscar.NewTLV(0x006a, c.Name),
-		oscar.NewTLV(0x00d3, c.Name),
+		// From protocols/oscar/family_chatnav.c in lib purple, these are the
+		// room creation flags:
+		// - 1 Evilable
+		// - 2 Nav Only
+		// - 4 Instancing Allowed
+		// - 8 Occupant Peek Allowed
+		// It's unclear what effect they actually have.
+		oscar.NewTLV(oscar.ChatNavTLVFlags, uint16(15)),
+		oscar.NewTLV(oscar.ChatNavCreateTime, uint32(c.CreateTime.Unix())),
+		oscar.NewTLV(oscar.ChatNavTLVMaxMsgLen, uint16(1024)),
+		oscar.NewTLV(oscar.ChatNavTLVMaxOccupancy, uint16(100)),
+		// From protocols/oscar/family_chatnav.c in lib purple, these are the
+		// room creation permission values:
+		// - 0  creation not allowed
+		// - 1  room creation allowed
+		// - 2  exchange creation allowed
+		// It's unclear what effect they actually have.
+		oscar.NewTLV(oscar.ChatNavTLVCreatePerms, uint8(2)),
+		oscar.NewTLV(oscar.ChatNavTLVFullyQualifiedName, c.Name),
+		oscar.NewTLV(oscar.ChatNavTLVRoomName, c.Name),
 	}
 }
 

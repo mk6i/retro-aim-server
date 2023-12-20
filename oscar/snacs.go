@@ -489,8 +489,12 @@ const (
 	ChatNavTLVMaxConcurrentRooms uint16 = 0x02
 	ChatNavTLVClassPerms         uint16 = 0x02
 	ChatNavTLVExchangeInfo       uint16 = 0x03
+	ChatNavTLVFullyQualifiedName uint16 = 0x6A
+	ChatNavCreateTime            uint16 = 0x00CA
 	ChatNavTLVFlags              uint16 = 0xC9
-	ChatNavTLVExchangeDesc       uint16 = 0xD3
+	ChatNavTLVMaxMsgLen          uint16 = 0xD1
+	ChatNavTLVMaxOccupancy       uint16 = 0xD2
+	ChatNavTLVRoomName           uint16 = 0xD3
 	ChatNavTLVCreatePerms        uint16 = 0xD5
 	ChatNavTLVCharSet1           uint16 = 0xD6
 	ChatNavTLVLang1              uint16 = 0xD7

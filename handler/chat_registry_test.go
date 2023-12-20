@@ -54,35 +54,35 @@ func (_c *mockChatRegistry_Register_Call) RunAndReturn(run func(state.ChatRoom, 
 	return _c
 }
 
-// RemoveRoom provides a mock function with given fields: chatID
-func (_m *mockChatRegistry) RemoveRoom(chatID string) {
+// Remove provides a mock function with given fields: chatID
+func (_m *mockChatRegistry) Remove(chatID string) {
 	_m.Called(chatID)
 }
 
-// mockChatRegistry_RemoveRoom_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveRoom'
-type mockChatRegistry_RemoveRoom_Call struct {
+// mockChatRegistry_Remove_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Remove'
+type mockChatRegistry_Remove_Call struct {
 	*mock.Call
 }
 
-// RemoveRoom is a helper method to define mock.On call
+// Remove is a helper method to define mock.On call
 //   - chatID string
-func (_e *mockChatRegistry_Expecter) RemoveRoom(chatID interface{}) *mockChatRegistry_RemoveRoom_Call {
-	return &mockChatRegistry_RemoveRoom_Call{Call: _e.mock.On("RemoveRoom", chatID)}
+func (_e *mockChatRegistry_Expecter) Remove(chatID interface{}) *mockChatRegistry_Remove_Call {
+	return &mockChatRegistry_Remove_Call{Call: _e.mock.On("Remove", chatID)}
 }
 
-func (_c *mockChatRegistry_RemoveRoom_Call) Run(run func(chatID string)) *mockChatRegistry_RemoveRoom_Call {
+func (_c *mockChatRegistry_Remove_Call) Run(run func(chatID string)) *mockChatRegistry_Remove_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(string))
 	})
 	return _c
 }
 
-func (_c *mockChatRegistry_RemoveRoom_Call) Return() *mockChatRegistry_RemoveRoom_Call {
+func (_c *mockChatRegistry_Remove_Call) Return() *mockChatRegistry_Remove_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *mockChatRegistry_RemoveRoom_Call) RunAndReturn(run func(string)) *mockChatRegistry_RemoveRoom_Call {
+func (_c *mockChatRegistry_Remove_Call) RunAndReturn(run func(string)) *mockChatRegistry_Remove_Call {
 	_c.Call.Return(run)
 	return _c
 }

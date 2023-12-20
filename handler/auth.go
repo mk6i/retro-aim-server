@@ -69,7 +69,7 @@ func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session, chatI
 	alertUserLeft(ctx, sess, chatSessMgr.(ChatMessageRelayer))
 	chatSessMgr.(SessionManager).Remove(sess)
 	if chatSessMgr.(SessionManager).Empty() {
-		s.chatRegistry.RemoveRoom(chatRoom.Cookie)
+		s.chatRegistry.Remove(chatRoom.Cookie)
 	}
 	return nil
 }

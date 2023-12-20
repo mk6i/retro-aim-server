@@ -737,7 +737,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 			for _, params := range tt.mockParams.emptyParams {
 				sessionManager.EXPECT().Empty().Return(params.result)
 				if params.result {
-					chatRegistry.EXPECT().RemoveRoom(tt.chatRoom.Cookie)
+					chatRegistry.EXPECT().Remove(tt.chatRoom.Cookie)
 				}
 			}
 			chatSessionManager := struct {

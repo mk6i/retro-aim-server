@@ -174,7 +174,7 @@ func TestChatNavService_RequestChatRightsHandler(t *testing.T) {
 							TLVList: oscar.TLVList{
 								oscar.NewTLV(oscar.ChatNavTLVClassPerms, uint16(0x0010)),
 								oscar.NewTLV(oscar.ChatNavTLVFlags, uint16(15)),
-								oscar.NewTLV(oscar.ChatNavTLVExchangeDesc, "default exchange"),
+								oscar.NewTLV(oscar.ChatNavTLVRoomName, "default exchange"),
 								oscar.NewTLV(oscar.ChatNavTLVCreatePerms, uint8(2)),
 								oscar.NewTLV(oscar.ChatNavTLVCharSet1, "us-ascii"),
 								oscar.NewTLV(oscar.ChatNavTLVLang1, "en"),
