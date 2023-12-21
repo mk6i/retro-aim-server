@@ -333,12 +333,12 @@ func TestAuthService_BUCPLoginRequestHandler(t *testing.T) {
 			userManager := newMockUserManager(t)
 			for _, params := range tc.mockParams.getUserParams {
 				userManager.EXPECT().
-					GetUser(params.screenName).
+					User(params.screenName).
 					Return(params.result, params.err)
 			}
 			for _, params := range tc.mockParams.upsertUserParams {
 				userManager.EXPECT().
-					UpsertUser(params.user).
+					InsertUser(params.user).
 					Return(params.err)
 			}
 			sessionManager := newMockSessionManager(t)
@@ -514,7 +514,7 @@ func TestAuthService_BUCPChallengeRequestHandler(t *testing.T) {
 			userManager := newMockUserManager(t)
 			for _, params := range tc.mockParams.getUserParams {
 				userManager.EXPECT().
-					GetUser(params.screenName).
+					User(params.screenName).
 					Return(params.result, params.err)
 			}
 			svc := AuthService{

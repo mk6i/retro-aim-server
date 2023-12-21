@@ -17,12 +17,12 @@ func (_m *mockProfileManager) EXPECT() *mockProfileManager_Expecter {
 	return &mockProfileManager_Expecter{mock: &_m.Mock}
 }
 
-// RetrieveProfile provides a mock function with given fields: screenName
-func (_m *mockProfileManager) RetrieveProfile(screenName string) (string, error) {
+// Profile provides a mock function with given fields: screenName
+func (_m *mockProfileManager) Profile(screenName string) (string, error) {
 	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
-		panic("no return value specified for RetrieveProfile")
+		panic("no return value specified for Profile")
 	}
 
 	var r0 string
@@ -45,40 +45,40 @@ func (_m *mockProfileManager) RetrieveProfile(screenName string) (string, error)
 	return r0, r1
 }
 
-// mockProfileManager_RetrieveProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RetrieveProfile'
-type mockProfileManager_RetrieveProfile_Call struct {
+// mockProfileManager_Profile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Profile'
+type mockProfileManager_Profile_Call struct {
 	*mock.Call
 }
 
-// RetrieveProfile is a helper method to define mock.On call
+// Profile is a helper method to define mock.On call
 //   - screenName string
-func (_e *mockProfileManager_Expecter) RetrieveProfile(screenName interface{}) *mockProfileManager_RetrieveProfile_Call {
-	return &mockProfileManager_RetrieveProfile_Call{Call: _e.mock.On("RetrieveProfile", screenName)}
+func (_e *mockProfileManager_Expecter) Profile(screenName interface{}) *mockProfileManager_Profile_Call {
+	return &mockProfileManager_Profile_Call{Call: _e.mock.On("Profile", screenName)}
 }
 
-func (_c *mockProfileManager_RetrieveProfile_Call) Run(run func(screenName string)) *mockProfileManager_RetrieveProfile_Call {
+func (_c *mockProfileManager_Profile_Call) Run(run func(screenName string)) *mockProfileManager_Profile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(string))
 	})
 	return _c
 }
 
-func (_c *mockProfileManager_RetrieveProfile_Call) Return(_a0 string, _a1 error) *mockProfileManager_RetrieveProfile_Call {
+func (_c *mockProfileManager_Profile_Call) Return(_a0 string, _a1 error) *mockProfileManager_Profile_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockProfileManager_RetrieveProfile_Call) RunAndReturn(run func(string) (string, error)) *mockProfileManager_RetrieveProfile_Call {
+func (_c *mockProfileManager_Profile_Call) RunAndReturn(run func(string) (string, error)) *mockProfileManager_Profile_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpsertProfile provides a mock function with given fields: screenName, body
-func (_m *mockProfileManager) UpsertProfile(screenName string, body string) error {
+func (_m *mockProfileManager) SetProfile(screenName string, body string) error {
 	ret := _m.Called(screenName, body)
 
 	if len(ret) == 0 {
-		panic("no return value specified for UpsertProfile")
+		panic("no return value specified for SetProfile")
 	}
 
 	var r0 error
@@ -91,7 +91,7 @@ func (_m *mockProfileManager) UpsertProfile(screenName string, body string) erro
 	return r0
 }
 
-// mockProfileManager_UpsertProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertProfile'
+// mockProfileManager_UpsertProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetProfile'
 type mockProfileManager_UpsertProfile_Call struct {
 	*mock.Call
 }
@@ -100,7 +100,7 @@ type mockProfileManager_UpsertProfile_Call struct {
 //   - screenName string
 //   - body string
 func (_e *mockProfileManager_Expecter) UpsertProfile(screenName interface{}, body interface{}) *mockProfileManager_UpsertProfile_Call {
-	return &mockProfileManager_UpsertProfile_Call{Call: _e.mock.On("UpsertProfile", screenName, body)}
+	return &mockProfileManager_UpsertProfile_Call{Call: _e.mock.On("SetProfile", screenName, body)}
 }
 
 func (_c *mockProfileManager_UpsertProfile_Call) Run(run func(screenName string, body string)) *mockProfileManager_UpsertProfile_Call {

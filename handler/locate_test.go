@@ -29,7 +29,7 @@ func TestLocateService_UserInfoQuery2Handler(t *testing.T) {
 			name: "request user info, expect user info response",
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					blockedParams: blockedParams{
+					blockedStateParams: blockedStateParams{
 						{
 							screenName1: "user_screen_name",
 							screenName2: "requested-user",
@@ -77,7 +77,7 @@ func TestLocateService_UserInfoQuery2Handler(t *testing.T) {
 			name: "request user info + profile, expect user info response + profile",
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					blockedParams: blockedParams{
+					blockedStateParams: blockedStateParams{
 						{
 							screenName1: "user_screen_name",
 							screenName2: "requested-user",
@@ -139,7 +139,7 @@ func TestLocateService_UserInfoQuery2Handler(t *testing.T) {
 			name: "request user info + profile, expect user info response + profile",
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					blockedParams: blockedParams{
+					blockedStateParams: blockedStateParams{
 						{
 							screenName1: "user_screen_name",
 							screenName2: "requested-user",
@@ -201,7 +201,7 @@ func TestLocateService_UserInfoQuery2Handler(t *testing.T) {
 			name: "request user info + away message, expect user info response + away message",
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					blockedParams: blockedParams{
+					blockedStateParams: blockedStateParams{
 						{
 							screenName1: "user_screen_name",
 							screenName2: "requested-user",
@@ -255,7 +255,7 @@ func TestLocateService_UserInfoQuery2Handler(t *testing.T) {
 			name: "request user info of user who blocked requester, expect not logged in error",
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					blockedParams: blockedParams{
+					blockedStateParams: blockedStateParams{
 						{
 							screenName1: "user_screen_name",
 							screenName2: "requested-user",
@@ -288,7 +288,7 @@ func TestLocateService_UserInfoQuery2Handler(t *testing.T) {
 			name: "request user info of user who does not exist, expect not logged in error",
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					blockedParams: blockedParams{
+					blockedStateParams: blockedStateParams{
 						{
 							screenName1: "user_screen_name",
 							screenName2: "non_existent_requested_user",
@@ -330,9 +330,9 @@ func TestLocateService_UserInfoQuery2Handler(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tc.mockParams.blockedParams {
+			for _, params := range tc.mockParams.blockedStateParams {
 				feedbagManager.EXPECT().
-					Blocked(params.screenName1, params.screenName2).
+					BlockedState(params.screenName1, params.screenName2).
 					Return(params.result, nil)
 			}
 			messageRelayer := newMockMessageRelayer(t)
@@ -344,7 +344,7 @@ func TestLocateService_UserInfoQuery2Handler(t *testing.T) {
 			profileManager := newMockProfileManager(t)
 			for _, val := range tc.mockParams.retrieveProfileParams {
 				profileManager.EXPECT().
-					RetrieveProfile(val.screenName).
+					Profile(val.screenName).
 					Return(val.result, val.err)
 			}
 			svc := NewLocateService(messageRelayer, feedbagManager, profileManager)

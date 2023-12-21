@@ -34,13 +34,13 @@ func TestFeedbagService_QueryHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					retrieveParams: retrieveParams{
+					feedbagParams: feedbagParams{
 						{
 							screenName: "user_screen_name",
 							results:    []oscar.FeedbagItem{},
 						},
 					},
-					lastModifiedParams: lastModifiedParams{},
+					feedbagLastModifiedParams: feedbagLastModifiedParams{},
 				},
 			},
 			expectOutput: oscar.SNACMessage{
@@ -64,7 +64,7 @@ func TestFeedbagService_QueryHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					retrieveParams: retrieveParams{
+					feedbagParams: feedbagParams{
 						{
 							screenName: "user_screen_name",
 							results: []oscar.FeedbagItem{
@@ -77,7 +77,7 @@ func TestFeedbagService_QueryHandler(t *testing.T) {
 							},
 						},
 					},
-					lastModifiedParams: lastModifiedParams{
+					feedbagLastModifiedParams: feedbagLastModifiedParams{
 						{
 							screenName: "user_screen_name",
 							result:     time.UnixMilli(1696472198082),
@@ -110,14 +110,14 @@ func TestFeedbagService_QueryHandler(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tc.mockParams.retrieveParams {
+			for _, params := range tc.mockParams.feedbagParams {
 				feedbagManager.EXPECT().
-					Retrieve(params.screenName).
+					Feedbag(params.screenName).
 					Return(params.results, nil)
 			}
-			for _, params := range tc.mockParams.lastModifiedParams {
+			for _, params := range tc.mockParams.feedbagLastModifiedParams {
 				feedbagManager.EXPECT().
-					LastModified(params.screenName).
+					FeedbagLastModified(params.screenName).
 					Return(params.result, nil)
 			}
 
@@ -158,7 +158,7 @@ func TestFeedbagService_QueryIfModifiedHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					retrieveParams: retrieveParams{
+					feedbagParams: feedbagParams{
 						{
 							screenName: "user_screen_name",
 							results:    []oscar.FeedbagItem{},
@@ -190,7 +190,7 @@ func TestFeedbagService_QueryIfModifiedHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					retrieveParams: retrieveParams{
+					feedbagParams: feedbagParams{
 						{
 							screenName: "user_screen_name",
 							results: []oscar.FeedbagItem{
@@ -203,7 +203,7 @@ func TestFeedbagService_QueryIfModifiedHandler(t *testing.T) {
 							},
 						},
 					},
-					lastModifiedParams: lastModifiedParams{
+					feedbagLastModifiedParams: feedbagLastModifiedParams{
 						{
 							screenName: "user_screen_name",
 							result:     time.UnixMilli(200000),
@@ -244,7 +244,7 @@ func TestFeedbagService_QueryIfModifiedHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					retrieveParams: retrieveParams{
+					feedbagParams: feedbagParams{
 						{
 							screenName: "user_screen_name",
 							results: []oscar.FeedbagItem{
@@ -257,7 +257,7 @@ func TestFeedbagService_QueryIfModifiedHandler(t *testing.T) {
 							},
 						},
 					},
-					lastModifiedParams: lastModifiedParams{
+					feedbagLastModifiedParams: feedbagLastModifiedParams{
 						{
 							screenName: "user_screen_name",
 							result:     time.UnixMilli(100000),
@@ -285,14 +285,14 @@ func TestFeedbagService_QueryIfModifiedHandler(t *testing.T) {
 			// initialize dependencies
 			//
 			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tc.mockParams.retrieveParams {
+			for _, params := range tc.mockParams.feedbagParams {
 				feedbagManager.EXPECT().
-					Retrieve(params.screenName).
+					Feedbag(params.screenName).
 					Return(params.results, nil)
 			}
-			for _, params := range tc.mockParams.lastModifiedParams {
+			for _, params := range tc.mockParams.feedbagLastModifiedParams {
 				feedbagManager.EXPECT().
-					LastModified(params.screenName).
+					FeedbagLastModified(params.screenName).
 					Return(params.result, nil)
 			}
 			//
@@ -402,7 +402,7 @@ func TestFeedbagService_InsertItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					upsertParams: upsertParams{
+					feedbagUpsertParams: feedbagUpsertParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -486,7 +486,7 @@ func TestFeedbagService_InsertItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					upsertParams: upsertParams{
+					feedbagUpsertParams: feedbagUpsertParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -536,7 +536,7 @@ func TestFeedbagService_InsertItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					upsertParams: upsertParams{
+					feedbagUpsertParams: feedbagUpsertParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -586,7 +586,7 @@ func TestFeedbagService_InsertItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					upsertParams: upsertParams{
+					feedbagUpsertParams: feedbagUpsertParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -653,7 +653,7 @@ func TestFeedbagService_InsertItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					upsertParams: upsertParams{
+					feedbagUpsertParams: feedbagUpsertParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -703,7 +703,7 @@ func TestFeedbagService_InsertItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					upsertParams: upsertParams{
+					feedbagUpsertParams: feedbagUpsertParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -759,9 +759,9 @@ func TestFeedbagService_InsertItemHandler(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tc.mockParams.feedbagManagerParams.upsertParams {
+			for _, params := range tc.mockParams.feedbagManagerParams.feedbagUpsertParams {
 				feedbagManager.EXPECT().
-					Upsert(params.screenName, params.items).
+					UpsertFeedbag(params.screenName, params.items).
 					Return(nil)
 			}
 			messageRelayer := newMockMessageRelayer(t)
@@ -823,7 +823,7 @@ func TestFeedbagService_UpdateItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					upsertParams: upsertParams{
+					feedbagUpsertParams: feedbagUpsertParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -907,7 +907,7 @@ func TestFeedbagService_UpdateItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					upsertParams: upsertParams{
+					feedbagUpsertParams: feedbagUpsertParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -957,7 +957,7 @@ func TestFeedbagService_UpdateItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					upsertParams: upsertParams{
+					feedbagUpsertParams: feedbagUpsertParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -994,9 +994,9 @@ func TestFeedbagService_UpdateItemHandler(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tc.mockParams.feedbagManagerParams.upsertParams {
+			for _, params := range tc.mockParams.feedbagManagerParams.feedbagUpsertParams {
 				feedbagManager.EXPECT().
-					Upsert(params.screenName, params.items).
+					UpsertFeedbag(params.screenName, params.items).
 					Return(nil)
 			}
 			messageRelayer := newMockMessageRelayer(t)
@@ -1054,7 +1054,7 @@ func TestFeedbagService_DeleteItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					deleteParams: deleteParams{
+					feedbagDeleteParams: feedbagDeleteParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -1100,7 +1100,7 @@ func TestFeedbagService_DeleteItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					deleteParams: deleteParams{
+					feedbagDeleteParams: feedbagDeleteParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -1208,7 +1208,7 @@ func TestFeedbagService_DeleteItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					deleteParams: deleteParams{
+					feedbagDeleteParams: feedbagDeleteParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -1258,7 +1258,7 @@ func TestFeedbagService_DeleteItemHandler(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					deleteParams: deleteParams{
+					feedbagDeleteParams: feedbagDeleteParams{
 						{
 							screenName: "user_screen_name",
 							items: []oscar.FeedbagItem{
@@ -1309,9 +1309,9 @@ func TestFeedbagService_DeleteItemHandler(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tc.mockParams.feedbagManagerParams.deleteParams {
+			for _, params := range tc.mockParams.feedbagManagerParams.feedbagDeleteParams {
 				feedbagManager.EXPECT().
-					Delete(params.screenName, params.items).
+					DeleteUser(params.screenName, params.items).
 					Return(nil)
 			}
 			messageRelayer := newMockMessageRelayer(t)

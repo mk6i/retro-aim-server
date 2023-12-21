@@ -20,12 +20,58 @@ func (_m *mockUserManager) EXPECT() *mockUserManager_Expecter {
 	return &mockUserManager_Expecter{mock: &_m.Mock}
 }
 
-// GetUser provides a mock function with given fields: screenName
-func (_m *mockUserManager) GetUser(screenName string) (*state.User, error) {
+// InsertUser provides a mock function with given fields: u
+func (_m *mockUserManager) InsertUser(u state.User) error {
+	ret := _m.Called(u)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InsertUser")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(state.User) error); ok {
+		r0 = rf(u)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockUserManager_InsertUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertUser'
+type mockUserManager_InsertUser_Call struct {
+	*mock.Call
+}
+
+// InsertUser is a helper method to define mock.On call
+//   - u state.User
+func (_e *mockUserManager_Expecter) InsertUser(u interface{}) *mockUserManager_InsertUser_Call {
+	return &mockUserManager_InsertUser_Call{Call: _e.mock.On("InsertUser", u)}
+}
+
+func (_c *mockUserManager_InsertUser_Call) Run(run func(u state.User)) *mockUserManager_InsertUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(state.User))
+	})
+	return _c
+}
+
+func (_c *mockUserManager_InsertUser_Call) Return(_a0 error) *mockUserManager_InsertUser_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockUserManager_InsertUser_Call) RunAndReturn(run func(state.User) error) *mockUserManager_InsertUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// User provides a mock function with given fields: screenName
+func (_m *mockUserManager) User(screenName string) (*state.User, error) {
 	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetUser")
+		panic("no return value specified for User")
 	}
 
 	var r0 *state.User
@@ -50,76 +96,30 @@ func (_m *mockUserManager) GetUser(screenName string) (*state.User, error) {
 	return r0, r1
 }
 
-// mockUserManager_GetUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUser'
-type mockUserManager_GetUser_Call struct {
+// mockUserManager_User_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'User'
+type mockUserManager_User_Call struct {
 	*mock.Call
 }
 
-// GetUser is a helper method to define mock.On call
+// User is a helper method to define mock.On call
 //   - screenName string
-func (_e *mockUserManager_Expecter) GetUser(screenName interface{}) *mockUserManager_GetUser_Call {
-	return &mockUserManager_GetUser_Call{Call: _e.mock.On("GetUser", screenName)}
+func (_e *mockUserManager_Expecter) User(screenName interface{}) *mockUserManager_User_Call {
+	return &mockUserManager_User_Call{Call: _e.mock.On("User", screenName)}
 }
 
-func (_c *mockUserManager_GetUser_Call) Run(run func(screenName string)) *mockUserManager_GetUser_Call {
+func (_c *mockUserManager_User_Call) Run(run func(screenName string)) *mockUserManager_User_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(string))
 	})
 	return _c
 }
 
-func (_c *mockUserManager_GetUser_Call) Return(_a0 *state.User, _a1 error) *mockUserManager_GetUser_Call {
+func (_c *mockUserManager_User_Call) Return(_a0 *state.User, _a1 error) *mockUserManager_User_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockUserManager_GetUser_Call) RunAndReturn(run func(string) (*state.User, error)) *mockUserManager_GetUser_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpsertUser provides a mock function with given fields: u
-func (_m *mockUserManager) UpsertUser(u state.User) error {
-	ret := _m.Called(u)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpsertUser")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(state.User) error); ok {
-		r0 = rf(u)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// mockUserManager_UpsertUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertUser'
-type mockUserManager_UpsertUser_Call struct {
-	*mock.Call
-}
-
-// UpsertUser is a helper method to define mock.On call
-//   - u state.User
-func (_e *mockUserManager_Expecter) UpsertUser(u interface{}) *mockUserManager_UpsertUser_Call {
-	return &mockUserManager_UpsertUser_Call{Call: _e.mock.On("UpsertUser", u)}
-}
-
-func (_c *mockUserManager_UpsertUser_Call) Run(run func(u state.User)) *mockUserManager_UpsertUser_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.User))
-	})
-	return _c
-}
-
-func (_c *mockUserManager_UpsertUser_Call) Return(_a0 error) *mockUserManager_UpsertUser_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockUserManager_UpsertUser_Call) RunAndReturn(run func(state.User) error) *mockUserManager_UpsertUser_Call {
+func (_c *mockUserManager_User_Call) RunAndReturn(run func(string) (*state.User, error)) *mockUserManager_User_Call {
 	_c.Call.Return(run)
 	return _c
 }

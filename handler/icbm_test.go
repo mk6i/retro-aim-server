@@ -228,7 +228,7 @@ func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 			//
 			feedbagManager := newMockFeedbagManager(t)
 			feedbagManager.EXPECT().
-				Blocked(tc.senderSession.ScreenName(),
+				BlockedState(tc.senderSession.ScreenName(),
 					tc.inputSNAC.Body.(oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost).ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
@@ -325,7 +325,7 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			//
 			feedbagManager := newMockFeedbagManager(t)
 			feedbagManager.EXPECT().
-				Blocked(tc.senderScreenName, tc.inputSNAC.Body.(oscar.SNAC_0x04_0x14_ICBMClientEvent).ScreenName).
+				BlockedState(tc.senderScreenName, tc.inputSNAC.Body.(oscar.SNAC_0x04_0x14_ICBMClientEvent).ScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
 			messageRelayer := newMockMessageRelayer(t)
@@ -552,7 +552,7 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			//
 			feedbagManager := newMockFeedbagManager(t)
 			feedbagManager.EXPECT().
-				Blocked(tc.senderSession.ScreenName(), tc.recipientScreenName).
+				BlockedState(tc.senderSession.ScreenName(), tc.recipientScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
 			feedbagManager.EXPECT().

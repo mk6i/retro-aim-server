@@ -82,18 +82,18 @@ type emptyParams []struct {
 // feedbagManagerParams is a helper struct that contains mock parameters for
 // FeedbagManager methods
 type feedbagManagerParams struct {
-	blockedParams
+	blockedStateParams
 	interestedUsersParams
-	upsertParams
+	feedbagUpsertParams
 	buddiesParams
-	retrieveParams
-	lastModifiedParams
-	deleteParams
+	feedbagParams
+	feedbagLastModifiedParams
+	feedbagDeleteParams
 }
 
-// blockedParams is the list of parameters passed at the mock
-// FeedbagManager.Blocked call site
-type blockedParams []struct {
+// blockedStateParams is the list of parameters passed at the mock
+// FeedbagManager.BlockedState call site
+type blockedStateParams []struct {
 	screenName1 string
 	screenName2 string
 	result      state.BlockedState
@@ -108,9 +108,9 @@ type interestedUsersParams []struct {
 	err        error
 }
 
-// upsertParams is the list of parameters passed at the mock
-// FeedbagManager.Upsert call site
-type upsertParams []struct {
+// feedbagUpsertParams is the list of parameters passed at the mock
+// FeedbagManager.FeedbagUpsert call site
+type feedbagUpsertParams []struct {
 	screenName string
 	items      []oscar.FeedbagItem
 }
@@ -122,23 +122,23 @@ type buddiesParams []struct {
 	results    []string
 }
 
-// retrieveParams is the list of parameters passed at the mock
-// FeedbagManager.Retrieve call site
-type retrieveParams []struct {
+// feedbagParams is the list of parameters passed at the mock
+// FeedbagManager.Feedbag call site
+type feedbagParams []struct {
 	screenName string
 	results    []oscar.FeedbagItem
 }
 
-// lastModifiedParams is the list of parameters passed at the mock
-// FeedbagManager.LastModified call site
-type lastModifiedParams []struct {
+// feedbagLastModifiedParams is the list of parameters passed at the mock
+// FeedbagManager.FeedbagLastModified call site
+type feedbagLastModifiedParams []struct {
 	screenName string
 	result     time.Time
 }
 
-// deleteParams is the list of parameters passed at the mock
-// FeedbagManager.Delete call site
-type deleteParams []struct {
+// feedbagDeleteParams is the list of parameters passed at the mock
+// FeedbagManager.FeedbagDelete call site
+type feedbagDeleteParams []struct {
 	screenName string
 	items      []oscar.FeedbagItem
 }

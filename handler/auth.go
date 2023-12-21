@@ -90,7 +90,7 @@ func (s AuthService) BUCPChallengeRequestHandler(bodyIn oscar.SNAC_0x17_0x06_BUC
 
 	var authKey string
 
-	u, err := s.userManager.GetUser(screenName)
+	u, err := s.userManager.User(screenName)
 	switch {
 	case err != nil:
 		return oscar.SNACMessage{}, err
@@ -147,7 +147,7 @@ func (s AuthService) BUCPLoginRequestHandler(bodyIn oscar.SNAC_0x17_0x02_BUCPLog
 
 	loginOK := false
 
-	u, err := s.userManager.GetUser(screenName)
+	u, err := s.userManager.User(screenName)
 	switch {
 	case err != nil:
 		return oscar.SNACMessage{}, err
@@ -160,7 +160,7 @@ func (s AuthService) BUCPLoginRequestHandler(bodyIn oscar.SNAC_0x17_0x02_BUCPLog
 		if err != nil {
 			return oscar.SNACMessage{}, err
 		}
-		if err := s.userManager.UpsertUser(user); err != nil {
+		if err := s.userManager.InsertUser(user); err != nil {
 			return oscar.SNACMessage{}, err
 		}
 		loginOK = true

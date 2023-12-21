@@ -12,7 +12,7 @@ import (
 	"github.com/mkaminski/goaim/state"
 )
 
-func StartManagementAPI(fs *state.SQLiteFeedbagStore, logger *slog.Logger) {
+func StartManagementAPI(fs *state.SQLiteUserStore, logger *slog.Logger) {
 	http.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -38,9 +38,9 @@ func StartManagementAPI(fs *state.SQLiteFeedbagStore, logger *slog.Logger) {
 }
 
 // getUsers handles the GET /user endpoint.
-func getUsers(fs *state.SQLiteFeedbagStore, w http.ResponseWriter, r *http.Request) {
+func getUsers(fs *state.SQLiteUserStore, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	users, err := fs.Users()
+	users, err := fs.AllUsers()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -57,7 +57,7 @@ type CreateUser struct {
 }
 
 // createUser handles the POST /user endpoint.
-func createUser(fs *state.SQLiteFeedbagStore, w http.ResponseWriter, r *http.Request) {
+func createUser(fs *state.SQLiteUserStore, w http.ResponseWriter, r *http.Request) {
 	var newUser CreateUser
 	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

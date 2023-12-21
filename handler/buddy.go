@@ -35,7 +35,7 @@ func (s BuddyService) RightsQueryHandler(_ context.Context, frameIn oscar.SNACFr
 }
 
 func broadcastArrival(ctx context.Context, sess *state.Session, messageRelayer MessageRelayer, feedbagManager FeedbagManager) error {
-	screenNames, err := feedbagManager.InterestedUsers(sess.ScreenName())
+	screenNames, err := feedbagManager.AdjacentUsers(sess.ScreenName())
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func broadcastArrival(ctx context.Context, sess *state.Session, messageRelayer M
 }
 
 func broadcastDeparture(ctx context.Context, sess *state.Session, messageRelayer MessageRelayer, feedbagManager FeedbagManager) error {
-	screenNames, err := feedbagManager.InterestedUsers(sess.ScreenName())
+	screenNames, err := feedbagManager.AdjacentUsers(sess.ScreenName())
 	if err != nil {
 		return err
 	}

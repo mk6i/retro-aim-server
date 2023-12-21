@@ -9,18 +9,18 @@ import (
 )
 
 type FeedbagManager interface {
-	Blocked(screenName1, screenName2 string) (state.BlockedState, error)
+	BlockedState(screenName1, screenName2 string) (state.BlockedState, error)
 	Buddies(screenName string) ([]string, error)
-	Delete(screenName string, items []oscar.FeedbagItem) error
-	InterestedUsers(screenName string) ([]string, error)
-	LastModified(screenName string) (time.Time, error)
-	Retrieve(screenName string) ([]oscar.FeedbagItem, error)
-	Upsert(screenName string, items []oscar.FeedbagItem) error
+	FeedbagDelete(screenName string, items []oscar.FeedbagItem) error
+	AdjacentUsers(screenName string) ([]string, error)
+	FeedbagLastModified(screenName string) (time.Time, error)
+	Feedbag(screenName string) ([]oscar.FeedbagItem, error)
+	FeedbagUpsert(screenName string, items []oscar.FeedbagItem) error
 }
 
 type UserManager interface {
-	GetUser(screenName string) (*state.User, error)
-	UpsertUser(u state.User) error
+	User(screenName string) (*state.User, error)
+	InsertUser(u state.User) error
 }
 
 type SessionManager interface {
@@ -31,8 +31,8 @@ type SessionManager interface {
 }
 
 type ProfileManager interface {
-	RetrieveProfile(screenName string) (string, error)
-	UpsertProfile(screenName string, body string) error
+	Profile(screenName string) (string, error)
+	SetProfile(screenName string, body string) error
 }
 
 type MessageRelayer interface {

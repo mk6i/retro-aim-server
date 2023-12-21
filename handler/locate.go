@@ -52,7 +52,7 @@ func (s LocateService) RightsQueryHandler(_ context.Context, inFrame oscar.SNACF
 func (s LocateService) SetInfoHandler(ctx context.Context, sess *state.Session, inBody oscar.SNAC_0x02_0x04_LocateSetInfo) error {
 	// update profile
 	if profile, hasProfile := inBody.GetString(oscar.LocateTLVTagsInfoSigData); hasProfile {
-		if err := s.profileManager.UpsertProfile(sess.ScreenName(), profile); err != nil {
+		if err := s.profileManager.SetProfile(sess.ScreenName(), profile); err != nil {
 			return err
 		}
 	}
@@ -72,7 +72,7 @@ func (s LocateService) SetInfoHandler(ctx context.Context, sess *state.Session, 
 // the profile, if requested, and/or the away message, if requested. This is a
 // v2 of the UserInfoQueryHandler handler.
 func (s LocateService) UserInfoQuery2Handler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x02_0x15_LocateUserInfoQuery2) (oscar.SNACMessage, error) {
-	blocked, err := s.feedbagManager.Blocked(sess.ScreenName(), inBody.ScreenName)
+	blocked, err := s.feedbagManager.BlockedState(sess.ScreenName(), inBody.ScreenName)
 	switch {
 	case err != nil:
 		return oscar.SNACMessage{}, err
@@ -106,7 +106,7 @@ func (s LocateService) UserInfoQuery2Handler(ctx context.Context, sess *state.Se
 	var list oscar.TLVList
 
 	if inBody.RequestProfile() {
-		profile, err := s.profileManager.RetrieveProfile(inBody.ScreenName)
+		profile, err := s.profileManager.Profile(inBody.ScreenName)
 		if err != nil {
 			return oscar.SNACMessage{}, err
 		}

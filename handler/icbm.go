@@ -40,7 +40,7 @@ func (s ICBMService) ParameterQueryHandler(_ context.Context, inFrame oscar.SNAC
 }
 
 func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.SNACMessage, error) {
-	blocked, err := s.feedbagManager.Blocked(sess.ScreenName(), inBody.ScreenName)
+	blocked, err := s.feedbagManager.BlockedState(sess.ScreenName(), inBody.ScreenName)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 }
 
 func (s ICBMService) ClientEventHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x04_0x14_ICBMClientEvent) error {
-	blocked, err := s.feedbagManager.Blocked(sess.ScreenName(), inBody.ScreenName)
+	blocked, err := s.feedbagManager.BlockedState(sess.ScreenName(), inBody.ScreenName)
 
 	switch {
 	case err != nil:
@@ -167,7 +167,7 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *state.Session
 		}, nil
 	}
 
-	blocked, err := s.feedbagManager.Blocked(sess.ScreenName(), inBody.ScreenName)
+	blocked, err := s.feedbagManager.BlockedState(sess.ScreenName(), inBody.ScreenName)
 	if err != nil {
 		return oscar.SNACMessage{}, nil
 	}

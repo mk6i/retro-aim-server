@@ -77,7 +77,7 @@ func (s FeedbagService) RightsQueryHandler(_ context.Context, inFrame oscar.SNAC
 // QueryHandler fetches the user's feedbag (aka buddy list). It returns
 // oscar.FeedbagReply, which contains feedbag entries.
 func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session, inFrame oscar.SNACFrame) (oscar.SNACMessage, error) {
-	fb, err := s.feedbagManager.Retrieve(sess.ScreenName())
+	fb, err := s.feedbagManager.Feedbag(sess.ScreenName())
 	if err != nil {
 		return oscar.SNACMessage{}, err
 	}
@@ -85,7 +85,7 @@ func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session, inF
 	lm := time.UnixMilli(0)
 
 	if len(fb) > 0 {
-		lm, err = s.feedbagManager.LastModified(sess.ScreenName())
+		lm, err = s.feedbagManager.FeedbagLastModified(sess.ScreenName())
 		if err != nil {
 			return oscar.SNACMessage{}, err
 		}
@@ -110,7 +110,7 @@ func (s FeedbagService) QueryHandler(_ context.Context, sess *state.Session, inF
 // before inBody.LastUpdate, else return oscar.FeedbagReply, which contains
 // feedbag entries.
 func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x13_0x05_FeedbagQueryIfModified) (oscar.SNACMessage, error) {
-	fb, err := s.feedbagManager.Retrieve(sess.ScreenName())
+	fb, err := s.feedbagManager.Feedbag(sess.ScreenName())
 	if err != nil {
 		return oscar.SNACMessage{}, err
 	}
@@ -118,7 +118,7 @@ func (s FeedbagService) QueryIfModifiedHandler(_ context.Context, sess *state.Se
 	lm := time.UnixMilli(0)
 
 	if len(fb) > 0 {
-		lm, err = s.feedbagManager.LastModified(sess.ScreenName())
+		lm, err = s.feedbagManager.FeedbagLastModified(sess.ScreenName())
 		if err != nil {
 			return oscar.SNACMessage{}, err
 		}
@@ -174,7 +174,7 @@ func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Sessi
 		}
 	}
 
-	if err := s.feedbagManager.Upsert(sess.ScreenName(), inBody.Items); err != nil {
+	if err := s.feedbagManager.FeedbagUpsert(sess.ScreenName(), inBody.Items); err != nil {
 		return oscar.SNACMessage{}, nil
 	}
 
@@ -219,7 +219,7 @@ func (s FeedbagService) InsertItemHandler(ctx context.Context, sess *state.Sessi
 // to the feedbag. It returns oscar.FeedbagStatus, which contains update
 // confirmation.
 func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x13_0x09_FeedbagUpdateItem) (oscar.SNACMessage, error) {
-	if err := s.feedbagManager.Upsert(sess.ScreenName(), inBody.Items); err != nil {
+	if err := s.feedbagManager.FeedbagUpsert(sess.ScreenName(), inBody.Items); err != nil {
 		return oscar.SNACMessage{}, nil
 	}
 
@@ -255,7 +255,7 @@ func (s FeedbagService) UpdateItemHandler(ctx context.Context, sess *state.Sessi
 // current user is visible. It returns oscar.FeedbagStatus, which contains update
 // confirmation.
 func (s FeedbagService) DeleteItemHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x13_0x0A_FeedbagDeleteItem) (oscar.SNACMessage, error) {
-	if err := s.feedbagManager.Delete(sess.ScreenName(), inBody.Items); err != nil {
+	if err := s.feedbagManager.FeedbagDelete(sess.ScreenName(), inBody.Items); err != nil {
 		return oscar.SNACMessage{}, err
 	}
 
