@@ -25,9 +25,9 @@ type UserManager interface {
 
 type SessionManager interface {
 	Empty() bool
-	NewSessionWithSN(sessID string, screenName string) *state.Session
-	Remove(sess *state.Session)
-	Retrieve(ID string) *state.Session
+	AddSession(sessID string, screenName string) *state.Session
+	RemoveSession(sess *state.Session)
+	RetrieveSession(ID string) *state.Session
 }
 
 type ProfileManager interface {
@@ -36,15 +36,15 @@ type ProfileManager interface {
 }
 
 type MessageRelayer interface {
-	BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.SNACMessage)
+	RelayToScreenNames(ctx context.Context, screenNames []string, msg oscar.SNACMessage)
 	RetrieveByScreenName(screenName string) *state.Session
-	SendToScreenName(ctx context.Context, screenName string, msg oscar.SNACMessage)
+	RelayToScreenName(ctx context.Context, screenName string, msg oscar.SNACMessage)
 }
 
 type ChatMessageRelayer interface {
 	MessageRelayer
-	BroadcastExcept(ctx context.Context, except *state.Session, msg oscar.SNACMessage)
-	Participants() []*state.Session
+	RelayToAllExcept(ctx context.Context, except *state.Session, msg oscar.SNACMessage)
+	AllSessions() []*state.Session
 }
 
 type ChatRegistry interface {

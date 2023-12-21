@@ -55,21 +55,21 @@ type upsertUserParams []struct {
 // SessionManager methods
 type sessionManagerParams struct {
 	emptyParams
-	newSessionWithSNParams
-	removeParams
+	addSessionParams
+	removeSessionParams
 }
 
-// newSessionWithSNParams is the list of parameters passed at the mock
-// SessionManager.NewSessionWithSN call site
-type newSessionWithSNParams []struct {
+// addSessionParams is the list of parameters passed at the mock
+// SessionManager.AddSession call site
+type addSessionParams []struct {
 	sessID     string
 	screenName string
 	result     *state.Session
 }
 
-// removeParams is the list of parameters passed at the mock
-// SessionManager.Remove call site
-type removeParams []struct {
+// removeSessionParams is the list of parameters passed at the mock
+// SessionManager.RemoveSession call site
+type removeSessionParams []struct {
 	sess *state.Session
 }
 
@@ -159,14 +159,14 @@ type retrieveByScreenNameParams []struct {
 }
 
 // broadcastToScreenNamesParams is the list of parameters passed at the mock
-// MessageRelayer.BroadcastToScreenNames call site
+// MessageRelayer.RelayToScreenNames call site
 type broadcastToScreenNamesParams []struct {
 	screenNames []string
 	message     oscar.SNACMessage
 }
 
 // sendToScreenNameParams is the list of parameters passed at the mock
-// MessageRelayer.SendToScreenName call site
+// MessageRelayer.RelayToScreenName call site
 type sendToScreenNameParams []struct {
 	screenName string
 	message    oscar.SNACMessage
@@ -201,7 +201,7 @@ type chatMessageRelayerParams struct {
 }
 
 // broadcastExceptParams is the list of parameters passed at the mock
-// ChatMessageRelayer.BroadcastExcept call site
+// ChatMessageRelayer.RelayToAllExcept call site
 type broadcastExceptParams []struct {
 	except  *state.Session
 	message oscar.SNACMessage

@@ -239,7 +239,7 @@ func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 				Maybe()
 			if tc.recipientSession != nil {
 				messageRelayer.EXPECT().
-					SendToScreenName(mock.Anything, tc.recipientSession.ScreenName(), tc.expectSNACToClient).
+					RelayToScreenName(mock.Anything, tc.recipientSession.ScreenName(), tc.expectSNACToClient).
 					Maybe()
 			}
 			//
@@ -331,7 +331,7 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			messageRelayer := newMockMessageRelayer(t)
 			if tc.blockedState == state.BlockedNo {
 				messageRelayer.EXPECT().
-					SendToScreenName(mock.Anything, tc.inputSNAC.Body.(oscar.SNAC_0x04_0x14_ICBMClientEvent).ScreenName,
+					RelayToScreenName(mock.Anything, tc.inputSNAC.Body.(oscar.SNAC_0x04_0x14_ICBMClientEvent).ScreenName,
 						tc.expectSNACToClient)
 			}
 			//
@@ -566,10 +566,10 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 				Return(recipSess).
 				Maybe()
 			messageRelayer.EXPECT().
-				SendToScreenName(mock.Anything, tc.recipientScreenName, tc.expectSNACToClient).
+				RelayToScreenName(mock.Anything, tc.recipientScreenName, tc.expectSNACToClient).
 				Maybe()
 			messageRelayer.EXPECT().
-				BroadcastToScreenNames(mock.Anything, tc.recipientBuddies, tc.broadcastMessage).
+				RelayToScreenNames(mock.Anything, tc.recipientBuddies, tc.broadcastMessage).
 				Maybe()
 			//
 			// send input SNAC

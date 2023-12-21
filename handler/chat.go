@@ -37,7 +37,7 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 	}
 
 	// send message to all the participants except sender
-	chatSessMgr.(ChatMessageRelayer).BroadcastExcept(ctx, sess, oscar.SNACMessage{
+	chatSessMgr.(ChatMessageRelayer).RelayToAllExcept(ctx, sess, oscar.SNACMessage{
 		Frame: frameOut,
 		Body:  bodyOut,
 	})
@@ -57,13 +57,13 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 
 func setOnlineChatUsers(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer) {
 	snacPayloadOut := oscar.SNAC_0x0E_0x03_ChatUsersJoined{}
-	sessions := chatMessageRelayer.Participants()
+	sessions := chatMessageRelayer.AllSessions()
 
 	for _, uSess := range sessions {
 		snacPayloadOut.Users = append(snacPayloadOut.Users, uSess.TLVUserInfo())
 	}
 
-	chatMessageRelayer.SendToScreenName(ctx, sess.ScreenName(), oscar.SNACMessage{
+	chatMessageRelayer.RelayToScreenName(ctx, sess.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Chat,
 			SubGroup:  oscar.ChatUsersJoined,
@@ -73,7 +73,7 @@ func setOnlineChatUsers(ctx context.Context, sess *state.Session, chatMessageRel
 }
 
 func alertUserJoined(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer) {
-	chatMessageRelayer.BroadcastExcept(ctx, sess, oscar.SNACMessage{
+	chatMessageRelayer.RelayToAllExcept(ctx, sess, oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Chat,
 			SubGroup:  oscar.ChatUsersJoined,
@@ -87,7 +87,7 @@ func alertUserJoined(ctx context.Context, sess *state.Session, chatMessageRelaye
 }
 
 func alertUserLeft(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer) {
-	chatMessageRelayer.BroadcastExcept(ctx, sess, oscar.SNACMessage{
+	chatMessageRelayer.RelayToAllExcept(ctx, sess, oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Chat,
 			SubGroup:  oscar.ChatUsersLeft,
@@ -101,7 +101,7 @@ func alertUserLeft(ctx context.Context, sess *state.Session, chatMessageRelayer 
 }
 
 func sendChatRoomInfoUpdate(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer, room state.ChatRoom) {
-	chatMessageRelayer.SendToScreenName(ctx, sess.ScreenName(), oscar.SNACMessage{
+	chatMessageRelayer.RelayToScreenName(ctx, sess.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Chat,
 			SubGroup:  oscar.ChatRoomInfoUpdate,

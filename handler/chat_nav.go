@@ -82,7 +82,7 @@ func (s ChatNavService) CreateRoomHandler(_ context.Context, sess *state.Session
 	s.chatRegistry.Register(room, chatSessMgr)
 
 	// add user to chat room
-	chatSessMgr.NewSessionWithSN(sess.ID(), sess.ScreenName())
+	chatSessMgr.AddSession(sess.ID(), sess.ScreenName())
 
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{

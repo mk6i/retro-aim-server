@@ -16,7 +16,7 @@ func TestChatNavService_CreateRoomHandler(t *testing.T) {
 	chatRegistry := state.NewChatRegistry()
 
 	sessionManager := newMockSessionManager(t)
-	sessionManager.EXPECT().NewSessionWithSN(userSess.ID(), userSess.ScreenName()).
+	sessionManager.EXPECT().AddSession(userSess.ID(), userSess.ScreenName()).
 		Return(&state.Session{})
 
 	newChatRoom := func() state.ChatRoom {

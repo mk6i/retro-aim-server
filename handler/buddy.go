@@ -40,7 +40,7 @@ func broadcastArrival(ctx context.Context, sess *state.Session, messageRelayer M
 		return err
 	}
 
-	messageRelayer.BroadcastToScreenNames(ctx, screenNames, oscar.SNACMessage{
+	messageRelayer.RelayToScreenNames(ctx, screenNames, oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyArrived,
@@ -59,7 +59,7 @@ func broadcastDeparture(ctx context.Context, sess *state.Session, messageRelayer
 		return err
 	}
 
-	messageRelayer.BroadcastToScreenNames(ctx, screenNames, oscar.SNACMessage{
+	messageRelayer.RelayToScreenNames(ctx, screenNames, oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyDeparted,
@@ -78,7 +78,7 @@ func broadcastDeparture(ctx context.Context, sess *state.Session, messageRelayer
 }
 
 func unicastArrival(ctx context.Context, from *state.Session, to *state.Session, messageRelayer MessageRelayer) {
-	messageRelayer.SendToScreenName(ctx, to.ScreenName(), oscar.SNACMessage{
+	messageRelayer.RelayToScreenName(ctx, to.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyArrived,
@@ -90,7 +90,7 @@ func unicastArrival(ctx context.Context, from *state.Session, to *state.Session,
 }
 
 func unicastDeparture(ctx context.Context, from *state.Session, to *state.Session, messageRelayer MessageRelayer) {
-	messageRelayer.SendToScreenName(ctx, to.ScreenName(), oscar.SNACMessage{
+	messageRelayer.RelayToScreenName(ctx, to.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.Buddy,
 			SubGroup:  oscar.BuddyDeparted,

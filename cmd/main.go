@@ -28,7 +28,7 @@ func main() {
 	}
 
 	logger := server.NewLogger(cfg)
-	sessionManager := state.NewSessionManager(logger)
+	sessionManager := state.NewInMemorySessionManager(logger)
 	chatRegistry := state.NewChatRegistry()
 
 	wg := sync.WaitGroup{}
@@ -45,7 +45,7 @@ func main() {
 		oserviceHandler := handler.NewOServiceService(cfg, sessionManager, feedbagStore)
 		oserviceBOSHandler := handler.NewOServiceServiceForBOS(*oserviceHandler, chatRegistry)
 		locateHandler := handler.NewLocateService(sessionManager, feedbagStore, feedbagStore)
-		newChatSessMgr := func() handler.SessionManager { return state.NewSessionManager(logger) }
+		newChatSessMgr := func() handler.SessionManager { return state.NewInMemorySessionManager(logger) }
 		chatNavHandler := handler.NewChatNavService(logger, chatRegistry, state.NewChatRoom, newChatSessMgr)
 		feedbagHandler := handler.NewFeedbagService(sessionManager, feedbagStore)
 		icbmHandler := handler.NewICBMService(sessionManager, feedbagStore)

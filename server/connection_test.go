@@ -19,8 +19,8 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 	cfg := Config{}
 	logger := NewLogger(cfg)
 
-	sessionManager := state.NewSessionManager(logger)
-	sess := sessionManager.NewSessionWithSN("bob-sess-id", "bob")
+	sessionManager := state.NewInMemorySessionManager(logger)
+	sess := sessionManager.AddSession("bob-sess-id", "bob")
 
 	msgIn := []oscar.SNACMessage{
 		{
@@ -68,7 +68,7 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 	rw := bufio.NewReadWriter(bufio.NewReader(pr), bufio.NewWriter(&bytes.Buffer{}))
 
 	for _, msg := range msgIn {
-		sessionManager.SendToScreenName(ctx, "bob", msg)
+		sessionManager.RelayToScreenName(ctx, "bob", msg)
 	}
 
 	dispatchIncomingMessages(ctx, sess, uint32(0), rw, logger, routeSig, alertHandler)
@@ -82,8 +82,8 @@ func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 	cfg := Config{}
 	logger := NewLogger(cfg)
 
-	sessionManager := state.NewSessionManager(logger)
-	sess := sessionManager.NewSessionWithSN("bob-sess-id", "bob")
+	sessionManager := state.NewInMemorySessionManager(logger)
+	sess := sessionManager.AddSession("bob-sess-id", "bob")
 
 	payloads := [][]byte{
 		{'a', 'b', 'c', 'd'},
@@ -137,8 +137,8 @@ func TestHandleChatConnection_SessionClosed(t *testing.T) {
 	cfg := Config{}
 	logger := NewLogger(cfg)
 
-	sessionManager := state.NewSessionManager(logger)
-	sess := sessionManager.NewSessionWithSN("bob-sess-id", "bob")
+	sessionManager := state.NewInMemorySessionManager(logger)
+	sess := sessionManager.AddSession("bob-sess-id", "bob")
 
 	routeSig := func(ctx context.Context, buf io.Reader, w io.Writer, u *uint32) error {
 		t.Fatal("not expecting any output")

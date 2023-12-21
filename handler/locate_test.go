@@ -462,7 +462,7 @@ func TestLocateService_SetInfoHandler(t *testing.T) {
 			messageRelayer := newMockMessageRelayer(t)
 			for _, params := range tt.mockParams.broadcastToScreenNamesParams {
 				messageRelayer.EXPECT().
-					BroadcastToScreenNames(mock.Anything, params.screenNames, params.message)
+					RelayToScreenNames(mock.Anything, params.screenNames, params.message)
 			}
 			feedbagManager := newMockFeedbagManager(t)
 			for _, params := range tt.mockParams.interestedUsersParams {

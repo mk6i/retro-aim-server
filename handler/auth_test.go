@@ -62,7 +62,7 @@ func TestAuthService_BUCPLoginRequestHandler(t *testing.T) {
 					},
 				},
 				sessionManagerParams: sessionManagerParams{
-					newSessionWithSNParams: newSessionWithSNParams{
+					addSessionParams: addSessionParams{
 						{
 							sessID:     userSession.ID(),
 							screenName: user.ScreenName,
@@ -117,7 +117,7 @@ func TestAuthService_BUCPLoginRequestHandler(t *testing.T) {
 					},
 				},
 				sessionManagerParams: sessionManagerParams{
-					newSessionWithSNParams: newSessionWithSNParams{
+					addSessionParams: addSessionParams{
 						{
 							sessID:     userSession.ID(),
 							screenName: user.ScreenName,
@@ -175,7 +175,7 @@ func TestAuthService_BUCPLoginRequestHandler(t *testing.T) {
 					},
 				},
 				sessionManagerParams: sessionManagerParams{
-					newSessionWithSNParams: newSessionWithSNParams{
+					addSessionParams: addSessionParams{
 						{
 							sessID:     userSession.ID(),
 							screenName: user.ScreenName,
@@ -342,9 +342,9 @@ func TestAuthService_BUCPLoginRequestHandler(t *testing.T) {
 					Return(params.err)
 			}
 			sessionManager := newMockSessionManager(t)
-			for _, params := range tc.mockParams.newSessionWithSNParams {
+			for _, params := range tc.mockParams.addSessionParams {
 				sessionManager.EXPECT().
-					NewSessionWithSN(params.sessID, params.screenName).
+					AddSession(params.sessID, params.screenName).
 					Return(params.result)
 			}
 			svc := AuthService{
@@ -537,7 +537,7 @@ func TestAuthService_RetrieveChatSession_HappyPath(t *testing.T) {
 
 	sessionManager := newMockSessionManager(t)
 	sessionManager.EXPECT().
-		Retrieve(sess.ID()).
+		RetrieveSession(sess.ID()).
 		Return(sess)
 
 	chatRegistry := newMockChatRegistry(t)
@@ -573,7 +573,7 @@ func TestAuthService_RetrieveChatSession_SessionNotFound(t *testing.T) {
 
 	sessionManager := newMockSessionManager(t)
 	sessionManager.EXPECT().
-		Retrieve(sess.ID()).
+		RetrieveSession(sess.ID()).
 		Return(nil)
 
 	chatRegistry := newMockChatRegistry(t)
@@ -593,7 +593,7 @@ func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
 
 	sessionManager := newMockSessionManager(t)
 	sessionManager.EXPECT().
-		Retrieve(sess.ID()).
+		RetrieveSession(sess.ID()).
 		Return(sess)
 
 	svc := NewAuthService(server.Config{}, sessionManager, nil, nil, nil, nil)
@@ -608,7 +608,7 @@ func TestAuthService_RetrieveBOSSession_SessionNotFound(t *testing.T) {
 
 	sessionManager := newMockSessionManager(t)
 	sessionManager.EXPECT().
-		Retrieve(sess.ID()).
+		RetrieveSession(sess.ID()).
 		Return(nil)
 
 	svc := NewAuthService(server.Config{}, sessionManager, nil, nil, nil, nil)
@@ -665,7 +665,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 							result: true,
 						},
 					},
-					removeParams: removeParams{
+					removeSessionParams: removeSessionParams{
 						{
 							sess: sess,
 						},
@@ -704,7 +704,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 							result: false,
 						},
 					},
-					removeParams: removeParams{
+					removeSessionParams: removeSessionParams{
 						{
 							sess: sess,
 						},
@@ -726,13 +726,13 @@ func TestAuthService_SignoutChat(t *testing.T) {
 			chatMessageRelayer := newMockChatMessageRelayer(t)
 			for _, params := range tt.mockParams.broadcastExceptParams {
 				chatMessageRelayer.EXPECT().
-					BroadcastExcept(nil, params.except, params.message)
+					RelayToAllExcept(nil, params.except, params.message)
 			}
 
 			sessionManager := newMockSessionManager(t)
 			chatRegistry := newMockChatRegistry(t)
-			for _, params := range tt.mockParams.removeParams {
-				sessionManager.EXPECT().Remove(params.sess)
+			for _, params := range tt.mockParams.removeSessionParams {
+				sessionManager.EXPECT().RemoveSession(params.sess)
 			}
 			for _, params := range tt.mockParams.emptyParams {
 				sessionManager.EXPECT().Empty().Return(params.result)
@@ -783,7 +783,7 @@ func TestAuthService_Signout(t *testing.T) {
 			},
 			mockParams: mockParams{
 				sessionManagerParams: sessionManagerParams{
-					removeParams: removeParams{
+					removeSessionParams: removeSessionParams{
 						{
 							sess: sess,
 						},
@@ -843,7 +843,7 @@ func TestAuthService_Signout(t *testing.T) {
 			messageRelayer := newMockMessageRelayer(t)
 			for _, params := range tt.mockParams.broadcastToScreenNamesParams {
 				messageRelayer.EXPECT().
-					BroadcastToScreenNames(mock.Anything, params.screenNames, params.message)
+					RelayToScreenNames(mock.Anything, params.screenNames, params.message)
 			}
 			feedbagManager := newMockFeedbagManager(t)
 			for _, params := range tt.mockParams.interestedUsersParams {
@@ -852,8 +852,8 @@ func TestAuthService_Signout(t *testing.T) {
 					Return(params.users, params.err)
 			}
 			sessionManager := newMockSessionManager(t)
-			for _, params := range tt.mockParams.removeParams {
-				sessionManager.EXPECT().Remove(params.sess)
+			for _, params := range tt.mockParams.removeSessionParams {
+				sessionManager.EXPECT().RemoveSession(params.sess)
 			}
 
 			svc := NewAuthService(server.Config{}, sessionManager, messageRelayer, feedbagManager, nil, nil)

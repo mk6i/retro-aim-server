@@ -131,7 +131,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 
 			chatSessMgr := newMockChatMessageRelayer(t)
 			chatSessMgr.EXPECT().
-				BroadcastExcept(mock.Anything, tc.userSession, tc.expectSNACToParticipants)
+				RelayToAllExcept(mock.Anything, tc.userSession, tc.expectSNACToParticipants)
 
 			svc := ChatService{
 				chatRegistry: state.NewChatRegistry(),

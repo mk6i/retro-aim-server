@@ -355,7 +355,7 @@ func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *st
 	if err != nil {
 		return oscar.SNACMessage{}, server.ErrUnsupportedSubGroup
 	}
-	chatSessMgr.(SessionManager).NewSessionWithSN(sess.ID(), sess.ScreenName())
+	chatSessMgr.(SessionManager).AddSession(sess.ID(), sess.ScreenName())
 
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{

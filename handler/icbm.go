@@ -97,7 +97,7 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 	// far as I can tell.
 	clientIM.AddTLVList(inBody.TLVRestBlock.TLVList)
 
-	s.messageRelayer.SendToScreenName(ctx, recipSess.ScreenName(), oscar.SNACMessage{
+	s.messageRelayer.RelayToScreenName(ctx, recipSess.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.ICBM,
 			SubGroup:  oscar.ICBMChannelMsgToClient,
@@ -134,7 +134,7 @@ func (s ICBMService) ClientEventHandler(ctx context.Context, sess *state.Session
 	case blocked != state.BlockedNo:
 		return nil
 	default:
-		s.messageRelayer.SendToScreenName(ctx, inBody.ScreenName, oscar.SNACMessage{
+		s.messageRelayer.RelayToScreenName(ctx, inBody.ScreenName, oscar.SNACMessage{
 			Frame: oscar.SNACFrame{
 				FoodGroup: oscar.ICBM,
 				SubGroup:  oscar.ICBMClientEvent,
@@ -210,7 +210,7 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *state.Session
 		}
 	}
 
-	s.messageRelayer.SendToScreenName(ctx, recipSess.ScreenName(), oscar.SNACMessage{
+	s.messageRelayer.RelayToScreenName(ctx, recipSess.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
 			FoodGroup: oscar.OService,
 			SubGroup:  oscar.OServiceEvilNotification,

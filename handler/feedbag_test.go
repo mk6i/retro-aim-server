@@ -772,7 +772,7 @@ func TestFeedbagService_InsertItemHandler(t *testing.T) {
 			}
 			for _, params := range tc.mockParams.messageRelayerParams.sendToScreenNameParams {
 				messageRelayer.EXPECT().
-					SendToScreenName(mock.Anything, params.screenName, params.message)
+					RelayToScreenName(mock.Anything, params.screenName, params.message)
 			}
 
 			svc := FeedbagService{
@@ -1007,7 +1007,7 @@ func TestFeedbagService_UpdateItemHandler(t *testing.T) {
 			}
 			for _, params := range tc.mockParams.messageRelayerParams.sendToScreenNameParams {
 				messageRelayer.EXPECT().
-					SendToScreenName(mock.Anything, params.screenName, params.message)
+					RelayToScreenName(mock.Anything, params.screenName, params.message)
 			}
 
 			svc := FeedbagService{
@@ -1322,7 +1322,7 @@ func TestFeedbagService_DeleteItemHandler(t *testing.T) {
 			}
 			for _, params := range tc.mockParams.messageRelayerParams.sendToScreenNameParams {
 				messageRelayer.EXPECT().
-					SendToScreenName(mock.Anything, params.screenName, params.message)
+					RelayToScreenName(mock.Anything, params.screenName, params.message)
 			}
 
 			svc := FeedbagService{

@@ -20,6 +20,55 @@ func (_m *mockSessionManager) EXPECT() *mockSessionManager_Expecter {
 	return &mockSessionManager_Expecter{mock: &_m.Mock}
 }
 
+// AddSession provides a mock function with given fields: sessID, screenName
+func (_m *mockSessionManager) AddSession(sessID string, screenName string) *state.Session {
+	ret := _m.Called(sessID, screenName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddSession")
+	}
+
+	var r0 *state.Session
+	if rf, ok := ret.Get(0).(func(string, string) *state.Session); ok {
+		r0 = rf(sessID, screenName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*state.Session)
+		}
+	}
+
+	return r0
+}
+
+// mockSessionManager_AddSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddSession'
+type mockSessionManager_AddSession_Call struct {
+	*mock.Call
+}
+
+// AddSession is a helper method to define mock.On call
+//   - sessID string
+//   - screenName string
+func (_e *mockSessionManager_Expecter) AddSession(sessID interface{}, screenName interface{}) *mockSessionManager_AddSession_Call {
+	return &mockSessionManager_AddSession_Call{Call: _e.mock.On("AddSession", sessID, screenName)}
+}
+
+func (_c *mockSessionManager_AddSession_Call) Run(run func(sessID string, screenName string)) *mockSessionManager_AddSession_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *mockSessionManager_AddSession_Call) Return(_a0 *state.Session) *mockSessionManager_AddSession_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockSessionManager_AddSession_Call) RunAndReturn(run func(string, string) *state.Session) *mockSessionManager_AddSession_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Empty provides a mock function with given fields:
 func (_m *mockSessionManager) Empty() bool {
 	ret := _m.Called()
@@ -65,94 +114,45 @@ func (_c *mockSessionManager_Empty_Call) RunAndReturn(run func() bool) *mockSess
 	return _c
 }
 
-// NewSessionWithSN provides a mock function with given fields: sessID, screenName
-func (_m *mockSessionManager) NewSessionWithSN(sessID string, screenName string) *state.Session {
-	ret := _m.Called(sessID, screenName)
-
-	if len(ret) == 0 {
-		panic("no return value specified for NewSessionWithSN")
-	}
-
-	var r0 *state.Session
-	if rf, ok := ret.Get(0).(func(string, string) *state.Session); ok {
-		r0 = rf(sessID, screenName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*state.Session)
-		}
-	}
-
-	return r0
-}
-
-// mockSessionManager_NewSessionWithSN_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewSessionWithSN'
-type mockSessionManager_NewSessionWithSN_Call struct {
-	*mock.Call
-}
-
-// NewSessionWithSN is a helper method to define mock.On call
-//   - sessID string
-//   - screenName string
-func (_e *mockSessionManager_Expecter) NewSessionWithSN(sessID interface{}, screenName interface{}) *mockSessionManager_NewSessionWithSN_Call {
-	return &mockSessionManager_NewSessionWithSN_Call{Call: _e.mock.On("NewSessionWithSN", sessID, screenName)}
-}
-
-func (_c *mockSessionManager_NewSessionWithSN_Call) Run(run func(sessID string, screenName string)) *mockSessionManager_NewSessionWithSN_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *mockSessionManager_NewSessionWithSN_Call) Return(_a0 *state.Session) *mockSessionManager_NewSessionWithSN_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockSessionManager_NewSessionWithSN_Call) RunAndReturn(run func(string, string) *state.Session) *mockSessionManager_NewSessionWithSN_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Remove provides a mock function with given fields: sess
-func (_m *mockSessionManager) Remove(sess *state.Session) {
+// RemoveSession provides a mock function with given fields: sess
+func (_m *mockSessionManager) RemoveSession(sess *state.Session) {
 	_m.Called(sess)
 }
 
-// mockSessionManager_Remove_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Remove'
-type mockSessionManager_Remove_Call struct {
+// mockSessionManager_RemoveSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveSession'
+type mockSessionManager_RemoveSession_Call struct {
 	*mock.Call
 }
 
-// Remove is a helper method to define mock.On call
+// RemoveSession is a helper method to define mock.On call
 //   - sess *state.Session
-func (_e *mockSessionManager_Expecter) Remove(sess interface{}) *mockSessionManager_Remove_Call {
-	return &mockSessionManager_Remove_Call{Call: _e.mock.On("Remove", sess)}
+func (_e *mockSessionManager_Expecter) RemoveSession(sess interface{}) *mockSessionManager_RemoveSession_Call {
+	return &mockSessionManager_RemoveSession_Call{Call: _e.mock.On("RemoveSession", sess)}
 }
 
-func (_c *mockSessionManager_Remove_Call) Run(run func(sess *state.Session)) *mockSessionManager_Remove_Call {
+func (_c *mockSessionManager_RemoveSession_Call) Run(run func(sess *state.Session)) *mockSessionManager_RemoveSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(*state.Session))
 	})
 	return _c
 }
 
-func (_c *mockSessionManager_Remove_Call) Return() *mockSessionManager_Remove_Call {
+func (_c *mockSessionManager_RemoveSession_Call) Return() *mockSessionManager_RemoveSession_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *mockSessionManager_Remove_Call) RunAndReturn(run func(*state.Session)) *mockSessionManager_Remove_Call {
+func (_c *mockSessionManager_RemoveSession_Call) RunAndReturn(run func(*state.Session)) *mockSessionManager_RemoveSession_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Retrieve provides a mock function with given fields: ID
-func (_m *mockSessionManager) Retrieve(ID string) *state.Session {
+// RetrieveSession provides a mock function with given fields: ID
+func (_m *mockSessionManager) RetrieveSession(ID string) *state.Session {
 	ret := _m.Called(ID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Retrieve")
+		panic("no return value specified for RetrieveSession")
 	}
 
 	var r0 *state.Session
@@ -167,30 +167,30 @@ func (_m *mockSessionManager) Retrieve(ID string) *state.Session {
 	return r0
 }
 
-// mockSessionManager_Retrieve_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Retrieve'
-type mockSessionManager_Retrieve_Call struct {
+// mockSessionManager_RetrieveSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RetrieveSession'
+type mockSessionManager_RetrieveSession_Call struct {
 	*mock.Call
 }
 
-// Retrieve is a helper method to define mock.On call
+// RetrieveSession is a helper method to define mock.On call
 //   - ID string
-func (_e *mockSessionManager_Expecter) Retrieve(ID interface{}) *mockSessionManager_Retrieve_Call {
-	return &mockSessionManager_Retrieve_Call{Call: _e.mock.On("Retrieve", ID)}
+func (_e *mockSessionManager_Expecter) RetrieveSession(ID interface{}) *mockSessionManager_RetrieveSession_Call {
+	return &mockSessionManager_RetrieveSession_Call{Call: _e.mock.On("RetrieveSession", ID)}
 }
 
-func (_c *mockSessionManager_Retrieve_Call) Run(run func(ID string)) *mockSessionManager_Retrieve_Call {
+func (_c *mockSessionManager_RetrieveSession_Call) Run(run func(ID string)) *mockSessionManager_RetrieveSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(string))
 	})
 	return _c
 }
 
-func (_c *mockSessionManager_Retrieve_Call) Return(_a0 *state.Session) *mockSessionManager_Retrieve_Call {
+func (_c *mockSessionManager_RetrieveSession_Call) Return(_a0 *state.Session) *mockSessionManager_RetrieveSession_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockSessionManager_Retrieve_Call) RunAndReturn(run func(string) *state.Session) *mockSessionManager_Retrieve_Call {
+func (_c *mockSessionManager_RetrieveSession_Call) RunAndReturn(run func(string) *state.Session) *mockSessionManager_RetrieveSession_Call {
 	_c.Call.Return(run)
 	return _c
 }

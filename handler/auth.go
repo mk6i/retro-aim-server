@@ -40,13 +40,13 @@ func (s AuthService) RetrieveChatSession(chatID string, sessionID string) (*stat
 	if err != nil {
 		return nil, err
 	}
-	return chatSessMgr.(SessionManager).Retrieve(sessionID), nil
+	return chatSessMgr.(SessionManager).RetrieveSession(sessionID), nil
 }
 
 // RetrieveBOSSession returns a user's session. Return nil if the session does
 // not exist.
 func (s AuthService) RetrieveBOSSession(sessionID string) (*state.Session, error) {
-	return s.sessionManager.Retrieve(sessionID), nil
+	return s.sessionManager.RetrieveSession(sessionID), nil
 }
 
 // Signout removes user from the BOS server and notifies adjacent users (those
@@ -55,7 +55,7 @@ func (s AuthService) Signout(ctx context.Context, sess *state.Session) error {
 	if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
 		return err
 	}
-	s.sessionManager.Remove(sess)
+	s.sessionManager.RemoveSession(sess)
 	return nil
 }
 
@@ -67,7 +67,7 @@ func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session, chatI
 		return err
 	}
 	alertUserLeft(ctx, sess, chatSessMgr.(ChatMessageRelayer))
-	chatSessMgr.(SessionManager).Remove(sess)
+	chatSessMgr.(SessionManager).RemoveSession(sess)
 	if chatSessMgr.(SessionManager).Empty() {
 		s.chatRegistry.Remove(chatRoom.Cookie)
 	}
@@ -170,7 +170,7 @@ func (s AuthService) BUCPLoginRequestHandler(bodyIn oscar.SNAC_0x17_0x02_BUCPLog
 	snacPayloadOut.AddTLV(oscar.NewTLV(oscar.TLVScreenName, screenName))
 
 	if loginOK {
-		sess := s.sessionManager.NewSessionWithSN(newUUIDFn().String(), screenName)
+		sess := s.sessionManager.AddSession(newUUIDFn().String(), screenName)
 		snacPayloadOut.AddTLVList([]oscar.TLV{
 			oscar.NewTLV(oscar.TLVReconnectHere, server.Address(s.config.OSCARHost, s.config.BOSPort)),
 			oscar.NewTLV(oscar.TLVAuthorizationCookie, sess.ID()),

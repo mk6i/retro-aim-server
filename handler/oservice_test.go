@@ -136,7 +136,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			chatRegistry := state.NewChatRegistry()
 			if tc.chatRoom != nil {
 				sessionManager.EXPECT().
-					NewSessionWithSN(tc.userSession.ID(), tc.userSession.ScreenName()).
+					AddSession(tc.userSession.ID(), tc.userSession.ScreenName()).
 					Return(&state.Session{}).
 					Maybe()
 				chatRegistry.Register(*tc.chatRoom, sessionManager)
@@ -295,7 +295,7 @@ func TestSetUserInfoFieldsHandler(t *testing.T) {
 			}
 			messageRelayer := newMockMessageRelayer(t)
 			for _, broadcastMsg := range tc.broadcastMessage {
-				messageRelayer.EXPECT().BroadcastToScreenNames(mock.Anything, broadcastMsg.recipients, broadcastMsg.msg)
+				messageRelayer.EXPECT().RelayToScreenNames(mock.Anything, broadcastMsg.recipients, broadcastMsg.msg)
 			}
 			//
 			// send input SNAC
@@ -656,7 +656,7 @@ func TestOServiceService_IdleNotificationHandler(t *testing.T) {
 				Maybe()
 			messageRelayer := newMockMessageRelayer(t)
 			messageRelayer.EXPECT().
-				BroadcastToScreenNames(mock.Anything, tt.recipientBuddies, tt.broadcastMessage).
+				RelayToScreenNames(mock.Anything, tt.recipientBuddies, tt.broadcastMessage).
 				Maybe()
 
 			svc := NewOServiceService(server.Config{}, messageRelayer, feedbagManager)
@@ -779,7 +779,7 @@ func TestOServiceServiceForBOS_ClientOnlineHandler(t *testing.T) {
 			}
 			for _, params := range tt.broadcastToScreenNamesParams {
 				messageRelayer.EXPECT().
-					BroadcastToScreenNames(mock.Anything, params.screenNames, params.message)
+					RelayToScreenNames(mock.Anything, params.screenNames, params.message)
 			}
 			for _, params := range tt.buddyLookupParams {
 				feedbagManager.EXPECT().
@@ -793,7 +793,7 @@ func TestOServiceServiceForBOS_ClientOnlineHandler(t *testing.T) {
 			}
 			for _, params := range tt.sendToScreenNameParams {
 				messageRelayer.EXPECT().
-					SendToScreenName(mock.Anything, params.screenName, params.message)
+					RelayToScreenName(mock.Anything, params.screenName, params.message)
 			}
 
 			svc := NewOServiceServiceForBOS(OServiceService{
@@ -913,16 +913,16 @@ func TestOServiceServiceForChat_ClientOnlineHandler(t *testing.T) {
 			chatMessageRelayer := newMockChatMessageRelayer(t)
 			for _, params := range tt.broadcastExcept {
 				chatMessageRelayer.EXPECT().
-					BroadcastExcept(mock.Anything, params.sess, params.message).
+					RelayToAllExcept(mock.Anything, params.sess, params.message).
 					Maybe()
 			}
 			chatMessageRelayer.EXPECT().
-				Participants().
+				AllSessions().
 				Return(tt.participantsParams).
 				Maybe()
 			for _, params := range tt.sendToScreenNameParams {
 				chatMessageRelayer.EXPECT().
-					SendToScreenName(mock.Anything, params.screenName, params.message).
+					RelayToScreenName(mock.Anything, params.screenName, params.message).
 					Maybe()
 			}
 

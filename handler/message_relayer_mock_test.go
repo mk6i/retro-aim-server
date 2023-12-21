@@ -24,37 +24,72 @@ func (_m *mockMessageRelayer) EXPECT() *mockMessageRelayer_Expecter {
 	return &mockMessageRelayer_Expecter{mock: &_m.Mock}
 }
 
-// BroadcastToScreenNames provides a mock function with given fields: ctx, screenNames, msg
-func (_m *mockMessageRelayer) BroadcastToScreenNames(ctx context.Context, screenNames []string, msg oscar.SNACMessage) {
-	_m.Called(ctx, screenNames, msg)
+// RelayToScreenName provides a mock function with given fields: ctx, screenName, msg
+func (_m *mockMessageRelayer) RelayToScreenName(ctx context.Context, screenName string, msg oscar.SNACMessage) {
+	_m.Called(ctx, screenName, msg)
 }
 
-// mockMessageRelayer_BroadcastToScreenNames_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BroadcastToScreenNames'
-type mockMessageRelayer_BroadcastToScreenNames_Call struct {
+// mockMessageRelayer_RelayToScreenName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RelayToScreenName'
+type mockMessageRelayer_RelayToScreenName_Call struct {
 	*mock.Call
 }
 
-// BroadcastToScreenNames is a helper method to define mock.On call
+// RelayToScreenName is a helper method to define mock.On call
+//   - ctx context.Context
+//   - screenName string
+//   - msg oscar.SNACMessage
+func (_e *mockMessageRelayer_Expecter) RelayToScreenName(ctx interface{}, screenName interface{}, msg interface{}) *mockMessageRelayer_RelayToScreenName_Call {
+	return &mockMessageRelayer_RelayToScreenName_Call{Call: _e.mock.On("RelayToScreenName", ctx, screenName, msg)}
+}
+
+func (_c *mockMessageRelayer_RelayToScreenName_Call) Run(run func(ctx context.Context, screenName string, msg oscar.SNACMessage)) *mockMessageRelayer_RelayToScreenName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(oscar.SNACMessage))
+	})
+	return _c
+}
+
+func (_c *mockMessageRelayer_RelayToScreenName_Call) Return() *mockMessageRelayer_RelayToScreenName_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *mockMessageRelayer_RelayToScreenName_Call) RunAndReturn(run func(context.Context, string, oscar.SNACMessage)) *mockMessageRelayer_RelayToScreenName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RelayToScreenNames provides a mock function with given fields: ctx, screenNames, msg
+func (_m *mockMessageRelayer) RelayToScreenNames(ctx context.Context, screenNames []string, msg oscar.SNACMessage) {
+	_m.Called(ctx, screenNames, msg)
+}
+
+// mockMessageRelayer_RelayToScreenNames_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RelayToScreenNames'
+type mockMessageRelayer_RelayToScreenNames_Call struct {
+	*mock.Call
+}
+
+// RelayToScreenNames is a helper method to define mock.On call
 //   - ctx context.Context
 //   - screenNames []string
 //   - msg oscar.SNACMessage
-func (_e *mockMessageRelayer_Expecter) BroadcastToScreenNames(ctx interface{}, screenNames interface{}, msg interface{}) *mockMessageRelayer_BroadcastToScreenNames_Call {
-	return &mockMessageRelayer_BroadcastToScreenNames_Call{Call: _e.mock.On("BroadcastToScreenNames", ctx, screenNames, msg)}
+func (_e *mockMessageRelayer_Expecter) RelayToScreenNames(ctx interface{}, screenNames interface{}, msg interface{}) *mockMessageRelayer_RelayToScreenNames_Call {
+	return &mockMessageRelayer_RelayToScreenNames_Call{Call: _e.mock.On("RelayToScreenNames", ctx, screenNames, msg)}
 }
 
-func (_c *mockMessageRelayer_BroadcastToScreenNames_Call) Run(run func(ctx context.Context, screenNames []string, msg oscar.SNACMessage)) *mockMessageRelayer_BroadcastToScreenNames_Call {
+func (_c *mockMessageRelayer_RelayToScreenNames_Call) Run(run func(ctx context.Context, screenNames []string, msg oscar.SNACMessage)) *mockMessageRelayer_RelayToScreenNames_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].([]string), args[2].(oscar.SNACMessage))
 	})
 	return _c
 }
 
-func (_c *mockMessageRelayer_BroadcastToScreenNames_Call) Return() *mockMessageRelayer_BroadcastToScreenNames_Call {
+func (_c *mockMessageRelayer_RelayToScreenNames_Call) Return() *mockMessageRelayer_RelayToScreenNames_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *mockMessageRelayer_BroadcastToScreenNames_Call) RunAndReturn(run func(context.Context, []string, oscar.SNACMessage)) *mockMessageRelayer_BroadcastToScreenNames_Call {
+func (_c *mockMessageRelayer_RelayToScreenNames_Call) RunAndReturn(run func(context.Context, []string, oscar.SNACMessage)) *mockMessageRelayer_RelayToScreenNames_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -103,41 +138,6 @@ func (_c *mockMessageRelayer_RetrieveByScreenName_Call) Return(_a0 *state.Sessio
 }
 
 func (_c *mockMessageRelayer_RetrieveByScreenName_Call) RunAndReturn(run func(string) *state.Session) *mockMessageRelayer_RetrieveByScreenName_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SendToScreenName provides a mock function with given fields: ctx, screenName, msg
-func (_m *mockMessageRelayer) SendToScreenName(ctx context.Context, screenName string, msg oscar.SNACMessage) {
-	_m.Called(ctx, screenName, msg)
-}
-
-// mockMessageRelayer_SendToScreenName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SendToScreenName'
-type mockMessageRelayer_SendToScreenName_Call struct {
-	*mock.Call
-}
-
-// SendToScreenName is a helper method to define mock.On call
-//   - ctx context.Context
-//   - screenName string
-//   - msg oscar.SNACMessage
-func (_e *mockMessageRelayer_Expecter) SendToScreenName(ctx interface{}, screenName interface{}, msg interface{}) *mockMessageRelayer_SendToScreenName_Call {
-	return &mockMessageRelayer_SendToScreenName_Call{Call: _e.mock.On("SendToScreenName", ctx, screenName, msg)}
-}
-
-func (_c *mockMessageRelayer_SendToScreenName_Call) Run(run func(ctx context.Context, screenName string, msg oscar.SNACMessage)) *mockMessageRelayer_SendToScreenName_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(oscar.SNACMessage))
-	})
-	return _c
-}
-
-func (_c *mockMessageRelayer_SendToScreenName_Call) Return() *mockMessageRelayer_SendToScreenName_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *mockMessageRelayer_SendToScreenName_Call) RunAndReturn(run func(context.Context, string, oscar.SNACMessage)) *mockMessageRelayer_SendToScreenName_Call {
 	_c.Call.Return(run)
 	return _c
 }
