@@ -471,7 +471,7 @@ func TestLocateService_SetInfoHandler(t *testing.T) {
 					Return(params.users, nil)
 			}
 			profileManager := newMockProfileManager(t)
-			if msg, hasProf := tt.inBody.GetString(oscar.LocateTLVTagsInfoSigData); hasProf {
+			if msg, hasProf := tt.inBody.String(oscar.LocateTLVTagsInfoSigData); hasProf {
 				profileManager.EXPECT().
 					UpsertProfile(tt.userSession.ScreenName(), msg).
 					Return(nil)

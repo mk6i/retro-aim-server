@@ -43,8 +43,8 @@ func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
-								TType: oscar.ICBMTLVTagRequestHostAck,
-								Val:   []byte{},
+								Tag:   oscar.ICBMTLVTagRequestHostAck,
+								Value: []byte{},
 							},
 						},
 					},
@@ -63,12 +63,12 @@ func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
-								TType: oscar.ICBMTLVTagsWantEvents,
-								Val:   []byte{},
+								Tag:   oscar.ICBMTLVTagsWantEvents,
+								Value: []byte{},
 							},
 							{
-								TType: oscar.ICBMTLVTagRequestHostAck,
-								Val:   []byte{},
+								Tag:   oscar.ICBMTLVTagRequestHostAck,
+								Value: []byte{},
 							},
 						},
 					},
@@ -114,8 +114,8 @@ func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
-								TType: oscar.ICBMTLVTagsWantEvents,
-								Val:   []byte{},
+								Tag:   oscar.ICBMTLVTagsWantEvents,
+								Value: []byte{},
 							},
 						},
 					},
@@ -137,8 +137,8 @@ func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
-								TType: oscar.ICBMTLVTagRequestHostAck,
-								Val:   []byte{},
+								Tag:   oscar.ICBMTLVTagRequestHostAck,
+								Value: []byte{},
 							},
 						},
 					},
@@ -169,8 +169,8 @@ func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
-								TType: oscar.ICBMTLVTagRequestHostAck,
-								Val:   []byte{},
+								Tag:   oscar.ICBMTLVTagRequestHostAck,
+								Value: []byte{},
 							},
 						},
 					},
@@ -201,8 +201,8 @@ func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
-								TType: oscar.ICBMTLVTagRequestHostAck,
-								Val:   []byte{},
+								Tag:   oscar.ICBMTLVTagRequestHostAck,
+								Value: []byte{},
 							},
 						},
 					},

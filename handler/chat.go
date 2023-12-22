@@ -29,7 +29,7 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 			TLVList: inBody.TLVList,
 		},
 	}
-	bodyOut.AddTLV(oscar.NewTLV(oscar.ChatTLVSenderInformation, sess.TLVUserInfo()))
+	bodyOut.Append(oscar.NewTLV(oscar.ChatTLVSenderInformation, sess.TLVUserInfo()))
 
 	_, chatSessMgr, err := s.chatRegistry.Retrieve(chatID)
 	if err != nil {
@@ -43,7 +43,7 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 	})
 
 	var ret *oscar.SNACMessage
-	if _, ackMsg := inBody.GetTLV(oscar.ChatTLVEnableReflectionFlag); ackMsg {
+	if _, ackMsg := inBody.Slice(oscar.ChatTLVEnableReflectionFlag); ackMsg {
 		// reflect the message back to the sender
 		ret = &oscar.SNACMessage{
 			Frame: frameOut,

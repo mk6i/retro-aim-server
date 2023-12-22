@@ -36,12 +36,12 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
-								TType: oscar.ChatTLVPublicWhisperFlag,
-								Val:   []byte{},
+								Tag:   oscar.ChatTLVPublicWhisperFlag,
+								Value: []byte{},
 							},
 							{
-								TType: oscar.ChatTLVEnableReflectionFlag,
-								Val:   []byte{},
+								Tag:   oscar.ChatTLVEnableReflectionFlag,
+								Value: []byte{},
 							},
 						},
 					},
@@ -97,8 +97,8 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
-								TType: oscar.ChatTLVPublicWhisperFlag,
-								Val:   []byte{},
+								Tag:   oscar.ChatTLVPublicWhisperFlag,
+								Value: []byte{},
 							},
 						},
 					},

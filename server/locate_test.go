@@ -56,8 +56,8 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
-								TType: 0x01,
-								Val:   []byte{1, 2, 3, 4},
+								Tag:   0x01,
+								Value: []byte{1, 2, 3, 4},
 							},
 						},
 					},
@@ -78,8 +78,8 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
-								TType: 0x01,
-								Val:   []byte{1, 2, 3, 4},
+								Tag:   0x01,
+								Value: []byte{1, 2, 3, 4},
 							},
 						},
 					},
@@ -121,8 +121,8 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 					TLVRestBlock: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
-								TType: 0x01,
-								Val:   []byte{1, 2, 3, 4},
+								Tag:   0x01,
+								Value: []byte{1, 2, 3, 4},
 							},
 						},
 					},
@@ -161,8 +161,8 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 					LocateInfo: oscar.TLVRestBlock{
 						TLVList: oscar.TLVList{
 							{
-								TType: 0x01,
-								Val:   []byte{1, 2, 3, 4},
+								Tag:   0x01,
+								Value: []byte{1, 2, 3, 4},
 							},
 						},
 					},

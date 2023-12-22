@@ -158,34 +158,34 @@ func (s *Session) userInfo() oscar.TLVList {
 	// sign-in timestamp
 	tlvs := oscar.TLVList{}
 
-	tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoSignonTOD, uint32(s.signonTime.Unix())))
+	tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoSignonTOD, uint32(s.signonTime.Unix())))
 
 	// away message status
 	if s.awayMessage != "" {
-		tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoUserFlags, oscar.OServiceUserFlagOSCARFree|oscar.OServiceUserFlagUnavailable))
+		tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoUserFlags, oscar.OServiceUserFlagOSCARFree|oscar.OServiceUserFlagUnavailable))
 	} else {
-		tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoUserFlags, oscar.OServiceUserFlagOSCARFree))
+		tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoUserFlags, oscar.OServiceUserFlagOSCARFree))
 	}
 
 	// invisibility status
 	if s.invisible {
-		tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoStatus, oscar.OServiceUserFlagInvisible))
+		tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoStatus, oscar.OServiceUserFlagInvisible))
 	} else {
-		tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoStatus, uint16(0x0000)))
+		tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoStatus, uint16(0x0000)))
 	}
 
 	// idle status
 	if s.idle {
-		tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoIdleTime, uint16(s.nowFn().Sub(s.idleTime).Seconds())))
+		tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoIdleTime, uint16(s.nowFn().Sub(s.idleTime).Seconds())))
 	} else {
-		tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoIdleTime, uint16(0)))
+		tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoIdleTime, uint16(0)))
 	}
 
 	// capabilities
 	var caps []byte
 	// chat capability
 	caps = append(caps, capChat...)
-	tlvs.AddTLV(oscar.NewTLV(oscar.OServiceUserInfoOscarCaps, caps))
+	tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoOscarCaps, caps))
 
 	return tlvs
 }

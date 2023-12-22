@@ -66,7 +66,7 @@ func (s ChatNavService) RequestChatRightsHandler(_ context.Context, inFrame osca
 // participant. It returns SNAC oscar.ChatNavNavInfo, which contains metadata
 // for the chat room.
 func (s ChatNavService) CreateRoomHandler(_ context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (oscar.SNACMessage, error) {
-	name, hasName := inBody.GetString(oscar.ChatTLVRoomName)
+	name, hasName := inBody.String(oscar.ChatTLVRoomName)
 	if !hasName {
 		return oscar.SNACMessage{}, errors.New("unable to find chat name")
 	}

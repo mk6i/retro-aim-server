@@ -58,7 +58,7 @@ func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 	}
 
 	var ok bool
-	sessionID, ok := flap.GetSlice(oscar.OServiceTLVTagsLoginCookie)
+	sessionID, ok := flap.Slice(oscar.OServiceTLVTagsLoginCookie)
 	if !ok {
 		rt.Logger.ErrorContext(ctx, "unable to get session id from payload")
 		return

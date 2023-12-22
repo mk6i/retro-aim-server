@@ -55,7 +55,7 @@ func (rt *ChatNavRouter) RouteChatNav(ctx context.Context, sess *state.Session, 
 		if err != nil {
 			return err
 		}
-		roomName, _ := inBody.GetString(oscar.ChatTLVRoomName)
+		roomName, _ := inBody.String(oscar.ChatTLVRoomName)
 		rt.Logger.InfoContext(ctx, "user started a chat room", slog.String("roomName", roomName))
 		rt.logRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
 		return sendSNAC(outSNAC.Frame, outSNAC.Body, sequence, w)

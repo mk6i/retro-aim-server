@@ -269,7 +269,7 @@ func (s OServiceService) UserInfoQueryHandler(_ context.Context, sess *state.Ses
 // to 0x0100, set invisible. Else, return an error for any other value.
 // It returns SNAC oscar.OServiceUserInfoUpdate containing the user's info.
 func (s OServiceService) SetUserInfoFieldsHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (oscar.SNACMessage, error) {
-	if status, hasStatus := inBody.GetUint32(oscar.OServiceUserInfoStatus); hasStatus {
+	if status, hasStatus := inBody.Uint32(oscar.OServiceUserInfoStatus); hasStatus {
 		switch status {
 		case 0x0000:
 			sess.SetInvisible(false)
@@ -341,7 +341,7 @@ func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *st
 		return oscar.SNACMessage{}, server.ErrUnsupportedSubGroup
 	}
 
-	roomMeta, ok := inBody.GetSlice(0x01)
+	roomMeta, ok := inBody.Slice(0x01)
 	if !ok {
 		return oscar.SNACMessage{}, errors.New("missing room info")
 	}

@@ -73,7 +73,7 @@ func verifyChatLogin(rw io.ReadWriter) (*ChatCookie, uint32, error) {
 	}
 
 	var ok bool
-	buf, ok := flap.GetSlice(oscar.OServiceTLVTagsLoginCookie)
+	buf, ok := flap.Slice(oscar.OServiceTLVTagsLoginCookie)
 	if !ok {
 		return nil, 0, errors.New("unable to get session id from payload")
 	}

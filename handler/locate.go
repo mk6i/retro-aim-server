@@ -51,14 +51,14 @@ func (s LocateService) RightsQueryHandler(_ context.Context, inFrame oscar.SNACF
 // SetInfoHandler sets the user's profile or away message.
 func (s LocateService) SetInfoHandler(ctx context.Context, sess *state.Session, inBody oscar.SNAC_0x02_0x04_LocateSetInfo) error {
 	// update profile
-	if profile, hasProfile := inBody.GetString(oscar.LocateTLVTagsInfoSigData); hasProfile {
+	if profile, hasProfile := inBody.String(oscar.LocateTLVTagsInfoSigData); hasProfile {
 		if err := s.profileManager.SetProfile(sess.ScreenName(), profile); err != nil {
 			return err
 		}
 	}
 
 	// broadcast away message change to buddies
-	if awayMsg, hasAwayMsg := inBody.GetString(oscar.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
+	if awayMsg, hasAwayMsg := inBody.String(oscar.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
 		sess.SetAwayMessage(awayMsg)
 		if err := broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
 			return err
@@ -110,14 +110,14 @@ func (s LocateService) UserInfoQuery2Handler(ctx context.Context, sess *state.Se
 		if err != nil {
 			return oscar.SNACMessage{}, err
 		}
-		list.AddTLVList([]oscar.TLV{
+		list.AppendList([]oscar.TLV{
 			oscar.NewTLV(oscar.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
 			oscar.NewTLV(oscar.LocateTLVTagsInfoSigData, profile),
 		})
 	}
 
 	if inBody.RequestAwayMessage() {
-		list.AddTLVList([]oscar.TLV{
+		list.AppendList([]oscar.TLV{
 			oscar.NewTLV(oscar.LocateTLVTagsInfoUnavailableMime, `text/aolrtf; charset="us-ascii"`),
 			oscar.NewTLV(oscar.LocateTLVTagsInfoUnavailableData, buddySess.AwayMessage()),
 		})

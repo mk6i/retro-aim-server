@@ -86,8 +86,8 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 		TLVRestBlock: oscar.TLVRestBlock{
 			TLVList: oscar.TLVList{
 				{
-					TType: 0x0B,
-					Val:   []byte{},
+					Tag:   0x0B,
+					Value: []byte{},
 				},
 			},
 		},
@@ -95,7 +95,7 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 	// copy over TLVs from sender SNAC to recipient SNAC verbatim. this
 	// includes ICBMTLVTagRequestHostAck, which is ignored by the client, as
 	// far as I can tell.
-	clientIM.AddTLVList(inBody.TLVRestBlock.TLVList)
+	clientIM.AppendList(inBody.TLVRestBlock.TLVList)
 
 	s.messageRelayer.RelayToScreenName(ctx, recipSess.ScreenName(), oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
@@ -105,7 +105,7 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 		Body: clientIM,
 	})
 
-	if _, requestedConfirmation := inBody.TLVRestBlock.GetSlice(oscar.ICBMTLVTagRequestHostAck); !requestedConfirmation {
+	if _, requestedConfirmation := inBody.TLVRestBlock.Slice(oscar.ICBMTLVTagRequestHostAck); !requestedConfirmation {
 		// don't ack message
 		return nil, nil
 	}

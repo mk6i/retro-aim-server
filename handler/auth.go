@@ -83,7 +83,7 @@ func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session, chatI
 // DisableAuth is true, a stub auth key is generated and a successful challenge
 // response is returned.
 func (s AuthService) BUCPChallengeRequestHandler(bodyIn oscar.SNAC_0x17_0x06_BUCPChallengeRequest, newUUIDFn func() uuid.UUID) (oscar.SNACMessage, error) {
-	screenName, exists := bodyIn.GetString(oscar.TLVScreenName)
+	screenName, exists := bodyIn.String(oscar.TLVScreenName)
 	if !exists {
 		return oscar.SNACMessage{}, errors.New("screen name doesn't exist in tlv")
 	}
@@ -107,7 +107,7 @@ func (s AuthService) BUCPChallengeRequestHandler(bodyIn oscar.SNAC_0x17_0x06_BUC
 			SubGroup:  oscar.BUCPLoginResponse,
 		}
 		snacPayloadOut := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
-		snacPayloadOut.AddTLV(oscar.NewTLV(oscar.TLVErrorSubcode, uint16(0x01)))
+		snacPayloadOut.Append(oscar.NewTLV(oscar.TLVErrorSubcode, uint16(0x01)))
 		return oscar.SNACMessage{
 			Frame: snacFrameOut,
 			Body:  snacPayloadOut,
@@ -136,11 +136,11 @@ func (s AuthService) BUCPChallengeRequestHandler(bodyIn oscar.SNAC_0x17_0x06_BUC
 // (oscar.TLVAuthorizationCookie). Else, an error code is set
 // (oscar.TLVErrorSubcode).
 func (s AuthService) BUCPLoginRequestHandler(bodyIn oscar.SNAC_0x17_0x02_BUCPLoginRequest, newUUIDFn func() uuid.UUID, newUserFn func(screenName string) (state.User, error)) (oscar.SNACMessage, error) {
-	screenName, found := bodyIn.GetString(oscar.TLVScreenName)
+	screenName, found := bodyIn.String(oscar.TLVScreenName)
 	if !found {
 		return oscar.SNACMessage{}, errors.New("screen name doesn't exist in tlv")
 	}
-	md5Hash, found := bodyIn.GetSlice(oscar.TLVPasswordHash)
+	md5Hash, found := bodyIn.Slice(oscar.TLVPasswordHash)
 	if !found {
 		return oscar.SNACMessage{}, errors.New("password hash doesn't exist in tlv")
 	}
@@ -167,16 +167,16 @@ func (s AuthService) BUCPLoginRequestHandler(bodyIn oscar.SNAC_0x17_0x02_BUCPLog
 	}
 
 	snacPayloadOut := oscar.SNAC_0x17_0x03_BUCPLoginResponse{}
-	snacPayloadOut.AddTLV(oscar.NewTLV(oscar.TLVScreenName, screenName))
+	snacPayloadOut.Append(oscar.NewTLV(oscar.TLVScreenName, screenName))
 
 	if loginOK {
 		sess := s.sessionManager.AddSession(newUUIDFn().String(), screenName)
-		snacPayloadOut.AddTLVList([]oscar.TLV{
+		snacPayloadOut.AppendList([]oscar.TLV{
 			oscar.NewTLV(oscar.TLVReconnectHere, server.Address(s.config.OSCARHost, s.config.BOSPort)),
 			oscar.NewTLV(oscar.TLVAuthorizationCookie, sess.ID()),
 		})
 	} else {
-		snacPayloadOut.AddTLVList([]oscar.TLV{
+		snacPayloadOut.AppendList([]oscar.TLV{
 			oscar.NewTLV(oscar.TLVErrorSubcode, uint16(0x01)),
 		})
 	}
