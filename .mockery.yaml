@@ -32,6 +32,9 @@ packages:
       OServiceChatHandler:
         config:
           filename: "oservice_chat_mock_test.go"
+      UserManager:
+        config:
+          filename: "user_manager_mock_test.go"
   github.com/mkaminski/goaim/handler:
     interfaces:
       FeedbagManager:

@@ -101,7 +101,7 @@ type blockedStateParams []struct {
 }
 
 // interestedUsersParams is the list of parameters passed at the mock
-// FeedbagManager.InterestedUsers call site
+// FeedbagManager.AdjacentUsers call site
 type interestedUsersParams []struct {
 	screenName string
 	users      []string

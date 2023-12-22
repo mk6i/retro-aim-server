@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 
@@ -12,37 +11,51 @@ import (
 	"github.com/mkaminski/goaim/state"
 )
 
-func StartManagementAPI(fs *state.SQLiteUserStore, logger *slog.Logger) {
-	http.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			getUsers(fs, w, r)
-		case http.MethodPost:
-			createUser(fs, w, r)
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
+type UserManager interface {
+	AllUsers() ([]state.User, error)
+	InsertUser(u state.User) error
+}
+
+func StartManagementAPI(userManager UserManager, logger *slog.Logger) {
+	uh := userHandler{
+		UserManager: userManager,
+		logger:      logger,
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/user", uh.ServeHTTP)
+
 	//todo make port configurable
 	addr := Address("", 8080)
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		logger.Error("unable to bind management API address address", "err", err.Error())
-		os.Exit(1)
-	}
 	logger.Info("starting management API server", "addr", addr)
-	if err := http.Serve(listener, nil); err != nil {
-		logger.Info("unable to start management API server", "err", err.Error())
+	if err := http.ListenAndServe(addr, mux); err != nil {
+		logger.Error("unable to bind management API address address", "err", err.Error())
 		os.Exit(1)
 	}
 }
 
+type userHandler struct {
+	UserManager
+	logger *slog.Logger
+}
+
+func (uh userHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		uh.getUsers(w, r)
+	case http.MethodPost:
+		uh.createUser(w, r)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 // getUsers handles the GET /user endpoint.
-func getUsers(fs *state.SQLiteUserStore, w http.ResponseWriter, r *http.Request) {
+func (uh userHandler) getUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	users, err := fs.AllUsers()
+	users, err := uh.AllUsers()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		uh.logger.Error("error in GET /user", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if err := json.NewEncoder(w).Encode(users); err != nil {
@@ -57,17 +70,18 @@ type CreateUser struct {
 }
 
 // createUser handles the POST /user endpoint.
-func createUser(fs *state.SQLiteUserStore, w http.ResponseWriter, r *http.Request) {
+func (uh userHandler) createUser(w http.ResponseWriter, r *http.Request) {
 	var newUser CreateUser
 	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "malformed input", http.StatusBadRequest)
 		return
 	}
 	newUser.AuthKey = uuid.New().String()
 	// todo does the request contain authkey?
 	newUser.HashPassword(newUser.Password)
-	if err := fs.InsertUser(newUser.User); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := uh.InsertUser(newUser.User); err != nil {
+		uh.logger.Error("error in GET /user", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 

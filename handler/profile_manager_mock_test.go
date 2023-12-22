@@ -73,7 +73,7 @@ func (_c *mockProfileManager_Profile_Call) RunAndReturn(run func(string) (string
 	return _c
 }
 
-// UpsertProfile provides a mock function with given fields: screenName, body
+// SetProfile provides a mock function with given fields: screenName, body
 func (_m *mockProfileManager) SetProfile(screenName string, body string) error {
 	ret := _m.Called(screenName, body)
 
@@ -91,31 +91,31 @@ func (_m *mockProfileManager) SetProfile(screenName string, body string) error {
 	return r0
 }
 
-// mockProfileManager_UpsertProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetProfile'
-type mockProfileManager_UpsertProfile_Call struct {
+// mockProfileManager_SetProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetProfile'
+type mockProfileManager_SetProfile_Call struct {
 	*mock.Call
 }
 
-// UpsertProfile is a helper method to define mock.On call
+// SetProfile is a helper method to define mock.On call
 //   - screenName string
 //   - body string
-func (_e *mockProfileManager_Expecter) UpsertProfile(screenName interface{}, body interface{}) *mockProfileManager_UpsertProfile_Call {
-	return &mockProfileManager_UpsertProfile_Call{Call: _e.mock.On("SetProfile", screenName, body)}
+func (_e *mockProfileManager_Expecter) SetProfile(screenName interface{}, body interface{}) *mockProfileManager_SetProfile_Call {
+	return &mockProfileManager_SetProfile_Call{Call: _e.mock.On("SetProfile", screenName, body)}
 }
 
-func (_c *mockProfileManager_UpsertProfile_Call) Run(run func(screenName string, body string)) *mockProfileManager_UpsertProfile_Call {
+func (_c *mockProfileManager_SetProfile_Call) Run(run func(screenName string, body string)) *mockProfileManager_SetProfile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(string), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *mockProfileManager_UpsertProfile_Call) Return(_a0 error) *mockProfileManager_UpsertProfile_Call {
+func (_c *mockProfileManager_SetProfile_Call) Return(_a0 error) *mockProfileManager_SetProfile_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockProfileManager_UpsertProfile_Call) RunAndReturn(run func(string, string) error) *mockProfileManager_UpsertProfile_Call {
+func (_c *mockProfileManager_SetProfile_Call) RunAndReturn(run func(string, string) error) *mockProfileManager_SetProfile_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -550,7 +550,7 @@ func TestICBMService_EvilRequestHandler(t *testing.T) {
 				Return(tc.blockedState, nil).
 				Maybe()
 			feedbagManager.EXPECT().
-				InterestedUsers(tc.recipientScreenName).
+				AdjacentUsers(tc.recipientScreenName).
 				Return(tc.recipientBuddies, nil).
 				Maybe()
 			recipSess := newTestSession(tc.recipientScreenName, sessOptCannedSignonTime)

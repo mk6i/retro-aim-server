@@ -289,7 +289,7 @@ func TestSetUserInfoFieldsHandler(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
 			for user, friends := range tc.interestedUserLookups {
 				feedbagManager.EXPECT().
-					InterestedUsers(user).
+					AdjacentUsers(user).
 					Return(friends, nil).
 					Maybe()
 			}
@@ -651,7 +651,7 @@ func TestOServiceService_IdleNotificationHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
 			feedbagManager.EXPECT().
-				InterestedUsers(tt.recipientScreenName).
+				AdjacentUsers(tt.recipientScreenName).
 				Return(tt.recipientBuddies, nil).
 				Maybe()
 			messageRelayer := newMockMessageRelayer(t)
@@ -774,7 +774,7 @@ func TestOServiceServiceForBOS_ClientOnlineHandler(t *testing.T) {
 			messageRelayer := newMockMessageRelayer(t)
 			for _, params := range tt.interestedUsersParams {
 				feedbagManager.EXPECT().
-					InterestedUsers(params.screenName).
+					AdjacentUsers(params.screenName).
 					Return(params.users, nil)
 			}
 			for _, params := range tt.broadcastToScreenNamesParams {

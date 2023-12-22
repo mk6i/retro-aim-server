@@ -228,7 +228,7 @@ func TestProfileNonExistent(t *testing.T) {
 	assert.Empty(t, prof)
 }
 
-func TestInterestedUsers(t *testing.T) {
+func TestAdjacentUsers(t *testing.T) {
 
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
@@ -457,7 +457,7 @@ func TestNewStubUser(t *testing.T) {
 	assert.Equal(t, want, have)
 }
 
-func TestSQLiteUserStore_InterestedUsers(t *testing.T) {
+func TestSQLiteUserStore_AdjacentUsers(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
 	}()

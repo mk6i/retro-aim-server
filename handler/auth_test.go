@@ -848,7 +848,7 @@ func TestAuthService_Signout(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
 			for _, params := range tt.mockParams.interestedUsersParams {
 				feedbagManager.EXPECT().
-					InterestedUsers(params.screenName).
+					AdjacentUsers(params.screenName).
 					Return(params.users, params.err)
 			}
 			sessionManager := newMockSessionManager(t)

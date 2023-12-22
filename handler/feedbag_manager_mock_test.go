@@ -24,6 +24,64 @@ func (_m *mockFeedbagManager) EXPECT() *mockFeedbagManager_Expecter {
 	return &mockFeedbagManager_Expecter{mock: &_m.Mock}
 }
 
+// AdjacentUsers provides a mock function with given fields: screenName
+func (_m *mockFeedbagManager) AdjacentUsers(screenName string) ([]string, error) {
+	ret := _m.Called(screenName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AdjacentUsers")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]string, error)); ok {
+		return rf(screenName)
+	}
+	if rf, ok := ret.Get(0).(func(string) []string); ok {
+		r0 = rf(screenName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(screenName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockFeedbagManager_AdjacentUsers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AdjacentUsers'
+type mockFeedbagManager_AdjacentUsers_Call struct {
+	*mock.Call
+}
+
+// AdjacentUsers is a helper method to define mock.On call
+//   - screenName string
+func (_e *mockFeedbagManager_Expecter) AdjacentUsers(screenName interface{}) *mockFeedbagManager_AdjacentUsers_Call {
+	return &mockFeedbagManager_AdjacentUsers_Call{Call: _e.mock.On("AdjacentUsers", screenName)}
+}
+
+func (_c *mockFeedbagManager_AdjacentUsers_Call) Run(run func(screenName string)) *mockFeedbagManager_AdjacentUsers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *mockFeedbagManager_AdjacentUsers_Call) Return(_a0 []string, _a1 error) *mockFeedbagManager_AdjacentUsers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockFeedbagManager_AdjacentUsers_Call) RunAndReturn(run func(string) ([]string, error)) *mockFeedbagManager_AdjacentUsers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BlockedState provides a mock function with given fields: screenName1, screenName2
 func (_m *mockFeedbagManager) BlockedState(screenName1 string, screenName2 string) (state.BlockedState, error) {
 	ret := _m.Called(screenName1, screenName2)
@@ -139,53 +197,6 @@ func (_c *mockFeedbagManager_Buddies_Call) RunAndReturn(run func(string) ([]stri
 	return _c
 }
 
-// DeleteUser provides a mock function with given fields: screenName, items
-func (_m *mockFeedbagManager) FeedbagDelete(screenName string, items []oscar.FeedbagItem) error {
-	ret := _m.Called(screenName, items)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FeedbagDelete")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string, []oscar.FeedbagItem) error); ok {
-		r0 = rf(screenName, items)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// mockFeedbagManager_DeleteUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FeedbagDelete'
-type mockFeedbagManager_DeleteUser_Call struct {
-	*mock.Call
-}
-
-// DeleteUser is a helper method to define mock.On call
-//   - screenName string
-//   - items []oscar.FeedbagItem
-func (_e *mockFeedbagManager_Expecter) DeleteUser(screenName interface{}, items interface{}) *mockFeedbagManager_DeleteUser_Call {
-	return &mockFeedbagManager_DeleteUser_Call{Call: _e.mock.On("FeedbagDelete", screenName, items)}
-}
-
-func (_c *mockFeedbagManager_DeleteUser_Call) Run(run func(screenName string, items []oscar.FeedbagItem)) *mockFeedbagManager_DeleteUser_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].([]oscar.FeedbagItem))
-	})
-	return _c
-}
-
-func (_c *mockFeedbagManager_DeleteUser_Call) Return(_a0 error) *mockFeedbagManager_DeleteUser_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockFeedbagManager_DeleteUser_Call) RunAndReturn(run func(string, []oscar.FeedbagItem) error) *mockFeedbagManager_DeleteUser_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Feedbag provides a mock function with given fields: screenName
 func (_m *mockFeedbagManager) Feedbag(screenName string) ([]oscar.FeedbagItem, error) {
 	ret := _m.Called(screenName)
@@ -240,6 +251,53 @@ func (_c *mockFeedbagManager_Feedbag_Call) Return(_a0 []oscar.FeedbagItem, _a1 e
 }
 
 func (_c *mockFeedbagManager_Feedbag_Call) RunAndReturn(run func(string) ([]oscar.FeedbagItem, error)) *mockFeedbagManager_Feedbag_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FeedbagDelete provides a mock function with given fields: screenName, items
+func (_m *mockFeedbagManager) FeedbagDelete(screenName string, items []oscar.FeedbagItem) error {
+	ret := _m.Called(screenName, items)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FeedbagDelete")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, []oscar.FeedbagItem) error); ok {
+		r0 = rf(screenName, items)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockFeedbagManager_FeedbagDelete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FeedbagDelete'
+type mockFeedbagManager_FeedbagDelete_Call struct {
+	*mock.Call
+}
+
+// FeedbagDelete is a helper method to define mock.On call
+//   - screenName string
+//   - items []oscar.FeedbagItem
+func (_e *mockFeedbagManager_Expecter) FeedbagDelete(screenName interface{}, items interface{}) *mockFeedbagManager_FeedbagDelete_Call {
+	return &mockFeedbagManager_FeedbagDelete_Call{Call: _e.mock.On("FeedbagDelete", screenName, items)}
+}
+
+func (_c *mockFeedbagManager_FeedbagDelete_Call) Run(run func(screenName string, items []oscar.FeedbagItem)) *mockFeedbagManager_FeedbagDelete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].([]oscar.FeedbagItem))
+	})
+	return _c
+}
+
+func (_c *mockFeedbagManager_FeedbagDelete_Call) Return(_a0 error) *mockFeedbagManager_FeedbagDelete_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockFeedbagManager_FeedbagDelete_Call) RunAndReturn(run func(string, []oscar.FeedbagItem) error) *mockFeedbagManager_FeedbagDelete_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -300,65 +358,7 @@ func (_c *mockFeedbagManager_FeedbagLastModified_Call) RunAndReturn(run func(str
 	return _c
 }
 
-// InterestedUsers provides a mock function with given fields: screenName
-func (_m *mockFeedbagManager) AdjacentUsers(screenName string) ([]string, error) {
-	ret := _m.Called(screenName)
-
-	if len(ret) == 0 {
-		panic("no return value specified for AdjacentUsers")
-	}
-
-	var r0 []string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string) ([]string, error)); ok {
-		return rf(screenName)
-	}
-	if rf, ok := ret.Get(0).(func(string) []string); ok {
-		r0 = rf(screenName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(screenName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// mockFeedbagManager_InterestedUsers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AdjacentUsers'
-type mockFeedbagManager_InterestedUsers_Call struct {
-	*mock.Call
-}
-
-// InterestedUsers is a helper method to define mock.On call
-//   - screenName string
-func (_e *mockFeedbagManager_Expecter) InterestedUsers(screenName interface{}) *mockFeedbagManager_InterestedUsers_Call {
-	return &mockFeedbagManager_InterestedUsers_Call{Call: _e.mock.On("AdjacentUsers", screenName)}
-}
-
-func (_c *mockFeedbagManager_InterestedUsers_Call) Run(run func(screenName string)) *mockFeedbagManager_InterestedUsers_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *mockFeedbagManager_InterestedUsers_Call) Return(_a0 []string, _a1 error) *mockFeedbagManager_InterestedUsers_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *mockFeedbagManager_InterestedUsers_Call) RunAndReturn(run func(string) ([]string, error)) *mockFeedbagManager_InterestedUsers_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpsertFeedbag provides a mock function with given fields: screenName, items
+// FeedbagUpsert provides a mock function with given fields: screenName, items
 func (_m *mockFeedbagManager) FeedbagUpsert(screenName string, items []oscar.FeedbagItem) error {
 	ret := _m.Called(screenName, items)
 
@@ -376,31 +376,31 @@ func (_m *mockFeedbagManager) FeedbagUpsert(screenName string, items []oscar.Fee
 	return r0
 }
 
-// mockFeedbagManager_UpsertFeedbag_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FeedbagUpsert'
-type mockFeedbagManager_UpsertFeedbag_Call struct {
+// mockFeedbagManager_FeedbagUpsert_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FeedbagUpsert'
+type mockFeedbagManager_FeedbagUpsert_Call struct {
 	*mock.Call
 }
 
-// UpsertFeedbag is a helper method to define mock.On call
+// FeedbagUpsert is a helper method to define mock.On call
 //   - screenName string
 //   - items []oscar.FeedbagItem
-func (_e *mockFeedbagManager_Expecter) UpsertFeedbag(screenName interface{}, items interface{}) *mockFeedbagManager_UpsertFeedbag_Call {
-	return &mockFeedbagManager_UpsertFeedbag_Call{Call: _e.mock.On("FeedbagUpsert", screenName, items)}
+func (_e *mockFeedbagManager_Expecter) FeedbagUpsert(screenName interface{}, items interface{}) *mockFeedbagManager_FeedbagUpsert_Call {
+	return &mockFeedbagManager_FeedbagUpsert_Call{Call: _e.mock.On("FeedbagUpsert", screenName, items)}
 }
 
-func (_c *mockFeedbagManager_UpsertFeedbag_Call) Run(run func(screenName string, items []oscar.FeedbagItem)) *mockFeedbagManager_UpsertFeedbag_Call {
+func (_c *mockFeedbagManager_FeedbagUpsert_Call) Run(run func(screenName string, items []oscar.FeedbagItem)) *mockFeedbagManager_FeedbagUpsert_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(string), args[1].([]oscar.FeedbagItem))
 	})
 	return _c
 }
 
-func (_c *mockFeedbagManager_UpsertFeedbag_Call) Return(_a0 error) *mockFeedbagManager_UpsertFeedbag_Call {
+func (_c *mockFeedbagManager_FeedbagUpsert_Call) Return(_a0 error) *mockFeedbagManager_FeedbagUpsert_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockFeedbagManager_UpsertFeedbag_Call) RunAndReturn(run func(string, []oscar.FeedbagItem) error) *mockFeedbagManager_UpsertFeedbag_Call {
+func (_c *mockFeedbagManager_FeedbagUpsert_Call) RunAndReturn(run func(string, []oscar.FeedbagItem) error) *mockFeedbagManager_FeedbagUpsert_Call {
 	_c.Call.Return(run)
 	return _c
 }

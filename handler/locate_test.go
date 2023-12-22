@@ -467,13 +467,13 @@ func TestLocateService_SetInfoHandler(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
 			for _, params := range tt.mockParams.interestedUsersParams {
 				feedbagManager.EXPECT().
-					InterestedUsers(params.screenName).
+					AdjacentUsers(params.screenName).
 					Return(params.users, nil)
 			}
 			profileManager := newMockProfileManager(t)
 			if msg, hasProf := tt.inBody.String(oscar.LocateTLVTagsInfoSigData); hasProf {
 				profileManager.EXPECT().
-					UpsertProfile(tt.userSession.ScreenName(), msg).
+					SetProfile(tt.userSession.ScreenName(), msg).
 					Return(nil)
 			}
 			svc := NewLocateService(messageRelayer, feedbagManager, profileManager)

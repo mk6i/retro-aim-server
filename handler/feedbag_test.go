@@ -761,7 +761,7 @@ func TestFeedbagService_InsertItemHandler(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
 			for _, params := range tc.mockParams.feedbagManagerParams.feedbagUpsertParams {
 				feedbagManager.EXPECT().
-					UpsertFeedbag(params.screenName, params.items).
+					FeedbagUpsert(params.screenName, params.items).
 					Return(nil)
 			}
 			messageRelayer := newMockMessageRelayer(t)
@@ -996,7 +996,7 @@ func TestFeedbagService_UpdateItemHandler(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
 			for _, params := range tc.mockParams.feedbagManagerParams.feedbagUpsertParams {
 				feedbagManager.EXPECT().
-					UpsertFeedbag(params.screenName, params.items).
+					FeedbagUpsert(params.screenName, params.items).
 					Return(nil)
 			}
 			messageRelayer := newMockMessageRelayer(t)
@@ -1311,7 +1311,7 @@ func TestFeedbagService_DeleteItemHandler(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
 			for _, params := range tc.mockParams.feedbagManagerParams.feedbagDeleteParams {
 				feedbagManager.EXPECT().
-					DeleteUser(params.screenName, params.items).
+					FeedbagDelete(params.screenName, params.items).
 					Return(nil)
 			}
 			messageRelayer := newMockMessageRelayer(t)
