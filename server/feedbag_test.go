@@ -268,12 +268,7 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 				StartClusterHandler(mock.Anything, tc.input.Frame, tc.input.Body).
 				Maybe()
 
-			router := FeedbagRouter{
-				FeedbagHandler: svc,
-				RouteLogger: RouteLogger{
-					Logger: NewLogger(Config{}),
-				},
-			}
+			router := NewFeedbagRouter(NewLogger(Config{}), svc)
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))

@@ -252,15 +252,7 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 				Return(tc.handlerErr).
 				Maybe()
 
-			router := OServiceBOSRouter{
-				OServiceRouter: OServiceRouter{
-					OServiceHandler: svc,
-					RouteLogger: RouteLogger{
-						Logger: NewLogger(Config{}),
-					},
-				},
-				OServiceBOSHandler: svcBOS,
-			}
+			router := NewOServiceRouterForBOS(NewLogger(Config{}), svc, svcBOS)
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))
@@ -538,15 +530,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 				Return(tc.handlerErr).
 				Maybe()
 
-			router := OServiceChatRouter{
-				OServiceRouter: OServiceRouter{
-					OServiceHandler: svc,
-					RouteLogger: RouteLogger{
-						Logger: NewLogger(Config{}),
-					},
-				},
-				OServiceChatHandler: svcBOS,
-			}
+			router := NewOServiceRouterForChat(NewLogger(Config{}), svc, svcBOS)
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))

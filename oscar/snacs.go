@@ -357,6 +357,11 @@ const (
 	BuddyDeparted            uint16 = 0x000C
 	BuddyAddTempBuddies      uint16 = 0x000F
 	BuddyDelTempBuddies      uint16 = 0x0010
+
+	BuddyTLVTagsParmMaxBuddies     uint16 = 0x01
+	BuddyTLVTagsParmMaxWatchers    uint16 = 0x02
+	BuddyTLVTagsParmMaxIcqBroad    uint16 = 0x03
+	BuddyTLVTagsParmMaxTempBuddies uint16 = 0x04
 )
 
 type SNAC_0x03_0x02_BuddyRightsQuery struct {

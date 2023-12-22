@@ -60,11 +60,7 @@ func TestAlertRouter_RouteAlert(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			router := AlertRouter{
-				RouteLogger: RouteLogger{
-					Logger: NewLogger(Config{}),
-				},
-			}
+			router := NewAlertRouter(NewLogger(Config{}))
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))

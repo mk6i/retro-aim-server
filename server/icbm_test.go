@@ -171,12 +171,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 					Maybe()
 			}
 
-			router := ICBMRouter{
-				ICBMHandler: svc,
-				RouteLogger: RouteLogger{
-					Logger: NewLogger(Config{}),
-				},
-			}
+			router := NewICBMRouter(NewLogger(Config{}), svc)
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))

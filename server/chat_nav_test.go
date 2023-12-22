@@ -125,12 +125,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
-			router := ChatNavRouter{
-				ChatNavHandler: svc,
-				RouteLogger: RouteLogger{
-					Logger: NewLogger(Config{}),
-				},
-			}
+			router := NewChatNavRouter(svc, NewLogger(Config{}))
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))

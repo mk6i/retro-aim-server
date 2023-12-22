@@ -207,12 +207,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
-			router := LocateRouter{
-				LocateHandler: svc,
-				RouteLogger: RouteLogger{
-					Logger: NewLogger(Config{}),
-				},
-			}
+			router := NewLocateRouter(svc, NewLogger(Config{}))
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))

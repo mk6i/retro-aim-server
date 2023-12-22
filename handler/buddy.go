@@ -24,10 +24,10 @@ func (s BuddyService) RightsQueryHandler(_ context.Context, frameIn oscar.SNACFr
 		Body: oscar.SNAC_0x03_0x03_BuddyRightsReply{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
-					oscar.NewTLV(0x01, uint16(100)),
-					oscar.NewTLV(0x02, uint16(100)),
-					oscar.NewTLV(0x03, uint16(100)),
-					oscar.NewTLV(0x04, uint16(100)),
+					oscar.NewTLV(oscar.BuddyTLVTagsParmMaxBuddies, uint16(100)),
+					oscar.NewTLV(oscar.BuddyTLVTagsParmMaxWatchers, uint16(100)),
+					oscar.NewTLV(oscar.BuddyTLVTagsParmMaxIcqBroad, uint16(100)),
+					oscar.NewTLV(oscar.BuddyTLVTagsParmMaxTempBuddies, uint16(100)),
 				},
 			},
 		},

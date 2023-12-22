@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
+func TestChatService_ChannelMsgToHostHandler(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -133,9 +133,7 @@ func TestSendAndReceiveChatChannelMsgToHost(t *testing.T) {
 			chatSessMgr.EXPECT().
 				RelayToAllExcept(mock.Anything, tc.userSession, tc.expectSNACToParticipants)
 
-			svc := ChatService{
-				chatRegistry: state.NewChatRegistry(),
-			}
+			svc := NewChatService(state.NewChatRegistry())
 			svc.chatRegistry.Register(state.ChatRoom{Cookie: chatID}, chatSessMgr)
 
 			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, chatID,

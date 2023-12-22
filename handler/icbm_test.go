@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
+func TestICBMService_ChannelMsgToHostHandler(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -245,10 +245,7 @@ func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			svc := ICBMService{
-				messageRelayer: messageRelayer,
-				feedbagManager: feedbagManager,
-			}
+			svc := NewICBMService(messageRelayer, feedbagManager)
 			outputSNAC, err := svc.ChannelMsgToHostHandler(nil, tc.senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost))
 			assert.NoError(t, err)
@@ -260,7 +257,7 @@ func TestSendAndReceiveChannelMsgToHost(t *testing.T) {
 	}
 }
 
-func TestSendAndReceiveClientEvent(t *testing.T) {
+func TestICBMService_ClientEventHandler(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -338,17 +335,14 @@ func TestSendAndReceiveClientEvent(t *testing.T) {
 			// send input SNAC
 			//
 			senderSession := newTestSession(tc.senderScreenName)
-			svc := ICBMService{
-				messageRelayer: messageRelayer,
-				feedbagManager: feedbagManager,
-			}
+			svc := NewICBMService(messageRelayer, feedbagManager)
 			assert.NoError(t, svc.ClientEventHandler(nil, senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(oscar.SNAC_0x04_0x14_ICBMClientEvent)))
 		})
 	}
 }
 
-func TestSendAndReceiveEvilRequest(t *testing.T) {
+func TestICBMService_EvilRequestHandler(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -575,14 +569,34 @@ func TestSendAndReceiveEvilRequest(t *testing.T) {
 			// send input SNAC
 			//
 			senderSession := newTestSession(tc.senderSession.ScreenName())
-			svc := ICBMService{
-				messageRelayer: messageRelayer,
-				feedbagManager: feedbagManager,
-			}
+			svc := NewICBMService(messageRelayer, feedbagManager)
 			outputSNAC, err := svc.EvilRequestHandler(nil, senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(oscar.SNAC_0x04_0x08_ICBMEvilRequest))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
 	}
+}
+
+func TestICBMService_ParameterQueryHandler(t *testing.T) {
+	svc := NewICBMService(nil, nil)
+
+	have := svc.ParameterQueryHandler(nil, oscar.SNACFrame{RequestID: 1234})
+	want := oscar.SNACMessage{
+		Frame: oscar.SNACFrame{
+			FoodGroup: oscar.ICBM,
+			SubGroup:  oscar.ICBMParameterReply,
+			RequestID: 1234,
+		},
+		Body: oscar.SNAC_0x04_0x05_ICBMParameterReply{
+			MaxSlots:             100,
+			ICBMFlags:            3,
+			MaxIncomingICBMLen:   512,
+			MaxSourceEvil:        999,
+			MaxDestinationEvil:   999,
+			MinInterICBMInterval: 0,
+		},
+	}
+
+	assert.Equal(t, want, have)
 }
