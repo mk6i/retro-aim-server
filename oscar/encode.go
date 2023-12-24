@@ -78,8 +78,10 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 				}
 			}
 		}
-		if _, err := w.Write(buf.Bytes()); err != nil {
-			return err
+		if buf.Len() > 0 {
+			if _, err := w.Write(buf.Bytes()); err != nil {
+				return err
+			}
 		}
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Array:
 		if err := binary.Write(w, binary.BigEndian, v.Interface()); err != nil {

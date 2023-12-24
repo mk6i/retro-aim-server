@@ -5,6 +5,9 @@ inpackage: True
 packages:
   github.com/mkaminski/goaim/server:
     interfaces:
+      AuthHandler:
+        config:
+          filename: "auth_mock_test.go"
       BuddyHandler:
         config:
           filename: "buddy_mock_test.go"
@@ -35,6 +38,9 @@ packages:
       UserManager:
         config:
           filename: "user_manager_mock_test.go"
+      BOSRouter:
+        config:
+          filename: "bos_router_mock_test.go"
   github.com/mkaminski/goaim/handler:
     interfaces:
       FeedbagManager:

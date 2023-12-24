@@ -117,7 +117,7 @@ func TestUserHandler_POST(t *testing.T) {
 
 			userManager := newMockUserManager(t)
 			userManager.EXPECT().
-				InsertUser(mock.Anything).
+				InsertUser(mock.Anything). // todo make this more concrete
 				Return(tc.userHandlerErr).
 				Maybe()
 

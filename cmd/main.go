@@ -51,17 +51,21 @@ func main() {
 		icbmHandler := handler.NewICBMService(sessionManager, feedbagStore)
 
 		server.BOSService{
-			AlertRouter:       server.NewAlertRouter(logger),
 			AuthHandler:       authHandler,
-			BuddyRouter:       server.NewBuddyRouter(logger, buddyHandler),
-			ChatNavRouter:     server.NewChatNavRouter(chatNavHandler, logger),
-			FeedbagRouter:     server.NewFeedbagRouter(logger, feedbagHandler),
-			ICBMRouter:        server.NewICBMRouter(logger, icbmHandler),
-			LocateRouter:      server.NewLocateRouter(locateHandler, logger),
 			OServiceBOSRouter: server.NewOServiceRouterForBOS(logger, oserviceHandler, oserviceBOSHandler),
 			Config:            cfg,
-			RouteLogger: server.RouteLogger{
-				Logger: logger,
+			BOSRouter: server.BOSRootRouter{
+				AlertRouter:       server.NewAlertRouter(logger),
+				BuddyRouter:       server.NewBuddyRouter(logger, buddyHandler),
+				ChatNavRouter:     server.NewChatNavRouter(chatNavHandler, logger),
+				FeedbagRouter:     server.NewFeedbagRouter(logger, feedbagHandler),
+				ICBMRouter:        server.NewICBMRouter(logger, icbmHandler),
+				LocateRouter:      server.NewLocateRouter(locateHandler, logger),
+				OServiceBOSRouter: server.NewOServiceRouterForBOS(logger, oserviceHandler, oserviceBOSHandler),
+				Config:            cfg,
+				RouteLogger: server.RouteLogger{
+					Logger: logger,
+				},
 			},
 		}.Start()
 		wg.Done()

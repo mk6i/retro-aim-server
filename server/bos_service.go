@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"io"
 	"net"
 	"os"
@@ -11,19 +10,28 @@ import (
 	"github.com/mkaminski/goaim/state"
 )
 
-type BOSService struct {
-	AlertRouter
-	AuthHandler
-	BuddyRouter
-	ChatNavRouter
-	Config
-	FeedbagRouter
-	ICBMRouter
-	LocateRouter
-	OServiceBOSRouter
-	RouteLogger
+// BOSRouter is the interface that defines the entrypoint to the BOS service.
+type BOSRouter interface {
+	// Route unmarshalls the SNAC frame header from the reader stream to
+	// determine which food group to route to. The remainder of the reader
+	// stream is passed on to the food group routers for the final SNAC body
+	// extraction. Each response sent to the client via the writer stream
+	// increments the sequence number.
+	Route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32) error
 }
 
+// BOSService provides client connection lifecycle management for the BOS
+// service.
+type BOSService struct {
+	AuthHandler
+	BOSRouter
+	Config
+	OServiceBOSRouter
+}
+
+// Start starts a TCP server and listens for connections. The initial
+// authentication handshake sequences are handled by this method. The remaining
+// requests are relayed to BOSRouter.
 func (rt BOSService) Start() {
 	addr := Address("", rt.Config.BOSPort)
 	listener, err := net.Listen("tcp", addr)
@@ -93,55 +101,10 @@ func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 	}
 
 	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
-		return rt.route(ctx, sess, r, w, seq)
+		return rt.Route(ctx, sess, r, w, seq)
 	}
 	fnAlertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, seq *uint32) error {
 		return sendSNAC(msg.Frame, msg.Body, seq, w)
 	}
 	dispatchIncomingMessages(ctx, sess, seq, rwc, rt.Logger, fnClientReqHandler, fnAlertHandler)
-}
-
-func (rt BOSService) route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32) error {
-	inFrame := oscar.SNACFrame{}
-	if err := oscar.Unmarshal(&inFrame, r); err != nil {
-		return err
-	}
-
-	err := func() error {
-		switch inFrame.FoodGroup {
-		case oscar.OService:
-			return rt.RouteOService(ctx, sess, inFrame, r, w, sequence)
-		case oscar.Locate:
-			return rt.RouteLocate(ctx, sess, inFrame, r, w, sequence)
-		case oscar.Buddy:
-			return rt.RouteBuddy(ctx, inFrame, r, w, sequence)
-		case oscar.ICBM:
-			return rt.RouteICBM(ctx, sess, inFrame, r, w, sequence)
-		case oscar.ChatNav:
-			return rt.RouteChatNav(ctx, sess, inFrame, r, w, sequence)
-		case oscar.Feedbag:
-			return rt.RouteFeedbag(ctx, sess, inFrame, r, w, sequence)
-		case oscar.BUCP:
-			return routeBUCP(ctx)
-		case oscar.Alert:
-			return rt.RouteAlert(ctx, inFrame)
-		default:
-			return ErrUnsupportedSubGroup
-		}
-	}()
-
-	if err != nil {
-		rt.logRequestError(ctx, inFrame, err)
-		if errors.Is(err, ErrUnsupportedSubGroup) {
-			if err1 := sendInvalidSNACErr(inFrame, w, sequence); err1 != nil {
-				err = errors.Join(err1, err)
-			}
-			if rt.Config.FailFast {
-				panic(err.Error())
-			}
-			return nil
-		}
-	}
-
-	return err
 }
