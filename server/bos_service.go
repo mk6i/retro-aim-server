@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -52,34 +53,34 @@ func (rt BOSService) Start() {
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 		rt.Logger.DebugContext(ctx, "accepted connection")
-		go rt.handleNewConnection(ctx, conn)
+		go func() {
+			if err := rt.handleNewConnection(ctx, conn); err != nil {
+				rt.Logger.Info("user session failed", "err", err.Error())
+			}
+		}()
 	}
 }
 
-func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) {
+func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) error {
 	seq := uint32(100)
 
-	flap, err := SendAndReceiveSignonFrame(rwc, &seq)
+	flap, err := flapSignonHandshake(rwc, &seq)
 	if err != nil {
-		rt.Logger.ErrorContext(ctx, "some error", "err", err.Error())
-		return
+		return err
 	}
 
 	var ok bool
 	sessionID, ok := flap.Slice(oscar.OServiceTLVTagsLoginCookie)
 	if !ok {
-		rt.Logger.ErrorContext(ctx, "unable to get session id from payload")
-		return
+		return errors.New("unable to get session id from payload")
 	}
 
 	sess, err := rt.RetrieveBOSSession(string(sessionID))
 	if err != nil {
-		rt.Logger.ErrorContext(ctx, "unable retrieve session", "err", err.Error())
-		return
+		return err
 	}
 	if sess == nil {
-		rt.Logger.InfoContext(ctx, "session not found", "err", err.Error())
-		return
+		return errors.New("session not found")
 	}
 
 	defer sess.Close()
@@ -96,8 +97,7 @@ func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 
 	msg := rt.WriteOServiceHostOnline()
 	if err := sendSNAC(msg.Frame, msg.Body, &seq, rwc); err != nil {
-		rt.Logger.ErrorContext(ctx, "error WriteOServiceHostOnline")
-		return
+		return err
 	}
 
 	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
@@ -107,4 +107,5 @@ func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 		return sendSNAC(msg.Frame, msg.Body, seq, w)
 	}
 	dispatchIncomingMessages(ctx, sess, seq, rwc, rt.Logger, fnClientReqHandler, fnAlertHandler)
+	return nil
 }

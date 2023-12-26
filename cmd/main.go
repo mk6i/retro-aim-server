@@ -78,13 +78,14 @@ func main() {
 		oserviceChatHandler := handler.NewOServiceServiceForChat(*oserviceHandler, chatRegistry)
 
 		server.ChatService{
-			AuthHandler:        authHandler,
-			OServiceChatRouter: server.NewOServiceRouterForChat(logger, oserviceHandler, oserviceChatHandler),
-			ChatRouter:         server.NewChatRouter(logger, chatHandler),
-			Config:             cfg,
-			RouteLogger: server.RouteLogger{
-				Logger: logger,
+			AuthHandler: authHandler,
+			ChatServiceRouter: server.ChatServiceRooterRouter{
+				ChatRouter:         server.NewChatRouter(logger, chatHandler),
+				Config:             cfg,
+				OServiceChatRouter: server.NewOServiceRouterForChat(logger, oserviceHandler, oserviceChatHandler),
 			},
+			Config:             cfg,
+			OServiceChatRouter: server.NewOServiceRouterForChat(logger, oserviceHandler, oserviceChatHandler),
 		}.Start()
 		wg.Done()
 	}(logger)
@@ -92,7 +93,7 @@ func main() {
 		logger = logger.With("svc", "AUTH")
 		authHandler := handler.NewAuthService(cfg, sessionManager, nil, feedbagStore, feedbagStore, chatRegistry)
 
-		server.AuthService{
+		server.BUCPAuthService{
 			AuthHandler: authHandler,
 			Config:      cfg,
 			RouteLogger: server.RouteLogger{

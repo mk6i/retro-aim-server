@@ -41,6 +41,9 @@ packages:
       BOSRouter:
         config:
           filename: "bos_router_mock_test.go"
+      ChatServiceRouter:
+        config:
+          filename: "chat_service_router_mock_test.go"
   github.com/mkaminski/goaim/handler:
     interfaces:
       FeedbagManager:

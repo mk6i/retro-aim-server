@@ -57,6 +57,21 @@ func sendSNAC(frame oscar.SNACFrame, body any, sequence *uint32, w io.Writer) er
 	return nil
 }
 
+func receiveSNAC(frame *oscar.SNACFrame, body any, r io.Reader) error {
+	flap := oscar.FLAPFrame{}
+	if err := oscar.Unmarshal(&flap, r); err != nil {
+		return err
+	}
+	buf, err := flap.SNACBuffer(r)
+	if err != nil {
+		return err
+	}
+	if err := oscar.Unmarshal(frame, buf); err != nil {
+		return err
+	}
+	return oscar.Unmarshal(body, buf)
+}
+
 func sendInvalidSNACErr(frameIn oscar.SNACFrame, w io.Writer, sequence *uint32) error {
 	frameOut := oscar.SNACFrame{
 		FoodGroup: frameIn.FoodGroup,

@@ -52,7 +52,7 @@ func (rt BOSRootRouter) Route(ctx context.Context, sess *state.Session, r io.Rea
 		case oscar.Feedbag:
 			return rt.RouteFeedbag(ctx, sess, inFrame, r, w, sequence)
 		case oscar.BUCP:
-			return routeBUCP(ctx)
+			return ErrUnsupportedSubGroup
 		case oscar.Alert:
 			return rt.RouteAlert(ctx, inFrame)
 		default:

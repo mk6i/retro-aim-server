@@ -8,30 +8,16 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mkaminski/goaim/state"
-	"github.com/stretchr/testify/mock"
-
 	"github.com/mkaminski/goaim/oscar"
+	"github.com/mkaminski/goaim/state"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
-// pipeRWC provides a mock for ReadWriteCloser that uses pipes instead of TCP
-// connections
-type pipeRWC struct {
-	*io.PipeReader
-	*io.PipeWriter
-}
-
-func (m pipeRWC) Close() error {
-	if err := m.PipeReader.Close(); err != nil {
-		return err
-	}
-	return m.PipeWriter.Close()
-}
-
-func TestBOSService_handleNewConnection(t *testing.T) {
+func TestChatService_handleNewConnection(t *testing.T) {
 	sess := state.NewSession()
 	sess.SetID("login-cookie-1234")
+	chatCookie := "chat-cookie"
 
 	clientReader, serverWriter := io.Pipe()
 	serverReader, clientWriter := io.Pipe()
@@ -52,7 +38,11 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 		flapSignonFrame = oscar.FLAPSignonFrame{
 			FLAPVersion: 1,
 		}
-		flapSignonFrame.Append(oscar.NewTLV(oscar.OServiceTLVTagsLoginCookie, []byte(sess.ID())))
+		cookie := ChatCookie{
+			Cookie: []byte(chatCookie),
+			SessID: sess.ID(),
+		}
+		flapSignonFrame.Append(oscar.NewTLV(oscar.OServiceTLVTagsLoginCookie, cookie))
 		buf = &bytes.Buffer{}
 		assert.NoError(t, oscar.Marshal(flapSignonFrame, buf))
 		flap = oscar.FLAPFrame{
@@ -77,8 +67,8 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 		// send the first request that should get relayed to BOSRouter.Route
 		var seq uint32
 		frame = oscar.SNACFrame{
-			FoodGroup: oscar.OService,
-			SubGroup:  oscar.OServiceClientOnline,
+			FoodGroup: oscar.Chat,
+			SubGroup:  oscar.ChatNavNavInfo,
 		}
 		assert.NoError(t, sendSNAC(frame, struct{}{}, &seq, serverWriter))
 
@@ -87,17 +77,17 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 
 	authHandler := newMockAuthHandler(t)
 	authHandler.EXPECT().
-		RetrieveBOSSession(sess.ID()).
+		RetrieveChatSession(chatCookie, sess.ID()).
 		Return(sess, nil)
 	authHandler.EXPECT().
-		Signout(mock.Anything, sess).
-		Run(func(ctx context.Context, sess *state.Session) {
+		SignoutChat(mock.Anything, sess, chatCookie).
+		Run(func(ctx context.Context, sess *state.Session, chatID string) {
 			wg.Done()
 		}).
 		Return(nil)
 
-	bosHandler := newMockOServiceBOSHandler(t)
-	bosHandler.EXPECT().
+	chatHandler := newMockOServiceChatHandler(t)
+	chatHandler.EXPECT().
 		WriteOServiceHostOnline().
 		Return(oscar.SNACMessage{
 			Frame: oscar.SNACFrame{
@@ -107,21 +97,21 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 			Body: oscar.SNAC_0x01_0x03_OServiceHostOnline{},
 		})
 
-	bosRouter := newMockBOSRouter(t)
+	bosRouter := newMockChatServiceRouter(t)
 	bosRouter.EXPECT().
-		Route(mock.Anything, sess, mock.Anything, mock.Anything, mock.Anything).
+		Route(mock.Anything, sess, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(nil)
 
-	rt := BOSService{
-		AuthHandler:       authHandler,
-		OServiceBOSRouter: NewOServiceRouterForBOS(slog.Default(), nil, bosHandler),
-		BOSRouter:         bosRouter,
+	rt := ChatService{
+		AuthHandler:        authHandler,
+		OServiceChatRouter: NewOServiceRouterForChat(slog.Default(), nil, chatHandler),
+		ChatServiceRouter:  bosRouter,
 	}
 	rwc := pipeRWC{
 		PipeReader: clientReader,
 		PipeWriter: clientWriter,
 	}
-	assert.NoError(t, rt.handleNewConnection(context.Background(), rwc))
+	rt.handleNewConnection(context.Background(), rwc)
 
 	wg.Wait() // wait for server to drain the connection
 }
