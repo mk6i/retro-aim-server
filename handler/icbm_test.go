@@ -280,7 +280,7 @@ func TestICBMService_ClientEventHandler(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x04_0x14_ICBMClientEvent{
-					Cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+					Cookie:     12345678,
 					ChannelID:  42,
 					ScreenName: "recipient-screen-name",
 					Event:      12,
@@ -293,7 +293,7 @@ func TestICBMService_ClientEventHandler(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: oscar.SNAC_0x04_0x14_ICBMClientEvent{
-					Cookie:     [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+					Cookie:     12345678,
 					ChannelID:  42,
 					ScreenName: "sender-screen-name",
 					Event:      12,

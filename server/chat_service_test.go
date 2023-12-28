@@ -29,7 +29,7 @@ func TestChatService_handleNewConnection(t *testing.T) {
 		// < receive FLAPSignonFrame
 		flap := oscar.FLAPFrame{}
 		assert.NoError(t, oscar.Unmarshal(&flap, serverReader))
-		buf, err := flap.SNACBuffer(serverReader)
+		buf, err := flap.ReadBody(serverReader)
 		assert.NoError(t, err)
 		flapSignonFrame := oscar.FLAPSignonFrame{}
 		assert.NoError(t, oscar.Unmarshal(&flapSignonFrame, buf))
@@ -57,7 +57,7 @@ func TestChatService_handleNewConnection(t *testing.T) {
 		// < receive SNAC_0x01_0x03_OServiceHostOnline
 		flap = oscar.FLAPFrame{}
 		assert.NoError(t, oscar.Unmarshal(&flap, serverReader))
-		buf, err = flap.SNACBuffer(serverReader)
+		buf, err = flap.ReadBody(serverReader)
 		assert.NoError(t, err)
 		frame := oscar.SNACFrame{}
 		assert.NoError(t, oscar.Unmarshal(&frame, buf))

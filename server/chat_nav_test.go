@@ -151,7 +151,7 @@ func TestChatNavRouter_RouteChatNavRouter(t *testing.T) {
 			assert.Equal(t, seq, uint32(1))
 			assert.Equal(t, flap.Sequence, uint16(0))
 
-			flapBuf, err := flap.SNACBuffer(bufOut)
+			flapBuf, err := flap.ReadBody(bufOut)
 			assert.NoError(t, err)
 
 			// verify the SNAC frame

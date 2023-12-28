@@ -87,7 +87,7 @@ func TestAlertRouter_RouteAlert(t *testing.T) {
 			// make sure the sequence number was incremented
 			assert.Equal(t, uint32(2), seq)
 
-			flapBuf, err := flap.SNACBuffer(bufOut)
+			flapBuf, err := flap.ReadBody(bufOut)
 			assert.NoError(t, err)
 
 			// verify the SNAC frame

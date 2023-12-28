@@ -198,3 +198,11 @@ func TestTLVList_Getters(t *testing.T) {
 		})
 	}
 }
+
+func TestTLVList_NewTLVPanic(t *testing.T) {
+	// make sure NewTLV panics when it encounters an unsupported type, in this
+	// case it's int.
+	assert.Panics(t, func() {
+		NewTLV(1, 30)
+	})
+}

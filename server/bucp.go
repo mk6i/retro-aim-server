@@ -113,7 +113,7 @@ func flapSignonHandshake(rw io.ReadWriter, sequence *uint32) (oscar.FLAPSignonFr
 	if err := oscar.Unmarshal(&flap, rw); err != nil {
 		return oscar.FLAPSignonFrame{}, err
 	}
-	buf, err := flap.SNACBuffer(rw)
+	buf, err := flap.ReadBody(rw)
 	if err != nil {
 		return oscar.FLAPSignonFrame{}, err
 	}

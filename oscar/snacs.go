@@ -430,14 +430,14 @@ type SNAC_0x04_0x05_ICBMParameterReply struct {
 }
 
 type SNAC_0x04_0x06_ICBMChannelMsgToHost struct {
-	Cookie     [8]byte
+	Cookie     uint64
 	ChannelID  uint16
 	ScreenName string `len_prefix:"uint8"`
 	TLVRestBlock
 }
 
 type SNAC_0x04_0x07_ICBMChannelMsgToClient struct {
-	Cookie    [8]byte
+	Cookie    uint64
 	ChannelID uint16
 	TLVUserInfo
 	TLVRestBlock
@@ -454,7 +454,7 @@ type SNAC_0x04_0x09_ICBMEvilReply struct {
 }
 
 type SNAC_0x04_0x0B_ICBMClientErr struct {
-	Cookie     [8]byte
+	Cookie     uint64
 	ChannelID  uint16
 	ScreenName string `len_prefix:"uint8"`
 	Code       uint16
@@ -462,13 +462,13 @@ type SNAC_0x04_0x0B_ICBMClientErr struct {
 }
 
 type SNAC_0x04_0x0C_ICBMHostAck struct {
-	Cookie     [8]byte
+	Cookie     uint64
 	ChannelID  uint16
 	ScreenName string `len_prefix:"uint8"`
 }
 
 type SNAC_0x04_0x14_ICBMClientEvent struct {
-	Cookie     [8]byte
+	Cookie     uint64
 	ChannelID  uint16
 	ScreenName string `len_prefix:"uint8"`
 	Event      uint16

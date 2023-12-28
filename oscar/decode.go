@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 )
+
+var ErrUnmarshalFailure = errors.New("failed to unmarshal")
 
 func Unmarshal(v any, r io.Reader) error {
 	return unmarshal(reflect.TypeOf(v).Elem(), reflect.ValueOf(v).Elem(), "", r)
@@ -20,6 +23,7 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 				return err
 			}
 		}
+		return nil
 	case reflect.String:
 		var bufLen int
 		if lenTag, ok := tag.Lookup("len_prefix"); ok {
@@ -37,10 +41,10 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 				}
 				bufLen = int(l)
 			default:
-				panic("invalid len_prefix")
+				return fmt.Errorf("%w: unsupported len_prefix type %s. allowed types: uint8, uint16", ErrUnmarshalFailure, lenTag)
 			}
 		} else {
-			panic("string length not set")
+			return fmt.Errorf("%w: missing len_prefix tag", ErrUnmarshalFailure)
 		}
 		buf := make([]byte, bufLen)
 		if _, err := r.Read(buf); err != nil {
@@ -48,30 +52,35 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 		}
 		// todo is there a more efficient way?
 		v.SetString(string(buf))
+		return nil
 	case reflect.Uint8:
 		var l uint8
 		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(l))
+		return nil
 	case reflect.Uint16:
 		var l uint16
 		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(l))
+		return nil
 	case reflect.Uint32:
 		var l uint32
 		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(l))
+		return nil
 	case reflect.Uint64:
 		var l uint64
 		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(l))
+		return nil
 	case reflect.Slice:
 		if lenTag, ok := tag.Lookup("len_prefix"); ok {
 			var bufLen int
@@ -89,7 +98,7 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 				}
 				bufLen = int(l)
 			default:
-				panic("length not set")
+				return fmt.Errorf("%w: unsupported len_prefix type %s. allowed types: uint8, uint16", ErrUnmarshalFailure, lenTag)
 			}
 
 			buf := make([]byte, bufLen)
@@ -98,6 +107,9 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 			}
 			b := bytes.NewBuffer(buf)
 			slice := reflect.New(v.Type()).Elem()
+			// todo: if this is a slice of scalars, there should be no need to
+			//  call Unmarshal on each element. it should be possible to just
+			//  call binary.Read(r, binary.BigEndian, []byte)
 			for b.Len() > 0 {
 				v1 := reflect.New(v.Type().Elem()).Interface()
 				if err := Unmarshal(v1, b); err != nil {
@@ -122,7 +134,7 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 				}
 				count = int(l)
 			default:
-				panic("count not set")
+				return fmt.Errorf("%w: unsupported count_prefix type %s. allowed types: uint8, uint16", ErrUnmarshalFailure, lenTag)
 			}
 
 			slice := reflect.New(v.Type()).Elem()
@@ -148,19 +160,8 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 			}
 			v.Set(slice)
 		}
-	case reflect.Array:
-		buf := make([]byte, v.Len())
-		if _, err := r.Read(buf); err != nil {
-			return err
-		}
-		array := reflect.New(v.Type()).Elem()
-		for j := 0; j < len(buf); j++ {
-			array.Index(j).SetUint(uint64(buf[j]))
-		}
-		v.Set(array)
+		return nil
 	default:
-		return errors.New("unsupported type for unmarshalling")
+		return fmt.Errorf("%w: unsupported type %v", ErrUnmarshalFailure, t.Kind())
 	}
-
-	return nil
 }

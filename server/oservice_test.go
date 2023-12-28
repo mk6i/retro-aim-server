@@ -279,7 +279,7 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 			// make sure the sequence number was incremented
 			assert.Equal(t, uint32(2), seq)
 
-			flapBuf, err := flap.SNACBuffer(bufOut)
+			flapBuf, err := flap.ReadBody(bufOut)
 			assert.NoError(t, err)
 
 			// verify the SNAC frame
@@ -557,7 +557,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 			// make sure the sequence number was incremented
 			assert.Equal(t, uint32(2), seq)
 
-			flapBuf, err := flap.SNACBuffer(bufOut)
+			flapBuf, err := flap.ReadBody(bufOut)
 			assert.NoError(t, err)
 
 			// verify the SNAC frame

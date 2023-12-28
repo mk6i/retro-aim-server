@@ -62,7 +62,7 @@ func receiveSNAC(frame *oscar.SNACFrame, body any, r io.Reader) error {
 	if err := oscar.Unmarshal(&flap, r); err != nil {
 		return err
 	}
-	buf, err := flap.SNACBuffer(r)
+	buf, err := flap.ReadBody(r)
 	if err != nil {
 		return err
 	}

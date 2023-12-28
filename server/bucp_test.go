@@ -19,7 +19,7 @@ func TestBUCPAuthService_handleNewConnection(t *testing.T) {
 		// < receive FLAPSignonFrame
 		flap := oscar.FLAPFrame{}
 		assert.NoError(t, oscar.Unmarshal(&flap, serverReader))
-		buf, err := flap.SNACBuffer(serverReader)
+		buf, err := flap.ReadBody(serverReader)
 		assert.NoError(t, err)
 		flapSignonFrame := oscar.FLAPSignonFrame{}
 		assert.NoError(t, oscar.Unmarshal(&flapSignonFrame, buf))
