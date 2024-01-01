@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mkaminski/goaim/oscar"
+	"github.com/mk6i/retro-aim-server/oscar"
 )
 
 // capChat is a UID that indicates a client supports the chat capability

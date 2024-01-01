@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mkaminski/goaim/oscar"
+	"github.com/mk6i/retro-aim-server/oscar"
 )
 
 // ErrChatRoomNotFound indicates that a chat room lookup failed.

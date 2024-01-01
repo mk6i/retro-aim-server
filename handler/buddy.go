@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/state"
 )
 
 func NewBuddyService() *BuddyService {

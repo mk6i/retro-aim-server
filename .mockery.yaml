@@ -3,7 +3,7 @@ dir: "{{.InterfaceDir}}"
 mockname: "mock{{.InterfaceName}}"
 inpackage: True
 packages:
-  github.com/mkaminski/goaim/server:
+  github.com/mk6i/retro-aim-server/server:
     interfaces:
       AuthHandler:
         config:
@@ -44,7 +44,7 @@ packages:
       ChatServiceRouter:
         config:
           filename: "chat_service_router_mock_test.go"
-  github.com/mkaminski/goaim/handler:
+  github.com/mk6i/retro-aim-server/handler:
     interfaces:
       FeedbagManager:
         config:

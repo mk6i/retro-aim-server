@@ -3,7 +3,7 @@
 package handler
 
 import (
-	state "github.com/mkaminski/goaim/state"
+	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
 

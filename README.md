@@ -1,4 +1,5 @@
 # Retro AIM Server
+[![codecov](https://codecov.io/github/mk6i/retro-aim-server/graph/badge.svg?token=MATKPP77JT)](https://codecov.io/github/mk6i/retro-aim-server)
 
 Retro AIM Server is a server implementation of the OSCAR protocol that supports AIM versions 5.0-5.9.
 

@@ -5,11 +5,10 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"sync"
 	"testing"
 
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -21,9 +20,6 @@ func TestChatService_handleNewConnection(t *testing.T) {
 
 	clientReader, serverWriter := io.Pipe()
 	serverReader, clientWriter := io.Pipe()
-
-	wg := sync.WaitGroup{}
-	wg.Add(1)
 
 	go func() {
 		// < receive FLAPSignonFrame
@@ -81,9 +77,6 @@ func TestChatService_handleNewConnection(t *testing.T) {
 		Return(sess, nil)
 	authHandler.EXPECT().
 		SignoutChat(mock.Anything, sess, chatCookie).
-		Run(func(ctx context.Context, sess *state.Session, chatID string) {
-			wg.Done()
-		}).
 		Return(nil)
 
 	chatHandler := newMockOServiceChatHandler(t)
@@ -112,6 +105,4 @@ func TestChatService_handleNewConnection(t *testing.T) {
 		PipeWriter: clientWriter,
 	}
 	rt.handleNewConnection(context.Background(), rwc)
-
-	wg.Wait() // wait for server to drain the connection
 }

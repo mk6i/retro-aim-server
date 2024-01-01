@@ -3,7 +3,7 @@ package state
 import (
 	"testing"
 
-	"github.com/mkaminski/goaim/oscar"
+	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/stretchr/testify/assert"
 )
 

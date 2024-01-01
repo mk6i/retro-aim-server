@@ -3,10 +3,10 @@
 package handler
 
 import (
-	oscar "github.com/mkaminski/goaim/oscar"
+	oscar "github.com/mk6i/retro-aim-server/oscar"
 	mock "github.com/stretchr/testify/mock"
 
-	state "github.com/mkaminski/goaim/state"
+	state "github.com/mk6i/retro-aim-server/state"
 
 	time "time"
 )

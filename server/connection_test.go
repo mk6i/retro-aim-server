@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/state"
 	"github.com/stretchr/testify/assert"
 )
 

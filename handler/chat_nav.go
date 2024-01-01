@@ -6,8 +6,8 @@ import (
 
 	"log/slog"
 
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/state"
 )
 
 // NewChatNavService creates a new instance of NewChatNavService.

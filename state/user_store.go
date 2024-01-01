@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/mkaminski/goaim/oscar"
+	"github.com/mk6i/retro-aim-server/oscar"
 )
 
 var userStoreDDL = `

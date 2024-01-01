@@ -1,0 +1,3 @@
+coverage:
+  round: down
+  range: 70..79

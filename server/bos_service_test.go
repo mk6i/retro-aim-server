@@ -5,13 +5,12 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"sync"
 	"testing"
 
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/state"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/mkaminski/goaim/oscar"
+	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,9 +34,6 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 
 	clientReader, serverWriter := io.Pipe()
 	serverReader, clientWriter := io.Pipe()
-
-	wg := sync.WaitGroup{}
-	wg.Add(1)
 
 	go func() {
 		// < receive FLAPSignonFrame
@@ -91,9 +87,6 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 		Return(sess, nil)
 	authHandler.EXPECT().
 		Signout(mock.Anything, sess).
-		Run(func(ctx context.Context, sess *state.Session) {
-			wg.Done()
-		}).
 		Return(nil)
 
 	bosHandler := newMockOServiceBOSHandler(t)
@@ -122,6 +115,4 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 		PipeWriter: clientWriter,
 	}
 	assert.NoError(t, rt.handleNewConnection(context.Background(), rwc))
-
-	wg.Wait() // wait for server to drain the connection
 }

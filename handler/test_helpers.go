@@ -3,8 +3,8 @@ package handler
 import (
 	"time"
 
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/state"
 )
 
 // mockParams is a helper struct that centralizes mock function call parameters
@@ -27,6 +27,7 @@ type chatRegistryRetrieveParams struct {
 	chatID         string
 	retChatRoom    state.ChatRoom
 	retChatSessMgr any
+	err            error
 }
 
 // userManagerParams is a helper struct that contains mock parameters for

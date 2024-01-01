@@ -3,18 +3,18 @@ package handler
 import (
 	"context"
 
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/state"
 )
 
-func NewChatService(chatRegistry *state.ChatRegistry) *ChatService {
+func NewChatService(chatRegistry ChatRegistry) *ChatService {
 	return &ChatService{
 		chatRegistry: chatRegistry,
 	}
 }
 
 type ChatService struct {
-	chatRegistry *state.ChatRegistry
+	chatRegistry ChatRegistry
 }
 
 func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, chatID string, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.SNACMessage, error) {

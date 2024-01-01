@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/server"
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/server"
+	"github.com/mk6i/retro-aim-server/state"
 )
 
 // NewOServiceService creates a new instance of OServiceService.

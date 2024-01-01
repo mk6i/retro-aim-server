@@ -6,11 +6,11 @@ import (
 	"os"
 	"sync"
 
-	"github.com/mkaminski/goaim/handler"
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/handler"
+	"github.com/mk6i/retro-aim-server/state"
 
 	"github.com/kelseyhightower/envconfig"
-	"github.com/mkaminski/goaim/server"
+	"github.com/mk6i/retro-aim-server/server"
 )
 
 func main() {

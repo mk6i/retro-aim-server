@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/state"
 	"github.com/stretchr/testify/mock"
 )
 

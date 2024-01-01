@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/mkaminski/goaim/oscar"
+	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -78,12 +78,7 @@ func TestChatRouter_RouteChat(t *testing.T) {
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
-			router := ChatRouter{
-				ChatHandler: svc,
-				RouteLogger: RouteLogger{
-					Logger: NewLogger(Config{}),
-				},
-			}
+			router := NewChatRouter(NewLogger(Config{}), svc)
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))

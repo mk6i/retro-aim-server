@@ -7,8 +7,8 @@ import (
 	"net"
 	"os"
 
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/state"
 )
 
 // BOSRouter is the interface that defines the entrypoint to the BOS service.
@@ -83,11 +83,9 @@ func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 		return errors.New("session not found")
 	}
 
-	defer sess.Close()
-	defer rwc.Close()
-
-	go func() {
-		<-sess.Closed()
+	defer func() {
+		sess.Close()
+		rwc.Close()
 		if err := rt.Signout(ctx, sess); err != nil {
 			rt.Logger.ErrorContext(ctx, "error notifying departure", "err", err.Error())
 		}

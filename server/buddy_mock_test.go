@@ -5,7 +5,7 @@ package server
 import (
 	context "context"
 
-	oscar "github.com/mkaminski/goaim/oscar"
+	oscar "github.com/mk6i/retro-aim-server/oscar"
 	mock "github.com/stretchr/testify/mock"
 )
 

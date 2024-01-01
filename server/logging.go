@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/mkaminski/goaim/oscar"
+	"github.com/mk6i/retro-aim-server/oscar"
 )
 
 const (

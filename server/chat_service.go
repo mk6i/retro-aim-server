@@ -8,8 +8,8 @@ import (
 	"net"
 	"os"
 
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/state"
 )
 
 // ChatServiceRouter is the interface that defines the entrypoint to the BOS service.
@@ -57,15 +57,14 @@ func (rt ChatService) Start() {
 			if err := rt.handleNewConnection(ctx, conn); err != nil {
 				rt.Logger.Info("user session failed", "err", err.Error())
 			}
-			conn.Close()
 		}()
 	}
 }
 
-func (rt ChatService) handleNewConnection(ctx context.Context, rw io.ReadWriter) error {
+func (rt ChatService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) error {
 	seq := uint32(100)
 
-	flap, err := flapSignonHandshake(rw, &seq)
+	flap, err := flapSignonHandshake(rwc, &seq)
 	if err != nil {
 		return err
 	}
@@ -90,16 +89,16 @@ func (rt ChatService) handleNewConnection(ctx context.Context, rw io.ReadWriter)
 		return errors.New("session not found")
 	}
 
-	defer chatSess.Close()
-	go func() {
-		<-chatSess.Closed()
+	defer func() {
+		chatSess.Close()
+		rwc.Close()
 		if err := rt.SignoutChat(ctx, chatSess, chatID); err != nil {
 			rt.Logger.ErrorContext(ctx, "unable to sign out user", "err", err.Error())
 		}
 	}()
 
 	msg := rt.WriteOServiceHostOnline()
-	if err := sendSNAC(msg.Frame, msg.Body, &seq, rw); err != nil {
+	if err := sendSNAC(msg.Frame, msg.Body, &seq, rwc); err != nil {
 		return err
 	}
 
@@ -110,6 +109,6 @@ func (rt ChatService) handleNewConnection(ctx context.Context, rw io.ReadWriter)
 		return sendSNAC(msg.Frame, msg.Body, seq, w)
 	}
 	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName())
-	dispatchIncomingMessages(ctx, chatSess, seq, rw, rt.Logger, fnClientReqHandler, fnAlertHandler)
+	dispatchIncomingMessages(ctx, chatSess, seq, rwc, rt.Logger, fnClientReqHandler, fnAlertHandler)
 	return nil
 }

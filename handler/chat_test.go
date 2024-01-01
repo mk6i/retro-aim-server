@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/mkaminski/goaim/oscar"
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -18,10 +18,14 @@ func TestChatService_ChannelMsgToHostHandler(t *testing.T) {
 		userSession *state.Session
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC oscar.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
 		// expectSNACToParticipants is the message the server broadcast to chat
 		// room participants (except the sender)
 		expectSNACToParticipants oscar.SNACMessage
 		expectOutput             *oscar.SNACMessage
+		wantErr                  error
 	}{
 		{
 			name:        "send chat room message, expect acknowledgement to sender client",
@@ -44,6 +48,13 @@ func TestChatService_ChannelMsgToHostHandler(t *testing.T) {
 								Value: []byte{},
 							},
 						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				chatRegistryParams: chatRegistryParams{
+					chatRegistryRetrieveParams: chatRegistryRetrieveParams{
+						chatID: "the-chat-id",
 					},
 				},
 			},
@@ -104,6 +115,13 @@ func TestChatService_ChannelMsgToHostHandler(t *testing.T) {
 					},
 				},
 			},
+			mockParams: mockParams{
+				chatRegistryParams: chatRegistryParams{
+					chatRegistryRetrieveParams: chatRegistryRetrieveParams{
+						chatID: "the-chat-id",
+					},
+				},
+			},
 			expectSNACToParticipants: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					FoodGroup: oscar.Chat,
@@ -121,7 +139,36 @@ func TestChatService_ChannelMsgToHostHandler(t *testing.T) {
 					},
 				},
 			},
-			expectOutput: &oscar.SNACMessage{},
+		},
+		{
+			name:        "send chat room message, fail due to missing chat room",
+			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime),
+			inputSNAC: oscar.SNACMessage{
+				Frame: oscar.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+					Cookie:  1234,
+					Channel: 14,
+					TLVRestBlock: oscar.TLVRestBlock{
+						TLVList: oscar.TLVList{
+							{
+								Tag:   oscar.ChatTLVPublicWhisperFlag,
+								Value: []byte{},
+							},
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				chatRegistryParams: chatRegistryParams{
+					chatRegistryRetrieveParams: chatRegistryRetrieveParams{
+						chatID: "the-chat-id",
+						err:    state.ErrChatRoomNotFound,
+					},
+				},
+			},
+			wantErr: state.ErrChatRoomNotFound,
 		},
 	}
 
@@ -130,20 +177,20 @@ func TestChatService_ChannelMsgToHostHandler(t *testing.T) {
 			chatID := "the-chat-id"
 
 			chatSessMgr := newMockChatMessageRelayer(t)
-			chatSessMgr.EXPECT().
-				RelayToAllExcept(mock.Anything, tc.userSession, tc.expectSNACToParticipants)
-
-			svc := NewChatService(state.NewChatRegistry())
-			svc.chatRegistry.Register(state.ChatRoom{Cookie: chatID}, chatSessMgr)
-
-			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, chatID,
-				tc.inputSNAC.Frame, tc.inputSNAC.Body.(oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost))
-			assert.NoError(t, err)
-
-			if tc.expectOutput.Frame == (oscar.SNACFrame{}) {
-				return // handler doesn't return response
+			if tc.mockParams.chatRegistryRetrieveParams.err == nil {
+				chatSessMgr.EXPECT().
+					RelayToAllExcept(mock.Anything, tc.userSession, tc.expectSNACToParticipants)
 			}
 
+			chatRegistry := newMockChatRegistry(t)
+			chatRegistry.EXPECT().
+				Retrieve(tc.mockParams.chatRegistryRetrieveParams.chatID).
+				Return(state.ChatRoom{}, chatSessMgr, tc.mockParams.chatRegistryRetrieveParams.err)
+
+			svc := NewChatService(chatRegistry)
+			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, chatID,
+				tc.inputSNAC.Frame, tc.inputSNAC.Body.(oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost))
+			assert.ErrorIs(t, err, tc.wantErr)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
 	}

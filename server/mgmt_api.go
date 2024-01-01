@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-	"github.com/mkaminski/goaim/state"
+	"github.com/mk6i/retro-aim-server/state"
 )
 
 type UserManager interface {
