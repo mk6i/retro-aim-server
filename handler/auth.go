@@ -75,13 +75,12 @@ func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session, chatI
 }
 
 // BUCPChallengeRequestHandler satisfies the client request for a random auth
-// key. It returns SNAC oscar.BUCPChallengeResponse. If the screen name in
-// TLV oscar.TLVScreenName in bodyIn is recognized as a valid user, the
-// response contains the account's auth key, which salt's the user's MD5
-// password hash. If the account is invalid, an error code is set in TLV
-// oscar.TLVErrorSubcode. If login credentials are invalid and app config
-// DisableAuth is true, a stub auth key is generated and a successful challenge
-// response is returned.
+// key. It returns SNAC oscar.BUCPChallengeResponse. If the screen name is
+// recognized as a valid user, the response contains the account's auth key,
+// which salts the user's MD5 password hash. If the account is invalid, an
+// error code is set in TLV oscar.TLVErrorSubcode. If login credentials are
+// invalid and app config DisableAuth is true, a stub auth key is generated and
+// a successful challenge response is returned.
 func (s AuthService) BUCPChallengeRequestHandler(bodyIn oscar.SNAC_0x17_0x06_BUCPChallengeRequest, newUUIDFn func() uuid.UUID) (oscar.SNACMessage, error) {
 	screenName, exists := bodyIn.String(oscar.TLVScreenName)
 	if !exists {

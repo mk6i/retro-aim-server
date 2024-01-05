@@ -7,13 +7,20 @@ import (
 	"github.com/mk6i/retro-aim-server/state"
 )
 
+// NewBuddyService creates a new instance of BuddyService.
 func NewBuddyService() *BuddyService {
 	return &BuddyService{}
 }
 
+// BuddyService provides functionality for the buddy food group, which sends
+// clients notifications about the state of users on their buddy list. The food
+// group is used by old versions of AIM not currently supported by Retro Aim
+// Server. BuddyService just exists to satisfy AIM 5.x's buddy rights requests.
+// It may be expanded in the future to support older versions of AIM.
 type BuddyService struct {
 }
 
+// RightsQueryHandler returns buddy list service parameters.
 func (s BuddyService) RightsQueryHandler(_ context.Context, frameIn oscar.SNACFrame) oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{

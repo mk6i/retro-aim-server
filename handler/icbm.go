@@ -12,15 +12,20 @@ const (
 	evilDeltaAnon = uint16(30)
 )
 
+// NewICBMService returns a new instance of ICBMService.
 func NewICBMService(messageRelayer MessageRelayer, feedbagManager FeedbagManager) *ICBMService {
 	return &ICBMService{messageRelayer: messageRelayer, feedbagManager: feedbagManager}
 }
 
+// ICBMService implements the ICBM food group, which is responsible for sending
+// and receiving instant messages and associated functionality such as warning,
+// typing events, etc.
 type ICBMService struct {
 	messageRelayer MessageRelayer
 	feedbagManager FeedbagManager
 }
 
+// ParameterQueryHandler returns ICBM service parameters.
 func (s ICBMService) ParameterQueryHandler(_ context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage {
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
@@ -39,6 +44,10 @@ func (s ICBMService) ParameterQueryHandler(_ context.Context, inFrame oscar.SNAC
 	}
 }
 
+// ChannelMsgToHostHandler relays the instant message SNAC
+// oscar.ICBMChannelMsgToHost from the sender to the intended recipient. It
+// returns oscar.ICBMHostAck if the oscar.ICBMChannelMsgToHost message contains
+// a request acknowledgement flag.
 func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*oscar.SNACMessage, error) {
 	blocked, err := s.feedbagManager.BlockedState(sess.ScreenName(), inBody.ScreenName)
 	if err != nil {
@@ -125,6 +134,8 @@ func (s ICBMService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 	}, nil
 }
 
+// ClientEventHandler relays SNAC oscar.ICBMClientEvent typing events from the
+// sender to the recipient.
 func (s ICBMService) ClientEventHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x04_0x14_ICBMClientEvent) error {
 	blocked, err := s.feedbagManager.BlockedState(sess.ScreenName(), inBody.ScreenName)
 
@@ -151,6 +162,13 @@ func (s ICBMService) ClientEventHandler(ctx context.Context, sess *state.Session
 	}
 }
 
+// EvilRequestHandler handles user warning (a.k.a evil) notifications. It
+// receives oscar.ICBMEvilRequest warning SNAC, increments the warned user's
+// warning level, and sends the warned user a notification informing them that
+// they have been warned. The user may choose to warn anonymously or
+// non-anonymously. It returns SNAC oscar.ICBMEvilReply to confirm that the
+// warning was sent. Users may not warn themselves or warn users they have
+// blocked or are blocked by.
 func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x04_0x08_ICBMEvilRequest) (oscar.SNACMessage, error) {
 	// don't let users warn themselves, it causes the AIM client to go into a
 	// weird state.
@@ -218,6 +236,7 @@ func (s ICBMService) EvilRequestHandler(ctx context.Context, sess *state.Session
 		Body: notif,
 	})
 
+	// inform the warned user's buddies that their warning level has increased
 	if err := broadcastArrival(ctx, recipSess, s.messageRelayer, s.feedbagManager); err != nil {
 		return oscar.SNACMessage{}, nil
 	}

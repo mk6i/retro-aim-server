@@ -56,7 +56,7 @@ func (s OServiceService) ClientVersionsHandler(_ context.Context, frame oscar.SN
 // Instead, the provided values inform the client about the recommended
 // client-side rate limits.
 //
-// It returns SNAC osca.rOServiceRateParamsReply containing rate limits for
+// It returns SNAC oscar.OServiceRateParamsReply containing rate limits for
 // sending Instant Messages (IMs) and chat messages. More refined limits may be
 // added in the future if/when server rate limiting is implemented.
 func (s OServiceService) RateParamsQueryHandler(_ context.Context, inFrame oscar.SNACFrame) oscar.SNACMessage {

@@ -7,16 +7,22 @@ import (
 	"github.com/mk6i/retro-aim-server/state"
 )
 
+// NewChatService creates a new instance of ChatService.
 func NewChatService(chatRegistry ChatRegistry) *ChatService {
 	return &ChatService{
 		chatRegistry: chatRegistry,
 	}
 }
 
+// ChatService implements chat message handling for the chat food group.
 type ChatService struct {
 	chatRegistry ChatRegistry
 }
 
+// ChannelMsgToHostHandler relays oscar.ChatChannelMsgToClient SNAC sent from a
+// user to the other chat room participants. It returns the same
+// oscar.ChatChannelMsgToClient message back to the user if the chat reflection
+// TLV flag is set, otherwise return nil.
 func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, chatID string, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.SNACMessage, error) {
 	frameOut := oscar.SNACFrame{
 		FoodGroup: oscar.Chat,
