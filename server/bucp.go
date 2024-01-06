@@ -32,7 +32,7 @@ type BUCPAuthService struct {
 // validates users credentials and, upon success, provides an auth cookie and
 // hostname information for connecting to the BOS service.
 func (rt BUCPAuthService) Start() {
-	addr := Address("", rt.Config.OSCARPort)
+	addr := Address("", rt.Config.BUCPPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		rt.Logger.Error("unable to bind OSCAR server address", "err", err.Error())

@@ -30,7 +30,16 @@ builds:
         {{- if eq .Os "windows" }}CC=x86_64-w64-mingw32-gcc{{- end }}
 
 archives:
-  - format: binary
+  - format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - src: files/package/settings.env
+        strip_parent: true
+      - src: files/package/run.{{- if eq .Os "windows" }}bat{{ else }}sh{{ end }}
+        strip_parent: true
     name_template: >-
       {{ .ProjectName }}.{{ .Version }}.
       {{- if eq .Os "darwin"}}mac
