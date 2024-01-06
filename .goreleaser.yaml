@@ -1,0 +1,39 @@
+version: 1
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: retro_aim_server
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd
+    ignore:
+      - goos: linux
+        goarch: arm64
+      - goos: windows
+        goarch: arm64
+    env:
+      - CGO_ENABLED=1
+      - >-
+        {{- if eq .Os "darwin" }}
+          {{- if eq .Arch "amd64"}}CC=o64-clang{{- end }}
+          {{- if eq .Arch "arm64"}}CC=oa64-clang{{- end }}
+        {{- end }}
+        {{- if eq .Os "linux" }}CC=x86_64-linux-gnu-gcc{{- end }}
+        {{- if eq .Os "windows" }}CC=x86_64-w64-mingw32-gcc{{- end }}
+
+archives:
+  - format: binary
+    name_template: >-
+      {{ .ProjectName }}.{{ .Version }}.
+      {{- if eq .Os "darwin"}}mac
+      {{- else }}{{ .Os }}{{ end }}.
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
