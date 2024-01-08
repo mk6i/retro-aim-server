@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,7 @@ import (
 func TestHandleChatConnection_Notification(t *testing.T) {
 
 	ctx := context.Background()
-	cfg := Config{}
+	cfg := config.Config{}
 	logger := NewLogger(cfg)
 
 	sessionManager := state.NewInMemorySessionManager(logger)
@@ -79,7 +80,7 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 
 	ctx := context.Background()
-	cfg := Config{}
+	cfg := config.Config{}
 	logger := NewLogger(cfg)
 
 	sessionManager := state.NewInMemorySessionManager(logger)
@@ -134,7 +135,7 @@ func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 func TestHandleChatConnection_SessionClosed(t *testing.T) {
 
 	ctx := context.Background()
-	cfg := Config{}
+	cfg := config.Config{}
 	logger := NewLogger(cfg)
 
 	sessionManager := state.NewInMemorySessionManager(logger)

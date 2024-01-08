@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/mk6i/retro-aim-server/state"
 )
@@ -14,7 +15,7 @@ type BOSRootRouter struct {
 	AlertRouter
 	BuddyRouter
 	ChatNavRouter
-	Config
+	config.Config
 	FeedbagRouter
 	ICBMRouter
 	LocateRouter

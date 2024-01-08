@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
-	"github.com/mk6i/retro-aim-server/server"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -25,7 +25,7 @@ func TestAuthService_BUCPLoginRequestHandler(t *testing.T) {
 		// name is the unit test name
 		name string
 		// cfg is the app configuration
-		cfg server.Config
+		cfg config.Config
 		// inputSNAC is the SNAC sent from the client to the server
 		inputSNAC oscar.SNAC_0x17_0x02_BUCPLoginRequest
 		// mockParams is the list of params sent to mocks that satisfy this
@@ -40,7 +40,7 @@ func TestAuthService_BUCPLoginRequestHandler(t *testing.T) {
 	}{
 		{
 			name: "user provides valid credentials and logs in successfully",
-			cfg: server.Config{
+			cfg: config.Config{
 				OSCARHost: "127.0.0.1",
 				BOSPort:   1234,
 			},
@@ -89,7 +89,7 @@ func TestAuthService_BUCPLoginRequestHandler(t *testing.T) {
 		},
 		{
 			name: "user logs in with non-existent screen name--account is created and logged in successfully",
-			cfg: server.Config{
+			cfg: config.Config{
 				OSCARHost:   "127.0.0.1",
 				BOSPort:     1234,
 				DisableAuth: true,
@@ -147,7 +147,7 @@ func TestAuthService_BUCPLoginRequestHandler(t *testing.T) {
 		},
 		{
 			name: "user logs in with invalid password--account is created and logged in successfully",
-			cfg: server.Config{
+			cfg: config.Config{
 				OSCARHost:   "127.0.0.1",
 				BOSPort:     1234,
 				DisableAuth: true,
@@ -205,7 +205,7 @@ func TestAuthService_BUCPLoginRequestHandler(t *testing.T) {
 		},
 		{
 			name: "user provides invalid password--account creation fails due to user creation runtime error",
-			cfg: server.Config{
+			cfg: config.Config{
 				DisableAuth: true,
 			},
 			inputSNAC: oscar.SNAC_0x17_0x02_BUCPLoginRequest{
@@ -233,7 +233,7 @@ func TestAuthService_BUCPLoginRequestHandler(t *testing.T) {
 		},
 		{
 			name: "user provides invalid password--account creation fails due to user upsert runtime error",
-			cfg: server.Config{
+			cfg: config.Config{
 				DisableAuth: true,
 			},
 			inputSNAC: oscar.SNAC_0x17_0x02_BUCPLoginRequest{
@@ -267,7 +267,7 @@ func TestAuthService_BUCPLoginRequestHandler(t *testing.T) {
 		},
 		{
 			name: "user provides invalid password and receives invalid login response",
-			cfg: server.Config{
+			cfg: config.Config{
 				OSCARHost: "127.0.0.1",
 				BOSPort:   1234,
 			},
@@ -368,7 +368,7 @@ func TestAuthService_BUCPChallengeRequestHandler(t *testing.T) {
 		// name is the unit test name
 		name string
 		// cfg is the app configuration
-		cfg server.Config
+		cfg config.Config
 		// inputSNAC is the SNAC sent from the client to the server
 		inputSNAC oscar.SNAC_0x17_0x06_BUCPChallengeRequest
 		// mockParams is the list of params sent to mocks that satisfy this
@@ -381,7 +381,7 @@ func TestAuthService_BUCPChallengeRequestHandler(t *testing.T) {
 	}{
 		{
 			name: "login with valid username, expect OK login response",
-			cfg: server.Config{
+			cfg: config.Config{
 				OSCARHost: "127.0.0.1",
 				BOSPort:   1234,
 			},
@@ -417,7 +417,7 @@ func TestAuthService_BUCPChallengeRequestHandler(t *testing.T) {
 		},
 		{
 			name: "login with invalid username, expect OK login response (Cfg.DisableAuth=true)",
-			cfg: server.Config{
+			cfg: config.Config{
 				OSCARHost:   "127.0.0.1",
 				BOSPort:     1234,
 				DisableAuth: true,
@@ -451,7 +451,7 @@ func TestAuthService_BUCPChallengeRequestHandler(t *testing.T) {
 		},
 		{
 			name: "login with invalid username, expect failed login response (Cfg.DisableAuth=false)",
-			cfg: server.Config{
+			cfg: config.Config{
 				OSCARHost: "127.0.0.1",
 				BOSPort:   1234,
 			},
@@ -545,7 +545,7 @@ func TestAuthService_RetrieveChatSession_HappyPath(t *testing.T) {
 		Retrieve(chatID).
 		Return(state.ChatRoom{}, sessionManager, nil)
 
-	svc := NewAuthService(server.Config{}, nil, nil, nil, nil, chatRegistry)
+	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry)
 
 	have, err := svc.RetrieveChatSession(chatID, sess.ID())
 	assert.NoError(t, err)
@@ -561,7 +561,7 @@ func TestAuthService_RetrieveChatSession_ChatNotFound(t *testing.T) {
 		Retrieve(chatID).
 		Return(state.ChatRoom{}, nil, state.ErrChatRoomNotFound)
 
-	svc := NewAuthService(server.Config{}, nil, nil, nil, nil, chatRegistry)
+	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry)
 
 	_, err := svc.RetrieveChatSession(chatID, sess.ID())
 	assert.ErrorIs(t, err, state.ErrChatRoomNotFound)
@@ -581,7 +581,7 @@ func TestAuthService_RetrieveChatSession_SessionNotFound(t *testing.T) {
 		Retrieve(chatID).
 		Return(state.ChatRoom{}, sessionManager, nil)
 
-	svc := NewAuthService(server.Config{}, nil, nil, nil, nil, chatRegistry)
+	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry)
 
 	have, err := svc.RetrieveChatSession(chatID, sess.ID())
 	assert.NoError(t, err)
@@ -596,7 +596,7 @@ func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
 		RetrieveSession(sess.ID()).
 		Return(sess)
 
-	svc := NewAuthService(server.Config{}, sessionManager, nil, nil, nil, nil)
+	svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil)
 
 	have, err := svc.RetrieveBOSSession(sess.ID())
 	assert.NoError(t, err)
@@ -611,7 +611,7 @@ func TestAuthService_RetrieveBOSSession_SessionNotFound(t *testing.T) {
 		RetrieveSession(sess.ID()).
 		Return(nil)
 
-	svc := NewAuthService(server.Config{}, sessionManager, nil, nil, nil, nil)
+	svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil)
 
 	have, err := svc.RetrieveBOSSession(sess.ID())
 	assert.NoError(t, err)
@@ -751,7 +751,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 				Retrieve(tt.chatRoom.Cookie).
 				Return(tt.chatRoom, chatSessionManager, tt.wantErr)
 
-			svc := NewAuthService(server.Config{}, nil, nil, nil, nil, chatRegistry)
+			svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry)
 
 			err := svc.SignoutChat(nil, tt.userSession, tt.chatRoom.Cookie)
 			assert.ErrorIs(t, err, tt.wantErr)
@@ -856,7 +856,7 @@ func TestAuthService_Signout(t *testing.T) {
 				sessionManager.EXPECT().RemoveSession(params.sess)
 			}
 
-			svc := NewAuthService(server.Config{}, sessionManager, messageRelayer, feedbagManager, nil, nil)
+			svc := NewAuthService(config.Config{}, sessionManager, messageRelayer, feedbagManager, nil, nil)
 
 			err := svc.Signout(nil, tt.userSession)
 			assert.ErrorIs(t, err, tt.wantErr)

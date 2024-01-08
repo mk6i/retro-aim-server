@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/google/uuid"
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
 )
 
@@ -25,7 +26,7 @@ func StartManagementAPI(userManager UserManager, logger *slog.Logger) {
 	mux.HandleFunc("/user", uh.ServeHTTP)
 
 	//todo make port configurable
-	addr := Address("", 8080)
+	addr := config.Address("", 8080)
 	logger.Info("starting management API server", "addr", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		logger.Error("unable to bind management API address address", "err", err.Error())

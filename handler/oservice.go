@@ -7,19 +7,20 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/mk6i/retro-aim-server/server"
 	"github.com/mk6i/retro-aim-server/state"
 )
 
 // NewOServiceService creates a new instance of OServiceService.
-func NewOServiceService(cfg server.Config, messageRelayer MessageRelayer, feedbagManager FeedbagManager) *OServiceService {
+func NewOServiceService(cfg config.Config, messageRelayer MessageRelayer, feedbagManager FeedbagManager) *OServiceService {
 	return &OServiceService{cfg: cfg, messageRelayer: messageRelayer, feedbagManager: feedbagManager}
 }
 
 // OServiceService provides handlers for the OService food group.
 type OServiceService struct {
-	cfg            server.Config
+	cfg            config.Config
 	feedbagManager FeedbagManager
 	messageRelayer MessageRelayer
 }
@@ -366,7 +367,7 @@ func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *st
 		Body: oscar.SNAC_0x01_0x05_OServiceServiceResponse{
 			TLVRestBlock: oscar.TLVRestBlock{
 				TLVList: oscar.TLVList{
-					oscar.NewTLV(oscar.OServiceTLVTagsReconnectHere, server.Address(s.cfg.OSCARHost, s.cfg.ChatPort)),
+					oscar.NewTLV(oscar.OServiceTLVTagsReconnectHere, config.Address(s.cfg.OSCARHost, s.cfg.ChatPort)),
 					oscar.NewTLV(oscar.OServiceTLVTagsLoginCookie, server.ChatCookie{
 						Cookie: []byte(room.Cookie),
 						SessID: sess.ID(),

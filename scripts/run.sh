@@ -1,12 +1,12 @@
 #!/bin/sh
-# This script launches Retro AIM Server. By default, it assumes that the
-# executable and configuration file are located in the same directory as this
-# script.
+# This script launches Retro AIM Server under MacOS/Linux. Because it assumes
+# that the executable and settings.env file are located in the same directory
+# as this script, the script can be run from any directory.
 set -e
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ENV_FILE="$SCRIPT_DIR/settings.env"
-EXEC_FILE="$SCRIPT_DIR/retro-aim-server"
+EXEC_FILE="$SCRIPT_DIR/retro_aim_server"
 
 # Load the settings file.
 if [ -f "$ENV_FILE" ]; then

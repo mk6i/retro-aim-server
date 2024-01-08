@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 )
 
@@ -17,7 +18,7 @@ var levelNames = map[slog.Leveler]string{
 	LevelTrace: "TRACE",
 }
 
-func NewLogger(cfg Config) *slog.Logger {
+func NewLogger(cfg config.Config) *slog.Logger {
 	var level slog.Level
 	switch strings.ToLower(cfg.LogLevel) {
 	case "trace":

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -207,7 +208,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 				Return(tc.output, tc.handlerErr).
 				Maybe()
 
-			router := NewLocateRouter(svc, NewLogger(Config{}))
+			router := NewLocateRouter(svc, NewLogger(config.Config{}))
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))

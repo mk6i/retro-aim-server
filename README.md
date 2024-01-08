@@ -37,7 +37,7 @@ Server configuration is set through environment variables. The following are the
 DISABLE_AUTH=true \
 OSCAR_HOST=192.168.64.1 \
 DB_PATH=./aim.db \
-go run ./cmd/main.go
+go run ./cmd/server/main.go
 ```
 
 ### User Management

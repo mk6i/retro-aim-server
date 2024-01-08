@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/mk6i/retro-aim-server/state"
 )
@@ -26,7 +27,7 @@ type BOSRouter interface {
 type BOSService struct {
 	AuthHandler
 	BOSRouter
-	Config
+	config.Config
 	OServiceBOSRouter
 }
 
@@ -34,7 +35,7 @@ type BOSService struct {
 // authentication handshake sequences are handled by this method. The remaining
 // requests are relayed to BOSRouter.
 func (rt BOSService) Start() {
-	addr := Address("", rt.Config.BOSPort)
+	addr := config.Address("", rt.Config.BOSPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		rt.Logger.Error("unable to bind BOS server address", "err", err.Error())

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/google/uuid"
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/mk6i/retro-aim-server/state"
 )
@@ -24,7 +25,7 @@ type AuthHandler interface {
 // the first service that the AIM client connects to in the login flow.
 type BUCPAuthService struct {
 	AuthHandler
-	Config
+	config.Config
 	RouteLogger
 }
 
@@ -32,7 +33,7 @@ type BUCPAuthService struct {
 // validates users credentials and, upon success, provides an auth cookie and
 // hostname information for connecting to the BOS service.
 func (rt BUCPAuthService) Start() {
-	addr := Address("", rt.Config.BUCPPort)
+	addr := config.Address("", rt.Config.BUCPPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		rt.Logger.Error("unable to bind OSCAR server address", "err", err.Error())

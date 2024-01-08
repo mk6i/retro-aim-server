@@ -6,13 +6,13 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
-	"github.com/mk6i/retro-aim-server/server"
 	"github.com/mk6i/retro-aim-server/state"
 )
 
 // NewAuthService creates a new instance of AuthService.
-func NewAuthService(cfg server.Config, sessionManager SessionManager, messageRelayer MessageRelayer, feedbagManager FeedbagManager, userManager UserManager, chatRegistry ChatRegistry) *AuthService {
+func NewAuthService(cfg config.Config, sessionManager SessionManager, messageRelayer MessageRelayer, feedbagManager FeedbagManager, userManager UserManager, chatRegistry ChatRegistry) *AuthService {
 	return &AuthService{
 		chatRegistry:   chatRegistry,
 		config:         cfg,
@@ -26,7 +26,7 @@ func NewAuthService(cfg server.Config, sessionManager SessionManager, messageRel
 // AuthService provides user BUCP login and session management services.
 type AuthService struct {
 	chatRegistry   ChatRegistry
-	config         server.Config
+	config         config.Config
 	feedbagManager FeedbagManager
 	messageRelayer MessageRelayer
 	sessionManager SessionManager
@@ -171,7 +171,7 @@ func (s AuthService) BUCPLoginRequestHandler(bodyIn oscar.SNAC_0x17_0x02_BUCPLog
 	if loginOK {
 		sess := s.sessionManager.AddSession(newUUIDFn().String(), screenName)
 		snacPayloadOut.AppendList([]oscar.TLV{
-			oscar.NewTLV(oscar.TLVReconnectHere, server.Address(s.config.OSCARHost, s.config.BOSPort)),
+			oscar.NewTLV(oscar.TLVReconnectHere, config.Address(s.config.OSCARHost, s.config.BOSPort)),
 			oscar.NewTLV(oscar.TLVAuthorizationCookie, sess.ID()),
 		})
 	} else {

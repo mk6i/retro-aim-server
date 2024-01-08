@@ -5,6 +5,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/stretchr/testify/assert"
 )
@@ -60,7 +61,7 @@ func TestAlertRouter_RouteAlert(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			router := NewAlertRouter(NewLogger(Config{}))
+			router := NewAlertRouter(NewLogger(config.Config{}))
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))

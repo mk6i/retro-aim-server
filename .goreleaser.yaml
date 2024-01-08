@@ -5,7 +5,7 @@ before:
     - go mod tidy
 
 builds:
-  - id: retro_aim_server
+  - binary: retro_aim_server
     goos:
       - darwin
       - linux
@@ -13,7 +13,7 @@ builds:
     goarch:
       - amd64
       - arm64
-    main: ./cmd
+    main: ./cmd/server
     ignore:
       - goos: linux
         goarch: arm64
@@ -34,15 +34,17 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+    wrap_in_directory: true
     files:
       - LICENSE
-      - src: files/package/settings.env
+      - src: config/settings.{{- if eq .Os "windows" }}bat{{ else }}env{{ end }}
         strip_parent: true
-      - src: files/package/run.{{- if eq .Os "windows" }}bat{{ else }}sh{{ end }}
+      - src: scripts/run.{{- if eq .Os "windows" }}cmd{{ else }}sh{{ end }}
         strip_parent: true
     name_template: >-
-      {{ .ProjectName }}.{{ .Version }}.
-      {{- if eq .Os "darwin"}}mac
+      {{ .Binary }}.{{ .Version }}.
+      {{- if eq .Os "darwin"}}macos
       {{- else }}{{ .Os }}{{ end }}.
-      {{- if eq .Arch "amd64" }}x86_64
+      {{- if eq .Os "darwin"}}{{- if eq .Arch "amd64" }}intel_x86_64{{ else }}apple_silicon{{ end }}
+      {{- else if eq .Arch "amd64" }}x86_64
       {{- else }}{{ .Arch }}{{ end }}

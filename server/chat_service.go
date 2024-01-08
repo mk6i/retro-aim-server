@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/mk6i/retro-aim-server/state"
 )
@@ -28,13 +29,13 @@ type ChatServiceRouter interface {
 type ChatService struct {
 	AuthHandler
 	ChatServiceRouter
-	Config
+	config.Config
 	OServiceChatRouter
 }
 
 // Start creates a TCP server that implements that chat flow.
 func (rt ChatService) Start() {
-	addr := Address("", rt.Config.ChatPort)
+	addr := config.Address("", rt.Config.ChatPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		rt.Logger.Error("unable to bind chat server address", "err", err.Error())

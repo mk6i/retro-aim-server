@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/mk6i/retro-aim-server/oscar"
@@ -17,7 +18,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 		// name is the unit test name
 		name string
 		// config is the application config
-		cfg server.Config
+		cfg config.Config
 		// chatRoom is the chat room the user connects to
 		chatRoom *state.ChatRoom
 		// userSession is the session of the user requesting the chat service
@@ -46,7 +47,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 		},
 		{
 			name: "request info for connecting to chat room, return chat service and chat room metadata",
-			cfg: server.Config{
+			cfg: config.Config{
 				OSCARHost: "127.0.0.1",
 				ChatPort:  1234,
 			},
@@ -100,7 +101,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 		},
 		{
 			name: "request info for connecting to non-existent chat room, return SNAC error",
-			cfg: server.Config{
+			cfg: config.Config{
 				OSCARHost: "127.0.0.1",
 				ChatPort:  1234,
 			},
@@ -300,7 +301,7 @@ func TestSetUserInfoFieldsHandler(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			svc := NewOServiceService(server.Config{}, messageRelayer, feedbagManager)
+			svc := NewOServiceService(config.Config{}, messageRelayer, feedbagManager)
 			outputSNAC, err := svc.SetUserInfoFieldsHandler(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(oscar.SNAC_0x01_0x1E_OServiceSetUserInfoFields))
 			assert.ErrorIs(t, err, tc.expectErr)
@@ -316,7 +317,7 @@ func TestSetUserInfoFieldsHandler(t *testing.T) {
 }
 
 func TestOServiceService_RateParamsQueryHandler(t *testing.T) {
-	svc := NewOServiceService(server.Config{}, nil, nil)
+	svc := NewOServiceService(config.Config{}, nil, nil)
 
 	have := svc.RateParamsQueryHandler(nil, oscar.SNACFrame{RequestID: 1234})
 	want := oscar.SNACMessage{
@@ -510,7 +511,7 @@ func TestOServiceService_RateParamsQueryHandler(t *testing.T) {
 }
 
 func TestOServiceServiceForBOS_WriteOServiceHostOnline(t *testing.T) {
-	svc := NewOServiceServiceForBOS(*NewOServiceService(server.Config{}, nil, nil), nil)
+	svc := NewOServiceServiceForBOS(*NewOServiceService(config.Config{}, nil, nil), nil)
 
 	want := oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
@@ -535,7 +536,7 @@ func TestOServiceServiceForBOS_WriteOServiceHostOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForChat_WriteOServiceHostOnline(t *testing.T) {
-	svc := NewOServiceServiceForChat(*NewOServiceService(server.Config{}, nil, nil), nil)
+	svc := NewOServiceServiceForChat(*NewOServiceService(config.Config{}, nil, nil), nil)
 
 	want := oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
@@ -555,7 +556,7 @@ func TestOServiceServiceForChat_WriteOServiceHostOnline(t *testing.T) {
 }
 
 func TestOServiceService_ClientVersionsHandler(t *testing.T) {
-	svc := NewOServiceService(server.Config{}, nil, nil)
+	svc := NewOServiceService(config.Config{}, nil, nil)
 
 	want := oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
@@ -578,7 +579,7 @@ func TestOServiceService_ClientVersionsHandler(t *testing.T) {
 }
 
 func TestOServiceService_UserInfoQueryHandler(t *testing.T) {
-	svc := NewOServiceService(server.Config{}, nil, nil)
+	svc := NewOServiceService(config.Config{}, nil, nil)
 	sess := newTestSession("test-user")
 
 	want := oscar.SNACMessage{
@@ -659,7 +660,7 @@ func TestOServiceService_IdleNotificationHandler(t *testing.T) {
 				RelayToScreenNames(mock.Anything, tt.recipientBuddies, tt.broadcastMessage).
 				Maybe()
 
-			svc := NewOServiceService(server.Config{}, messageRelayer, feedbagManager)
+			svc := NewOServiceService(config.Config{}, messageRelayer, feedbagManager)
 
 			haveErr := svc.IdleNotificationHandler(nil, tt.sess, tt.bodyIn)
 			assert.ErrorIs(t, tt.wantErr, haveErr)

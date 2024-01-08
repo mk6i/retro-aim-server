@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -171,7 +172,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 					Maybe()
 			}
 
-			router := NewICBMRouter(NewLogger(Config{}), svc)
+			router := NewICBMRouter(NewLogger(config.Config{}), svc)
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))

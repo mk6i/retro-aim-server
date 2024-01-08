@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/handler"
 	"github.com/mk6i/retro-aim-server/state"
 
@@ -14,7 +15,7 @@ import (
 )
 
 func main() {
-	var cfg server.Config
+	var cfg config.Config
 	err := envconfig.Process("", &cfg)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "unable to process app config: %s", err.Error())

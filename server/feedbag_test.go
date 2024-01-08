@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -268,7 +269,7 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 				StartClusterHandler(mock.Anything, tc.input.Frame, tc.input.Body).
 				Maybe()
 
-			router := NewFeedbagRouter(NewLogger(Config{}), svc)
+			router := NewFeedbagRouter(NewLogger(config.Config{}), svc)
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))

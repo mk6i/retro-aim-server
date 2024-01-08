@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -252,7 +253,7 @@ func TestOServiceRouter_RouteOService_ForBOS(t *testing.T) {
 				Return(tc.handlerErr).
 				Maybe()
 
-			router := NewOServiceRouterForBOS(NewLogger(Config{}), svc, svcBOS)
+			router := NewOServiceRouterForBOS(NewLogger(config.Config{}), svc, svcBOS)
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))
@@ -530,7 +531,7 @@ func TestOServiceRouter_RouteOService_ForChat(t *testing.T) {
 				Return(tc.handlerErr).
 				Maybe()
 
-			router := NewOServiceRouterForChat(NewLogger(Config{}), svc, svcBOS)
+			router := NewOServiceRouterForChat(NewLogger(config.Config{}), svc, svcBOS)
 
 			bufIn := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.input.Body, bufIn))
