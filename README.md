@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/mk6i/retro-aim-server/assets/2894330/3011ee37-b2d2-4516-b9e9-3ca48324dc67">
+  <img src="https://github.com/mk6i/retro-aim-server/assets/2894330/cdd803b6-c9a1-4d86-88e2-168571f00d28">
 </p>
 
 [![codecov](https://codecov.io/github/mk6i/retro-aim-server/graph/badge.svg?token=MATKPP77JT)](https://codecov.io/github/mk6i/retro-aim-server)
