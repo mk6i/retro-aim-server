@@ -4,31 +4,22 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
-	"github.com/mk6i/retro-aim-server/state"
 )
-
-// BOSRouter is the interface that defines the entrypoint to the BOS service.
-type BOSRouter interface {
-	// Route unmarshalls the SNAC frame header from the reader stream to
-	// determine which food group to route to. The remainder of the reader
-	// stream is passed on to the food group routers for the final SNAC body
-	// extraction. Each response sent to the client via the writer stream
-	// increments the sequence number.
-	Route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32) error
-}
 
 // BOSService provides client connection lifecycle management for the BOS
 // service.
 type BOSService struct {
 	AuthHandler
-	BOSRouter
+	Logger *slog.Logger
+	OServiceBOSHandler
+	Router
 	config.Config
-	OServiceBOSRouter
 }
 
 // Start starts a TCP server and listens for connections. The initial
@@ -99,12 +90,5 @@ func (rt BOSService) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 		return err
 	}
 
-	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
-		return rt.Route(ctx, sess, r, w, seq)
-	}
-	fnAlertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, seq *uint32) error {
-		return sendSNAC(msg.Frame, msg.Body, seq, w)
-	}
-	dispatchIncomingMessages(ctx, sess, seq, rwc, rt.Logger, fnClientReqHandler, fnAlertHandler)
-	return nil
+	return dispatchIncomingMessages(ctx, sess, seq, rwc, rt.Logger, rt.Router, sendSNAC, rt.Config)
 }

@@ -90,15 +90,16 @@ func TestChatService_handleNewConnection(t *testing.T) {
 			Body: oscar.SNAC_0x01_0x03_OServiceHostOnline{},
 		})
 
-	bosRouter := newMockChatServiceRouter(t)
+	bosRouter := newMockRouter(t)
 	bosRouter.EXPECT().
 		Route(mock.Anything, sess, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(nil)
 
 	rt := ChatService{
-		AuthHandler:        authHandler,
-		OServiceChatRouter: NewOServiceRouterForChat(slog.Default(), nil, chatHandler),
-		ChatServiceRouter:  bosRouter,
+		AuthHandler:         authHandler,
+		Logger:              slog.Default(),
+		OServiceChatHandler: chatHandler,
+		Router:              bosRouter,
 	}
 	rwc := pipeRWC{
 		PipeReader: clientReader,

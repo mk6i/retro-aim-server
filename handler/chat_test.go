@@ -28,8 +28,9 @@ func TestChatService_ChannelMsgToHostHandler(t *testing.T) {
 		wantErr                  error
 	}{
 		{
-			name:        "send chat room message, expect acknowledgement to sender client",
-			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime),
+			name: "send chat room message, expect acknowledgement to sender client",
+			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime,
+				sessOptChatID("the-chat-id")),
 			inputSNAC: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					RequestID: 1234,
@@ -96,8 +97,9 @@ func TestChatService_ChannelMsgToHostHandler(t *testing.T) {
 			},
 		},
 		{
-			name:        "send chat room message, don't expect acknowledgement to sender client",
-			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime),
+			name: "send chat room message, don't expect acknowledgement to sender client",
+			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime,
+				sessOptChatID("the-chat-id")),
 			inputSNAC: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					RequestID: 1234,
@@ -141,8 +143,9 @@ func TestChatService_ChannelMsgToHostHandler(t *testing.T) {
 			},
 		},
 		{
-			name:        "send chat room message, fail due to missing chat room",
-			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime),
+			name: "send chat room message, fail due to missing chat room",
+			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime,
+				sessOptChatID("the-chat-id")),
 			inputSNAC: oscar.SNACMessage{
 				Frame: oscar.SNACFrame{
 					RequestID: 1234,
@@ -174,8 +177,6 @@ func TestChatService_ChannelMsgToHostHandler(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			chatID := "the-chat-id"
-
 			chatSessMgr := newMockChatMessageRelayer(t)
 			if tc.mockParams.chatRegistryRetrieveParams.err == nil {
 				chatSessMgr.EXPECT().
@@ -188,8 +189,8 @@ func TestChatService_ChannelMsgToHostHandler(t *testing.T) {
 				Return(state.ChatRoom{}, chatSessMgr, tc.mockParams.chatRegistryRetrieveParams.err)
 
 			svc := NewChatService(chatRegistry)
-			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, chatID,
-				tc.inputSNAC.Frame, tc.inputSNAC.Body.(oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost))
+			outputSNAC, err := svc.ChannelMsgToHostHandler(context.Background(), tc.userSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost))
 			assert.ErrorIs(t, err, tc.wantErr)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})

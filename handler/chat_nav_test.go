@@ -11,13 +11,14 @@ import (
 )
 
 func TestChatNavService_CreateRoomHandler(t *testing.T) {
-	userSess := newTestSession("user-screen-name", sessOptCannedID)
+	bosSess := newTestSession("user-screen-name", sessOptCannedID)
+	chatSess := &state.Session{}
 
 	chatRegistry := state.NewChatRegistry()
 
 	sessionManager := newMockSessionManager(t)
-	sessionManager.EXPECT().AddSession(userSess.ID(), userSess.ScreenName()).
-		Return(&state.Session{})
+	sessionManager.EXPECT().AddSession(bosSess.ID(), bosSess.ScreenName()).
+		Return(chatSess)
 
 	newChatRoom := func() state.ChatRoom {
 		return state.ChatRoom{
@@ -45,8 +46,10 @@ func TestChatNavService_CreateRoomHandler(t *testing.T) {
 	}
 
 	svc := NewChatNavService(nil, chatRegistry, newChatRoom, newChatSessMgr)
-	outputSNAC, err := svc.CreateRoomHandler(context.Background(), userSess, inFrame, inBody)
+	outputSNAC, err := svc.CreateRoomHandler(context.Background(), bosSess, inFrame, inBody)
 	assert.NoError(t, err)
+
+	assert.Equal(t, chatSess.ChatID(), newChatRoom().Cookie)
 
 	expectChatRoom := state.ChatRoom{
 		Cookie:         "dummy-cookie",
@@ -58,6 +61,8 @@ func TestChatNavService_CreateRoomHandler(t *testing.T) {
 	}
 	chatRoom, _, err := chatRegistry.Retrieve("dummy-cookie")
 	assert.NoError(t, err)
+
+	// assert the user session is linked to the chat room
 	assert.Equal(t, expectChatRoom, chatRoom)
 
 	expectSNAC := oscar.SNACMessage{

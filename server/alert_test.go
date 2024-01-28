@@ -69,7 +69,7 @@ func TestAlertRouter_RouteAlert(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteAlert(context.Background(), tc.input.Frame)
+			err := router.Route(context.Background(), nil, tc.input.Frame, nil, nil, nil)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

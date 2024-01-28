@@ -248,6 +248,13 @@ func sessOptCannedSignonTime(session *state.Session) {
 	session.SetSignonTime(time.UnixMilli(1696790127565))
 }
 
+// sessOptChatID sets chat ID on the session object
+func sessOptChatID(chatID string) func(session *state.Session) {
+	return func(session *state.Session) {
+		session.SetChatID(chatID)
+	}
+}
+
 // sessOptCannedSignonTime sets the invisible flag to true on the session
 // object
 func sessOptInvisible(session *state.Session) {

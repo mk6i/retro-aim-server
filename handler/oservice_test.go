@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestReceiveAndSendServiceRequest(t *testing.T) {
+func TestOServiceServiceForBOS_ServiceRequestHandler(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -100,7 +100,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "request info for connecting to non-existent chat room, return SNAC error",
+			name: "request info for connecting to non-existent chat room, return ErrChatRoomNotFound",
 			cfg: config.Config{
 				OSCARHost: "127.0.0.1",
 				ChatPort:  1234,
@@ -124,7 +124,7 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 					},
 				},
 			},
-			expectErr: server.ErrUnsupportedSubGroup,
+			expectErr: state.ErrChatRoomNotFound,
 		},
 	}
 
@@ -135,10 +135,11 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			//
 			sessionManager := newMockSessionManager(t)
 			chatRegistry := state.NewChatRegistry()
+			chatSess := &state.Session{}
 			if tc.chatRoom != nil {
 				sessionManager.EXPECT().
 					AddSession(tc.userSession.ID(), tc.userSession.ScreenName()).
-					Return(&state.Session{}).
+					Return(chatSess).
 					Maybe()
 				chatRegistry.Register(*tc.chatRoom, sessionManager)
 			}
@@ -155,6 +156,8 @@ func TestReceiveAndSendServiceRequest(t *testing.T) {
 			if tc.expectErr != nil {
 				return
 			}
+			// assert the user session is linked to the chat room
+			assert.Equal(t, chatSess.ChatID(), tc.chatRoom.Cookie)
 			//
 			// verify output
 			//
@@ -809,8 +812,8 @@ func TestOServiceServiceForBOS_ClientOnlineHandler(t *testing.T) {
 }
 
 func TestOServiceServiceForChat_ClientOnlineHandler(t *testing.T) {
-	chatter1 := newTestSession("chatter-1")
-	chatter2 := newTestSession("chatter-2")
+	chatter1 := newTestSession("chatter-1", sessOptChatID("the-cookie"))
+	chatter2 := newTestSession("chatter-2", sessOptChatID("the-cookie"))
 	chatRoom := state.ChatRoom{
 		Cookie:         "the-cookie",
 		DetailLevel:    1,
@@ -935,7 +938,7 @@ func TestOServiceServiceForChat_ClientOnlineHandler(t *testing.T) {
 				messageRelayer: chatMessageRelayer,
 			}, chatRegistry)
 
-			haveErr := svc.ClientOnlineHandler(nil, tt.joiningChatter, chatRoom.Cookie)
+			haveErr := svc.ClientOnlineHandler(nil, tt.joiningChatter)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
 		})
 	}

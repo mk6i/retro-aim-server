@@ -90,9 +90,7 @@ func TestBUCPAuthService_handleNewConnection(t *testing.T) {
 
 	rt := BUCPAuthService{
 		AuthHandler: authHandler,
-		RouteLogger: RouteLogger{
-			Logger: slog.Default(),
-		},
+		Logger:      slog.Default(),
 	}
 	rwc := pipeRWC{
 		PipeReader: clientReader,

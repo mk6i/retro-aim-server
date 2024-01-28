@@ -216,7 +216,7 @@ func TestLocateRouter_RouteLocate(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteLocate(nil, nil, tc.input.Frame, bufIn, bufOut, &seq)
+			err := router.Route(nil, nil, tc.input.Frame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

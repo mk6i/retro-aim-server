@@ -28,6 +28,7 @@ const (
 // methods may be safely accessed by multiple goroutines.
 type Session struct {
 	awayMessage string
+	chatID      string
 	closed      bool
 	id          string
 	idle        bool
@@ -138,6 +139,20 @@ func (s *Session) AwayMessage() string {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.awayMessage
+}
+
+// SetChatID sets the chatID for the chat room the user is currently in.
+func (s *Session) SetChatID(chatID string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.chatID = chatID
+}
+
+// ChatID gets the chatID for the chat room the user is currently in.
+func (s *Session) ChatID() string {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.chatID
 }
 
 // TLVUserInfo returns a TLV list containing session information required by

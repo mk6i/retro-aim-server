@@ -22,7 +22,7 @@ type FeedbagHandler interface {
 func NewFeedbagRouter(logger *slog.Logger, handler FeedbagHandler) FeedbagRouter {
 	return FeedbagRouter{
 		FeedbagHandler: handler,
-		RouteLogger: RouteLogger{
+		routeLogger: routeLogger{
 			Logger: logger,
 		},
 	}
@@ -30,10 +30,10 @@ func NewFeedbagRouter(logger *slog.Logger, handler FeedbagHandler) FeedbagRouter
 
 type FeedbagRouter struct {
 	FeedbagHandler
-	RouteLogger
+	routeLogger
 }
 
-func (rt FeedbagRouter) RouteFeedbag(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt FeedbagRouter) Route(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch inFrame.SubGroup {
 	case oscar.FeedbagRightsQuery:
 		inBody := oscar.SNAC_0x13_0x02_FeedbagRightsQuery{}

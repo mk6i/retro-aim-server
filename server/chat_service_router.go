@@ -2,49 +2,24 @@ package server
 
 import (
 	"context"
-	"errors"
 	"io"
 
-	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/mk6i/retro-aim-server/state"
 )
 
-type ChatServiceRooterRouter struct {
-	ChatRouter
-	config.Config
-	OServiceChatRouter
+type ChatServiceRouter struct {
+	ChatRouter         Router
+	OServiceChatRouter Router
 }
 
-func (rt ChatServiceRooterRouter) Route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32, chatID string) error {
-	inFrame := oscar.SNACFrame{}
-	if err := oscar.Unmarshal(&inFrame, r); err != nil {
-		return err
+func (rt ChatServiceRouter) Route(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+	switch inFrame.FoodGroup {
+	case oscar.OService:
+		return rt.OServiceChatRouter.Route(ctx, sess, inFrame, r, w, sequence)
+	case oscar.Chat:
+		return rt.ChatRouter.Route(ctx, sess, inFrame, r, w, sequence)
+	default:
+		return ErrUnsupportedSubGroup
 	}
-
-	err := func() error {
-		switch inFrame.FoodGroup {
-		case oscar.OService:
-			return rt.RouteOService(ctx, sess, chatID, inFrame, r, w, sequence)
-		case oscar.Chat:
-			return rt.RouteChat(ctx, sess, chatID, inFrame, r, w, sequence)
-		default:
-			return ErrUnsupportedSubGroup
-		}
-	}()
-
-	if err != nil {
-		rt.logRequestError(ctx, inFrame, err)
-		if errors.Is(err, ErrUnsupportedSubGroup) {
-			if err1 := sendInvalidSNACErr(inFrame, w, sequence); err1 != nil {
-				err = errors.Join(err1, err)
-			}
-			if rt.Config.FailFast {
-				panic(err.Error())
-			}
-			return nil
-		}
-	}
-
-	return err
 }

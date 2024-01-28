@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 
@@ -26,7 +27,7 @@ type AuthHandler interface {
 type BUCPAuthService struct {
 	AuthHandler
 	config.Config
-	RouteLogger
+	Logger *slog.Logger
 }
 
 // Start creates a TCP server that implements the BUCP authentication flow. It

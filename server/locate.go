@@ -20,7 +20,7 @@ type LocateHandler interface {
 func NewLocateRouter(handler LocateHandler, logger *slog.Logger) LocateRouter {
 	return LocateRouter{
 		LocateHandler: handler,
-		RouteLogger: RouteLogger{
+		routeLogger: routeLogger{
 			Logger: logger,
 		},
 	}
@@ -28,10 +28,10 @@ func NewLocateRouter(handler LocateHandler, logger *slog.Logger) LocateRouter {
 
 type LocateRouter struct {
 	LocateHandler
-	RouteLogger
+	routeLogger
 }
 
-func (rt LocateRouter) RouteLocate(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt LocateRouter) Route(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch inFrame.SubGroup {
 	case oscar.LocateRightsQuery:
 		outSNAC := rt.RightsQueryHandler(ctx, inFrame)

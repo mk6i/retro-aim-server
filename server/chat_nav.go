@@ -18,7 +18,7 @@ type ChatNavHandler interface {
 func NewChatNavRouter(handler ChatNavHandler, logger *slog.Logger) ChatNavRouter {
 	return ChatNavRouter{
 		ChatNavHandler: handler,
-		RouteLogger: RouteLogger{
+		routeLogger: routeLogger{
 			Logger: logger,
 		},
 	}
@@ -26,10 +26,10 @@ func NewChatNavRouter(handler ChatNavHandler, logger *slog.Logger) ChatNavRouter
 
 type ChatNavRouter struct {
 	ChatNavHandler
-	RouteLogger
+	routeLogger
 }
 
-func (rt *ChatNavRouter) RouteChatNav(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt ChatNavRouter) Route(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch inFrame.SubGroup {
 	case oscar.ChatNavRequestChatRights:
 		outSNAC := rt.RequestChatRightsHandler(ctx, inFrame)

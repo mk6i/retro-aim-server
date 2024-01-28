@@ -24,17 +24,17 @@ func (_m *mockOServiceChatHandler) EXPECT() *mockOServiceChatHandler_Expecter {
 	return &mockOServiceChatHandler_Expecter{mock: &_m.Mock}
 }
 
-// ClientOnlineHandler provides a mock function with given fields: ctx, sess, chatID
-func (_m *mockOServiceChatHandler) ClientOnlineHandler(ctx context.Context, sess *state.Session, chatID string) error {
-	ret := _m.Called(ctx, sess, chatID)
+// ClientOnlineHandler provides a mock function with given fields: ctx, sess
+func (_m *mockOServiceChatHandler) ClientOnlineHandler(ctx context.Context, sess *state.Session) error {
+	ret := _m.Called(ctx, sess)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ClientOnlineHandler")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, string) error); ok {
-		r0 = rf(ctx, sess, chatID)
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session) error); ok {
+		r0 = rf(ctx, sess)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -50,14 +50,13 @@ type mockOServiceChatHandler_ClientOnlineHandler_Call struct {
 // ClientOnlineHandler is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sess *state.Session
-//   - chatID string
-func (_e *mockOServiceChatHandler_Expecter) ClientOnlineHandler(ctx interface{}, sess interface{}, chatID interface{}) *mockOServiceChatHandler_ClientOnlineHandler_Call {
-	return &mockOServiceChatHandler_ClientOnlineHandler_Call{Call: _e.mock.On("ClientOnlineHandler", ctx, sess, chatID)}
+func (_e *mockOServiceChatHandler_Expecter) ClientOnlineHandler(ctx interface{}, sess interface{}) *mockOServiceChatHandler_ClientOnlineHandler_Call {
+	return &mockOServiceChatHandler_ClientOnlineHandler_Call{Call: _e.mock.On("ClientOnlineHandler", ctx, sess)}
 }
 
-func (_c *mockOServiceChatHandler_ClientOnlineHandler_Call) Run(run func(ctx context.Context, sess *state.Session, chatID string)) *mockOServiceChatHandler_ClientOnlineHandler_Call {
+func (_c *mockOServiceChatHandler_ClientOnlineHandler_Call) Run(run func(ctx context.Context, sess *state.Session)) *mockOServiceChatHandler_ClientOnlineHandler_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session), args[2].(string))
+		run(args[0].(context.Context), args[1].(*state.Session))
 	})
 	return _c
 }
@@ -67,7 +66,7 @@ func (_c *mockOServiceChatHandler_ClientOnlineHandler_Call) Return(_a0 error) *m
 	return _c
 }
 
-func (_c *mockOServiceChatHandler_ClientOnlineHandler_Call) RunAndReturn(run func(context.Context, *state.Session, string) error) *mockOServiceChatHandler_ClientOnlineHandler_Call {
+func (_c *mockOServiceChatHandler_ClientOnlineHandler_Call) RunAndReturn(run func(context.Context, *state.Session) error) *mockOServiceChatHandler_ClientOnlineHandler_Call {
 	_c.Call.Return(run)
 	return _c
 }

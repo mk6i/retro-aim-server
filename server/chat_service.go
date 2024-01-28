@@ -5,32 +5,23 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
-	"github.com/mk6i/retro-aim-server/state"
 )
-
-// ChatServiceRouter is the interface that defines the entrypoint to the BOS service.
-type ChatServiceRouter interface {
-	// Route unmarshalls the SNAC frame header from the reader stream to
-	// determine which food group to route to. The remainder of the reader
-	// stream is passed on to the food group routers for the final SNAC body
-	// extraction. Each response sent to the client via the writer stream
-	// increments the sequence number.
-	Route(ctx context.Context, sess *state.Session, r io.Reader, w io.Writer, sequence *uint32, chatID string) error
-}
 
 // ChatService represents a service that implements a chat room session.
 // Clients connect to this service upon creating a chat room or being invited
 // to a chat room.
 type ChatService struct {
 	AuthHandler
-	ChatServiceRouter
+	OServiceChatHandler
+	Router
 	config.Config
-	OServiceChatRouter
+	Logger *slog.Logger
 }
 
 // Start creates a TCP server that implements that chat flow.
@@ -103,13 +94,6 @@ func (rt ChatService) handleNewConnection(ctx context.Context, rwc io.ReadWriteC
 		return err
 	}
 
-	fnClientReqHandler := func(ctx context.Context, r io.Reader, w io.Writer, seq *uint32) error {
-		return rt.Route(ctx, chatSess, r, w, seq, chatID)
-	}
-	fnAlertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, seq *uint32) error {
-		return sendSNAC(msg.Frame, msg.Body, seq, w)
-	}
 	ctx = context.WithValue(ctx, "screenName", chatSess.ScreenName())
-	dispatchIncomingMessages(ctx, chatSess, seq, rwc, rt.Logger, fnClientReqHandler, fnAlertHandler)
-	return nil
+	return dispatchIncomingMessages(ctx, chatSess, seq, rwc, rt.Logger, rt.Router, sendSNAC, rt.Config)
 }

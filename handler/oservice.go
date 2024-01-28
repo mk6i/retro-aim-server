@@ -354,9 +354,10 @@ func (s OServiceServiceForBOS) ServiceRequestHandler(_ context.Context, sess *st
 
 	room, chatSessMgr, err := s.chatRegistry.Retrieve(string(roomSnac.Cookie))
 	if err != nil {
-		return oscar.SNACMessage{}, server.ErrUnsupportedSubGroup
+		return oscar.SNACMessage{}, err
 	}
-	chatSessMgr.(SessionManager).AddSession(sess.ID(), sess.ScreenName())
+	chatSess := chatSessMgr.(SessionManager).AddSession(sess.ID(), sess.ScreenName())
+	chatSess.SetChatID(room.Cookie)
 
 	return oscar.SNACMessage{
 		Frame: oscar.SNACFrame{
@@ -465,8 +466,8 @@ func (s OServiceServiceForChat) WriteOServiceHostOnline() oscar.SNACMessage {
 //   - Send current user the chat room metadata
 //   - Announce current user's arrival to other chat room participants
 //   - Send current user the chat room participant list
-func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, sess *state.Session, chatID string) error {
-	room, chatSessMgr, err := s.chatRegistry.Retrieve(chatID)
+func (s OServiceServiceForChat) ClientOnlineHandler(ctx context.Context, sess *state.Session) error {
+	room, chatSessMgr, err := s.chatRegistry.Retrieve(sess.ChatID())
 	if err != nil {
 		return err
 	}

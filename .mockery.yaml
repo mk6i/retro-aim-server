@@ -35,15 +35,12 @@ packages:
       OServiceChatHandler:
         config:
           filename: "oservice_chat_mock_test.go"
+      Router:
+        config:
+          filename: "router_mock_test.go"
       UserManager:
         config:
           filename: "user_manager_mock_test.go"
-      BOSRouter:
-        config:
-          filename: "bos_router_mock_test.go"
-      ChatServiceRouter:
-        config:
-          filename: "chat_service_router_mock_test.go"
   github.com/mk6i/retro-aim-server/handler:
     interfaces:
       FeedbagManager:

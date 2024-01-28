@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"log/slog"
 	"testing"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -82,7 +81,7 @@ func TestBuddyRouter_RouteBuddy(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteBuddy(nil, tc.input.Frame, bufIn, bufOut, &seq)
+			err := router.Route(nil, nil, tc.input.Frame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -108,25 +107,6 @@ func TestBuddyRouter_RouteBuddy(t *testing.T) {
 			snacBuf := &bytes.Buffer{}
 			assert.NoError(t, oscar.Marshal(tc.output.Body, snacBuf))
 			assert.Equal(t, snacBuf.Bytes(), flapBuf.Bytes())
-		})
-	}
-}
-
-func TestNewBuddyRouter(t *testing.T) {
-	type args struct {
-		logger       *slog.Logger
-		buddyHandler BuddyHandler
-	}
-	tests := []struct {
-		name string
-		args args
-		want BuddyRouter
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, NewBuddyRouter(tt.args.logger, tt.args.buddyHandler), "NewBuddyRouter(%v, %v)", tt.args.logger, tt.args.buddyHandler)
 		})
 	}
 }

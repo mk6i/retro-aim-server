@@ -52,97 +52,12 @@ func TestSession_SetAndGetScreenName(t *testing.T) {
 	assert.Equal(t, sn, s.ScreenName())
 }
 
-func TestSession_SendMessage(t *testing.T) {
-	type fields struct {
-		awayMessage string
-		closed      bool
-		id          string
-		idle        bool
-		idleTime    time.Time
-		invisible   bool
-		msgCh       chan oscar.SNACMessage
-		mutex       sync.RWMutex
-		screenName  string
-		signonTime  time.Time
-		stopCh      chan struct{}
-		warning     uint16
-	}
-	type args struct {
-		msg oscar.SNACMessage
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   SessSendStatus
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &Session{
-				awayMessage: tt.fields.awayMessage,
-				closed:      tt.fields.closed,
-				id:          tt.fields.id,
-				idle:        tt.fields.idle,
-				idleTime:    tt.fields.idleTime,
-				invisible:   tt.fields.invisible,
-				msgCh:       tt.fields.msgCh,
-				mutex:       tt.fields.mutex,
-				screenName:  tt.fields.screenName,
-				signonTime:  tt.fields.signonTime,
-				stopCh:      tt.fields.stopCh,
-				warning:     tt.fields.warning,
-			}
-			assert.Equalf(t, tt.want, s.RelayMessage(tt.args.msg), "RelayMessage(%v)", tt.args.msg)
-		})
-	}
-}
-
-func TestSession_SetAwayMessage(t *testing.T) {
-	type fields struct {
-		awayMessage string
-		closed      bool
-		id          string
-		idle        bool
-		idleTime    time.Time
-		invisible   bool
-		msgCh       chan oscar.SNACMessage
-		mutex       sync.RWMutex
-		screenName  string
-		signonTime  time.Time
-		stopCh      chan struct{}
-		warning     uint16
-	}
-	type args struct {
-		awayMessage string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &Session{
-				awayMessage: tt.fields.awayMessage,
-				closed:      tt.fields.closed,
-				id:          tt.fields.id,
-				idle:        tt.fields.idle,
-				idleTime:    tt.fields.idleTime,
-				invisible:   tt.fields.invisible,
-				msgCh:       tt.fields.msgCh,
-				mutex:       tt.fields.mutex,
-				screenName:  tt.fields.screenName,
-				signonTime:  tt.fields.signonTime,
-				stopCh:      tt.fields.stopCh,
-				warning:     tt.fields.warning,
-			}
-			s.SetAwayMessage(tt.args.awayMessage)
-		})
-	}
+func TestSession_SetAndGetChatID(t *testing.T) {
+	s := NewSession()
+	assert.Empty(t, s.ChatID())
+	sn := "the-chat-id"
+	s.SetChatID(sn)
+	assert.Equal(t, sn, s.ChatID())
 }
 
 func TestSession_TLVUserInfo(t *testing.T) {

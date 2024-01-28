@@ -100,15 +100,21 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 			Body: oscar.SNAC_0x01_0x03_OServiceHostOnline{},
 		})
 
-	bosRouter := newMockBOSRouter(t)
-	bosRouter.EXPECT().
-		Route(mock.Anything, sess, mock.Anything, mock.Anything, mock.Anything).
-		Return(nil)
+	router := newMockRouter(t)
+	router.EXPECT().
+		Route(mock.Anything, sess, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) {
+			assert.Equal(t, oscar.SNACFrame{
+				FoodGroup: oscar.OService,
+				SubGroup:  oscar.OServiceClientOnline,
+			}, inFrame)
+		}).Return(nil)
 
 	rt := BOSService{
-		AuthHandler:       authHandler,
-		OServiceBOSRouter: NewOServiceRouterForBOS(slog.Default(), nil, bosHandler),
-		BOSRouter:         bosRouter,
+		AuthHandler:        authHandler,
+		OServiceBOSHandler: bosHandler,
+		Router:             router,
+		Logger:             slog.Default(),
 	}
 	rwc := pipeRWC{
 		PipeReader: clientReader,

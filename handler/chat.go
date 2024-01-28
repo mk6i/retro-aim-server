@@ -23,7 +23,7 @@ type ChatService struct {
 // user to the other chat room participants. It returns the same
 // oscar.ChatChannelMsgToClient message back to the user if the chat reflection
 // TLV flag is set, otherwise return nil.
-func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, chatID string, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.SNACMessage, error) {
+func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, inBody oscar.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*oscar.SNACMessage, error) {
 	frameOut := oscar.SNACFrame{
 		FoodGroup: oscar.Chat,
 		SubGroup:  oscar.ChatChannelMsgToClient,
@@ -37,7 +37,7 @@ func (s ChatService) ChannelMsgToHostHandler(ctx context.Context, sess *state.Se
 	}
 	bodyOut.Append(oscar.NewTLV(oscar.ChatTLVSenderInformation, sess.TLVUserInfo()))
 
-	_, chatSessMgr, err := s.chatRegistry.Retrieve(chatID)
+	_, chatSessMgr, err := s.chatRegistry.Retrieve(sess.ChatID())
 	if err != nil {
 		return nil, err
 	}

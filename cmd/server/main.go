@@ -52,10 +52,11 @@ func main() {
 		icbmHandler := handler.NewICBMService(sessionManager, feedbagStore)
 
 		server.BOSService{
-			AuthHandler:       authHandler,
-			OServiceBOSRouter: server.NewOServiceRouterForBOS(logger, oserviceHandler, oserviceBOSHandler),
-			Config:            cfg,
-			BOSRouter: server.BOSRootRouter{
+			AuthHandler:        authHandler,
+			OServiceBOSHandler: oserviceBOSHandler,
+			Config:             cfg,
+			Logger:             logger,
+			Router: server.BOSRouter{
 				AlertRouter:       server.NewAlertRouter(logger),
 				BuddyRouter:       server.NewBuddyRouter(logger, buddyHandler),
 				ChatNavRouter:     server.NewChatNavRouter(chatNavHandler, logger),
@@ -63,10 +64,6 @@ func main() {
 				ICBMRouter:        server.NewICBMRouter(logger, icbmHandler),
 				LocateRouter:      server.NewLocateRouter(locateHandler, logger),
 				OServiceBOSRouter: server.NewOServiceRouterForBOS(logger, oserviceHandler, oserviceBOSHandler),
-				Config:            cfg,
-				RouteLogger: server.RouteLogger{
-					Logger: logger,
-				},
 			},
 		}.Start()
 		wg.Done()
@@ -79,14 +76,14 @@ func main() {
 		oserviceChatHandler := handler.NewOServiceServiceForChat(*oserviceHandler, chatRegistry)
 
 		server.ChatService{
-			AuthHandler: authHandler,
-			ChatServiceRouter: server.ChatServiceRooterRouter{
+			AuthHandler:         authHandler,
+			Config:              cfg,
+			Logger:              logger,
+			OServiceChatHandler: oserviceChatHandler,
+			Router: server.ChatServiceRouter{
 				ChatRouter:         server.NewChatRouter(logger, chatHandler),
-				Config:             cfg,
 				OServiceChatRouter: server.NewOServiceRouterForChat(logger, oserviceHandler, oserviceChatHandler),
 			},
-			Config:             cfg,
-			OServiceChatRouter: server.NewOServiceRouterForChat(logger, oserviceHandler, oserviceChatHandler),
 		}.Start()
 		wg.Done()
 	}(logger)
@@ -97,9 +94,7 @@ func main() {
 		server.BUCPAuthService{
 			AuthHandler: authHandler,
 			Config:      cfg,
-			RouteLogger: server.RouteLogger{
-				Logger: logger,
-			},
+			Logger:      logger,
 		}.Start()
 		wg.Done()
 	}(logger)

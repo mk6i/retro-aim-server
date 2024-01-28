@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/state"
 )
 
 type BuddyHandler interface {
@@ -15,7 +16,7 @@ type BuddyHandler interface {
 func NewBuddyRouter(logger *slog.Logger, buddyHandler BuddyHandler) BuddyRouter {
 	return BuddyRouter{
 		BuddyHandler: buddyHandler,
-		RouteLogger: RouteLogger{
+		routeLogger: routeLogger{
 			Logger: logger,
 		},
 	}
@@ -23,10 +24,10 @@ func NewBuddyRouter(logger *slog.Logger, buddyHandler BuddyHandler) BuddyRouter 
 
 type BuddyRouter struct {
 	BuddyHandler
-	RouteLogger
+	routeLogger
 }
 
-func (rt *BuddyRouter) RouteBuddy(ctx context.Context, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt BuddyRouter) Route(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch inFrame.SubGroup {
 	case oscar.BuddyRightsQuery:
 		inSNAC := oscar.SNAC_0x03_0x02_BuddyRightsQuery{}

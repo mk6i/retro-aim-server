@@ -277,7 +277,7 @@ func TestFeedbagRouter_RouteFeedbag(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(0)
 
-			err := router.RouteFeedbag(nil, nil, tc.input.Frame, bufIn, bufOut, &seq)
+			err := router.Route(nil, nil, tc.input.Frame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

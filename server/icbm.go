@@ -19,7 +19,7 @@ type ICBMHandler interface {
 func NewICBMRouter(logger *slog.Logger, handler ICBMHandler) ICBMRouter {
 	return ICBMRouter{
 		ICBMHandler: handler,
-		RouteLogger: RouteLogger{
+		routeLogger: routeLogger{
 			Logger: logger,
 		},
 	}
@@ -27,10 +27,10 @@ func NewICBMRouter(logger *slog.Logger, handler ICBMHandler) ICBMRouter {
 
 type ICBMRouter struct {
 	ICBMHandler
-	RouteLogger
+	routeLogger
 }
 
-func (rt *ICBMRouter) RouteICBM(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt ICBMRouter) Route(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch inFrame.SubGroup {
 	case oscar.ICBMAddParameters:
 		inBody := oscar.SNAC_0x04_0x02_ICBMAddParameters{}

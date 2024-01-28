@@ -29,15 +29,15 @@ type OServiceBOSHandler interface {
 type OServiceChatHandler interface {
 	OServiceHandler
 	WriteOServiceHostOnline() oscar.SNACMessage
-	ClientOnlineHandler(ctx context.Context, sess *state.Session, chatID string) error
+	ClientOnlineHandler(ctx context.Context, sess *state.Session) error
 }
 
 type OServiceRouter struct {
 	OServiceHandler
-	RouteLogger
+	routeLogger
 }
 
-func (rt OServiceRouter) RouteOService(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt OServiceRouter) Route(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch inFrame.SubGroup {
 	case oscar.OServiceRateParamsQuery:
 		outSNAC := rt.RateParamsQueryHandler(ctx, inFrame)
@@ -90,7 +90,7 @@ func NewOServiceRouterForBOS(logger *slog.Logger, oserviceHandler OServiceHandle
 	return OServiceBOSRouter{
 		OServiceRouter: OServiceRouter{
 			OServiceHandler: oserviceHandler,
-			RouteLogger: RouteLogger{
+			routeLogger: routeLogger{
 				Logger: logger,
 			},
 		},
@@ -103,7 +103,7 @@ type OServiceBOSRouter struct {
 	OServiceBOSHandler
 }
 
-func (rt OServiceBOSRouter) RouteOService(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt OServiceBOSRouter) Route(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch inFrame.SubGroup {
 	case oscar.OServiceServiceRequest:
 		inBody := oscar.SNAC_0x01_0x04_OServiceServiceRequest{}
@@ -128,7 +128,7 @@ func (rt OServiceBOSRouter) RouteOService(ctx context.Context, sess *state.Sessi
 		rt.logRequest(ctx, inFrame, inBody)
 		return rt.OServiceBOSHandler.ClientOnlineHandler(ctx, inBody, sess)
 	default:
-		return rt.OServiceRouter.RouteOService(ctx, sess, inFrame, r, w, sequence)
+		return rt.OServiceRouter.Route(ctx, sess, inFrame, r, w, sequence)
 	}
 }
 
@@ -136,7 +136,7 @@ func NewOServiceRouterForChat(logger *slog.Logger, oserviceHandler OServiceHandl
 	return OServiceChatRouter{
 		OServiceRouter: OServiceRouter{
 			OServiceHandler: oserviceHandler,
-			RouteLogger: RouteLogger{
+			routeLogger: routeLogger{
 				Logger: logger,
 			},
 		},
@@ -149,7 +149,7 @@ type OServiceChatRouter struct {
 	OServiceChatHandler
 }
 
-func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *state.Session, chatID string, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
+func (rt OServiceChatRouter) Route(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch inFrame.SubGroup {
 	case oscar.OServiceServiceRequest:
 		return sendInvalidSNACErr(inFrame, w, sequence)
@@ -160,8 +160,8 @@ func (rt OServiceChatRouter) RouteOService(ctx context.Context, sess *state.Sess
 		}
 		rt.Logger.InfoContext(ctx, "user signed on")
 		rt.logRequest(ctx, inFrame, inBody)
-		return rt.OServiceChatHandler.ClientOnlineHandler(ctx, sess, chatID)
+		return rt.OServiceChatHandler.ClientOnlineHandler(ctx, sess)
 	default:
-		return rt.OServiceRouter.RouteOService(ctx, sess, inFrame, r, w, sequence)
+		return rt.OServiceRouter.Route(ctx, sess, inFrame, r, w, sequence)
 	}
 }

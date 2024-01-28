@@ -12,6 +12,7 @@ import (
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestHandleChatConnection_Notification(t *testing.T) {
@@ -46,16 +47,15 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 		},
 	}
 
-	routeSig := func(ctx context.Context, buf io.Reader, w io.Writer, u *uint32) error {
-		return nil
-	}
-
 	wg := sync.WaitGroup{}
 	wg.Add(len(msgIn))
 
 	var msgOut []oscar.SNACMessage
-	alertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, u *uint32) error {
-		msgOut = append(msgOut, msg)
+	alertHandler := func(frame oscar.SNACFrame, body any, sequence *uint32, w io.Writer) error {
+		msgOut = append(msgOut, oscar.SNACMessage{
+			Frame: frame,
+			Body:  body,
+		})
 		wg.Done()
 		return nil
 	}
@@ -72,7 +72,7 @@ func TestHandleChatConnection_Notification(t *testing.T) {
 		sessionManager.RelayToScreenName(ctx, "bob", msg)
 	}
 
-	dispatchIncomingMessages(ctx, sess, uint32(0), rw, logger, routeSig, alertHandler)
+	assert.NoError(t, dispatchIncomingMessages(ctx, sess, uint32(0), rw, logger, nil, alertHandler, config.Config{}))
 
 	assert.Equal(t, msgIn, msgOut)
 }
@@ -86,37 +86,33 @@ func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 	sessionManager := state.NewInMemorySessionManager(logger)
 	sess := sessionManager.AddSession("bob-sess-id", "bob")
 
-	payloads := [][]byte{
-		{'a', 'b', 'c', 'd'},
-		{'e', 'f', 'g', 'h'},
+	payloads := []oscar.SNACFrame{
+		{FoodGroup: oscar.ICBM, SubGroup: oscar.ICBMChannelMsgToClient},
+		{FoodGroup: oscar.ChatNav, SubGroup: oscar.ChatNavNavInfo},
 	}
 
 	pr, pw := io.Pipe()
 	_, pw2 := io.Pipe()
 	go func() {
 		for _, buf := range payloads {
-			flap := oscar.FLAPFrame{
-				StartMarker:   42,
-				FrameType:     oscar.FLAPFrameData,
-				PayloadLength: uint16(len(buf)),
-			}
-			assert.NoError(t, oscar.Marshal(flap, pw))
-			assert.NoError(t, oscar.Marshal(buf, pw))
+			var seq uint32
+			sendSNAC(buf, struct{}{}, &seq, pw)
 		}
 	}()
 
-	var msgOut [][]byte
+	var msgOut []oscar.SNACFrame
 	wg := sync.WaitGroup{}
 	wg.Add(len(payloads))
 
-	routeSig := func(ctx context.Context, buf io.Reader, w io.Writer, u *uint32) error {
-		var err error
-		b, err := io.ReadAll(buf)
-		msgOut = append(msgOut, b)
-		wg.Done()
-		return err
-	}
-	alertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, u *uint32) error {
+	router := newMockRouter(t)
+	router.EXPECT().
+		Route(mock.Anything, sess, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) {
+			msgOut = append(msgOut, inFrame)
+			wg.Done()
+		}).Return(nil)
+
+	alertHandler := func(frame oscar.SNACFrame, body any, sequence *uint32, w io.Writer) error {
 		return nil
 	}
 
@@ -127,7 +123,7 @@ func TestHandleChatConnection_ClientRequestFLAP(t *testing.T) {
 		pw.Close()
 	}()
 
-	dispatchIncomingMessages(ctx, sess, uint32(0), rw, logger, routeSig, alertHandler)
+	assert.NoError(t, dispatchIncomingMessages(ctx, sess, uint32(0), rw, logger, router, alertHandler, config.Config{}))
 
 	assert.Equal(t, payloads, msgOut)
 }
@@ -141,12 +137,17 @@ func TestHandleChatConnection_SessionClosed(t *testing.T) {
 	sessionManager := state.NewInMemorySessionManager(logger)
 	sess := sessionManager.AddSession("bob-sess-id", "bob")
 
-	routeSig := func(ctx context.Context, buf io.Reader, w io.Writer, u *uint32) error {
+	router := newMockRouter(t)
+	router.EXPECT().
+		Route(mock.Anything, sess, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) {
+			t.Fatal("not expecting any output")
+		}).
+		Maybe().
+		Return(nil)
+
+	alertHandler := func(frame oscar.SNACFrame, body any, sequence *uint32, w io.Writer) error {
 		t.Fatal("not expecting any output")
-		return nil
-	}
-	alertHandler := func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, u *uint32) error {
-		t.Fatal("not expecting any alerts")
 		return nil
 	}
 
@@ -162,7 +163,7 @@ func TestHandleChatConnection_SessionClosed(t *testing.T) {
 	}
 	sess.Close()
 
-	go dispatchIncomingMessages(ctx, sess, 0, in, logger, routeSig, alertHandler)
+	go dispatchIncomingMessages(ctx, sess, 0, in, logger, router, alertHandler, config.Config{})
 
 	flap := oscar.FLAPFrame{}
 	assert.NoError(t, oscar.Unmarshal(&flap, pr2))

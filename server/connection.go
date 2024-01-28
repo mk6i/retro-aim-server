@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/oscar"
 	"github.com/mk6i/retro-aim-server/state"
 )
@@ -15,14 +17,19 @@ var (
 	ErrUnsupportedSubGroup = errors.New("unimplemented subgroup, your client version may be unsupported")
 )
 
-type (
-	incomingMessage struct {
-		flap    oscar.FLAPFrame
-		payload *bytes.Buffer
-	}
-	alertHandler     func(ctx context.Context, msg oscar.SNACMessage, w io.Writer, u *uint32) error
-	clientReqHandler func(ctx context.Context, r io.Reader, w io.Writer, u *uint32) error
-)
+// Router is the interface for methods that route food group requests.
+type Router interface {
+	Route(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error
+}
+
+// snacSender is the function that packages a SNAC frame and body into a FLAP
+// message and writes it to the output writer.
+type snacSender func(frame oscar.SNACFrame, body any, sequence *uint32, w io.Writer) error
+
+type incomingMessage struct {
+	flap    oscar.FLAPFrame
+	payload *bytes.Buffer
+}
 
 func sendSNAC(frame oscar.SNACFrame, body any, sequence *uint32, w io.Writer) error {
 	snacBuf := &bytes.Buffer{}
@@ -108,7 +115,15 @@ func consumeFLAPFrames(r io.Reader, msgCh chan incomingMessage, errCh chan error
 	}
 }
 
-func dispatchIncomingMessages(ctx context.Context, sess *state.Session, seq uint32, rw io.ReadWriter, logger *slog.Logger, fn clientReqHandler, alertHandler alertHandler) {
+// dispatchIncomingMessages receives incoming messages and sends them to the
+// appropriate message handler. Messages from the client are sent to the
+// router. Messages relayed from the user session are forwarded to the client.
+// This function ensures that the same sequence number is incremented for both
+// types of messages. The function terminates upon receiving a connection error
+// or when the session closes.
+//
+// todo: this method has too many params and should be folded into a new type
+func dispatchIncomingMessages(ctx context.Context, sess *state.Session, seq uint32, rw io.ReadWriter, logger *slog.Logger, router Router, sendSNAC snacSender, config config.Config) error {
 	// buffered so that the go routine has room to exit
 	msgCh := make(chan incomingMessage, 1)
 	readErrCh := make(chan error, 1)
@@ -120,33 +135,48 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, seq uint
 
 	for {
 		select {
-		case m := <-msgCh:
+		case m, ok := <-msgCh:
+			if !ok {
+				return nil
+			}
 			switch m.flap.FrameType {
 			case oscar.FLAPFrameData:
+				inFrame := oscar.SNACFrame{}
+				if err := oscar.Unmarshal(&inFrame, m.payload); err != nil {
+					return err
+				}
 				// route a client request to the appropriate service handler. the
 				// handler may write a response to the client connection.
-				if err := fn(ctx, m.payload, rw, &seq); err != nil {
-					return
+				if err := router.Route(ctx, sess, inFrame, m.payload, rw, &seq); err != nil {
+					logRequestError(ctx, logger, inFrame, err)
+					if errors.Is(err, ErrUnsupportedSubGroup) {
+						if err1 := sendInvalidSNACErr(inFrame, rw, &seq); err1 != nil {
+							return errors.Join(err1, err)
+						}
+						if config.FailFast {
+							panic(err.Error())
+						}
+						break
+					}
+					return err
 				}
 			case oscar.FLAPFrameSignon:
-				logger.ErrorContext(ctx, "shouldn't get FLAPFrameSignon", "flap", m.flap)
+				return fmt.Errorf("shouldn't get FLAPFrameSignon. flap: %v", m.flap)
 			case oscar.FLAPFrameError:
-				logger.ErrorContext(ctx, "got FLAPFrameError", "flap", m.flap)
-				return
+				return fmt.Errorf("got FLAPFrameError. flap: %v", m.flap)
 			case oscar.FLAPFrameSignoff:
 				logger.InfoContext(ctx, "got FLAPFrameSignoff", "flap", m.flap)
-				return
+				return nil
 			case oscar.FLAPFrameKeepAlive:
 				logger.DebugContext(ctx, "keepalive heartbeat")
 			default:
-				logger.ErrorContext(ctx, "got unknown FLAP frame type", "flap", m.flap)
-				return
+				return fmt.Errorf("got unknown FLAP frame type. flap: %v", m.flap)
 			}
 		case m := <-sess.ReceiveMessage():
 			// forward a notification sent from another client to this client
-			if err := alertHandler(ctx, m, rw, &seq); err != nil {
+			if err := sendSNAC(m.Frame, m.Body, &seq, rw); err != nil {
 				logRequestError(ctx, logger, m.Frame, err)
-				return
+				return err
 			}
 			logRequest(ctx, logger, m.Frame, m.Body)
 		case <-sess.Closed():
@@ -159,14 +189,14 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, seq uint
 				PayloadLength: uint16(0),
 			}
 			if err := oscar.Marshal(flap, rw); err != nil {
-				logger.ErrorContext(ctx, "unable to gracefully disconnect user", "err", err)
+				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
 			}
-			return
+			return nil
 		case err := <-readErrCh:
 			if !errors.Is(io.EOF, err) {
 				logger.ErrorContext(ctx, "client disconnected with error", "err", err)
 			}
-			return
+			return nil
 		}
 	}
 }

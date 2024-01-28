@@ -180,7 +180,7 @@ func TestICBMRouter_RouteICBM(t *testing.T) {
 			bufOut := &bytes.Buffer{}
 			seq := uint32(1)
 
-			err := router.RouteICBM(nil, nil, tc.input.Frame, bufIn, bufOut, &seq)
+			err := router.Route(nil, nil, tc.input.Frame, bufIn, bufOut, &seq)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

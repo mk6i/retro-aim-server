@@ -2,24 +2,26 @@ package server
 
 import (
 	"context"
+	"io"
 	"log/slog"
 
 	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/state"
 )
 
 func NewAlertRouter(logger *slog.Logger) AlertRouter {
 	return AlertRouter{
-		RouteLogger: RouteLogger{
+		routeLogger: routeLogger{
 			Logger: logger,
 		},
 	}
 }
 
 type AlertRouter struct {
-	RouteLogger
+	routeLogger
 }
 
-func (rt *AlertRouter) RouteAlert(ctx context.Context, inFrame oscar.SNACFrame) error {
+func (rt AlertRouter) Route(ctx context.Context, sess *state.Session, inFrame oscar.SNACFrame, r io.Reader, w io.Writer, sequence *uint32) error {
 	switch inFrame.SubGroup {
 	case oscar.AlertNotifyCapabilities:
 		fallthrough
