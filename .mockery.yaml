@@ -3,64 +3,77 @@ dir: "{{.InterfaceDir}}"
 mockname: "mock{{.InterfaceName}}"
 inpackage: True
 packages:
-  github.com/mk6i/retro-aim-server/server:
+  github.com/mk6i/retro-aim-server/server/oscar:
     interfaces:
-      AuthHandler:
+      AuthService:
         config:
-          filename: "auth_mock_test.go"
-      BuddyHandler:
+          filename: "mock_auth_test.go"
+      Handler:
         config:
-          filename: "buddy_mock_test.go"
-      ChatHandler:
-        config:
-          filename: "chat_mock_test.go"
-      ChatNavHandler:
-        config:
-          filename: "chat_nav_mock_test.go"
-      FeedbagHandler:
-        config:
-          filename: "feedbag_mock_test.go"
-      ICBMHandler:
-        config:
-          filename: "icbm_mock_test.go"
-      LocateHandler:
-        config:
-          filename: "locate_mock_test.go"
-      OServiceHandler:
-        config:
-          filename: "oservice_mock_test.go"
-      OServiceBOSHandler:
-        config:
-          filename: "oservice_bos_mock_test.go"
-      OServiceChatHandler:
-        config:
-          filename: "oservice_chat_mock_test.go"
-      Router:
-        config:
-          filename: "router_mock_test.go"
+          filename: "mock_handler_test.go"
       UserManager:
         config:
-          filename: "user_manager_mock_test.go"
-  github.com/mk6i/retro-aim-server/handler:
+          filename: "mock_user_manager_test.go"
+      OnlineNotifier:
+        config:
+          filename: "mock_online_notifier_test.go"
+  github.com/mk6i/retro-aim-server/server/http:
+    interfaces:
+      UserManager:
+        config:
+          filename: "mock_user_manager_test.go"
+  github.com/mk6i/retro-aim-server/server/oscar/handler:
+    interfaces:
+      ResponseWriter:
+        config:
+          filename: "mock_response_writer_test.go"
+      ChatService:
+        config:
+          filename: "mock_chat_test.go"
+      ChatNavService:
+        config:
+          filename: "mock_chat_nav_test.go"
+      FeedbagService:
+        config:
+          filename: "mock_feedbag_test.go"
+      ICBMService:
+        config:
+          filename: "mock_icbm_test.go"
+      OServiceService:
+        config:
+          filename: "mock_oservice_test.go"
+      OServiceBOSService:
+        config:
+          filename: "mock_oservice_bos_test.go"
+      OServiceChatService:
+        config:
+          filename: "mock_oservice_chat_test.go"
+      LocateService:
+        config:
+          filename: "mock_locate_test.go"
+      BuddyService:
+        config:
+          filename: "mock_buddy_test.go"
+  github.com/mk6i/retro-aim-server/foodgroup:
     interfaces:
       FeedbagManager:
         config:
-          filename: "feedbag_manager_mock_test.go"
+          filename: "mock_feedbag_manager_test.go"
       UserManager:
         config:
-          filename: "user_manager_manager_mock_test.go"
+          filename: "mock_user_manager_manager_test.go"
       ProfileManager:
         config:
-          filename: "profile_manager_mock_test.go"
+          filename: "mock_profile_manager_test.go"
       SessionManager:
         config:
-          filename: "session_manager_mock_test.go"
+          filename: "mock_session_manager_test.go"
       MessageRelayer:
         config:
-          filename: "message_relayer_mock_test.go"
+          filename: "mock_message_relayer_test.go"
       ChatMessageRelayer:
         config:
-          filename: "chat_message_relayer_mock_test.go"
+          filename: "mock_chat_message_relayer_test.go"
       ChatRegistry:
         config:
-          filename: "chat_registry_test.go"
+          filename: "mock_chat_registry_test.go"

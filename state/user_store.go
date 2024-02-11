@@ -8,9 +8,10 @@ import (
 	"io"
 	"time"
 
+	"github.com/mk6i/retro-aim-server/wire"
+
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/mk6i/retro-aim-server/oscar"
 )
 
 var userStoreDDL = `
@@ -156,7 +157,7 @@ func (f SQLiteUserStore) InsertUser(u User) error {
 }
 
 // Feedbag fetches the contents of a user's feedbag (buddy list).
-func (f SQLiteUserStore) Feedbag(screenName string) ([]oscar.FeedbagItem, error) {
+func (f SQLiteUserStore) Feedbag(screenName string) ([]wire.FeedbagItem, error) {
 	q := `
 		SELECT 
 			groupID,
@@ -174,14 +175,14 @@ func (f SQLiteUserStore) Feedbag(screenName string) ([]oscar.FeedbagItem, error)
 	}
 	defer rows.Close()
 
-	var items []oscar.FeedbagItem
+	var items []wire.FeedbagItem
 	for rows.Next() {
-		var item oscar.FeedbagItem
+		var item wire.FeedbagItem
 		var attrs []byte
 		if err := rows.Scan(&item.GroupID, &item.ItemID, &item.ClassID, &item.Name, &attrs); err != nil {
 			return nil, err
 		}
-		if err := oscar.Unmarshal(&item.TLVLBlock, bytes.NewBuffer(attrs)); err != nil {
+		if err := wire.Unmarshal(&item.TLVLBlock, bytes.NewBuffer(attrs)); err != nil {
 			return items, err
 		}
 		items = append(items, item)
@@ -200,7 +201,7 @@ func (f SQLiteUserStore) FeedbagLastModified(screenName string) (time.Time, erro
 }
 
 // FeedbagDelete deletes an entry from a user's feedbag (buddy list).
-func (f SQLiteUserStore) FeedbagDelete(screenName string, items []oscar.FeedbagItem) error {
+func (f SQLiteUserStore) FeedbagDelete(screenName string, items []wire.FeedbagItem) error {
 	// todo add transaction
 	q := `DELETE FROM feedbag WHERE screenName = ? AND itemID = ?`
 
@@ -215,7 +216,7 @@ func (f SQLiteUserStore) FeedbagDelete(screenName string, items []oscar.FeedbagI
 
 // FeedbagUpsert upserts an entry to a user's feedbag (buddy list). An entry is
 // created if it doesn't already exist, or modified if it already exists.
-func (f SQLiteUserStore) FeedbagUpsert(screenName string, items []oscar.FeedbagItem) error {
+func (f SQLiteUserStore) FeedbagUpsert(screenName string, items []wire.FeedbagItem) error {
 	q := `
 		INSERT INTO feedbag (screenName, groupID, itemID, classID, name, attributes, lastModified)
 		VALUES (?, ?, ?, ?, ?, ?, UNIXEPOCH())
@@ -228,7 +229,7 @@ func (f SQLiteUserStore) FeedbagUpsert(screenName string, items []oscar.FeedbagI
 
 	for _, item := range items {
 		buf := &bytes.Buffer{}
-		if err := oscar.Marshal(item.TLVLBlock, buf); err != nil {
+		if err := wire.Marshal(item.TLVLBlock, buf); err != nil {
 			return err
 		}
 

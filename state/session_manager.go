@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/wire"
 )
 
 // InMemorySessionManager handles the lifecycle of a user session and provides
@@ -26,7 +26,7 @@ func NewInMemorySessionManager(logger *slog.Logger) *InMemorySessionManager {
 }
 
 // RelayToAll relays a message to all sessions in the session pool.
-func (s *InMemorySessionManager) RelayToAll(ctx context.Context, msg oscar.SNACMessage) {
+func (s *InMemorySessionManager) RelayToAll(ctx context.Context, msg wire.SNACMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
@@ -36,7 +36,7 @@ func (s *InMemorySessionManager) RelayToAll(ctx context.Context, msg oscar.SNACM
 
 // RelayToAllExcept relays a message to all session in the pool except for one
 // particular session.
-func (s *InMemorySessionManager) RelayToAllExcept(ctx context.Context, except *Session, msg oscar.SNACMessage) {
+func (s *InMemorySessionManager) RelayToAllExcept(ctx context.Context, except *Session, msg wire.SNACMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, sess := range s.store {
@@ -48,7 +48,7 @@ func (s *InMemorySessionManager) RelayToAllExcept(ctx context.Context, except *S
 }
 
 // RelayToScreenName relays a message to a session with a matching screen name.
-func (s *InMemorySessionManager) RelayToScreenName(ctx context.Context, screenName string, msg oscar.SNACMessage) {
+func (s *InMemorySessionManager) RelayToScreenName(ctx context.Context, screenName string, msg wire.SNACMessage) {
 	sess := s.RetrieveByScreenName(screenName)
 	if sess == nil {
 		s.logger.WarnContext(ctx, "can't send notification because user is not online", "recipient", screenName, "message", msg)
@@ -58,13 +58,13 @@ func (s *InMemorySessionManager) RelayToScreenName(ctx context.Context, screenNa
 }
 
 // RelayToScreenNames relays a message to sessions with matching screenNames.
-func (s *InMemorySessionManager) RelayToScreenNames(ctx context.Context, screenNames []string, msg oscar.SNACMessage) {
+func (s *InMemorySessionManager) RelayToScreenNames(ctx context.Context, screenNames []string, msg wire.SNACMessage) {
 	for _, sess := range s.retrieveByScreenNames(screenNames) {
 		s.maybeRelayMessage(ctx, msg, sess)
 	}
 }
 
-func (s *InMemorySessionManager) maybeRelayMessage(ctx context.Context, msg oscar.SNACMessage, sess *Session) {
+func (s *InMemorySessionManager) maybeRelayMessage(ctx context.Context, msg wire.SNACMessage, sess *Session) {
 	switch sess.RelayMessage(msg) {
 	case SessSendClosed:
 		s.logger.WarnContext(ctx, "can't send notification because the user's session is closed", "recipient", sess.ScreenName(), "message", msg)

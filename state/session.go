@@ -4,8 +4,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mk6i/retro-aim-server/wire"
+
 	"github.com/google/uuid"
-	"github.com/mk6i/retro-aim-server/oscar"
 )
 
 // capChat is a UID that indicates a client supports the chat capability
@@ -27,27 +28,27 @@ const (
 // Session represents a user's current session. Unless stated otherwise, all
 // methods may be safely accessed by multiple goroutines.
 type Session struct {
-	awayMessage string
-	chatID      string
-	closed      bool
-	id          string
-	idle        bool
-	idleTime    time.Time
-	invisible   bool
-	msgCh       chan oscar.SNACMessage
-	mutex       sync.RWMutex
-	nowFn       func() time.Time
-	screenName  string
-	signonTime  time.Time
-	stopCh      chan struct{}
-	warning     uint16
+	awayMessage    string
+	chatRoomCookie string
+	closed         bool
+	id             string
+	idle           bool
+	idleTime       time.Time
+	invisible      bool
+	msgCh          chan wire.SNACMessage
+	mutex          sync.RWMutex
+	nowFn          func() time.Time
+	screenName     string
+	signonTime     time.Time
+	stopCh         chan struct{}
+	warning        uint16
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
 // up to 1000 pending messages before blocking.
 func NewSession() *Session {
 	return &Session{
-		msgCh:      make(chan oscar.SNACMessage, 1000),
+		msgCh:      make(chan wire.SNACMessage, 1000),
 		nowFn:      time.Now,
 		stopCh:     make(chan struct{}),
 		signonTime: time.Now(),
@@ -141,66 +142,66 @@ func (s *Session) AwayMessage() string {
 	return s.awayMessage
 }
 
-// SetChatID sets the chatID for the chat room the user is currently in.
-func (s *Session) SetChatID(chatID string) {
+// SetChatRoomCookie sets the chatRoomCookie for the chat room the user is currently in.
+func (s *Session) SetChatRoomCookie(cookie string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.chatID = chatID
+	s.chatRoomCookie = cookie
 }
 
-// ChatID gets the chatID for the chat room the user is currently in.
-func (s *Session) ChatID() string {
+// ChatRoomCookie gets the chatRoomCookie for the chat room the user is currently in.
+func (s *Session) ChatRoomCookie() string {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	return s.chatID
+	return s.chatRoomCookie
 }
 
 // TLVUserInfo returns a TLV list containing session information required by
 // multiple SNAC message types that convey user information.
-func (s *Session) TLVUserInfo() oscar.TLVUserInfo {
+func (s *Session) TLVUserInfo() wire.TLVUserInfo {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	return oscar.TLVUserInfo{
+	return wire.TLVUserInfo{
 		ScreenName:   s.screenName,
 		WarningLevel: s.warning,
-		TLVBlock: oscar.TLVBlock{
+		TLVBlock: wire.TLVBlock{
 			TLVList: s.userInfo(),
 		},
 	}
 }
 
-func (s *Session) userInfo() oscar.TLVList {
+func (s *Session) userInfo() wire.TLVList {
 	// sign-in timestamp
-	tlvs := oscar.TLVList{}
+	tlvs := wire.TLVList{}
 
-	tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoSignonTOD, uint32(s.signonTime.Unix())))
+	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(s.signonTime.Unix())))
 
 	// away message status
 	if s.awayMessage != "" {
-		tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoUserFlags, oscar.OServiceUserFlagOSCARFree|oscar.OServiceUserFlagUnavailable))
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoUserFlags, wire.OServiceUserFlagOSCARFree|wire.OServiceUserFlagUnavailable))
 	} else {
-		tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoUserFlags, oscar.OServiceUserFlagOSCARFree))
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoUserFlags, wire.OServiceUserFlagOSCARFree))
 	}
 
 	// invisibility status
 	if s.invisible {
-		tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoStatus, oscar.OServiceUserFlagInvisible))
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoStatus, wire.OServiceUserFlagInvisible))
 	} else {
-		tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoStatus, uint16(0x0000)))
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoStatus, uint16(0x0000)))
 	}
 
 	// idle status
 	if s.idle {
-		tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoIdleTime, uint16(s.nowFn().Sub(s.idleTime).Seconds())))
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(s.nowFn().Sub(s.idleTime).Seconds())))
 	} else {
-		tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoIdleTime, uint16(0)))
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)))
 	}
 
 	// capabilities
 	var caps []byte
 	// chat capability
 	caps = append(caps, capChat...)
-	tlvs.Append(oscar.NewTLV(oscar.OServiceUserInfoOscarCaps, caps))
+	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoOscarCaps, caps))
 
 	return tlvs
 }
@@ -217,7 +218,7 @@ func (s *Session) Warning() uint16 {
 // ReceiveMessage returns a channel of messages relayed via this session. It
 // may only be read by one consumer. The channel never closes; call this method
 // in a select block along with Closed in order to detect session closure.
-func (s *Session) ReceiveMessage() chan oscar.SNACMessage {
+func (s *Session) ReceiveMessage() chan wire.SNACMessage {
 	return s.msgCh
 }
 
@@ -225,7 +226,7 @@ func (s *Session) ReceiveMessage() chan oscar.SNACMessage {
 // asynchronously to the consumer of this session's messages. It returns
 // SessSendStatus to indicate whether the message was successfully sent or
 // not. This method is non-blocking.
-func (s *Session) RelayMessage(msg oscar.SNACMessage) SessSendStatus {
+func (s *Session) RelayMessage(msg wire.SNACMessage) SessSendStatus {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	if s.closed {

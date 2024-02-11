@@ -1,0 +1,509 @@
+package foodgroup
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/mock"
+
+	"github.com/mk6i/retro-aim-server/state"
+	"github.com/mk6i/retro-aim-server/wire"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestLocateService_UserInfoQuery2(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// userSession is the session of the user requesting user info
+		userSession *state.Session
+		// inputSNAC is the SNAC sent from client to server
+		inputSNAC wire.SNACMessage
+		// expectOutput is the SNAC sent from the server to client
+		expectOutput wire.SNACMessage
+	}{
+		{
+			name: "request user info, expect user info response",
+			mockParams: mockParams{
+				feedbagManagerParams: feedbagManagerParams{
+					blockedStateParams: blockedStateParams{
+						{
+							screenName1: "user_screen_name",
+							screenName2: "requested-user",
+							result:      state.BlockedNo,
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					retrieveByScreenNameParams: retrieveByScreenNameParams{
+						{
+							screenName: "requested-user",
+							sess: newTestSession("requested-user",
+								sessOptCannedSignonTime,
+								sessOptCannedAwayMessage),
+						},
+					},
+				},
+			},
+			userSession: newTestSession("user_screen_name"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					Type2:      0,
+					ScreenName: "requested-user",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateUserInfoReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x06_LocateUserInfoReply{
+					TLVUserInfo: newTestSession("requested-user",
+						sessOptCannedSignonTime,
+						sessOptCannedAwayMessage).
+						TLVUserInfo(),
+					LocateInfo: wire.TLVRestBlock{},
+				},
+			},
+		},
+		{
+			name: "request user info + profile, expect user info response + profile",
+			mockParams: mockParams{
+				feedbagManagerParams: feedbagManagerParams{
+					blockedStateParams: blockedStateParams{
+						{
+							screenName1: "user_screen_name",
+							screenName2: "requested-user",
+							result:      state.BlockedNo,
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					retrieveByScreenNameParams: retrieveByScreenNameParams{
+						{
+							screenName: "requested-user",
+							sess: newTestSession("requested-user",
+								sessOptCannedSignonTime,
+								sessOptCannedAwayMessage),
+						},
+					},
+				},
+				profileManagerParams: profileManagerParams{
+					retrieveProfileParams: retrieveProfileParams{
+						{
+							screenName: "requested-user",
+							result:     "this is my profile!",
+						},
+					},
+				},
+			},
+			userSession: newTestSession("user_screen_name"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					// 2048 is a dummy to make sure bitmask check works
+					Type2:      wire.LocateType2Sig | 2048,
+					ScreenName: "requested-user",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateUserInfoReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x06_LocateUserInfoReply{
+					TLVUserInfo: newTestSession("requested-user",
+						sessOptCannedSignonTime,
+						sessOptCannedAwayMessage).
+						TLVUserInfo(),
+					LocateInfo: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
+							wire.NewTLV(wire.LocateTLVTagsInfoSigData, "this is my profile!"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "request user info + profile, expect user info response + profile",
+			mockParams: mockParams{
+				feedbagManagerParams: feedbagManagerParams{
+					blockedStateParams: blockedStateParams{
+						{
+							screenName1: "user_screen_name",
+							screenName2: "requested-user",
+							result:      state.BlockedNo,
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					retrieveByScreenNameParams: retrieveByScreenNameParams{
+						{
+							screenName: "requested-user",
+							sess: newTestSession("requested-user",
+								sessOptCannedSignonTime,
+								sessOptCannedAwayMessage),
+						},
+					},
+				},
+				profileManagerParams: profileManagerParams{
+					retrieveProfileParams: retrieveProfileParams{
+						{
+							screenName: "requested-user",
+							result:     "this is my profile!",
+						},
+					},
+				},
+			},
+			userSession: newTestSession("user_screen_name"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					// 2048 is a dummy to make sure bitmask check works
+					Type2:      wire.LocateType2Sig | 2048,
+					ScreenName: "requested-user",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateUserInfoReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x06_LocateUserInfoReply{
+					TLVUserInfo: newTestSession("requested-user",
+						sessOptCannedSignonTime,
+						sessOptCannedAwayMessage).
+						TLVUserInfo(),
+					LocateInfo: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
+							wire.NewTLV(wire.LocateTLVTagsInfoSigData, "this is my profile!"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "request user info + away message, expect user info response + away message",
+			mockParams: mockParams{
+				feedbagManagerParams: feedbagManagerParams{
+					blockedStateParams: blockedStateParams{
+						{
+							screenName1: "user_screen_name",
+							screenName2: "requested-user",
+							result:      state.BlockedNo,
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					retrieveByScreenNameParams: retrieveByScreenNameParams{
+						{
+							screenName: "requested-user",
+							sess: newTestSession("requested-user",
+								sessOptCannedSignonTime,
+								sessOptCannedAwayMessage),
+						},
+					},
+				},
+			},
+			userSession: newTestSession("user_screen_name"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					// 2048 is a dummy to make sure bitmask check works
+					Type2:      wire.LocateType2Unavailable | 2048,
+					ScreenName: "requested-user",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateUserInfoReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x06_LocateUserInfoReply{
+					TLVUserInfo: newTestSession("requested-user",
+						sessOptCannedSignonTime,
+						sessOptCannedAwayMessage).
+						TLVUserInfo(),
+					LocateInfo: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.LocateTLVTagsInfoUnavailableMime, `text/aolrtf; charset="us-ascii"`),
+							wire.NewTLV(wire.LocateTLVTagsInfoUnavailableData, "this is my away message!"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "request user info of user who blocked requester, expect not logged in error",
+			mockParams: mockParams{
+				feedbagManagerParams: feedbagManagerParams{
+					blockedStateParams: blockedStateParams{
+						{
+							screenName1: "user_screen_name",
+							screenName2: "requested-user",
+							result:      state.BlockedB,
+						},
+					},
+				},
+			},
+			userSession: newTestSession("user_screen_name"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					ScreenName: "requested-user",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeNotLoggedOn,
+				},
+			},
+		},
+		{
+			name: "request user info of user who does not exist, expect not logged in error",
+			mockParams: mockParams{
+				feedbagManagerParams: feedbagManagerParams{
+					blockedStateParams: blockedStateParams{
+						{
+							screenName1: "user_screen_name",
+							screenName2: "non_existent_requested_user",
+							result:      state.BlockedNo,
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					retrieveByScreenNameParams: retrieveByScreenNameParams{
+						{
+							screenName: "non_existent_requested_user",
+							sess:       nil,
+						},
+					},
+				},
+			},
+			userSession: newTestSession("user_screen_name"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x15_LocateUserInfoQuery2{
+					ScreenName: "non_existent_requested_user",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeNotLoggedOn,
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			feedbagManager := newMockFeedbagManager(t)
+			for _, params := range tc.mockParams.blockedStateParams {
+				feedbagManager.EXPECT().
+					BlockedState(params.screenName1, params.screenName2).
+					Return(params.result, nil)
+			}
+			messageRelayer := newMockMessageRelayer(t)
+			for _, val := range tc.mockParams.retrieveByScreenNameParams {
+				messageRelayer.EXPECT().
+					RetrieveByScreenName(val.screenName).
+					Return(val.sess)
+			}
+			profileManager := newMockProfileManager(t)
+			for _, val := range tc.mockParams.retrieveProfileParams {
+				profileManager.EXPECT().
+					Profile(val.screenName).
+					Return(val.result, val.err)
+			}
+			svc := NewLocateService(messageRelayer, feedbagManager, profileManager)
+			outputSNAC, err := svc.UserInfoQuery2(context.Background(), tc.userSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(wire.SNAC_0x02_0x15_LocateUserInfoQuery2))
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectOutput, outputSNAC)
+		})
+	}
+}
+
+func TestLocateService_SetKeywordInfo(t *testing.T) {
+	svc := NewLocateService(nil, nil, nil)
+
+	outputSNAC := svc.SetKeywordInfo(nil, wire.SNACFrame{RequestID: 1234})
+	expectSNAC := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.Locate,
+			SubGroup:  wire.LocateSetKeywordReply,
+			RequestID: 1234,
+		},
+		Body: wire.SNAC_0x02_0x10_LocateSetKeywordReply{
+			Unknown: 1,
+		},
+	}
+
+	assert.Equal(t, expectSNAC, outputSNAC)
+}
+
+func TestLocateService_SetDirInfo(t *testing.T) {
+	svc := NewLocateService(nil, nil, nil)
+
+	outputSNAC := svc.SetDirInfo(nil, wire.SNACFrame{RequestID: 1234})
+	expectSNAC := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.Locate,
+			SubGroup:  wire.LocateSetDirReply,
+			RequestID: 1234,
+		},
+		Body: wire.SNAC_0x02_0x0A_LocateSetDirReply{
+			Result: 1,
+		},
+	}
+
+	assert.Equal(t, expectSNAC, outputSNAC)
+}
+
+func TestLocateService_SetInfo(t *testing.T) {
+	tests := []struct {
+		// name is the unit test name
+		name string
+		// userSession is the session of the user setting info
+		userSession *state.Session
+		// inBody is the message sent from client to server
+		inBody wire.SNAC_0x02_0x04_LocateSetInfo
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		wantErr    error
+	}{
+		{
+			name:        "set profile",
+			userSession: newTestSession("test-user"),
+			inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LocateTLVTagsInfoSigData, "profile-result"),
+					},
+				},
+			},
+		},
+		{
+			name:        "set away message",
+			userSession: newTestSession("user_screen_name"),
+			inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LocateTLVTagsInfoUnavailableData, "this is my away message!"),
+					},
+				},
+			},
+			mockParams: mockParams{
+				messageRelayerParams: messageRelayerParams{
+					broadcastToScreenNamesParams: broadcastToScreenNamesParams{
+						{
+							screenNames: []string{"friend1", "friend2"},
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.Buddy,
+									SubGroup:  wire.BuddyArrived,
+								},
+								Body: wire.SNAC_0x03_0x0B_BuddyArrived{
+									TLVUserInfo: newTestSession("user_screen_name", sessOptAwayMessage("this is my away message!")).TLVUserInfo(),
+								},
+							},
+						},
+					},
+				},
+				feedbagManagerParams: feedbagManagerParams{
+					interestedUsersParams: interestedUsersParams{
+						{
+							screenName: "user_screen_name",
+							users:      []string{"friend1", "friend2"},
+						},
+					},
+				},
+				profileManagerParams: profileManagerParams{
+					upsertProfileParams: upsertProfileParams{},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.broadcastToScreenNamesParams {
+				messageRelayer.EXPECT().
+					RelayToScreenNames(mock.Anything, params.screenNames, params.message)
+			}
+			feedbagManager := newMockFeedbagManager(t)
+			for _, params := range tt.mockParams.interestedUsersParams {
+				feedbagManager.EXPECT().
+					AdjacentUsers(params.screenName).
+					Return(params.users, nil)
+			}
+			profileManager := newMockProfileManager(t)
+			if msg, hasProf := tt.inBody.String(wire.LocateTLVTagsInfoSigData); hasProf {
+				profileManager.EXPECT().
+					SetProfile(tt.userSession.ScreenName(), msg).
+					Return(nil)
+			}
+			svc := NewLocateService(messageRelayer, feedbagManager, profileManager)
+			assert.Equal(t, tt.wantErr, svc.SetInfo(nil, tt.userSession, tt.inBody))
+		})
+	}
+}
+
+func TestLocateService_RightsQuery(t *testing.T) {
+	svc := NewLocateService(nil, nil, nil)
+
+	outputSNAC := svc.RightsQuery(nil, wire.SNACFrame{RequestID: 1234})
+	expectSNAC := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.Locate,
+			SubGroup:  wire.LocateRightsReply,
+			RequestID: 1234,
+		},
+		Body: wire.SNAC_0x02_0x03_LocateRightsReply{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(wire.LocateTLVTagsRightsMaxSigLen, uint16(1000)),
+					wire.NewTLV(wire.LocateTLVTagsRightsMaxCapabilitiesLen, uint16(1000)),
+					wire.NewTLV(wire.LocateTLVTagsRightsMaxFindByEmailList, uint16(1000)),
+					wire.NewTLV(wire.LocateTLVTagsRightsMaxCertsLen, uint16(1000)),
+					wire.NewTLV(wire.LocateTLVTagsRightsMaxMaxShortCapabilities, uint16(1000)),
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, expectSNAC, outputSNAC)
+}

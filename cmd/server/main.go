@@ -7,11 +7,14 @@ import (
 	"sync"
 
 	"github.com/mk6i/retro-aim-server/config"
-	"github.com/mk6i/retro-aim-server/handler"
+	"github.com/mk6i/retro-aim-server/foodgroup"
+	"github.com/mk6i/retro-aim-server/server/http"
+	"github.com/mk6i/retro-aim-server/server/oscar"
+	"github.com/mk6i/retro-aim-server/server/oscar/handler"
+	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
 
 	"github.com/kelseyhightower/envconfig"
-	"github.com/mk6i/retro-aim-server/server"
 )
 
 func main() {
@@ -28,7 +31,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger := server.NewLogger(cfg)
+	logger := middleware.NewLogger(cfg)
 	sessionManager := state.NewInMemorySessionManager(logger)
 	chatRegistry := state.NewChatRegistry()
 
@@ -36,63 +39,63 @@ func main() {
 	wg.Add(4)
 
 	go func() {
-		server.StartManagementAPI(feedbagStore, logger)
+		http.StartManagementAPI(feedbagStore, logger)
 		wg.Done()
 	}()
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "BOS")
-		authHandler := handler.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry)
-		buddyHandler := handler.NewBuddyService()
-		oserviceHandler := handler.NewOServiceService(cfg, sessionManager, feedbagStore)
-		oserviceBOSHandler := handler.NewOServiceServiceForBOS(*oserviceHandler, chatRegistry)
-		locateHandler := handler.NewLocateService(sessionManager, feedbagStore, feedbagStore)
-		newChatSessMgr := func() handler.SessionManager { return state.NewInMemorySessionManager(logger) }
-		chatNavHandler := handler.NewChatNavService(logger, chatRegistry, state.NewChatRoom, newChatSessMgr)
-		feedbagHandler := handler.NewFeedbagService(sessionManager, feedbagStore)
-		icbmHandler := handler.NewICBMService(sessionManager, feedbagStore)
+		authService := foodgroup.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry)
+		buddyService := foodgroup.NewBuddyService()
+		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore)
+		oServiceServiceForBOS := foodgroup.NewOServiceServiceForBOS(*oServiceService, chatRegistry)
+		locateService := foodgroup.NewLocateService(sessionManager, feedbagStore, feedbagStore)
+		newChatSessMgr := func() foodgroup.SessionManager { return state.NewInMemorySessionManager(logger) }
+		chatNavService := foodgroup.NewChatNavService(logger, chatRegistry, state.NewChatRoom, newChatSessMgr)
+		feedbagService := foodgroup.NewFeedbagService(sessionManager, feedbagStore)
+		icbmService := foodgroup.NewICBMService(sessionManager, feedbagStore)
 
-		server.BOSService{
-			AuthHandler:        authHandler,
-			OServiceBOSHandler: oserviceBOSHandler,
-			Config:             cfg,
-			Logger:             logger,
-			Router: server.BOSRouter{
-				AlertRouter:       server.NewAlertRouter(logger),
-				BuddyRouter:       server.NewBuddyRouter(logger, buddyHandler),
-				ChatNavRouter:     server.NewChatNavRouter(chatNavHandler, logger),
-				FeedbagRouter:     server.NewFeedbagRouter(logger, feedbagHandler),
-				ICBMRouter:        server.NewICBMRouter(logger, icbmHandler),
-				LocateRouter:      server.NewLocateRouter(locateHandler, logger),
-				OServiceBOSRouter: server.NewOServiceRouterForBOS(logger, oserviceHandler, oserviceBOSHandler),
-			},
+		oscar.BOSServer{
+			AuthService: authService,
+			Config:      cfg,
+			Handler: handler.NewBOSRouter(handler.Handlers{
+				AlertHandler:       handler.NewAlertHandler(logger),
+				BuddyHandler:       handler.NewBuddyHandler(logger, buddyService),
+				ChatNavHandler:     handler.NewChatNavHandler(chatNavService, logger),
+				FeedbagHandler:     handler.NewFeedbagHandler(logger, feedbagService),
+				ICBMHandler:        handler.NewICBMHandler(logger, icbmService),
+				LocateHandler:      handler.NewLocateHandler(locateService, logger),
+				OServiceBOSHandler: handler.NewOServiceHandlerForBOS(logger, oServiceService, oServiceServiceForBOS),
+			}),
+			Logger:         logger,
+			OnlineNotifier: oServiceServiceForBOS,
 		}.Start()
 		wg.Done()
 	}(logger)
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "CHAT")
-		authHandler := handler.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry)
-		oserviceHandler := handler.NewOServiceService(cfg, sessionManager, feedbagStore)
-		chatHandler := handler.NewChatService(chatRegistry)
-		oserviceChatHandler := handler.NewOServiceServiceForChat(*oserviceHandler, chatRegistry)
+		authService := foodgroup.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry)
+		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore)
+		chatService := foodgroup.NewChatService(chatRegistry)
+		oServiceServiceForChat := foodgroup.NewOServiceServiceForChat(*oServiceService, chatRegistry)
 
-		server.ChatService{
-			AuthHandler:         authHandler,
-			Config:              cfg,
-			Logger:              logger,
-			OServiceChatHandler: oserviceChatHandler,
-			Router: server.ChatServiceRouter{
-				ChatRouter:         server.NewChatRouter(logger, chatHandler),
-				OServiceChatRouter: server.NewOServiceRouterForChat(logger, oserviceHandler, oserviceChatHandler),
-			},
+		oscar.ChatServer{
+			AuthService: authService,
+			Config:      cfg,
+			Handler: handler.NewChatRouter(handler.Handlers{
+				ChatHandler:         handler.NewChatHandler(logger, chatService),
+				OServiceChatHandler: handler.NewOServiceHandlerForChat(logger, oServiceService, oServiceServiceForChat),
+			}),
+			Logger:         logger,
+			OnlineNotifier: oServiceServiceForChat,
 		}.Start()
 		wg.Done()
 	}(logger)
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "AUTH")
-		authHandler := handler.NewAuthService(cfg, sessionManager, nil, feedbagStore, feedbagStore, chatRegistry)
+		authHandler := foodgroup.NewAuthService(cfg, sessionManager, nil, feedbagStore, feedbagStore, chatRegistry)
 
-		server.BUCPAuthService{
-			AuthHandler: authHandler,
+		oscar.BUCPAuthService{
+			AuthService: authHandler,
 			Config:      cfg,
 			Logger:      logger,
 		}.Start()

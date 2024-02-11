@@ -5,7 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/wire"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,13 +23,13 @@ func TestUserStore(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	itemsIn := []oscar.FeedbagItem{
+	itemsIn := []wire.FeedbagItem{
 		{
 			GroupID:   0,
 			ItemID:    1805,
 			ClassID:   3,
 			Name:      "spimmer1234",
-			TLVLBlock: oscar.TLVLBlock{},
+			TLVLBlock: wire.TLVLBlock{},
 		},
 		{
 			GroupID: 0x0A,
@@ -62,15 +63,15 @@ func TestFeedbagDelete(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	itemsIn := []oscar.FeedbagItem{
+	itemsIn := []wire.FeedbagItem{
 		{
 			GroupID: 0,
 			ItemID:  1805,
 			ClassID: 3,
 			Name:    "spimmer1234",
-			TLVLBlock: oscar.TLVLBlock{
-				TLVList: oscar.TLVList{
-					oscar.NewTLV(0x01, uint16(1000)),
+			TLVLBlock: wire.TLVLBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(0x01, uint16(1000)),
 				},
 			},
 		},
@@ -92,7 +93,7 @@ func TestFeedbagDelete(t *testing.T) {
 		t.Fatalf("failed to upsert: %s", err.Error())
 	}
 
-	if err := f.FeedbagDelete(screenName, []oscar.FeedbagItem{itemsIn[0]}); err != nil {
+	if err := f.FeedbagDelete(screenName, []wire.FeedbagItem{itemsIn[0]}); err != nil {
 		t.Fatalf("failed to delete: %s", err.Error())
 	}
 
@@ -137,7 +138,7 @@ func TestLastModifiedNotEmpty(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	itemsIn := []oscar.FeedbagItem{
+	itemsIn := []wire.FeedbagItem{
 		{
 			GroupID: 0x0A,
 			ItemID:  0,
@@ -426,15 +427,15 @@ func TestSQLiteUserStore_Buddies(t *testing.T) {
 	feedbagStore, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	assert.NoError(t, feedbagStore.FeedbagUpsert("userA", []oscar.FeedbagItem{
-		{Name: "userB", ItemID: 1, ClassID: oscar.FeedbagClassIdBuddy},
-		{Name: "userC", ItemID: 2, ClassID: oscar.FeedbagClassIdBuddy},
-		{Name: "userD", ItemID: 3, ClassID: oscar.FeedbagClassIdBuddy},
+	assert.NoError(t, feedbagStore.FeedbagUpsert("userA", []wire.FeedbagItem{
+		{Name: "userB", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
+		{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
+		{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
 	}))
-	assert.NoError(t, feedbagStore.FeedbagUpsert("userB", []oscar.FeedbagItem{
-		{Name: "userA", ItemID: 1, ClassID: oscar.FeedbagClassIdBuddy},
-		{Name: "userC", ItemID: 2, ClassID: oscar.FeedbagClassIdBuddy},
-		{Name: "userD", ItemID: 3, ClassID: oscar.FeedbagClassIdBuddy},
+	assert.NoError(t, feedbagStore.FeedbagUpsert("userB", []wire.FeedbagItem{
+		{Name: "userA", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
+		{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
+		{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
 	}))
 
 	want := []string{"userB", "userC", "userD"}
@@ -465,20 +466,20 @@ func TestSQLiteUserStore_AdjacentUsers(t *testing.T) {
 	feedbagStore, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	assert.NoError(t, feedbagStore.FeedbagUpsert("userA", []oscar.FeedbagItem{
-		{Name: "userB", ItemID: 1, ClassID: oscar.FeedbagClassIdBuddy},
-		{Name: "userC", ItemID: 2, ClassID: oscar.FeedbagClassIdBuddy},
-		{Name: "userD", ItemID: 3, ClassID: oscar.FeedbagClassIdBuddy},
+	assert.NoError(t, feedbagStore.FeedbagUpsert("userA", []wire.FeedbagItem{
+		{Name: "userB", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
+		{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
+		{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
 	}))
-	assert.NoError(t, feedbagStore.FeedbagUpsert("userB", []oscar.FeedbagItem{
-		{Name: "userA", ItemID: 1, ClassID: oscar.FeedbagClassIdBuddy},
-		{Name: "userC", ItemID: 2, ClassID: oscar.FeedbagClassIdBuddy},
-		{Name: "userD", ItemID: 3, ClassID: oscar.FeedbagClassIdBuddy},
+	assert.NoError(t, feedbagStore.FeedbagUpsert("userB", []wire.FeedbagItem{
+		{Name: "userA", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
+		{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
+		{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
 	}))
-	assert.NoError(t, feedbagStore.FeedbagUpsert("userC", []oscar.FeedbagItem{
-		{Name: "userA", ItemID: 1, ClassID: oscar.FeedbagClassIdBuddy},
-		{Name: "userB", ItemID: 2, ClassID: oscar.FeedbagClassIdBuddy},
-		{Name: "userD", ItemID: 3, ClassID: oscar.FeedbagClassIdBuddy},
+	assert.NoError(t, feedbagStore.FeedbagUpsert("userC", []wire.FeedbagItem{
+		{Name: "userA", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
+		{Name: "userB", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
+		{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
 	}))
 
 	want := []string{"userB", "userC"}

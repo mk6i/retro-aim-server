@@ -11,8 +11,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/mitchellh/go-wordwrap"
 	"github.com/mk6i/retro-aim-server/config"
+
+	"github.com/mitchellh/go-wordwrap"
 )
 
 var platformKeywords = map[string]struct {

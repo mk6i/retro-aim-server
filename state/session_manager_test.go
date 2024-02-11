@@ -5,7 +5,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/wire"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -159,7 +160,7 @@ func TestInMemorySessionManager_RelayToScreenNames(t *testing.T) {
 	user2 := sm.AddSession("sess-id-2", "user-screen-name-2")
 	user3 := sm.AddSession("sess-id-3", "user-screen-name-3")
 
-	want := oscar.SNACMessage{Frame: oscar.SNACFrame{FoodGroup: oscar.ICBM}}
+	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
 	recips := []string{"user-screen-name-1", "user-screen-name-2"}
 	sm.RelayToScreenNames(context.Background(), recips, want)
@@ -187,7 +188,7 @@ func TestInMemorySessionManager_Broadcast(t *testing.T) {
 	user1 := sm.AddSession("sess-id-1", "user-screen-name-1")
 	user2 := sm.AddSession("sess-id-2", "user-screen-name-2")
 
-	want := oscar.SNACMessage{Frame: oscar.SNACFrame{FoodGroup: oscar.ICBM}}
+	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
 	sm.RelayToAll(context.Background(), want)
 
@@ -209,7 +210,7 @@ func TestInMemorySessionManager_Broadcast_SkipClosedSession(t *testing.T) {
 	user2 := sm.AddSession("sess-id-2", "user-screen-name-2")
 	user2.Close()
 
-	want := oscar.SNACMessage{Frame: oscar.SNACFrame{FoodGroup: oscar.ICBM}}
+	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
 	sm.RelayToAll(context.Background(), want)
 
@@ -231,7 +232,7 @@ func TestInMemorySessionManager_RelayToScreenName_SessionExists(t *testing.T) {
 	user1 := sm.AddSession("sess-id-1", "user-screen-name-1")
 	user2 := sm.AddSession("sess-id-2", "user-screen-name-2")
 
-	want := oscar.SNACMessage{Frame: oscar.SNACFrame{FoodGroup: oscar.ICBM}}
+	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
 	recip := "user-screen-name-1"
 	sm.RelayToScreenName(context.Background(), recip, want)
@@ -253,7 +254,7 @@ func TestInMemorySessionManager_RelayToScreenName_SessionNotExist(t *testing.T) 
 
 	user1 := sm.AddSession("sess-id-1", "user-screen-name-1")
 
-	want := oscar.SNACMessage{Frame: oscar.SNACFrame{FoodGroup: oscar.ICBM}}
+	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
 	recip := "user-screen-name-2"
 	sm.RelayToScreenName(context.Background(), recip, want)
@@ -269,7 +270,7 @@ func TestInMemorySessionManager_RelayToScreenName_SkipFullSession(t *testing.T) 
 	sm := NewInMemorySessionManager(slog.Default())
 
 	user1 := sm.AddSession("sess-id-1", "user-screen-name-1")
-	msg := oscar.SNACMessage{Frame: oscar.SNACFrame{FoodGroup: oscar.ICBM}}
+	msg := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
 	wantCount := 0
 	for {
@@ -303,7 +304,7 @@ func TestInMemorySessionManager_RelayToAllExcept(t *testing.T) {
 	user2 := sm.AddSession("sess-id-2", "user-screen-name-2")
 	user3 := sm.AddSession("sess-id-3", "user-screen-name-3")
 
-	want := oscar.SNACMessage{Frame: oscar.SNACFrame{FoodGroup: oscar.ICBM}}
+	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
 	sm.RelayToAllExcept(context.Background(), user2, want)
 

@@ -3,7 +3,8 @@ package state
 import (
 	"testing"
 
-	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/wire"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -150,14 +151,14 @@ func TestChatRoom_TLVList(t *testing.T) {
 	room.Name = "chat-room-name"
 
 	have := room.TLVList()
-	want := []oscar.TLV{
-		oscar.NewTLV(oscar.ChatNavTLVFlags, uint16(15)),
-		oscar.NewTLV(oscar.ChatNavCreateTime, uint32(room.CreateTime.Unix())),
-		oscar.NewTLV(oscar.ChatNavTLVMaxMsgLen, uint16(1024)),
-		oscar.NewTLV(oscar.ChatNavTLVMaxOccupancy, uint16(100)),
-		oscar.NewTLV(oscar.ChatNavTLVCreatePerms, uint8(2)),
-		oscar.NewTLV(oscar.ChatNavTLVFullyQualifiedName, room.Name),
-		oscar.NewTLV(oscar.ChatNavTLVRoomName, room.Name),
+	want := []wire.TLV{
+		wire.NewTLV(wire.ChatNavTLVFlags, uint16(15)),
+		wire.NewTLV(wire.ChatNavCreateTime, uint32(room.CreateTime.Unix())),
+		wire.NewTLV(wire.ChatNavTLVMaxMsgLen, uint16(1024)),
+		wire.NewTLV(wire.ChatNavTLVMaxOccupancy, uint16(100)),
+		wire.NewTLV(wire.ChatNavTLVCreatePerms, uint8(2)),
+		wire.NewTLV(wire.ChatNavTLVFullyQualifiedName, room.Name),
+		wire.NewTLV(wire.ChatNavTLVRoomName, room.Name),
 	}
 
 	assert.Equal(t, want, have)

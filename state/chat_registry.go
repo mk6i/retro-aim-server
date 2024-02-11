@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mk6i/retro-aim-server/wire"
+
 	"github.com/google/uuid"
-	"github.com/mk6i/retro-aim-server/oscar"
 )
 
 // ErrChatRoomNotFound indicates that a chat room lookup failed.
@@ -79,8 +80,8 @@ type ChatRoom struct {
 }
 
 // TLVList returns a TLV list of chat room metadata.
-func (c ChatRoom) TLVList() []oscar.TLV {
-	return []oscar.TLV{
+func (c ChatRoom) TLVList() []wire.TLV {
+	return []wire.TLV{
 		// From protocols/oscar/family_chatnav.c in lib purple, these are the
 		// room creation flags:
 		// - 1 Evilable
@@ -88,19 +89,19 @@ func (c ChatRoom) TLVList() []oscar.TLV {
 		// - 4 Instancing Allowed
 		// - 8 Occupant Peek Allowed
 		// It's unclear what effect they actually have.
-		oscar.NewTLV(oscar.ChatNavTLVFlags, uint16(15)),
-		oscar.NewTLV(oscar.ChatNavCreateTime, uint32(c.CreateTime.Unix())),
-		oscar.NewTLV(oscar.ChatNavTLVMaxMsgLen, uint16(1024)),
-		oscar.NewTLV(oscar.ChatNavTLVMaxOccupancy, uint16(100)),
+		wire.NewTLV(wire.ChatNavTLVFlags, uint16(15)),
+		wire.NewTLV(wire.ChatNavCreateTime, uint32(c.CreateTime.Unix())),
+		wire.NewTLV(wire.ChatNavTLVMaxMsgLen, uint16(1024)),
+		wire.NewTLV(wire.ChatNavTLVMaxOccupancy, uint16(100)),
 		// From protocols/oscar/family_chatnav.c in lib purple, these are the
 		// room creation permission values:
 		// - 0  creation not allowed
 		// - 1  room creation allowed
 		// - 2  exchange creation allowed
 		// It's unclear what effect they actually have.
-		oscar.NewTLV(oscar.ChatNavTLVCreatePerms, uint8(2)),
-		oscar.NewTLV(oscar.ChatNavTLVFullyQualifiedName, c.Name),
-		oscar.NewTLV(oscar.ChatNavTLVRoomName, c.Name),
+		wire.NewTLV(wire.ChatNavTLVCreatePerms, uint8(2)),
+		wire.NewTLV(wire.ChatNavTLVFullyQualifiedName, c.Name),
+		wire.NewTLV(wire.ChatNavTLVRoomName, c.Name),
 	}
 }
 

@@ -5,7 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mk6i/retro-aim-server/oscar"
+	"github.com/mk6i/retro-aim-server/wire"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,19 +53,19 @@ func TestSession_SetAndGetScreenName(t *testing.T) {
 	assert.Equal(t, sn, s.ScreenName())
 }
 
-func TestSession_SetAndGetChatID(t *testing.T) {
+func TestSession_SetAndGetChatRoomCookie(t *testing.T) {
 	s := NewSession()
-	assert.Empty(t, s.ChatID())
-	sn := "the-chat-id"
-	s.SetChatID(sn)
-	assert.Equal(t, sn, s.ChatID())
+	assert.Empty(t, s.ChatRoomCookie())
+	sn := "the-chat-cookie"
+	s.SetChatRoomCookie(sn)
+	assert.Equal(t, sn, s.ChatRoomCookie())
 }
 
 func TestSession_TLVUserInfo(t *testing.T) {
 	tests := []struct {
 		name           string
 		givenSessionFn func() *Session
-		want           oscar.TLVUserInfo
+		want           wire.TLVUserInfo
 	}{
 		{
 			name: "user is active and visible",
@@ -75,16 +76,16 @@ func TestSession_TLVUserInfo(t *testing.T) {
 				s.IncrementWarning(10)
 				return s
 			},
-			want: oscar.TLVUserInfo{
+			want: wire.TLVUserInfo{
 				ScreenName:   "xXAIMUSERXx",
 				WarningLevel: 10,
-				TLVBlock: oscar.TLVBlock{
-					TLVList: oscar.TLVList{
-						oscar.NewTLV(0x03, uint32(1)),
-						oscar.NewTLV(0x01, uint16(0x0010)),
-						oscar.NewTLV(0x06, uint16(0x0000)),
-						oscar.NewTLV(0x04, uint16(0)),
-						oscar.NewTLV(0x0D, capChat),
+				TLVBlock: wire.TLVBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(0x03, uint32(1)),
+						wire.NewTLV(0x01, uint16(0x0010)),
+						wire.NewTLV(0x06, uint16(0x0000)),
+						wire.NewTLV(0x04, uint16(0)),
+						wire.NewTLV(0x0D, capChat),
 					},
 				},
 			},
@@ -97,14 +98,14 @@ func TestSession_TLVUserInfo(t *testing.T) {
 				s.SetAwayMessage("here's my away essage")
 				return s
 			},
-			want: oscar.TLVUserInfo{
-				TLVBlock: oscar.TLVBlock{
-					TLVList: oscar.TLVList{
-						oscar.NewTLV(0x03, uint32(1)),
-						oscar.NewTLV(0x01, uint16(0x30)),
-						oscar.NewTLV(0x06, uint16(0x0000)),
-						oscar.NewTLV(0x04, uint16(0)),
-						oscar.NewTLV(0x0D, capChat),
+			want: wire.TLVUserInfo{
+				TLVBlock: wire.TLVBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(0x03, uint32(1)),
+						wire.NewTLV(0x01, uint16(0x30)),
+						wire.NewTLV(0x06, uint16(0x0000)),
+						wire.NewTLV(0x04, uint16(0)),
+						wire.NewTLV(0x0D, capChat),
 					},
 				},
 			},
@@ -117,14 +118,14 @@ func TestSession_TLVUserInfo(t *testing.T) {
 				s.SetInvisible(true)
 				return s
 			},
-			want: oscar.TLVUserInfo{
-				TLVBlock: oscar.TLVBlock{
-					TLVList: oscar.TLVList{
-						oscar.NewTLV(0x03, uint32(1)),
-						oscar.NewTLV(0x01, uint16(0x0010)),
-						oscar.NewTLV(0x06, uint16(0x0100)),
-						oscar.NewTLV(0x04, uint16(0)),
-						oscar.NewTLV(0x0D, capChat),
+			want: wire.TLVUserInfo{
+				TLVBlock: wire.TLVBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(0x03, uint32(1)),
+						wire.NewTLV(0x01, uint16(0x0010)),
+						wire.NewTLV(0x06, uint16(0x0100)),
+						wire.NewTLV(0x04, uint16(0)),
+						wire.NewTLV(0x0D, capChat),
 					},
 				},
 			},
@@ -141,14 +142,14 @@ func TestSession_TLVUserInfo(t *testing.T) {
 				s.nowFn = func() time.Time { return time.Unix(2000, 0) }
 				return s
 			},
-			want: oscar.TLVUserInfo{
-				TLVBlock: oscar.TLVBlock{
-					TLVList: oscar.TLVList{
-						oscar.NewTLV(0x03, uint32(1)),
-						oscar.NewTLV(0x01, uint16(0x0010)),
-						oscar.NewTLV(0x06, uint16(0x0000)),
-						oscar.NewTLV(0x04, uint16(1001)),
-						oscar.NewTLV(0x0D, capChat),
+			want: wire.TLVUserInfo{
+				TLVBlock: wire.TLVBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(0x03, uint32(1)),
+						wire.NewTLV(0x01, uint16(0x0010)),
+						wire.NewTLV(0x06, uint16(0x0000)),
+						wire.NewTLV(0x04, uint16(1001)),
+						wire.NewTLV(0x0D, capChat),
 					},
 				},
 			},
@@ -162,14 +163,14 @@ func TestSession_TLVUserInfo(t *testing.T) {
 				s.UnsetIdle()
 				return s
 			},
-			want: oscar.TLVUserInfo{
-				TLVBlock: oscar.TLVBlock{
-					TLVList: oscar.TLVList{
-						oscar.NewTLV(0x03, uint32(1)),
-						oscar.NewTLV(0x01, uint16(0x0010)),
-						oscar.NewTLV(0x06, uint16(0x0000)),
-						oscar.NewTLV(0x04, uint16(0)),
-						oscar.NewTLV(0x0D, capChat),
+			want: wire.TLVUserInfo{
+				TLVBlock: wire.TLVBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(0x03, uint32(1)),
+						wire.NewTLV(0x01, uint16(0x0010)),
+						wire.NewTLV(0x06, uint16(0x0000)),
+						wire.NewTLV(0x04, uint16(0)),
+						wire.NewTLV(0x0D, capChat),
 					},
 				},
 			},
@@ -186,9 +187,9 @@ func TestSession_TLVUserInfo(t *testing.T) {
 func TestSession_SendAndRecvMessage_ExpectSessSendOK(t *testing.T) {
 	s := NewSession()
 
-	msg := oscar.SNACMessage{
-		Frame: oscar.SNACFrame{
-			FoodGroup: oscar.ICBM,
+	msg := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICBM,
 		},
 	}
 
@@ -216,11 +217,11 @@ loop:
 
 func TestSession_SendMessage_SessSendClosed(t *testing.T) {
 	s := Session{
-		msgCh:  make(chan oscar.SNACMessage, 1),
+		msgCh:  make(chan wire.SNACMessage, 1),
 		stopCh: make(chan struct{}),
 	}
 	s.Close()
-	if res := s.RelayMessage(oscar.SNACMessage{}); res != SessSendClosed {
+	if res := s.RelayMessage(wire.SNACMessage{}); res != SessSendClosed {
 		t.Fatalf("expected SessSendClosed, got %+v", res)
 	}
 }
@@ -228,13 +229,13 @@ func TestSession_SendMessage_SessSendClosed(t *testing.T) {
 func TestSession_SendMessage_SessQueueFull(t *testing.T) {
 	bufSize := 10
 	s := Session{
-		msgCh:  make(chan oscar.SNACMessage, bufSize),
+		msgCh:  make(chan wire.SNACMessage, bufSize),
 		stopCh: make(chan struct{}),
 	}
 	for i := 0; i < bufSize; i++ {
-		assert.Equal(t, SessSendOK, s.RelayMessage(oscar.SNACMessage{}))
+		assert.Equal(t, SessSendOK, s.RelayMessage(wire.SNACMessage{}))
 	}
-	assert.Equal(t, SessQueueFull, s.RelayMessage(oscar.SNACMessage{}))
+	assert.Equal(t, SessQueueFull, s.RelayMessage(wire.SNACMessage{}))
 }
 
 func TestSession_Close_Twice(t *testing.T) {
