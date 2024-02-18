@@ -47,8 +47,10 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 			return fmt.Errorf("%w: missing len_prefix tag", ErrUnmarshalFailure)
 		}
 		buf := make([]byte, bufLen)
-		if _, err := r.Read(buf); err != nil {
-			return err
+		if bufLen > 0 {
+			if _, err := io.ReadFull(r, buf); err != nil {
+				return err
+			}
 		}
 		// todo is there a more efficient way?
 		v.SetString(string(buf))
@@ -102,8 +104,10 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 			}
 
 			buf := make([]byte, bufLen)
-			if _, err := r.Read(buf); err != nil {
-				return err
+			if bufLen > 0 {
+				if _, err := io.ReadFull(r, buf); err != nil {
+					return err
+				}
 			}
 			b := bytes.NewBuffer(buf)
 			slice := reflect.New(v.Type()).Elem()

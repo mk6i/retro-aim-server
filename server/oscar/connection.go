@@ -147,9 +147,11 @@ func consumeFLAPFrames(r io.Reader, msgCh chan incomingMessage, errCh chan error
 
 		if in.flap.FrameType == wire.FLAPFrameData {
 			buf := make([]byte, in.flap.PayloadLength)
-			if _, err := r.Read(buf); err != nil {
-				errCh <- err
-				return
+			if in.flap.PayloadLength > 0 {
+				if _, err := io.ReadFull(r, buf); err != nil {
+					errCh <- err
+					return
+				}
 			}
 			in.payload = bytes.NewBuffer(buf)
 		}

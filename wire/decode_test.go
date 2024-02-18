@@ -190,7 +190,7 @@ func TestUnmarshal(t *testing.T) {
 				Val []int `len_prefix:"uint8"`
 			}{},
 			wantErr: ErrUnmarshalFailure,
-			given:   []byte{0x68, 0x65, 0x6c, 0x6c, 0x6f},
+			given:   []byte{0x04, 0x65, 0x6c, 0x6c, 0x6f},
 		},
 		{
 			name: "byte slice with uint8 len_prefix with read error",

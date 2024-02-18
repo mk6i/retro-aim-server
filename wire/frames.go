@@ -27,8 +27,10 @@ type FLAPFrame struct {
 
 func (f FLAPFrame) ReadBody(r io.Reader) (*bytes.Buffer, error) {
 	b := make([]byte, f.PayloadLength)
-	if _, err := r.Read(b); err != nil {
-		return nil, err
+	if f.PayloadLength > 0 {
+		if _, err := io.ReadFull(r, b); err != nil {
+			return nil, err
+		}
 	}
 	return bytes.NewBuffer(b), nil
 }
