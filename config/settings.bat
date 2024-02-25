@@ -18,7 +18,7 @@ set DISABLE_AUTH=true
 
 rem Crash the server in case it encounters a client message type it doesn't
 rem recognize. This makes failures obvious for debugging purposes.
-set FAIL_FAST=true
+set FAIL_FAST=false
 
 rem Set logging granularity. Possible values: 'trace', 'debug', 'info', 'warn',
 rem 'error'.
