@@ -19,4 +19,4 @@ fi
 
 # Run Retro AIM Server from repo root.
 cd "$REPO_ROOT"
-go run ./cmd/server
+go run -v ./cmd/server

@@ -23,29 +23,52 @@ This project is currently under heavy development. Retro AIM Server supports/wil
 - [ ] Buddy Icons
 - [ ] User Directory
 
-## How to run
+## Quickstart
 
-Retro AIM Server requires [go 1.21](https://go.dev/).
+### Dependencies
 
-### Configuration
+A C compiler is required in order to build the sqlite dependency.
 
-Server configuration is set through environment variables. The following are the most useful configs:
+**MacOS**
 
-| Env Variable   | Description                                                                                              |
-|----------------|----------------------------------------------------------------------------------------------------------|
-| `OSCAR_HOST`   | The hostname that the server should bind to. If exposing to the internet, use the public IP.             |
-| `DISABLE_AUTH` | If true, auto-create screen names at login and skip the password check. Useful for development purposes. |
-| `DB_PATH`      | The path to the SQLite database.                                                                         |
-| `LOG_LEVEL`    | Set logging granularity. Possible values: `trace`, `debug`, `info`, `warn`, `error`                      |
-
-### Starting Up
+> If you have git, this is likely already set up on your machine.
 
 ```shell
-DISABLE_AUTH=true \
-OSCAR_HOST=192.168.64.1 \
-DB_PATH=./aim.db \
-go run ./cmd/server/main.go
+xcode-select --install
 ```
+
+**Linux (Ubuntu)**
+
+```shell
+sudo apt install build-essential
+```
+
+Retro AIM Server requires [go 1.21](https://go.dev/) or newer to run.
+
+### Run the Server
+
+Start Retro AIM Server with the following command. The default settings can be modified in `config/settings.env`.
+
+```shell
+scripts/run_dev.sh
+```
+
+### Configure AIM Client
+
+Download Windows AIM ([v5.1.3036 recommended](https://archive.org/details/aim513036)) and install on Windows 10/11 using
+[Windows XP compatibility mode](https://support.microsoft.com/en-us/windows/make-older-apps-or-programs-compatible-with-windows-783d6dd7-b439-bdb0-0490-54eea0f45938)
+or MacOS/Linux via [Wine](https://www.winehq.org/). 
+
+Once installed, configure the AIM client to connect to Retro AIM Server as
+follows:
+
+1. At the sign-on screen, click `Setup`.
+2. Under the `Sign On/Off` category, click `Connection`.
+3. In the `Server  > Host` field, enter the value of `OSCAR_HOST` found in `config/settings.env`.
+4. In the `Server > Port` field, enter the value of `BOS_PORT` found in `config/settings.env`.
+
+Apply the settings and sign on to AIM. By default, you can sign on with any screen name/password without first
+registering (see `DISABLE_AUTH` in `config/settings.env` for more details).
 
 ### User Management
 
