@@ -20,7 +20,7 @@ This project is currently under heavy development. Retro AIM Server supports/wil
 - [x] Chat Rooms
 - [x] Visibility Toggle
 - [x] User Blocking
-- [ ] Buddy Icons
+- [x] Buddy Icons
 - [ ] User Directory
 
 ## Quickstart

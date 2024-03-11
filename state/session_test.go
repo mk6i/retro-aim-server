@@ -81,11 +81,10 @@ func TestSession_TLVUserInfo(t *testing.T) {
 				WarningLevel: 10,
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(0x03, uint32(1)),
-						wire.NewTLV(0x01, uint16(0x0010)),
-						wire.NewTLV(0x06, uint16(0x0000)),
-						wire.NewTLV(0x04, uint16(0)),
-						wire.NewTLV(0x0D, capChat),
+						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
+						wire.NewTLV(wire.OServiceUserInfoStatus, uint16(0x0000)),
+						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)),
 					},
 				},
 			},
@@ -95,17 +94,16 @@ func TestSession_TLVUserInfo(t *testing.T) {
 			givenSessionFn: func() *Session {
 				s := NewSession()
 				s.SetSignonTime(time.Unix(1, 0))
-				s.SetAwayMessage("here's my away essage")
+				s.SetAwayMessage("here's my away message")
 				return s
 			},
 			want: wire.TLVUserInfo{
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(0x03, uint32(1)),
-						wire.NewTLV(0x01, uint16(0x30)),
-						wire.NewTLV(0x06, uint16(0x0000)),
-						wire.NewTLV(0x04, uint16(0)),
-						wire.NewTLV(0x0D, capChat),
+						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x30)),
+						wire.NewTLV(wire.OServiceUserInfoStatus, uint16(0x0000)),
+						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)),
 					},
 				},
 			},
@@ -121,11 +119,10 @@ func TestSession_TLVUserInfo(t *testing.T) {
 			want: wire.TLVUserInfo{
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(0x03, uint32(1)),
-						wire.NewTLV(0x01, uint16(0x0010)),
-						wire.NewTLV(0x06, uint16(0x0100)),
-						wire.NewTLV(0x04, uint16(0)),
-						wire.NewTLV(0x0D, capChat),
+						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
+						wire.NewTLV(wire.OServiceUserInfoStatus, uint16(0x0100)),
+						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)),
 					},
 				},
 			},
@@ -145,11 +142,10 @@ func TestSession_TLVUserInfo(t *testing.T) {
 			want: wire.TLVUserInfo{
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(0x03, uint32(1)),
-						wire.NewTLV(0x01, uint16(0x0010)),
-						wire.NewTLV(0x06, uint16(0x0000)),
-						wire.NewTLV(0x04, uint16(1001)),
-						wire.NewTLV(0x0D, capChat),
+						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
+						wire.NewTLV(wire.OServiceUserInfoStatus, uint16(0x0000)),
+						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(1001)),
 					},
 				},
 			},
@@ -166,11 +162,67 @@ func TestSession_TLVUserInfo(t *testing.T) {
 			want: wire.TLVUserInfo{
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(0x03, uint32(1)),
-						wire.NewTLV(0x01, uint16(0x0010)),
-						wire.NewTLV(0x06, uint16(0x0000)),
-						wire.NewTLV(0x04, uint16(0)),
-						wire.NewTLV(0x0D, capChat),
+						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
+						wire.NewTLV(wire.OServiceUserInfoStatus, uint16(0x0000)),
+						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)),
+					},
+				},
+			},
+		},
+		{
+			name: "user has capabilities",
+			givenSessionFn: func() *Session {
+				s := NewSession()
+				s.SetSignonTime(time.Unix(1, 0))
+				s.SetCaps([][16]byte{
+					{
+						// chat: "748F2420-6287-11D1-8222-444553540000"
+						0x74, 0x8f, 0x24, 0x20, 0x62, 0x87, 0x11, 0xd1,
+						0x82, 0x22, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00,
+					},
+					{
+						// chat2: "748F2420-6287-11D1-8222-444553540000"
+						0x75, 0x8f, 0x24, 0x20, 0x62, 0x87, 0x11, 0xd1,
+						0x82, 0x22, 0x44, 0x45, 0x53, 0x54, 0x00, 0x01,
+					},
+				})
+				return s
+			},
+			want: wire.TLVUserInfo{
+				TLVBlock: wire.TLVBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
+						wire.NewTLV(wire.OServiceUserInfoStatus, uint16(0x0000)),
+						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)),
+						wire.NewTLV(wire.OServiceUserInfoOscarCaps, []byte{
+							// chat: "748F2420-6287-11D1-8222-444553540000"
+							0x74, 0x8f, 0x24, 0x20, 0x62, 0x87, 0x11, 0xd1,
+							0x82, 0x22, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00,
+							// chat: "748F2420-6287-11D1-8222-444553540000"
+							0x75, 0x8f, 0x24, 0x20, 0x62, 0x87, 0x11, 0xd1,
+							0x82, 0x22, 0x44, 0x45, 0x53, 0x54, 0x00, 0x01,
+						}),
+					},
+				},
+			},
+		},
+		{
+			name: "user has buddy icon",
+			givenSessionFn: func() *Session {
+				s := NewSession()
+				s.SetSignonTime(time.Unix(1, 0))
+				return s
+			},
+			want: wire.TLVUserInfo{
+				WarningLevel: 0,
+				TLVBlock: wire.TLVBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
+						wire.NewTLV(wire.OServiceUserInfoStatus, uint16(0x0000)),
+						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)),
 					},
 				},
 			},

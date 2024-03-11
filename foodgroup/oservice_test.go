@@ -4,12 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mk6i/retro-aim-server/config"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/mk6i/retro-aim-server/config"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
@@ -296,6 +298,10 @@ func TestSetUserInfoFields(t *testing.T) {
 					Return(friends, nil).
 					Maybe()
 			}
+			feedbagManager.EXPECT().
+				Feedbag(tc.userSession.ScreenName()).
+				Return(nil, nil).
+				Maybe()
 			messageRelayer := newMockMessageRelayer(t)
 			for _, broadcastMsg := range tc.broadcastMessage {
 				messageRelayer.EXPECT().RelayToScreenNames(mock.Anything, broadcastMsg.recipients, broadcastMsg.msg)
@@ -503,6 +509,14 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 							FoodGroup: wire.OService,
 							SubGroup:  wire.OServiceSetUserInfoFields,
 						},
+						{
+							FoodGroup: wire.BART,
+							SubGroup:  wire.BARTUploadQuery,
+						},
+						{
+							FoodGroup: wire.BART,
+							SubGroup:  wire.BARTDownloadQuery,
+						},
 					},
 				},
 			},
@@ -529,6 +543,7 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 				wire.ICBM,
 				wire.Locate,
 				wire.OService,
+				wire.BART,
 			},
 		},
 	}
@@ -657,6 +672,10 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 				AdjacentUsers(tt.recipientScreenName).
 				Return(tt.recipientBuddies, nil).
 				Maybe()
+			feedbagManager.EXPECT().
+				Feedbag(tt.sess.ScreenName()).
+				Return(nil, nil).
+				Maybe()
 			messageRelayer := newMockMessageRelayer(t)
 			messageRelayer.EXPECT().
 				RelayToScreenNames(mock.Anything, tt.recipientBuddies, tt.broadcastMessage).
@@ -687,33 +706,35 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 		// buddyLookupParams contains params for looking up arriving user's
 		// buddies
 		buddyLookupParams buddiesLookupParams
-		// interestedUsersParams contains params for looking up users who have
+		// adjacentUsersParams contains params for looking up users who have
 		// the arriving user on their buddy list
-		interestedUsersParams interestedUsersParams
-		// broadcastToScreenNamesParams contains params for sending
+		interestedUsersParams adjacentUsersParams
+		// relayToScreenNamesParams contains params for sending
 		// buddy online notification to users who have the arriving user on
 		// their buddy list
-		broadcastToScreenNamesParams broadcastToScreenNamesParams
+		broadcastToScreenNamesParams relayToScreenNamesParams
 		// retrieveByScreenNameParams contains params for looking up the
 		// session for each of the arriving user's buddies
 		retrieveByScreenNameParams retrieveByScreenNameParams
 		// sendToScreenNameParams contains params for sending arrival
 		// notifications for each of the arriving user's buddies to the
 		// arriving user's client
-		sendToScreenNameParams sendToScreenNameParams
-		wantErr                error
+		sendToScreenNameParams relayToScreenNameParams
+		// feedbagParams contains params for retrieving a user's feedbag
+		feedbagParams feedbagParams
+		wantErr       error
 	}{
 		{
 			name:   "notify arriving user's buddies of its arrival and populate the arriving user's buddy list",
 			sess:   newTestSession("test-user"),
 			bodyIn: wire.SNAC_0x01_0x02_OServiceClientOnline{},
-			interestedUsersParams: interestedUsersParams{
+			interestedUsersParams: adjacentUsersParams{
 				{
 					screenName: "test-user",
 					users:      []string{"buddy1", "buddy2", "buddy3", "buddy4"},
 				},
 			},
-			broadcastToScreenNamesParams: broadcastToScreenNamesParams{
+			broadcastToScreenNamesParams: relayToScreenNamesParams{
 				{
 					screenNames: []string{"buddy1", "buddy2", "buddy3", "buddy4"},
 					message: wire.SNACMessage{
@@ -743,7 +764,7 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 					sess:       newTestSession("buddy3"),
 				},
 			},
-			sendToScreenNameParams: sendToScreenNameParams{
+			sendToScreenNameParams: relayToScreenNameParams{
 				{
 					screenName: "test-user",
 					message: wire.SNACMessage{
@@ -767,6 +788,12 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 							TLVUserInfo: newTestSession("buddy3").TLVUserInfo(),
 						},
 					},
+				},
+			},
+			feedbagParams: feedbagParams{
+				{
+					screenName: "test-user",
+					results:    []wire.FeedbagItem{},
 				},
 			},
 		},
@@ -797,6 +824,11 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 			for _, params := range tt.sendToScreenNameParams {
 				messageRelayer.EXPECT().
 					RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+			for _, params := range tt.feedbagParams {
+				feedbagManager.EXPECT().
+					Feedbag(params.screenName).
+					Return(params.results, nil)
 			}
 
 			svc := NewOServiceServiceForBOS(OServiceService{

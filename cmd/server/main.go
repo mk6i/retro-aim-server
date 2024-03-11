@@ -45,13 +45,14 @@ func main() {
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "BOS")
 		authService := foodgroup.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry)
+		bartService := foodgroup.NewBARTService(logger, feedbagStore, sessionManager, feedbagStore)
 		buddyService := foodgroup.NewBuddyService()
 		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore)
 		oServiceServiceForBOS := foodgroup.NewOServiceServiceForBOS(*oServiceService, chatRegistry)
 		locateService := foodgroup.NewLocateService(sessionManager, feedbagStore, feedbagStore)
 		newChatSessMgr := func() foodgroup.SessionManager { return state.NewInMemorySessionManager(logger) }
 		chatNavService := foodgroup.NewChatNavService(logger, chatRegistry, state.NewChatRoom, newChatSessMgr)
-		feedbagService := foodgroup.NewFeedbagService(sessionManager, feedbagStore)
+		feedbagService := foodgroup.NewFeedbagService(logger, sessionManager, feedbagStore, feedbagStore)
 		icbmService := foodgroup.NewICBMService(sessionManager, feedbagStore)
 
 		oscar.BOSServer{
@@ -59,6 +60,7 @@ func main() {
 			Config:      cfg,
 			Handler: handler.NewBOSRouter(handler.Handlers{
 				AlertHandler:       handler.NewAlertHandler(logger),
+				BARTHandler:        handler.NewBARTHandler(logger, bartService),
 				BuddyHandler:       handler.NewBuddyHandler(logger, buddyService),
 				ChatNavHandler:     handler.NewChatNavHandler(chatNavService, logger),
 				FeedbagHandler:     handler.NewFeedbagHandler(logger, feedbagService),

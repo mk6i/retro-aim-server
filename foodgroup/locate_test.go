@@ -6,9 +6,10 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestLocateService_UserInfoQuery2(t *testing.T) {
@@ -415,6 +416,16 @@ func TestLocateService_SetInfo(t *testing.T) {
 					},
 				},
 			},
+			mockParams: mockParams{
+				profileManagerParams: profileManagerParams{
+					upsertProfileParams: upsertProfileParams{
+						{
+							screenName: "test-user",
+							body:       "profile-result",
+						},
+					},
+				},
+			},
 		},
 		{
 			name:        "set away message",
@@ -428,7 +439,7 @@ func TestLocateService_SetInfo(t *testing.T) {
 			},
 			mockParams: mockParams{
 				messageRelayerParams: messageRelayerParams{
-					broadcastToScreenNamesParams: broadcastToScreenNamesParams{
+					relayToScreenNamesParams: relayToScreenNamesParams{
 						{
 							screenNames: []string{"friend1", "friend2"},
 							message: wire.SNACMessage{
@@ -444,15 +455,17 @@ func TestLocateService_SetInfo(t *testing.T) {
 					},
 				},
 				feedbagManagerParams: feedbagManagerParams{
-					interestedUsersParams: interestedUsersParams{
+					adjacentUsersParams: adjacentUsersParams{
 						{
 							screenName: "user_screen_name",
 							users:      []string{"friend1", "friend2"},
 						},
 					},
-				},
-				profileManagerParams: profileManagerParams{
-					upsertProfileParams: upsertProfileParams{},
+					feedbagParams: feedbagParams{
+						{
+							screenName: "user_screen_name",
+						},
+					},
 				},
 			},
 		},
@@ -460,26 +473,64 @@ func TestLocateService_SetInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			messageRelayer := newMockMessageRelayer(t)
-			for _, params := range tt.mockParams.broadcastToScreenNamesParams {
+			for _, params := range tt.mockParams.relayToScreenNamesParams {
 				messageRelayer.EXPECT().
 					RelayToScreenNames(mock.Anything, params.screenNames, params.message)
 			}
 			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tt.mockParams.interestedUsersParams {
+			for _, params := range tt.mockParams.adjacentUsersParams {
 				feedbagManager.EXPECT().
 					AdjacentUsers(params.screenName).
 					Return(params.users, nil)
 			}
+			for _, params := range tt.mockParams.feedbagParams {
+				feedbagManager.EXPECT().
+					Feedbag(params.screenName).
+					Return(params.results, nil)
+			}
 			profileManager := newMockProfileManager(t)
-			if msg, hasProf := tt.inBody.String(wire.LocateTLVTagsInfoSigData); hasProf {
+			for _, params := range tt.mockParams.upsertProfileParams {
 				profileManager.EXPECT().
-					SetProfile(tt.userSession.ScreenName(), msg).
+					SetProfile(params.screenName, params.body).
 					Return(nil)
 			}
 			svc := NewLocateService(messageRelayer, feedbagManager, profileManager)
 			assert.Equal(t, tt.wantErr, svc.SetInfo(nil, tt.userSession, tt.inBody))
 		})
 	}
+}
+
+func TestLocateService_SetInfo_SetCaps(t *testing.T) {
+	svc := NewLocateService(nil, nil, nil)
+
+	sess := newTestSession("screen-name")
+	inBody := wire.SNAC_0x02_0x04_LocateSetInfo{
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLV(wire.LocateTLVTagsInfoCapabilities, []byte{
+					// chat: "748F2420-6287-11D1-8222-444553540000"
+					0x74, 0x8f, 0x24, 0x20, 0x62, 0x87, 0x11, 0xd1, 0x82, 0x22, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00,
+					// avatar: "09461346-4c7f-11d1-8222-444553540000"
+					9, 70, 19, 70, 76, 127, 17, 209, 130, 34, 68, 69, 83, 84, 0, 0,
+					// 0946134a-4c7f-11d1-8222-444553540000 (games)
+					9, 70, 19, 74, 76, 127, 17, 209, 130, 34, 68, 69, 83, 84, 0, 0,
+					// 0946134d-4c7f-11d1-8222-444553540000 (ICQ inter-op)
+					9, 70, 19, 77, 76, 127, 17, 209, 130, 34, 68, 69, 83, 84, 0, 0,
+					// 09461341-4c7f-11d1-8222-444553540000 (voice chat)
+					9, 70, 19, 65, 76, 127, 17, 209, 130, 34, 68, 69, 83, 84, 0, 0,
+				}),
+			},
+		},
+	}
+	assert.NoError(t, svc.SetInfo(nil, sess, inBody))
+
+	expect := [][16]byte{
+		// 748F2420-6287-11D1-8222-444553540000 (chat)
+		{0x74, 0x8f, 0x24, 0x20, 0x62, 0x87, 0x11, 0xd1, 0x82, 0x22, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00},
+		// 09461346-4C7F-11D1-8222-444553540000 (avatar)
+		{9, 70, 19, 70, 76, 127, 17, 209, 130, 34, 68, 69, 83, 84, 0, 0},
+	}
+	assert.Equal(t, expect, sess.Caps())
 }
 
 func TestLocateService_RightsQuery(t *testing.T) {

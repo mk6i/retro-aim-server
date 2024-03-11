@@ -1,6 +1,9 @@
 package wire
 
-import "errors"
+import (
+	"bytes"
+	"errors"
+)
 
 // ErrUnsupportedFoodGroup indicates that a foodgroup value is either invalid
 // or unsupported by a method.
@@ -117,13 +120,13 @@ const (
 	OServiceBartQuery2        uint16 = 0x0022
 	OServiceBartReply2        uint16 = 0x0023
 
-	OServiceUserInfoUserFlags uint16 = 0x01
-	OServiceUserInfoSignonTOD uint16 = 0x03
-	OServiceUserInfoIdleTime  uint16 = 0x04
-	OServiceUserInfoStatus    uint16 = 0x06
-	OServiceUserInfoOscarCaps uint16 = 0x0D
-
+	OServiceUserInfoUserFlags   uint16 = 0x01
+	OServiceUserInfoSignonTOD   uint16 = 0x03
+	OServiceUserInfoIdleTime    uint16 = 0x04
+	OServiceUserInfoStatus      uint16 = 0x06
+	OServiceUserInfoOscarCaps   uint16 = 0x0D
 	OServiceUserFlagOSCARFree   uint16 = 0x0010 // AIM (not AOL) account
+	OServiceUserInfoBARTInfo    uint16 = 0x1D
 	OServiceUserFlagUnavailable uint16 = 0x0020 // user is away
 	OServiceUserFlagInvisible   uint16 = 0x0100 // user is invisible
 
@@ -238,6 +241,10 @@ type SNAC_0x01_0x18_OServiceHostVersions struct {
 
 type SNAC_0x01_0x1E_OServiceSetUserInfoFields struct {
 	TLVRestBlock
+}
+
+type SNAC_0x01_0x21_OServiceBARTReply struct {
+	BARTID
 }
 
 //
@@ -620,6 +627,119 @@ type SNAC_0x0E_0x06_ChatChannelMsgToClient struct {
 }
 
 //
+// 0x10: BART
+//
+//
+
+const (
+	BARTTypesBuddyIconSmall      uint16 = 0x00
+	BARTTypesBuddyIcon           uint16 = 0x01
+	BARTTypesStatusStr           uint16 = 0x02
+	BARTTypesArriveSound         uint16 = 0x03
+	BARTTypesRichName            uint16 = 0x04
+	BARTTypesSuperIcon           uint16 = 0x05
+	BARTTypesRadioStation        uint16 = 0x06
+	BARTTypesSuperIconTrigger    uint16 = 0x07
+	BARTTypesStatusTextLink      uint16 = 0x09
+	BARTTypesLocation            uint16 = 0x0B
+	BARTTypesBuddyIconBig        uint16 = 0x0C
+	BARTTypesStatusTextTimestamp uint16 = 0x0D
+	BARTTypesCurrentAvtrack      uint16 = 0x0F
+	BARTTypesDepartSound         uint16 = 0x60
+	BARTTypesImBackground        uint16 = 0x80
+	BARTTypesImChrome            uint16 = 0x81
+	BARTTypesImSkin              uint16 = 0x82
+	BARTTypesImSound             uint16 = 0x83
+	BARTTypesBadge               uint16 = 0x84
+	BARTTypesBadgeUrl            uint16 = 0x85
+	BARTTypesImInitialSound      uint16 = 0x86
+	BARTTypesFlashWallpaper      uint16 = 0x88
+	BARTTypesImmersiveWallpaper  uint16 = 0x89
+	BARTTypesBuddylistBackground uint16 = 0x100
+	BARTTypesBuddylistImage      uint16 = 0x101
+	BARTTypesBuddylistSkin       uint16 = 0x102
+	BARTTypesSmileySet           uint16 = 0x400
+	BARTTypesEncrCertChain       uint16 = 0x402
+	BARTTypesSignCertChain       uint16 = 0x403
+	BARTTypesGatewayCert         uint16 = 0x404
+)
+
+const (
+	BARTErr            uint16 = 0x0001
+	BARTUploadQuery    uint16 = 0x0002
+	BARTUploadReply    uint16 = 0x0003
+	BARTDownloadQuery  uint16 = 0x0004
+	BARTDownloadReply  uint16 = 0x0005
+	BARTDownload2Query uint16 = 0x0006
+	BARTDownload2Reply uint16 = 0x0007
+)
+
+const (
+	BARTFlagsKnown    uint8 = 0x00
+	BARTFlagsCustom   uint8 = 0x01
+	BARTFlagsUrl      uint8 = 0x02
+	BARTFlagsData     uint8 = 0x04
+	BARTFlagsUnknown  uint8 = 0x40
+	BARTFlagsRedirect uint8 = 0x80
+	BARTFlagsBanned   uint8 = 0xC0
+)
+
+const (
+	BARTReplyCodesSuccess     uint8 = 0x00
+	BARTReplyCodesInvalid     uint8 = 0x01
+	BARTReplyCodesNoCustom    uint8 = 0x02
+	BARTReplyCodesTooSmall    uint8 = 0x03
+	BARTReplyCodesTooBig      uint8 = 0x04
+	BARTReplyCodesInvalidType uint8 = 0x05
+	BARTReplyCodesBanned      uint8 = 0x06
+	BARTReplyCodesNotfound    uint8 = 0x07
+)
+
+// GetClearIconHash returns an opaque value set in BARTID hash that indicates
+// the user wants to clear their buddy icon.
+func GetClearIconHash() []byte {
+	return []byte{0x02, 0x01, 0xd2, 0x04, 0x72}
+}
+
+// BARTInfo represents a BART feedbag item
+type BARTInfo struct {
+	Flags uint8
+	Hash  []byte `len_prefix:"uint8"`
+}
+
+// HasClearIconHash reports whether the BART ID hash contains the
+// ClearIconHash sentinel value.
+func (h BARTInfo) HasClearIconHash() bool {
+	return bytes.Equal(h.Hash, GetClearIconHash())
+}
+
+type BARTID struct {
+	Type uint16
+	BARTInfo
+}
+
+type SNAC_0x10_0x02_BARTUploadQuery struct {
+	Type uint16
+	Data []byte `len_prefix:"uint16"`
+}
+
+type SNAC_0x10_0x03_BARTUploadReply struct {
+	Code uint8
+	ID   BARTID
+}
+
+type SNAC_0x10_0x04_BARTDownloadQuery struct {
+	ScreenName string `len_prefix:"uint8"`
+	Command    uint8
+	BARTID
+}
+
+type SNAC_0x10_0x05_BARTDownloadReply struct {
+	ScreenName string `len_prefix:"uint8"`
+	BARTID     BARTID
+	Data       []byte `len_prefix:"uint16"`
+}
+
 // 0x13: Feedbag
 //
 

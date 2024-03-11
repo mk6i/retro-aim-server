@@ -10,13 +10,14 @@ import (
 // specific handler responsible for a distinct aspect of the OSCAR service,
 // such as managing buddy lists, chat sessions, and user alerts.
 type Handlers struct {
+	AlertHandler
+	BARTHandler
 	BuddyHandler
 	ChatHandler
 	ChatNavHandler
 	FeedbagHandler
 	ICBMHandler
 	LocateHandler
-	AlertHandler
 	OServiceBOSHandler
 	OServiceChatHandler
 }
@@ -28,6 +29,9 @@ func NewBOSRouter(h Handlers) oscar.Router {
 
 	router.Register(wire.Alert, wire.AlertNotifyCapabilities, h.AlertHandler.NotifyCapabilities)
 	router.Register(wire.Alert, wire.AlertNotifyDisplayCapabilities, h.AlertHandler.NotifyDisplayCapabilities)
+
+	router.Register(wire.BART, wire.BARTUploadQuery, h.BARTHandler.UploadQuery)
+	router.Register(wire.BART, wire.BARTDownloadQuery, h.BARTHandler.DownloadQuery)
 
 	router.Register(wire.Buddy, wire.BuddyRightsQuery, h.BuddyHandler.RightsQuery)
 

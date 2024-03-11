@@ -5,12 +5,7 @@ import (
 	"time"
 
 	"github.com/mk6i/retro-aim-server/wire"
-
-	"github.com/google/uuid"
 )
-
-// capChat is a UID that indicates a client supports the chat capability
-var capChat, _ = uuid.MustParse("748F2420-6287-11D1-8222-444553540000").MarshalBinary()
 
 // SessSendStatus is the result of sending a message to a user.
 type SessSendStatus int
@@ -42,6 +37,7 @@ type Session struct {
 	signonTime     time.Time
 	stopCh         chan struct{}
 	warning        uint16
+	caps           [][16]byte
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
@@ -52,6 +48,7 @@ func NewSession() *Session {
 		nowFn:      time.Now,
 		stopCh:     make(chan struct{}),
 		signonTime: time.Now(),
+		caps:       make([][16]byte, 0),
 	}
 }
 
@@ -171,9 +168,9 @@ func (s *Session) TLVUserInfo() wire.TLVUserInfo {
 }
 
 func (s *Session) userInfo() wire.TLVList {
-	// sign-in timestamp
 	tlvs := wire.TLVList{}
 
+	// sign-in timestamp
 	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(s.signonTime.Unix())))
 
 	// away message status
@@ -187,7 +184,7 @@ func (s *Session) userInfo() wire.TLVList {
 	if s.invisible {
 		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoStatus, wire.OServiceUserFlagInvisible))
 	} else {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoStatus, uint16(0x0000)))
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoStatus, uint16(0)))
 	}
 
 	// idle status
@@ -197,16 +194,29 @@ func (s *Session) userInfo() wire.TLVList {
 		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)))
 	}
 
-	// capabilities
-	var caps []byte
-	// chat capability
-	caps = append(caps, capChat...)
-	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoOscarCaps, caps))
+	// capabilities (buddy icon, chat, etc...)
+	if len(s.caps) > 0 {
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoOscarCaps, s.caps))
+	}
 
 	return tlvs
 }
 
-// Warning returns the user's warning level.
+// SetCaps sets capability UUIDs that represent the features the client
+// supports. If set, capability metadata appears in the user info TLV list.
+func (s *Session) SetCaps(caps [][16]byte) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.caps = caps
+}
+
+// Caps retrieves user capabilities.
+func (s *Session) Caps() [][16]byte {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.caps
+}
+
 func (s *Session) Warning() uint16 {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()

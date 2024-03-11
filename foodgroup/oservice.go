@@ -242,6 +242,14 @@ func (s OServiceService) RateParamsQuery(_ context.Context, inFrame wire.SNACFra
 							FoodGroup: wire.OService,
 							SubGroup:  wire.OServiceSetUserInfoFields,
 						},
+						{
+							FoodGroup: wire.BART,
+							SubGroup:  wire.BARTUploadQuery,
+						},
+						{
+							FoodGroup: wire.BART,
+							SubGroup:  wire.BARTDownloadQuery,
+						},
 					},
 				},
 			},
@@ -408,6 +416,7 @@ func (s OServiceServiceForBOS) HostOnline() wire.SNACMessage {
 				wire.ICBM,
 				wire.Locate,
 				wire.OService,
+				wire.BART,
 			},
 		},
 	}
@@ -415,13 +424,19 @@ func (s OServiceServiceForBOS) HostOnline() wire.SNACMessage {
 
 // ClientOnline runs when the current user is ready to join.
 // It performs the following sequence of actions:
+//   - Pulls the buddy icon from the feedbag and set it on the session.
 //   - Announce current user's arrival to users who have the current user on
 //     their buddy list.
-//   - Send current user its buddy list
+//   - Send current user its buddy list.
 func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
 	if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
 		return err
 	}
+
+	return s.retrieveOnlineBuddies(ctx, sess)
+}
+
+func (s OServiceServiceForBOS) retrieveOnlineBuddies(ctx context.Context, sess *state.Session) error {
 	buddies, err := s.feedbagManager.Buddies(sess.ScreenName())
 	if err != nil {
 		return err
@@ -433,6 +448,7 @@ func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x0
 		}
 		unicastArrival(ctx, buddy, sess, s.messageRelayer)
 	}
+
 	return nil
 }
 

@@ -554,6 +554,10 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				AdjacentUsers(tc.recipientScreenName).
 				Return(tc.recipientBuddies, nil).
 				Maybe()
+			feedbagManager.EXPECT().
+				Feedbag(tc.recipientScreenName).
+				Return(nil, nil).
+				Maybe()
 			recipSess := newTestSession(tc.recipientScreenName, sessOptCannedSignonTime)
 			messageRelayer := newMockMessageRelayer(t)
 			messageRelayer.EXPECT().

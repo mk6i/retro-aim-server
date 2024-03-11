@@ -10,6 +10,7 @@ import (
 // mockParams is a helper struct that centralizes mock function call parameters
 // in one place for a table test
 type mockParams struct {
+	bartManagerParams
 	chatMessageRelayerParams
 	chatRegistryParams
 	feedbagManagerParams
@@ -19,13 +20,34 @@ type mockParams struct {
 	userManagerParams
 }
 
-// userManagerParams is a helper struct that contains mock parameters for
+// bartManagerParams is a helper struct that contains mock parameters for
+// BARTManager methods
+type bartManagerParams struct {
+	bartManagerRetrieveParams
+	bartManagerUpsertParams
+}
+
+// bartManagerRetrieveParams is the list of parameters passed at the mock
+// BARTManager.BARTRetrieve call site
+type bartManagerRetrieveParams []struct {
+	itemHash []byte
+	result   []byte
+}
+
+// bartManagerUpsertParams is the list of parameters passed at the mock
+// BARTManager.BARTUpsert call site
+type bartManagerUpsertParams []struct {
+	itemHash []byte
+	payload  []byte
+}
+
+// chatRegistryParams is a helper struct that contains mock parameters for
 // ChatRegistry methods
 type chatRegistryParams struct {
 	chatRegistryRetrieveParams
 }
 
-// upsertUserParams is the list of parameters passed at the mock
+// chatRegistryRetrieveParams is the list of parameters passed at the mock
 // ChatRegistry.Retrieve call site
 type chatRegistryRetrieveParams struct {
 	cookie         string
@@ -88,7 +110,7 @@ type emptyParams []struct {
 // FeedbagManager methods
 type feedbagManagerParams struct {
 	blockedStateParams
-	interestedUsersParams
+	adjacentUsersParams
 	feedbagUpsertParams
 	buddiesParams
 	feedbagParams
@@ -105,9 +127,9 @@ type blockedStateParams []struct {
 	err         error
 }
 
-// interestedUsersParams is the list of parameters passed at the mock
+// adjacentUsersParams is the list of parameters passed at the mock
 // FeedbagManager.AdjacentUsers call site
-type interestedUsersParams []struct {
+type adjacentUsersParams []struct {
 	screenName string
 	users      []string
 	err        error
@@ -152,8 +174,8 @@ type feedbagDeleteParams []struct {
 // MessageRelayer methods
 type messageRelayerParams struct {
 	retrieveByScreenNameParams
-	broadcastToScreenNamesParams
-	sendToScreenNameParams
+	relayToScreenNamesParams
+	relayToScreenNameParams
 }
 
 // retrieveByScreenNameParams is the list of parameters passed at the mock
@@ -163,16 +185,16 @@ type retrieveByScreenNameParams []struct {
 	sess       *state.Session
 }
 
-// broadcastToScreenNamesParams is the list of parameters passed at the mock
+// relayToScreenNamesParams is the list of parameters passed at the mock
 // MessageRelayer.RelayToScreenNames call site
-type broadcastToScreenNamesParams []struct {
+type relayToScreenNamesParams []struct {
 	screenNames []string
 	message     wire.SNACMessage
 }
 
-// sendToScreenNameParams is the list of parameters passed at the mock
+// relayToScreenNameParams is the list of parameters passed at the mock
 // MessageRelayer.RelayToScreenName call site
-type sendToScreenNameParams []struct {
+type relayToScreenNameParams []struct {
 	screenName string
 	message    wire.SNACMessage
 }
@@ -272,6 +294,13 @@ func sessOptIdle(dur time.Duration) func(session *state.Session) {
 	}
 }
 
+// sessOptCaps sets caps
+func sessOptCaps(caps [][16]byte) func(session *state.Session) {
+	return func(session *state.Session) {
+		session.SetCaps(caps)
+	}
+}
+
 // newTestSession creates a session object with 0 or more functional options
 // applied
 func newTestSession(screenName string, options ...func(session *state.Session)) *state.Session {
@@ -281,4 +310,10 @@ func newTestSession(screenName string, options ...func(session *state.Session)) 
 		op(s)
 	}
 	return s
+}
+
+func userInfoWithBARTIcon(sess *state.Session, bid wire.BARTID) wire.TLVUserInfo {
+	info := sess.TLVUserInfo()
+	info.Append(wire.NewTLV(wire.OServiceUserInfoBARTInfo, bid))
+	return info
 }

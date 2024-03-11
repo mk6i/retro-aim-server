@@ -98,7 +98,7 @@ func TestFeedbagHandler_InsertItem(t *testing.T) {
 
 	svc := newMockFeedbagService(t)
 	svc.EXPECT().
-		InsertItem(mock.Anything, mock.Anything, input.Frame, input.Body).
+		UpsertItem(mock.Anything, mock.Anything, input.Frame, input.Body.(wire.SNAC_0x13_0x08_FeedbagInsertItem).Items).
 		Return(output, nil)
 
 	h := NewFeedbagHandler(slog.Default(), svc)
@@ -307,7 +307,7 @@ func TestFeedbagHandler_UpdateItem(t *testing.T) {
 
 	svc := newMockFeedbagService(t)
 	svc.EXPECT().
-		UpdateItem(mock.Anything, mock.Anything, input.Frame, input.Body).
+		UpsertItem(mock.Anything, mock.Anything, input.Frame, input.Body.(wire.SNAC_0x13_0x09_FeedbagUpdateItem).Items).
 		Return(output, nil)
 
 	h := NewFeedbagHandler(slog.Default(), svc)

@@ -813,7 +813,7 @@ func TestAuthService_Signout(t *testing.T) {
 					},
 				},
 				feedbagManagerParams: feedbagManagerParams{
-					interestedUsersParams: interestedUsersParams{
+					adjacentUsersParams: adjacentUsersParams{
 						{
 							screenName: "user_screen_name",
 							users:      []string{"friend1", "friend2"},
@@ -821,7 +821,7 @@ func TestAuthService_Signout(t *testing.T) {
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					broadcastToScreenNamesParams: broadcastToScreenNamesParams{
+					relayToScreenNamesParams: relayToScreenNamesParams{
 						{
 							screenNames: []string{"friend1", "friend2"},
 							message: wire.SNACMessage{
@@ -849,7 +849,7 @@ func TestAuthService_Signout(t *testing.T) {
 			},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					interestedUsersParams: interestedUsersParams{
+					adjacentUsersParams: adjacentUsersParams{
 						{
 							screenName: "user_screen_name",
 							users:      []string{"friend1", "friend2"},
@@ -864,12 +864,12 @@ func TestAuthService_Signout(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			messageRelayer := newMockMessageRelayer(t)
-			for _, params := range tt.mockParams.broadcastToScreenNamesParams {
+			for _, params := range tt.mockParams.relayToScreenNamesParams {
 				messageRelayer.EXPECT().
 					RelayToScreenNames(mock.Anything, params.screenNames, params.message)
 			}
 			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tt.mockParams.interestedUsersParams {
+			for _, params := range tt.mockParams.adjacentUsersParams {
 				feedbagManager.EXPECT().
 					AdjacentUsers(params.screenName).
 					Return(params.users, params.err)

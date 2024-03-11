@@ -83,65 +83,6 @@ func (_c *mockFeedbagService_DeleteItem_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// InsertItem provides a mock function with given fields: ctx, sess, inFrame, inBody
-func (_m *mockFeedbagService) InsertItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x08_FeedbagInsertItem) (wire.SNACMessage, error) {
-	ret := _m.Called(ctx, sess, inFrame, inBody)
-
-	if len(ret) == 0 {
-		panic("no return value specified for InsertItem")
-	}
-
-	var r0 wire.SNACMessage
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x13_0x08_FeedbagInsertItem) (wire.SNACMessage, error)); ok {
-		return rf(ctx, sess, inFrame, inBody)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x13_0x08_FeedbagInsertItem) wire.SNACMessage); ok {
-		r0 = rf(ctx, sess, inFrame, inBody)
-	} else {
-		r0 = ret.Get(0).(wire.SNACMessage)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x13_0x08_FeedbagInsertItem) error); ok {
-		r1 = rf(ctx, sess, inFrame, inBody)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// mockFeedbagService_InsertItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertItem'
-type mockFeedbagService_InsertItem_Call struct {
-	*mock.Call
-}
-
-// InsertItem is a helper method to define mock.On call
-//   - ctx context.Context
-//   - sess *state.Session
-//   - inFrame wire.SNACFrame
-//   - inBody wire.SNAC_0x13_0x08_FeedbagInsertItem
-func (_e *mockFeedbagService_Expecter) InsertItem(ctx interface{}, sess interface{}, inFrame interface{}, inBody interface{}) *mockFeedbagService_InsertItem_Call {
-	return &mockFeedbagService_InsertItem_Call{Call: _e.mock.On("InsertItem", ctx, sess, inFrame, inBody)}
-}
-
-func (_c *mockFeedbagService_InsertItem_Call) Run(run func(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x08_FeedbagInsertItem)) *mockFeedbagService_InsertItem_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACFrame), args[3].(wire.SNAC_0x13_0x08_FeedbagInsertItem))
-	})
-	return _c
-}
-
-func (_c *mockFeedbagService_InsertItem_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockFeedbagService_InsertItem_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *mockFeedbagService_InsertItem_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x13_0x08_FeedbagInsertItem) (wire.SNACMessage, error)) *mockFeedbagService_InsertItem_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Query provides a mock function with given fields: ctx, sess, inFrame
 func (_m *mockFeedbagService) Query(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame) (wire.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, inFrame)
@@ -341,27 +282,27 @@ func (_c *mockFeedbagService_StartCluster_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// UpdateItem provides a mock function with given fields: ctx, sess, inFrame, inBody
-func (_m *mockFeedbagService) UpdateItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x09_FeedbagUpdateItem) (wire.SNACMessage, error) {
-	ret := _m.Called(ctx, sess, inFrame, inBody)
+// UpsertItem provides a mock function with given fields: ctx, sess, inFrame, items
+func (_m *mockFeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, items []wire.FeedbagItem) (wire.SNACMessage, error) {
+	ret := _m.Called(ctx, sess, inFrame, items)
 
 	if len(ret) == 0 {
-		panic("no return value specified for UpdateItem")
+		panic("no return value specified for UpsertItem")
 	}
 
 	var r0 wire.SNACMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x13_0x09_FeedbagUpdateItem) (wire.SNACMessage, error)); ok {
-		return rf(ctx, sess, inFrame, inBody)
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, []wire.FeedbagItem) (wire.SNACMessage, error)); ok {
+		return rf(ctx, sess, inFrame, items)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x13_0x09_FeedbagUpdateItem) wire.SNACMessage); ok {
-		r0 = rf(ctx, sess, inFrame, inBody)
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, []wire.FeedbagItem) wire.SNACMessage); ok {
+		r0 = rf(ctx, sess, inFrame, items)
 	} else {
 		r0 = ret.Get(0).(wire.SNACMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x13_0x09_FeedbagUpdateItem) error); ok {
-		r1 = rf(ctx, sess, inFrame, inBody)
+	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, wire.SNACFrame, []wire.FeedbagItem) error); ok {
+		r1 = rf(ctx, sess, inFrame, items)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -369,33 +310,33 @@ func (_m *mockFeedbagService) UpdateItem(ctx context.Context, sess *state.Sessio
 	return r0, r1
 }
 
-// mockFeedbagService_UpdateItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateItem'
-type mockFeedbagService_UpdateItem_Call struct {
+// mockFeedbagService_UpsertItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertItem'
+type mockFeedbagService_UpsertItem_Call struct {
 	*mock.Call
 }
 
-// UpdateItem is a helper method to define mock.On call
+// UpsertItem is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sess *state.Session
 //   - inFrame wire.SNACFrame
-//   - inBody wire.SNAC_0x13_0x09_FeedbagUpdateItem
-func (_e *mockFeedbagService_Expecter) UpdateItem(ctx interface{}, sess interface{}, inFrame interface{}, inBody interface{}) *mockFeedbagService_UpdateItem_Call {
-	return &mockFeedbagService_UpdateItem_Call{Call: _e.mock.On("UpdateItem", ctx, sess, inFrame, inBody)}
+//   - items []wire.FeedbagItem
+func (_e *mockFeedbagService_Expecter) UpsertItem(ctx interface{}, sess interface{}, inFrame interface{}, items interface{}) *mockFeedbagService_UpsertItem_Call {
+	return &mockFeedbagService_UpsertItem_Call{Call: _e.mock.On("UpsertItem", ctx, sess, inFrame, items)}
 }
 
-func (_c *mockFeedbagService_UpdateItem_Call) Run(run func(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x09_FeedbagUpdateItem)) *mockFeedbagService_UpdateItem_Call {
+func (_c *mockFeedbagService_UpsertItem_Call) Run(run func(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, items []wire.FeedbagItem)) *mockFeedbagService_UpsertItem_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACFrame), args[3].(wire.SNAC_0x13_0x09_FeedbagUpdateItem))
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACFrame), args[3].([]wire.FeedbagItem))
 	})
 	return _c
 }
 
-func (_c *mockFeedbagService_UpdateItem_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockFeedbagService_UpdateItem_Call {
+func (_c *mockFeedbagService_UpsertItem_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockFeedbagService_UpsertItem_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockFeedbagService_UpdateItem_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x13_0x09_FeedbagUpdateItem) (wire.SNACMessage, error)) *mockFeedbagService_UpdateItem_Call {
+func (_c *mockFeedbagService_UpsertItem_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACFrame, []wire.FeedbagItem) (wire.SNACMessage, error)) *mockFeedbagService_UpsertItem_Call {
 	_c.Call.Return(run)
 	return _c
 }

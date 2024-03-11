@@ -488,3 +488,26 @@ func TestSQLiteUserStore_AdjacentUsers(t *testing.T) {
 
 	assert.Equal(t, want, have)
 }
+
+func TestSQLiteUserStore_BARTUpsertAndRetrieve(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	feedbagStore, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	hash := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	item := []byte{'a', 'b', 'c', 'd'}
+
+	b, err := feedbagStore.BARTRetrieve(hash)
+	assert.NoError(t, err)
+	assert.Empty(t, b)
+
+	err = feedbagStore.BARTUpsert(hash, item)
+	assert.NoError(t, err)
+
+	b, err = feedbagStore.BARTRetrieve(hash)
+	assert.NoError(t, err)
+	assert.Equal(t, item, b)
+}

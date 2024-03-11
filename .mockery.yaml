@@ -54,6 +54,9 @@ packages:
       BuddyService:
         config:
           filename: "mock_buddy_test.go"
+      BARTService:
+        config:
+          filename: "mock_bart_test.go"
   github.com/mk6i/retro-aim-server/foodgroup:
     interfaces:
       FeedbagManager:
@@ -77,3 +80,6 @@ packages:
       ChatRegistry:
         config:
           filename: "mock_chat_registry_test.go"
+      BARTManager:
+        config:
+          filename: "mock_bart_manager_test.go"

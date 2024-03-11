@@ -254,6 +254,15 @@ var subGroupName = map[uint16]map[uint16]string{
 		AlertNotifyDisplayCapabilities: "AlertNotifyDisplayCapabilities",
 		AlertUserOnline:                "AlertUserOnline",
 	},
+	BART: {
+		BARTErr:            "BARTErr",
+		BARTUploadQuery:    "BARTUploadQuery",
+		BARTUploadReply:    "BARTUploadReply",
+		BARTDownloadQuery:  "BARTDownloadQuery",
+		BARTDownloadReply:  "BARTDownloadReply",
+		BARTDownload2Query: "BARTDownload2Query",
+		BARTDownload2Reply: "BARTDownload2Reply",
+	},
 }
 
 // SubGroupName gets the string name of a subgroup within a food group. It

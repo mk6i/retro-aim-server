@@ -85,3 +85,8 @@ type ChatRegistry interface {
 	Retrieve(cookie string) (state.ChatRoom, any, error)
 	Remove(cookie string)
 }
+
+type BARTManager interface {
+	BARTUpsert(itemHash []byte, payload []byte) error
+	BARTRetrieve(itemHash []byte) ([]byte, error)
+}

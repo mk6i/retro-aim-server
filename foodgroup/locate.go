@@ -2,10 +2,22 @@ package foodgroup
 
 import (
 	"context"
+	"errors"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
+
+// omitCaps is the map of to filter out of the client's capability list
+// because they are not currently supported by the server.
+var omitCaps = map[[16]byte]bool{
+	// 0946134a-4c7f-11d1-8222-444553540000 (games)
+	{9, 70, 19, 74, 76, 127, 17, 209, 130, 34, 68, 69, 83, 84, 0, 0}: true,
+	// 0946134d-4c7f-11d1-8222-444553540000 (ICQ inter-op)
+	{9, 70, 19, 77, 76, 127, 17, 209, 130, 34, 68, 69, 83, 84, 0, 0}: true,
+	// 09461341-4c7f-11d1-8222-444553540000 (voice chat)
+	{9, 70, 19, 65, 76, 127, 17, 209, 130, 34, 68, 69, 83, 84, 0, 0}: true,
+}
 
 // NewLocateService creates a new instance of LocateService.
 func NewLocateService(messageRelayer MessageRelayer, feedbagManager FeedbagManager, profileManager ProfileManager) LocateService {
@@ -50,7 +62,7 @@ func (s LocateService) RightsQuery(_ context.Context, inFrame wire.SNACFrame) wi
 	}
 }
 
-// SetInfo sets the user's profile or away message.
+// SetInfo sets the user's profile, away message or capabilities.
 func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x02_0x04_LocateSetInfo) error {
 	// update profile
 	if profile, hasProfile := inBody.String(wire.LocateTLVTagsInfoSigData); hasProfile {
@@ -66,6 +78,24 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 			return err
 		}
 	}
+
+	// update client capabilities (buddy icon, chat, etc...)
+	if b, hasCaps := inBody.Slice(wire.LocateTLVTagsInfoCapabilities); hasCaps {
+		if len(b)%16 != 0 {
+			return errors.New("capability list must be array of 16-byte values")
+		}
+		var caps [][16]byte
+		for i := 0; i < len(b); i += 16 {
+			var c [16]byte
+			copy(c[:], b[i:i+16])
+			if _, found := omitCaps[c]; found {
+				continue
+			}
+			caps = append(caps, c)
+		}
+		sess.SetCaps(caps)
+	}
+
 	return nil
 }
 

@@ -37,6 +37,11 @@ var userStoreDDL = `
 		screenName VARCHAR(16) PRIMARY KEY,
 		body  TEXT
 	);
+	CREATE TABLE IF NOT EXISTS bartItem
+	(
+		hash CHAR(16) PRIMARY KEY,
+		body BLOB    
+	);
 `
 
 // BlockedState represents the blocked status between two users
@@ -382,6 +387,30 @@ func (f SQLiteUserStore) SetProfile(screenName string, body string) error {
 	`
 	_, err := f.db.Exec(q, screenName, body)
 	return err
+}
+
+func (f SQLiteUserStore) BARTUpsert(itemHash []byte, body []byte) error {
+	q := `
+		INSERT INTO bartItem (hash, body)
+		VALUES (?, ?)
+		ON CONFLICT DO NOTHING
+	`
+	_, err := f.db.Exec(q, itemHash, body)
+	return err
+}
+
+func (f SQLiteUserStore) BARTRetrieve(hash []byte) ([]byte, error) {
+	q := `
+		SELECT body
+		FROM bartItem
+		WHERE hash = ?
+	`
+	var body []byte
+	err := f.db.QueryRow(q, hash).Scan(&body)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = nil
+	}
+	return body, nil
 }
 
 // NewStubUser creates a new user with canned credentials. The default password

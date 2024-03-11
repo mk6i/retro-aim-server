@@ -2,9 +2,10 @@ package handler
 
 import (
 	"context"
-	"github.com/mk6i/retro-aim-server/server/oscar"
 	"io"
 	"log/slog"
+
+	"github.com/mk6i/retro-aim-server/server/oscar"
 
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
@@ -13,12 +14,11 @@ import (
 
 type FeedbagService interface {
 	DeleteItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x0A_FeedbagDeleteItem) (wire.SNACMessage, error)
-	InsertItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x08_FeedbagInsertItem) (wire.SNACMessage, error)
 	Query(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame) (wire.SNACMessage, error)
 	QueryIfModified(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x05_FeedbagQueryIfModified) (wire.SNACMessage, error)
 	RightsQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 	StartCluster(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x11_FeedbagStartCluster)
-	UpdateItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x09_FeedbagUpdateItem) (wire.SNACMessage, error)
+	UpsertItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, items []wire.FeedbagItem) (wire.SNACMessage, error)
 }
 
 func NewFeedbagHandler(logger *slog.Logger, feedbagService FeedbagService) FeedbagHandler {
@@ -77,7 +77,7 @@ func (h FeedbagHandler) InsertItem(ctx context.Context, sess *state.Session, inF
 	if err := wire.Unmarshal(&inBody, r); err != nil {
 		return err
 	}
-	outSNAC, err := h.FeedbagService.InsertItem(ctx, sess, inFrame, inBody)
+	outSNAC, err := h.FeedbagService.UpsertItem(ctx, sess, inFrame, inBody.Items)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (h FeedbagHandler) UpdateItem(ctx context.Context, sess *state.Session, inF
 	if err := wire.Unmarshal(&inBody, r); err != nil {
 		return err
 	}
-	outSNAC, err := h.FeedbagService.UpdateItem(ctx, sess, inFrame, inBody)
+	outSNAC, err := h.FeedbagService.UpsertItem(ctx, sess, inFrame, inBody.Items)
 	if err != nil {
 		return err
 	}
