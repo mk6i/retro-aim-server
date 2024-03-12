@@ -419,6 +419,14 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 							},
 						},
 					},
+					feedbagParams: feedbagParams{
+						{
+							screenName: "buddy_1_online",
+						},
+						{
+							screenName: "buddy_2_online",
+						},
+					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
@@ -1230,6 +1238,17 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 							},
 						},
 					},
+					feedbagParams: feedbagParams{
+						{
+							screenName: "buddy_1_online",
+						},
+						{
+							screenName: "buddy_2_online",
+						},
+						{
+							screenName: "user_screen_name",
+						},
+					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
@@ -1384,6 +1403,11 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 							},
 						},
 					},
+					feedbagParams: feedbagParams{
+						{
+							screenName: "user_screen_name",
+						},
+					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
@@ -1428,6 +1452,11 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 				feedbagManager.EXPECT().
 					FeedbagDelete(params.screenName, params.items).
 					Return(nil)
+			}
+			for _, params := range tc.mockParams.feedbagManagerParams.feedbagParams {
+				feedbagManager.EXPECT().
+					Feedbag(params.screenName).
+					Return(params.results, nil)
 			}
 			messageRelayer := newMockMessageRelayer(t)
 			for _, params := range tc.mockParams.messageRelayerParams.retrieveByScreenNameParams {

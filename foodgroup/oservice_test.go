@@ -795,6 +795,14 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 					screenName: "test-user",
 					results:    []wire.FeedbagItem{},
 				},
+				{
+					screenName: "buddy1",
+					results:    []wire.FeedbagItem{},
+				},
+				{
+					screenName: "buddy3",
+					results:    []wire.FeedbagItem{},
+				},
 			},
 		},
 	}

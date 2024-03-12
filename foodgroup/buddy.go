@@ -44,6 +44,10 @@ func (s BuddyService) RightsQuery(_ context.Context, frameIn wire.SNACFrame) wir
 	}
 }
 
+// broadcastArrival sends the latest user info to the user's adjacent users.
+// While updates are sent via the wire.BuddyArrived SNAC, the message is not
+// only used to indicate the user coming online. It can also notify changes to
+// buddy icons, warning levels, invisibility status, etc.
 func broadcastArrival(ctx context.Context, sess *state.Session, messageRelayer MessageRelayer, feedbagManager FeedbagManager) error {
 	screenNames, err := feedbagManager.AdjacentUsers(sess.ScreenName())
 	if err != nil {
@@ -153,16 +157,29 @@ func broadcastDeparture(ctx context.Context, sess *state.Session, messageRelayer
 	return nil
 }
 
-func unicastArrival(ctx context.Context, from *state.Session, to *state.Session, messageRelayer MessageRelayer) {
+// unicastArrival sends the latest user info to a particular user.
+// While updates are sent via the wire.BuddyArrived SNAC, the message is not
+// only used to indicate the user coming online. It can also notify changes to
+// buddy icons, warning levels, invisibility status, etc.
+func unicastArrival(ctx context.Context, from *state.Session, to *state.Session, messageRelayer MessageRelayer, feedbagManager FeedbagManager) error {
+	userInfo := from.TLVUserInfo()
+	icon, err := getBuddyIconRefFromFeedbag(from, feedbagManager)
+	switch {
+	case err != nil:
+		return err
+	case icon != nil:
+		userInfo.Append(wire.NewTLV(wire.OServiceUserInfoBARTInfo, *icon))
+	}
 	messageRelayer.RelayToScreenName(ctx, to.ScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyArrived,
 		},
 		Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-			TLVUserInfo: from.TLVUserInfo(),
+			TLVUserInfo: userInfo,
 		},
 	})
+	return nil
 }
 
 func unicastDeparture(ctx context.Context, from *state.Session, to *state.Session, messageRelayer MessageRelayer) {

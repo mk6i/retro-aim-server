@@ -195,7 +195,9 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 			if buddy == nil || buddy.Invisible() {
 				continue
 			}
-			unicastArrival(ctx, buddy, sess, s.messageRelayer)
+			if err := unicastArrival(ctx, buddy, sess, s.messageRelayer, s.feedbagManager); err != nil {
+				return wire.SNACMessage{}, nil
+			}
 		case wire.FeedbagClassIDDeny: // block buddy
 			if sess.Invisible() {
 				continue // user's offline, don't send departure notification
@@ -301,11 +303,15 @@ func (s FeedbagService) DeleteItem(ctx context.Context, sess *state.Session, inF
 			}
 			if !sess.Invisible() {
 				// alert unblocked user that current user is online
-				unicastArrival(ctx, sess, unblockedSess, s.messageRelayer)
+				if err := unicastArrival(ctx, sess, unblockedSess, s.messageRelayer, s.feedbagManager); err != nil {
+					return wire.SNACMessage{}, err
+				}
 			}
 			if !unblockedSess.Invisible() {
 				// alert current user that unblocked user is online
-				unicastArrival(ctx, unblockedSess, sess, s.messageRelayer)
+				if err := unicastArrival(ctx, unblockedSess, sess, s.messageRelayer, s.feedbagManager); err != nil {
+					return wire.SNACMessage{}, err
+				}
 			}
 		}
 	}

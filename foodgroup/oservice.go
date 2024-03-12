@@ -446,7 +446,9 @@ func (s OServiceServiceForBOS) retrieveOnlineBuddies(ctx context.Context, sess *
 		if buddy == nil || buddy.Invisible() {
 			continue
 		}
-		unicastArrival(ctx, buddy, sess, s.messageRelayer)
+		if err := unicastArrival(ctx, buddy, sess, s.messageRelayer, s.feedbagManager); err != nil {
+			return err
+		}
 	}
 
 	return nil
