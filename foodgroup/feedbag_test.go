@@ -631,6 +631,21 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 								},
 							},
 						},
+						{
+							screenName: "user_screen_name",
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.Buddy,
+									SubGroup:  wire.BuddyDeparted,
+								},
+								Body: wire.SNAC_0x03_0x0C_BuddyDeparted{
+									TLVUserInfo: wire.TLVUserInfo{
+										ScreenName:   "buddy_1",
+										WarningLevel: 0,
+									},
+								},
+							},
+						},
 					},
 				},
 			},

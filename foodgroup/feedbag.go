@@ -208,6 +208,8 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 			}
 			// alert blocked buddy that current user is offline
 			unicastDeparture(ctx, sess, blockedSess, s.messageRelayer)
+			// tell blocker that blocked user is offline
+			unicastDeparture(ctx, blockedSess, sess, s.messageRelayer)
 		case wire.FeedbagClassIdBart:
 			if err := s.broadcastIconUpdate(ctx, sess, item); err != nil {
 				return wire.SNACMessage{}, err
