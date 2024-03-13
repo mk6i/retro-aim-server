@@ -104,9 +104,6 @@ func getBuddyIconRefFromFeedbag(sess *state.Session, feedbagManager FeedbagManag
 		if bartType != wire.BARTTypesBuddyIcon {
 			continue
 		}
-		if bartInfo.HasClearIconHash() {
-			bartInfo.Flags = wire.BARTFlagsCustom | wire.BARTFlagsData
-		}
 		return &wire.BARTID{
 			Type: bartType,
 			BARTInfo: wire.BARTInfo{

@@ -1057,7 +1057,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 											wire.NewTLV(wire.FeedbagAttributesBartInfo,
 												append(
 													[]byte{
-														wire.BARTFlagsCustom,
+														wire.BARTFlagsKnown,
 														uint8(len(wire.GetClearIconHash())),
 													},
 													wire.GetClearIconHash()...,
@@ -1085,7 +1085,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 										wire.BARTID{
 											Type: wire.BARTTypesBuddyIcon,
 											BARTInfo: wire.BARTInfo{
-												Flags: wire.BARTFlagsCustom | wire.BARTFlagsData,
+												Flags: wire.BARTFlagsKnown,
 												Hash:  wire.GetClearIconHash(),
 											},
 										},
