@@ -187,7 +187,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 
 	blocked, err := s.feedbagManager.BlockedState(sess.ScreenName(), inBody.ScreenName)
 	if err != nil {
-		return wire.SNACMessage{}, nil
+		return wire.SNACMessage{}, err
 	}
 	if blocked != state.BlockedNo {
 		return wire.SNACMessage{
@@ -238,7 +238,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 
 	// inform the warned user's buddies that their warning level has increased
 	if err := broadcastArrival(ctx, recipSess, s.messageRelayer, s.feedbagManager); err != nil {
-		return wire.SNACMessage{}, nil
+		return wire.SNACMessage{}, err
 	}
 
 	return wire.SNACMessage{

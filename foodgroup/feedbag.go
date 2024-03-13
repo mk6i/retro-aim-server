@@ -185,7 +185,7 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 	}
 
 	if err := s.feedbagManager.FeedbagUpsert(sess.ScreenName(), items); err != nil {
-		return wire.SNACMessage{}, nil
+		return wire.SNACMessage{}, err
 	}
 
 	for _, item := range items {
@@ -196,7 +196,7 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 				continue
 			}
 			if err := unicastArrival(ctx, buddy, sess, s.messageRelayer, s.feedbagManager); err != nil {
-				return wire.SNACMessage{}, nil
+				return wire.SNACMessage{}, err
 			}
 		case wire.FeedbagClassIDDeny: // block buddy
 			if sess.Invisible() {
