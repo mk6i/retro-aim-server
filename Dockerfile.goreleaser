@@ -1,0 +1,5 @@
+ARG GO_RELEASER_CROSS_VERSION
+FROM goreleaser/goreleaser-cross:$GO_RELEASER_CROSS_VERSION
+
+ARG GARBLE_VERSION
+RUN go install mvdan.cc/garble@$GARBLE_VERSION
