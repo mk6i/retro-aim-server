@@ -17,7 +17,7 @@ This guide explains how to download, configure and run Retro AIM Server on macOS
    > While the binaries are 100% safe, you can avoid the security concern by [building the application yourself](./BUILD.md).
    We do not provide signed binaries because of the undue cost and complexity.
 
-   Once downloaded, extract the `.zip` archive, which contains the application and a configuration file `settings.bat`.
+   Once downloaded, extract the `.zip` archive, which contains the application and a configuration file `settings.env`.
 
 2. **Open Terminal**
 
