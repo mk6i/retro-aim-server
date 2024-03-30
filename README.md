@@ -1,87 +1,61 @@
-<p align="center">
-  <img src="https://github.com/mk6i/retro-aim-server/assets/2894330/adff6b45-fcae-400c-8876-52e891a36ee0" width="300">
-</p>
+# Retro AIM Server
+
+**Retro AIM Server** is an open source AOL Instant Messenger server that supports classic AIM clients from the 2000s.
+Bootstrap your own instant messaging network with minimal setup!
 
 <p align="center">
-  <a href="https://codecov.io/github/mk6i/retro-aim-server">
-    <img src="https://codecov.io/github/mk6i/retro-aim-server/graph/badge.svg?token=MATKPP77JT" alt="codecov">
-  </a>
+  <img width="616" alt="screenshot of retro aim server running next to AIM" src="https://github.com/mk6i/retro-aim-server/assets/2894330/81ff419f-50fa-4961-bd2f-ac7dcac903b5">
 </p>
 
-Retro AIM Server is a server implementation of the OSCAR protocol that supports AIM versions 5.0-5.9.
+The following features are supported:
 
-This project is currently under heavy development. Retro AIM Server supports/will support the following features:
-
-- [x] Instant Messaging
-- [x] Buddy List
-- [x] Warning
+- [x] Windows AIM client versions 5.0-5.9 (partial 4.8 support)
 - [x] Away Messages
-- [x] User Profiles
-- [x] Chat Rooms
-- [x] Visibility Toggle
-- [x] User Blocking
 - [x] Buddy Icons
-- [ ] User Directory
+- [x] Buddy List
+- [x] Chat Rooms
+- [x] Instant Messaging
+- [x] User Profiles
+- [x] Blocking / Visibility Toggle / Idle Notification
+- [x] Warning
 
-## Quickstart
+## 🏁 How to Run
 
-### Dependencies
+Get up and running with Retro AIM Server using one of these handy quickstart guides:
 
-A C compiler is required in order to build the sqlite dependency.
+* [Linux (x86_64)](./docs/LINUX.md)
+* [macOS (Intel and Apple Silicon)](./docs/MACOS.md)
+* [Windows 10/11 (x86_64)](./docs/WINDOWS.md)
 
-**MacOS**
+## 🛠️ Development
 
-> If you have git, this is likely already set up on your machine.
+This project is under active development. Contributions are welcome!
 
-```shell
-xcode-select --install
-```
+Follow [this guide](./docs/BUILD.md) to learn how to compile and run Retro AIM Server.
 
-**Linux (Ubuntu)**
+## 👤 User Management
 
-```shell
-sudo apt install build-essential
-```
+Accounts can be added via the User Management API (see [OpenAPI spec](./api.yml)):
 
-Retro AIM Server requires [go 1.21](https://go.dev/) or newer to run.
-
-### Run the Server
-
-Start Retro AIM Server with the following command. The default settings can be modified in `config/settings.env`.
-
-```shell
-scripts/run_dev.sh
-```
-
-### Configure AIM Client
-
-Download Windows AIM ([v5.1.3036 recommended](https://archive.org/details/aim513036)) and install on Windows 10/11 using
-[Windows XP compatibility mode](https://support.microsoft.com/en-us/windows/make-older-apps-or-programs-compatible-with-windows-783d6dd7-b439-bdb0-0490-54eea0f45938)
-or MacOS/Linux via [Wine](https://www.winehq.org/). 
-
-Once installed, configure the AIM client to connect to Retro AIM Server as
-follows:
-
-1. At the sign-on screen, click `Setup`.
-2. Under the `Sign On/Off` category, click `Connection`.
-3. In the `Server  > Host` field, enter the value of `OSCAR_HOST` found in `config/settings.env`.
-4. In the `Server > Port` field, enter the value of `BOS_PORT` found in `config/settings.env`.
-
-Apply the settings and sign on to AIM. By default, you can sign on with any screen name/password without first
-registering (see `DISABLE_AUTH` in `config/settings.env` for more details).
-
-### User Management
-
-User management is done through a REST API.
-
-#### List Users
+### List Users
 
 ```curl
 curl http://localhost:8080/user
 ```
 
-#### Create Users
+### Create Users
 
 ```curl
 curl -d'{"screen_name":"myScreenName", "password":"thepassword"}' http://localhost:8080/user
 ```
+
+## 🔗 Acknowledgements
+
+- [aim-oscar-server](https://github.com/ox/aim-oscar-server) is another cool open source AIM server project.
+- [NINA Wiki](https://wiki.nina.chat/wiki/Main_Page) is an indispensable source for figuring out the OSCAR API.
+- [libpurple](https://developer.pidgin.im/wiki/WhatIsLibpurple) is also an invaluable OSCAR reference (especially
+  version [2.10.6-1](https://github.com/Tasssadar/libpurple)).
+
+## 📄 License
+
+Retro AIM Server is licensed under the [MIT license](./LICENSE).

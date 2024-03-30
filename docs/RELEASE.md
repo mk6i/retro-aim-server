@@ -1,4 +1,4 @@
-# Releasing
+# Retro AIM Server Release Process
 
 This document explains how the Retro AIM Server release process works.
 
@@ -74,3 +74,7 @@ The following is the procedure that builds Retro AIM Server and uploads the buil
 
    Now run the release process. Once its complete, a new [release](https://github.com/mk6i/retro-aim-server/releases)
    should appear in Github with download artifacts attached.
+
+    ```shell
+   make release
+    ```
