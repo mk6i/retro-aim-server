@@ -4,7 +4,8 @@ This guide explains how to download, configure and run Retro AIM Server on macOS
 
 1. **Download Retro AIM Server**
 
-   Grab the latest macOS release from the [Releases page](https://github.com/mk6i/retro-aim-server/releases).
+   Grab the latest macOS release from the [Releases page](https://github.com/mk6i/retro-aim-server/releases) for your
+   platform (Intel or Apple Silicon).
 
    Because the Retro AIM Server `.app` has not been blessed by Apple, browsers such as Chrome may think it's a
    "suspicious" file and block the download, in which case you need to explicitly opt in to downloading the untrusted
@@ -33,7 +34,7 @@ This guide explains how to download, configure and run Retro AIM Server on macOS
    remove the quarantine flag from the `.app`. In the same terminal, run following command:
 
    ```shell
-   sudo xattr -d ./retro-aim-server
+   sudo xattr -d com.apple.quarantine ./retro_aim_server
    ```
 
    > While the binaries are 100% safe, you can avoid the security concern by [building the application yourself](./BUILD.md).
@@ -56,7 +57,7 @@ This guide explains how to download, configure and run Retro AIM Server on macOS
    Run the following command to launch Retro AIM Server:
 
    ```shell
-   ./retro_aim_server
+   ./run.sh
    ```
 
    Retro AIM Server will run in the terminal, ready to accept AIM client connections.

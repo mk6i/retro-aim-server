@@ -21,8 +21,8 @@ This guide explains how to download, configure and run Retro AIM Server on Windo
 
 2. **Configure Server Address**
 
-   Set `OSCAR_HOST` in `settings.bat` to a hostname that AIM clients can connect to. The default setting is `127.0.0.1`,
-   which is enough to connect clients on the same PC.
+   Open `settings.bat` (right-click, `edit in notepad`) and set `OSCAR_HOST` to a hostname that AIM clients can connect
+   to. The default setting is `127.0.0.1`, which is enough to connect clients on the same PC.
 
    In order to connect AIM clients on your LAN (including VMs with bridged networking), you can find the appropriate IP
    address by running `ipconfig` from the Command Prompt.
