@@ -1,6 +1,39 @@
-# AIM Client Configuration
+# AIM Client Setup
 
-This guide explains how to configure a Windows AIM clients to connect to Retro AIM Server.
+This guide explains how to install and configure AIM clients for Retro AIM Server.
+
+## Installation
+
+### Linux
+
+Windows AIM versions 5.0-5.1.3036 run perfectly well on [Wine](https://www.winehq.org/). Here's how to set up AIM
+5.1.306.
+
+1. [Install Wine](https://wiki.winehq.org/Download)
+2. Download the AIM installer from [archive.org](https://archive.org/details/aim513036)
+3. Run the installer from the terminal:
+   ```shell
+   wine aim324235.exe
+   ```
+
+### macOS (Intel & Apple Silicon)
+
+Windows AIM can run on modern macOS without a VM, including the Apple Silicon platform!
+
+Get started with the
+[AIM for macOS project](https://github.com/mk6i/aim-for-macos).
+
+### Windows 10/11
+
+All versions of AIM 5.x run on Windows 10/11 with varying degrees of success. To get started, install AIM
+[5.0.2829](http://www.oldversion.com/windows/aol-instant-messenger-5-0-2829). Set [Windows XP compatibility mode](https://support.microsoft.com/en-us/windows/make-older-apps-or-programs-compatible-with-windows-783d6dd7-b439-bdb0-0490-54eea0f45938)
+on the executable once installed.
+
+Newer 5.x versions exhibit a quirk where `aim.exe` randomly hangs on startup, which can be mitigated by [AIM Tamer](http://iwarg.ddns.net/phoenix/index.php?action=downloads).
+
+## Configuration
+
+Once installed, configure AIM to connect to Retro AIM Server.
 
 1. At the sign-on screen, click `Setup`.
    <p>

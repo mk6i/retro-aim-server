@@ -1,7 +1,6 @@
 # Retro AIM Server
 
-**Retro AIM Server** is an open source AOL Instant Messenger server that supports classic AIM clients from the 2000s.
-Bootstrap your own instant messaging network with minimal setup!
+**Retro AIM Server** is an instant messaging server that revives AOL Instant Messenger clients from the 2000s.
 
 <p align="center">
   <img width="616" alt="screenshot of retro aim server running next to AIM" src="https://github.com/mk6i/retro-aim-server/assets/2894330/81ff419f-50fa-4961-bd2f-ac7dcac903b5">
@@ -21,11 +20,13 @@ The following features are supported:
 
 ## 🏁 How to Run
 
-Get up and running with Retro AIM Server using one of these handy quickstart guides:
+Get up and running with Retro AIM Server using one of these handy server quickstart guides:
 
 * [Linux (x86_64)](./docs/LINUX.md)
 * [macOS (Intel and Apple Silicon)](./docs/MACOS.md)
 * [Windows 10/11 (x86_64)](./docs/WINDOWS.md)
+
+Don't have AIM installed yet? Check out the [AIM Client Setup Guide](./docs/CLIENT.md).
 
 ## 🛠️ Development
 
