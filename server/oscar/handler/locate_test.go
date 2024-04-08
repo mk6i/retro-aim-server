@@ -194,6 +194,54 @@ func TestLocateHandler_SetKeywordInfo(t *testing.T) {
 	assert.NoError(t, h.SetKeywordInfo(nil, nil, input.Frame, buf, responseWriter))
 }
 
+func TestLocateHandler_UserInfoQuery(t *testing.T) {
+	input := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.Locate,
+			SubGroup:  wire.LocateUserInfoQuery,
+		},
+		Body: wire.SNAC_0x02_0x05_LocateUserInfoQuery{
+			Type: 1,
+		},
+	}
+	output := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.Locate,
+			SubGroup:  wire.LocateUserInfoReply,
+		},
+		Body: wire.SNAC_0x02_0x06_LocateUserInfoReply{
+			TLVUserInfo: wire.TLVUserInfo{
+				ScreenName: "screen-name",
+			},
+			LocateInfo: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					{
+						Tag:   0x01,
+						Value: []byte{1, 2, 3, 4},
+					},
+				},
+			},
+		},
+	}
+
+	svc := newMockLocateService(t)
+	svc.EXPECT().
+		UserInfoQuery(mock.Anything, mock.Anything, input.Frame, input.Body).
+		Return(output, nil)
+
+	h := NewLocateHandler(svc, slog.Default())
+
+	responseWriter := newMockResponseWriter(t)
+	responseWriter.EXPECT().
+		SendSNAC(output.Frame, output.Body).
+		Return(nil)
+
+	buf := &bytes.Buffer{}
+	assert.NoError(t, wire.Marshal(input.Body, buf))
+
+	assert.NoError(t, h.UserInfoQuery(nil, nil, input.Frame, buf, responseWriter))
+}
+
 func TestLocateHandler_UserInfoQuery2(t *testing.T) {
 	input := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -226,7 +274,7 @@ func TestLocateHandler_UserInfoQuery2(t *testing.T) {
 
 	svc := newMockLocateService(t)
 	svc.EXPECT().
-		UserInfoQuery2(mock.Anything, mock.Anything, input.Frame, input.Body).
+		UserInfoQuery(mock.Anything, mock.Anything, input.Frame, wire.SNAC_0x02_0x05_LocateUserInfoQuery{Type: 1}).
 		Return(output, nil)
 
 	h := NewLocateHandler(svc, slog.Default())

@@ -2,9 +2,10 @@ package handler
 
 import (
 	"context"
-	"github.com/mk6i/retro-aim-server/server/oscar"
 	"io"
 	"log/slog"
+
+	"github.com/mk6i/retro-aim-server/server/oscar"
 
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
@@ -16,7 +17,7 @@ type LocateService interface {
 	SetDirInfo(ctx context.Context, frame wire.SNACFrame) wire.SNACMessage
 	SetInfo(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x02_0x04_LocateSetInfo) error
 	SetKeywordInfo(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
-	UserInfoQuery2(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x15_LocateUserInfoQuery2) (wire.SNACMessage, error)
+	UserInfoQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery) (wire.SNACMessage, error)
 }
 
 func NewLocateHandler(locateService LocateService, logger *slog.Logger) LocateHandler {
@@ -74,12 +75,31 @@ func (h LocateHandler) SetKeywordInfo(ctx context.Context, _ *state.Session, inF
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
 
+func (h LocateHandler) UserInfoQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
+	inBody := wire.SNAC_0x02_0x05_LocateUserInfoQuery{}
+	if err := wire.Unmarshal(&inBody, r); err != nil {
+		return err
+	}
+	outSNAC, err := h.LocateService.UserInfoQuery(ctx, sess, inFrame, inBody)
+	if err != nil {
+		return err
+	}
+	h.LogRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
+	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
+}
+
 func (h LocateHandler) UserInfoQuery2(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x02_0x15_LocateUserInfoQuery2{}
 	if err := wire.Unmarshal(&inBody, r); err != nil {
 		return err
 	}
-	outSNAC, err := h.LocateService.UserInfoQuery2(ctx, sess, inFrame, inBody)
+	// SNAC functionality for LocateUserInfoQuery and LocateUserInfoQuery2 is
+	// identical except for the Type field data type (uint16 vs uint32).
+	wrappedBody := wire.SNAC_0x02_0x05_LocateUserInfoQuery{
+		Type:       uint16(inBody.Type2),
+		ScreenName: inBody.ScreenName,
+	}
+	outSNAC, err := h.LocateService.UserInfoQuery(ctx, sess, inFrame, wrappedBody)
 	if err != nil {
 		return err
 	}

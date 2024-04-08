@@ -213,26 +213,26 @@ func (_c *mockLocateService_SetKeywordInfo_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
-// UserInfoQuery2 provides a mock function with given fields: ctx, sess, inFrame, inBody
-func (_m *mockLocateService) UserInfoQuery2(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x15_LocateUserInfoQuery2) (wire.SNACMessage, error) {
+// UserInfoQuery provides a mock function with given fields: ctx, sess, inFrame, inBody
+func (_m *mockLocateService) UserInfoQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery) (wire.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, inFrame, inBody)
 
 	if len(ret) == 0 {
-		panic("no return value specified for UserInfoQuery2")
+		panic("no return value specified for UserInfoQuery")
 	}
 
 	var r0 wire.SNACMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x15_LocateUserInfoQuery2) (wire.SNACMessage, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x05_LocateUserInfoQuery) (wire.SNACMessage, error)); ok {
 		return rf(ctx, sess, inFrame, inBody)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x15_LocateUserInfoQuery2) wire.SNACMessage); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x05_LocateUserInfoQuery) wire.SNACMessage); ok {
 		r0 = rf(ctx, sess, inFrame, inBody)
 	} else {
 		r0 = ret.Get(0).(wire.SNACMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x15_LocateUserInfoQuery2) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x05_LocateUserInfoQuery) error); ok {
 		r1 = rf(ctx, sess, inFrame, inBody)
 	} else {
 		r1 = ret.Error(1)
@@ -241,33 +241,33 @@ func (_m *mockLocateService) UserInfoQuery2(ctx context.Context, sess *state.Ses
 	return r0, r1
 }
 
-// mockLocateService_UserInfoQuery2_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UserInfoQuery2'
-type mockLocateService_UserInfoQuery2_Call struct {
+// mockLocateService_UserInfoQuery_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UserInfoQuery'
+type mockLocateService_UserInfoQuery_Call struct {
 	*mock.Call
 }
 
-// UserInfoQuery2 is a helper method to define mock.On call
+// UserInfoQuery is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sess *state.Session
 //   - inFrame wire.SNACFrame
-//   - inBody wire.SNAC_0x02_0x15_LocateUserInfoQuery2
-func (_e *mockLocateService_Expecter) UserInfoQuery2(ctx interface{}, sess interface{}, inFrame interface{}, inBody interface{}) *mockLocateService_UserInfoQuery2_Call {
-	return &mockLocateService_UserInfoQuery2_Call{Call: _e.mock.On("UserInfoQuery2", ctx, sess, inFrame, inBody)}
+//   - inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery
+func (_e *mockLocateService_Expecter) UserInfoQuery(ctx interface{}, sess interface{}, inFrame interface{}, inBody interface{}) *mockLocateService_UserInfoQuery_Call {
+	return &mockLocateService_UserInfoQuery_Call{Call: _e.mock.On("UserInfoQuery", ctx, sess, inFrame, inBody)}
 }
 
-func (_c *mockLocateService_UserInfoQuery2_Call) Run(run func(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x15_LocateUserInfoQuery2)) *mockLocateService_UserInfoQuery2_Call {
+func (_c *mockLocateService_UserInfoQuery_Call) Run(run func(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery)) *mockLocateService_UserInfoQuery_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACFrame), args[3].(wire.SNAC_0x02_0x15_LocateUserInfoQuery2))
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACFrame), args[3].(wire.SNAC_0x02_0x05_LocateUserInfoQuery))
 	})
 	return _c
 }
 
-func (_c *mockLocateService_UserInfoQuery2_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockLocateService_UserInfoQuery2_Call {
+func (_c *mockLocateService_UserInfoQuery_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockLocateService_UserInfoQuery_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockLocateService_UserInfoQuery2_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x15_LocateUserInfoQuery2) (wire.SNACMessage, error)) *mockLocateService_UserInfoQuery2_Call {
+func (_c *mockLocateService_UserInfoQuery_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x05_LocateUserInfoQuery) (wire.SNACMessage, error)) *mockLocateService_UserInfoQuery_Call {
 	_c.Call.Return(run)
 	return _c
 }

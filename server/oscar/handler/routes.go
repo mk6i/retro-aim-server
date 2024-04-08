@@ -61,6 +61,7 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.Locate, wire.LocateSetDirInfo, h.LocateHandler.SetDirInfo)
 	router.Register(wire.Locate, wire.LocateSetInfo, h.LocateHandler.SetInfo)
 	router.Register(wire.Locate, wire.LocateSetKeywordInfo, h.LocateHandler.SetKeywordInfo)
+	router.Register(wire.Locate, wire.LocateUserInfoQuery, h.LocateHandler.UserInfoQuery)
 	router.Register(wire.Locate, wire.LocateUserInfoQuery2, h.LocateHandler.UserInfoQuery2)
 
 	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceBOSHandler.ClientOnline)

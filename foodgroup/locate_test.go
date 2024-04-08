@@ -12,7 +12,7 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-func TestLocateService_UserInfoQuery2(t *testing.T) {
+func TestLocateService_UserInfoQuery(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -54,8 +54,8 @@ func TestLocateService_UserInfoQuery2(t *testing.T) {
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
-				Body: wire.SNAC_0x02_0x15_LocateUserInfoQuery2{
-					Type2:      0,
+				Body: wire.SNAC_0x02_0x05_LocateUserInfoQuery{
+					Type:       0,
 					ScreenName: "requested-user",
 				},
 			},
@@ -110,9 +110,9 @@ func TestLocateService_UserInfoQuery2(t *testing.T) {
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
-				Body: wire.SNAC_0x02_0x15_LocateUserInfoQuery2{
+				Body: wire.SNAC_0x02_0x05_LocateUserInfoQuery{
 					// 2048 is a dummy to make sure bitmask check works
-					Type2:      wire.LocateType2Sig | 2048,
+					Type:       uint16(wire.LocateTypeSig) | 2048,
 					ScreenName: "requested-user",
 				},
 			},
@@ -172,9 +172,9 @@ func TestLocateService_UserInfoQuery2(t *testing.T) {
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
-				Body: wire.SNAC_0x02_0x15_LocateUserInfoQuery2{
+				Body: wire.SNAC_0x02_0x05_LocateUserInfoQuery{
 					// 2048 is a dummy to make sure bitmask check works
-					Type2:      wire.LocateType2Sig | 2048,
+					Type:       uint16(wire.LocateTypeSig) | 2048,
 					ScreenName: "requested-user",
 				},
 			},
@@ -226,9 +226,9 @@ func TestLocateService_UserInfoQuery2(t *testing.T) {
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
-				Body: wire.SNAC_0x02_0x15_LocateUserInfoQuery2{
+				Body: wire.SNAC_0x02_0x05_LocateUserInfoQuery{
 					// 2048 is a dummy to make sure bitmask check works
-					Type2:      wire.LocateType2Unavailable | 2048,
+					Type:       uint16(wire.LocateTypeUnavailable) | 2048,
 					ScreenName: "requested-user",
 				},
 			},
@@ -270,7 +270,7 @@ func TestLocateService_UserInfoQuery2(t *testing.T) {
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
-				Body: wire.SNAC_0x02_0x15_LocateUserInfoQuery2{
+				Body: wire.SNAC_0x02_0x05_LocateUserInfoQuery{
 					ScreenName: "requested-user",
 				},
 			},
@@ -311,7 +311,7 @@ func TestLocateService_UserInfoQuery2(t *testing.T) {
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
-				Body: wire.SNAC_0x02_0x15_LocateUserInfoQuery2{
+				Body: wire.SNAC_0x02_0x05_LocateUserInfoQuery{
 					ScreenName: "non_existent_requested_user",
 				},
 			},
@@ -349,8 +349,8 @@ func TestLocateService_UserInfoQuery2(t *testing.T) {
 					Return(val.result, val.err)
 			}
 			svc := NewLocateService(messageRelayer, feedbagManager, profileManager)
-			outputSNAC, err := svc.UserInfoQuery2(context.Background(), tc.userSession, tc.inputSNAC.Frame,
-				tc.inputSNAC.Body.(wire.SNAC_0x02_0x15_LocateUserInfoQuery2))
+			outputSNAC, err := svc.UserInfoQuery(context.Background(), tc.userSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(wire.SNAC_0x02_0x05_LocateUserInfoQuery))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})

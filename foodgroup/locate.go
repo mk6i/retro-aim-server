@@ -99,11 +99,11 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 	return nil
 }
 
-// UserInfoQuery2 fetches display information about an arbitrary user (not the
+// UserInfoQuery fetches display information about an arbitrary user (not the
 // current user). It returns wire.LocateUserInfoReply, which contains the
 // profile, if requested, and/or the away message, if requested. This is a v2
 // of UserInfoQuery.
-func (s LocateService) UserInfoQuery2(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x15_LocateUserInfoQuery2) (wire.SNACMessage, error) {
+func (s LocateService) UserInfoQuery(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery) (wire.SNACMessage, error) {
 	blocked, err := s.feedbagManager.BlockedState(sess.ScreenName(), inBody.ScreenName)
 	switch {
 	case err != nil:

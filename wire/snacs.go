@@ -274,11 +274,11 @@ const (
 	LocateFindListReply        uint16 = 0x0014
 	LocateUserInfoQuery2       uint16 = 0x0015
 
-	LocateType2Sig          uint32 = 0x00000001
-	LocateType2Unavailable  uint32 = 0x00000002
-	LocateType2Capabilities uint32 = 0x00000004
-	LocateType2Certs        uint32 = 0x00000008
-	LocateType2HtmlInfo     uint32 = 0x00000400
+	LocateTypeSig          uint32 = 0x00000001
+	LocateTypeUnavailable  uint32 = 0x00000002
+	LocateTypeCapabilities uint32 = 0x00000004
+	LocateTypeCerts        uint32 = 0x00000008
+	LocateTypeHtmlInfo     uint32 = 0x00000400
 
 	LocateTLVTagsInfoSigMime         uint16 = 0x01
 	LocateTLVTagsInfoSigData         uint16 = 0x02
@@ -338,17 +338,22 @@ type SNAC_0x02_0x10_LocateSetKeywordReply struct {
 	Unknown uint16
 }
 
-type SNAC_0x02_0x15_LocateUserInfoQuery2 struct {
-	Type2      uint32
+type SNAC_0x02_0x05_LocateUserInfoQuery struct {
+	Type       uint16
 	ScreenName string `len_prefix:"uint8"`
 }
 
-func (s SNAC_0x02_0x15_LocateUserInfoQuery2) RequestProfile() bool {
-	return s.Type2&LocateType2Sig == LocateType2Sig
+func (s SNAC_0x02_0x05_LocateUserInfoQuery) RequestProfile() bool {
+	return s.Type&uint16(LocateTypeSig) == uint16(LocateTypeSig)
 }
 
-func (s SNAC_0x02_0x15_LocateUserInfoQuery2) RequestAwayMessage() bool {
-	return s.Type2&LocateType2Unavailable == LocateType2Unavailable
+func (s SNAC_0x02_0x05_LocateUserInfoQuery) RequestAwayMessage() bool {
+	return s.Type&uint16(LocateTypeUnavailable) == uint16(LocateTypeUnavailable)
+}
+
+type SNAC_0x02_0x15_LocateUserInfoQuery2 struct {
+	Type2      uint32
+	ScreenName string `len_prefix:"uint8"`
 }
 
 //
