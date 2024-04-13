@@ -13,6 +13,76 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func TestSessionHandler_GET(t *testing.T) {
+	fnNewSess := func(screenName string) *state.Session {
+		sess := state.NewSession()
+		sess.SetScreenName(screenName)
+		return sess
+	}
+	tt := []struct {
+		name           string
+		sessions       []*state.Session
+		userHandlerErr error
+		want           string
+		statusCode     int
+	}{
+		{
+			name:       "without sessions",
+			sessions:   []*state.Session{},
+			want:       `{"count":0,"sessions":[]}`,
+			statusCode: http.StatusOK,
+		},
+		{
+			name: "with sessions",
+			sessions: []*state.Session{
+				fnNewSess("userA"),
+				fnNewSess("userB"),
+			},
+			want:       `{"count":2,"sessions":[{"screen_name":"userA"},{"screen_name":"userB"}]}`,
+			statusCode: http.StatusOK,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/session", nil)
+			responseRecorder := httptest.NewRecorder()
+
+			sessionRetriever := newMockSessionRetriever(t)
+			sessionRetriever.EXPECT().
+				AllSessions().
+				Return(tc.sessions)
+
+			sessionHandler(responseRecorder, request, sessionRetriever)
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
+func TestSessionHandler_DisallowedMethod(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPut, "/session", nil)
+	responseRecorder := httptest.NewRecorder()
+
+	sessionHandler(responseRecorder, request, nil)
+
+	wantCode := http.StatusMethodNotAllowed
+	if responseRecorder.Code != wantCode {
+		t.Errorf("want status '%d', got '%d'", http.StatusMethodNotAllowed, responseRecorder.Code)
+	}
+
+	wantBody := `method not allowed`
+	if strings.TrimSpace(responseRecorder.Body.String()) != wantBody {
+		t.Errorf("want '%s', got '%s'", wantBody, responseRecorder.Body)
+	}
+}
+
 func TestUserHandler_GET(t *testing.T) {
 	tt := []struct {
 		name           string
@@ -22,13 +92,13 @@ func TestUserHandler_GET(t *testing.T) {
 		statusCode     int
 	}{
 		{
-			name:       "without users",
+			name:       "empty user store",
 			users:      []state.User{},
 			want:       `[]`,
 			statusCode: http.StatusOK,
 		},
 		{
-			name: "with users",
+			name: "user store containing 2 users",
 			users: []state.User{
 				{ScreenName: "userA"},
 				{ScreenName: "userB"},
@@ -47,7 +117,7 @@ func TestUserHandler_GET(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, "/users", nil)
+			request := httptest.NewRequest(http.MethodGet, "/user", nil)
 			responseRecorder := httptest.NewRecorder()
 
 			userManager := newMockUserManager(t)
@@ -55,11 +125,7 @@ func TestUserHandler_GET(t *testing.T) {
 				AllUsers().
 				Return(tc.users, tc.userHandlerErr)
 
-			userHandler := userHandler{
-				UserManager: userManager,
-				logger:      slog.Default(),
-			}
-			userHandler.ServeHTTP(responseRecorder, request)
+			userHandler(responseRecorder, request, userManager, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
@@ -113,7 +179,7 @@ func TestUserHandler_POST(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, "/users", strings.NewReader(tc.body))
+			request := httptest.NewRequest(http.MethodPost, "/user", strings.NewReader(tc.body))
 			responseRecorder := httptest.NewRecorder()
 
 			userManager := newMockUserManager(t)
@@ -122,11 +188,7 @@ func TestUserHandler_POST(t *testing.T) {
 				Return(tc.userHandlerErr).
 				Maybe()
 
-			userHandler := userHandler{
-				UserManager: userManager,
-				logger:      slog.Default(),
-			}
-			userHandler.ServeHTTP(responseRecorder, request)
+			userHandler(responseRecorder, request, userManager, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
@@ -140,11 +202,10 @@ func TestUserHandler_POST(t *testing.T) {
 }
 
 func TestUserHandler_DisallowedMethod(t *testing.T) {
-	request := httptest.NewRequest(http.MethodPut, "/users", nil)
+	request := httptest.NewRequest(http.MethodPut, "/user", nil)
 	responseRecorder := httptest.NewRecorder()
 
-	userHandler := userHandler{}
-	userHandler.ServeHTTP(responseRecorder, request)
+	userHandler(responseRecorder, request, nil, nil)
 
 	wantCode := http.StatusMethodNotAllowed
 	if responseRecorder.Code != wantCode {

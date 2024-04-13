@@ -7,24 +7,43 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/google/uuid"
+
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
-
-	"github.com/google/uuid"
 )
+
+type createUser struct {
+	state.User
+	Password string `json:"password,omitempty"`
+}
+
+type userSession struct {
+	ScreenName string `json:"screen_name"`
+}
+
+type onlineUsers struct {
+	Count    int           `json:"count"`
+	Sessions []userSession `json:"sessions"`
+}
 
 type UserManager interface {
 	AllUsers() ([]state.User, error)
 	InsertUser(u state.User) error
 }
 
-func StartManagementAPI(userManager UserManager, logger *slog.Logger) {
-	uh := userHandler{
-		UserManager: userManager,
-		logger:      logger,
-	}
+type SessionRetriever interface {
+	AllSessions() []*state.Session
+}
+
+func StartManagementAPI(userManager UserManager, sessionRetriever SessionRetriever, logger *slog.Logger) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/user", uh.ServeHTTP)
+	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
+		userHandler(w, r, userManager, logger)
+	})
+	mux.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) {
+		sessionHandler(w, r, sessionRetriever)
+	})
 
 	//todo make port configurable
 	addr := config.Address("", 8080)
@@ -35,28 +54,50 @@ func StartManagementAPI(userManager UserManager, logger *slog.Logger) {
 	}
 }
 
-type userHandler struct {
-	UserManager
-	logger *slog.Logger
-}
-
-func (uh userHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func userHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, logger *slog.Logger) {
 	switch r.Method {
 	case http.MethodGet:
-		uh.getUsers(w, r)
+		getUserHandler(w, r, userManager, logger)
 	case http.MethodPost:
-		uh.createUser(w, r)
+		postUserHandler(w, r, userManager, logger)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
-// getUsers handles the GET /user endpoint.
-func (uh userHandler) getUsers(w http.ResponseWriter, _ *http.Request) {
+// sessionHandler handles GET /session
+func sessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever SessionRetriever) {
 	w.Header().Set("Content-Type", "application/json")
-	users, err := uh.AllUsers()
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	allUsers := sessionRetriever.AllSessions()
+
+	ou := onlineUsers{
+		Count:    len(allUsers),
+		Sessions: make([]userSession, 0),
+	}
+
+	for _, s := range allUsers {
+		ou.Sessions = append(ou.Sessions, userSession{
+			ScreenName: s.ScreenName(),
+		})
+	}
+
+	if err := json.NewEncoder(w).Encode(ou); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// getUserHandler handles the GET /user endpoint.
+func getUserHandler(w http.ResponseWriter, _ *http.Request, userManager UserManager, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+	users, err := userManager.AllUsers()
 	if err != nil {
-		uh.logger.Error("error in GET /user", "err", err.Error())
+		logger.Error("error in GET /user", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -66,14 +107,9 @@ func (uh userHandler) getUsers(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-type CreateUser struct {
-	state.User
-	Password string `json:"password,omitempty"`
-}
-
-// createUser handles the POST /user endpoint.
-func (uh userHandler) createUser(w http.ResponseWriter, r *http.Request) {
-	var newUser CreateUser
+// postUserHandler handles the POST /user endpoint.
+func postUserHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, logger *slog.Logger) {
+	var newUser createUser
 	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
 		http.Error(w, "malformed input", http.StatusBadRequest)
 		return
@@ -81,8 +117,8 @@ func (uh userHandler) createUser(w http.ResponseWriter, r *http.Request) {
 	newUser.AuthKey = uuid.New().String()
 	// todo does the request contain authkey?
 	newUser.HashPassword(newUser.Password)
-	if err := uh.InsertUser(newUser.User); err != nil {
-		uh.logger.Error("error in GET /user", "err", err.Error())
+	if err := userManager.InsertUser(newUser.User); err != nil {
+		logger.Error("error in GET /user", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

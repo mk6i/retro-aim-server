@@ -22,6 +22,9 @@ packages:
       UserManager:
         config:
           filename: "mock_user_manager_test.go"
+      SessionRetriever:
+        config:
+          filename: "mock_session_retriever_test.go"
   github.com/mk6i/retro-aim-server/server/oscar/handler:
     interfaces:
       ResponseWriter:

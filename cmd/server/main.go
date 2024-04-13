@@ -39,7 +39,7 @@ func main() {
 	wg.Add(4)
 
 	go func() {
-		http.StartManagementAPI(feedbagStore, logger)
+		http.StartManagementAPI(feedbagStore, sessionManager, logger)
 		wg.Done()
 	}()
 	go func(logger *slog.Logger) {

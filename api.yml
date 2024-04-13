@@ -31,6 +31,19 @@ paths:
           description: User account created successfully.
         '400':
           description: Bad request. Invalid input data.
+
+  /session:
+    get:
+      summary: Get active sessions
+      description: Retrieve a list of active sessions of logged in users.
+      responses:
+        '200':
+          description: Successful response containing a list of active sessions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+
 components:
   schemas:
     User:
@@ -39,8 +52,21 @@ components:
         screen_name:
           type: string
           description: The user's screen name.
-        password:
+
+    SessionResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: The number of active sessions.
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+
+    Session:
+      type: object
+      properties:
+        screen_name:
           type: string
-          description: The user's password.
-          readOnly: true
-          format: password
+          description: The screen name associated with the session.

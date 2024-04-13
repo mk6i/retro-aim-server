@@ -34,20 +34,28 @@ This project is under active development. Contributions are welcome!
 
 Follow [this guide](./docs/BUILD.md) to learn how to compile and run Retro AIM Server.
 
-## 👤 User Management
+## 👤 Management API
 
-Accounts can be added via the User Management API (see [OpenAPI spec](./api.yml)):
+The Management API provides functionality for administering the server (see [OpenAPI spec](./api.yml)):
 
 ### List Users
 
-```curl
+```shell
 curl http://localhost:8080/user
 ```
 
 ### Create Users
 
-```curl
+```shell
 curl -d'{"screen_name":"myScreenName", "password":"thepassword"}' http://localhost:8080/user
+```
+
+### List Active Sessions
+
+This request lists sessions for all logged in users.
+
+```shell
+curl http://localhost:8080/session
 ```
 
 ## 🔗 Acknowledgements
