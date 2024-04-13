@@ -11,13 +11,15 @@ builds:
       - linux
     goarch:
       - amd64
+      - arm
+    goarm:
+      - "7"
     main: ./cmd/server
-    ignore:
-      - goos: linux
-        goarch: arm64
     env:
       - CGO_ENABLED=1
-      - CC=x86_64-linux-gnu-gcc
+      - >-
+        {{- if eq .Arch "amd64"}}CC=x86_64-linux-gnu-gcc{{- end }}
+        {{- if eq .Arch "arm"}}CC=arm-linux-gnueabihf-gcc{{- end }}
   - id: macos
     binary: retro_aim_server
     goos:
@@ -57,8 +59,7 @@ archives:
         strip_parent: true
     name_template: >-
       {{ .Binary }}.{{ .Version }}.{{ .Os }}.
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else }}{{ .Arch }}{{ end }}
+      {{- if eq .Arch "amd64" }}x86_64{{ else }}arm64_arm7_raspberry_pi{{ end }}
   - id: macos
     builds:
       - macos
