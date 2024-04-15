@@ -7,6 +7,7 @@ import "fmt"
 type Config struct {
 	BOSPort     int    `envconfig:"BOS_PORT" default:"5191" description:"The port that the BOS service binds to."`
 	BUCPPort    int    `envconfig:"BUCP_PORT" default:"5190" description:"The port that the auth service binds to."`
+	ChatNavPort int    `envconfig:"CHAT_NAV_PORT" default:"5193" description:"The port that the chat nav service binds to."`
 	ChatPort    int    `envconfig:"CHAT_PORT" default:"5192" description:"The port that the chat service binds to."`
 	DBPath      string `envconfig:"DB_PATH" default:"oscar.sqlite" description:"The path to the SQLite database file. The file and DB schema are auto-created if they doesn't exist."`
 	DisableAuth bool   `envconfig:"DISABLE_AUTH" default:"true" description:"Disable password check and auto-create new users at login time. Useful for quickly creating new accounts during development without having to register new users via the management API."`

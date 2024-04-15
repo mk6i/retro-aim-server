@@ -345,62 +345,87 @@ type chatLoginCookie struct {
 	SessID string `len_prefix:"uint16"`
 }
 
-// ServiceRequest configures food group settings for the current user.
-// This method only provides services for the Chat food group; return
-// wire.ErrUnsupportedFoodGroup for any other food group. When the chat
-// food group is specified in inFrame, add user to the chat room specified by
-// TLV 0x01. It returns SNAC wire.OServiceServiceResponse containing
-// metadata the client needs to connect to the chat service and join the chat
-// room.
+// ServiceRequest handles service discovery, providing a host name and metadata
+// for connecting to the food group service specified in inFrame.
+// Depending on the food group specified, the method behaves as follows:
+// - ChatNav: Directs the user back to the current BOS server, which provides
+// ChatNav services. AIM 4.8 requests ChatNav service info even though
+// HostOnline reports it as available via BOS.
+// - Chat: Directs the client to the chat server along with metadata for
+// connecting to the chat room specified in inFrame.
+// - Other Food Groups: Returns wire.ErrUnsupportedFoodGroup.
 func (s OServiceServiceForBOS) ServiceRequest(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
-	if inBody.FoodGroup != wire.Chat {
+	switch inBody.FoodGroup {
+	case wire.ChatNav:
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceServiceResponse,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, config.Address(s.cfg.OSCARHost, s.cfg.ChatNavPort)),
+						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, sess.ID()),
+						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.ChatNav),
+						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
+						wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+					},
+				},
+			},
+		}, nil
+	case wire.Chat:
+		roomMeta, ok := inBody.Slice(0x01)
+		if !ok {
+			return wire.SNACMessage{}, errors.New("missing room info")
+		}
+
+		roomSNAC := wire.SNAC_0x01_0x04_TLVRoomInfo{}
+		if err := wire.Unmarshal(&roomSNAC, bytes.NewBuffer(roomMeta)); err != nil {
+			return wire.SNACMessage{}, err
+		}
+
+		room, chatSessMgr, err := s.chatRegistry.Retrieve(roomSNAC.Cookie)
+		if err != nil {
+			return wire.SNACMessage{}, err
+		}
+		chatSess := chatSessMgr.(SessionManager).AddSession(sess.ID(), sess.ScreenName())
+		chatSess.SetChatRoomCookie(room.Cookie)
+
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceServiceResponse,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, config.Address(s.cfg.OSCARHost, s.cfg.ChatPort)),
+						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, chatLoginCookie{
+							Cookie: room.Cookie,
+							SessID: sess.ID(),
+						}),
+						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Chat),
+						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
+						wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+					},
+				},
+			},
+		}, nil
+	default:
 		err := fmt.Errorf("%w. food group: %s", wire.ErrUnsupportedFoodGroup, wire.FoodGroupName(inBody.FoodGroup))
 		return wire.SNACMessage{}, err
 	}
-
-	roomMeta, ok := inBody.Slice(0x01)
-	if !ok {
-		return wire.SNACMessage{}, errors.New("missing room info")
-	}
-
-	roomSNAC := wire.SNAC_0x01_0x04_TLVRoomInfo{}
-	if err := wire.Unmarshal(&roomSNAC, bytes.NewBuffer(roomMeta)); err != nil {
-		return wire.SNACMessage{}, err
-	}
-
-	room, chatSessMgr, err := s.chatRegistry.Retrieve(roomSNAC.Cookie)
-	if err != nil {
-		return wire.SNACMessage{}, err
-	}
-	chatSess := chatSessMgr.(SessionManager).AddSession(sess.ID(), sess.ScreenName())
-	chatSess.SetChatRoomCookie(room.Cookie)
-
-	return wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceServiceResponse,
-			RequestID: inFrame.RequestID,
-		},
-		Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLV(wire.OServiceTLVTagsReconnectHere, config.Address(s.cfg.OSCARHost, s.cfg.ChatPort)),
-					wire.NewTLV(wire.OServiceTLVTagsLoginCookie, chatLoginCookie{
-						Cookie: room.Cookie,
-						SessID: sess.ID(),
-					}),
-					wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Chat),
-					wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
-					wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
-				},
-			},
-		},
-	}, nil
 }
 
 // HostOnline initiates the BOS protocol sequence.
 // It returns SNAC wire.OServiceHostOnline containing the list food groups
 // supported by the BOS service.
+// ChatNav is provided by BOS in addition to the standalone ChatNav service.
+// AIM 4.x always creates a secondary TCP connection for ChatNav, whereas 5.x
+// can use the existing BOS connection for ChatNav services.
 func (s OServiceServiceForBOS) HostOnline() wire.SNACMessage {
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -501,4 +526,40 @@ func (s OServiceServiceForChat) ClientOnline(ctx context.Context, sess *state.Se
 	alertUserJoined(ctx, sess, chatSessMgr.(ChatMessageRelayer))
 	setOnlineChatUsers(ctx, sess, chatSessMgr.(ChatMessageRelayer))
 	return nil
+}
+
+// NewOServiceServiceForChatNav creates a new instance of OServiceServiceForChat.
+func NewOServiceServiceForChatNav(oserviceService OServiceService, chatRegistry *state.ChatRegistry) *OServiceServiceForChatNav {
+	return &OServiceServiceForChatNav{
+		OServiceService: oserviceService,
+		chatRegistry:    chatRegistry,
+	}
+}
+
+// OServiceServiceForChatNav provides functionality for the OService food group
+// running on the Chat server.
+type OServiceServiceForChatNav struct {
+	OServiceService
+	chatRegistry *state.ChatRegistry
+}
+
+// HostOnline initiates the Chat protocol sequence.
+// It returns SNAC wire.OServiceHostOnline containing the list of food groups
+// supported by the Chat service.
+// ChatNav is provided by BOS in addition to the standalone ChatNav service.
+// AIM 4.x always creates a secondary TCP connection for ChatNav, whereas 5.x
+// can use the existing BOS connection for ChatNav services.
+func (s OServiceServiceForChatNav) HostOnline() wire.SNACMessage {
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.OService,
+			SubGroup:  wire.OServiceHostOnline,
+		},
+		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+			FoodGroups: []uint16{
+				wire.ChatNav,
+				wire.OService,
+			},
+		},
+	}
 }

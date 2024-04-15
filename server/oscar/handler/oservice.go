@@ -2,9 +2,10 @@ package handler
 
 import (
 	"context"
-	"github.com/mk6i/retro-aim-server/server/oscar"
 	"io"
 	"log/slog"
+
+	"github.com/mk6i/retro-aim-server/server/oscar"
 
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
@@ -31,6 +32,11 @@ type OServiceChatService interface {
 	OServiceService
 	HostOnline() wire.SNACMessage
 	ClientOnline(ctx context.Context, sess *state.Session) error
+}
+
+type OServiceChatNavService interface {
+	OServiceService
+	HostOnline() wire.SNACMessage
 }
 
 type OServiceHandler struct {
@@ -157,4 +163,31 @@ func (s OServiceChatHandler) ClientOnline(ctx context.Context, sess *state.Sessi
 	s.Logger.InfoContext(ctx, "user signed on")
 	s.LogRequest(ctx, inFrame, inBody)
 	return s.OServiceChatService.ClientOnline(ctx, sess)
+}
+
+func NewOServiceHandlerForChatNav(logger *slog.Logger, oServiceService OServiceService, oServiceChatNavService OServiceChatNavService) OServiceChatNavHandler {
+	return OServiceChatNavHandler{
+		OServiceHandler: OServiceHandler{
+			OServiceService: oServiceService,
+			RouteLogger: middleware.RouteLogger{
+				Logger: logger,
+			},
+		},
+		OServiceChatNavService: oServiceChatNavService,
+	}
+}
+
+type OServiceChatNavHandler struct {
+	OServiceHandler
+	OServiceChatNavService
+}
+
+func (s OServiceChatNavHandler) ClientOnline(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
+	inBody := wire.SNAC_0x01_0x02_OServiceClientOnline{}
+	if err := wire.Unmarshal(&inBody, r); err != nil {
+		return err
+	}
+	s.Logger.InfoContext(ctx, "user signed on")
+	s.LogRequest(ctx, inFrame, inBody)
+	return nil
 }

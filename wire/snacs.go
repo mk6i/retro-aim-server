@@ -515,22 +515,9 @@ const (
 	ChatNavCreateRoom          uint16 = 0x0008
 	ChatNavNavInfo             uint16 = 0x0009
 
-	// referenced from protocols/oscar/family_chatnav.c in lib purple
-
-	ChatNavTLVMaxConcurrentRooms uint16 = 0x02
-	ChatNavTLVClassPerms         uint16 = 0x02
-	ChatNavTLVExchangeInfo       uint16 = 0x03
-	ChatNavTLVFullyQualifiedName uint16 = 0x6A
-	ChatNavCreateTime            uint16 = 0x00CA
-	ChatNavTLVFlags              uint16 = 0xC9
-	ChatNavTLVMaxMsgLen          uint16 = 0xD1
-	ChatNavTLVMaxOccupancy       uint16 = 0xD2
-	ChatNavTLVRoomName           uint16 = 0xD3
-	ChatNavTLVCreatePerms        uint16 = 0xD5
-	ChatNavTLVCharSet1           uint16 = 0xD6
-	ChatNavTLVLang1              uint16 = 0xD7
-	ChatNavTLVCharSet2           uint16 = 0xD8
-	ChatNavTLVLang2              uint16 = 0xD9
+	ChatNavTLVMaxConcurrentRooms uint16 = 0x0002
+	ChatNavTLVExchangeInfo       uint16 = 0x0003
+	ChatNavTLVRoomInfo           uint16 = 0x0004
 )
 
 type SNAC_0x0D_0x04_ChatNavRequestRoomInfo struct {
@@ -600,7 +587,21 @@ const (
 	ChatTLVPublicWhisperFlag    uint16 = 0x01
 	ChatTLVSenderInformation    uint16 = 0x03
 	ChatTLVEnableReflectionFlag uint16 = 0x06
-	ChatTLVRoomName             uint16 = 0xD3
+
+	// referenced from protocols/oscar/family_chatnav.c in lib purple
+	ChatRoomTLVClassPerms         uint16 = 0x02
+	ChatRoomTLVMaxNameLen         uint16 = 0x04
+	ChatRoomTLVFullyQualifiedName uint16 = 0x6A
+	ChatRoomTLVCreateTime         uint16 = 0xCA
+	ChatRoomTLVFlags              uint16 = 0xC9
+	ChatRoomTLVMaxMsgLen          uint16 = 0xD1
+	ChatRoomTLVMaxOccupancy       uint16 = 0xD2
+	ChatRoomTLVRoomName           uint16 = 0xD3
+	ChatRoomTLVNavCreatePerms     uint16 = 0xD5
+	ChatRoomTLVCharSet1           uint16 = 0xD6
+	ChatRoomTLVLang1              uint16 = 0xD7
+	ChatRoomTLVCharSet2           uint16 = 0xD8
+	ChatRoomTLVLang2              uint16 = 0xD9
 )
 
 type SNAC_0x0E_0x02_ChatRoomInfoUpdate struct {

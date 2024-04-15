@@ -4,6 +4,9 @@ set BOS_PORT=5191
 rem The port that the auth service binds to.
 set BUCP_PORT=5190
 
+rem The port that the chat nav service binds to.
+set CHAT_NAV_PORT=5193
+
 rem The port that the chat service binds to.
 set CHAT_PORT=5192
 

@@ -41,7 +41,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 		DetailLevel:    3,
 		TLVBlock: wire.TLVBlock{
 			TLVList: wire.TLVList{
-				wire.NewTLV(wire.ChatTLVRoomName, "the-chat-room-name"),
+				wire.NewTLV(wire.ChatRoomTLVRoomName, "the-chat-room-name"),
 			},
 		},
 	}
@@ -178,14 +178,15 @@ func TestChatNavService_RequestChatRights(t *testing.T) {
 						Identifier: 4,
 						TLVBlock: wire.TLVBlock{
 							TLVList: wire.TLVList{
-								wire.NewTLV(wire.ChatNavTLVClassPerms, uint16(0x0010)),
-								wire.NewTLV(wire.ChatNavTLVFlags, uint16(15)),
-								wire.NewTLV(wire.ChatNavTLVRoomName, "default exchange"),
-								wire.NewTLV(wire.ChatNavTLVCreatePerms, uint8(2)),
-								wire.NewTLV(wire.ChatNavTLVCharSet1, "us-ascii"),
-								wire.NewTLV(wire.ChatNavTLVLang1, "en"),
-								wire.NewTLV(wire.ChatNavTLVCharSet2, "us-ascii"),
-								wire.NewTLV(wire.ChatNavTLVLang2, "en"),
+								wire.NewTLV(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
+								wire.NewTLV(wire.ChatRoomTLVMaxNameLen, uint16(100)),
+								wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
+								wire.NewTLV(wire.ChatRoomTLVRoomName, "default exchange"),
+								wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
+								wire.NewTLV(wire.ChatRoomTLVCharSet1, "us-ascii"),
+								wire.NewTLV(wire.ChatRoomTLVLang1, "en"),
+								wire.NewTLV(wire.ChatRoomTLVCharSet2, "us-ascii"),
+								wire.NewTLV(wire.ChatRoomTLVLang2, "en"),
 							},
 						},
 					}),

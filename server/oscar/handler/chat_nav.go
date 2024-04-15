@@ -2,9 +2,10 @@ package handler
 
 import (
 	"context"
-	"github.com/mk6i/retro-aim-server/server/oscar"
 	"io"
 	"log/slog"
+
+	"github.com/mk6i/retro-aim-server/server/oscar"
 
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
@@ -59,7 +60,7 @@ func (rt ChatNavHandler) CreateRoom(ctx context.Context, sess *state.Session, in
 	if err != nil {
 		return err
 	}
-	roomName, _ := inBody.String(wire.ChatTLVRoomName)
+	roomName, _ := inBody.String(wire.ChatRoomTLVRoomName)
 	rt.Logger.InfoContext(ctx, "user started a chat room", slog.String("roomName", roomName))
 	rt.LogRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)

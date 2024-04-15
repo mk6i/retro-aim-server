@@ -20,6 +20,7 @@ type Handlers struct {
 	LocateHandler
 	OServiceBOSHandler
 	OServiceChatHandler
+	OServiceChatNavHandler
 }
 
 // NewBOSRouter initializes and configures a new Router instance for handling
@@ -90,6 +91,28 @@ func NewChatRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceChatHandler.OServiceHandler.RateParamsSubAdd)
 	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceChatHandler.OServiceHandler.SetUserInfoFields)
 	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceChatHandler.OServiceHandler.UserInfoQuery)
+
+	return router
+}
+
+// NewChatNavRouter initializes and configures a new Router instance for
+// handling OSCAR protocol requests in the context of a Basic Oscar Service
+// (BOS).
+func NewChatNavRouter(h Handlers) oscar.Router {
+	router := oscar.NewRouter()
+
+	router.Register(wire.ChatNav, wire.ChatNavCreateRoom, h.ChatNavHandler.CreateRoom)
+	router.Register(wire.ChatNav, wire.ChatNavRequestChatRights, h.ChatNavHandler.RequestChatRights)
+	router.Register(wire.ChatNav, wire.ChatNavRequestRoomInfo, h.ChatNavHandler.RequestRoomInfo)
+
+	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceChatNavHandler.ClientOnline)
+	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceChatNavHandler.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceChatNavHandler.OServiceHandler.IdleNotification)
+	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceChatNavHandler.OServiceHandler.RateParamsQuery)
+	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceChatNavHandler.OServiceHandler.RateParamsSubAdd)
+	//router.Register(wire.OService, wire.OServiceServiceRequest, h.OServiceChatNavHandler.ServiceRequest)
+	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceChatNavHandler.OServiceHandler.SetUserInfoFields)
+	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceChatNavHandler.OServiceHandler.UserInfoQuery)
 
 	return router
 }

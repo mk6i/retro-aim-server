@@ -93,6 +93,26 @@ func main() {
 		wg.Done()
 	}(logger)
 	go func(logger *slog.Logger) {
+		logger = logger.With("svc", "CHAT_NAV")
+		authService := foodgroup.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry)
+		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore)
+		oServiceServiceForChatNav := foodgroup.NewOServiceServiceForChatNav(*oServiceService, chatRegistry)
+		newChatSessMgr := func() foodgroup.SessionManager { return state.NewInMemorySessionManager(logger) }
+		chatNavService := foodgroup.NewChatNavService(logger, chatRegistry, state.NewChatRoom, newChatSessMgr)
+
+		oscar.ChatNavServer{
+			AuthService: authService,
+			Config:      cfg,
+			Handler: handler.NewChatNavRouter(handler.Handlers{
+				ChatNavHandler:         handler.NewChatNavHandler(chatNavService, logger),
+				OServiceChatNavHandler: handler.NewOServiceHandlerForChatNav(logger, oServiceService, oServiceServiceForChatNav),
+			}),
+			Logger:         logger,
+			OnlineNotifier: oServiceServiceForChatNav,
+		}.Start()
+		wg.Done()
+	}(logger)
+	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "AUTH")
 		authHandler := foodgroup.NewAuthService(cfg, sessionManager, nil, feedbagStore, feedbagStore, chatRegistry)
 

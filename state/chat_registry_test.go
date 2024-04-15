@@ -152,13 +152,13 @@ func TestChatRoom_TLVList(t *testing.T) {
 
 	have := room.TLVList()
 	want := []wire.TLV{
-		wire.NewTLV(wire.ChatNavTLVFlags, uint16(15)),
-		wire.NewTLV(wire.ChatNavCreateTime, uint32(room.CreateTime.Unix())),
-		wire.NewTLV(wire.ChatNavTLVMaxMsgLen, uint16(1024)),
-		wire.NewTLV(wire.ChatNavTLVMaxOccupancy, uint16(100)),
-		wire.NewTLV(wire.ChatNavTLVCreatePerms, uint8(2)),
-		wire.NewTLV(wire.ChatNavTLVFullyQualifiedName, room.Name),
-		wire.NewTLV(wire.ChatNavTLVRoomName, room.Name),
+		wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
+		wire.NewTLV(wire.ChatRoomTLVCreateTime, uint32(room.CreateTime.Unix())),
+		wire.NewTLV(wire.ChatRoomTLVMaxMsgLen, uint16(1024)),
+		wire.NewTLV(wire.ChatRoomTLVMaxOccupancy, uint16(100)),
+		wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
+		wire.NewTLV(wire.ChatRoomTLVFullyQualifiedName, room.Name),
+		wire.NewTLV(wire.ChatRoomTLVRoomName, room.Name),
 	}
 
 	assert.Equal(t, want, have)

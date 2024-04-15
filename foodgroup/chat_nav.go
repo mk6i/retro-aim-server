@@ -46,14 +46,15 @@ func (s ChatNavService) RequestChatRights(_ context.Context, inFrame wire.SNACFr
 						Identifier: 4,
 						TLVBlock: wire.TLVBlock{
 							TLVList: wire.TLVList{
-								wire.NewTLV(wire.ChatNavTLVClassPerms, uint16(0x0010)),
-								wire.NewTLV(wire.ChatNavTLVFlags, uint16(15)),
-								wire.NewTLV(wire.ChatNavTLVRoomName, "default exchange"),
-								wire.NewTLV(wire.ChatNavTLVCreatePerms, uint8(2)),
-								wire.NewTLV(wire.ChatNavTLVCharSet1, "us-ascii"),
-								wire.NewTLV(wire.ChatNavTLVLang1, "en"),
-								wire.NewTLV(wire.ChatNavTLVCharSet2, "us-ascii"),
-								wire.NewTLV(wire.ChatNavTLVLang2, "en"),
+								wire.NewTLV(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
+								wire.NewTLV(wire.ChatRoomTLVMaxNameLen, uint16(100)),
+								wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
+								wire.NewTLV(wire.ChatRoomTLVRoomName, "default exchange"),
+								wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
+								wire.NewTLV(wire.ChatRoomTLVCharSet1, "us-ascii"),
+								wire.NewTLV(wire.ChatRoomTLVLang1, "en"),
+								wire.NewTLV(wire.ChatRoomTLVCharSet2, "us-ascii"),
+								wire.NewTLV(wire.ChatRoomTLVLang2, "en"),
 							},
 						},
 					}),
@@ -67,7 +68,7 @@ func (s ChatNavService) RequestChatRights(_ context.Context, inFrame wire.SNACFr
 // participant. It returns SNAC wire.ChatNavNavInfo, which contains metadata
 // for the chat room.
 func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (wire.SNACMessage, error) {
-	name, hasName := inBody.String(wire.ChatTLVRoomName)
+	name, hasName := inBody.String(wire.ChatRoomTLVRoomName)
 	if !hasName {
 		return wire.SNACMessage{}, errors.New("unable to find chat name")
 	}
@@ -95,7 +96,7 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.ChatNavRequestRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+					wire.NewTLV(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 						Exchange:       inBody.Exchange,
 						Cookie:         room.Cookie,
 						InstanceNumber: inBody.InstanceNumber,
@@ -127,7 +128,7 @@ func (s ChatNavService) RequestRoomInfo(_ context.Context, inFrame wire.SNACFram
 		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.ChatNavRequestRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+					wire.NewTLV(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 						Exchange:       room.Exchange,
 						Cookie:         room.Cookie,
 						InstanceNumber: room.InstanceNumber,
