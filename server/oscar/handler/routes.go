@@ -96,8 +96,7 @@ func NewChatRouter(h Handlers) oscar.Router {
 }
 
 // NewChatNavRouter initializes and configures a new Router instance for
-// handling OSCAR protocol requests in the context of a Basic Oscar Service
-// (BOS).
+// handling OSCAR protocol requests in the context of the ChatNav service.
 func NewChatNavRouter(h Handlers) oscar.Router {
 	router := oscar.NewRouter()
 
@@ -110,7 +109,6 @@ func NewChatNavRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceChatNavHandler.OServiceHandler.IdleNotification)
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceChatNavHandler.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceChatNavHandler.OServiceHandler.RateParamsSubAdd)
-	//router.Register(wire.OService, wire.OServiceServiceRequest, h.OServiceChatNavHandler.ServiceRequest)
 	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceChatNavHandler.OServiceHandler.SetUserInfoFields)
 	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceChatNavHandler.OServiceHandler.UserInfoQuery)
 

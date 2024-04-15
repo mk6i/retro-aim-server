@@ -449,7 +449,6 @@ func (s OServiceServiceForBOS) HostOnline() wire.SNACMessage {
 
 // ClientOnline runs when the current user is ready to join.
 // It performs the following sequence of actions:
-//   - Pulls the buddy icon from the feedbag and set it on the session.
 //   - Announce current user's arrival to users who have the current user on
 //     their buddy list.
 //   - Send current user its buddy list.
@@ -543,9 +542,9 @@ type OServiceServiceForChatNav struct {
 	chatRegistry *state.ChatRegistry
 }
 
-// HostOnline initiates the Chat protocol sequence.
+// HostOnline initiates the ChatNav protocol sequence.
 // It returns SNAC wire.OServiceHostOnline containing the list of food groups
-// supported by the Chat service.
+// supported by the ChatNav service.
 // ChatNav is provided by BOS in addition to the standalone ChatNav service.
 // AIM 4.x always creates a secondary TCP connection for ChatNav, whereas 5.x
 // can use the existing BOS connection for ChatNav services.
