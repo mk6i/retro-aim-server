@@ -13,25 +13,33 @@ import (
 )
 
 // NewAuthService creates a new instance of AuthService.
-func NewAuthService(cfg config.Config, sessionManager SessionManager, messageRelayer MessageRelayer, feedbagManager FeedbagManager, userManager UserManager, chatRegistry ChatRegistry) *AuthService {
+func NewAuthService(cfg config.Config,
+	sessionManager SessionManager,
+	messageRelayer MessageRelayer,
+	feedbagManager FeedbagManager,
+	userManager UserManager,
+	chatRegistry ChatRegistry,
+	legacyBuddyListManager LegacyBuddyListManager) *AuthService {
 	return &AuthService{
-		chatRegistry:   chatRegistry,
-		config:         cfg,
-		feedbagManager: feedbagManager,
-		messageRelayer: messageRelayer,
-		sessionManager: sessionManager,
-		userManager:    userManager,
+		chatRegistry:           chatRegistry,
+		config:                 cfg,
+		feedbagManager:         feedbagManager,
+		legacyBuddyListManager: legacyBuddyListManager,
+		messageRelayer:         messageRelayer,
+		sessionManager:         sessionManager,
+		userManager:            userManager,
 	}
 }
 
 // AuthService provides user BUCP login and session management services.
 type AuthService struct {
-	chatRegistry   ChatRegistry
-	config         config.Config
-	feedbagManager FeedbagManager
-	messageRelayer MessageRelayer
-	sessionManager SessionManager
-	userManager    UserManager
+	chatRegistry           ChatRegistry
+	config                 config.Config
+	feedbagManager         FeedbagManager
+	legacyBuddyListManager LegacyBuddyListManager
+	messageRelayer         MessageRelayer
+	sessionManager         SessionManager
+	userManager            UserManager
 }
 
 // RetrieveChatSession returns a chat room session. Return nil if the session
@@ -57,10 +65,11 @@ func (s AuthService) RetrieveBOSSession(sessionID string) (*state.Session, error
 // Signout removes user from the BOS server and notifies adjacent users (those
 // who have this user's screen name on their buddy list) of their departure.
 func (s AuthService) Signout(ctx context.Context, sess *state.Session) error {
-	if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
+	if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 		return err
 	}
 	s.sessionManager.RemoveSession(sess)
+	s.legacyBuddyListManager.DeleteUser(sess.ScreenName())
 	return nil
 }
 

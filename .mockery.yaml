@@ -89,3 +89,6 @@ packages:
       BARTManager:
         config:
           filename: "mock_bart_manager_test.go"
+      LegacyBuddyListManager:
+        config:
+          filename: "mock_legacy_buddy_list_manager_test.go"

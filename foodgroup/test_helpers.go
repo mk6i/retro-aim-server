@@ -14,6 +14,7 @@ type mockParams struct {
 	chatMessageRelayerParams
 	chatRegistryParams
 	feedbagManagerParams
+	legacyBuddyListManagerParams
 	messageRelayerParams
 	profileManagerParams
 	sessionManagerParams
@@ -234,6 +235,50 @@ type broadcastExceptParams []struct {
 	message wire.SNACMessage
 }
 
+// legacyBuddyListManagerParams is a helper struct that contains mock
+// parameters for LegacyBuddyListManager methods
+type legacyBuddyListManagerParams struct {
+	addBuddyParams
+	deleteBuddyParams
+	deleteUserParams
+	legacyBuddiesParams
+	whoAddedUserParams
+}
+
+// legacyBuddiesParams is the list of parameters passed at the mock
+// LegacyBuddyListManager.AddBuddy call site
+type addBuddyParams []struct {
+	userScreenName  string
+	buddyScreenName string
+}
+
+// legacyBuddiesParams is the list of parameters passed at the mock
+// LegacyBuddyListManager.DeleteBuddy call site
+type deleteBuddyParams []struct {
+	userScreenName  string
+	buddyScreenName string
+}
+
+// deleteUserParams is the list of parameters passed at the mock
+// LegacyBuddyListManager.DeleteUser call site
+type deleteUserParams []struct {
+	userScreenName string
+}
+
+// legacyBuddiesParams is the list of parameters passed at the mock
+// LegacyBuddyListManager.Buddies call site
+type legacyBuddiesParams []struct {
+	userScreenName string
+	result         []string
+}
+
+// whoAddedUserParams is the list of parameters passed at the mock
+// LegacyBuddyListManager.WhoAddedUser call site
+type whoAddedUserParams []struct {
+	userScreenName string
+	result         []string
+}
+
 // sessOptWarning sets a warning level on the session object
 func sessOptWarning(level uint16) func(session *state.Session) {
 	return func(session *state.Session) {
@@ -281,7 +326,7 @@ func sessOptChatRoomCookie(cookie string) func(session *state.Session) {
 	}
 }
 
-// sessOptCannedSignonTime sets the invisible flag to true on the session
+// sessOptInvisible sets the invisible flag to true on the session
 // object
 func sessOptInvisible(session *state.Session) {
 	session.SetInvisible(true)
@@ -292,6 +337,11 @@ func sessOptIdle(dur time.Duration) func(session *state.Session) {
 	return func(session *state.Session) {
 		session.SetIdle(dur)
 	}
+}
+
+// sessOptSignonComplete sets the sign on complete flag to true
+func sessOptSignonComplete(session *state.Session) {
+	session.SetSignonComplete()
 }
 
 // sessOptCaps sets caps

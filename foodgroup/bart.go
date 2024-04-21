@@ -22,20 +22,22 @@ var blankGIF = []byte{
 // errKnownIconsOnly indicates that a non-known buddy icon was requested
 var errKnownIconsOnly = errors.New("can only satisfy requests for known icons")
 
-func NewBARTService(logger *slog.Logger, bartManager BARTManager, messageRelayer MessageRelayer, feedbagManager FeedbagManager) BARTService {
+func NewBARTService(logger *slog.Logger, bartManager BARTManager, messageRelayer MessageRelayer, feedbagManager FeedbagManager, legacyBuddyListManager LegacyBuddyListManager) BARTService {
 	return BARTService{
-		bartManager:    bartManager,
-		feedbagManager: feedbagManager,
-		logger:         logger,
-		messageRelayer: messageRelayer,
+		bartManager:            bartManager,
+		feedbagManager:         feedbagManager,
+		legacyBuddyListManager: legacyBuddyListManager,
+		logger:                 logger,
+		messageRelayer:         messageRelayer,
 	}
 }
 
 type BARTService struct {
-	bartManager    BARTManager
-	feedbagManager FeedbagManager
-	logger         *slog.Logger
-	messageRelayer MessageRelayer
+	bartManager            BARTManager
+	feedbagManager         FeedbagManager
+	legacyBuddyListManager LegacyBuddyListManager
+	logger                 *slog.Logger
+	messageRelayer         MessageRelayer
 }
 
 func (s BARTService) UpsertItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x10_0x02_BARTUploadQuery) (wire.SNACMessage, error) {
@@ -51,7 +53,7 @@ func (s BARTService) UpsertItem(ctx context.Context, sess *state.Session, inFram
 
 	s.logger.DebugContext(ctx, "successfully uploaded buddy icon", "hash", fmt.Sprintf("%x", hash))
 
-	if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
+	if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 		return wire.SNACMessage{}, err
 	}
 

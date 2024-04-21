@@ -3,8 +3,6 @@
 package foodgroup
 
 import (
-	context "context"
-
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 
@@ -403,53 +401,6 @@ func (_c *mockFeedbagManager_FeedbagUpsert_Call) Return(_a0 error) *mockFeedbagM
 }
 
 func (_c *mockFeedbagManager_FeedbagUpsert_Call) RunAndReturn(run func(string, []wire.FeedbagItem) error) *mockFeedbagManager_FeedbagUpsert_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Use provides a mock function with given fields: ctx, sess
-func (_m *mockFeedbagManager) Use(ctx context.Context, sess *state.Session) error {
-	ret := _m.Called(ctx, sess)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Use")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session) error); ok {
-		r0 = rf(ctx, sess)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// mockFeedbagManager_Use_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Use'
-type mockFeedbagManager_Use_Call struct {
-	*mock.Call
-}
-
-// Use is a helper method to define mock.On call
-//   - ctx context.Context
-//   - sess *state.Session
-func (_e *mockFeedbagManager_Expecter) Use(ctx interface{}, sess interface{}) *mockFeedbagManager_Use_Call {
-	return &mockFeedbagManager_Use_Call{Call: _e.mock.On("Use", ctx, sess)}
-}
-
-func (_c *mockFeedbagManager_Use_Call) Run(run func(ctx context.Context, sess *state.Session)) *mockFeedbagManager_Use_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session))
-	})
-	return _c
-}
-
-func (_c *mockFeedbagManager_Use_Call) Return(_a0 error) *mockFeedbagManager_Use_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockFeedbagManager_Use_Call) RunAndReturn(run func(context.Context, *state.Session) error) *mockFeedbagManager_Use_Call {
 	_c.Call.Return(run)
 	return _c
 }

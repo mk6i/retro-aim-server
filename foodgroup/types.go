@@ -51,6 +51,28 @@ type FeedbagManager interface {
 	FeedbagUpsert(screenName string, items []wire.FeedbagItem) error
 }
 
+// LegacyBuddyListManager defines operations for tracking user relationships
+// for the client-side buddy list system used by clients prior to AIM version
+// 4.3.
+type LegacyBuddyListManager interface {
+	// AddBuddy adds buddyScreenName to userScreenName's buddy list.
+	AddBuddy(userScreenName, buddyScreenName string)
+
+	// Buddies returns a list of all buddies associated with the specified
+	// userScreenName.
+	Buddies(userScreenName string) []string
+
+	// DeleteBuddy removes buddyScreenName from userScreenName's buddy list.
+	DeleteBuddy(userScreenName, buddyScreenName string)
+
+	// DeleteUser removes userScreenName's buddy list.
+	DeleteUser(userScreenName string)
+
+	// WhoAddedUser returns a list of screen names who have userScreenName in
+	// their buddy lists.
+	WhoAddedUser(userScreenName string) []string
+}
+
 type UserManager interface {
 	User(screenName string) (*state.User, error)
 	InsertUser(u state.User) error

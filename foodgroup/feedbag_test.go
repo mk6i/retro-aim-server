@@ -986,6 +986,13 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 						},
 					},
 				},
+				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
+					whoAddedUserParams: whoAddedUserParams{
+						{
+							userScreenName: "user_screen_name",
+						},
+					},
+				},
 			},
 			expectOutput: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -1095,6 +1102,13 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 						},
 					},
 				},
+				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
+					whoAddedUserParams: whoAddedUserParams{
+						{
+							userScreenName: "user_screen_name",
+						},
+					},
+				},
 			},
 			expectOutput: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -1123,7 +1137,9 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 					Return(params.users, params.err)
 			}
 			for _, params := range tc.mockParams.feedbagManagerParams.feedbagParams {
-				feedbagManager.EXPECT().Feedbag(params.screenName).Return(params.results, nil)
+				feedbagManager.EXPECT().
+					Feedbag(params.screenName).
+					Return(params.results, nil)
 			}
 			messageRelayer := newMockMessageRelayer(t)
 			for _, params := range tc.mockParams.messageRelayerParams.retrieveByScreenNameParams {
@@ -1145,12 +1161,19 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 					BARTRetrieve(params.itemHash).
 					Return(params.result, nil)
 			}
+			legacyBuddyListManager := newMockLegacyBuddyListManager(t)
+			for _, params := range tc.mockParams.whoAddedUserParams {
+				legacyBuddyListManager.EXPECT().
+					WhoAddedUser(params.userScreenName).
+					Return(params.result)
+			}
 
 			svc := FeedbagService{
-				bartManager:    bartManager,
-				feedbagManager: feedbagManager,
-				logger:         slog.Default(),
-				messageRelayer: messageRelayer,
+				bartManager:            bartManager,
+				feedbagManager:         feedbagManager,
+				legacyBuddyListManager: legacyBuddyListManager,
+				logger:                 slog.Default(),
+				messageRelayer:         messageRelayer,
 			}
 			output, err := svc.UpsertItem(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x13_0x08_FeedbagInsertItem).Items)

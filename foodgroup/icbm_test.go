@@ -246,7 +246,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			svc := NewICBMService(messageRelayer, feedbagManager)
+			svc := NewICBMService(messageRelayer, feedbagManager, nil)
 			outputSNAC, err := svc.ChannelMsgToHost(nil, tc.senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x06_ICBMChannelMsgToHost))
 			assert.NoError(t, err)
@@ -336,7 +336,7 @@ func TestICBMService_ClientEvent(t *testing.T) {
 			// send input SNAC
 			//
 			senderSession := newTestSession(tc.senderScreenName)
-			svc := NewICBMService(messageRelayer, feedbagManager)
+			svc := NewICBMService(messageRelayer, feedbagManager, nil)
 			assert.NoError(t, svc.ClientEvent(nil, senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x14_ICBMClientEvent)))
 		})
@@ -365,8 +365,11 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		// expectSNACToClient is the SNAC sent from the server to the
 		// recipient client
 		expectSNACToClient wire.SNACMessage
-
+		// expectOutput is the SNAC sent from the server to client
 		expectOutput wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
 	}{
 		{
 			name:                "transmit anonymous warning from sender to recipient",
@@ -410,6 +413,15 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				Body: wire.SNAC_0x04_0x09_ICBMEvilReply{
 					EvilDeltaApplied: 30,
 					UpdatedEvilValue: 30,
+				},
+			},
+			mockParams: mockParams{
+				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
+					whoAddedUserParams: whoAddedUserParams{
+						{
+							userScreenName: "recipient-screen-name",
+						},
+					},
 				},
 			},
 		},
@@ -459,6 +471,15 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				Body: wire.SNAC_0x04_0x09_ICBMEvilReply{
 					EvilDeltaApplied: 100,
 					UpdatedEvilValue: 100,
+				},
+			},
+			mockParams: mockParams{
+				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
+					whoAddedUserParams: whoAddedUserParams{
+						{
+							userScreenName: "recipient-screen-name",
+						},
+					},
 				},
 			},
 		},
@@ -570,11 +591,17 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			messageRelayer.EXPECT().
 				RelayToScreenNames(mock.Anything, tc.recipientBuddies, tc.broadcastMessage).
 				Maybe()
+			legacyBuddyListManager := newMockLegacyBuddyListManager(t)
+			for _, params := range tc.mockParams.whoAddedUserParams {
+				legacyBuddyListManager.EXPECT().
+					WhoAddedUser(params.userScreenName).
+					Return(params.result)
+			}
 			//
 			// send input SNAC
 			//
 			senderSession := newTestSession(tc.senderSession.ScreenName())
-			svc := NewICBMService(messageRelayer, feedbagManager)
+			svc := NewICBMService(messageRelayer, feedbagManager, legacyBuddyListManager)
 			outputSNAC, err := svc.EvilRequest(nil, senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest))
 			assert.NoError(t, err)
@@ -584,7 +611,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 }
 
 func TestICBMService_ParameterQuery(t *testing.T) {
-	svc := NewICBMService(nil, nil)
+	svc := NewICBMService(nil, nil, nil)
 
 	have := svc.ParameterQuery(nil, wire.SNACFrame{RequestID: 1234})
 	want := wire.SNACMessage{

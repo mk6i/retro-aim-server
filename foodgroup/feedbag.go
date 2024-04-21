@@ -25,10 +25,11 @@ func NewFeedbagService(logger *slog.Logger, messageRelayer MessageRelayer, feedb
 // FeedbagService provides functionality for the Feedbag food group, which
 // handles buddy list management.
 type FeedbagService struct {
-	messageRelayer MessageRelayer
-	feedbagManager FeedbagManager
-	bartManager    BARTManager
-	logger         *slog.Logger
+	bartManager            BARTManager
+	feedbagManager         FeedbagManager
+	legacyBuddyListManager LegacyBuddyListManager
+	logger                 *slog.Logger
+	messageRelayer         MessageRelayer
 }
 
 // RightsQuery returns SNAC wire.FeedbagRightsReply, which contains Feedbag
@@ -157,8 +158,7 @@ func (s FeedbagService) QueryIfModified(_ context.Context, sess *state.Session, 
 	}, nil
 }
 
-// UpsertItem yadada
-// InsertItem adds items to the user's feedbag (aka buddy list). Sends user
+// UpsertItem updates items in the user's feedbag (aka buddy list). Sends user
 // buddy arrival notifications for each online & visible buddy added to the
 // feedbag. Sends a buddy departure notification to blocked buddies if current
 // user is visible. It returns wire.FeedbagStatus, which contains insert
@@ -249,7 +249,7 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 		s.logger.DebugContext(ctx, "user is clearing icon",
 			"hash", fmt.Sprintf("%x", btlv.Hash))
 		// tell buddies about the icon update
-		return broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager)
+		return broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager)
 	}
 
 	bid := wire.BARTID{
@@ -270,7 +270,7 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 		s.logger.DebugContext(ctx, "icon already exists in BART store, don't upload the icon file",
 			"hash", fmt.Sprintf("%x", btlv.Hash))
 		// tell buddies about the icon update
-		if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
+		if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 			return err
 		}
 	}

@@ -554,7 +554,7 @@ func TestAuthService_RetrieveChatSession_HappyPath(t *testing.T) {
 		Retrieve(cookie).
 		Return(state.ChatRoom{}, sessionManager, nil)
 
-	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry)
+	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry, nil)
 
 	have, err := svc.RetrieveChatSession(buf.Bytes())
 	assert.NoError(t, err)
@@ -577,7 +577,7 @@ func TestAuthService_RetrieveChatSession_ChatNotFound(t *testing.T) {
 		Retrieve(cookie).
 		Return(state.ChatRoom{}, nil, state.ErrChatRoomNotFound)
 
-	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry)
+	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry, nil)
 
 	_, err := svc.RetrieveChatSession(loginCookie.Bytes())
 	assert.ErrorIs(t, err, state.ErrChatRoomNotFound)
@@ -604,7 +604,7 @@ func TestAuthService_RetrieveChatSession_SessionNotFound(t *testing.T) {
 		Retrieve(cookie).
 		Return(state.ChatRoom{}, sessionManager, nil)
 
-	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry)
+	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry, nil)
 
 	have, err := svc.RetrieveChatSession(buf.Bytes())
 	assert.NoError(t, err)
@@ -619,7 +619,7 @@ func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
 		RetrieveSession(sess.ID()).
 		Return(sess)
 
-	svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil)
+	svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil, nil)
 
 	have, err := svc.RetrieveBOSSession(sess.ID())
 	assert.NoError(t, err)
@@ -634,7 +634,7 @@ func TestAuthService_RetrieveBOSSession_SessionNotFound(t *testing.T) {
 		RetrieveSession(sess.ID()).
 		Return(nil)
 
-	svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil)
+	svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil, nil)
 
 	have, err := svc.RetrieveBOSSession(sess.ID())
 	assert.NoError(t, err)
@@ -774,7 +774,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 				Retrieve(tt.chatRoom.Cookie).
 				Return(tt.chatRoom, chatSessionManager, tt.wantErr)
 
-			svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry)
+			svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry, nil)
 
 			err := svc.SignoutChat(nil, tt.userSession)
 			assert.ErrorIs(t, err, tt.wantErr)
@@ -820,6 +820,18 @@ func TestAuthService_Signout(t *testing.T) {
 						},
 					},
 				},
+				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
+					deleteUserParams: deleteUserParams{
+						{
+							userScreenName: "user_screen_name",
+						},
+					},
+					whoAddedUserParams: whoAddedUserParams{
+						{
+							userScreenName: "user_screen_name",
+						},
+					},
+				},
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNamesParams: relayToScreenNamesParams{
 						{
@@ -842,7 +854,7 @@ func TestAuthService_Signout(t *testing.T) {
 			},
 		},
 		{
-			name:        "user signs out of chat room, room is empty after user leaves",
+			name:        "user signs out of chat room, feedbag lookup returns error",
 			userSession: sess,
 			chatRoom: state.ChatRoom{
 				Cookie: "the-chat-cookie",
@@ -878,8 +890,17 @@ func TestAuthService_Signout(t *testing.T) {
 			for _, params := range tt.mockParams.removeSessionParams {
 				sessionManager.EXPECT().RemoveSession(params.sess)
 			}
+			legacyBuddyListManager := newMockLegacyBuddyListManager(t)
+			for _, params := range tt.mockParams.deleteUserParams {
+				legacyBuddyListManager.EXPECT().DeleteUser(params.userScreenName)
+			}
+			for _, params := range tt.mockParams.whoAddedUserParams {
+				legacyBuddyListManager.EXPECT().
+					WhoAddedUser(params.userScreenName).
+					Return(params.result)
+			}
 
-			svc := NewAuthService(config.Config{}, sessionManager, messageRelayer, feedbagManager, nil, nil)
+			svc := NewAuthService(config.Config{}, sessionManager, messageRelayer, feedbagManager, nil, nil, legacyBuddyListManager)
 
 			err := svc.Signout(nil, tt.userSession)
 			assert.ErrorIs(t, err, tt.wantErr)

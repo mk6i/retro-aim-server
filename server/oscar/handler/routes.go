@@ -34,6 +34,8 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.BART, wire.BARTUploadQuery, h.BARTHandler.UploadQuery)
 	router.Register(wire.BART, wire.BARTDownloadQuery, h.BARTHandler.DownloadQuery)
 
+	router.Register(wire.Buddy, wire.BuddyAddBuddies, h.BuddyHandler.AddBuddies)
+	router.Register(wire.Buddy, wire.BuddyDelBuddies, h.BuddyHandler.DelBuddies)
 	router.Register(wire.Buddy, wire.BuddyRightsQuery, h.BuddyHandler.RightsQuery)
 
 	router.Register(wire.ChatNav, wire.ChatNavCreateRoom, h.ChatNavHandler.CreateRoom)
@@ -68,6 +70,7 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceBOSHandler.ClientOnline)
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceBOSHandler.OServiceHandler.ClientVersions)
 	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceBOSHandler.OServiceHandler.IdleNotification)
+	router.Register(wire.OService, wire.OServiceNoop, h.OServiceBOSHandler.OServiceHandler.Noop)
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceBOSHandler.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceBOSHandler.OServiceHandler.RateParamsSubAdd)
 	router.Register(wire.OService, wire.OServiceServiceRequest, h.OServiceBOSHandler.ServiceRequest)

@@ -98,6 +98,12 @@ func (h OServiceHandler) SetUserInfoFields(ctx context.Context, sess *state.Sess
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
 
+func (h OServiceHandler) Noop(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
+	// no-op keep-alive
+	h.LogRequest(ctx, inFrame, nil)
+	return nil
+}
+
 func NewOServiceHandlerForBOS(logger *slog.Logger, oServiceService OServiceService, oServiceBOSService OServiceBOSService) OServiceBOSHandler {
 	return OServiceBOSHandler{
 		OServiceHandler: OServiceHandler{

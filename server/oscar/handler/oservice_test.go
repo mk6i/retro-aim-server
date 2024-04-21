@@ -378,3 +378,57 @@ func TestOServiceHandler_UserInfoQuery(t *testing.T) {
 
 	assert.NoError(t, h.UserInfoQuery(nil, nil, input.Frame, buf, responseWriter))
 }
+
+func TestOServiceHandler_Noop(t *testing.T) {
+	input := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.OService,
+			SubGroup:  wire.OServiceNoop,
+		},
+		Body: struct{}{},
+	}
+
+	h := OServiceHandler{
+		RouteLogger: middleware.RouteLogger{
+			Logger: slog.Default(),
+		},
+	}
+
+	responseWriter := newMockResponseWriter(t)
+	buf := &bytes.Buffer{}
+	assert.NoError(t, wire.Marshal(input.Body, buf))
+
+	assert.NoError(t, h.Noop(nil, nil, input.Frame, buf, responseWriter))
+}
+
+func TestOServiceChatNavHandler_ClientOnline(t *testing.T) {
+	input := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.OService,
+			SubGroup:  wire.OServiceClientOnline,
+		},
+		Body: wire.SNAC_0x01_0x02_OServiceClientOnline{
+			GroupVersions: []struct {
+				FoodGroup   uint16
+				Version     uint16
+				ToolID      uint16
+				ToolVersion uint16
+			}{
+				{
+					FoodGroup: 10,
+				},
+			},
+		},
+	}
+
+	svc := newMockOServiceChatNavService(t)
+
+	h := NewOServiceHandlerForChatNav(slog.Default(), nil, svc)
+
+	responseWriter := newMockResponseWriter(t)
+
+	buf := &bytes.Buffer{}
+	assert.NoError(t, wire.Marshal(input.Body, buf))
+
+	assert.NoError(t, h.ClientOnline(nil, nil, input.Frame, buf, responseWriter))
+}

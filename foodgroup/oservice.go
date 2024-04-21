@@ -13,16 +13,27 @@ import (
 )
 
 // NewOServiceService creates a new instance of OServiceService.
-func NewOServiceService(cfg config.Config, messageRelayer MessageRelayer, feedbagManager FeedbagManager) *OServiceService {
-	return &OServiceService{cfg: cfg, messageRelayer: messageRelayer, feedbagManager: feedbagManager}
+func NewOServiceService(
+	cfg config.Config,
+	messageRelayer MessageRelayer,
+	feedbagManager FeedbagManager,
+	legacyBuddyListManager LegacyBuddyListManager,
+) *OServiceService {
+	return &OServiceService{
+		cfg:                    cfg,
+		feedbagManager:         feedbagManager,
+		legacyBuddyListManager: legacyBuddyListManager,
+		messageRelayer:         messageRelayer,
+	}
 }
 
 // OServiceService provides functionality for the OService food group, which
 // provides an assortment of services useful across multiple food groups.
 type OServiceService struct {
-	cfg            config.Config
-	feedbagManager FeedbagManager
-	messageRelayer MessageRelayer
+	cfg                    config.Config
+	feedbagManager         FeedbagManager
+	legacyBuddyListManager LegacyBuddyListManager
+	messageRelayer         MessageRelayer
 }
 
 // ClientVersions informs the server what food group versions the client
@@ -282,12 +293,12 @@ func (s OServiceService) SetUserInfoFields(ctx context.Context, sess *state.Sess
 		switch status {
 		case 0x0000:
 			sess.SetInvisible(false)
-			if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
+			if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 				return wire.SNACMessage{}, err
 			}
 		case 0x0100:
 			sess.SetInvisible(true)
-			if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
+			if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 				return wire.SNACMessage{}, err
 			}
 		default:
@@ -315,7 +326,7 @@ func (s OServiceService) IdleNotification(ctx context.Context, sess *state.Sessi
 	} else {
 		sess.SetIdle(time.Duration(bodyIn.IdleTime) * time.Second)
 	}
-	return broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager)
+	return broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager)
 }
 
 // RateParamsSubAdd exists to capture the SNAC input in unit tests to
@@ -451,7 +462,24 @@ func (s OServiceServiceForBOS) HostOnline() wire.SNACMessage {
 // It announces current user's arrival to users who have the current user on
 // their buddy list.
 func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
-	return broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager)
+	sess.SetSignonComplete()
+
+	if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
+		return err
+	}
+
+	// send buddy arrival events to client-side buddy list
+	buddies := s.legacyBuddyListManager.Buddies(sess.ScreenName())
+	for _, buddy := range buddies {
+		buddySess := s.messageRelayer.RetrieveByScreenName(buddy)
+		if buddySess == nil || buddySess.Invisible() {
+			continue
+		}
+		if err := unicastArrival(ctx, buddySess, sess, s.messageRelayer, s.feedbagManager); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // NewOServiceServiceForChat creates a new instance of OServiceServiceForChat.

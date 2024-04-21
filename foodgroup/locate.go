@@ -20,11 +20,17 @@ var omitCaps = map[[16]byte]bool{
 }
 
 // NewLocateService creates a new instance of LocateService.
-func NewLocateService(messageRelayer MessageRelayer, feedbagManager FeedbagManager, profileManager ProfileManager) LocateService {
+func NewLocateService(
+	messageRelayer MessageRelayer,
+	feedbagManager FeedbagManager,
+	profileManager ProfileManager,
+	legacyBuddyListManager LegacyBuddyListManager,
+) LocateService {
 	return LocateService{
-		sessionManager: messageRelayer,
-		feedbagManager: feedbagManager,
-		profileManager: profileManager,
+		feedbagManager:         feedbagManager,
+		legacyBuddyListManager: legacyBuddyListManager,
+		profileManager:         profileManager,
+		sessionManager:         messageRelayer,
 	}
 }
 
@@ -32,9 +38,10 @@ func NewLocateService(messageRelayer MessageRelayer, feedbagManager FeedbagManag
 // responsible for user profiles, user info lookups, directory information, and
 // keyword lookups.
 type LocateService struct {
-	sessionManager MessageRelayer
-	feedbagManager FeedbagManager
-	profileManager ProfileManager
+	feedbagManager         FeedbagManager
+	legacyBuddyListManager LegacyBuddyListManager
+	profileManager         ProfileManager
+	sessionManager         MessageRelayer
 }
 
 // RightsQuery returns SNAC wire.LocateRightsReply, which contains Locate food
@@ -74,7 +81,7 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 	// broadcast away message change to buddies
 	if awayMsg, hasAwayMsg := inBody.String(wire.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
 		sess.SetAwayMessage(awayMsg)
-		if err := broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager); err != nil {
+		if err := broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 			return err
 		}
 	}

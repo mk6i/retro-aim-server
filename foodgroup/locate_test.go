@@ -348,7 +348,13 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 					Profile(val.screenName).
 					Return(val.result, val.err)
 			}
-			svc := NewLocateService(messageRelayer, feedbagManager, profileManager)
+			legacyBuddyListManager := newMockLegacyBuddyListManager(t)
+			for _, params := range tc.mockParams.whoAddedUserParams {
+				legacyBuddyListManager.EXPECT().
+					WhoAddedUser(params.userScreenName).
+					Return(params.result)
+			}
+			svc := NewLocateService(messageRelayer, feedbagManager, profileManager, legacyBuddyListManager)
 			outputSNAC, err := svc.UserInfoQuery(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x02_0x05_LocateUserInfoQuery))
 			assert.NoError(t, err)
@@ -358,7 +364,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 }
 
 func TestLocateService_SetKeywordInfo(t *testing.T) {
-	svc := NewLocateService(nil, nil, nil)
+	svc := NewLocateService(nil, nil, nil, nil)
 
 	outputSNAC := svc.SetKeywordInfo(nil, wire.SNACFrame{RequestID: 1234})
 	expectSNAC := wire.SNACMessage{
@@ -376,7 +382,7 @@ func TestLocateService_SetKeywordInfo(t *testing.T) {
 }
 
 func TestLocateService_SetDirInfo(t *testing.T) {
-	svc := NewLocateService(nil, nil, nil)
+	svc := NewLocateService(nil, nil, nil, nil)
 
 	outputSNAC := svc.SetDirInfo(nil, wire.SNACFrame{RequestID: 1234})
 	expectSNAC := wire.SNACMessage{
@@ -467,6 +473,13 @@ func TestLocateService_SetInfo(t *testing.T) {
 						},
 					},
 				},
+				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
+					whoAddedUserParams: whoAddedUserParams{
+						{
+							userScreenName: "user_screen_name",
+						},
+					},
+				},
 			},
 		},
 	}
@@ -494,14 +507,20 @@ func TestLocateService_SetInfo(t *testing.T) {
 					SetProfile(params.screenName, params.body).
 					Return(nil)
 			}
-			svc := NewLocateService(messageRelayer, feedbagManager, profileManager)
+			legacyBuddyListManager := newMockLegacyBuddyListManager(t)
+			for _, params := range tt.mockParams.whoAddedUserParams {
+				legacyBuddyListManager.EXPECT().
+					WhoAddedUser(params.userScreenName).
+					Return(params.result)
+			}
+			svc := NewLocateService(messageRelayer, feedbagManager, profileManager, legacyBuddyListManager)
 			assert.Equal(t, tt.wantErr, svc.SetInfo(nil, tt.userSession, tt.inBody))
 		})
 	}
 }
 
 func TestLocateService_SetInfo_SetCaps(t *testing.T) {
-	svc := NewLocateService(nil, nil, nil)
+	svc := NewLocateService(nil, nil, nil, nil)
 
 	sess := newTestSession("screen-name")
 	inBody := wire.SNAC_0x02_0x04_LocateSetInfo{
@@ -534,7 +553,7 @@ func TestLocateService_SetInfo_SetCaps(t *testing.T) {
 }
 
 func TestLocateService_RightsQuery(t *testing.T) {
-	svc := NewLocateService(nil, nil, nil)
+	svc := NewLocateService(nil, nil, nil, nil)
 
 	outputSNAC := svc.RightsQuery(nil, wire.SNACFrame{RequestID: 1234})
 	expectSNAC := wire.SNACMessage{

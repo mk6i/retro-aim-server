@@ -75,6 +75,13 @@ func TestBARTService_UpsertItem(t *testing.T) {
 						},
 					},
 				},
+				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
+					whoAddedUserParams: whoAddedUserParams{
+						{
+							userScreenName: "user_screen_name",
+						},
+					},
+				},
 			},
 			expectOutput: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -127,8 +134,17 @@ func TestBARTService_UpsertItem(t *testing.T) {
 					BARTUpsert(params.itemHash, params.payload).
 					Return(nil)
 			}
+			legacyBuddyListManager := newMockLegacyBuddyListManager(t)
+			for _, params := range tc.mockParams.deleteUserParams {
+				legacyBuddyListManager.EXPECT().DeleteUser(params.userScreenName)
+			}
+			for _, params := range tc.mockParams.whoAddedUserParams {
+				legacyBuddyListManager.EXPECT().
+					WhoAddedUser(params.userScreenName).
+					Return(params.result)
+			}
 
-			svc := NewBARTService(slog.Default(), bartManager, messageRelayer, feedbagManager)
+			svc := NewBARTService(slog.Default(), bartManager, messageRelayer, feedbagManager, legacyBuddyListManager)
 
 			output, err := svc.UpsertItem(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x10_0x02_BARTUploadQuery))
@@ -273,7 +289,7 @@ func TestBARTService_RetrieveItem(t *testing.T) {
 					Return(params.result, nil)
 			}
 
-			svc := NewBARTService(slog.Default(), bartManager, nil, nil)
+			svc := NewBARTService(slog.Default(), bartManager, nil, nil, nil)
 
 			output, err := svc.RetrieveItem(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x10_0x04_BARTDownloadQuery))

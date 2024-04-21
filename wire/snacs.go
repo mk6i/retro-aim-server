@@ -390,6 +390,18 @@ type SNAC_0x03_0x03_BuddyRightsReply struct {
 	TLVRestBlock
 }
 
+type SNAC_0x03_0x04_BuddyAddBuddies struct {
+	Buddies []struct {
+		ScreenName string `len_prefix:"uint8"`
+	}
+}
+
+type SNAC_0x03_0x05_BuddyDelBuddies struct {
+	Buddies []struct {
+		ScreenName string `len_prefix:"uint8"`
+	}
+}
+
 type SNAC_0x03_0x0B_BuddyArrived struct {
 	TLVUserInfo
 }

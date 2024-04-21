@@ -11,8 +11,16 @@ import (
 )
 
 // NewBuddyService creates a new instance of BuddyService.
-func NewBuddyService() *BuddyService {
-	return &BuddyService{}
+func NewBuddyService(
+	messageRelayer MessageRelayer,
+	feedbagManager FeedbagManager,
+	legacyBuddyListManager LegacyBuddyListManager,
+) *BuddyService {
+	return &BuddyService{
+		feedbagManager:         feedbagManager,
+		legacyBuddyListManager: legacyBuddyListManager,
+		messageRelayer:         messageRelayer,
+	}
 }
 
 // BuddyService provides functionality for the Buddy food group, which sends
@@ -21,6 +29,9 @@ func NewBuddyService() *BuddyService {
 // Server. BuddyService just exists to satisfy AIM 5.x's buddy rights requests.
 // It may be expanded in the future to support older versions of AIM.
 type BuddyService struct {
+	feedbagManager         FeedbagManager
+	legacyBuddyListManager LegacyBuddyListManager
+	messageRelayer         MessageRelayer
 }
 
 // RightsQuery returns buddy list service parameters.
@@ -44,15 +55,53 @@ func (s BuddyService) RightsQuery(_ context.Context, frameIn wire.SNACFrame) wir
 	}
 }
 
+func (s BuddyService) AddBuddies(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x04_BuddyAddBuddies) error {
+	for _, entry := range inBody.Buddies {
+		s.legacyBuddyListManager.AddBuddy(sess.ScreenName(), entry.ScreenName)
+		if !sess.SignonComplete() {
+			// client has not completed sign-on sequence, so any arrival
+			// messages sent at this point would be ignored by the client.
+			continue
+		}
+		buddy := s.messageRelayer.RetrieveByScreenName(entry.ScreenName)
+		if buddy == nil || buddy.Invisible() {
+			continue
+		}
+		// notify that buddy is online
+		if err := unicastArrival(ctx, buddy, sess, s.messageRelayer, s.feedbagManager); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s BuddyService) DelBuddies(_ context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies) {
+	for _, entry := range inBody.Buddies {
+		s.legacyBuddyListManager.DeleteBuddy(sess.ScreenName(), entry.ScreenName)
+	}
+}
+
 // broadcastArrival sends the latest user info to the user's adjacent users.
 // While updates are sent via the wire.BuddyArrived SNAC, the message is not
 // only used to indicate the user coming online. It can also notify changes to
 // buddy icons, warning levels, invisibility status, etc.
-func broadcastArrival(ctx context.Context, sess *state.Session, messageRelayer MessageRelayer, feedbagManager FeedbagManager) error {
-	screenNames, err := feedbagManager.AdjacentUsers(sess.ScreenName())
+func broadcastArrival(
+	ctx context.Context,
+	sess *state.Session,
+	messageRelayer MessageRelayer,
+	feedbagManager FeedbagManager,
+	legacyBuddyListManager LegacyBuddyListManager,
+) error {
+
+	// find users who have this user on their server-side buddy list
+	recipients, err := feedbagManager.AdjacentUsers(sess.ScreenName())
 	if err != nil {
 		return err
 	}
+
+	// find users who have this user on their client-side buddy list
+	legacyUsers := legacyBuddyListManager.WhoAddedUser(sess.ScreenName())
+	recipients = append(recipients, legacyUsers...)
 
 	userInfo := sess.TLVUserInfo()
 	icon, err := getBuddyIconRefFromFeedbag(sess, feedbagManager)
@@ -63,7 +112,7 @@ func broadcastArrival(ctx context.Context, sess *state.Session, messageRelayer M
 		userInfo.Append(wire.NewTLV(wire.OServiceUserInfoBARTInfo, *icon))
 	}
 
-	messageRelayer.RelayToScreenNames(ctx, screenNames, wire.SNACMessage{
+	messageRelayer.RelayToScreenNames(ctx, recipients, wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyArrived,
@@ -130,13 +179,23 @@ func extractBARTItemType(item wire.FeedbagItem) (uint16, error) {
 	return bartType, nil
 }
 
-func broadcastDeparture(ctx context.Context, sess *state.Session, messageRelayer MessageRelayer, feedbagManager FeedbagManager) error {
-	screenNames, err := feedbagManager.AdjacentUsers(sess.ScreenName())
+func broadcastDeparture(
+	ctx context.Context,
+	sess *state.Session,
+	messageRelayer MessageRelayer,
+	feedbagManager FeedbagManager,
+	legacyBuddyListManager LegacyBuddyListManager,
+) error {
+
+	recipients, err := feedbagManager.AdjacentUsers(sess.ScreenName())
 	if err != nil {
 		return err
 	}
 
-	messageRelayer.RelayToScreenNames(ctx, screenNames, wire.SNACMessage{
+	legacyUsers := legacyBuddyListManager.WhoAddedUser(sess.ScreenName())
+	recipients = append(recipients, legacyUsers...)
+
+	messageRelayer.RelayToScreenNames(ctx, recipients, wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyDeparted,

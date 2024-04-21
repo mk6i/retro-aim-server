@@ -33,6 +33,7 @@ type Session struct {
 	msgCh          chan wire.SNACMessage
 	mutex          sync.RWMutex
 	nowFn          func() time.Time
+	signonComplete bool
 	screenName     string
 	signonTime     time.Time
 	stopCh         chan struct{}
@@ -151,6 +152,20 @@ func (s *Session) ChatRoomCookie() string {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.chatRoomCookie
+}
+
+// SignonComplete indicates whether the client has completed the sign-on sequence.
+func (s *Session) SignonComplete() bool {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.signonComplete
+}
+
+// SetSignonComplete indicates that the client has completed the sign-on sequence.
+func (s *Session) SetSignonComplete() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.signonComplete = true
 }
 
 // TLVUserInfo returns a TLV list containing session information required by
