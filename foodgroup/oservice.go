@@ -448,34 +448,10 @@ func (s OServiceServiceForBOS) HostOnline() wire.SNACMessage {
 }
 
 // ClientOnline runs when the current user is ready to join.
-// It performs the following sequence of actions:
-//   - Announce current user's arrival to users who have the current user on
-//     their buddy list.
-//   - Send current user its buddy list.
+// It announces current user's arrival to users who have the current user on
+// their buddy list.
 func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
-	if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager); err != nil {
-		return err
-	}
-
-	return s.retrieveOnlineBuddies(ctx, sess)
-}
-
-func (s OServiceServiceForBOS) retrieveOnlineBuddies(ctx context.Context, sess *state.Session) error {
-	buddies, err := s.feedbagManager.Buddies(sess.ScreenName())
-	if err != nil {
-		return err
-	}
-	for _, screenName := range buddies {
-		buddy := s.messageRelayer.RetrieveByScreenName(screenName)
-		if buddy == nil || buddy.Invisible() {
-			continue
-		}
-		if err := unicastArrival(ctx, buddy, sess, s.messageRelayer, s.feedbagManager); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager)
 }
 
 // NewOServiceServiceForChat creates a new instance of OServiceServiceForChat.

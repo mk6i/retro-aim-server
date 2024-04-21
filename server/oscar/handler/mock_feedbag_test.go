@@ -341,6 +341,53 @@ func (_c *mockFeedbagService_UpsertItem_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// Use provides a mock function with given fields: ctx, sess
+func (_m *mockFeedbagService) Use(ctx context.Context, sess *state.Session) error {
+	ret := _m.Called(ctx, sess)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Use")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session) error); ok {
+		r0 = rf(ctx, sess)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockFeedbagService_Use_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Use'
+type mockFeedbagService_Use_Call struct {
+	*mock.Call
+}
+
+// Use is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sess *state.Session
+func (_e *mockFeedbagService_Expecter) Use(ctx interface{}, sess interface{}) *mockFeedbagService_Use_Call {
+	return &mockFeedbagService_Use_Call{Call: _e.mock.On("Use", ctx, sess)}
+}
+
+func (_c *mockFeedbagService_Use_Call) Run(run func(ctx context.Context, sess *state.Session)) *mockFeedbagService_Use_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*state.Session))
+	})
+	return _c
+}
+
+func (_c *mockFeedbagService_Use_Call) Return(_a0 error) *mockFeedbagService_Use_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockFeedbagService_Use_Call) RunAndReturn(run func(context.Context, *state.Session) error) *mockFeedbagService_Use_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // newMockFeedbagService creates a new instance of mockFeedbagService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func newMockFeedbagService(t interface {

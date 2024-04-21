@@ -739,7 +739,7 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 		// bodyIn is the SNAC body sent from the arriving user's client to the
 		// server
 		bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline
-		// buddyLookupParams contains params for looking up arriving user's
+		// buddiesParams contains params for looking up arriving user's
 		// buddies
 		buddyLookupParams buddiesLookupParams
 		// adjacentUsersParams contains params for looking up users who have
@@ -752,16 +752,16 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 		// retrieveByScreenNameParams contains params for looking up the
 		// session for each of the arriving user's buddies
 		retrieveByScreenNameParams retrieveByScreenNameParams
-		// sendToScreenNameParams contains params for sending arrival
+		// relayToScreenNameParams contains params for sending arrival
 		// notifications for each of the arriving user's buddies to the
 		// arriving user's client
-		sendToScreenNameParams relayToScreenNameParams
+		relayToScreenNameParams relayToScreenNameParams
 		// feedbagParams contains params for retrieving a user's feedbag
 		feedbagParams feedbagParams
 		wantErr       error
 	}{
 		{
-			name:   "notify arriving user's buddies of its arrival and populate the arriving user's buddy list",
+			name:   "notify arriving user's buddies of their arrival",
 			sess:   newTestSession("test-user"),
 			bodyIn: wire.SNAC_0x01_0x02_OServiceClientOnline{},
 			interestedUsersParams: adjacentUsersParams{
@@ -784,59 +784,9 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 					},
 				},
 			},
-			buddyLookupParams: buddiesLookupParams{
-				{
-					screenName: "test-user",
-					buddies:    []string{"buddy1", "buddy3"},
-				},
-			},
-			retrieveByScreenNameParams: retrieveByScreenNameParams{
-				{
-					screenName: "buddy1",
-					sess:       newTestSession("buddy1"),
-				},
-				{
-					screenName: "buddy3",
-					sess:       newTestSession("buddy3"),
-				},
-			},
-			sendToScreenNameParams: relayToScreenNameParams{
-				{
-					screenName: "test-user",
-					message: wire.SNACMessage{
-						Frame: wire.SNACFrame{
-							FoodGroup: wire.Buddy,
-							SubGroup:  wire.BuddyArrived,
-						},
-						Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-							TLVUserInfo: newTestSession("buddy1").TLVUserInfo(),
-						},
-					},
-				},
-				{
-					screenName: "test-user",
-					message: wire.SNACMessage{
-						Frame: wire.SNACFrame{
-							FoodGroup: wire.Buddy,
-							SubGroup:  wire.BuddyArrived,
-						},
-						Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-							TLVUserInfo: newTestSession("buddy3").TLVUserInfo(),
-						},
-					},
-				},
-			},
 			feedbagParams: feedbagParams{
 				{
 					screenName: "test-user",
-					results:    []wire.FeedbagItem{},
-				},
-				{
-					screenName: "buddy1",
-					results:    []wire.FeedbagItem{},
-				},
-				{
-					screenName: "buddy3",
 					results:    []wire.FeedbagItem{},
 				},
 			},
@@ -865,7 +815,7 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 					RetrieveByScreenName(params.screenName).
 					Return(params.sess)
 			}
-			for _, params := range tt.sendToScreenNameParams {
+			for _, params := range tt.relayToScreenNameParams {
 				messageRelayer.EXPECT().
 					RelayToScreenName(mock.Anything, params.screenName, params.message)
 			}
@@ -920,7 +870,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 		// broadcastExcept contains params for broadcasting chat arrival to all
 		// chat participants except the user joining
 		broadcastExcept broadcastExcept
-		// sendToScreenNameParams contains params for sending chat room
+		// relayToScreenNameParams contains params for sending chat room
 		// metadata and chat participant list to joining user
 		sendToScreenNameParams sendToScreenNameParams
 		wantErr                error

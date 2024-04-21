@@ -1495,3 +1495,120 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 		})
 	}
 }
+
+func TestFeedbagService_Use(t *testing.T) {
+	tests := []struct {
+		// name is the name of the test
+		name string
+		// joiningChatter is the session of the arriving user
+		sess *state.Session
+		// bodyIn is the SNAC body sent from the arriving user's client to the
+		// server
+		bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline
+		// buddiesParams contains params for looking up arriving user's
+		// buddies
+		buddiesParams buddiesParams
+		// retrieveByScreenNameParams contains params for looking up the
+		// session for each of the arriving user's buddies
+		retrieveByScreenNameParams retrieveByScreenNameParams
+		// relayToScreenNameParams contains params for sending arrival
+		// notifications for each of the arriving user's buddies to the
+		// arriving user's client
+		relayToScreenNameParams relayToScreenNameParams
+		// feedbagParams contains params for retrieving a user's feedbag
+		feedbagParams feedbagParams
+		wantErr       error
+	}{
+		{
+			name:   "notify arriving user's buddies of its arrival and populate the arriving user's buddy list",
+			sess:   newTestSession("test-user"),
+			bodyIn: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+			buddiesParams: buddiesParams{
+				{
+					screenName: "test-user",
+					results:    []string{"buddy1", "buddy3"},
+				},
+			},
+			retrieveByScreenNameParams: retrieveByScreenNameParams{
+				{
+					screenName: "buddy1",
+					sess:       newTestSession("buddy1"),
+				},
+				{
+					screenName: "buddy3",
+					sess:       newTestSession("buddy3"),
+				},
+			},
+			relayToScreenNameParams: relayToScreenNameParams{
+				{
+					screenName: "test-user",
+					message: wire.SNACMessage{
+						Frame: wire.SNACFrame{
+							FoodGroup: wire.Buddy,
+							SubGroup:  wire.BuddyArrived,
+						},
+						Body: wire.SNAC_0x03_0x0B_BuddyArrived{
+							TLVUserInfo: newTestSession("buddy1").TLVUserInfo(),
+						},
+					},
+				},
+				{
+					screenName: "test-user",
+					message: wire.SNACMessage{
+						Frame: wire.SNACFrame{
+							FoodGroup: wire.Buddy,
+							SubGroup:  wire.BuddyArrived,
+						},
+						Body: wire.SNAC_0x03_0x0B_BuddyArrived{
+							TLVUserInfo: newTestSession("buddy3").TLVUserInfo(),
+						},
+					},
+				},
+			},
+			feedbagParams: feedbagParams{
+				//{
+				//	screenName: "test-user",
+				//	results:    []wire.FeedbagItem{},
+				//},
+				{
+					screenName: "buddy1",
+					results:    []wire.FeedbagItem{},
+				},
+				{
+					screenName: "buddy3",
+					results:    []wire.FeedbagItem{},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			feedbagManager := newMockFeedbagManager(t)
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.buddiesParams {
+				feedbagManager.EXPECT().
+					Buddies(params.screenName).
+					Return(params.results, nil)
+			}
+			for _, params := range tt.retrieveByScreenNameParams {
+				messageRelayer.EXPECT().
+					RetrieveByScreenName(params.screenName).
+					Return(params.sess)
+			}
+			for _, params := range tt.relayToScreenNameParams {
+				messageRelayer.EXPECT().
+					RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+			for _, params := range tt.feedbagParams {
+				feedbagManager.EXPECT().
+					Feedbag(params.screenName).
+					Return(params.results, nil)
+			}
+
+			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, nil)
+
+			haveErr := svc.Use(nil, tt.sess)
+			assert.ErrorIs(t, tt.wantErr, haveErr)
+		})
+	}
+}

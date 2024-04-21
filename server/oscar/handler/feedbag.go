@@ -19,6 +19,7 @@ type FeedbagService interface {
 	RightsQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 	StartCluster(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x11_FeedbagStartCluster)
 	UpsertItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, items []wire.FeedbagItem) (wire.SNACMessage, error)
+	Use(ctx context.Context, sess *state.Session) error
 }
 
 func NewFeedbagHandler(logger *slog.Logger, feedbagService FeedbagService) FeedbagHandler {
@@ -67,9 +68,9 @@ func (h FeedbagHandler) QueryIfModified(ctx context.Context, sess *state.Session
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
 
-func (h FeedbagHandler) Use(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, _ io.Reader, _ oscar.ResponseWriter) error {
+func (h FeedbagHandler) Use(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, _ io.Reader, _ oscar.ResponseWriter) error {
 	h.LogRequest(ctx, inFrame, nil)
-	return nil
+	return h.FeedbagService.Use(ctx, sess)
 }
 
 func (h FeedbagHandler) InsertItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {

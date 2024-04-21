@@ -337,3 +337,23 @@ func (s FeedbagService) DeleteItem(ctx context.Context, sess *state.Session, inF
 // correctly unmarshalled.
 func (s FeedbagService) StartCluster(context.Context, wire.SNACFrame, wire.SNAC_0x13_0x11_FeedbagStartCluster) {
 }
+
+// Use sends a user the contents of their buddy list. It's invoked at sign-on
+// by AIM clients that use the feedbag food group for buddy list management (as
+// opposed to client-side management).
+func (s FeedbagService) Use(ctx context.Context, sess *state.Session) error {
+	buddies, err := s.feedbagManager.Buddies(sess.ScreenName())
+	if err != nil {
+		return err
+	}
+	for _, screenName := range buddies {
+		buddy := s.messageRelayer.RetrieveByScreenName(screenName)
+		if buddy == nil || buddy.Invisible() {
+			continue
+		}
+		if err := unicastArrival(ctx, buddy, sess, s.messageRelayer, s.feedbagManager); err != nil {
+			return err
+		}
+	}
+	return nil
+}

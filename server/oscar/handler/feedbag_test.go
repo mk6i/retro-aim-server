@@ -333,6 +333,10 @@ func TestFeedbagHandler_Use(t *testing.T) {
 	}
 
 	svc := newMockFeedbagService(t)
+	svc.EXPECT().
+		Use(mock.Anything, mock.Anything).
+		Return(nil)
+
 	h := NewFeedbagHandler(slog.Default(), svc)
 	responseWriter := newMockResponseWriter(t)
 
