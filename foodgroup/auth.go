@@ -183,7 +183,9 @@ func (s AuthService) BUCPLoginRequest(bodyIn wire.SNAC_0x17_0x02_BUCPLoginReques
 			return wire.SNACMessage{}, err
 		}
 		if err := s.userManager.InsertUser(user); err != nil {
-			return wire.SNACMessage{}, err
+			if !errors.Is(err, state.ErrDupUser) {
+				return wire.SNACMessage{}, err
+			}
 		}
 		loginOK = true
 	}

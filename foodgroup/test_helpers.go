@@ -61,7 +61,7 @@ type chatRegistryRetrieveParams struct {
 // UserManager methods
 type userManagerParams struct {
 	getUserParams
-	upsertUserParams
+	insertUserParams
 }
 
 // getUserParams is the list of parameters passed at the mock
@@ -72,9 +72,9 @@ type getUserParams []struct {
 	err        error
 }
 
-// upsertUserParams is the list of parameters passed at the mock
+// insertUserParams is the list of parameters passed at the mock
 // UserManager.UpsertUser call site
-type upsertUserParams []struct {
+type insertUserParams []struct {
 	user state.User
 	err  error
 }

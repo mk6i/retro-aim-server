@@ -112,7 +112,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 							result:     nil,
 						},
 					},
-					upsertUserParams: upsertUserParams{
+					insertUserParams: insertUserParams{
 						{
 							user: user,
 						},
@@ -170,9 +170,68 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 							result:     &user,
 						},
 					},
-					upsertUserParams: upsertUserParams{
+					insertUserParams: insertUserParams{
 						{
 							user: user,
+						},
+					},
+				},
+				sessionManagerParams: sessionManagerParams{
+					addSessionParams: addSessionParams{
+						{
+							sessID:     userSession.ID(),
+							screenName: user.ScreenName,
+							result:     userSession,
+						},
+					},
+				},
+			},
+			newUserFn: func(screenName string) (state.User, error) {
+				return user, nil
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BUCP,
+					SubGroup:  wire.BUCPLoginResponse,
+				},
+				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.TLVScreenName, user.ScreenName),
+							wire.NewTLV(wire.TLVReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLV(wire.TLVAuthorizationCookie, sessUUID.String()),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "user logs in with invalid password--account already exists and logged in successfully",
+			cfg: config.Config{
+				OSCARHost:   "127.0.0.1",
+				BOSPort:     1234,
+				DisableAuth: true,
+			},
+			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.TLVPasswordHash, []byte("bad-password-hash")),
+						wire.NewTLV(wire.TLVScreenName, user.ScreenName),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: user.ScreenName,
+							result:     &user,
+						},
+					},
+					insertUserParams: insertUserParams{
+						{
+							user: user,
+							err:  state.ErrDupUser,
 						},
 					},
 				},
@@ -254,7 +313,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 							result:     &user,
 						},
 					},
-					upsertUserParams: upsertUserParams{
+					insertUserParams: insertUserParams{
 						{
 							user: user,
 							err:  io.EOF,
@@ -338,7 +397,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 					User(params.screenName).
 					Return(params.result, params.err)
 			}
-			for _, params := range tc.mockParams.upsertUserParams {
+			for _, params := range tc.mockParams.insertUserParams {
 				userManager.EXPECT().
 					InsertUser(params.user).
 					Return(params.err)
