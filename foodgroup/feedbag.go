@@ -13,12 +13,19 @@ import (
 )
 
 // NewFeedbagService creates a new instance of FeedbagService.
-func NewFeedbagService(logger *slog.Logger, messageRelayer MessageRelayer, feedbagManager FeedbagManager, bartManager BARTManager) FeedbagService {
+func NewFeedbagService(
+	logger *slog.Logger,
+	messageRelayer MessageRelayer,
+	feedbagManager FeedbagManager,
+	bartManager BARTManager,
+	legacyBuddyListManager LegacyBuddyListManager,
+) FeedbagService {
 	return FeedbagService{
-		bartManager:    bartManager,
-		feedbagManager: feedbagManager,
-		logger:         logger,
-		messageRelayer: messageRelayer,
+		bartManager:            bartManager,
+		feedbagManager:         feedbagManager,
+		legacyBuddyListManager: legacyBuddyListManager,
+		logger:                 logger,
+		messageRelayer:         messageRelayer,
 	}
 }
 

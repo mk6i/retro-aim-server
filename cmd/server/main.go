@@ -53,7 +53,7 @@ func main() {
 		locateService := foodgroup.NewLocateService(sessionManager, feedbagStore, feedbagStore, adjListBuddyListStore)
 		newChatSessMgr := func() foodgroup.SessionManager { return state.NewInMemorySessionManager(logger) }
 		chatNavService := foodgroup.NewChatNavService(logger, chatRegistry, state.NewChatRoom, newChatSessMgr)
-		feedbagService := foodgroup.NewFeedbagService(logger, sessionManager, feedbagStore, feedbagStore)
+		feedbagService := foodgroup.NewFeedbagService(logger, sessionManager, feedbagStore, feedbagStore, adjListBuddyListStore)
 		icbmService := foodgroup.NewICBMService(sessionManager, feedbagStore, adjListBuddyListStore)
 
 		oscar.BOSServer{

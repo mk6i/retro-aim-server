@@ -315,7 +315,7 @@ func TestFeedbagService_QueryIfModified(t *testing.T) {
 }
 
 func TestFeedbagService_RightsQuery(t *testing.T) {
-	svc := NewFeedbagService(nil, nil, nil, nil)
+	svc := NewFeedbagService(nil, nil, nil, nil, nil)
 
 	outputSNAC := svc.RightsQuery(nil, wire.SNACFrame{RequestID: 1234})
 	expectSNAC := wire.SNACMessage{
@@ -1628,7 +1628,7 @@ func TestFeedbagService_Use(t *testing.T) {
 					Return(params.results, nil)
 			}
 
-			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, nil)
+			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, nil, nil)
 
 			haveErr := svc.Use(nil, tt.sess)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
