@@ -4,48 +4,28 @@ import (
 	"bytes"
 	"crypto/md5"
 	"database/sql"
+	"embed"
 	"errors"
+	"fmt"
 	"io"
+	"io/fs"
+	"net/http"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/wire"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/sqlite"
+	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var userStoreDDL = `
-	CREATE TABLE IF NOT EXISTS user
-	(
-		screenName VARCHAR(16) PRIMARY KEY,
-		authKey    TEXT,
-		passHash   TEXT
-	);
-	CREATE TABLE IF NOT EXISTS feedbag
-	(
-		screenName   VARCHAR(16),
-		groupID      INTEGER,
-		itemID       INTEGER,
-		classID      INTEGER,
-		name         TEXT,
-		attributes   BLOB,
-		lastModified INTEGER,
-		UNIQUE (screenName, groupID, itemID)
-	);
-	CREATE TABLE IF NOT EXISTS profile
-	(
-		screenName VARCHAR(16) PRIMARY KEY,
-		body  TEXT
-	);
-	CREATE TABLE IF NOT EXISTS bartItem
-	(
-		hash CHAR(16) PRIMARY KEY,
-		body BLOB    
-	);
-`
-
 // BlockedState represents the blocked status between two users
 type BlockedState int
+
+//go:embed migrations/*
+var migrations embed.FS
 
 const (
 	// BlockedNo indicates that neither user blocks the other.
@@ -98,10 +78,36 @@ func NewSQLiteUserStore(dbFilePath string) (*SQLiteUserStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := db.Exec(userStoreDDL); err != nil {
-		return nil, err
+	store := &SQLiteUserStore{db: db}
+	return store, store.runMigrations()
+}
+
+func (f SQLiteUserStore) runMigrations() error {
+	migrationFS, err := fs.Sub(migrations, "migrations")
+	if err != nil {
+		return fmt.Errorf("failed to prepare migration subdirectory: %v", err)
 	}
-	return &SQLiteUserStore{db: db}, nil
+
+	sourceInstance, err := httpfs.New(http.FS(migrationFS), ".")
+	if err != nil {
+		return fmt.Errorf("failed to create source instance from embedded filesystem: %v", err)
+	}
+
+	driver, err := sqlite.WithInstance(f.db, &sqlite.Config{})
+	if err != nil {
+		return fmt.Errorf("cannot create database driver: %v", err)
+	}
+
+	m, err := migrate.NewWithInstance("httpfs", sourceInstance, "sqlite3", driver)
+	if err != nil {
+		return fmt.Errorf("failed to create migrate instance: %v", err)
+	}
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("failed to run migrations: %v", err)
+	}
+
+	return nil
 }
 
 // AllUsers returns all stored users. It only populates the User.ScreenName field
