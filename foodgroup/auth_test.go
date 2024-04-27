@@ -49,7 +49,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.TLVPasswordHash, user.PassHash),
+						wire.NewTLV(wire.TLVPasswordHash, user.StrongMD5Pass),
 						wire.NewTLV(wire.TLVScreenName, user.ScreenName),
 					},
 				},
@@ -99,7 +99,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.TLVPasswordHash, user.PassHash),
+						wire.NewTLV(wire.TLVPasswordHash, user.StrongMD5Pass),
 						wire.NewTLV(wire.TLVScreenName, user.ScreenName),
 					},
 				},
@@ -311,7 +311,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.TLVPasswordHash, user.PassHash),
+						wire.NewTLV(wire.TLVPasswordHash, user.StrongMD5Pass),
 						wire.NewTLV(wire.TLVScreenName, user.ScreenName),
 					},
 				},

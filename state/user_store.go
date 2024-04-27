@@ -38,14 +38,37 @@ const (
 
 // User represents an instant messaging user.
 type User struct {
-	ScreenName string `json:"screen_name"`
-	AuthKey    string `json:"-"`
-	PassHash   []byte `json:"-"`
+	ScreenName    string `json:"screen_name"`
+	AuthKey       string `json:"-"`
+	StrongMD5Pass []byte `json:"-"`
+	WeakMD5Pass   []byte `json:"-"`
 }
 
 // HashPassword creates a password hash using the MD5 digest algorithm. The
-// hash is stored in the User.PassHash field.
+// hash is stored in the User.StrongMD5Pass field.
 func (u *User) HashPassword(passwd string) error {
+	if err := u.weakPassword(passwd); err != nil {
+		return err
+	}
+	return u.strongPassword(passwd)
+}
+
+func (u *User) weakPassword(passwd string) error {
+	hash := md5.New()
+	if _, err := io.WriteString(hash, u.AuthKey); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(hash, passwd); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(hash, "AOL Instant Messenger (SM)"); err != nil {
+		return err
+	}
+	u.WeakMD5Pass = hash.Sum(nil)
+	return nil
+}
+
+func (u *User) strongPassword(passwd string) error {
 	top := md5.New()
 	if _, err := io.WriteString(top, passwd); err != nil {
 		return err
@@ -60,7 +83,7 @@ func (u *User) HashPassword(passwd string) error {
 	if _, err := io.WriteString(bottom, "AOL Instant Messenger (SM)"); err != nil {
 		return err
 	}
-	u.PassHash = bottom.Sum(nil)
+	u.StrongMD5Pass = bottom.Sum(nil)
 	return nil
 }
 
@@ -143,12 +166,13 @@ func (f SQLiteUserStore) User(screenName string) (*User, error) {
 		SELECT
 			screenName, 
 			authKey, 
-			passHash
+			weakMD5Pass,
+			strongMD5Pass
 		FROM user
 		WHERE screenName = ?
 	`
 	u := &User{}
-	err := f.db.QueryRow(q, screenName).Scan(&u.ScreenName, &u.AuthKey, &u.PassHash)
+	err := f.db.QueryRow(q, screenName).Scan(&u.ScreenName, &u.AuthKey, &u.WeakMD5Pass, &u.StrongMD5Pass)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -159,11 +183,11 @@ func (f SQLiteUserStore) User(screenName string) (*User, error) {
 // the user already exists.
 func (f SQLiteUserStore) InsertUser(u User) error {
 	q := `
-		INSERT INTO user (screenName, authKey, passHash)
-		VALUES (?, ?, ?)
+		INSERT INTO user (screenName, authKey, weakMD5Pass, strongMD5Pass)
+		VALUES (?, ?, ?, ?)
 		ON CONFLICT DO NOTHING
 	`
-	_, err := f.db.Exec(q, u.ScreenName, u.AuthKey, u.PassHash)
+	_, err := f.db.Exec(q, u.ScreenName, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass)
 	return err
 }
 

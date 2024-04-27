@@ -162,13 +162,22 @@ func (s AuthService) BUCPLoginRequest(bodyIn wire.SNAC_0x17_0x02_BUCPLoginReques
 
 	u, err := s.userManager.User(screenName)
 	switch {
+	// runtime error
 	case err != nil:
 		return wire.SNACMessage{}, err
-	case u != nil && bytes.Equal(u.PassHash, md5Hash):
-		// password check succeeded
+	// user exists, check password hashes.
+	// check both strong password hash (for AIM 4.8+) and weak password hash
+	// (for AIM < 4.8).
+	// in the future, this could check the appropriate hash based on the client
+	// version indicated in the request metadata, but more testing needs to be
+	// done first to make sure versioning metadata is consistent across all AIM
+	// clients, including 3rd-party implementations, lest we create edge cases
+	// that break login for some clients.
+	case u != nil && (bytes.Equal(u.StrongMD5Pass, md5Hash) || bytes.Equal(u.WeakMD5Pass, md5Hash)):
 		loginOK = true
+	// authentication check is disabled, allow unconditional login. create new
+	// user if the account doesn't already exist.
 	case s.config.DisableAuth:
-		// login failed but let them in anyway
 		user, err := newUserFn(screenName)
 		if err != nil {
 			return wire.SNACMessage{}, err

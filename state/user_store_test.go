@@ -354,12 +354,12 @@ func TestGetUser(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectUser := &User{
-		ScreenName: "testscreenname",
-		AuthKey:    "theauthkey",
-		PassHash:   []byte("thepasshash"),
+		ScreenName:    "testscreenname",
+		AuthKey:       "theauthkey",
+		StrongMD5Pass: []byte("thepasshash"),
 	}
-	_, err = f.db.Exec(`INSERT INTO user (ScreenName, authKey, passHash) VALUES(?, ?, ?)`,
-		expectUser.ScreenName, expectUser.AuthKey, expectUser.PassHash)
+	_, err = f.db.Exec(`INSERT INTO user (ScreenName, authKey, strongMD5Pass) VALUES(?, ?, ?)`,
+		expectUser.ScreenName, expectUser.AuthKey, expectUser.StrongMD5Pass)
 	if err != nil {
 		t.Fatalf("failed to insert user: %s", err.Error())
 	}
