@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mk6i/retro-aim-server/state"
+	"github.com/stretchr/testify/assert"
 
-	"github.com/stretchr/testify/mock"
+	"github.com/mk6i/retro-aim-server/state"
 )
 
 func TestSessionHandler_GET(t *testing.T) {
@@ -125,7 +125,7 @@ func TestUserHandler_GET(t *testing.T) {
 				AllUsers().
 				Return(tc.users, tc.userHandlerErr)
 
-			userHandler(responseRecorder, request, userManager, slog.Default())
+			userHandler(responseRecorder, request, userManager, nil, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
@@ -150,30 +150,53 @@ func TestUserHandler_POST(t *testing.T) {
 		{
 			name: "with valid user",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
-			user: state.User{
-				ScreenName: "userA",
-			},
+			user: func() state.User {
+				user := state.User{
+					AuthKey:    "theAuthKey",
+					ScreenName: "userA",
+				}
+				assert.NoError(t, user.HashPassword("thepassword"))
+				return user
+			}(),
 			want:       `User account created successfully.`,
 			statusCode: http.StatusCreated,
 		},
 		{
-			name: "with malformed body",
-			body: `{"screen_name":"userA", "password":"thepassword"`,
-			user: state.User{
-				ScreenName: "userA",
-			},
+			name:       "with malformed body",
+			body:       `{"screen_name":"userA", "password":"thepassword"`,
+			user:       state.User{},
 			want:       `malformed input`,
 			statusCode: http.StatusBadRequest,
 		},
 		{
 			name: "user handler error",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
-			user: state.User{
-				ScreenName: "userA",
-			},
+			user: func() state.User {
+				user := state.User{
+					AuthKey:    "theAuthKey",
+					ScreenName: "userA",
+				}
+				assert.NoError(t, user.HashPassword("thepassword"))
+				return user
+			}(),
 			userHandlerErr: io.EOF,
 			want:           `internal server error`,
 			statusCode:     http.StatusInternalServerError,
+		},
+		{
+			name: "duplicate user",
+			body: `{"screen_name":"userA", "password":"thepassword"}`,
+			user: func() state.User {
+				user := state.User{
+					AuthKey:    "theAuthKey",
+					ScreenName: "userA",
+				}
+				assert.NoError(t, user.HashPassword("thepassword"))
+				return user
+			}(),
+			userHandlerErr: state.ErrDupUser,
+			want:           `user already exists`,
+			statusCode:     http.StatusConflict,
 		},
 	}
 
@@ -183,12 +206,106 @@ func TestUserHandler_POST(t *testing.T) {
 			responseRecorder := httptest.NewRecorder()
 
 			userManager := newMockUserManager(t)
-			userManager.EXPECT().
-				InsertUser(mock.Anything). // todo make this more concrete
-				Return(tc.userHandlerErr).
-				Maybe()
+			if tc.user.ScreenName != "" {
+				userManager.EXPECT().
+					InsertUser(tc.user).
+					Return(tc.userHandlerErr)
+			}
 
-			userHandler(responseRecorder, request, userManager, slog.Default())
+			newUser := func() state.User {
+				return tc.user
+			}
+			userHandler(responseRecorder, request, userManager, newUser, slog.Default())
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
+func TestUserPasswordHandler_PUT(t *testing.T) {
+	tt := []struct {
+		name           string
+		body           string
+		user           state.User
+		userHandlerErr error
+		want           string
+		statusCode     int
+	}{
+		{
+			name: "with valid password",
+			body: `{"screen_name":"userA", "password":"thepassword"}`,
+			user: func() state.User {
+				user := state.User{
+					AuthKey:    "theAuthKey",
+					ScreenName: "userA",
+				}
+				assert.NoError(t, user.HashPassword("thepassword"))
+				return user
+			}(),
+			want:       ``,
+			statusCode: http.StatusNoContent,
+		},
+		{
+			name:       "with malformed body",
+			body:       `{"screen_name":"userA", "password":"thepassword"`,
+			user:       state.User{},
+			want:       `malformed input`,
+			statusCode: http.StatusBadRequest,
+		},
+		{
+			name: "user password handler error",
+			body: `{"screen_name":"userA", "password":"thepassword"}`,
+			user: func() state.User {
+				user := state.User{
+					AuthKey:    "theAuthKey",
+					ScreenName: "userA",
+				}
+				assert.NoError(t, user.HashPassword("thepassword"))
+				return user
+			}(),
+			userHandlerErr: io.EOF,
+			want:           `internal server error`,
+			statusCode:     http.StatusInternalServerError,
+		},
+		{
+			name: "user doesn't exist",
+			body: `{"screen_name":"userA", "password":"thepassword"}`,
+			user: func() state.User {
+				user := state.User{
+					AuthKey:    "theAuthKey",
+					ScreenName: "userA",
+				}
+				assert.NoError(t, user.HashPassword("thepassword"))
+				return user
+			}(),
+			userHandlerErr: state.ErrNoUser,
+			want:           `user does not exist`,
+			statusCode:     http.StatusNotFound,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPut, "/user", strings.NewReader(tc.body))
+			responseRecorder := httptest.NewRecorder()
+
+			userManager := newMockUserManager(t)
+			if tc.user.ScreenName != "" {
+				userManager.EXPECT().
+					SetUserPassword(tc.user).
+					Return(tc.userHandlerErr)
+			}
+
+			uf := func() state.User {
+				return tc.user
+			}
+			userPasswordHandler(responseRecorder, request, userManager, uf, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
@@ -205,7 +322,7 @@ func TestUserHandler_DisallowedMethod(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPut, "/user", nil)
 	responseRecorder := httptest.NewRecorder()
 
-	userHandler(responseRecorder, request, nil, nil)
+	userHandler(responseRecorder, request, nil, nil, nil)
 
 	wantCode := http.StatusMethodNotAllowed
 	if responseRecorder.Code != wantCode {

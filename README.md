@@ -50,6 +50,12 @@ curl http://localhost:8080/user
 curl -d'{"screen_name":"myScreenName", "password":"thepassword"}' http://localhost:8080/user
 ```
 
+### Change Password
+
+```shell
+curl -X PUT -d'{"screen_name":"myScreenName", "password":"thenewpassword"}' http://localhost:8080/user/password
+```
+
 ### List Active Sessions
 
 This request lists sessions for all logged in users.

@@ -123,6 +123,52 @@ func (_c *mockUserManager_InsertUser_Call) RunAndReturn(run func(state.User) err
 	return _c
 }
 
+// SetUserPassword provides a mock function with given fields: u
+func (_m *mockUserManager) SetUserPassword(u state.User) error {
+	ret := _m.Called(u)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetUserPassword")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(state.User) error); ok {
+		r0 = rf(u)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockUserManager_SetUserPassword_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetUserPassword'
+type mockUserManager_SetUserPassword_Call struct {
+	*mock.Call
+}
+
+// SetUserPassword is a helper method to define mock.On call
+//   - u state.User
+func (_e *mockUserManager_Expecter) SetUserPassword(u interface{}) *mockUserManager_SetUserPassword_Call {
+	return &mockUserManager_SetUserPassword_Call{Call: _e.mock.On("SetUserPassword", u)}
+}
+
+func (_c *mockUserManager_SetUserPassword_Call) Run(run func(u state.User)) *mockUserManager_SetUserPassword_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(state.User))
+	})
+	return _c
+}
+
+func (_c *mockUserManager_SetUserPassword_Call) Return(_a0 error) *mockUserManager_SetUserPassword_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockUserManager_SetUserPassword_Call) RunAndReturn(run func(state.User) error) *mockUserManager_SetUserPassword_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // newMockUserManager creates a new instance of mockUserManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func newMockUserManager(t interface {

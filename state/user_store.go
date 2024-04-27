@@ -27,6 +27,13 @@ type BlockedState int
 //go:embed migrations/*
 var migrations embed.FS
 
+var (
+	// ErrDupUser indicates that a user already exists.
+	ErrDupUser = errors.New("user already exists")
+	// ErrNoUser indicates that a user does not exist.
+	ErrNoUser = errors.New("user does not exist")
+)
+
 const (
 	// BlockedNo indicates that neither user blocks the other.
 	BlockedNo BlockedState = iota
@@ -42,6 +49,12 @@ type User struct {
 	AuthKey       string `json:"-"`
 	StrongMD5Pass []byte `json:"-"`
 	WeakMD5Pass   []byte `json:"-"`
+}
+
+func NewUser() User {
+	return User{
+		AuthKey: uuid.New().String(),
+	}
 }
 
 // HashPassword creates a password hash using the MD5 digest algorithm. The
@@ -179,16 +192,72 @@ func (f SQLiteUserStore) User(screenName string) (*User, error) {
 	return u, err
 }
 
-// InsertUser inserts a user to the store. It does not overwrite any fields if
-// the user already exists.
+// InsertUser inserts a user to the store. Return ErrDupUser if a user with the
+// same screen name already exists.
 func (f SQLiteUserStore) InsertUser(u User) error {
 	q := `
 		INSERT INTO user (screenName, authKey, weakMD5Pass, strongMD5Pass)
 		VALUES (?, ?, ?, ?)
-		ON CONFLICT DO NOTHING
+		ON CONFLICT (screenName) DO NOTHING
 	`
-	_, err := f.db.Exec(q, u.ScreenName, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass)
-	return err
+	result, err := f.db.Exec(q, u.ScreenName, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrDupUser
+	}
+
+	return nil
+}
+
+// SetUserPassword sets the user's password hashes and auth key.
+func (f SQLiteUserStore) SetUserPassword(u User) error {
+	tx, err := f.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	q := `
+		UPDATE user
+		SET authKey = ?, weakMD5Pass = ?, strongMD5Pass = ?
+		WHERE screenName = ?
+	`
+	result, err := tx.Exec(q, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass, u.ScreenName)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		// it's possible the user didn't change OR the user doesn't exist.
+		// check if the user exists.
+		var exists int
+		err = tx.QueryRow("SELECT COUNT(*) FROM user WHERE screenName = ?", u.ScreenName).Scan(&exists)
+		if err != nil {
+			return err // Handle possible SQL errors during the select
+		}
+		if exists == 0 {
+			return ErrNoUser // User does not exist
+		}
+	}
+
+	return tx.Commit()
 }
 
 // Feedbag fetches the contents of a user's feedbag (buddy list).

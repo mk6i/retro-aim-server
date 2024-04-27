@@ -16,7 +16,11 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/User'
+                  type: object
+                  properties:
+                    screen_name:
+                      type: string
+                      description: The user's screen name.
     post:
       summary: Create a new user
       description: Create a new user account with a screen name and password.
@@ -25,12 +29,21 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/User'
+              type: object
+              properties:
+                screen_name:
+                  type: string
+                  description: The user's screen name.
+                password:
+                  type: string
+                  description: The user's password for account creation.
       responses:
         '201':
           description: User account created successfully.
         '400':
           description: Bad request. Invalid input data.
+        '409':
+          description: Conflict. A user with the specified screen name already exists.
 
   /session:
     get:
@@ -42,31 +55,41 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionResponse'
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    description: The number of active sessions.
+                  sessions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        screen_name:
+                          type: string
+                          description: The screen name associated with the session.
 
-components:
-  schemas:
-    User:
-      type: object
-      properties:
-        screen_name:
-          type: string
-          description: The user's screen name.
-
-    SessionResponse:
-      type: object
-      properties:
-        count:
-          type: integer
-          description: The number of active sessions.
-        sessions:
-          type: array
-          items:
-            $ref: '#/components/schemas/Session'
-
-    Session:
-      type: object
-      properties:
-        screen_name:
-          type: string
-          description: The screen name associated with the session.
+  /user/password:
+    put:
+      summary: Set a user's password
+      description: Update the password for a user specified by their screen name.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                screen_name:
+                  type: string
+                  description: The screen name of the user whose password is to be updated.
+                password:
+                  type: string
+                  description: The new password for the user.
+      responses:
+        '204':
+          description: Password updated successfully.
+        '400':
+          description: Bad request. Invalid input data.
+        '404':
+          description: User not found.
