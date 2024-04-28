@@ -7,7 +7,7 @@ This guide explains how to install and configure AIM clients for Retro AIM Serve
 ### Linux
 
 Windows AIM versions 5.0-5.1.3036 run perfectly well on [Wine](https://www.winehq.org/). Here's how to set up AIM
-5.1.306.
+5.1.3036.
 
 1. [Install Wine](https://wiki.winehq.org/Download)
 2. Download the AIM installer from [archive.org](https://archive.org/details/aim513036)

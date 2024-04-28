@@ -91,6 +91,8 @@ func (s OServiceService) RateParamsQuery(_ context.Context, inFrame wire.SNACFra
 				LastTime        uint32
 				CurrentState    uint8
 			}{
+				// these values were taken from the example SNAC dump documented here:
+				// https://web.archive.org/web/20221207225518/https://wiki.nina.chat/wiki/Protocols/OSCAR/SNAC/OSERVICE_RATE_PARAMS_REPLY
 				{
 					ID:              0x01,
 					WindowSize:      0x0050,

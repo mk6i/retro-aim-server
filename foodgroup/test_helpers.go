@@ -65,7 +65,7 @@ type userManagerParams struct {
 }
 
 // getUserParams is the list of parameters passed at the mock
-// UserManager.GetUser call site
+// UserManager.User call site
 type getUserParams []struct {
 	screenName string
 	result     *state.User
@@ -73,7 +73,7 @@ type getUserParams []struct {
 }
 
 // insertUserParams is the list of parameters passed at the mock
-// UserManager.UpsertUser call site
+// UserManager.InsertUser call site
 type insertUserParams []struct {
 	user state.User
 	err  error
