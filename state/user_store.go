@@ -15,7 +15,7 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/sqlite"
+	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
@@ -129,7 +129,7 @@ func (f SQLiteUserStore) runMigrations() error {
 		return fmt.Errorf("failed to create source instance from embedded filesystem: %v", err)
 	}
 
-	driver, err := sqlite.WithInstance(f.db, &sqlite.Config{})
+	driver, err := sqlite3.WithInstance(f.db, &sqlite3.Config{})
 	if err != nil {
 		return fmt.Errorf("cannot create database driver: %v", err)
 	}
