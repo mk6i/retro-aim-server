@@ -8,11 +8,11 @@
 
 The following features are supported:
 
-- [x] Windows AIM client versions 2.x, 3.x, 4.x, 5.x
+- [x] Windows AIM client v2.x, v3.x, v4.x, v5.x
 - [x] Away Messages
-- [x] Buddy Icons
+- [x] Buddy Icons (v4.x, v5.x)
 - [x] Buddy List
-- [x] Chat Rooms
+- [x] Chat Rooms (v4.x, v5.x)
 - [x] Instant Messaging
 - [x] User Profiles
 - [x] Blocking / Visibility Toggle / Idle Notification
