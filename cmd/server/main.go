@@ -135,7 +135,7 @@ func main() {
 		logger = logger.With("svc", "AUTH")
 		authHandler := foodgroup.NewAuthService(cfg, sessionManager, nil, feedbagStore, feedbagStore, chatRegistry, adjListBuddyListStore)
 
-		oscar.BUCPAuthService{
+		oscar.AuthServer{
 			AuthService: authHandler,
 			Config:      cfg,
 			Logger:      logger,

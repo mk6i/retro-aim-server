@@ -62,6 +62,40 @@ func (f *flapClient) SignonHandshake() (wire.FLAPSignonFrame, error) {
 	return flapSignonFrameIn, nil
 }
 
+// SendSignoffFrame sends a sign-off FLAP frame with attached TLVs as the last
+// request sent in the FLAP auth flow. This is unrelated to the Disconnect()
+// method, which sends a sign-off frame to terminate a BOS connection.
+// todo: combine this method with Disconnect()
+func (f *flapClient) SendSignoffFrame(tlvs wire.TLVRestBlock) error {
+	tlvBuf := &bytes.Buffer{}
+	if err := wire.Marshal(tlvs, tlvBuf); err != nil {
+		return err
+	}
+
+	flap := wire.FLAPFrame{
+		StartMarker:   42,
+		FrameType:     wire.FLAPFrameSignoff,
+		Sequence:      uint16(f.sequence),
+		PayloadLength: uint16(tlvBuf.Len()),
+	}
+
+	if err := wire.Marshal(flap, f.w); err != nil {
+		return err
+	}
+
+	expectLen := tlvBuf.Len()
+	c, err := f.w.Write(tlvBuf.Bytes())
+	if err != nil {
+		return err
+	}
+	if c != expectLen {
+		panic("did not write the expected # of bytes")
+	}
+
+	f.sequence++
+	return nil
+}
+
 func (f *flapClient) SendSNAC(frame wire.SNACFrame, body any) error {
 	snacBuf := &bytes.Buffer{}
 	if err := wire.Marshal(frame, snacBuf); err != nil {

@@ -1,11 +1,11 @@
 rem The port that the Alert service binds to.
 set ALERT_PORT=5194
 
+rem The port that the auth service binds to.
+set AUTH_PORT=5190
+
 rem The port that the BOS service binds to.
 set BOS_PORT=5191
-
-rem The port that the auth service binds to.
-set BUCP_PORT=5190
 
 rem The port that the chat nav service binds to.
 set CHAT_NAV_PORT=5193
@@ -31,11 +31,11 @@ rem 'error'.
 set LOG_LEVEL=info
 
 rem The hostname that AIM clients connect to in order to reach OSCAR services
-rem (BOS, BUCP, chat, etc). Make sure the hostname is reachable by all clients.
+rem (auth, BOS, BUCP, etc). Make sure the hostname is reachable by all clients.
 rem For local development, the default loopback address should work provided the
 rem server and AIM client(s) are running on the same machine. For LAN-only
 rem clients, a private IP address (e.g. 192.168..) or hostname should suffice.
 rem For clients connecting over the Internet, specify your public IP address and
-rem ensure that TCP ports 5190-5192 are open on your firewall.
+rem ensure that TCP ports 5190-5194 are open on your firewall.
 set OSCAR_HOST=127.0.0.1
 

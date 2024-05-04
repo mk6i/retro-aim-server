@@ -6,14 +6,6 @@ import (
 	"fmt"
 )
 
-const (
-	TLVScreenName          uint16 = 0x01
-	TLVReconnectHere       uint16 = 0x05
-	TLVAuthorizationCookie uint16 = 0x06
-	TLVErrorSubcode        uint16 = 0x08
-	TLVPasswordHash        uint16 = 0x25
-)
-
 // TLV represents dynamically typed data in the OSCAR protocol. Each message
 // consists of a tag (or key) and a blob value. TLVs are typically grouped
 // together in arrays.

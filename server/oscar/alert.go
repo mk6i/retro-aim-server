@@ -108,5 +108,5 @@ func (rt AlertServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteC
 	sessCopy.SetScreenName(bosSess.ScreenName())
 	sessCopy.SetID(bosSess.ID())
 
-	return dispatchIncomingMessages(ctx, bosSess, flapc, rwc, rt.Logger, rt.Handler, rt.Config)
+	return dispatchIncomingMessages(ctx, sessCopy, flapc, rwc, rt.Logger, rt.Handler, rt.Config)
 }

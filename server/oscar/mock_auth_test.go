@@ -26,12 +26,12 @@ func (_m *mockAuthService) EXPECT() *mockAuthService_Expecter {
 	return &mockAuthService_Expecter{mock: &_m.Mock}
 }
 
-// BUCPChallengeRequest provides a mock function with given fields: bodyIn, newUUID
-func (_m *mockAuthService) BUCPChallengeRequest(bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error) {
+// BUCPChallenge provides a mock function with given fields: bodyIn, newUUID
+func (_m *mockAuthService) BUCPChallenge(bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error) {
 	ret := _m.Called(bodyIn, newUUID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for BUCPChallengeRequest")
+		panic("no return value specified for BUCPChallenge")
 	}
 
 	var r0 wire.SNACMessage
@@ -54,41 +54,41 @@ func (_m *mockAuthService) BUCPChallengeRequest(bodyIn wire.SNAC_0x17_0x06_BUCPC
 	return r0, r1
 }
 
-// mockAuthService_BUCPChallengeRequest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BUCPChallengeRequest'
-type mockAuthService_BUCPChallengeRequest_Call struct {
+// mockAuthService_BUCPChallenge_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BUCPChallenge'
+type mockAuthService_BUCPChallenge_Call struct {
 	*mock.Call
 }
 
-// BUCPChallengeRequest is a helper method to define mock.On call
+// BUCPChallenge is a helper method to define mock.On call
 //   - bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest
 //   - newUUID func() uuid.UUID
-func (_e *mockAuthService_Expecter) BUCPChallengeRequest(bodyIn interface{}, newUUID interface{}) *mockAuthService_BUCPChallengeRequest_Call {
-	return &mockAuthService_BUCPChallengeRequest_Call{Call: _e.mock.On("BUCPChallengeRequest", bodyIn, newUUID)}
+func (_e *mockAuthService_Expecter) BUCPChallenge(bodyIn interface{}, newUUID interface{}) *mockAuthService_BUCPChallenge_Call {
+	return &mockAuthService_BUCPChallenge_Call{Call: _e.mock.On("BUCPChallenge", bodyIn, newUUID)}
 }
 
-func (_c *mockAuthService_BUCPChallengeRequest_Call) Run(run func(bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID)) *mockAuthService_BUCPChallengeRequest_Call {
+func (_c *mockAuthService_BUCPChallenge_Call) Run(run func(bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID)) *mockAuthService_BUCPChallenge_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(wire.SNAC_0x17_0x06_BUCPChallengeRequest), args[1].(func() uuid.UUID))
 	})
 	return _c
 }
 
-func (_c *mockAuthService_BUCPChallengeRequest_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockAuthService_BUCPChallengeRequest_Call {
+func (_c *mockAuthService_BUCPChallenge_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockAuthService_BUCPChallenge_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockAuthService_BUCPChallengeRequest_Call) RunAndReturn(run func(wire.SNAC_0x17_0x06_BUCPChallengeRequest, func() uuid.UUID) (wire.SNACMessage, error)) *mockAuthService_BUCPChallengeRequest_Call {
+func (_c *mockAuthService_BUCPChallenge_Call) RunAndReturn(run func(wire.SNAC_0x17_0x06_BUCPChallengeRequest, func() uuid.UUID) (wire.SNACMessage, error)) *mockAuthService_BUCPChallenge_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// BUCPLoginRequest provides a mock function with given fields: bodyIn, newUUID, fn
-func (_m *mockAuthService) BUCPLoginRequest(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID, fn func(string) (state.User, error)) (wire.SNACMessage, error) {
+// BUCPLogin provides a mock function with given fields: bodyIn, newUUID, fn
+func (_m *mockAuthService) BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID, fn func(string) (state.User, error)) (wire.SNACMessage, error) {
 	ret := _m.Called(bodyIn, newUUID, fn)
 
 	if len(ret) == 0 {
-		panic("no return value specified for BUCPLoginRequest")
+		panic("no return value specified for BUCPLogin")
 	}
 
 	var r0 wire.SNACMessage
@@ -111,32 +111,90 @@ func (_m *mockAuthService) BUCPLoginRequest(bodyIn wire.SNAC_0x17_0x02_BUCPLogin
 	return r0, r1
 }
 
-// mockAuthService_BUCPLoginRequest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BUCPLoginRequest'
-type mockAuthService_BUCPLoginRequest_Call struct {
+// mockAuthService_BUCPLogin_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BUCPLogin'
+type mockAuthService_BUCPLogin_Call struct {
 	*mock.Call
 }
 
-// BUCPLoginRequest is a helper method to define mock.On call
+// BUCPLogin is a helper method to define mock.On call
 //   - bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest
 //   - newUUID func() uuid.UUID
 //   - fn func(string)(state.User , error)
-func (_e *mockAuthService_Expecter) BUCPLoginRequest(bodyIn interface{}, newUUID interface{}, fn interface{}) *mockAuthService_BUCPLoginRequest_Call {
-	return &mockAuthService_BUCPLoginRequest_Call{Call: _e.mock.On("BUCPLoginRequest", bodyIn, newUUID, fn)}
+func (_e *mockAuthService_Expecter) BUCPLogin(bodyIn interface{}, newUUID interface{}, fn interface{}) *mockAuthService_BUCPLogin_Call {
+	return &mockAuthService_BUCPLogin_Call{Call: _e.mock.On("BUCPLogin", bodyIn, newUUID, fn)}
 }
 
-func (_c *mockAuthService_BUCPLoginRequest_Call) Run(run func(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID, fn func(string) (state.User, error))) *mockAuthService_BUCPLoginRequest_Call {
+func (_c *mockAuthService_BUCPLogin_Call) Run(run func(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID, fn func(string) (state.User, error))) *mockAuthService_BUCPLogin_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(wire.SNAC_0x17_0x02_BUCPLoginRequest), args[1].(func() uuid.UUID), args[2].(func(string) (state.User, error)))
 	})
 	return _c
 }
 
-func (_c *mockAuthService_BUCPLoginRequest_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockAuthService_BUCPLoginRequest_Call {
+func (_c *mockAuthService_BUCPLogin_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockAuthService_BUCPLogin_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockAuthService_BUCPLoginRequest_Call) RunAndReturn(run func(wire.SNAC_0x17_0x02_BUCPLoginRequest, func() uuid.UUID, func(string) (state.User, error)) (wire.SNACMessage, error)) *mockAuthService_BUCPLoginRequest_Call {
+func (_c *mockAuthService_BUCPLogin_Call) RunAndReturn(run func(wire.SNAC_0x17_0x02_BUCPLoginRequest, func() uuid.UUID, func(string) (state.User, error)) (wire.SNACMessage, error)) *mockAuthService_BUCPLogin_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FLAPLogin provides a mock function with given fields: frame, newUUIDFn, newUserFn
+func (_m *mockAuthService) FLAPLogin(frame wire.FLAPSignonFrame, newUUIDFn func() uuid.UUID, newUserFn func(string) (state.User, error)) (wire.TLVRestBlock, error) {
+	ret := _m.Called(frame, newUUIDFn, newUserFn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FLAPLogin")
+	}
+
+	var r0 wire.TLVRestBlock
+	var r1 error
+	if rf, ok := ret.Get(0).(func(wire.FLAPSignonFrame, func() uuid.UUID, func(string) (state.User, error)) (wire.TLVRestBlock, error)); ok {
+		return rf(frame, newUUIDFn, newUserFn)
+	}
+	if rf, ok := ret.Get(0).(func(wire.FLAPSignonFrame, func() uuid.UUID, func(string) (state.User, error)) wire.TLVRestBlock); ok {
+		r0 = rf(frame, newUUIDFn, newUserFn)
+	} else {
+		r0 = ret.Get(0).(wire.TLVRestBlock)
+	}
+
+	if rf, ok := ret.Get(1).(func(wire.FLAPSignonFrame, func() uuid.UUID, func(string) (state.User, error)) error); ok {
+		r1 = rf(frame, newUUIDFn, newUserFn)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockAuthService_FLAPLogin_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FLAPLogin'
+type mockAuthService_FLAPLogin_Call struct {
+	*mock.Call
+}
+
+// FLAPLogin is a helper method to define mock.On call
+//   - frame wire.FLAPSignonFrame
+//   - newUUIDFn func() uuid.UUID
+//   - newUserFn func(string)(state.User , error)
+func (_e *mockAuthService_Expecter) FLAPLogin(frame interface{}, newUUIDFn interface{}, newUserFn interface{}) *mockAuthService_FLAPLogin_Call {
+	return &mockAuthService_FLAPLogin_Call{Call: _e.mock.On("FLAPLogin", frame, newUUIDFn, newUserFn)}
+}
+
+func (_c *mockAuthService_FLAPLogin_Call) Run(run func(frame wire.FLAPSignonFrame, newUUIDFn func() uuid.UUID, newUserFn func(string) (state.User, error))) *mockAuthService_FLAPLogin_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(wire.FLAPSignonFrame), args[1].(func() uuid.UUID), args[2].(func(string) (state.User, error)))
+	})
+	return _c
+}
+
+func (_c *mockAuthService_FLAPLogin_Call) Return(_a0 wire.TLVRestBlock, _a1 error) *mockAuthService_FLAPLogin_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockAuthService_FLAPLogin_Call) RunAndReturn(run func(wire.FLAPSignonFrame, func() uuid.UUID, func(string) (state.User, error)) (wire.TLVRestBlock, error)) *mockAuthService_FLAPLogin_Call {
 	_c.Call.Return(run)
 	return _c
 }

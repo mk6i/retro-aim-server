@@ -89,7 +89,7 @@ func TestAlertServer_handleNewConnection(t *testing.T) {
 
 	router := newMockHandler(t)
 	router.EXPECT().
-		Handle(mock.Anything, sess, mock.Anything, mock.Anything, mock.Anything).
+		Handle(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Run(func(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter) {
 			assert.Equal(t, wire.SNACFrame{
 				FoodGroup: wire.OService,

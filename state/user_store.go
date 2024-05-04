@@ -43,61 +43,66 @@ const (
 	BlockedB
 )
 
-// User represents an instant messaging user.
+// User represents a user account.
 type User struct {
-	ScreenName    string `json:"screen_name"`
-	AuthKey       string `json:"-"`
+	// ScreenName is the AIM screen name.
+	ScreenName string `json:"screen_name"`
+	// AuthKey is the salt for the MD5 password hash.
+	AuthKey string `json:"-"`
+	// StrongMD5Pass is the MD5 password hash format used by AIM v4.8-v5.9.
 	StrongMD5Pass []byte `json:"-"`
-	WeakMD5Pass   []byte `json:"-"`
+	// WeakMD5Pass is the MD5 password hash format used by AIM v3.5-v4.7. This
+	// hash is used to authenticate roasted passwords for AIM v1.0-v3.0.
+	WeakMD5Pass []byte `json:"-"`
 }
 
-func NewUser() User {
-	return User{
-		AuthKey: uuid.New().String(),
+// ValidateHash checks if md5Hash is identical to one of the password hashes.
+func (u *User) ValidateHash(md5Hash []byte) bool {
+	return bytes.Equal(u.StrongMD5Pass, md5Hash) || bytes.Equal(u.WeakMD5Pass, md5Hash)
+}
+
+// ValidateRoastedPass checks if the provided roasted password matches the MD5
+// hash of the user's actual password. A roasted password is a XOR-obfuscated
+// form of the real password, intended to add a simple layer of security.
+func (u *User) ValidateRoastedPass(roastedPass []byte) bool {
+	var roastTable = [16]byte{
+		0xF3, 0x26, 0x81, 0xC4, 0x39, 0x86, 0xDB, 0x92,
+		0x71, 0xA3, 0xB9, 0xE6, 0x53, 0x7A, 0x95, 0x7C,
 	}
+	clearPass := make([]byte, len(roastedPass))
+	for i := range roastedPass {
+		clearPass[i] = roastedPass[i] ^ roastTable[i%len(roastTable)]
+	}
+	md5Hash := weakMD5PasswordHash(string(clearPass), u.AuthKey) // todo remove string conversion
+	return bytes.Equal(u.WeakMD5Pass, md5Hash)
 }
 
-// HashPassword creates a password hash using the MD5 digest algorithm. The
-// hash is stored in the User.StrongMD5Pass field.
+// HashPassword computes MD5 hashes of the user's password. It computes both
+// weak and strong variants and stores them in the struct.
 func (u *User) HashPassword(passwd string) error {
-	if err := u.weakPassword(passwd); err != nil {
-		return err
-	}
-	return u.strongPassword(passwd)
+	u.WeakMD5Pass = weakMD5PasswordHash(passwd, u.AuthKey)
+	u.StrongMD5Pass = strongMD5PasswordHash(passwd, u.AuthKey)
+	return nil
 }
 
-func (u *User) weakPassword(passwd string) error {
+//goland:noinspection GoUnhandledErrorResult
+func weakMD5PasswordHash(pass, authKey string) []byte {
 	hash := md5.New()
-	if _, err := io.WriteString(hash, u.AuthKey); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(hash, passwd); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(hash, "AOL Instant Messenger (SM)"); err != nil {
-		return err
-	}
-	u.WeakMD5Pass = hash.Sum(nil)
-	return nil
+	io.WriteString(hash, authKey)
+	io.WriteString(hash, pass)
+	io.WriteString(hash, "AOL Instant Messenger (SM)")
+	return hash.Sum(nil)
 }
 
-func (u *User) strongPassword(passwd string) error {
+//goland:noinspection GoUnhandledErrorResult
+func strongMD5PasswordHash(pass, authKey string) []byte {
 	top := md5.New()
-	if _, err := io.WriteString(top, passwd); err != nil {
-		return err
-	}
+	io.WriteString(top, pass)
 	bottom := md5.New()
-	if _, err := io.WriteString(bottom, u.AuthKey); err != nil {
-		return err
-	}
-	if _, err := bottom.Write(top.Sum(nil)); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(bottom, "AOL Instant Messenger (SM)"); err != nil {
-		return err
-	}
-	u.StrongMD5Pass = bottom.Sum(nil)
-	return nil
+	io.WriteString(bottom, authKey)
+	bottom.Write(top.Sum(nil))
+	io.WriteString(bottom, "AOL Instant Messenger (SM)")
+	return bottom.Sum(nil)
 }
 
 // SQLiteUserStore stores user feedbag (buddy list), profile, and

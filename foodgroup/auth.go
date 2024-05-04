@@ -19,7 +19,8 @@ func NewAuthService(cfg config.Config,
 	feedbagManager FeedbagManager,
 	userManager UserManager,
 	chatRegistry ChatRegistry,
-	legacyBuddyListManager LegacyBuddyListManager) *AuthService {
+	legacyBuddyListManager LegacyBuddyListManager,
+) *AuthService {
 	return &AuthService{
 		chatRegistry:           chatRegistry,
 		config:                 cfg,
@@ -31,7 +32,9 @@ func NewAuthService(cfg config.Config,
 	}
 }
 
-// AuthService provides user BUCP login and session management services.
+// AuthService provides client login and session management services. It
+// supports both FLAP (AIM v1.0-v3.0) and BUCP (AIM v3.5-v5.9) authentication
+// modes.
 type AuthService struct {
 	chatRegistry           ChatRegistry
 	config                 config.Config
@@ -62,8 +65,8 @@ func (s AuthService) RetrieveBOSSession(sessionID string) (*state.Session, error
 	return s.sessionManager.RetrieveSession(sessionID), nil
 }
 
-// Signout removes user from the BOS server and notifies adjacent users (those
-// who have this user's screen name on their buddy list) of their departure.
+// Signout removes this user's session and notifies users who have this user on
+// their buddy list about this user's departure.
 func (s AuthService) Signout(ctx context.Context, sess *state.Session) error {
 	if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 		return err
@@ -88,42 +91,51 @@ func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session) error
 	return nil
 }
 
-// BUCPChallengeRequest satisfies the client request for a random auth
-// key. It returns SNAC wire.BUCPChallengeResponse. If the screen name is
-// recognized as a valid user, the response contains the account's auth key,
-// which salts the user's MD5 password hash. If the account is invalid, an
-// error code is set in TLV wire.TLVErrorSubcode. If login credentials are
-// invalid and app config DisableAuth is true, a stub auth key is generated and
-// a successful challenge response is returned.
-func (s AuthService) BUCPChallengeRequest(bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUIDFn func() uuid.UUID) (wire.SNACMessage, error) {
-	screenName, exists := bodyIn.String(wire.TLVScreenName)
+// BUCPChallenge processes a BUCP authentication challenge request. It
+// retrieves the user's auth key based on the screen name provided in the
+// request. The client uses the auth key to salt the MD5 password hash provided
+// in the subsequent login request. If the account is invalid, an error code is
+// set in TLV wire.LoginTLVTagsErrorSubcode. If login credentials are invalid and app
+// config DisableAuth is true, a stub auth key is generated and a successful
+// challenge response is returned.
+func (s AuthService) BUCPChallenge(
+	bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest,
+	newUUIDFn func() uuid.UUID,
+) (wire.SNACMessage, error) {
+
+	screenName, exists := bodyIn.String(wire.LoginTLVTagsScreenName)
 	if !exists {
 		return wire.SNACMessage{}, errors.New("screen name doesn't exist in tlv")
 	}
 
 	var authKey string
 
-	u, err := s.userManager.User(screenName)
-	switch {
-	case err != nil:
+	user, err := s.userManager.User(screenName)
+	if err != nil {
 		return wire.SNACMessage{}, err
-	case u != nil:
+	}
+
+	switch {
+	case user != nil:
 		// user lookup succeeded
-		authKey = u.AuthKey
+		authKey = user.AuthKey
 	case s.config.DisableAuth:
 		// can't find user, generate stub auth key
 		authKey = newUUIDFn().String()
 	default:
 		// can't find user, return login error
-		snacFrameOut := wire.SNACFrame{
-			FoodGroup: wire.BUCP,
-			SubGroup:  wire.BUCPLoginResponse,
-		}
-		snacPayloadOut := wire.SNAC_0x17_0x03_BUCPLoginResponse{}
-		snacPayloadOut.Append(wire.NewTLV(wire.TLVErrorSubcode, uint16(0x01)))
 		return wire.SNACMessage{
-			Frame: snacFrameOut,
-			Body:  snacPayloadOut,
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.BUCP,
+				SubGroup:  wire.BUCPLoginResponse,
+			},
+			Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: []wire.TLV{
+						wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidUsernameOrPassword),
+					},
+				},
+			},
 		}, nil
 	}
 
@@ -138,71 +150,25 @@ func (s AuthService) BUCPChallengeRequest(bodyIn wire.SNAC_0x17_0x06_BUCPChallen
 	}, nil
 }
 
-// BUCPLoginRequest verifies user credentials. Upon successful login, a
-// session is created.
+// BUCPLogin processes a BUCP authentication request for AIM v3.5-v5.9. Upon
+// successful login, a session is created.
 // If login credentials are invalid and app config DisableAuth is true, a stub
 // user is created and login continues as normal. DisableAuth allows you to
 // skip the account creation procedure, which simplifies the login flow during
 // development.
 // If login is successful, the SNAC TLV list contains the BOS server address
-// (wire.TLVReconnectHere) and an authorization cookie
-// (wire.TLVAuthorizationCookie). Else, an error code is set
-// (wire.TLVErrorSubcode).
-func (s AuthService) BUCPLoginRequest(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUUIDFn func() uuid.UUID, newUserFn func(screenName string) (state.User, error)) (wire.SNACMessage, error) {
-	screenName, found := bodyIn.String(wire.TLVScreenName)
-	if !found {
-		return wire.SNACMessage{}, errors.New("screen name doesn't exist in tlv")
-	}
-	md5Hash, found := bodyIn.Slice(wire.TLVPasswordHash)
-	if !found {
-		return wire.SNACMessage{}, errors.New("password hash doesn't exist in tlv")
-	}
+// (wire.LoginTLVTagsReconnectHere) and an authorization cookie
+// (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
+// (wire.LoginTLVTagsErrorSubcode).
+func (s AuthService) BUCPLogin(
+	bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest,
+	newUUIDFn func() uuid.UUID,
+	newUserFn func(screenName string) (state.User, error),
+) (wire.SNACMessage, error) {
 
-	loginOK := false
-
-	u, err := s.userManager.User(screenName)
-	switch {
-	// runtime error
-	case err != nil:
+	block, err := s.login(bodyIn.TLVList, newUserFn, newUUIDFn)
+	if err != nil {
 		return wire.SNACMessage{}, err
-	// user exists, check password hashes.
-	// check both strong password hash (for AIM 4.8+) and weak password hash
-	// (for AIM < 4.8).
-	// in the future, this could check the appropriate hash based on the client
-	// version indicated in the request metadata, but more testing needs to be
-	// done first to make sure versioning metadata is consistent across all AIM
-	// clients, including 3rd-party implementations, lest we create edge cases
-	// that break login for some clients.
-	case u != nil && (bytes.Equal(u.StrongMD5Pass, md5Hash) || bytes.Equal(u.WeakMD5Pass, md5Hash)):
-		loginOK = true
-	// authentication check is disabled, allow unconditional login. create new
-	// user if the account doesn't already exist.
-	case s.config.DisableAuth:
-		user, err := newUserFn(screenName)
-		if err != nil {
-			return wire.SNACMessage{}, err
-		}
-		if err := s.userManager.InsertUser(user); err != nil {
-			if !errors.Is(err, state.ErrDupUser) {
-				return wire.SNACMessage{}, err
-			}
-		}
-		loginOK = true
-	}
-
-	snacPayloadOut := wire.SNAC_0x17_0x03_BUCPLoginResponse{}
-	snacPayloadOut.Append(wire.NewTLV(wire.TLVScreenName, screenName))
-
-	if loginOK {
-		sess := s.sessionManager.AddSession(newUUIDFn().String(), screenName)
-		snacPayloadOut.AppendList([]wire.TLV{
-			wire.NewTLV(wire.TLVReconnectHere, config.Address(s.config.OSCARHost, s.config.BOSPort)),
-			wire.NewTLV(wire.TLVAuthorizationCookie, sess.ID()),
-		})
-	} else {
-		snacPayloadOut.AppendList([]wire.TLV{
-			wire.NewTLV(wire.TLVErrorSubcode, uint16(0x01)),
-		})
 	}
 
 	return wire.SNACMessage{
@@ -210,6 +176,91 @@ func (s AuthService) BUCPLoginRequest(bodyIn wire.SNAC_0x17_0x02_BUCPLoginReques
 			FoodGroup: wire.BUCP,
 			SubGroup:  wire.BUCPLoginResponse,
 		},
-		Body: snacPayloadOut,
+		Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
+			TLVRestBlock: block,
+		},
+	}, nil
+}
+
+// FLAPLogin processes a FLAP authentication request for AIM v1.0-v3.0. Upon
+// successful login, a session is created.
+// If login credentials are invalid and app config DisableAuth is true, a stub
+// user is created and login continues as normal. DisableAuth allows you to
+// skip the account creation procedure, which simplifies the login flow during
+// development.
+// If login is successful, the SNAC TLV list contains the BOS server address
+// (wire.LoginTLVTagsReconnectHere) and an authorization cookie
+// (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
+// (wire.LoginTLVTagsErrorSubcode).
+func (s AuthService) FLAPLogin(
+	frame wire.FLAPSignonFrame,
+	newUUIDFn func() uuid.UUID,
+	newUserFn func(screenName string) (state.User, error),
+) (wire.TLVRestBlock, error) {
+	return s.login(frame.TLVList, newUserFn, newUUIDFn)
+}
+
+// login validates a user's credentials and creates their session. it returns
+// metadata used in both BUCP and FLAP authentication responses.
+func (s AuthService) login(
+	TLVList wire.TLVList,
+	newUserFn func(screenName string) (state.User, error),
+	newUUIDFn func() uuid.UUID,
+) (wire.TLVRestBlock, error) {
+
+	screenName, found := TLVList.String(wire.LoginTLVTagsScreenName)
+	if !found {
+		return wire.TLVRestBlock{}, errors.New("screen name doesn't exist in tlv")
+	}
+
+	user, err := s.userManager.User(screenName)
+	if err != nil {
+		return wire.TLVRestBlock{}, err
+	}
+
+	var loginOK bool
+	if user != nil {
+		if md5Hash, hasMD5 := TLVList.Slice(wire.LoginTLVTagsPasswordHash); hasMD5 {
+			loginOK = user.ValidateHash(md5Hash)
+		} else if roastedPass, hasRoasted := TLVList.Slice(wire.LoginTLVTagsRoastedPassword); hasRoasted {
+			loginOK = user.ValidateRoastedPass(roastedPass)
+		} else {
+			return wire.TLVRestBlock{}, errors.New("password hash doesn't exist in tlv")
+		}
+	}
+
+	if loginOK || s.config.DisableAuth {
+		if !loginOK {
+			// make login succeed anyway. create new user if the account
+			// doesn't already exist.
+			newUser, err := newUserFn(screenName)
+			if err != nil {
+				return wire.TLVRestBlock{}, err
+			}
+			if err := s.userManager.InsertUser(newUser); err != nil {
+				if !errors.Is(err, state.ErrDupUser) {
+					return wire.TLVRestBlock{}, err
+				}
+			}
+		}
+
+		sess := s.sessionManager.AddSession(newUUIDFn().String(), screenName)
+
+		// auth success
+		return wire.TLVRestBlock{
+			TLVList: []wire.TLV{
+				wire.NewTLV(wire.LoginTLVTagsScreenName, screenName),
+				wire.NewTLV(wire.LoginTLVTagsReconnectHere, config.Address(s.config.OSCARHost, s.config.BOSPort)),
+				wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, sess.ID()),
+			},
+		}, nil
+	}
+
+	// auth failure
+	return wire.TLVRestBlock{
+		TLVList: []wire.TLV{
+			wire.NewTLV(wire.LoginTLVTagsScreenName, screenName),
+			wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidUsernameOrPassword),
+		},
 	}, nil
 }

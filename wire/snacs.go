@@ -80,6 +80,23 @@ const (
 )
 
 //
+// Authentication
+//
+
+const (
+	LoginTLVTagsScreenName          uint16 = 0x01
+	LoginTLVTagsRoastedPassword     uint16 = 0x02
+	LoginTLVTagsReconnectHere       uint16 = 0x05
+	LoginTLVTagsAuthorizationCookie uint16 = 0x06
+	LoginTLVTagsErrorSubcode        uint16 = 0x08
+	LoginTLVTagsPasswordHash        uint16 = 0x25
+)
+
+const (
+	LoginErrInvalidUsernameOrPassword uint16 = 0x01
+)
+
+//
 // 0x01: OService
 //
 

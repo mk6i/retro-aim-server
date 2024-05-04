@@ -8,7 +8,7 @@
 
 The following features are supported:
 
-- [x] Windows AIM client versions 3.5, 4.x, 5.x
+- [x] Windows AIM client versions 2.x, 3.x, 4.x, 5.x
 - [x] Away Messages
 - [x] Buddy Icons
 - [x] Buddy List
