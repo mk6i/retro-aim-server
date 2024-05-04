@@ -81,6 +81,40 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "request info for connecting to alert svc, return alert svc connection metadata",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				AlertPort: 1234,
+			},
+			userSession: newTestSession("user_screen_name", sessOptCannedID),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.Alert,
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, newTestSession("user_screen_name", sessOptCannedID).ID()),
+							wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Alert),
+							wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
+							wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "request info for connecting to chat room, return chat service and chat room metadata",
 			cfg: config.Config{
 				OSCARHost: "127.0.0.1",
@@ -1150,6 +1184,26 @@ func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
 		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
 			FoodGroups: []uint16{
 				wire.ChatNav,
+				wire.OService,
+			},
+		},
+	}
+
+	have := svc.HostOnline()
+	assert.Equal(t, want, have)
+}
+
+func TestOServiceServiceForAlert_HostOnline(t *testing.T) {
+	svc := NewOServiceServiceForAlert(*NewOServiceService(config.Config{}, nil, nil, nil))
+
+	want := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.OService,
+			SubGroup:  wire.OServiceHostOnline,
+		},
+		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+			FoodGroups: []uint16{
+				wire.Alert,
 				wire.OService,
 			},
 		},

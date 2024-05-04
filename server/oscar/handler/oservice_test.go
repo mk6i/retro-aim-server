@@ -432,3 +432,35 @@ func TestOServiceChatNavHandler_ClientOnline(t *testing.T) {
 
 	assert.NoError(t, h.ClientOnline(nil, nil, input.Frame, buf, responseWriter))
 }
+
+func TestOServiceAlertHandler_ClientOnline(t *testing.T) {
+	input := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.OService,
+			SubGroup:  wire.OServiceClientOnline,
+		},
+		Body: wire.SNAC_0x01_0x02_OServiceClientOnline{
+			GroupVersions: []struct {
+				FoodGroup   uint16
+				Version     uint16
+				ToolID      uint16
+				ToolVersion uint16
+			}{
+				{
+					FoodGroup: 10,
+				},
+			},
+		},
+	}
+
+	svc := newMockOServiceAlertService(t)
+
+	h := NewOServiceHandlerForAlert(slog.Default(), nil, svc)
+
+	responseWriter := newMockResponseWriter(t)
+
+	buf := &bytes.Buffer{}
+	assert.NoError(t, wire.Marshal(input.Body, buf))
+
+	assert.NoError(t, h.ClientOnline(nil, nil, input.Frame, buf, responseWriter))
+}

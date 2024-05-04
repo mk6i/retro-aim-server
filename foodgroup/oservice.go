@@ -369,6 +369,25 @@ type chatLoginCookie struct {
 // - Other Food Groups: Returns wire.ErrUnsupportedFoodGroup.
 func (s OServiceServiceForBOS) ServiceRequest(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
 	switch inBody.FoodGroup {
+	case wire.Alert:
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceServiceResponse,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, config.Address(s.cfg.OSCARHost, s.cfg.AlertPort)),
+						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, sess.ID()),
+						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Alert),
+						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
+						wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+					},
+				},
+			},
+		}, nil
 	case wire.ChatNav:
 		return wire.SNACMessage{
 			Frame: wire.SNACFrame{
@@ -563,6 +582,40 @@ func (s OServiceServiceForChatNav) HostOnline() wire.SNACMessage {
 		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
 			FoodGroups: []uint16{
 				wire.ChatNav,
+				wire.OService,
+			},
+		},
+	}
+}
+
+// NewOServiceServiceForAlert creates a new instance of OServiceServiceForAlert.
+func NewOServiceServiceForAlert(oserviceService OServiceService) *OServiceServiceForAlert {
+	return &OServiceServiceForAlert{
+		OServiceService: oserviceService,
+	}
+}
+
+// OServiceServiceForAlert provides functionality for the OService food group
+// running on the Alert server.
+type OServiceServiceForAlert struct {
+	OServiceService
+}
+
+// HostOnline initiates the Alert protocol sequence.
+// It returns SNAC wire.OServiceHostOnline containing the list of food groups
+// supported by the Alert service.
+// Alert is provided by BOS in addition to the standalone Alert service.
+// AIM 4.x always creates a secondary TCP connection for Alert, whereas 5.x
+// can use the existing BOS connection for Alert services.
+func (s OServiceServiceForAlert) HostOnline() wire.SNACMessage {
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.OService,
+			SubGroup:  wire.OServiceHostOnline,
+		},
+		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+			FoodGroups: []uint16{
+				wire.Alert,
 				wire.OService,
 			},
 		},

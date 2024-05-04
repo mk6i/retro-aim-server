@@ -54,6 +54,9 @@ packages:
       OServiceChatNavService:
         config:
           filename: "mock_oservice_chat_nav_test.go"
+      OServiceAlertService:
+        config:
+          filename: "mock_oservice_alert_service_test.go"
       LocateService:
         config:
           filename: "mock_locate_test.go"

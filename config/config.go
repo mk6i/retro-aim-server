@@ -5,6 +5,7 @@ import "fmt"
 //go:generate go run github.com/mk6i/retro-aim-server/cmd/config_generator windows settings.bat
 //go:generate go run github.com/mk6i/retro-aim-server/cmd/config_generator unix settings.env
 type Config struct {
+	AlertPort   int    `envconfig:"ALERT_PORT" default:"5194" description:"The port that the Alert service binds to."`
 	BOSPort     int    `envconfig:"BOS_PORT" default:"5191" description:"The port that the BOS service binds to."`
 	BUCPPort    int    `envconfig:"BUCP_PORT" default:"5190" description:"The port that the auth service binds to."`
 	ChatNavPort int    `envconfig:"CHAT_NAV_PORT" default:"5193" description:"The port that the chat nav service binds to."`

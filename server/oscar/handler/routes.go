@@ -18,6 +18,7 @@ type Handlers struct {
 	FeedbagHandler
 	ICBMHandler
 	LocateHandler
+	OServiceAlertHandler
 	OServiceBOSHandler
 	OServiceChatHandler
 	OServiceChatNavHandler
@@ -114,6 +115,21 @@ func NewChatNavRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceChatNavHandler.OServiceHandler.RateParamsSubAdd)
 	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceChatNavHandler.OServiceHandler.SetUserInfoFields)
 	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceChatNavHandler.OServiceHandler.UserInfoQuery)
+
+	return router
+}
+
+func NewAlertRouter(h Handlers) oscar.Router {
+	router := oscar.NewRouter()
+
+	router.Register(wire.Alert, wire.AlertNotifyCapabilities, h.AlertHandler.NotifyCapabilities)
+	router.Register(wire.Alert, wire.AlertNotifyDisplayCapabilities, h.AlertHandler.NotifyDisplayCapabilities)
+	router.Register(wire.Alert, wire.AlertUserOnline, h.AlertHandler.NotifyDisplayCapabilities)
+
+	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceAlertHandler.ClientOnline)
+	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceAlertHandler.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceAlertHandler.OServiceHandler.RateParamsQuery)
+	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceAlertHandler.OServiceHandler.RateParamsSubAdd)
 
 	return router
 }

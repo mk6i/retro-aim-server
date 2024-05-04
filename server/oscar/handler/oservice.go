@@ -39,6 +39,11 @@ type OServiceChatNavService interface {
 	HostOnline() wire.SNACMessage
 }
 
+type OServiceAlertService interface {
+	OServiceService
+	HostOnline() wire.SNACMessage
+}
+
 type OServiceHandler struct {
 	OServiceService
 	middleware.RouteLogger
@@ -189,6 +194,33 @@ type OServiceChatNavHandler struct {
 }
 
 func (s OServiceChatNavHandler) ClientOnline(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
+	inBody := wire.SNAC_0x01_0x02_OServiceClientOnline{}
+	if err := wire.Unmarshal(&inBody, r); err != nil {
+		return err
+	}
+	s.Logger.InfoContext(ctx, "user signed on")
+	s.LogRequest(ctx, inFrame, inBody)
+	return nil
+}
+
+func NewOServiceHandlerForAlert(logger *slog.Logger, oServiceService OServiceService, oServiceAlertService OServiceAlertService) OServiceAlertHandler {
+	return OServiceAlertHandler{
+		OServiceHandler: OServiceHandler{
+			OServiceService: oServiceService,
+			RouteLogger: middleware.RouteLogger{
+				Logger: logger,
+			},
+		},
+		OServiceAlertService: oServiceAlertService,
+	}
+}
+
+type OServiceAlertHandler struct {
+	OServiceHandler
+	OServiceAlertService
+}
+
+func (s OServiceAlertHandler) ClientOnline(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x01_0x02_OServiceClientOnline{}
 	if err := wire.Unmarshal(&inBody, r); err != nil {
 		return err

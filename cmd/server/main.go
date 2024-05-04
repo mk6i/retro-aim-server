@@ -37,7 +37,7 @@ func main() {
 	adjListBuddyListStore := state.NewAdjListBuddyListStore()
 
 	wg := sync.WaitGroup{}
-	wg.Add(4)
+	wg.Add(6)
 
 	go func() {
 		http.StartManagementAPI(feedbagStore, sessionManager, logger)
@@ -110,6 +110,24 @@ func main() {
 			}),
 			Logger:         logger,
 			OnlineNotifier: oServiceServiceForChatNav,
+		}.Start()
+		wg.Done()
+	}(logger)
+	go func(logger *slog.Logger) {
+		logger = logger.With("svc", "ALERT")
+		authService := foodgroup.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry, adjListBuddyListStore)
+		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore, adjListBuddyListStore)
+		oServiceServiceForAlert := foodgroup.NewOServiceServiceForAlert(*oServiceService)
+
+		oscar.AlertServer{
+			AuthService: authService,
+			Config:      cfg,
+			Handler: handler.NewAlertRouter(handler.Handlers{
+				AlertHandler:         handler.NewAlertHandler(logger),
+				OServiceAlertHandler: handler.NewOServiceHandlerForAlert(logger, oServiceService, oServiceServiceForAlert),
+			}),
+			Logger:         logger,
+			OnlineNotifier: oServiceServiceForAlert,
 		}.Start()
 		wg.Done()
 	}(logger)

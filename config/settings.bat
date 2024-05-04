@@ -1,3 +1,6 @@
+rem The port that the Alert service binds to.
+set ALERT_PORT=5194
+
 rem The port that the BOS service binds to.
 set BOS_PORT=5191
 
