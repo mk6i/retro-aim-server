@@ -57,20 +57,334 @@ func (s OServiceService) ClientVersions(_ context.Context, frame wire.SNACFrame,
 	}
 }
 
-// RateParamsQuery returns SNAC rate limits.
-// The purpose of this method is to provide information about rate limits that
-// can be enforced on the server side. The response consists of two main parts:
-// rate classes and rate groups. Rate classes define limits based on specific
-// parameters, while rate groups associate these limits with relevant SNAC
-// types.
+var rateLimitSNAC = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
+	RateClasses: []struct {
+		ID              uint16
+		WindowSize      uint32
+		ClearLevel      uint32
+		AlertLevel      uint32
+		LimitLevel      uint32
+		DisconnectLevel uint32
+		CurrentLevel    uint32
+		MaxLevel        uint32
+		LastTime        uint32
+		CurrentState    uint8
+	}{
+		{
+			ID:              0x01,
+			WindowSize:      0x0050,
+			ClearLevel:      0x09C4,
+			AlertLevel:      0x07D0,
+			LimitLevel:      0x05DC,
+			DisconnectLevel: 0x0320,
+			CurrentLevel:    0x0D69,
+			MaxLevel:        0x1770,
+			LastTime:        0x0000,
+			CurrentState:    0x0,
+		},
+	},
+	RateGroups: []struct {
+		ID    uint16
+		Pairs []struct {
+			FoodGroup uint16
+			SubGroup  uint16
+		} `count_prefix:"uint16"`
+	}{
+		{
+			ID: 1,
+			Pairs: []struct {
+				FoodGroup uint16
+				SubGroup  uint16
+			}{},
+		},
+	},
+}
+
+// populate the rate limit SNAC with a rule for each subgroup
+func init() {
+	foodGroupToSubgroup := map[uint16][]uint16{
+		wire.OService: {
+			wire.OServiceErr,
+			wire.OServiceClientOnline,
+			wire.OServiceHostOnline,
+			wire.OServiceServiceRequest,
+			wire.OServiceServiceResponse,
+			wire.OServiceRateParamsQuery,
+			wire.OServiceRateParamsReply,
+			wire.OServiceRateParamsSubAdd,
+			wire.OServiceRateDelParamSub,
+			wire.OServiceRateParamChange,
+			wire.OServicePauseReq,
+			wire.OServicePauseAck,
+			wire.OServiceResume,
+			wire.OServiceUserInfoQuery,
+			wire.OServiceUserInfoUpdate,
+			wire.OServiceEvilNotification,
+			wire.OServiceIdleNotification,
+			wire.OServiceMigrateGroups,
+			wire.OServiceMotd,
+			wire.OServiceSetPrivacyFlags,
+			wire.OServiceWellKnownUrls,
+			wire.OServiceNoop,
+			wire.OServiceClientVersions,
+			wire.OServiceHostVersions,
+			wire.OServiceMaxConfigQuery,
+			wire.OServiceMaxConfigReply,
+			wire.OServiceStoreConfig,
+			wire.OServiceConfigQuery,
+			wire.OServiceConfigReply,
+			wire.OServiceSetUserInfoFields,
+			wire.OServiceProbeReq,
+			wire.OServiceProbeAck,
+			wire.OServiceBartReply,
+			wire.OServiceBartQuery2,
+			wire.OServiceBartReply2,
+		},
+		wire.Locate: {
+			wire.LocateErr,
+			wire.LocateRightsQuery,
+			wire.LocateRightsReply,
+			wire.LocateSetInfo,
+			wire.LocateUserInfoQuery,
+			wire.LocateUserInfoReply,
+			wire.LocateWatcherSubRequest,
+			wire.LocateWatcherNotification,
+			wire.LocateSetDirInfo,
+			wire.LocateSetDirReply,
+			wire.LocateGetDirInfo,
+			wire.LocateGetDirReply,
+			wire.LocateGroupCapabilityQuery,
+			wire.LocateGroupCapabilityReply,
+			wire.LocateSetKeywordInfo,
+			wire.LocateSetKeywordReply,
+			wire.LocateGetKeywordInfo,
+			wire.LocateGetKeywordReply,
+			wire.LocateFindListByEmail,
+			wire.LocateFindListReply,
+			wire.LocateUserInfoQuery2,
+		},
+		wire.Buddy: {
+			wire.BuddyErr,
+			wire.BuddyRightsQuery,
+			wire.BuddyRightsReply,
+			wire.BuddyAddBuddies,
+			wire.BuddyDelBuddies,
+			wire.BuddyWatcherListQuery,
+			wire.BuddyWatcherListResponse,
+			wire.BuddyWatcherSubRequest,
+			wire.BuddyWatcherNotification,
+			wire.BuddyRejectNotification,
+			wire.BuddyArrived,
+			wire.BuddyDeparted,
+			wire.BuddyAddTempBuddies,
+			wire.BuddyDelTempBuddies,
+		},
+		wire.ICBM: {
+			wire.ICBMErr,
+			wire.ICBMAddParameters,
+			wire.ICBMDelParameters,
+			wire.ICBMParameterQuery,
+			wire.ICBMParameterReply,
+			wire.ICBMChannelMsgToHost,
+			wire.ICBMChannelMsgToClient,
+			wire.ICBMEvilRequest,
+			wire.ICBMEvilReply,
+			wire.ICBMMissedCalls,
+			wire.ICBMClientErr,
+			wire.ICBMHostAck,
+			wire.ICBMSinStored,
+			wire.ICBMSinListQuery,
+			wire.ICBMSinListReply,
+			wire.ICBMSinRetrieve,
+			wire.ICBMSinDelete,
+			wire.ICBMNotifyRequest,
+			wire.ICBMNotifyReply,
+			wire.ICBMClientEvent,
+			wire.ICBMSinReply,
+		},
+		wire.ChatNav: {
+			wire.ChatNavErr,
+			wire.ChatNavRequestChatRights,
+			wire.ChatNavRequestExchangeInfo,
+			wire.ChatNavRequestRoomInfo,
+			wire.ChatNavRequestMoreRoomInfo,
+			wire.ChatNavRequestOccupantList,
+			wire.ChatNavSearchForRoom,
+			wire.ChatNavCreateRoom,
+			wire.ChatNavNavInfo,
+		},
+		wire.Chat: {
+			wire.ChatErr,
+			wire.ChatRoomInfoUpdate,
+			wire.ChatUsersJoined,
+			wire.ChatUsersLeft,
+			wire.ChatChannelMsgToHost,
+			wire.ChatChannelMsgToClient,
+			wire.ChatEvilRequest,
+			wire.ChatEvilReply,
+			wire.ChatClientErr,
+			wire.ChatPauseRoomReq,
+			wire.ChatPauseRoomAck,
+			wire.ChatResumeRoom,
+			wire.ChatShowMyRow,
+			wire.ChatShowRowByUsername,
+			wire.ChatShowRowByNumber,
+			wire.ChatShowRowByName,
+			wire.ChatRowInfo,
+			wire.ChatListRows,
+			wire.ChatRowListInfo,
+			wire.ChatMoreRows,
+			wire.ChatMoveToRow,
+			wire.ChatToggleChat,
+			wire.ChatSendQuestion,
+			wire.ChatSendComment,
+			wire.ChatTallyVote,
+			wire.ChatAcceptBid,
+			wire.ChatSendInvite,
+			wire.ChatDeclineInvite,
+			wire.ChatAcceptInvite,
+			wire.ChatNotifyMessage,
+			wire.ChatGotoRow,
+			wire.ChatStageUserJoin,
+			wire.ChatStageUserLeft,
+			wire.ChatUnnamedSnac22,
+			wire.ChatClose,
+			wire.ChatUserBan,
+			wire.ChatUserUnban,
+			wire.ChatJoined,
+			wire.ChatUnnamedSnac27,
+			wire.ChatUnnamedSnac28,
+			wire.ChatUnnamedSnac29,
+			wire.ChatRoomInfoOwner,
+		},
+		wire.BART: {
+			wire.BARTErr,
+			wire.BARTUploadQuery,
+			wire.BARTUploadReply,
+			wire.BARTDownloadQuery,
+			wire.BARTDownloadReply,
+			wire.BARTDownload2Query,
+			wire.BARTDownload2Reply,
+		},
+		wire.Feedbag: {
+			wire.FeedbagErr,
+			wire.FeedbagRightsQuery,
+			wire.FeedbagRightsReply,
+			wire.FeedbagQuery,
+			wire.FeedbagQueryIfModified,
+			wire.FeedbagReply,
+			wire.FeedbagUse,
+			wire.FeedbagInsertItem,
+			wire.FeedbagUpdateItem,
+			wire.FeedbagDeleteItem,
+			wire.FeedbagInsertClass,
+			wire.FeedbagUpdateClass,
+			wire.FeedbagDeleteClass,
+			wire.FeedbagStatus,
+			wire.FeedbagReplyNotModified,
+			wire.FeedbagDeleteUser,
+			wire.FeedbagStartCluster,
+			wire.FeedbagEndCluster,
+			wire.FeedbagAuthorizeBuddy,
+			wire.FeedbagPreAuthorizeBuddy,
+			wire.FeedbagPreAuthorizedBuddy,
+			wire.FeedbagRemoveMe,
+			wire.FeedbagRemoveMe2,
+			wire.FeedbagRequestAuthorizeToHost,
+			wire.FeedbagRequestAuthorizeToClient,
+			wire.FeedbagRespondAuthorizeToHost,
+			wire.FeedbagRespondAuthorizeToClient,
+			wire.FeedbagBuddyAdded,
+			wire.FeedbagRequestAuthorizeToBadog,
+			wire.FeedbagRespondAuthorizeToBadog,
+			wire.FeedbagBuddyAddedToBadog,
+			wire.FeedbagTestSnac,
+			wire.FeedbagForwardMsg,
+			wire.FeedbagIsAuthRequiredQuery,
+			wire.FeedbagIsAuthRequiredReply,
+			wire.FeedbagRecentBuddyUpdate,
+		},
+		wire.BUCP: {
+			wire.BUCPErr,
+			wire.BUCPLoginRequest,
+			wire.BUCPLoginResponse,
+			wire.BUCPRegisterRequest,
+			wire.BUCPChallengeRequest,
+			wire.BUCPChallengeResponse,
+			wire.BUCPAsasnRequest,
+			wire.BUCPSecuridRequest,
+			wire.BUCPRegistrationImageRequest,
+		},
+		wire.Alert: {
+			wire.AlertErr,
+			wire.AlertSetAlertRequest,
+			wire.AlertSetAlertReply,
+			wire.AlertGetSubsRequest,
+			wire.AlertGetSubsResponse,
+			wire.AlertNotifyCapabilities,
+			wire.AlertNotify,
+			wire.AlertGetRuleRequest,
+			wire.AlertGetRuleReply,
+			wire.AlertGetFeedRequest,
+			wire.AlertGetFeedReply,
+			wire.AlertRefreshFeed,
+			wire.AlertEvent,
+			wire.AlertQogSnac,
+			wire.AlertRefreshFeedStock,
+			wire.AlertNotifyTransport,
+			wire.AlertSetAlertRequestV2,
+			wire.AlertSetAlertReplyV2,
+			wire.AlertTransitReply,
+			wire.AlertNotifyAck,
+			wire.AlertNotifyDisplayCapabilities,
+			wire.AlertUserOnline,
+		},
+	}
+
+	for _, foodGroup := range []uint16{
+		wire.OService,
+		wire.Locate,
+		wire.Buddy,
+		wire.ICBM,
+		wire.ChatNav,
+		wire.Chat,
+		wire.BART,
+		wire.Feedbag,
+		wire.BUCP,
+		wire.Alert,
+	} {
+		subGroups := foodGroupToSubgroup[foodGroup]
+		for _, subGroup := range subGroups {
+			rateLimitSNAC.RateGroups[0].Pairs = append(rateLimitSNAC.RateGroups[0].Pairs, struct {
+				FoodGroup uint16
+				SubGroup  uint16
+			}{
+				FoodGroup: foodGroup,
+				SubGroup:  subGroup,
+			})
+		}
+	}
+}
+
+// RateParamsQuery returns SNAC rate limits. It returns SNAC
+// wire.OServiceRateParamsReply containing rate limits for all food groups
+// supported by this server.
 //
-// Note: The current implementation does not enforce server-side rate limiting.
+// The purpose of this method is to convey per-SNAC server-side rate limits to
+// the client. The response consists of two main parts: rate classes and rate
+// groups. Rate classes define limits based on specific parameters, while rate
+// groups associate these limits with relevant SNAC types.
+//
+// The current implementation does not enforce server-side rate limiting.
 // Instead, the provided values inform the client about the recommended
 // client-side rate limits.
 //
-// It returns SNAC wire.OServiceRateParamsReply containing rate limits for
-// sending Instant Messages (IMs) and chat messages. More refined limits may be
-// added in the future if/when server rate limiting is implemented.
+// The rate limit values were taken from the example SNAC dump documented here:
+// https://web.archive.org/web/20221207225518/https://wiki.nina.chat/wiki/Protocols/OSCAR/SNAC/OSERVICE_RATE_PARAMS_REPLY
+//
+// AIM clients silently fail when they expect a rate limit rule that does not
+// exist in this response. When support for a new food group is added to the
+// server, update this function accordingly.
 func (s OServiceService) RateParamsQuery(_ context.Context, inFrame wire.SNACFrame) wire.SNACMessage {
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -78,195 +392,7 @@ func (s OServiceService) RateParamsQuery(_ context.Context, inFrame wire.SNACFra
 			SubGroup:  wire.OServiceRateParamsReply,
 			RequestID: inFrame.RequestID,
 		},
-		Body: wire.SNAC_0x01_0x07_OServiceRateParamsReply{
-			RateClasses: []struct {
-				ID              uint16
-				WindowSize      uint32
-				ClearLevel      uint32
-				AlertLevel      uint32
-				LimitLevel      uint32
-				DisconnectLevel uint32
-				CurrentLevel    uint32
-				MaxLevel        uint32
-				LastTime        uint32
-				CurrentState    uint8
-			}{
-				// these values were taken from the example SNAC dump documented here:
-				// https://web.archive.org/web/20221207225518/https://wiki.nina.chat/wiki/Protocols/OSCAR/SNAC/OSERVICE_RATE_PARAMS_REPLY
-				{
-					ID:              0x01,
-					WindowSize:      0x0050,
-					ClearLevel:      0x09C4,
-					AlertLevel:      0x07D0,
-					LimitLevel:      0x05DC,
-					DisconnectLevel: 0x0320,
-					CurrentLevel:    0x0D69,
-					MaxLevel:        0x1770,
-					LastTime:        0x0000,
-					CurrentState:    0x0,
-				},
-			},
-			RateGroups: []struct {
-				ID    uint16
-				Pairs []struct {
-					FoodGroup uint16
-					SubGroup  uint16
-				} `count_prefix:"uint16"`
-			}{
-				{
-					ID: 1,
-					Pairs: []struct {
-						FoodGroup uint16
-						SubGroup  uint16
-					}{
-						{
-							FoodGroup: wire.Buddy,
-							SubGroup:  wire.BuddyRightsQuery,
-						},
-						{
-							FoodGroup: wire.Chat,
-							SubGroup:  wire.ChatChannelMsgToHost,
-						},
-						{
-							FoodGroup: wire.ChatNav,
-							SubGroup:  wire.ChatNavRequestChatRights,
-						},
-						{
-							FoodGroup: wire.ChatNav,
-							SubGroup:  wire.ChatNavRequestRoomInfo,
-						},
-						{
-							FoodGroup: wire.ChatNav,
-							SubGroup:  wire.ChatNavCreateRoom,
-						},
-						{
-							FoodGroup: wire.Feedbag,
-							SubGroup:  wire.FeedbagRightsQuery,
-						},
-						{
-							FoodGroup: wire.Feedbag,
-							SubGroup:  wire.FeedbagQuery,
-						},
-						{
-							FoodGroup: wire.Feedbag,
-							SubGroup:  wire.FeedbagQueryIfModified,
-						},
-						{
-							FoodGroup: wire.Feedbag,
-							SubGroup:  wire.FeedbagUse,
-						},
-						{
-							FoodGroup: wire.Feedbag,
-							SubGroup:  wire.FeedbagInsertItem,
-						},
-						{
-							FoodGroup: wire.Feedbag,
-							SubGroup:  wire.FeedbagUpdateItem,
-						},
-						{
-							FoodGroup: wire.Feedbag,
-							SubGroup:  wire.FeedbagDeleteItem,
-						},
-						{
-							FoodGroup: wire.Feedbag,
-							SubGroup:  wire.FeedbagStartCluster,
-						},
-						{
-							FoodGroup: wire.Feedbag,
-							SubGroup:  wire.FeedbagEndCluster,
-						},
-						{
-							FoodGroup: wire.ICBM,
-							SubGroup:  wire.ICBMAddParameters,
-						},
-						{
-							FoodGroup: wire.ICBM,
-							SubGroup:  wire.ICBMParameterQuery,
-						},
-						{
-							FoodGroup: wire.ICBM,
-							SubGroup:  wire.ICBMChannelMsgToHost,
-						},
-						{
-							FoodGroup: wire.ICBM,
-							SubGroup:  wire.ICBMEvilRequest,
-						},
-						{
-							FoodGroup: wire.ICBM,
-							SubGroup:  wire.ICBMClientErr,
-						},
-						{
-							FoodGroup: wire.ICBM,
-							SubGroup:  wire.ICBMClientEvent,
-						},
-						{
-							FoodGroup: wire.Locate,
-							SubGroup:  wire.LocateRightsQuery,
-						},
-						{
-							FoodGroup: wire.Locate,
-							SubGroup:  wire.LocateSetInfo,
-						},
-						{
-							FoodGroup: wire.Locate,
-							SubGroup:  wire.LocateSetDirInfo,
-						},
-						{
-							FoodGroup: wire.Locate,
-							SubGroup:  wire.LocateGetDirInfo,
-						},
-						{
-							FoodGroup: wire.Locate,
-							SubGroup:  wire.LocateSetKeywordInfo,
-						},
-						{
-							FoodGroup: wire.Locate,
-							SubGroup:  wire.LocateUserInfoQuery2,
-						},
-						{
-							FoodGroup: wire.OService,
-							SubGroup:  wire.OServiceServiceRequest,
-						},
-						{
-							FoodGroup: wire.OService,
-							SubGroup:  wire.OServiceClientOnline,
-						},
-						{
-							FoodGroup: wire.OService,
-							SubGroup:  wire.OServiceRateParamsQuery,
-						},
-						{
-							FoodGroup: wire.OService,
-							SubGroup:  wire.OServiceRateParamsSubAdd,
-						},
-						{
-							FoodGroup: wire.OService,
-							SubGroup:  wire.OServiceUserInfoQuery,
-						},
-						{
-							FoodGroup: wire.OService,
-							SubGroup:  wire.OServiceIdleNotification,
-						},
-						{
-							FoodGroup: wire.OService,
-							SubGroup:  wire.OServiceClientVersions,
-						},
-						{
-							FoodGroup: wire.OService,
-							SubGroup:  wire.OServiceSetUserInfoFields,
-						},
-						{
-							FoodGroup: wire.BART,
-							SubGroup:  wire.BARTUploadQuery,
-						},
-						{
-							FoodGroup: wire.BART,
-							SubGroup:  wire.BARTDownloadQuery,
-						},
-					},
-				},
-			},
-		},
+		Body: rateLimitSNAC,
 	}
 }
 
