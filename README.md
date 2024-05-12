@@ -1,5 +1,12 @@
 # Retro AIM Server
 
+<div align="center">
+
+<a href="">[![codecov](https://codecov.io/gh/mk6i/retro-aim-server/graph/badge.svg?token=MATKPP77JT)](https://codecov.io/gh/mk6i/retro-aim-server)</a>
+<a href="">![Discord Shield](https://discordapp.com/api/guilds/1238648671348719626/widget.png?style=shield)</a>
+
+</div>
+
 **Retro AIM Server** is an instant messaging server that revives AOL Instant Messenger clients from the 2000s.
 
 <p align="center">
@@ -33,6 +40,10 @@ Don't have AIM installed yet? Check out the [AIM Client Setup Guide](./docs/CLIE
 This project is under active development. Contributions are welcome!
 
 Follow [this guide](./docs/BUILD.md) to learn how to compile and run Retro AIM Server.
+
+## 🌍 Community
+
+Check out the Retro AIM Server [Discord server](https://discord.gg/2Xy4nF3Uh9) to get help or find out how to get involved.
 
 ## 👤 Management API
 
