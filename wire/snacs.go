@@ -619,6 +619,7 @@ const (
 
 	// referenced from protocols/oscar/family_chatnav.c in lib purple
 	ChatRoomTLVClassPerms         uint16 = 0x02
+	ChatRoomTLVMaxConcurrentRooms uint16 = 0x03 // required by aim 2.x-3.x
 	ChatRoomTLVMaxNameLen         uint16 = 0x04
 	ChatRoomTLVFullyQualifiedName uint16 = 0x6A
 	ChatRoomTLVCreateTime         uint16 = 0xCA

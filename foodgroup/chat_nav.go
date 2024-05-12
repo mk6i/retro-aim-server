@@ -46,6 +46,7 @@ func (s ChatNavService) RequestChatRights(_ context.Context, inFrame wire.SNACFr
 						Identifier: 4,
 						TLVBlock: wire.TLVBlock{
 							TLVList: wire.TLVList{
+								wire.NewTLV(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
 								wire.NewTLV(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
 								wire.NewTLV(wire.ChatRoomTLVMaxNameLen, uint16(100)),
 								wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
