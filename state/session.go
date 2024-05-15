@@ -190,14 +190,14 @@ func (s *Session) userInfo() wire.TLVList {
 
 	// away message status
 	if s.awayMessage != "" {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoUserFlags, wire.OServiceUserFlagOSCARFree|wire.OServiceUserFlagUnavailable))
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(wire.OServiceUserFlagOSCARFree|wire.OServiceUserFlagUnavailable)))
 	} else {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoUserFlags, wire.OServiceUserFlagOSCARFree))
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(wire.OServiceUserFlagOSCARFree)))
 	}
 
 	// invisibility status
 	if s.invisible {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoStatus, wire.OServiceUserFlagInvisible))
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoStatus, uint16(wire.OServiceUserFlagInvisible)))
 	} else {
 		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoStatus, uint16(0)))
 	}
