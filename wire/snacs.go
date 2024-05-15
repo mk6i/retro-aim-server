@@ -137,15 +137,32 @@ const (
 	OServiceBartQuery2        uint16 = 0x0022
 	OServiceBartReply2        uint16 = 0x0023
 
-	OServiceUserInfoUserFlags   uint16 = 0x01
-	OServiceUserInfoSignonTOD   uint16 = 0x03
-	OServiceUserInfoIdleTime    uint16 = 0x04
-	OServiceUserInfoStatus      uint16 = 0x06
-	OServiceUserInfoOscarCaps   uint16 = 0x0D
-	OServiceUserFlagOSCARFree   uint16 = 0x0010 // AIM (not AOL) account
-	OServiceUserInfoBARTInfo    uint16 = 0x1D
-	OServiceUserFlagUnavailable uint16 = 0x0020 // user is away
-	OServiceUserFlagInvisible   uint16 = 0x0100 // user is invisible
+	OServiceUserInfoUserFlags uint16 = 0x01
+	OServiceUserInfoSignonTOD uint16 = 0x03
+	OServiceUserInfoIdleTime  uint16 = 0x04
+	OServiceUserInfoStatus    uint16 = 0x06
+	OServiceUserInfoOscarCaps uint16 = 0x0D
+	OServiceUserInfoBARTInfo  uint16 = 0x1D
+
+	OServiceUserFlagOSCARFree   uint32 = 0x00000010 // AIM (not AOL) account
+	OServiceUserFlagNormal      uint32 = 0x00000000 // user is normal
+	OServiceUserFlagAway        uint32 = 0x00000001 // user is also away
+	OServiceUserFlagDND         uint32 = 0x00000002 // don't disturb user
+	OServiceUserFlagOut         uint32 = 0x00000004 // user is not available
+	OServiceUserFlagBusy        uint32 = 0x00000010 // user is busy
+	OServiceUserFlagInvisible   uint32 = 0x00000100 // user is invisible
+	OServiceUserFlagUnavailable uint32 = 0x00000020 // user is away
+	OServiceUserFlagEvil        uint32 = 0x00003000 // user is evil
+	OServiceUserFlagDepression  uint32 = 0x00004000 // user is having a depression :(
+	OServiceUserFlagAtHome      uint32 = 0x00005000 // user is at home
+	OServiceUserFlagAtWork      uint32 = 0x00006000 // user is at work
+	OServiceUserFlagLunch       uint32 = 0x00002001 // user is having a lunch
+	OServiceUserFlagBirthday    uint32 = 0x00080000 // user is having a birthday :DDD
+
+	OServiceStatusWebAware          uint32 = 0x00010000
+	OServiceStatusHideIP            uint32 = 0x00020000
+	OServiceStatusICQHomePage       uint32 = 0x00200000
+	OServiceStatusDirectRequireAuth uint32 = 0x10000000
 
 	OServiceTLVTagsReconnectHere uint16 = 0x05
 	OServiceTLVTagsLoginCookie   uint16 = 0x06

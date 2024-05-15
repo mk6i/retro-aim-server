@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -18,12 +19,14 @@ func NewOServiceService(
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
 	legacyBuddyListManager LegacyBuddyListManager,
+	logger *slog.Logger,
 ) *OServiceService {
 	return &OServiceService{
 		cfg:                    cfg,
 		feedbagManager:         feedbagManager,
 		legacyBuddyListManager: legacyBuddyListManager,
 		messageRelayer:         messageRelayer,
+		logger:                 logger,
 	}
 }
 
@@ -34,6 +37,7 @@ type OServiceService struct {
 	feedbagManager         FeedbagManager
 	legacyBuddyListManager LegacyBuddyListManager
 	messageRelayer         MessageRelayer
+	logger                 *slog.Logger
 }
 
 // ClientVersions informs the server what food group versions the client
@@ -418,19 +422,23 @@ func (s OServiceService) UserInfoQuery(_ context.Context, sess *state.Session, i
 // It returns SNAC wire.OServiceUserInfoUpdate containing the user's info.
 func (s OServiceService) SetUserInfoFields(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (wire.SNACMessage, error) {
 	if status, hasStatus := inBody.Uint32(wire.OServiceUserInfoStatus); hasStatus {
-		switch status {
-		case 0x0000:
+		if status == wire.OServiceUserFlagNormal {
 			sess.SetInvisible(false)
 			if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 				return wire.SNACMessage{}, err
 			}
-		case 0x0100:
+		}
+		if status&wire.OServiceUserFlagInvisible == wire.OServiceUserFlagInvisible {
 			sess.SetInvisible(true)
 			if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 				return wire.SNACMessage{}, err
 			}
-		default:
-			return wire.SNACMessage{}, fmt.Errorf("don't know what to do with status %d", status)
+			if status&wire.OServiceStatusDirectRequireAuth == wire.OServiceStatusDirectRequireAuth {
+				s.logger.InfoContext(ctx, "got unsupported status", "status", status)
+			}
+			if status&wire.OServiceStatusHideIP == wire.OServiceStatusHideIP {
+				s.logger.InfoContext(ctx, "got unsupported status", "status", status)
+			}
 		}
 	}
 	return wire.SNACMessage{

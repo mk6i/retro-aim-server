@@ -48,7 +48,7 @@ func main() {
 		authService := foodgroup.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry, adjListBuddyListStore)
 		bartService := foodgroup.NewBARTService(logger, feedbagStore, sessionManager, feedbagStore, adjListBuddyListStore)
 		buddyService := foodgroup.NewBuddyService(sessionManager, feedbagStore, adjListBuddyListStore)
-		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore, adjListBuddyListStore)
+		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore, adjListBuddyListStore, logger)
 		oServiceServiceForBOS := foodgroup.NewOServiceServiceForBOS(*oServiceService, chatRegistry)
 		locateService := foodgroup.NewLocateService(sessionManager, feedbagStore, feedbagStore, adjListBuddyListStore)
 		newChatSessMgr := func() foodgroup.SessionManager { return state.NewInMemorySessionManager(logger) }
@@ -77,7 +77,7 @@ func main() {
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "CHAT")
 		authService := foodgroup.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry, adjListBuddyListStore)
-		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore, adjListBuddyListStore)
+		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore, adjListBuddyListStore, logger)
 		chatService := foodgroup.NewChatService(chatRegistry)
 		oServiceServiceForChat := foodgroup.NewOServiceServiceForChat(*oServiceService, chatRegistry)
 
@@ -96,7 +96,7 @@ func main() {
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "CHAT_NAV")
 		authService := foodgroup.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry, adjListBuddyListStore)
-		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore, adjListBuddyListStore)
+		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore, adjListBuddyListStore, logger)
 		oServiceServiceForChatNav := foodgroup.NewOServiceServiceForChatNav(*oServiceService, chatRegistry)
 		newChatSessMgr := func() foodgroup.SessionManager { return state.NewInMemorySessionManager(logger) }
 		chatNavService := foodgroup.NewChatNavService(logger, chatRegistry, state.NewChatRoom, newChatSessMgr)
@@ -116,7 +116,7 @@ func main() {
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "ALERT")
 		authService := foodgroup.NewAuthService(cfg, sessionManager, sessionManager, feedbagStore, feedbagStore, chatRegistry, adjListBuddyListStore)
-		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore, adjListBuddyListStore)
+		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, feedbagStore, adjListBuddyListStore, logger)
 		oServiceServiceForAlert := foodgroup.NewOServiceServiceForAlert(*oServiceService)
 
 		oscar.AlertServer{

@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 
@@ -406,7 +407,7 @@ func TestSetUserInfoFields(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			svc := NewOServiceService(config.Config{}, messageRelayer, feedbagManager, legacyBuddyListManager)
+			svc := NewOServiceService(config.Config{}, messageRelayer, feedbagManager, legacyBuddyListManager, slog.Default())
 			outputSNAC, err := svc.SetUserInfoFields(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields))
 			assert.ErrorIs(t, err, tc.expectErr)
@@ -422,7 +423,7 @@ func TestSetUserInfoFields(t *testing.T) {
 }
 
 func TestOServiceService_RateParamsQuery(t *testing.T) {
-	svc := NewOServiceService(config.Config{}, nil, nil, nil)
+	svc := NewOServiceService(config.Config{}, nil, nil, nil, slog.Default())
 
 	have := svc.RateParamsQuery(nil, wire.SNACFrame{RequestID: 1234})
 	want := wire.SNACMessage{
@@ -1347,7 +1348,7 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 }
 
 func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
-	svc := NewOServiceServiceForBOS(*NewOServiceService(config.Config{}, nil, nil, nil), nil)
+	svc := NewOServiceServiceForBOS(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default()), nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1373,7 +1374,7 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForChat_OServiceHostOnline(t *testing.T) {
-	svc := NewOServiceServiceForChat(*NewOServiceService(config.Config{}, nil, nil, nil), nil)
+	svc := NewOServiceServiceForChat(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default()), nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1393,7 +1394,7 @@ func TestOServiceServiceForChat_OServiceHostOnline(t *testing.T) {
 }
 
 func TestOServiceService_ClientVersions(t *testing.T) {
-	svc := NewOServiceService(config.Config{}, nil, nil, nil)
+	svc := NewOServiceService(config.Config{}, nil, nil, nil, slog.Default())
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1416,7 +1417,7 @@ func TestOServiceService_ClientVersions(t *testing.T) {
 }
 
 func TestOServiceService_UserInfoQuery(t *testing.T) {
-	svc := NewOServiceService(config.Config{}, nil, nil, nil)
+	svc := NewOServiceService(config.Config{}, nil, nil, nil, slog.Default())
 	sess := newTestSession("test-user")
 
 	want := wire.SNACMessage{
@@ -1527,7 +1528,7 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 					WhoAddedUser(params.userScreenName).
 					Return(params.result)
 			}
-			svc := NewOServiceService(config.Config{}, messageRelayer, feedbagManager, legacyBuddyListManager)
+			svc := NewOServiceService(config.Config{}, messageRelayer, feedbagManager, legacyBuddyListManager, slog.Default())
 
 			haveErr := svc.IdleNotification(nil, tt.sess, tt.bodyIn)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
@@ -1897,7 +1898,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
-	svc := NewOServiceServiceForChatNav(*NewOServiceService(config.Config{}, nil, nil, nil), nil)
+	svc := NewOServiceServiceForChatNav(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default()), nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1917,7 +1918,7 @@ func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForAlert_HostOnline(t *testing.T) {
-	svc := NewOServiceServiceForAlert(*NewOServiceService(config.Config{}, nil, nil, nil))
+	svc := NewOServiceServiceForAlert(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default()))
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
