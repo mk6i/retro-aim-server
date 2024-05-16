@@ -10,7 +10,8 @@ type Config struct {
 	BOSPort     int    `envconfig:"BOS_PORT" default:"5191" description:"The port that the BOS service binds to."`
 	ChatNavPort int    `envconfig:"CHAT_NAV_PORT" default:"5193" description:"The port that the chat nav service binds to."`
 	ChatPort    int    `envconfig:"CHAT_PORT" default:"5192" description:"The port that the chat service binds to."`
-	DBPath      string `envconfig:"DB_PATH" default:"oscar.sqlite" description:"The path to the SQLite database file. The file and DB schema are auto-created if they doesn't exist."`
+	DBType      string `envconfig:"DB_TYPE" default:"sqlite3" description:"The type of the database (sqlite3 or postgres)."`
+	DBPath      string `envconfig:"DB_PATH" default:"oscar.sqlite" description:"The path to the database connection string. For SQLite, it is the file path. For PostgreSQL, it is the connection string."`
 	DisableAuth bool   `envconfig:"DISABLE_AUTH" default:"true" description:"Disable password check and auto-create new users at login time. Useful for quickly creating new accounts during development without having to register new users via the management API."`
 	FailFast    bool   `envconfig:"FAIL_FAST" default:"false" description:"Crash the server in case it encounters a client message type it doesn't recognize. This makes failures obvious for debugging purposes."`
 	LogLevel    string `envconfig:"LOG_LEVEL" default:"info" description:"Set logging granularity. Possible values: 'trace', 'debug', 'info', 'warn', 'error'."`
