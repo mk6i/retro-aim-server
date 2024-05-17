@@ -20,7 +20,7 @@ func TestUserStore(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	itemsIn := []wire.FeedbagItem{
@@ -60,7 +60,7 @@ func TestFeedbagDelete(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	itemsIn := []wire.FeedbagItem{
@@ -117,7 +117,7 @@ func TestLastModifiedEmpty(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	_, err = f.FeedbagLastModified(screenName)
@@ -135,7 +135,7 @@ func TestLastModifiedNotEmpty(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	itemsIn := []wire.FeedbagItem{
@@ -165,7 +165,7 @@ func TestProfile(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	u := User{
@@ -221,7 +221,7 @@ func TestProfileNonExistent(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	prof, err := f.Profile(screenName)
@@ -235,7 +235,7 @@ func TestAdjacentUsers(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',0,13852,3,'userB',NULL,1691286176)`)
@@ -258,7 +258,7 @@ func TestUserStoreBuddiesBlockedUser(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',0,13852,3,'userB',NULL,1691286176)`)
@@ -282,7 +282,7 @@ func TestUserStoreBlockedA(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',0,13852,3,'userB',NULL,1691286176)`)
@@ -305,7 +305,7 @@ func TestUserStoreBlockedB(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',0,13852,3,'userA',NULL,1691286176)`)
@@ -328,7 +328,7 @@ func TestUserStoreBlockedNoBlocked(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
@@ -350,7 +350,7 @@ func TestGetUser(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	expectUser := &User{
@@ -379,7 +379,7 @@ func TestGetUserNotFound(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	actualUser, err := f.User("testscreenname")
@@ -397,7 +397,7 @@ func TestSQLiteUserStore_Users(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	f, err := NewUserStore("sqlite3", testFile)
+	f, err := NewSQLiteUserStore(testFile)
 	if err != nil {
 		assert.NoError(t, err)
 	}
@@ -424,7 +424,7 @@ func TestSQLiteUserStore_Buddies(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	feedbagStore, err := NewUserStore("sqlite3", testFile)
+	feedbagStore, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	assert.NoError(t, feedbagStore.FeedbagUpsert("userA", []wire.FeedbagItem{
@@ -463,7 +463,7 @@ func TestSQLiteUserStore_AdjacentUsers(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	feedbagStore, err := NewUserStore("sqlite3", testFile)
+	feedbagStore, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	assert.NoError(t, feedbagStore.FeedbagUpsert("userA", []wire.FeedbagItem{
@@ -494,7 +494,7 @@ func TestSQLiteUserStore_BARTUpsertAndRetrieve(t *testing.T) {
 		assert.NoError(t, os.Remove(testFile))
 	}()
 
-	feedbagStore, err := NewUserStore("sqlite3", testFile)
+	feedbagStore, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
 	hash := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}

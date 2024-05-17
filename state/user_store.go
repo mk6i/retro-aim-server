@@ -115,15 +115,23 @@ type SQLUserStore struct {
 	dbType string
 }
 
-// NewUserStore creates a new instance of SQLUserStore. If the
-// database does not already exist, a new one is created with the required
-// schema.
-func NewUserStore(dbType, connString string) (*SQLUserStore, error) {
-	db, err := sql.Open(dbType, connString)
+// NewSQLiteUserStore creates a new instance of SQLUserStore for SQLite.
+func NewSQLiteUserStore(connString string) (*SQLUserStore, error) {
+	db, err := sql.Open("sqlite3", connString)
 	if err != nil {
 		return nil, err
 	}
-	store := &SQLUserStore{db: db, dbType: dbType}
+	store := &SQLUserStore{db: db, dbType: "sqlite3"}
+	return store, store.runMigrations()
+}
+
+// NewPostgresUserStore creates a new instance of SQLUserStore for PostgreSQL.
+func NewPostgresUserStore(connString string) (*SQLUserStore, error) {
+	db, err := sql.Open("postgres", connString)
+	if err != nil {
+		return nil, err
+	}
+	store := &SQLUserStore{db: db, dbType: "postgres"}
 	return store, store.runMigrations()
 }
 
