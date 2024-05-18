@@ -115,7 +115,7 @@ func LogRequest(ctx context.Context, logger *slog.Logger, inFrame wire.SNACFrame
 	case logger.Enabled(ctx, LevelTrace):
 		logger.LogAttrs(ctx, LevelTrace, msg, snacLogGroupWithPayload("request", inFrame, inSNAC))
 	case logger.Enabled(ctx, slog.LevelDebug):
-		logger.LogAttrs(ctx, slog.LevelDebug, msg, slog.Group("request", snacLogGroup("request", inFrame)))
+		logger.LogAttrs(ctx, slog.LevelDebug, msg, snacLogGroup("request", inFrame))
 	}
 }
 
