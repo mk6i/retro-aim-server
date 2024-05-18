@@ -422,23 +422,23 @@ func (s OServiceService) UserInfoQuery(_ context.Context, sess *state.Session, i
 // It returns SNAC wire.OServiceUserInfoUpdate containing the user's info.
 func (s OServiceService) SetUserInfoFields(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (wire.SNACMessage, error) {
 	if status, hasStatus := inBody.Uint32(wire.OServiceUserInfoStatus); hasStatus {
-		if status == wire.OServiceUserFlagNormal {
+		if status == wire.OServiceUserStatusAvailable {
 			sess.SetInvisible(false)
 			if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 				return wire.SNACMessage{}, err
 			}
 		}
-		if status&wire.OServiceUserFlagInvisible == wire.OServiceUserFlagInvisible {
+		if status&wire.OServiceUserStatusInvisible == wire.OServiceUserStatusInvisible {
 			sess.SetInvisible(true)
 			if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 				return wire.SNACMessage{}, err
 			}
-			if status&wire.OServiceStatusDirectRequireAuth == wire.OServiceStatusDirectRequireAuth {
-				s.logger.InfoContext(ctx, "got unsupported status", "status", status)
-			}
-			if status&wire.OServiceStatusHideIP == wire.OServiceStatusHideIP {
-				s.logger.InfoContext(ctx, "got unsupported status", "status", status)
-			}
+		}
+		if status&wire.OServiceUserStatusDirectRequireAuth == wire.OServiceUserStatusDirectRequireAuth {
+			s.logger.InfoContext(ctx, "got unsupported status", "status", status)
+		}
+		if status&wire.OServiceUserStatusHideIP == wire.OServiceUserStatusHideIP {
+			s.logger.InfoContext(ctx, "got unsupported status", "status", status)
 		}
 	}
 	return wire.SNACMessage{

@@ -144,28 +144,24 @@ const (
 	OServiceUserInfoOscarCaps uint16 = 0x0D
 	OServiceUserInfoBARTInfo  uint16 = 0x1D
 
-	OServiceUserFlagOSCARFree   uint32 = 0x00000010 // AIM (not AOL) account
-	OServiceUserFlagNormal      uint32 = 0x00000000 // user is normal
-	OServiceUserFlagAway        uint32 = 0x00000001 // user is also away
-	OServiceUserFlagDND         uint32 = 0x00000002 // don't disturb user
-	OServiceUserFlagOut         uint32 = 0x00000004 // user is not available
-	OServiceUserFlagBusy        uint32 = 0x00000010 // user is busy
-	OServiceUserFlagInvisible   uint32 = 0x00000100 // user is invisible
-	OServiceUserFlagUnavailable uint32 = 0x00000020 // user is away
-	OServiceUserFlagEvil        uint32 = 0x00003000 // user is evil
-	OServiceUserFlagDepression  uint32 = 0x00004000 // user is having a depression :(
-	OServiceUserFlagAtHome      uint32 = 0x00005000 // user is at home
-	OServiceUserFlagAtWork      uint32 = 0x00006000 // user is at work
-	OServiceUserFlagLunch       uint32 = 0x00002001 // user is having a lunch
-	OServiceUserFlagBirthday    uint32 = 0x00080000 // user is having a birthday :DDD
+	OServiceUserStatusAvailable         uint32 = 0x00000000 // user is available
+	OServiceUserStatusAway              uint32 = 0x00000001 // user is away
+	OServiceUserStatusDND               uint32 = 0x00000002 // don't disturb user
+	OServiceUserStatusOut               uint32 = 0x00000004 // user is not available
+	OServiceUserStatusBusy              uint32 = 0x00000010 // user is busy
+	OServiceUserStatusChat              uint32 = 0x00000020 // user is available to chat
+	OServiceUserStatusInvisible         uint32 = 0x00000100 // user is invisible
+	OServiceUserStatusWebAware          uint32 = 0x00010000
+	OServiceUserStatusHideIP            uint32 = 0x00020000
+	OServiceUserStatusBirthday          uint32 = 0x00080000 // user is having a birthday :DDD
+	OServiceUserStatusICQHomePage       uint32 = 0x00200000
+	OServiceUserStatusDirectRequireAuth uint32 = 0x10000000
+
+	OServiceUserFlagOSCARFree   uint16 = 0x0010 // AIM (not AOL) account
+	OServiceUserFlagUnavailable uint16 = 0x0020 // user is away
 
 	OServicePrivacyFlagIdle   uint32 = 0x00000001
 	OServicePrivacyFlagMember uint32 = 0x00000002
-
-	OServiceStatusWebAware          uint32 = 0x00010000
-	OServiceStatusHideIP            uint32 = 0x00020000
-	OServiceStatusICQHomePage       uint32 = 0x00200000
-	OServiceStatusDirectRequireAuth uint32 = 0x10000000
 
 	OServiceTLVTagsReconnectHere uint16 = 0x05
 	OServiceTLVTagsLoginCookie   uint16 = 0x06
