@@ -22,7 +22,8 @@ The following features are supported:
 - [x] Chat Rooms (v4.x, v5.x)
 - [x] Instant Messaging
 - [x] User Profiles
-- [x] Blocking / Visibility Toggle / Idle Notification
+- [x] Blocking (v3.5+)
+- [x] Visibility Toggle / Idle Notification
 - [x] Warning
 
 ## 🏁 How to Run

@@ -22,7 +22,7 @@ const (
 	Invite      uint16 = 0x0006
 	Admin       uint16 = 0x0007
 	Popup       uint16 = 0x0008
-	PD          uint16 = 0x0009
+	PermitDeny  uint16 = 0x0009
 	UserLookup  uint16 = 0x000A
 	Stats       uint16 = 0x000B
 	Translate   uint16 = 0x000C
@@ -558,10 +558,28 @@ type SNAC_0x04_0x14_ICBMClientEvent struct {
 }
 
 //
-// 0x09: PD
+// 0x09: PermitDeny
 //
 
-type SNAC_0x09_0x03_PDRightsReply struct {
+const (
+	PermitDenyErr                      uint16 = 0x0001
+	PermitDenyRightsQuery              uint16 = 0x0002
+	PermitDenyRightsReply              uint16 = 0x0003
+	PermitDenySetGroupPermitMask       uint16 = 0x0004
+	PermitDenyAddPermListEntries       uint16 = 0x0005
+	PermitDenyDelPermListEntries       uint16 = 0x0006
+	PermitDenyAddDenyListEntries       uint16 = 0x0007
+	PermitDenyDelDenyListEntries       uint16 = 0x0008
+	PermitDenyBosErr                   uint16 = 0x0009
+	PermitDenyAddTempPermitListEntries uint16 = 0x000A
+	PermitDenyDelTempPermitListEntries uint16 = 0x000B
+
+	PermitDenyTLVMaxPermits     uint16 = 0x01
+	PermitDenyTLVMaxDenies      uint16 = 0x02
+	PermitDenyTLVMaxTempPermits uint16 = 0x03
+)
+
+type SNAC_0x09_0x03_PermitDenyRightsReply struct {
 	TLVRestBlock
 }
 

@@ -55,6 +55,7 @@ func main() {
 		chatNavService := foodgroup.NewChatNavService(logger, chatRegistry, state.NewChatRoom, newChatSessMgr)
 		feedbagService := foodgroup.NewFeedbagService(logger, sessionManager, feedbagStore, feedbagStore, adjListBuddyListStore)
 		icbmService := foodgroup.NewICBMService(sessionManager, feedbagStore, adjListBuddyListStore)
+		foodgroupService := foodgroup.NewPermitDenyService()
 
 		oscar.BOSServer{
 			AuthService: authService,
@@ -68,6 +69,7 @@ func main() {
 				ICBMHandler:        handler.NewICBMHandler(logger, icbmService),
 				LocateHandler:      handler.NewLocateHandler(locateService, logger),
 				OServiceBOSHandler: handler.NewOServiceHandlerForBOS(logger, oServiceService, oServiceServiceForBOS),
+				PermitDenyHandler:  handler.NewPermitDenyHandler(logger, foodgroupService),
 			}),
 			Logger:         logger,
 			OnlineNotifier: oServiceServiceForBOS,

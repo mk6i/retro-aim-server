@@ -22,6 +22,7 @@ type Handlers struct {
 	OServiceBOSHandler
 	OServiceChatHandler
 	OServiceChatNavHandler
+	PermitDenyHandler
 }
 
 // NewBOSRouter initializes and configures a new Router instance for handling
@@ -67,6 +68,8 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.Locate, wire.LocateSetKeywordInfo, h.LocateHandler.SetKeywordInfo)
 	router.Register(wire.Locate, wire.LocateUserInfoQuery, h.LocateHandler.UserInfoQuery)
 	router.Register(wire.Locate, wire.LocateUserInfoQuery2, h.LocateHandler.UserInfoQuery2)
+
+	router.Register(wire.PermitDeny, wire.PermitDenyRightsQuery, h.PermitDenyHandler.RightsQuery)
 
 	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceBOSHandler.ClientOnline)
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceBOSHandler.OServiceHandler.ClientVersions)

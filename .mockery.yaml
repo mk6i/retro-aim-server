@@ -66,6 +66,9 @@ packages:
       BARTService:
         config:
           filename: "mock_bart_test.go"
+      PermitDenyService:
+        config:
+          filename: "mock_permit_deny_test.go"
   github.com/mk6i/retro-aim-server/foodgroup:
     interfaces:
       FeedbagManager:
