@@ -1,15 +1,15 @@
-CREATE TEMPORARY TABLE user_backup
+CREATE TEMPORARY TABLE "user_backup"
 (
-    screenName VARCHAR(16) PRIMARY KEY,
-    authKey    TEXT,
-    passHash   TEXT
+    "screenName" VARCHAR(16) PRIMARY KEY,
+    "authKey"    TEXT,
+    "passHash"   TEXT
 );
 
-INSERT INTO user_backup (screenName, authKey, passHash)
-SELECT screenName, authKey, strongMD5Pass
-FROM user;
+INSERT INTO "user_backup" ("screenName", "authKey", "passHash")
+SELECT "screenName", "authKey", "strongMD5Pass"
+FROM "user";
 
-DROP TABLE user;
+DROP TABLE "user";
 
-ALTER TABLE user_backup
-    RENAME TO user;
+ALTER TABLE "user_backup"
+    RENAME TO "user";
