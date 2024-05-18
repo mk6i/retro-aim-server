@@ -28,7 +28,7 @@ type AlertServer struct {
 // authentication handshake sequences are handled by this method. The remaining
 // requests are relayed to Handler.
 func (rt AlertServer) Start() {
-	addr := config.Address("", rt.Config.AlertPort)
+	addr := net.JoinHostPort("", rt.Config.AlertPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		rt.Logger.Error("unable to bind ALERT server address", "err", err.Error())

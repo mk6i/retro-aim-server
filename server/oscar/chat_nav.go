@@ -27,7 +27,7 @@ type ChatNavServer struct {
 
 // Start starts a TCP server and listens for ChatNav connections.
 func (rt ChatNavServer) Start() {
-	addr := config.Address("", rt.Config.ChatNavPort)
+	addr := net.JoinHostPort("", rt.Config.ChatNavPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		rt.Logger.Error("unable to bind chat nav server address", "err", err.Error())

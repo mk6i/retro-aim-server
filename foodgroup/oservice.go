@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -529,7 +530,7 @@ func (s OServiceServiceForBOS) ServiceRequest(_ context.Context, sess *state.Ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, config.Address(s.cfg.OSCARHost, s.cfg.AlertPort)),
+						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.AlertPort)),
 						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, sess.ID()),
 						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Alert),
 						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
@@ -548,7 +549,7 @@ func (s OServiceServiceForBOS) ServiceRequest(_ context.Context, sess *state.Ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, config.Address(s.cfg.OSCARHost, s.cfg.ChatNavPort)),
+						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ChatNavPort)),
 						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, sess.ID()),
 						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.ChatNav),
 						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
@@ -584,7 +585,7 @@ func (s OServiceServiceForBOS) ServiceRequest(_ context.Context, sess *state.Ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, config.Address(s.cfg.OSCARHost, s.cfg.ChatPort)),
+						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ChatPort)),
 						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, chatLoginCookie{
 							Cookie: room.Cookie,
 							SessID: sess.ID(),

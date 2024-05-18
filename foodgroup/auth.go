@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"net"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
@@ -250,7 +251,7 @@ func (s AuthService) login(
 		return wire.TLVRestBlock{
 			TLVList: []wire.TLV{
 				wire.NewTLV(wire.LoginTLVTagsScreenName, screenName),
-				wire.NewTLV(wire.LoginTLVTagsReconnectHere, config.Address(s.config.OSCARHost, s.config.BOSPort)),
+				wire.NewTLV(wire.LoginTLVTagsReconnectHere, net.JoinHostPort(s.config.OSCARHost, s.config.BOSPort)),
 				wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, sess.ID()),
 			},
 		}, nil
