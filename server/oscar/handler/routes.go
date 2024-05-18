@@ -77,6 +77,7 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceServiceRequest, h.OServiceBOSHandler.ServiceRequest)
 	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceBOSHandler.OServiceHandler.SetUserInfoFields)
 	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceBOSHandler.OServiceHandler.UserInfoQuery)
+	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceBOSHandler.OServiceHandler.SetPrivacyFlags)
 
 	return router
 }

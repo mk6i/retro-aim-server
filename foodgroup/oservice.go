@@ -465,6 +465,22 @@ func (s OServiceService) IdleNotification(ctx context.Context, sess *state.Sessi
 	return broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager)
 }
 
+// SetPrivacyFlags sets client privacy settings. Currently, there's no action
+// to take when these flags are set. This method simply logs the flags set by
+// the client.
+func (s OServiceService) SetPrivacyFlags(ctx context.Context, bodyIn wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags) {
+	attrs := slog.Group("request",
+		slog.String("food_group", wire.FoodGroupName(wire.OService)),
+		slog.String("sub_group", wire.SubGroupName(wire.OService, wire.OServiceSetPrivacyFlags)))
+
+	if bodyIn.MemberFlag() {
+		s.logger.LogAttrs(ctx, slog.LevelDebug, "client set member privacy flag, but we're not going to do anything", attrs)
+	}
+	if bodyIn.IdleFlag() {
+		s.logger.LogAttrs(ctx, slog.LevelDebug, "client set idle privacy flag, but we're not going to do anything", attrs)
+	}
+}
+
 // RateParamsSubAdd exists to capture the SNAC input in unit tests to
 // verify it's correctly unmarshalled.
 func (s OServiceService) RateParamsSubAdd(context.Context, wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd) {

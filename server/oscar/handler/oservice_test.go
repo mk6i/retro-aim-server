@@ -401,6 +401,36 @@ func TestOServiceHandler_Noop(t *testing.T) {
 	assert.NoError(t, h.Noop(nil, nil, input.Frame, buf, responseWriter))
 }
 
+func TestOServiceHandler_SetPrivacyFlags(t *testing.T) {
+	input := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.OService,
+			SubGroup:  wire.OServiceSetPrivacyFlags,
+		},
+		Body: wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags{
+			PrivacyFlags: wire.OServicePrivacyFlagMember,
+		},
+	}
+
+	svc := newMockOServiceService(t)
+	svc.EXPECT().
+		SetPrivacyFlags(mock.Anything, input.Body)
+
+	h := OServiceHandler{
+		OServiceService: svc,
+		RouteLogger: middleware.RouteLogger{
+			Logger: slog.Default(),
+		},
+	}
+
+	responseWriter := newMockResponseWriter(t)
+
+	buf := &bytes.Buffer{}
+	assert.NoError(t, wire.Marshal(input.Body, buf))
+
+	assert.NoError(t, h.SetPrivacyFlags(nil, nil, input.Frame, buf, responseWriter))
+}
+
 func TestOServiceChatNavHandler_ClientOnline(t *testing.T) {
 	input := wire.SNACMessage{
 		Frame: wire.SNACFrame{

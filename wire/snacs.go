@@ -159,6 +159,9 @@ const (
 	OServiceUserFlagLunch       uint32 = 0x00002001 // user is having a lunch
 	OServiceUserFlagBirthday    uint32 = 0x00080000 // user is having a birthday :DDD
 
+	OServicePrivacyFlagIdle   uint32 = 0x00000001
+	OServicePrivacyFlagMember uint32 = 0x00000002
+
 	OServiceStatusWebAware          uint32 = 0x00010000
 	OServiceStatusHideIP            uint32 = 0x00020000
 	OServiceStatusICQHomePage       uint32 = 0x00200000
@@ -263,6 +266,22 @@ type SNAC_0x01_0x10_OServiceEvilNotificationAnon struct {
 
 type SNAC_0x01_0x11_OServiceIdleNotification struct {
 	IdleTime uint32
+}
+
+type SNAC_0x01_0x14_OServiceSetPrivacyFlags struct {
+	PrivacyFlags uint32
+}
+
+// IdleFlag returns whether other AIM users can see how long the user has been
+// idle.
+func (s SNAC_0x01_0x14_OServiceSetPrivacyFlags) IdleFlag() bool {
+	return s.PrivacyFlags&OServicePrivacyFlagIdle == OServicePrivacyFlagIdle
+}
+
+// MemberFlag returns whether other AIM users can see how long the user has been
+// a member.
+func (s SNAC_0x01_0x14_OServiceSetPrivacyFlags) MemberFlag() bool {
+	return s.PrivacyFlags&OServicePrivacyFlagMember == OServicePrivacyFlagMember
 }
 
 type SNAC_0x01_0x17_OServiceClientVersions struct {

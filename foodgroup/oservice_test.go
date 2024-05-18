@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"context"
 	"log/slog"
 	"testing"
 	"time"
@@ -1935,4 +1936,12 @@ func TestOServiceServiceForAlert_HostOnline(t *testing.T) {
 
 	have := svc.HostOnline()
 	assert.Equal(t, want, have)
+}
+
+func TestOServiceService_SetPrivacyFlags(t *testing.T) {
+	svc := NewOServiceServiceForAlert(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default()))
+	body := wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags{
+		PrivacyFlags: wire.OServicePrivacyFlagMember | wire.OServicePrivacyFlagIdle,
+	}
+	svc.SetPrivacyFlags(context.Background(), body)
 }
