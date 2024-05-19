@@ -7,11 +7,12 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestHandleChatConnection_MessageRelay(t *testing.T) {
@@ -23,9 +24,7 @@ func TestHandleChatConnection_MessageRelay(t *testing.T) {
 	serverReader, _ := io.Pipe()
 	clientReader, serverWriter := io.Pipe()
 	go func() {
-		flapc := &flapClient{
-			w: serverWriter,
-		}
+		flapc := wire.NewFlapClient(0, nil, serverWriter)
 		err := dispatchIncomingMessages(context.Background(), sess, flapc, serverReader, slog.Default(), nil, config.Config{})
 		assert.NoError(t, err)
 	}()
@@ -145,16 +144,12 @@ func TestHandleChatConnection_ClientRequest(t *testing.T) {
 	serverReader, clientWriter := io.Pipe()
 	clientReader, serverWriter := io.Pipe()
 	go func() {
-		flapc := &flapClient{
-			w: serverWriter,
-		}
+		flapc := wire.NewFlapClient(0, nil, serverWriter)
 		assert.NoError(t, dispatchIncomingMessages(context.Background(), sess, flapc, serverReader, slog.Default(), router, config.Config{}))
 	}()
 
 	// send client messages
-	flapc := flapClient{
-		w: clientWriter,
-	}
+	flapc := wire.NewFlapClient(0, nil, clientWriter)
 	for _, msg := range inboundMsgs {
 		err := flapc.SendSNAC(msg.Frame, msg.Body)
 		assert.NoError(t, err)

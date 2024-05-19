@@ -7,10 +7,11 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/mk6i/retro-aim-server/state"
-	"github.com/mk6i/retro-aim-server/wire"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/mk6i/retro-aim-server/state"
+	"github.com/mk6i/retro-aim-server/wire"
 )
 
 // pipeRWC provides a mock for ReadWriteCloser that uses pipes instead of TCP
@@ -70,9 +71,7 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 		assert.NoError(t, wire.Unmarshal(&body, buf))
 
 		// send the first request that should get relayed to BOSRouter.Handle
-		flapc := flapClient{
-			w: serverWriter,
-		}
+		flapc := wire.NewFlapClient(0, nil, serverWriter)
 		frame = wire.SNACFrame{
 			FoodGroup: wire.OService,
 			SubGroup:  wire.OServiceClientOnline,

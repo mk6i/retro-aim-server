@@ -41,10 +41,7 @@ func TestBUCPAuthService_handleNewConnection(t *testing.T) {
 		assert.NoError(t, err)
 
 		// > send SNAC_0x17_0x06_BUCPChallengeRequest
-		flapc := flapClient{
-			r: serverReader,
-			w: serverWriter,
-		}
+		flapc := wire.NewFlapClient(0, serverReader, serverWriter)
 		frame := wire.SNACFrame{
 			FoodGroup: wire.BUCP,
 			SubGroup:  wire.BUCPChallengeRequest,

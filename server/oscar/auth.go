@@ -62,12 +62,11 @@ func (rt AuthServer) Start() {
 func (rt AuthServer) handleNewConnection(rwc io.ReadWriteCloser) error {
 	defer rwc.Close()
 
-	flapc := flapClient{
-		r:        rwc,
-		sequence: 100,
-		w:        rwc,
+	flapc := wire.NewFlapClient(100, rwc, rwc)
+	if err := flapc.SendSignonFrame(nil); err != nil {
+		return err
 	}
-	signonFrame, err := flapc.SignonHandshake()
+	signonFrame, err := flapc.ReceiveSignonFrame()
 	if err != nil {
 		return err
 	}
@@ -79,7 +78,7 @@ func (rt AuthServer) handleNewConnection(rwc io.ReadWriteCloser) error {
 	return rt.processBUCPAuth(flapc, err)
 }
 
-func (rt AuthServer) processFLAPAuth(signonFrame wire.FLAPSignonFrame, flapc flapClient) error {
+func (rt AuthServer) processFLAPAuth(signonFrame wire.FLAPSignonFrame, flapc *wire.FlapClient) error {
 	tlv, err := rt.AuthService.FLAPLogin(signonFrame, uuid.New, state.NewStubUser)
 	if err != nil {
 		return err
@@ -87,7 +86,7 @@ func (rt AuthServer) processFLAPAuth(signonFrame wire.FLAPSignonFrame, flapc fla
 	return flapc.SendSignoffFrame(tlv)
 }
 
-func (rt AuthServer) processBUCPAuth(flapc flapClient, err error) error {
+func (rt AuthServer) processBUCPAuth(flapc *wire.FlapClient, err error) error {
 	challengeRequest := wire.SNAC_0x17_0x06_BUCPChallengeRequest{}
 	if err := flapc.ReceiveSNAC(&wire.SNACFrame{}, &challengeRequest); err != nil {
 		return err

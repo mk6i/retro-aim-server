@@ -56,13 +56,12 @@ func (rt AlertServer) Start() {
 }
 
 func (rt AlertServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) error {
-	flapc := &flapClient{
-		r:        rwc,
-		sequence: 100,
-		w:        rwc,
-	}
+	flapc := wire.NewFlapClient(100, rwc, rwc)
 
-	flap, err := flapc.SignonHandshake()
+	if err := flapc.SendSignonFrame(nil); err != nil {
+		return err
+	}
+	flap, err := flapc.ReceiveSignonFrame()
 	if err != nil {
 		return err
 	}

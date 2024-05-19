@@ -57,9 +57,7 @@ func TestAlertServer_handleNewConnection(t *testing.T) {
 		assert.NoError(t, wire.Unmarshal(&body, buf))
 
 		// send the first request that should get relayed to BOSRouter.Handle
-		flapc := flapClient{
-			w: serverWriter,
-		}
+		flapc := wire.NewFlapClient(0, nil, serverWriter)
 		frame = wire.SNACFrame{
 			FoodGroup: wire.OService,
 			SubGroup:  wire.OServiceClientOnline,
