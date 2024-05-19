@@ -42,7 +42,7 @@ func (rt AuthServer) Start() {
 	}
 	defer listener.Close()
 
-	rt.Logger.Info("starting auth service", "addr", addr)
+	rt.Logger.Info("starting auth service", "host", net.JoinHostPort(rt.Config.OSCARHost, rt.Config.AuthPort))
 
 	for {
 		conn, err := listener.Accept()

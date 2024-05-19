@@ -36,7 +36,7 @@ func (rt AlertServer) Start() {
 	}
 	defer listener.Close()
 
-	rt.Logger.Info("starting ALERT service", "addr", addr)
+	rt.Logger.Info("starting ALERT service", "host", net.JoinHostPort(rt.Config.OSCARHost, rt.Config.AlertPort))
 
 	for {
 		conn, err := listener.Accept()

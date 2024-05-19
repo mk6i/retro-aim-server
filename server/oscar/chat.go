@@ -33,7 +33,7 @@ func (rt ChatServer) Start() {
 	}
 	defer listener.Close()
 
-	rt.Logger.Info("starting chat service", "addr", addr)
+	rt.Logger.Info("starting chat service", "host", net.JoinHostPort(rt.Config.OSCARHost, rt.Config.ChatPort))
 
 	for {
 		conn, err := listener.Accept()

@@ -35,7 +35,7 @@ func (rt ChatNavServer) Start() {
 	}
 	defer listener.Close()
 
-	rt.Logger.Info("starting chat nav service", "addr", addr)
+	rt.Logger.Info("starting chat nav service", "host", net.JoinHostPort(rt.Config.OSCARHost, rt.Config.ChatNavPort))
 
 	for {
 		conn, err := listener.Accept()
