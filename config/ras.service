@@ -1,0 +1,22 @@
+[Unit]
+Description=Retro AIM Server
+
+[Service]
+Type=simple
+User=ras
+Group=ras
+Environment="ALERT_PORT=5194"
+Environment="AUTH_PORT=5190"
+Environment="BOS_PORT=5191"
+Environment="CHAT_NAV_PORT=5193"
+Environment="CHAT_PORT=5192"
+Environment="DB_PATH=/var/ras/oscar.sqlite"
+Environment="DISABLE_AUTH=true"
+Environment="FAIL_FAST=false"
+Environment="LOG_LEVEL=info"
+Environment="OSCAR_HOST=127.0.0.1"
+ExecStart=/opt/ras/bin/retro_aim_server
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
