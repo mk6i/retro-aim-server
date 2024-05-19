@@ -66,7 +66,8 @@ Invoke-WebRequest -Uri http://localhost:8080/user -Method Get
 ```powershell
 Invoke-WebRequest -Uri http://localhost:8080/user `
   -Body '{"screen_name":"myscreenname", "password":"thepassword"}' `
-  -Method Post -ContentType "application/json"
+  -Method Post `
+  -ContentType "application/json"
 ```
 
 #### Change Password
