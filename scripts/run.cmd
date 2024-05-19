@@ -7,7 +7,7 @@ rem as this script, the script can be run from any directory.
 
 set SCRIPT_DIR=%~dp0
 set ENV_FILE=%SCRIPT_DIR%settings.bat
-set EXEC_FILE=%SCRIPT_DIR%retro_aim_server.exe
+set EXEC_FILE=%SCRIPT_DIR%bin\retro_aim_server.exe
 
 rem Load the settings file.
 if exist "%ENV_FILE%" (

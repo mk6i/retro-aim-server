@@ -10,13 +10,9 @@ DOCKER_RUN := @docker run \
 	--workdir /go/src/retro-aim-server \
 	$(DOCKER_IMAGE_TAG)
 
-.PHONY: release
-release:
-	$(DOCKER_RUN) --clean
-
-.PHONY: release-dry-run
-release-dry-run:
-	$(DOCKER_RUN) --clean --skip=validate --skip=publish
+.PHONY: config
+config:
+	go generate ./config
 
 .PHONY: goreleaser-docker
 goreleaser-docker:
@@ -26,3 +22,11 @@ goreleaser-docker:
 		--file Dockerfile.goreleaser \
 		--tag $(DOCKER_IMAGE_TAG) \
 		.
+
+.PHONY: release
+release:
+	$(DOCKER_RUN) --clean
+
+.PHONY: release-dry-run
+release-dry-run:
+	$(DOCKER_RUN) --clean --skip=validate --skip=publish

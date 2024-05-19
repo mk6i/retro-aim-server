@@ -60,7 +60,7 @@ func main() {
 		}
 
 		varName := field.Tag.Get("envconfig")
-		val := field.Tag.Get("default")
+		val := field.Tag.Get("val")
 		if err := writeAssignment(f, keywords.assignment, varName, val); err != nil {
 			fmt.Fprintf(os.Stderr, "error writing to file: %s\n", err.Error())
 			os.Exit(1)

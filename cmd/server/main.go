@@ -21,13 +21,13 @@ func main() {
 	var cfg config.Config
 	err := envconfig.Process("", &cfg)
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "unable to process app config: %s", err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "unable to process app config: %s\n", err.Error())
 		os.Exit(1)
 	}
 
 	feedbagStore, err := state.NewSQLiteUserStore(cfg.DBPath)
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "unable to create feedbag store: %s", err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "unable to create feedbag store: %s\n", err.Error())
 		os.Exit(1)
 	}
 
