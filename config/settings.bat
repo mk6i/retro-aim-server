@@ -1,3 +1,6 @@
+rem The port that the management API service binds to.
+set API_PORT=8080
+
 rem The port that the Alert service binds to.
 set ALERT_PORT=5194
 
