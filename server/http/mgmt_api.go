@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
 )
 
@@ -38,7 +39,7 @@ type SessionRetriever interface {
 	AllSessions() []*state.Session
 }
 
-func StartManagementAPI(userManager UserManager, sessionRetriever SessionRetriever, logger *slog.Logger) {
+func StartManagementAPI(cfg config.Config, userManager UserManager, sessionRetriever SessionRetriever, logger *slog.Logger) {
 	mux := http.NewServeMux()
 	newUser := func() state.User {
 		return state.User{AuthKey: uuid.New().String()}
@@ -53,8 +54,7 @@ func StartManagementAPI(userManager UserManager, sessionRetriever SessionRetriev
 		sessionHandler(w, r, sessionRetriever)
 	})
 
-	//todo make port configurable
-	addr := net.JoinHostPort("", "8080")
+	addr := net.JoinHostPort("", cfg.ApiPort)
 	logger.Info("starting management API server", "addr", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		logger.Error("unable to bind management API address address", "err", err.Error())
