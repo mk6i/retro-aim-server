@@ -33,7 +33,7 @@ type BOSServer struct {
 // authentication handshake sequences are handled by this method. The remaining
 // requests are relayed to BOSRouter.
 func (rt BOSServer) Start() {
-	addr := config.Address("", rt.Config.BOSPort)
+	addr := net.JoinHostPort("", rt.Config.BOSPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		rt.Logger.Error("unable to bind BOS server address", "err", err.Error())
@@ -41,7 +41,7 @@ func (rt BOSServer) Start() {
 	}
 	defer listener.Close()
 
-	rt.Logger.Info("starting BOS service", "addr", addr)
+	rt.Logger.Info("starting BOS service", "host", net.JoinHostPort(rt.Config.OSCARHost, rt.Config.BOSPort))
 
 	for {
 		conn, err := listener.Accept()

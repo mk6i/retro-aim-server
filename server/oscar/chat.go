@@ -25,7 +25,7 @@ type ChatServer struct {
 
 // Start creates a TCP server that implements that chat flow.
 func (rt ChatServer) Start() {
-	addr := config.Address("", rt.Config.ChatPort)
+	addr := net.JoinHostPort("", rt.Config.ChatPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		rt.Logger.Error("unable to bind chat server address", "err", err.Error())
@@ -33,7 +33,7 @@ func (rt ChatServer) Start() {
 	}
 	defer listener.Close()
 
-	rt.Logger.Info("starting chat service", "addr", addr)
+	rt.Logger.Info("starting chat service", "host", net.JoinHostPort(rt.Config.OSCARHost, rt.Config.ChatPort))
 
 	for {
 		conn, err := listener.Accept()

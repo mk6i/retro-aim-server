@@ -17,6 +17,7 @@ type OServiceService interface {
 	IdleNotification(ctx context.Context, sess *state.Session, bodyIn wire.SNAC_0x01_0x11_OServiceIdleNotification) error
 	RateParamsQuery(ctx context.Context, frame wire.SNACFrame) wire.SNACMessage
 	RateParamsSubAdd(context.Context, wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd)
+	SetPrivacyFlags(ctx context.Context, bodyIn wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags)
 	SetUserInfoFields(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (wire.SNACMessage, error)
 	UserInfoQuery(ctx context.Context, sess *state.Session, frame wire.SNACFrame) wire.SNACMessage
 }
@@ -106,6 +107,16 @@ func (h OServiceHandler) SetUserInfoFields(ctx context.Context, sess *state.Sess
 func (h OServiceHandler) Noop(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
 	// no-op keep-alive
 	h.LogRequest(ctx, inFrame, nil)
+	return nil
+}
+
+func (h OServiceHandler) SetPrivacyFlags(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
+	inBody := wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags{}
+	if err := wire.Unmarshal(&inBody, r); err != nil {
+		return err
+	}
+	h.OServiceService.SetPrivacyFlags(ctx, inBody)
+	h.LogRequest(ctx, inFrame, inBody)
 	return nil
 }
 

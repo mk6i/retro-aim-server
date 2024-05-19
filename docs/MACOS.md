@@ -34,7 +34,7 @@ This guide explains how to download, configure and run Retro AIM Server on macOS
    remove the quarantine flag from the `.app`. In the same terminal, run following command:
 
    ```shell
-   sudo xattr -d com.apple.quarantine ./retro_aim_server
+   sudo xattr -d com.apple.quarantine ./bin/retro_aim_server
    ```
 
    > While the binaries are 100% safe, you can avoid the security concern by [building the application yourself](./BUILD.md).

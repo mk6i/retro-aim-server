@@ -21,7 +21,7 @@ func main() {
 	var cfg config.Config
 	err := envconfig.Process("", &cfg)
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "unable to process app config: %s", err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "unable to process app config: %s\n", err.Error())
 		os.Exit(1)
 	}
 
@@ -37,7 +37,7 @@ func main() {
 	}
 
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "unable to create feedbag store: %s", err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "unable to create feedbag store: %s\n", err.Error())
 		os.Exit(1)
 	}
 
@@ -65,6 +65,7 @@ func main() {
 		chatNavService := foodgroup.NewChatNavService(logger, chatRegistry, state.NewChatRoom, newChatSessMgr)
 		feedbagService := foodgroup.NewFeedbagService(logger, sessionManager, feedbagStore, feedbagStore, adjListBuddyListStore)
 		icbmService := foodgroup.NewICBMService(sessionManager, feedbagStore, adjListBuddyListStore)
+		foodgroupService := foodgroup.NewPermitDenyService()
 
 		oscar.BOSServer{
 			AuthService: authService,
@@ -78,6 +79,7 @@ func main() {
 				ICBMHandler:        handler.NewICBMHandler(logger, icbmService),
 				LocateHandler:      handler.NewLocateHandler(locateService, logger),
 				OServiceBOSHandler: handler.NewOServiceHandlerForBOS(logger, oServiceService, oServiceServiceForBOS),
+				PermitDenyHandler:  handler.NewPermitDenyHandler(logger, foodgroupService),
 			}),
 			Logger:         logger,
 			OnlineNotifier: oServiceServiceForBOS,

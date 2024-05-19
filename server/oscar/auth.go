@@ -34,7 +34,7 @@ type AuthServer struct {
 
 // Start starts the authentication server and listens for new connections.
 func (rt AuthServer) Start() {
-	addr := config.Address("", rt.Config.AuthPort)
+	addr := net.JoinHostPort("", rt.Config.AuthPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		rt.Logger.Error("unable to bind auth server address", "err", err.Error())
@@ -42,7 +42,7 @@ func (rt AuthServer) Start() {
 	}
 	defer listener.Close()
 
-	rt.Logger.Info("starting auth service", "addr", addr)
+	rt.Logger.Info("starting auth service", "host", net.JoinHostPort(rt.Config.OSCARHost, rt.Config.AuthPort))
 
 	for {
 		conn, err := listener.Accept()

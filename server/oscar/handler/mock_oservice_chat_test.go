@@ -293,6 +293,40 @@ func (_c *mockOServiceChatService_RateParamsSubAdd_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// SetPrivacyFlags provides a mock function with given fields: ctx, bodyIn
+func (_m *mockOServiceChatService) SetPrivacyFlags(ctx context.Context, bodyIn wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags) {
+	_m.Called(ctx, bodyIn)
+}
+
+// mockOServiceChatService_SetPrivacyFlags_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetPrivacyFlags'
+type mockOServiceChatService_SetPrivacyFlags_Call struct {
+	*mock.Call
+}
+
+// SetPrivacyFlags is a helper method to define mock.On call
+//   - ctx context.Context
+//   - bodyIn wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags
+func (_e *mockOServiceChatService_Expecter) SetPrivacyFlags(ctx interface{}, bodyIn interface{}) *mockOServiceChatService_SetPrivacyFlags_Call {
+	return &mockOServiceChatService_SetPrivacyFlags_Call{Call: _e.mock.On("SetPrivacyFlags", ctx, bodyIn)}
+}
+
+func (_c *mockOServiceChatService_SetPrivacyFlags_Call) Run(run func(ctx context.Context, bodyIn wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags)) *mockOServiceChatService_SetPrivacyFlags_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags))
+	})
+	return _c
+}
+
+func (_c *mockOServiceChatService_SetPrivacyFlags_Call) Return() *mockOServiceChatService_SetPrivacyFlags_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *mockOServiceChatService_SetPrivacyFlags_Call) RunAndReturn(run func(context.Context, wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags)) *mockOServiceChatService_SetPrivacyFlags_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetUserInfoFields provides a mock function with given fields: ctx, sess, frame, bodyIn
 func (_m *mockOServiceChatService) SetUserInfoFields(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (wire.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, frame, bodyIn)

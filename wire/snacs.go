@@ -22,7 +22,7 @@ const (
 	Invite      uint16 = 0x0006
 	Admin       uint16 = 0x0007
 	Popup       uint16 = 0x0008
-	PD          uint16 = 0x0009
+	PermitDeny  uint16 = 0x0009
 	UserLookup  uint16 = 0x000A
 	Stats       uint16 = 0x000B
 	Translate   uint16 = 0x000C
@@ -144,25 +144,24 @@ const (
 	OServiceUserInfoOscarCaps uint16 = 0x0D
 	OServiceUserInfoBARTInfo  uint16 = 0x1D
 
-	OServiceUserFlagOSCARFree   uint32 = 0x00000010 // AIM (not AOL) account
-	OServiceUserFlagNormal      uint32 = 0x00000000 // user is normal
-	OServiceUserFlagAway        uint32 = 0x00000001 // user is also away
-	OServiceUserFlagDND         uint32 = 0x00000002 // don't disturb user
-	OServiceUserFlagOut         uint32 = 0x00000004 // user is not available
-	OServiceUserFlagBusy        uint32 = 0x00000010 // user is busy
-	OServiceUserFlagInvisible   uint32 = 0x00000100 // user is invisible
-	OServiceUserFlagUnavailable uint32 = 0x00000020 // user is away
-	OServiceUserFlagEvil        uint32 = 0x00003000 // user is evil
-	OServiceUserFlagDepression  uint32 = 0x00004000 // user is having a depression :(
-	OServiceUserFlagAtHome      uint32 = 0x00005000 // user is at home
-	OServiceUserFlagAtWork      uint32 = 0x00006000 // user is at work
-	OServiceUserFlagLunch       uint32 = 0x00002001 // user is having a lunch
-	OServiceUserFlagBirthday    uint32 = 0x00080000 // user is having a birthday :DDD
+	OServiceUserStatusAvailable         uint32 = 0x00000000 // user is available
+	OServiceUserStatusAway              uint32 = 0x00000001 // user is away
+	OServiceUserStatusDND               uint32 = 0x00000002 // don't disturb user
+	OServiceUserStatusOut               uint32 = 0x00000004 // user is not available
+	OServiceUserStatusBusy              uint32 = 0x00000010 // user is busy
+	OServiceUserStatusChat              uint32 = 0x00000020 // user is available to chat
+	OServiceUserStatusInvisible         uint32 = 0x00000100 // user is invisible
+	OServiceUserStatusWebAware          uint32 = 0x00010000
+	OServiceUserStatusHideIP            uint32 = 0x00020000
+	OServiceUserStatusBirthday          uint32 = 0x00080000 // user is having a birthday :DDD
+	OServiceUserStatusICQHomePage       uint32 = 0x00200000
+	OServiceUserStatusDirectRequireAuth uint32 = 0x10000000
 
-	OServiceStatusWebAware          uint32 = 0x00010000
-	OServiceStatusHideIP            uint32 = 0x00020000
-	OServiceStatusICQHomePage       uint32 = 0x00200000
-	OServiceStatusDirectRequireAuth uint32 = 0x10000000
+	OServiceUserFlagOSCARFree   uint16 = 0x0010 // AIM (not AOL) account
+	OServiceUserFlagUnavailable uint16 = 0x0020 // user is away
+
+	OServicePrivacyFlagIdle   uint32 = 0x00000001
+	OServicePrivacyFlagMember uint32 = 0x00000002
 
 	OServiceTLVTagsReconnectHere uint16 = 0x05
 	OServiceTLVTagsLoginCookie   uint16 = 0x06
@@ -263,6 +262,22 @@ type SNAC_0x01_0x10_OServiceEvilNotificationAnon struct {
 
 type SNAC_0x01_0x11_OServiceIdleNotification struct {
 	IdleTime uint32
+}
+
+type SNAC_0x01_0x14_OServiceSetPrivacyFlags struct {
+	PrivacyFlags uint32
+}
+
+// IdleFlag returns whether other AIM users can see how long the user has been
+// idle.
+func (s SNAC_0x01_0x14_OServiceSetPrivacyFlags) IdleFlag() bool {
+	return s.PrivacyFlags&OServicePrivacyFlagIdle == OServicePrivacyFlagIdle
+}
+
+// MemberFlag returns whether other AIM users can see how long the user has been
+// a member.
+func (s SNAC_0x01_0x14_OServiceSetPrivacyFlags) MemberFlag() bool {
+	return s.PrivacyFlags&OServicePrivacyFlagMember == OServicePrivacyFlagMember
 }
 
 type SNAC_0x01_0x17_OServiceClientVersions struct {
@@ -539,10 +554,28 @@ type SNAC_0x04_0x14_ICBMClientEvent struct {
 }
 
 //
-// 0x09: PD
+// 0x09: PermitDeny
 //
 
-type SNAC_0x09_0x03_PDRightsReply struct {
+const (
+	PermitDenyErr                      uint16 = 0x0001
+	PermitDenyRightsQuery              uint16 = 0x0002
+	PermitDenyRightsReply              uint16 = 0x0003
+	PermitDenySetGroupPermitMask       uint16 = 0x0004
+	PermitDenyAddPermListEntries       uint16 = 0x0005
+	PermitDenyDelPermListEntries       uint16 = 0x0006
+	PermitDenyAddDenyListEntries       uint16 = 0x0007
+	PermitDenyDelDenyListEntries       uint16 = 0x0008
+	PermitDenyBosErr                   uint16 = 0x0009
+	PermitDenyAddTempPermitListEntries uint16 = 0x000A
+	PermitDenyDelTempPermitListEntries uint16 = 0x000B
+
+	PermitDenyTLVMaxPermits     uint16 = 0x01
+	PermitDenyTLVMaxDenies      uint16 = 0x02
+	PermitDenyTLVMaxTempPermits uint16 = 0x03
+)
+
+type SNAC_0x09_0x03_PermitDenyRightsReply struct {
 	TLVRestBlock
 }
 

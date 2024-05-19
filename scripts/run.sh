@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ENV_FILE="$SCRIPT_DIR/settings.env"
-EXEC_FILE="$SCRIPT_DIR/retro_aim_server"
+EXEC_FILE="$SCRIPT_DIR/bin/retro_aim_server"
 
 # Load the settings file.
 if [ -f "$ENV_FILE" ]; then

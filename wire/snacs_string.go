@@ -9,7 +9,7 @@ var foodGroupName = map[uint16]string{
 	Invite:      "Invite",
 	Admin:       "Admin",
 	Popup:       "Popup",
-	PD:          "PD",
+	PermitDeny:  "PermitDeny",
 	UserLookup:  "UserLookup",
 	Stats:       "Stats",
 	Translate:   "Translate",
@@ -262,6 +262,19 @@ var subGroupName = map[uint16]map[uint16]string{
 		BARTDownloadReply:  "BARTDownloadReply",
 		BARTDownload2Query: "BARTDownload2Query",
 		BARTDownload2Reply: "BARTDownload2Reply",
+	},
+	PermitDeny: {
+		PermitDenyErr:                      "PermitDenyErr",
+		PermitDenyRightsQuery:              "PermitDenyRightsQuery",
+		PermitDenyRightsReply:              "PermitDenyRightsReply",
+		PermitDenySetGroupPermitMask:       "PermitDenySetGroupPermitMask",
+		PermitDenyAddPermListEntries:       "PermitDenyAddPermListEntries",
+		PermitDenyDelPermListEntries:       "PermitDenyDelPermListEntries",
+		PermitDenyAddDenyListEntries:       "PermitDenyAddDenyListEntries",
+		PermitDenyDelDenyListEntries:       "PermitDenyDelDenyListEntries",
+		PermitDenyBosErr:                   "PermitDenyBosErr",
+		PermitDenyAddTempPermitListEntries: "PermitDenyAddTempPermitListEntries",
+		PermitDenyDelTempPermitListEntries: "PermitDenyDelTempPermitListEntries",
 	},
 }
 

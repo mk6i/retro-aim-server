@@ -83,3 +83,10 @@ command from the root of the repository in a terminal:
 ```shell
 go test -race ./...
 ```
+
+## Config File Generation
+
+The config files `config/settings.bat` and `config/settings.env` are generated programmatically from the
+[Config](../config/config.go) struct using `go generate`. If you want to add or remove application configuration
+options, first edit the Config struct and then generate the configuration files by running `make config` from the
+project root. Do not edit the config files by hand.

@@ -22,6 +22,7 @@ type Handlers struct {
 	OServiceBOSHandler
 	OServiceChatHandler
 	OServiceChatNavHandler
+	PermitDenyHandler
 }
 
 // NewBOSRouter initializes and configures a new Router instance for handling
@@ -68,6 +69,8 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.Locate, wire.LocateUserInfoQuery, h.LocateHandler.UserInfoQuery)
 	router.Register(wire.Locate, wire.LocateUserInfoQuery2, h.LocateHandler.UserInfoQuery2)
 
+	router.Register(wire.PermitDeny, wire.PermitDenyRightsQuery, h.PermitDenyHandler.RightsQuery)
+
 	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceBOSHandler.ClientOnline)
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceBOSHandler.OServiceHandler.ClientVersions)
 	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceBOSHandler.OServiceHandler.IdleNotification)
@@ -77,6 +80,7 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceServiceRequest, h.OServiceBOSHandler.ServiceRequest)
 	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceBOSHandler.OServiceHandler.SetUserInfoFields)
 	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceBOSHandler.OServiceHandler.UserInfoQuery)
+	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceBOSHandler.OServiceHandler.SetPrivacyFlags)
 
 	return router
 }

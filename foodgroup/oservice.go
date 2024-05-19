@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -422,23 +423,23 @@ func (s OServiceService) UserInfoQuery(_ context.Context, sess *state.Session, i
 // It returns SNAC wire.OServiceUserInfoUpdate containing the user's info.
 func (s OServiceService) SetUserInfoFields(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (wire.SNACMessage, error) {
 	if status, hasStatus := inBody.Uint32(wire.OServiceUserInfoStatus); hasStatus {
-		if status == wire.OServiceUserFlagNormal {
+		if status == wire.OServiceUserStatusAvailable {
 			sess.SetInvisible(false)
 			if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 				return wire.SNACMessage{}, err
 			}
 		}
-		if status&wire.OServiceUserFlagInvisible == wire.OServiceUserFlagInvisible {
+		if status&wire.OServiceUserStatusInvisible == wire.OServiceUserStatusInvisible {
 			sess.SetInvisible(true)
 			if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
 				return wire.SNACMessage{}, err
 			}
-			if status&wire.OServiceStatusDirectRequireAuth == wire.OServiceStatusDirectRequireAuth {
-				s.logger.InfoContext(ctx, "got unsupported status", "status", status)
-			}
-			if status&wire.OServiceStatusHideIP == wire.OServiceStatusHideIP {
-				s.logger.InfoContext(ctx, "got unsupported status", "status", status)
-			}
+		}
+		if status&wire.OServiceUserStatusDirectRequireAuth == wire.OServiceUserStatusDirectRequireAuth {
+			s.logger.InfoContext(ctx, "got unsupported status", "status", status)
+		}
+		if status&wire.OServiceUserStatusHideIP == wire.OServiceUserStatusHideIP {
+			s.logger.InfoContext(ctx, "got unsupported status", "status", status)
 		}
 	}
 	return wire.SNACMessage{
@@ -463,6 +464,22 @@ func (s OServiceService) IdleNotification(ctx context.Context, sess *state.Sessi
 		sess.SetIdle(time.Duration(bodyIn.IdleTime) * time.Second)
 	}
 	return broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager)
+}
+
+// SetPrivacyFlags sets client privacy settings. Currently, there's no action
+// to take when these flags are set. This method simply logs the flags set by
+// the client.
+func (s OServiceService) SetPrivacyFlags(ctx context.Context, bodyIn wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags) {
+	attrs := slog.Group("request",
+		slog.String("food_group", wire.FoodGroupName(wire.OService)),
+		slog.String("sub_group", wire.SubGroupName(wire.OService, wire.OServiceSetPrivacyFlags)))
+
+	if bodyIn.MemberFlag() {
+		s.logger.LogAttrs(ctx, slog.LevelDebug, "client set member privacy flag, but we're not going to do anything", attrs)
+	}
+	if bodyIn.IdleFlag() {
+		s.logger.LogAttrs(ctx, slog.LevelDebug, "client set idle privacy flag, but we're not going to do anything", attrs)
+	}
 }
 
 // RateParamsSubAdd exists to capture the SNAC input in unit tests to
@@ -513,7 +530,7 @@ func (s OServiceServiceForBOS) ServiceRequest(_ context.Context, sess *state.Ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, config.Address(s.cfg.OSCARHost, s.cfg.AlertPort)),
+						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.AlertPort)),
 						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, sess.ID()),
 						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Alert),
 						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
@@ -532,7 +549,7 @@ func (s OServiceServiceForBOS) ServiceRequest(_ context.Context, sess *state.Ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, config.Address(s.cfg.OSCARHost, s.cfg.ChatNavPort)),
+						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ChatNavPort)),
 						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, sess.ID()),
 						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.ChatNav),
 						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
@@ -568,7 +585,7 @@ func (s OServiceServiceForBOS) ServiceRequest(_ context.Context, sess *state.Ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, config.Address(s.cfg.OSCARHost, s.cfg.ChatPort)),
+						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ChatPort)),
 						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, chatLoginCookie{
 							Cookie: room.Cookie,
 							SessID: sess.ID(),

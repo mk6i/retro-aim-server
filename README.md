@@ -22,7 +22,8 @@ The following features are supported:
 - [x] Chat Rooms (v4.x, v5.x)
 - [x] Instant Messaging
 - [x] User Profiles
-- [x] Blocking / Visibility Toggle / Idle Notification
+- [x] Blocking (v3.5+)
+- [x] Visibility Toggle / Idle Notification
 - [x] Warning
 
 ## 🏁 How to Run
@@ -47,27 +48,66 @@ Check out the Retro AIM Server [Discord server](https://discord.gg/2Xy4nF3Uh9) t
 
 ## 👤 Management API
 
-The Management API provides functionality for administering the server (see [OpenAPI spec](./api.yml)):
+The Management API provides functionality for administering the server (see [OpenAPI spec](./api.yml)). The following
+shows you how to run these commands via the command line.
 
-### List Users
+### Windows PowerShell
+
+> Run these commands from **PowerShell**, *not* **Command Prompt**.
+
+#### List Users
+
+```powershell
+Invoke-WebRequest -Uri http://localhost:8080/user -Method Get
+```
+
+#### Create Users
+
+```powershell
+Invoke-WebRequest -Uri http://localhost:8080/user `
+  -Body '{"screen_name":"myscreenname", "password":"thepassword"}' `
+  -Method Post `
+  -ContentType "application/json"
+```
+
+#### Change Password
+
+```powershell
+Invoke-WebRequest -Uri http://localhost:8080/user/password `
+  -Body '{"screen_name":"myscreenname", "password":"thenewpassword"}' `
+  -Method Put `
+  -ContentType "application/json"
+```
+
+#### List Active Sessions
+
+This request lists sessions for all logged in users.
+
+```powershell
+Invoke-WebRequest -Uri http://localhost:8080/session -Method Get
+```
+
+### macOS / Linux
+
+#### List Users
 
 ```shell
 curl http://localhost:8080/user
 ```
 
-### Create Users
+#### Create Users
 
 ```shell
-curl -d'{"screen_name":"myScreenName", "password":"thepassword"}' http://localhost:8080/user
+curl -d'{"screen_name":"myscreenname", "password":"thepassword"}' http://localhost:8080/user
 ```
 
-### Change Password
+#### Change Password
 
 ```shell
-curl -X PUT -d'{"screen_name":"myScreenName", "password":"thenewpassword"}' http://localhost:8080/user/password
+curl -X PUT -d'{"screen_name":"myscreenname", "password":"thenewpassword"}' http://localhost:8080/user/password
 ```
 
-### List Active Sessions
+#### List Active Sessions
 
 This request lists sessions for all logged in users.
 

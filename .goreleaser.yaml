@@ -6,7 +6,7 @@ before:
 
 builds:
   - id: linux
-    binary: retro_aim_server
+    binary: bin/retro_aim_server
     goos:
       - linux
     goarch:
@@ -21,7 +21,7 @@ builds:
         {{- if eq .Arch "amd64"}}CC=x86_64-linux-gnu-gcc{{- end }}
         {{- if eq .Arch "arm"}}CC=arm-linux-gnueabihf-gcc{{- end }}
   - id: macos
-    binary: retro_aim_server
+    binary: bin/retro_aim_server
     goos:
       - darwin
     goarch:
@@ -34,7 +34,7 @@ builds:
         {{- if eq .Arch "amd64"}}CC=o64-clang{{- end }}
         {{- if eq .Arch "arm64"}}CC=oa64-clang{{- end }}
   - id: windows
-    binary: retro_aim_server
+    binary: bin/retro_aim_server
     goos:
       - windows
     goarch:
