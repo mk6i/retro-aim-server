@@ -12,13 +12,16 @@ import (
 	"net/http"
 	"time"
 
+	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/mk6i/retro-aim-server/wire"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	"github.com/google/uuid"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 // BlockedState represents the blocked status between two users
@@ -105,25 +108,34 @@ func strongMD5PasswordHash(pass, authKey string) []byte {
 	return bottom.Sum(nil)
 }
 
-// SQLiteUserStore stores user feedbag (buddy list), profile, and
-// authentication credentials information in a SQLite database.
-type SQLiteUserStore struct {
-	db *sql.DB
+// SQLUserStore stores user feedbag (buddy list), profile, and
+// authentication credentials information in a database.
+type SQLUserStore struct {
+	db     *sql.DB
+	dbType string
 }
 
-// NewSQLiteUserStore creates a new instance of SQLiteUserStore. If the
-// database does not already exist, a new one is created with the required
-// schema.
-func NewSQLiteUserStore(dbFilePath string) (*SQLiteUserStore, error) {
-	db, err := sql.Open("sqlite3", dbFilePath)
+// NewSQLiteUserStore creates a new instance of SQLUserStore for SQLite.
+func NewSQLiteUserStore(connString string) (*SQLUserStore, error) {
+	db, err := sql.Open("sqlite3", connString)
 	if err != nil {
 		return nil, err
 	}
-	store := &SQLiteUserStore{db: db}
+	store := &SQLUserStore{db: db, dbType: "sqlite3"}
 	return store, store.runMigrations()
 }
 
-func (f SQLiteUserStore) runMigrations() error {
+// NewPostgresUserStore creates a new instance of SQLUserStore for PostgreSQL.
+func NewPostgresUserStore(connString string) (*SQLUserStore, error) {
+	db, err := sql.Open("postgres", connString)
+	if err != nil {
+		return nil, err
+	}
+	store := &SQLUserStore{db: db, dbType: "postgres"}
+	return store, store.runMigrations()
+}
+
+func (f SQLUserStore) runMigrations() error {
 	migrationFS, err := fs.Sub(migrations, "migrations")
 	if err != nil {
 		return fmt.Errorf("failed to prepare migration subdirectory: %v", err)
@@ -134,12 +146,19 @@ func (f SQLiteUserStore) runMigrations() error {
 		return fmt.Errorf("failed to create source instance from embedded filesystem: %v", err)
 	}
 
-	driver, err := sqlite3.WithInstance(f.db, &sqlite3.Config{})
+	var driver database.Driver
+	if f.dbType == "sqlite3" {
+		driver, err = sqlite3.WithInstance(f.db, &sqlite3.Config{})
+	} else if f.dbType == "postgres" {
+		driver, err = postgres.WithInstance(f.db, &postgres.Config{})
+	} else {
+		return fmt.Errorf("unsupported database type: %s", f.dbType)
+	}
 	if err != nil {
 		return fmt.Errorf("cannot create database driver: %v", err)
 	}
 
-	m, err := migrate.NewWithInstance("httpfs", sourceInstance, "sqlite3", driver)
+	m, err := migrate.NewWithInstance("httpfs", sourceInstance, f.dbType, driver)
 	if err != nil {
 		return fmt.Errorf("failed to create migrate instance: %v", err)
 	}
@@ -153,7 +172,7 @@ func (f SQLiteUserStore) runMigrations() error {
 
 // AllUsers returns all stored users. It only populates the User.ScreenName field
 // populated in the returned slice.
-func (f SQLiteUserStore) AllUsers() ([]User, error) {
+func (f SQLUserStore) AllUsers() ([]User, error) {
 	q := `SELECT screenName FROM user`
 	rows, err := f.db.Query(q)
 	if err != nil {
@@ -179,7 +198,7 @@ func (f SQLiteUserStore) AllUsers() ([]User, error) {
 
 // User looks up a user by screen name. It populates the User record with
 // credentials that can be used to validate the user's password.
-func (f SQLiteUserStore) User(screenName string) (*User, error) {
+func (f SQLUserStore) User(screenName string) (*User, error) {
 	q := `
 		SELECT
 			screenName, 
@@ -199,7 +218,7 @@ func (f SQLiteUserStore) User(screenName string) (*User, error) {
 
 // InsertUser inserts a user to the store. Return ErrDupUser if a user with the
 // same screen name already exists.
-func (f SQLiteUserStore) InsertUser(u User) error {
+func (f SQLUserStore) InsertUser(u User) error {
 	q := `
 		INSERT INTO user (screenName, authKey, weakMD5Pass, strongMD5Pass)
 		VALUES (?, ?, ?, ?)
@@ -222,7 +241,7 @@ func (f SQLiteUserStore) InsertUser(u User) error {
 }
 
 // SetUserPassword sets the user's password hashes and auth key.
-func (f SQLiteUserStore) SetUserPassword(u User) error {
+func (f SQLUserStore) SetUserPassword(u User) error {
 	tx, err := f.db.Begin()
 	if err != nil {
 		return err
@@ -266,7 +285,7 @@ func (f SQLiteUserStore) SetUserPassword(u User) error {
 }
 
 // Feedbag fetches the contents of a user's feedbag (buddy list).
-func (f SQLiteUserStore) Feedbag(screenName string) ([]wire.FeedbagItem, error) {
+func (f SQLUserStore) Feedbag(screenName string) ([]wire.FeedbagItem, error) {
 	q := `
 		SELECT 
 			groupID,
@@ -302,7 +321,7 @@ func (f SQLiteUserStore) Feedbag(screenName string) ([]wire.FeedbagItem, error) 
 
 // FeedbagLastModified returns the last time a user's feedbag (buddy list) was
 // updated.
-func (f SQLiteUserStore) FeedbagLastModified(screenName string) (time.Time, error) {
+func (f SQLUserStore) FeedbagLastModified(screenName string) (time.Time, error) {
 	var lastModified sql.NullInt64
 	q := `SELECT MAX(lastModified) FROM feedbag WHERE screenName = ?`
 	err := f.db.QueryRow(q, screenName).Scan(&lastModified)
@@ -310,7 +329,7 @@ func (f SQLiteUserStore) FeedbagLastModified(screenName string) (time.Time, erro
 }
 
 // FeedbagDelete deletes an entry from a user's feedbag (buddy list).
-func (f SQLiteUserStore) FeedbagDelete(screenName string, items []wire.FeedbagItem) error {
+func (f SQLUserStore) FeedbagDelete(screenName string, items []wire.FeedbagItem) error {
 	// todo add transaction
 	q := `DELETE FROM feedbag WHERE screenName = ? AND itemID = ?`
 
@@ -325,7 +344,7 @@ func (f SQLiteUserStore) FeedbagDelete(screenName string, items []wire.FeedbagIt
 
 // FeedbagUpsert upserts an entry to a user's feedbag (buddy list). An entry is
 // created if it doesn't already exist, or modified if it already exists.
-func (f SQLiteUserStore) FeedbagUpsert(screenName string, items []wire.FeedbagItem) error {
+func (f SQLUserStore) FeedbagUpsert(screenName string, items []wire.FeedbagItem) error {
 	q := `
 		INSERT INTO feedbag (screenName, groupID, itemID, classID, name, attributes, lastModified)
 		VALUES (?, ?, ?, ?, ?, ?, UNIXEPOCH())
@@ -359,7 +378,7 @@ func (f SQLiteUserStore) FeedbagUpsert(screenName string, items []wire.FeedbagIt
 
 // AdjacentUsers returns all users who have screenName in their buddy list.
 // Exclude users who are on screenName's block list.
-func (f SQLiteUserStore) AdjacentUsers(screenName string) ([]string, error) {
+func (f SQLUserStore) AdjacentUsers(screenName string) ([]string, error) {
 	q := `
 		SELECT f.screenName
 		FROM feedbag f
@@ -391,7 +410,7 @@ func (f SQLiteUserStore) AdjacentUsers(screenName string) ([]string, error) {
 
 // Buddies returns all user's buddies. Don't return a buddy if the user has
 // them on their block list.
-func (f SQLiteUserStore) Buddies(screenName string) ([]string, error) {
+func (f SQLUserStore) Buddies(screenName string) ([]string, error) {
 	q := `
 		SELECT f.name
 		FROM feedbag f
@@ -421,7 +440,7 @@ func (f SQLiteUserStore) Buddies(screenName string) ([]string, error) {
 }
 
 // BlockedState returns the BlockedState between two users.
-func (f SQLiteUserStore) BlockedState(screenNameA, screenNameB string) (BlockedState, error) {
+func (f SQLUserStore) BlockedState(screenNameA, screenNameB string) (BlockedState, error) {
 	q := `
 		SELECT EXISTS(SELECT 1
 					  FROM feedbag f
@@ -435,22 +454,22 @@ func (f SQLiteUserStore) BlockedState(screenNameA, screenNameB string) (BlockedS
 						AND f.screenName = ?
 						AND f.name = ?)
 	`
-	row, err := f.db.Query(q, screenNameA, screenNameB, screenNameB, screenNameA)
+	rows, err := f.db.Query(q, screenNameA, screenNameB, screenNameB, screenNameA)
 	if err != nil {
 		return BlockedNo, err
 	}
-	defer row.Close()
+	defer rows.Close()
 
 	var blockedA bool
-	if row.Next() {
-		if err := row.Scan(&blockedA); err != nil {
+	if rows.Next() {
+		if err := rows.Scan(&blockedA); err != nil {
 			return BlockedNo, err
 		}
 	}
 
 	var blockedB bool
-	if row.Next() {
-		if err := row.Scan(&blockedB); err != nil {
+	if rows.Next() {
+		if err := rows.Scan(&blockedB); err != nil {
 			return BlockedNo, err
 		}
 	}
@@ -467,7 +486,7 @@ func (f SQLiteUserStore) BlockedState(screenNameA, screenNameB string) (BlockedS
 
 // Profile fetches a user profile. Return empty string if the user
 // does not exist or has no profile.
-func (f SQLiteUserStore) Profile(screenName string) (string, error) {
+func (f SQLUserStore) Profile(screenName string) (string, error) {
 	q := `
 		SELECT IFNULL(body, '')
 		FROM profile
@@ -482,7 +501,7 @@ func (f SQLiteUserStore) Profile(screenName string) (string, error) {
 }
 
 // SetProfile sets the text contents of a user's profile.
-func (f SQLiteUserStore) SetProfile(screenName string, body string) error {
+func (f SQLUserStore) SetProfile(screenName string, body string) error {
 	q := `
 		INSERT INTO profile (screenName, body)
 		VALUES (?, ?)
@@ -493,7 +512,7 @@ func (f SQLiteUserStore) SetProfile(screenName string, body string) error {
 	return err
 }
 
-func (f SQLiteUserStore) BARTUpsert(itemHash []byte, body []byte) error {
+func (f SQLUserStore) BARTUpsert(itemHash []byte, body []byte) error {
 	q := `
 		INSERT INTO bartItem (hash, body)
 		VALUES (?, ?)
@@ -503,7 +522,7 @@ func (f SQLiteUserStore) BARTUpsert(itemHash []byte, body []byte) error {
 	return err
 }
 
-func (f SQLiteUserStore) BARTRetrieve(hash []byte) ([]byte, error) {
+func (f SQLUserStore) BARTRetrieve(hash []byte) ([]byte, error) {
 	q := `
 		SELECT body
 		FROM bartItem

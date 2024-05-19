@@ -358,7 +358,7 @@ func TestGetUser(t *testing.T) {
 		AuthKey:       "theauthkey",
 		StrongMD5Pass: []byte("thepasshash"),
 	}
-	_, err = f.db.Exec(`INSERT INTO user (ScreenName, authKey, strongMD5Pass) VALUES(?, ?, ?)`,
+	_, err = f.db.Exec(`INSERT INTO user (screenName, authKey, strongMD5Pass) VALUES(?, ?, ?)`,
 		expectUser.ScreenName, expectUser.AuthKey, expectUser.StrongMD5Pass)
 	if err != nil {
 		t.Fatalf("failed to insert user: %s", err.Error())
