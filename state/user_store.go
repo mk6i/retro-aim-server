@@ -2,12 +2,10 @@ package state
 
 import (
 	"bytes"
-	"crypto/md5"
 	"database/sql"
 	"embed"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"net/http"
 	"time"
@@ -65,44 +63,17 @@ func (u *User) ValidateHash(md5Hash []byte) bool {
 // hash of the user's actual password. A roasted password is a XOR-obfuscated
 // form of the real password, intended to add a simple layer of security.
 func (u *User) ValidateRoastedPass(roastedPass []byte) bool {
-	var roastTable = [16]byte{
-		0xF3, 0x26, 0x81, 0xC4, 0x39, 0x86, 0xDB, 0x92,
-		0x71, 0xA3, 0xB9, 0xE6, 0x53, 0x7A, 0x95, 0x7C,
-	}
-	clearPass := make([]byte, len(roastedPass))
-	for i := range roastedPass {
-		clearPass[i] = roastedPass[i] ^ roastTable[i%len(roastTable)]
-	}
-	md5Hash := weakMD5PasswordHash(string(clearPass), u.AuthKey) // todo remove string conversion
+	clearPass := wire.RoastPassword(roastedPass)
+	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey) // todo remove string conversion
 	return bytes.Equal(u.WeakMD5Pass, md5Hash)
 }
 
 // HashPassword computes MD5 hashes of the user's password. It computes both
 // weak and strong variants and stores them in the struct.
 func (u *User) HashPassword(passwd string) error {
-	u.WeakMD5Pass = weakMD5PasswordHash(passwd, u.AuthKey)
-	u.StrongMD5Pass = strongMD5PasswordHash(passwd, u.AuthKey)
+	u.WeakMD5Pass = wire.WeakMD5PasswordHash(passwd, u.AuthKey)
+	u.StrongMD5Pass = wire.StrongMD5PasswordHash(passwd, u.AuthKey)
 	return nil
-}
-
-//goland:noinspection GoUnhandledErrorResult
-func weakMD5PasswordHash(pass, authKey string) []byte {
-	hash := md5.New()
-	io.WriteString(hash, authKey)
-	io.WriteString(hash, pass)
-	io.WriteString(hash, "AOL Instant Messenger (SM)")
-	return hash.Sum(nil)
-}
-
-//goland:noinspection GoUnhandledErrorResult
-func strongMD5PasswordHash(pass, authKey string) []byte {
-	top := md5.New()
-	io.WriteString(top, pass)
-	bottom := md5.New()
-	io.WriteString(bottom, authKey)
-	bottom.Write(top.Sum(nil))
-	io.WriteString(bottom, "AOL Instant Messenger (SM)")
-	return bottom.Sum(nil)
 }
 
 // SQLiteUserStore stores user feedbag (buddy list), profile, and
