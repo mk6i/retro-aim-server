@@ -54,7 +54,7 @@ func StartManagementAPI(cfg config.Config, userManager UserManager, sessionRetri
 		sessionHandler(w, r, sessionRetriever)
 	})
 
-	addr := net.JoinHostPort("", cfg.ApiPort)
+	addr := net.JoinHostPort(cfg.ApiHost, cfg.ApiPort)
 	logger.Info("starting management API server", "addr", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		logger.Error("unable to bind management API address address", "err", err.Error())

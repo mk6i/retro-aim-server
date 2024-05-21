@@ -1,3 +1,6 @@
+rem The hostname or address at which the management API listens.
+set API_HOST=127.0.0.1
+
 rem The port that the management API service binds to.
 set API_PORT=8080
 
