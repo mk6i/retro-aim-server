@@ -111,7 +111,7 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		},
 	}
 	// copy over TLVs from sender SNAC to recipient SNAC verbatim. this
-	// includes ICBMTLVTagRequestHostAck, which is ignored by the client, as
+	// includes ICBMTLVRequestHostAck, which is ignored by the client, as
 	// far as I can tell.
 	clientIM.AppendList(inBody.TLVRestBlock.TLVList)
 
@@ -123,7 +123,7 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		Body: clientIM,
 	})
 
-	if _, requestedConfirmation := inBody.TLVRestBlock.Slice(wire.ICBMTLVTagRequestHostAck); !requestedConfirmation {
+	if _, requestedConfirmation := inBody.TLVRestBlock.Slice(wire.ICBMTLVRequestHostAck); !requestedConfirmation {
 		// don't ack message
 		return nil, nil
 	}

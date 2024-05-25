@@ -44,7 +44,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							{
-								Tag:   wire.ICBMTLVTagRequestHostAck,
+								Tag:   wire.ICBMTLVRequestHostAck,
 								Value: []byte{},
 							},
 						},
@@ -64,11 +64,11 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							{
-								Tag:   wire.ICBMTLVTagsWantEvents,
+								Tag:   wire.ICBMTLVWantEvents,
 								Value: []byte{},
 							},
 							{
-								Tag:   wire.ICBMTLVTagRequestHostAck,
+								Tag:   wire.ICBMTLVRequestHostAck,
 								Value: []byte{},
 							},
 						},
@@ -115,7 +115,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							{
-								Tag:   wire.ICBMTLVTagsWantEvents,
+								Tag:   wire.ICBMTLVWantEvents,
 								Value: []byte{},
 							},
 						},
@@ -138,7 +138,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							{
-								Tag:   wire.ICBMTLVTagRequestHostAck,
+								Tag:   wire.ICBMTLVRequestHostAck,
 								Value: []byte{},
 							},
 						},
@@ -170,7 +170,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							{
-								Tag:   wire.ICBMTLVTagRequestHostAck,
+								Tag:   wire.ICBMTLVRequestHostAck,
 								Value: []byte{},
 							},
 						},
@@ -202,7 +202,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							{
-								Tag:   wire.ICBMTLVTagRequestHostAck,
+								Tag:   wire.ICBMTLVRequestHostAck,
 								Value: []byte{},
 							},
 						},

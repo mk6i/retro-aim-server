@@ -3,6 +3,7 @@ package wire
 import (
 	"bytes"
 	"errors"
+	"fmt"
 )
 
 // ErrUnsupportedFoodGroup indicates that a foodgroup value is either invalid
@@ -486,9 +487,43 @@ const (
 	ICBMClientEvent        uint16 = 0x0014
 	ICBMSinReply           uint16 = 0x0017
 
-	ICBMTLVTagRequestHostAck uint16 = 0x03
-	ICBMTLVTagsWantEvents    uint16 = 0x0B
+	ICBMTLVAOLIMData      uint16 = 0x02
+	ICBMTLVRequestHostAck uint16 = 0x03
+	ICBMTLVAutoResponse   uint16 = 0x04
+	ICBMTLVData           uint16 = 0x05
+	ICBMTLVStore          uint16 = 0x06
+	ICBMTLVICQblob        uint16 = 0x07
+	ICBMTLVAvatarInfo     uint16 = 0x08
+	ICBMTLVWantAvatar     uint16 = 0x09
+	ICBMTLVMultiUser      uint16 = 0x0A
+	ICBMTLVWantEvents     uint16 = 0x0B
+	ICBMTLVSubscriptions  uint16 = 0x0C
+	ICBMTLVBART           uint16 = 0x0D
+	ICBMTLVHostImID       uint16 = 0x10
+	ICBMTLVHostImArgs     uint16 = 0x11
+	ICBMTLVSendTime       uint16 = 0x16
+	ICBMTLVFriendlyName   uint16 = 0x17
+	ICBMTLVAnonymous      uint16 = 0x18
+	ICBMTLVWidgetName     uint16 = 0x19
+
+	ICBMMessageEncodingASCII   uint16 = 0x00 // ANSI ASCII -- ISO 646
+	ICBMMessageEncodingUnicode uint16 = 0x02 // ISO 10646.USC-2 Unicode
+	ICBMMessageEncodingLatin1  uint16 = 0x03 // ISO 8859-1
 )
+
+// ICBMFragment represents an ICBM message component.
+type ICBMFragment struct {
+	ID      uint8
+	Version uint8
+	Payload []byte `len_prefix:"uint16"`
+}
+
+// ICBMMessage represents the text component of an ICBM message.
+type ICBMMessage struct {
+	Charset  uint16
+	Language uint16
+	Text     []byte
+}
 
 type SNAC_0x04_0x02_ICBMAddParameters struct {
 	Channel              uint16
@@ -515,11 +550,66 @@ type SNAC_0x04_0x06_ICBMChannelMsgToHost struct {
 	TLVRestBlock
 }
 
+// ComposeMessage inserts message text into SNAC(0x04,0x06). It populates TLV
+// 0x02 with fragments that contain the message text and requisite metadata.
+func (m *SNAC_0x04_0x06_ICBMChannelMsgToHost) ComposeMessage(text string) error {
+	msg := ICBMMessage{
+		Charset:  ICBMMessageEncodingASCII,
+		Language: 0, // not clear what this means, but it works
+		Text:     []byte(text),
+	}
+	msgBuf := bytes.Buffer{}
+	if err := Marshal(msg, &msgBuf); err != nil {
+		return fmt.Errorf("unable to marshal ICBM message: %w", err)
+	}
+
+	m.Append(NewTLV(ICBMTLVAOLIMData, []ICBMFragment{
+		{
+			ID:      5, // 5 = capabilities
+			Version: 1,
+			Payload: []byte{1, 1, 2}, // 1 = text
+		},
+		{
+			ID:      1, // 1 = message text
+			Version: 1,
+			Payload: msgBuf.Bytes(),
+		},
+	}))
+
+	return nil
+}
+
 type SNAC_0x04_0x07_ICBMChannelMsgToClient struct {
 	Cookie    uint64
 	ChannelID uint16
 	TLVUserInfo
 	TLVRestBlock
+}
+
+// ExtractMessageText extracts the message text from SNAC(0x04,0x07).
+func (s SNAC_0x04_0x07_ICBMChannelMsgToClient) ExtractMessageText() (string, error) {
+	fragment, ok := s.Slice(ICBMTLVAOLIMData)
+	if !ok {
+		return "", errors.New("ICBM message does not contain a fragment")
+	}
+
+	var frags []ICBMFragment
+	if err := Unmarshal(&frags, bytes.NewBuffer(fragment)); err != nil {
+		return "", fmt.Errorf("unable to unmarshal ICBM fragment: %w", err)
+	}
+
+	for _, frag := range frags {
+		if frag.ID == 1 { // 1 = message text
+			msg := ICBMMessage{}
+			err := Unmarshal(&msg, bytes.NewBuffer(frag.Payload))
+			if err != nil {
+				err = fmt.Errorf("unable to unmarshal ICBM message: %w", err)
+			}
+			return string(msg.Text), err
+		}
+	}
+
+	return "", errors.New("unable to find message fragment")
 }
 
 type SNAC_0x04_0x08_ICBMEvilRequest struct {
