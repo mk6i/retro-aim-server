@@ -140,8 +140,10 @@ func (f *FlapClient) ReceiveFLAP() (FLAPFrame, *bytes.Buffer, error) {
 	}
 
 	buf, err := flap.ReadBody(f.r)
-
-	return flap, buf, fmt.Errorf("unable to read FLAP body: %w", err)
+	if err != nil {
+		err = fmt.Errorf("unable to read FLAP body: %w", err)
+	}
+	return flap, buf, err
 }
 
 // SendSignoffFrame sends a sign-off FLAP frame with attached TLVs as the last
