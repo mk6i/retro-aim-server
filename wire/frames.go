@@ -2,6 +2,7 @@ package wire
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 )
 
@@ -65,7 +66,8 @@ func NewFlapClient(startSeq uint32, r io.Reader, w io.Writer) *FlapClient {
 
 // FlapClient sends and receive FLAP frames to and from the server. It ensures
 // that the message sequence numbers are properly incremented after sending
-// each successive message.
+// each successive message. It is not safe to use with multiple goroutines
+// without synchronization.
 type FlapClient struct {
 	sequence uint32
 	r        io.Reader
@@ -123,6 +125,23 @@ func (f *FlapClient) ReceiveSignonFrame() (FLAPSignonFrame, error) {
 	}
 
 	return signonFrame, nil
+}
+
+// ReceiveFLAP receives a FLAP frame and body. It only returns a body if the
+// FLAP frame is a data frame.
+func (f *FlapClient) ReceiveFLAP() (FLAPFrame, *bytes.Buffer, error) {
+	flap := FLAPFrame{}
+	if err := Unmarshal(&flap, f.r); err != nil {
+		return flap, nil, fmt.Errorf("unable to unmarshal FLAP frame: %w", err)
+	}
+
+	if flap.FrameType != FLAPFrameData {
+		return flap, nil, nil
+	}
+
+	buf, err := flap.ReadBody(f.r)
+
+	return flap, buf, fmt.Errorf("unable to read FLAP body: %w", err)
 }
 
 // SendSignoffFrame sends a sign-off FLAP frame with attached TLVs as the last
