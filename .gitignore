@@ -2,3 +2,4 @@
 *.db
 *.sqlite
 dist/
+*.DS_Store
