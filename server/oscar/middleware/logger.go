@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"bytes"
 	"context"
 	"log/slog"
 	"os"
@@ -84,8 +83,8 @@ func (rt RouteLogger) LogRequestAndResponse(ctx context.Context, inFrame wire.SN
 	msg := "client request -> server response"
 	switch {
 	case rt.Logger.Enabled(ctx, LevelTrace):
-		rt.Logger.LogAttrs(ctx, LevelTrace, msg, snacLogGroupWithPayload(rt.Logger, "request", inFrame, inSNAC),
-			snacLogGroupWithPayload(rt.Logger, "response", outFrame, outSNAC))
+		rt.Logger.LogAttrs(ctx, LevelTrace, msg, snacLogGroupWithPayload("request", inFrame, inSNAC),
+			snacLogGroupWithPayload("response", outFrame, outSNAC))
 	case rt.Logger.Enabled(ctx, slog.LevelDebug):
 		rt.Logger.LogAttrs(ctx, slog.LevelDebug, msg, snacLogGroup("request", inFrame),
 			snacLogGroup("response", outFrame))
@@ -114,7 +113,7 @@ func LogRequest(ctx context.Context, logger *slog.Logger, inFrame wire.SNACFrame
 	const msg = "client request"
 	switch {
 	case logger.Enabled(ctx, LevelTrace):
-		logger.LogAttrs(ctx, LevelTrace, msg, snacLogGroupWithPayload(logger, "request", inFrame, inSNAC))
+		logger.LogAttrs(ctx, LevelTrace, msg, snacLogGroupWithPayload("request", inFrame, inSNAC))
 	case logger.Enabled(ctx, slog.LevelDebug):
 		logger.LogAttrs(ctx, slog.LevelDebug, msg, snacLogGroup("request", inFrame))
 	}
@@ -127,21 +126,11 @@ func snacLogGroup(key string, outFrame wire.SNACFrame) slog.Attr {
 	)
 }
 
-func snacLogGroupWithPayload(logger *slog.Logger, key string, outFrame wire.SNACFrame, outSNAC any) slog.Attr {
-	frameBuf := &bytes.Buffer{}
-	if err := wire.Marshal(outFrame, frameBuf); err != nil {
-		logger.Error("unable to marshal SNAC frame in logger", "err", err.Error())
-	}
-	snacBuf := &bytes.Buffer{}
-	if outSNAC != nil {
-		if err := wire.Marshal(outSNAC, snacBuf); err != nil {
-			logger.Error("unable to marshal SNAC body in logger", "err", err.Error())
-		}
-	}
+func snacLogGroupWithPayload(key string, outFrame wire.SNACFrame, outSNAC any) slog.Attr {
 	return slog.Group(key,
 		slog.String("food_group", wire.FoodGroupName(outFrame.FoodGroup)),
 		slog.String("sub_group", wire.SubGroupName(outFrame.FoodGroup, outFrame.SubGroup)),
-		slog.Any("snac_frame", frameBuf),
+		slog.Any("snac_frame", outFrame),
 		slog.Any("snac_payload", outSNAC),
 	)
 }
