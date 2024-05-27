@@ -169,6 +169,64 @@ func (_c *mockUserManager_SetUserPassword_Call) RunAndReturn(run func(state.User
 	return _c
 }
 
+// User provides a mock function with given fields: screenName
+func (_m *mockUserManager) User(screenName string) (*state.User, error) {
+	ret := _m.Called(screenName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for User")
+	}
+
+	var r0 *state.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (*state.User, error)); ok {
+		return rf(screenName)
+	}
+	if rf, ok := ret.Get(0).(func(string) *state.User); ok {
+		r0 = rf(screenName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*state.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(screenName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockUserManager_User_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'User'
+type mockUserManager_User_Call struct {
+	*mock.Call
+}
+
+// User is a helper method to define mock.On call
+//   - screenName string
+func (_e *mockUserManager_Expecter) User(screenName interface{}) *mockUserManager_User_Call {
+	return &mockUserManager_User_Call{Call: _e.mock.On("User", screenName)}
+}
+
+func (_c *mockUserManager_User_Call) Run(run func(screenName string)) *mockUserManager_User_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *mockUserManager_User_Call) Return(_a0 *state.User, _a1 error) *mockUserManager_User_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockUserManager_User_Call) RunAndReturn(run func(string) (*state.User, error)) *mockUserManager_User_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // newMockUserManager creates a new instance of mockUserManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func newMockUserManager(t interface {
