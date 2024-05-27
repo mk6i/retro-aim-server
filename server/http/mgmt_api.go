@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,11 +9,13 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/google/uuid"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
+	"github.com/mk6i/retro-aim-server/wire"
 )
 
 type userWithPassword struct {
@@ -33,6 +36,7 @@ type UserManager interface {
 	AllUsers() ([]state.User, error)
 	InsertUser(u state.User) error
 	SetUserPassword(u state.User) error
+	User(screenName string) (*state.User, error)
 }
 
 type SessionRetriever interface {
@@ -49,6 +53,9 @@ func StartManagementAPI(cfg config.Config, userManager UserManager, sessionRetri
 	})
 	mux.HandleFunc("/user/password", func(w http.ResponseWriter, r *http.Request) {
 		userPasswordHandler(w, r, userManager, newUser, logger)
+	})
+	mux.HandleFunc("/user/login", func(w http.ResponseWriter, r *http.Request) {
+		loginHandler(w, r, userManager, logger)
 	})
 	mux.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) {
 		sessionHandler(w, r, sessionRetriever)
@@ -206,4 +213,57 @@ func postUserHandler(
 
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintln(w, "User account created successfully.")
+}
+
+// loginHandler is a temporary endpoint for validating user credentials for
+// chivanet. do not rely on this endpoint, as it will be eventually removed.
+func loginHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, logger *slog.Logger) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		// No authentication header found
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Header().Set("WWW-Authenticate", `Basic realm="User Login"`)
+		w.Write([]byte("401 Unauthorized\n"))
+		return
+	}
+
+	auth := strings.SplitN(authHeader, " ", 2)
+	if len(auth) != 2 || auth[0] != "Basic" {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("401 Unauthorized: Missing Basic prefix\n"))
+		return
+	}
+
+	payload, err := base64.StdEncoding.DecodeString(auth[1])
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("401 Unauthorized: Invalid Base64 Encoding\n"))
+		return
+	}
+
+	pair := strings.SplitN(string(payload), ":", 2)
+	if len(pair) != 2 {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("401 Unauthorized: Invalid Authentication Token\n"))
+		return
+	}
+
+	username, password := pair[0], pair[1]
+
+	user, err := userManager.User(username)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 InternalServerError\n"))
+		logger.Error("error getting user", "err", err.Error())
+		return
+	}
+	if user == nil || !user.ValidateHash(wire.StrongMD5PasswordHash(password, user.AuthKey)) {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("401 Unauthorized: Invalid Credentials\n"))
+		return
+	}
+
+	// Successfully authenticated
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("200 OK: Successfully Authenticated\n"))
 }
