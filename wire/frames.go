@@ -196,18 +196,12 @@ func (f *FlapClient) SendSNAC(frame SNACFrame, body any) error {
 		Sequence:      uint16(f.sequence),
 		PayloadLength: uint16(snacBuf.Len()),
 	}
-
 	if err := Marshal(flap, f.w); err != nil {
 		return err
 	}
 
-	expectLen := snacBuf.Len()
-	c, err := f.w.Write(snacBuf.Bytes())
-	if err != nil {
+	if _, err := f.w.Write(snacBuf.Bytes()); err != nil {
 		return err
-	}
-	if c != expectLen {
-		panic("did not write the expected # of bytes")
 	}
 
 	f.sequence++
