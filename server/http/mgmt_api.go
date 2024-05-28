@@ -34,6 +34,7 @@ type onlineUsers struct {
 
 type UserManager interface {
 	AllUsers() ([]state.User, error)
+	DeleteUser(screenName string) error
 	InsertUser(u state.User) error
 	SetUserPassword(u state.User) error
 	User(screenName string) (*state.User, error)
@@ -77,6 +78,8 @@ func userHandler(
 	logger *slog.Logger,
 ) {
 	switch r.Method {
+	case http.MethodDelete:
+		deleteUserHandler(w, r, userManager, logger)
 	case http.MethodGet:
 		getUserHandler(w, r, userManager, logger)
 	case http.MethodPost:
@@ -84,6 +87,27 @@ func userHandler(
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func deleteUserHandler(w http.ResponseWriter, r *http.Request, manager UserManager, logger *slog.Logger) {
+	user := state.User{}
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "malformed input", http.StatusBadRequest)
+		return
+	}
+	err := manager.DeleteUser(user.ScreenName)
+	switch {
+	case errors.Is(err, state.ErrNoUser):
+		http.Error(w, "user does not exist", http.StatusNotFound)
+		return
+	case err != nil:
+		logger.Error("error deleting user DELETE /user", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+	fmt.Fprintln(w, "User account successfully deleted.")
 }
 
 func userPasswordHandler(

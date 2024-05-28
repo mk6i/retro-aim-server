@@ -77,6 +77,52 @@ func (_c *mockUserManager_AllUsers_Call) RunAndReturn(run func() ([]state.User, 
 	return _c
 }
 
+// DeleteUser provides a mock function with given fields: screenName
+func (_m *mockUserManager) DeleteUser(screenName string) error {
+	ret := _m.Called(screenName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteUser")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(screenName)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockUserManager_DeleteUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteUser'
+type mockUserManager_DeleteUser_Call struct {
+	*mock.Call
+}
+
+// DeleteUser is a helper method to define mock.On call
+//   - screenName string
+func (_e *mockUserManager_Expecter) DeleteUser(screenName interface{}) *mockUserManager_DeleteUser_Call {
+	return &mockUserManager_DeleteUser_Call{Call: _e.mock.On("DeleteUser", screenName)}
+}
+
+func (_c *mockUserManager_DeleteUser_Call) Run(run func(screenName string)) *mockUserManager_DeleteUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *mockUserManager_DeleteUser_Call) Return(_a0 error) *mockUserManager_DeleteUser_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockUserManager_DeleteUser_Call) RunAndReturn(run func(string) error) *mockUserManager_DeleteUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // InsertUser provides a mock function with given fields: u
 func (_m *mockUserManager) InsertUser(u state.User) error {
 	ret := _m.Called(u)

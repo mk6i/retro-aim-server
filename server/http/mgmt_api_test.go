@@ -228,6 +228,78 @@ func TestUserHandler_POST(t *testing.T) {
 	}
 }
 
+func TestUserHandler_DELETE(t *testing.T) {
+	tt := []struct {
+		name           string
+		body           string
+		user           state.User
+		userHandlerErr error
+		want           string
+		statusCode     int
+	}{
+		{
+			name: "with valid user",
+			body: `{"screen_name":"userA"}`,
+			user: state.User{
+				ScreenName: "userA",
+			},
+			want:       `User account successfully deleted.`,
+			statusCode: http.StatusNoContent,
+		},
+		{
+			name: "with non-existent user",
+			body: `{"screen_name":"userA"}`,
+			user: state.User{
+				ScreenName: "userA",
+			},
+			userHandlerErr: state.ErrNoUser,
+			want:           `user does not exist`,
+			statusCode:     http.StatusNotFound,
+		},
+		{
+			name:       "with malformed body",
+			body:       `{"screen_name":"userA"`,
+			user:       state.User{},
+			want:       `malformed input`,
+			statusCode: http.StatusBadRequest,
+		},
+		{
+			name: "user handler error",
+			body: `{"screen_name":"userA"}`,
+			user: state.User{
+				ScreenName: "userA",
+			},
+			userHandlerErr: io.EOF,
+			want:           `internal server error`,
+			statusCode:     http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodDelete, "/user", strings.NewReader(tc.body))
+			responseRecorder := httptest.NewRecorder()
+
+			userManager := newMockUserManager(t)
+			if tc.user.ScreenName != "" {
+				userManager.EXPECT().
+					DeleteUser(tc.user.ScreenName).
+					Return(tc.userHandlerErr)
+			}
+
+			userHandler(responseRecorder, request, userManager, nil, slog.Default())
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
 func TestUserPasswordHandler_PUT(t *testing.T) {
 	tt := []struct {
 		name           string

@@ -70,6 +70,15 @@ Invoke-WebRequest -Uri http://localhost:8080/user `
   -ContentType "application/json"
 ```
 
+#### Delete Users
+
+```powershell
+Invoke-WebRequest -Uri http://localhost:8080/user `
+  -Body '{"screen_name": "user123"}' `
+  -Method Delete `
+  -ContentType "application/json"
+```
+
 #### Change Password
 
 ```powershell
@@ -99,6 +108,12 @@ curl http://localhost:8080/user
 
 ```shell
 curl -d'{"screen_name":"myscreenname", "password":"thepassword"}' http://localhost:8080/user
+```
+
+#### Delete Users
+
+```shell
+curl -X DELETE -d '{"screen_name": "user123"}' http://localhost:8080/user
 ```
 
 #### Change Password

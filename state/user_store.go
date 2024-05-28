@@ -192,6 +192,28 @@ func (f SQLiteUserStore) InsertUser(u User) error {
 	return nil
 }
 
+// DeleteUser deletes a user from the store. Return ErrNoUser if the user did
+// not exist prior to deletion.
+func (f SQLiteUserStore) DeleteUser(screenName string) error {
+	q := `
+		DELETE FROM user WHERE screenName = ?
+	`
+	result, err := f.db.Exec(q, screenName)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNoUser
+	}
+
+	return nil
+}
+
 // SetUserPassword sets the user's password hashes and auth key.
 func (f SQLiteUserStore) SetUserPassword(u User) error {
 	tx, err := f.db.Begin()

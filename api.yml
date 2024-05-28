@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: User Management API
-  description: API to manage user accounts with screen names and passwords
+  description: API that provides management functionality for Retro AIM Server operators.
   version: 1.0.0
 paths:
   /user:
@@ -44,6 +44,24 @@ paths:
           description: Bad request. Invalid input data.
         '409':
           description: Conflict. A user with the specified screen name already exists.
+    delete:
+      summary: Delete a user
+      description: Delete a user account specified by their screen name.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                screen_name:
+                  type: string
+                  description: The screen name of the user to delete.
+      responses:
+        '204':
+          description: User deleted successfully.
+        '404':
+          description: User not found.
 
   /session:
     get:

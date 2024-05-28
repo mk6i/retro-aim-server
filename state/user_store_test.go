@@ -419,6 +419,41 @@ func TestSQLiteUserStore_Users(t *testing.T) {
 	assert.Equal(t, want, have)
 }
 
+func TestSQLiteUserStore_DeleteUser_DeleteExistentUser(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	err = f.InsertUser(User{ScreenName: "userA"})
+	assert.NoError(t, err)
+	err = f.InsertUser(User{ScreenName: "userB"})
+	assert.NoError(t, err)
+
+	err = f.DeleteUser("userA")
+	assert.NoError(t, err)
+
+	have, err := f.AllUsers()
+	assert.NoError(t, err)
+
+	want := []User{{ScreenName: "userB"}}
+	assert.Equal(t, want, have)
+}
+
+func TestSQLiteUserStore_DeleteUser_DeleteNonExistentUser(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	err = f.DeleteUser("userA")
+	assert.ErrorIs(t, ErrNoUser, err)
+}
+
 func TestSQLiteUserStore_Buddies(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
