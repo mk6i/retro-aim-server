@@ -84,7 +84,6 @@ func TestSession_TLVUserInfo(t *testing.T) {
 						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
 						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
 						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
-						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)),
 					},
 				},
 			},
@@ -103,7 +102,6 @@ func TestSession_TLVUserInfo(t *testing.T) {
 						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
 						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x30)),
 						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
-						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)),
 					},
 				},
 			},
@@ -122,7 +120,6 @@ func TestSession_TLVUserInfo(t *testing.T) {
 						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
 						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
 						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0100)),
-						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)),
 					},
 				},
 			},
@@ -131,21 +128,25 @@ func TestSession_TLVUserInfo(t *testing.T) {
 			name: "user is idle",
 			givenSessionFn: func() *Session {
 				s := NewSession()
-				s.SetSignonTime(time.Unix(1, 0))
-				// now() returns T=1000 when SetIdle() is called
-				s.nowFn = func() time.Time { return time.Unix(1000, 0) }
-				s.SetIdle(1 * time.Second)
-				// now() returns T=2000 when TLVUserInfo() is called
-				s.nowFn = func() time.Time { return time.Unix(2000, 0) }
+				// sign on at t=0m
+				timeBegin := time.Unix(0, 0)
+				s.SetSignonTime(timeBegin)
+				// set idle for 1m at t=+5m (ergo user idled @ t=+4m)
+				timeIdle := timeBegin.Add(5 * time.Minute)
+				s.nowFn = func() time.Time { return timeIdle }
+				s.SetIdle(1 * time.Minute)
+				// now it's t=+10m, ergo idle time should be t10-t4=6m
+				timeNow := timeBegin.Add(10 * time.Minute)
+				s.nowFn = func() time.Time { return timeNow }
 				return s
 			},
 			want: wire.TLVUserInfo{
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(0)),
 						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
 						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
-						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(1001)),
+						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(6)),
 					},
 				},
 			},
@@ -165,7 +166,6 @@ func TestSession_TLVUserInfo(t *testing.T) {
 						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
 						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
 						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
-						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)),
 					},
 				},
 			},
@@ -195,7 +195,6 @@ func TestSession_TLVUserInfo(t *testing.T) {
 						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
 						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
 						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
-						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)),
 						wire.NewTLV(wire.OServiceUserInfoOscarCaps, []byte{
 							// chat: "748F2420-6287-11D1-8222-444553540000"
 							0x74, 0x8f, 0x24, 0x20, 0x62, 0x87, 0x11, 0xd1,
@@ -222,7 +221,6 @@ func TestSession_TLVUserInfo(t *testing.T) {
 						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
 						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
 						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
-						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)),
 					},
 				},
 			},

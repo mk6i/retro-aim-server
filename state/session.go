@@ -204,9 +204,7 @@ func (s *Session) userInfo() wire.TLVList {
 
 	// idle status
 	if s.idle {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(s.nowFn().Sub(s.idleTime).Seconds())))
-	} else {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(0)))
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(s.nowFn().Sub(s.idleTime).Minutes())))
 	}
 
 	// capabilities (buddy icon, chat, etc...)
