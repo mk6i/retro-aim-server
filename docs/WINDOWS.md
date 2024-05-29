@@ -14,12 +14,20 @@ This guide explains how to download, configure and run Retro AIM Server on Windo
       <img alt="screenshot of a chrome prompt showing a blocked download" src="https://github.com/mk6i/retro-aim-server/assets/2894330/6bf2fd79-0a42-48b2-a695-d777259a3603">
     </p>
 
+   In some cases, Chrome may outright block the download. 
+   
+   <p align="center">
+     <img alt="screenshot of a chrome blocking multiple download attempts" src="https://github.com/ukozi/retro-aim-server/assets/3391773/b3a9f5fc-bc5e-4b00-bc73-f71083af816a">
+   </p>
+
    > While the binaries are 100% safe, you can avoid the security concern by [building the application yourself](./BUILD.md).
    We do not provide signed binaries because of the undue cost and complexity.
 
+   You can alternatively download the file using a Powershell command: `Invoke-WebRequest -Uri "<insert link to version you wish to download here>" -OutFile "retro_aim_server.zip"` and exclude the file or directory from Defender.
+   
    Once downloaded, extract the `.zip` archive, which contains the application and a configuration file `settings.bat`.
 
-2. **Configure Server Address**
+3. **Configure Server Address**
 
    Open `settings.bat` (right-click, `edit in notepad`) and set `OSCAR_HOST` to a hostname that AIM clients can connect
    to. The default setting is `127.0.0.1`, which is enough to connect clients on the same PC.
@@ -27,7 +35,7 @@ This guide explains how to download, configure and run Retro AIM Server on Windo
    In order to connect AIM clients on your LAN (including VMs with bridged networking), you can find the appropriate IP
    address by running `ipconfig` from the Command Prompt.
 
-3. **Start the Application**
+4. **Start the Application**
 
    Open `run.cmd` to launch Retro AIM Server.
 
@@ -47,7 +55,7 @@ This guide explains how to download, configure and run Retro AIM Server on Windo
 
    Retro AIM Server will open in a Command Prompt, ready to accept AIM client connections.
 
-4. **Test**
+5. **Test**
 
    To do a quick sanity check, start an AIM client, sign in to the server, and send yourself an instant message.
    Configure the AIM client to connect to the host set in `OSCAR_HOST` in `settings.bat`. (If you didn't change the
