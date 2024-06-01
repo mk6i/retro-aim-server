@@ -48,7 +48,11 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 		flapSignonFrame = wire.FLAPSignonFrame{
 			FLAPVersion: 1,
 		}
-		flapSignonFrame.Append(wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte(sess.ID())))
+		// create padded auth cookie
+		cookie := make([]byte, 220)
+		copy(cookie, sess.ID())
+		flapSignonFrame.Append(wire.NewTLV(wire.OServiceTLVTagsLoginCookie, cookie))
+
 		buf = &bytes.Buffer{}
 		assert.NoError(t, wire.Marshal(flapSignonFrame, buf))
 		flap = wire.FLAPFrame{

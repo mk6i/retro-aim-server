@@ -1,6 +1,7 @@
 package oscar
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -77,7 +78,10 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 		return errors.New("unable to get session id from payload")
 	}
 
+	// Trim the padding added to the auth cookie by the auth service.
+	sessionID = bytes.TrimRight(sessionID, "\x00")
 	sess, err := rt.RetrieveBOSSession(string(sessionID))
+
 	if err != nil {
 		return err
 	}

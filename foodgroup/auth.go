@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -12,6 +13,9 @@ import (
 
 	"github.com/google/uuid"
 )
+
+// authCookieLen is the fixed auth cookie length.
+const authCookieLen = 256
 
 // NewAuthService creates a new instance of AuthService.
 func NewAuthService(cfg config.Config,
@@ -247,12 +251,22 @@ func (s AuthService) login(
 
 		sess := s.sessionManager.AddSession(newUUIDFn().String(), screenName)
 
+		// Some clients (such as perl NET::OSCAR) expect the auth cookie to be
+		// exactly 256 bytes, even though the cookie is stored in a
+		// variable-length TLV. Pad the auth cookie to make sure it's exactly
+		// 256 bytes.
+		if len(sess.ID()) > authCookieLen {
+			return wire.TLVRestBlock{}, fmt.Errorf("sess is too long, expect 256 bytes, got %d", len(sess.ID()))
+		}
+		authCookie := make([]byte, authCookieLen)
+		copy(authCookie, sess.ID())
+
 		// auth success
 		return wire.TLVRestBlock{
 			TLVList: []wire.TLV{
 				wire.NewTLV(wire.LoginTLVTagsScreenName, screenName),
 				wire.NewTLV(wire.LoginTLVTagsReconnectHere, net.JoinHostPort(s.config.OSCARHost, s.config.BOSPort)),
-				wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, sess.ID()),
+				wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, authCookie),
 			},
 		}, nil
 	}

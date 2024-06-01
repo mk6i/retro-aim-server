@@ -83,7 +83,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, sessUUID.String()),
+							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
+								make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
 						},
 					},
 				},
@@ -141,7 +142,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, sessUUID.String()),
+							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
+								make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
 						},
 					},
 				},
@@ -199,7 +201,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, sessUUID.String()),
+							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
+								make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
 						},
 					},
 				},
@@ -258,7 +261,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, sessUUID.String()),
+							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
+								make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
 						},
 					},
 				},
@@ -489,7 +493,8 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVList: wire.TLVList{
 					wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, sessUUID.String()),
+					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
+						make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
 				},
 			},
 		},
@@ -539,7 +544,8 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVList: wire.TLVList{
 					wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, sessUUID.String()),
+					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
+						make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
 				},
 			},
 		},
@@ -589,7 +595,8 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVList: wire.TLVList{
 					wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, sessUUID.String()),
+					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
+						make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
 				},
 			},
 		},
@@ -640,7 +647,8 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVList: wire.TLVList{
 					wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, sessUUID.String()),
+					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
+						make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
 				},
 			},
 		},
