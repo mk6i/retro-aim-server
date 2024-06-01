@@ -19,7 +19,7 @@ The following features are supported:
 - [x] Away Messages
 - [x] Buddy Icons (v4.x, v5.x)
 - [x] Buddy List
-- [x] Chat Rooms (v4.x, v5.x)
+- [x] Chat Rooms
 - [x] Instant Messaging
 - [x] User Profiles
 - [x] Blocking (v3.5+)

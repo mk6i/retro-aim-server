@@ -198,3 +198,47 @@ func TestChatNavService_RequestChatRights(t *testing.T) {
 
 	assert.Equal(t, want, have)
 }
+
+func TestChatNavService_ExchangeInfo(t *testing.T) {
+	svc := NewChatNavService(nil, nil, nil, nil)
+
+	frame := wire.SNACFrame{RequestID: 1234}
+	snac := wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo{
+		Exchange: 4,
+	}
+	have := svc.ExchangeInfo(nil, frame, snac)
+
+	want := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ChatNav,
+			SubGroup:  wire.ChatNavNavInfo,
+			RequestID: frame.RequestID,
+		},
+		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
+					wire.NewTLV(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
+						Identifier: snac.Exchange,
+						TLVBlock: wire.TLVBlock{
+							TLVList: wire.TLVList{
+								wire.NewTLV(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
+								wire.NewTLV(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
+								wire.NewTLV(wire.ChatRoomTLVMaxNameLen, uint16(100)),
+								wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
+								wire.NewTLV(wire.ChatRoomTLVRoomName, "default exchange"),
+								wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
+								wire.NewTLV(wire.ChatRoomTLVCharSet1, "us-ascii"),
+								wire.NewTLV(wire.ChatRoomTLVLang1, "en"),
+								wire.NewTLV(wire.ChatRoomTLVCharSet2, "us-ascii"),
+								wire.NewTLV(wire.ChatRoomTLVLang2, "en"),
+							},
+						},
+					}),
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, want, have)
+}

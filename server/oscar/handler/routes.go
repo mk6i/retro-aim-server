@@ -42,6 +42,7 @@ func NewBOSRouter(h Handlers) oscar.Router {
 
 	router.Register(wire.ChatNav, wire.ChatNavCreateRoom, h.ChatNavHandler.CreateRoom)
 	router.Register(wire.ChatNav, wire.ChatNavRequestChatRights, h.ChatNavHandler.RequestChatRights)
+	router.Register(wire.ChatNav, wire.ChatNavRequestExchangeInfo, h.ChatNavHandler.RequestExchangeInfo)
 	router.Register(wire.ChatNav, wire.ChatNavRequestRoomInfo, h.ChatNavHandler.RequestRoomInfo)
 
 	router.Register(wire.Feedbag, wire.FeedbagDeleteItem, h.FeedbagHandler.DeleteItem)
@@ -110,6 +111,7 @@ func NewChatNavRouter(h Handlers) oscar.Router {
 
 	router.Register(wire.ChatNav, wire.ChatNavCreateRoom, h.ChatNavHandler.CreateRoom)
 	router.Register(wire.ChatNav, wire.ChatNavRequestChatRights, h.ChatNavHandler.RequestChatRights)
+	router.Register(wire.ChatNav, wire.ChatNavRequestExchangeInfo, h.ChatNavHandler.RequestExchangeInfo)
 	router.Register(wire.ChatNav, wire.ChatNavRequestRoomInfo, h.ChatNavHandler.RequestRoomInfo)
 
 	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceChatNavHandler.ClientOnline)

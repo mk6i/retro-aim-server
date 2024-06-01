@@ -2,6 +2,7 @@ package foodgroup
 
 import (
 	"context"
+	"errors"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -29,20 +30,30 @@ func (s ChatService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		FoodGroup: wire.Chat,
 		SubGroup:  wire.ChatChannelMsgToClient,
 	}
+
+	msg, hasMessage := inBody.Slice(wire.ChatTLVMessageInformation)
+	if !hasMessage {
+		return nil, errors.New("SNAC(0x0E,0x05) does not contain a message TLV")
+	}
+
 	bodyOut := wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
 		Cookie:  inBody.Cookie,
 		Channel: inBody.Channel,
 		TLVRestBlock: wire.TLVRestBlock{
-			TLVList: inBody.TLVList,
+			TLVList: wire.TLVList{
+				// The order of these TLVs matters for AIM 2.x. if out of
+				// order, screen names do not appear with each chat message.
+				wire.NewTLV(wire.ChatTLVSenderInformation, sess.TLVUserInfo()),
+				wire.NewTLV(wire.ChatTLVPublicWhisperFlag, []byte{}),
+				wire.NewTLV(wire.ChatTLVMessageInformation, msg),
+			},
 		},
 	}
-	bodyOut.Append(wire.NewTLV(wire.ChatTLVSenderInformation, sess.TLVUserInfo()))
 
 	_, chatSessMgr, err := s.chatRegistry.Retrieve(sess.ChatRoomCookie())
 	if err != nil {
 		return nil, err
 	}
-
 	// send message to all the participants except sender
 	chatSessMgr.(ChatMessageRelayer).RelayToAllExcept(ctx, sess, wire.SNACMessage{
 		Frame: frameOut,

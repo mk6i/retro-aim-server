@@ -83,6 +83,54 @@ func (_c *mockChatNavService_CreateRoom_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// ExchangeInfo provides a mock function with given fields: ctx, inFrame, inBody
+func (_m *mockChatNavService) ExchangeInfo(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) wire.SNACMessage {
+	ret := _m.Called(ctx, inFrame, inBody)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ExchangeInfo")
+	}
+
+	var r0 wire.SNACMessage
+	if rf, ok := ret.Get(0).(func(context.Context, wire.SNACFrame, wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) wire.SNACMessage); ok {
+		r0 = rf(ctx, inFrame, inBody)
+	} else {
+		r0 = ret.Get(0).(wire.SNACMessage)
+	}
+
+	return r0
+}
+
+// mockChatNavService_ExchangeInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExchangeInfo'
+type mockChatNavService_ExchangeInfo_Call struct {
+	*mock.Call
+}
+
+// ExchangeInfo is a helper method to define mock.On call
+//   - ctx context.Context
+//   - inFrame wire.SNACFrame
+//   - inBody wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo
+func (_e *mockChatNavService_Expecter) ExchangeInfo(ctx interface{}, inFrame interface{}, inBody interface{}) *mockChatNavService_ExchangeInfo_Call {
+	return &mockChatNavService_ExchangeInfo_Call{Call: _e.mock.On("ExchangeInfo", ctx, inFrame, inBody)}
+}
+
+func (_c *mockChatNavService_ExchangeInfo_Call) Run(run func(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo)) *mockChatNavService_ExchangeInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(wire.SNACFrame), args[2].(wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo))
+	})
+	return _c
+}
+
+func (_c *mockChatNavService_ExchangeInfo_Call) Return(_a0 wire.SNACMessage) *mockChatNavService_ExchangeInfo_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockChatNavService_ExchangeInfo_Call) RunAndReturn(run func(context.Context, wire.SNACFrame, wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) wire.SNACMessage) *mockChatNavService_ExchangeInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RequestChatRights provides a mock function with given fields: ctx, inFrame
 func (_m *mockChatNavService) RequestChatRights(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage {
 	ret := _m.Called(ctx, inFrame)

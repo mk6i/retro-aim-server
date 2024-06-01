@@ -152,3 +152,39 @@ func TestChatNavHandler_RequestRoomInfo(t *testing.T) {
 
 	assert.NoError(t, h.RequestRoomInfo(nil, nil, input.Frame, buf, ss))
 }
+
+func TestChatNavHandler_RequestExchangeInfo(t *testing.T) {
+	input := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ChatNav,
+			SubGroup:  wire.ChatNavRequestExchangeInfo,
+		},
+		Body: wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo{
+			Exchange: 4,
+		},
+	}
+	output := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ChatNav,
+			SubGroup:  wire.ChatNavNavInfo,
+		},
+		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{},
+	}
+
+	svc := newMockChatNavService(t)
+	svc.EXPECT().
+		ExchangeInfo(mock.Anything, input.Frame, input.Body).
+		Return(output)
+
+	h := NewChatNavHandler(svc, slog.Default())
+
+	ss := newMockResponseWriter(t)
+	ss.EXPECT().
+		SendSNAC(output.Frame, output.Body).
+		Return(nil)
+
+	buf := &bytes.Buffer{}
+	assert.NoError(t, wire.Marshal(input.Body, buf))
+
+	assert.NoError(t, h.RequestExchangeInfo(nil, nil, input.Frame, buf, ss))
+}

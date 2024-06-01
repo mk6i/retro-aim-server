@@ -689,6 +689,10 @@ const (
 	ChatNavTLVRoomInfo           uint16 = 0x0004
 )
 
+type SNAC_0x0D_0x03_ChatNavRequestExchangeInfo struct {
+	Exchange uint16
+}
+
 type SNAC_0x0D_0x04_ChatNavRequestRoomInfo struct {
 	Exchange       uint16
 	Cookie         string `len_prefix:"uint8"`
@@ -755,6 +759,7 @@ const (
 
 	ChatTLVPublicWhisperFlag    uint16 = 0x01
 	ChatTLVSenderInformation    uint16 = 0x03
+	ChatTLVMessageInformation   uint16 = 0x05
 	ChatTLVEnableReflectionFlag uint16 = 0x06
 
 	// referenced from protocols/oscar/family_chatnav.c in lib purple

@@ -10,6 +10,21 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
+var defaultExchangeCfg = wire.TLVBlock{
+	TLVList: wire.TLVList{
+		wire.NewTLV(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
+		wire.NewTLV(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
+		wire.NewTLV(wire.ChatRoomTLVMaxNameLen, uint16(100)),
+		wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
+		wire.NewTLV(wire.ChatRoomTLVRoomName, "default exchange"),
+		wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
+		wire.NewTLV(wire.ChatRoomTLVCharSet1, "us-ascii"),
+		wire.NewTLV(wire.ChatRoomTLVLang1, "en"),
+		wire.NewTLV(wire.ChatRoomTLVCharSet2, "us-ascii"),
+		wire.NewTLV(wire.ChatRoomTLVLang2, "en"),
+	},
+}
+
 // NewChatNavService creates a new instance of NewChatNavService.
 func NewChatNavService(logger *slog.Logger, chatRegistry *state.ChatRegistry, newChatRoom func() state.ChatRoom, newChatSessMgr func() SessionManager) *ChatNavService {
 	return &ChatNavService{
@@ -44,20 +59,7 @@ func (s ChatNavService) RequestChatRights(_ context.Context, inFrame wire.SNACFr
 					wire.NewTLV(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
 					wire.NewTLV(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
 						Identifier: 4,
-						TLVBlock: wire.TLVBlock{
-							TLVList: wire.TLVList{
-								wire.NewTLV(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
-								wire.NewTLV(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
-								wire.NewTLV(wire.ChatRoomTLVMaxNameLen, uint16(100)),
-								wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
-								wire.NewTLV(wire.ChatRoomTLVRoomName, "default exchange"),
-								wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
-								wire.NewTLV(wire.ChatRoomTLVCharSet1, "us-ascii"),
-								wire.NewTLV(wire.ChatRoomTLVLang1, "en"),
-								wire.NewTLV(wire.ChatRoomTLVCharSet2, "us-ascii"),
-								wire.NewTLV(wire.ChatRoomTLVLang2, "en"),
-							},
-						},
+						TLVBlock:   defaultExchangeCfg,
 					}),
 				},
 			},
@@ -142,4 +144,25 @@ func (s ChatNavService) RequestRoomInfo(_ context.Context, inFrame wire.SNACFram
 			},
 		},
 	}, nil
+}
+
+func (s ChatNavService) ExchangeInfo(_ context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) wire.SNACMessage {
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ChatNav,
+			SubGroup:  wire.ChatNavNavInfo,
+			RequestID: inFrame.RequestID,
+		},
+		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
+					wire.NewTLV(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
+						Identifier: inBody.Exchange,
+						TLVBlock:   defaultExchangeCfg,
+					}),
+				},
+			},
+		},
+	}
 }

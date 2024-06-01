@@ -14,6 +14,7 @@ import (
 
 type ChatNavService interface {
 	CreateRoom(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (wire.SNACMessage, error)
+	ExchangeInfo(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) wire.SNACMessage
 	RequestChatRights(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 	RequestRoomInfo(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (wire.SNACMessage, error)
 }
@@ -35,6 +36,16 @@ type ChatNavHandler struct {
 func (rt ChatNavHandler) RequestChatRights(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
 	outSNAC := rt.ChatNavService.RequestChatRights(ctx, inFrame)
 	rt.LogRequestAndResponse(ctx, inFrame, nil, outSNAC.Frame, outSNAC.Body)
+	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
+}
+
+func (rt ChatNavHandler) RequestExchangeInfo(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
+	inBody := wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo{}
+	if err := wire.Unmarshal(&inBody, r); err != nil {
+		return err
+	}
+	outSNAC := rt.ChatNavService.ExchangeInfo(ctx, inFrame, inBody)
+	rt.LogRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
 
