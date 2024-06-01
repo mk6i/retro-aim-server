@@ -625,6 +625,7 @@ func (s OServiceServiceForBOS) HostOnline() wire.SNACMessage {
 				wire.Locate,
 				wire.OService,
 				wire.BART,
+				wire.PermitDeny,
 			},
 		},
 	}

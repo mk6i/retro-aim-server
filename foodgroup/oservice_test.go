@@ -1366,6 +1366,7 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 				wire.Locate,
 				wire.OService,
 				wire.BART,
+				wire.PermitDeny,
 			},
 		},
 	}
