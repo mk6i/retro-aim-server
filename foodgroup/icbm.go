@@ -213,7 +213,16 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 
 	recipSess := s.messageRelayer.RetrieveByScreenName(inBody.ScreenName)
 	if recipSess == nil {
-		return wire.SNACMessage{}, nil
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.ICBM,
+				SubGroup:  wire.ICBMErr,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNACError{
+				Code: wire.ErrorCodeNotLoggedOn,
+			},
+		}, nil
 	}
 
 	increase := evilDelta
