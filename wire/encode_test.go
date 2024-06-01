@@ -323,6 +323,12 @@ func TestMarshal(t *testing.T) {
 			},
 			wantErr: ErrMarshalFailure,
 		},
+		{
+			name:    "empty snac",
+			w:       &bytes.Buffer{},
+			given:   nil,
+			wantErr: ErrMarshalFailureNilSNAC,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

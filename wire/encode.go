@@ -10,12 +10,16 @@ import (
 )
 
 var ErrMarshalFailure = errors.New("failed to marshal")
+var ErrMarshalFailureNilSNAC = errors.New("attempting to marshal a nil SNAC")
 
 func Marshal(v any, w io.Writer) error {
 	return marshal(reflect.TypeOf(v), reflect.ValueOf(v), "", w)
 }
 
 func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer) error {
+	if t == nil {
+		return ErrMarshalFailureNilSNAC
+	}
 	switch t.Kind() {
 	case reflect.Struct:
 		for i := 0; i < t.NumField(); i++ {
