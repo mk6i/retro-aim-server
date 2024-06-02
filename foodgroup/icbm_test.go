@@ -352,9 +352,11 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		// recipRetrieveErr is the error returned by the recipient session
 		// lookup
 		recipRetrieveErr error
-		// senderScreenName is the session name of the user sending the IM
+		// senderScreenName is the session of the user sending the EvilRequest
 		senderSession *state.Session
-		// recipientScreenName is the screen name of the user receiving the IM
+		// recipientSession is the session of the user receiving the EvilNotification
+		recipientSession *state.Session
+		// recipientScreenName is the screen name of the user receiving the EvilNotification
 		recipientScreenName string
 		// recipientBuddies is a list of the recipient's buddies that get
 		// updated warning level
@@ -375,6 +377,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			name:                "transmit anonymous warning from sender to recipient",
 			blockedState:        state.BlockedNo,
 			senderSession:       newTestSession("sender-screen-name"),
+			recipientSession:    newTestSession("recipient-screen-name", sessOptCannedSignonTime),
 			recipientScreenName: "recipient-screen-name",
 			broadcastMessage: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -429,6 +432,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			name:                "transmit non-anonymous warning from sender to recipient",
 			blockedState:        state.BlockedNo,
 			senderSession:       newTestSession("sender-screen-name"),
+			recipientSession:    newTestSession("recipient-screen-name", sessOptCannedSignonTime),
 			recipientScreenName: "recipient-screen-name",
 			recipientBuddies:    []string{"buddy1", "buddy2"},
 			broadcastMessage: wire.SNACMessage{
@@ -487,6 +491,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			name:                "don't transmit non-anonymous warning from sender to recipient because sender has blocked recipient",
 			blockedState:        state.BlockedA,
 			senderSession:       newTestSession("sender-screen-name"),
+			recipientSession:    nil,
 			recipientScreenName: "recipient-screen-name",
 			recipientBuddies:    []string{"buddy1", "buddy2"},
 			inputSNAC: wire.SNACMessage{
@@ -513,6 +518,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			name:                "don't transmit non-anonymous warning from sender to recipient because recipient has blocked sender",
 			blockedState:        state.BlockedB,
 			senderSession:       newTestSession("sender-screen-name"),
+			recipientSession:    nil,
 			recipientScreenName: "recipient-screen-name",
 			recipientBuddies:    []string{"buddy1", "buddy2"},
 			inputSNAC: wire.SNACMessage{
@@ -536,8 +542,9 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			},
 		},
 		{
-			name:                "don't let users block themselves",
+			name:                "don't let users warn themselves",
 			senderSession:       newTestSession("sender-screen-name"),
+			recipientSession:    nil,
 			recipientScreenName: "sender-screen-name",
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -556,6 +563,60 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				},
 				Body: wire.SNACError{
 					Code: wire.ErrorCodeNotSupportedByHost,
+				},
+			},
+		},
+		{
+			name:                "don't transmit non-anonymous warning from sender to recipient because recipient is offline",
+			blockedState:        state.BlockedNo,
+			senderSession:       newTestSession("sender-screen-name"),
+			recipientSession:    nil,
+			recipientScreenName: "recipient-screen-name",
+			recipientBuddies:    []string{"buddy1", "buddy2"},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     0, // make it identified
+					ScreenName: "recipient-screen-name",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeNotLoggedOn,
+				},
+			},
+		},
+		{
+			name:                "don't transmit anonymous warning from sender to recipient because recipient is offline",
+			blockedState:        state.BlockedNo,
+			senderSession:       newTestSession("sender-screen-name"),
+			recipientSession:    nil,
+			recipientScreenName: "recipient-screen-name",
+			recipientBuddies:    []string{"buddy1", "buddy2"},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     1, // make it anonymous
+					ScreenName: "recipient-screen-name",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeNotLoggedOn,
 				},
 			},
 		},
@@ -579,11 +640,10 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				Feedbag(tc.recipientScreenName).
 				Return(nil, nil).
 				Maybe()
-			recipSess := newTestSession(tc.recipientScreenName, sessOptCannedSignonTime)
 			messageRelayer := newMockMessageRelayer(t)
 			messageRelayer.EXPECT().
 				RetrieveByScreenName(tc.recipientScreenName).
-				Return(recipSess).
+				Return(tc.recipientSession).
 				Maybe()
 			messageRelayer.EXPECT().
 				RelayToScreenName(mock.Anything, tc.recipientScreenName, tc.expectSNACToClient).
