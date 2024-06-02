@@ -16,10 +16,10 @@ import (
 
 type AuthService interface {
 	BUCPChallenge(bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
-	BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUUID func() uuid.UUID, fn func(screenName string) (state.User, error)) (wire.SNACMessage, error)
-	FLAPLogin(frame wire.FLAPSignonFrame, newUUIDFn func() uuid.UUID, newUserFn func(screenName string) (state.User, error)) (wire.TLVRestBlock, error)
-	RetrieveBOSSession(sessionID string) (*state.Session, error)
-	RetrieveChatSession(loginCookie []byte) (*state.Session, error)
+	BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, fn func(screenName string) (state.User, error)) (wire.SNACMessage, error)
+	FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName string) (state.User, error)) (wire.TLVRestBlock, error)
+	RegisterBOSSession(sessionID string) (*state.Session, error)
+	RegisterChatSession(loginCookie []byte) (*state.Session, error)
 	Signout(ctx context.Context, sess *state.Session) error
 	SignoutChat(ctx context.Context, sess *state.Session) error
 }
@@ -30,6 +30,7 @@ type AuthServer struct {
 	AuthService
 	config.Config
 	Logger *slog.Logger
+	CookieCracker
 }
 
 // Start starts the authentication server and listens for new connections.
@@ -79,7 +80,7 @@ func (rt AuthServer) handleNewConnection(rwc io.ReadWriteCloser) error {
 }
 
 func (rt AuthServer) processFLAPAuth(signonFrame wire.FLAPSignonFrame, flapc *wire.FlapClient) error {
-	tlv, err := rt.AuthService.FLAPLogin(signonFrame, uuid.New, state.NewStubUser)
+	tlv, err := rt.AuthService.FLAPLogin(signonFrame, state.NewStubUser)
 	if err != nil {
 		return err
 	}
@@ -105,7 +106,7 @@ func (rt AuthServer) processBUCPAuth(flapc *wire.FlapClient, err error) error {
 		return err
 	}
 
-	outSNAC, err = rt.BUCPLogin(loginRequest, uuid.New, state.NewStubUser)
+	outSNAC, err = rt.BUCPLogin(loginRequest, state.NewStubUser)
 	if err != nil {
 		return err
 	}

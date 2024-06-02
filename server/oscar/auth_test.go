@@ -80,7 +80,7 @@ func TestBUCPAuthService_handleNewConnection(t *testing.T) {
 			Body: wire.SNAC_0x17_0x07_BUCPChallengeResponse{},
 		}, nil)
 	authService.EXPECT().
-		BUCPLogin(mock.Anything, mock.Anything, mock.Anything).
+		BUCPLogin(mock.Anything, mock.Anything).
 		Return(wire.SNACMessage{
 			Frame: wire.SNACFrame{
 				FoodGroup: wire.BUCP,

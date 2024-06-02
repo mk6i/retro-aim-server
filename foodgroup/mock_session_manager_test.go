@@ -20,17 +20,17 @@ func (_m *mockSessionManager) EXPECT() *mockSessionManager_Expecter {
 	return &mockSessionManager_Expecter{mock: &_m.Mock}
 }
 
-// AddSession provides a mock function with given fields: sessID, screenName
-func (_m *mockSessionManager) AddSession(sessID string, screenName string) *state.Session {
-	ret := _m.Called(sessID, screenName)
+// AddSession provides a mock function with given fields: screenName
+func (_m *mockSessionManager) AddSession(screenName string) *state.Session {
+	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddSession")
 	}
 
 	var r0 *state.Session
-	if rf, ok := ret.Get(0).(func(string, string) *state.Session); ok {
-		r0 = rf(sessID, screenName)
+	if rf, ok := ret.Get(0).(func(string) *state.Session); ok {
+		r0 = rf(screenName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*state.Session)
@@ -46,15 +46,14 @@ type mockSessionManager_AddSession_Call struct {
 }
 
 // AddSession is a helper method to define mock.On call
-//   - sessID string
 //   - screenName string
-func (_e *mockSessionManager_Expecter) AddSession(sessID interface{}, screenName interface{}) *mockSessionManager_AddSession_Call {
-	return &mockSessionManager_AddSession_Call{Call: _e.mock.On("AddSession", sessID, screenName)}
+func (_e *mockSessionManager_Expecter) AddSession(screenName interface{}) *mockSessionManager_AddSession_Call {
+	return &mockSessionManager_AddSession_Call{Call: _e.mock.On("AddSession", screenName)}
 }
 
-func (_c *mockSessionManager_AddSession_Call) Run(run func(sessID string, screenName string)) *mockSessionManager_AddSession_Call {
+func (_c *mockSessionManager_AddSession_Call) Run(run func(screenName string)) *mockSessionManager_AddSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -64,7 +63,7 @@ func (_c *mockSessionManager_AddSession_Call) Return(_a0 *state.Session) *mockSe
 	return _c
 }
 
-func (_c *mockSessionManager_AddSession_Call) RunAndReturn(run func(string, string) *state.Session) *mockSessionManager_AddSession_Call {
+func (_c *mockSessionManager_AddSession_Call) RunAndReturn(run func(string) *state.Session) *mockSessionManager_AddSession_Call {
 	_c.Call.Return(run)
 	return _c
 }

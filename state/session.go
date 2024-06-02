@@ -26,7 +26,6 @@ type Session struct {
 	awayMessage    string
 	chatRoomCookie string
 	closed         bool
-	id             string
 	idle           bool
 	idleTime       time.Time
 	invisible      bool
@@ -87,20 +86,6 @@ func (s *Session) ScreenName() string {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.screenName
-}
-
-// SetID sets the user's session ID.
-func (s *Session) SetID(ID string) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	s.id = ID
-}
-
-// ID returns the user's session ID.
-func (s *Session) ID() string {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	return s.id
 }
 
 // SetSignonTime sets the user's sign-ontime.

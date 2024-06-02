@@ -13,11 +13,11 @@ import (
 func TestInMemorySessionManager_AddSession(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	want1 := sm.AddSession("sess-id-1", "user-screen-name")
+	want1 := sm.AddSession("user-screen-name")
 	have1 := sm.RetrieveByScreenName("user-screen-name")
 	assert.Same(t, want1, have1)
 
-	want2 := sm.AddSession("sess-id-2", "user-screen-name")
+	want2 := sm.AddSession("user-screen-name")
 	have2 := sm.RetrieveByScreenName("user-screen-name")
 	assert.Same(t, want2, have2)
 
@@ -37,11 +37,9 @@ func TestInMemorySessionManager_Remove(t *testing.T) {
 			name: "remove user that exists",
 			given: []*Session{
 				{
-					id:         "sess-id-1",
 					screenName: "user-screen-name-1",
 				},
 				{
-					id:         "sess-id-2",
 					screenName: "user-screen-name-2",
 				},
 			},
@@ -56,7 +54,7 @@ func TestInMemorySessionManager_Remove(t *testing.T) {
 			sm := NewInMemorySessionManager(slog.Default())
 
 			for _, sess := range tt.given {
-				sm.AddSession(sess.id, sess.screenName)
+				sm.AddSession(sess.screenName)
 			}
 
 			sm.RemoveSession(sm.RetrieveByScreenName(tt.remove))
@@ -79,7 +77,6 @@ func TestInMemorySessionManager_Empty(t *testing.T) {
 			name: "session manager is not empty",
 			given: []*Session{
 				{
-					id:         "sess-id-1",
 					screenName: "user-screen-name-1",
 				},
 			},
@@ -96,7 +93,7 @@ func TestInMemorySessionManager_Empty(t *testing.T) {
 			sm := NewInMemorySessionManager(slog.Default())
 
 			for _, sess := range tt.given {
-				sm.AddSession(sess.id, sess.screenName)
+				sm.AddSession(sess.screenName)
 			}
 
 			have := sm.Empty()
@@ -107,32 +104,30 @@ func TestInMemorySessionManager_Empty(t *testing.T) {
 
 func TestInMemorySessionManager_Retrieve(t *testing.T) {
 	tests := []struct {
-		name     string
-		given    []*Session
-		lookupID string
-		remove   string
-		wantID   string
+		name             string
+		given            []*Session
+		lookupScreenName string
+		remove           string
+		wantScreenName   string
 	}{
 		{
 			name: "lookup finds match",
 			given: []*Session{
 				{
-					id:         "sess-id-1",
 					screenName: "user-screen-name-1",
 				},
 				{
-					id:         "sess-id-2",
 					screenName: "user-screen-name-2",
 				},
 			},
-			lookupID: "sess-id-2",
-			wantID:   "sess-id-2",
+			lookupScreenName: "user-screen-name-2",
+			wantScreenName:   "user-screen-name-2",
 		},
 		{
-			name:     "lookup does not find match",
-			given:    []*Session{},
-			lookupID: "sess-id-3",
-			wantID:   "",
+			name:             "lookup does not find match",
+			given:            []*Session{},
+			lookupScreenName: "user-screen-name-3",
+			wantScreenName:   "",
 		},
 	}
 	for _, tt := range tests {
@@ -140,14 +135,14 @@ func TestInMemorySessionManager_Retrieve(t *testing.T) {
 			sm := NewInMemorySessionManager(slog.Default())
 
 			for _, sess := range tt.given {
-				sm.AddSession(sess.id, sess.screenName)
+				sm.AddSession(sess.screenName)
 			}
 
-			have := sm.RetrieveSession(tt.lookupID)
+			have := sm.RetrieveSession(tt.lookupScreenName)
 			if have == nil {
-				assert.Empty(t, tt.wantID)
+				assert.Empty(t, tt.wantScreenName)
 			} else {
-				assert.Equal(t, tt.wantID, have.ID())
+				assert.Equal(t, tt.wantScreenName, have.ScreenName())
 			}
 		})
 	}
@@ -156,9 +151,9 @@ func TestInMemorySessionManager_Retrieve(t *testing.T) {
 func TestInMemorySessionManager_RelayToScreenNames(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("sess-id-1", "user-screen-name-1")
-	user2 := sm.AddSession("sess-id-2", "user-screen-name-2")
-	user3 := sm.AddSession("sess-id-3", "user-screen-name-3")
+	user1 := sm.AddSession("user-screen-name-1")
+	user2 := sm.AddSession("user-screen-name-2")
+	user3 := sm.AddSession("user-screen-name-3")
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
@@ -185,8 +180,8 @@ func TestInMemorySessionManager_RelayToScreenNames(t *testing.T) {
 func TestInMemorySessionManager_Broadcast(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("sess-id-1", "user-screen-name-1")
-	user2 := sm.AddSession("sess-id-2", "user-screen-name-2")
+	user1 := sm.AddSession("user-screen-name-1")
+	user2 := sm.AddSession("user-screen-name-2")
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
@@ -206,8 +201,8 @@ func TestInMemorySessionManager_Broadcast(t *testing.T) {
 func TestInMemorySessionManager_Broadcast_SkipClosedSession(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("sess-id-1", "user-screen-name-1")
-	user2 := sm.AddSession("sess-id-2", "user-screen-name-2")
+	user1 := sm.AddSession("user-screen-name-1")
+	user2 := sm.AddSession("user-screen-name-2")
 	user2.Close()
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
@@ -229,8 +224,8 @@ func TestInMemorySessionManager_Broadcast_SkipClosedSession(t *testing.T) {
 func TestInMemorySessionManager_RelayToScreenName_SessionExists(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("sess-id-1", "user-screen-name-1")
-	user2 := sm.AddSession("sess-id-2", "user-screen-name-2")
+	user1 := sm.AddSession("user-screen-name-1")
+	user2 := sm.AddSession("user-screen-name-2")
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
@@ -252,7 +247,7 @@ func TestInMemorySessionManager_RelayToScreenName_SessionExists(t *testing.T) {
 func TestInMemorySessionManager_RelayToScreenName_SessionNotExist(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("sess-id-1", "user-screen-name-1")
+	user1 := sm.AddSession("user-screen-name-1")
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
@@ -269,7 +264,7 @@ func TestInMemorySessionManager_RelayToScreenName_SessionNotExist(t *testing.T) 
 func TestInMemorySessionManager_RelayToScreenName_SkipFullSession(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("sess-id-1", "user-screen-name-1")
+	user1 := sm.AddSession("user-screen-name-1")
 	msg := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
 	wantCount := 0
@@ -300,9 +295,9 @@ loop:
 func TestInMemorySessionManager_RelayToAllExcept(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("sess-id-1", "user-screen-name-1")
-	user2 := sm.AddSession("sess-id-2", "user-screen-name-2")
-	user3 := sm.AddSession("sess-id-3", "user-screen-name-3")
+	user1 := sm.AddSession("user-screen-name-1")
+	user2 := sm.AddSession("user-screen-name-2")
+	user3 := sm.AddSession("user-screen-name-3")
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 

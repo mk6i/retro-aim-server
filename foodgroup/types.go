@@ -80,7 +80,7 @@ type UserManager interface {
 
 type SessionManager interface {
 	Empty() bool
-	AddSession(sessID string, screenName string) *state.Session
+	AddSession(screenName string) *state.Session
 	RemoveSession(sess *state.Session)
 	RetrieveSession(ID string) *state.Session
 }
@@ -111,4 +111,8 @@ type ChatRegistry interface {
 type BARTManager interface {
 	BARTUpsert(itemHash []byte, payload []byte) error
 	BARTRetrieve(itemHash []byte) ([]byte, error)
+}
+
+type CookieIssuer interface {
+	Issue(data []byte) ([]byte, error)
 }

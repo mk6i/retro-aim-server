@@ -1,7 +1,6 @@
 package oscar
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -24,8 +23,10 @@ type OnlineNotifier interface {
 // service.
 type BOSServer struct {
 	AuthService
+	CookieCracker
 	Handler
-	Logger *slog.Logger
+	ListenAddr string
+	Logger     *slog.Logger
 	OnlineNotifier
 	config.Config
 }
@@ -34,15 +35,14 @@ type BOSServer struct {
 // authentication handshake sequences are handled by this method. The remaining
 // requests are relayed to BOSRouter.
 func (rt BOSServer) Start() {
-	addr := net.JoinHostPort("", rt.Config.BOSPort)
-	listener, err := net.Listen("tcp", addr)
+	listener, err := net.Listen("tcp", rt.ListenAddr)
 	if err != nil {
 		rt.Logger.Error("unable to bind BOS server address", "err", err.Error())
 		os.Exit(1)
 	}
 	defer listener.Close()
 
-	rt.Logger.Info("starting BOS service", "host", net.JoinHostPort(rt.Config.OSCARHost, rt.Config.BOSPort))
+	rt.Logger.Info("starting service", "host", net.JoinHostPort(rt.Config.OSCARHost, rt.Config.BOSPort))
 
 	for {
 		conn, err := listener.Accept()
@@ -72,16 +72,17 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 		return err
 	}
 
-	var ok bool
-	sessionID, ok := flap.Slice(wire.OServiceTLVTagsLoginCookie)
+	authCookie, ok := flap.Slice(wire.OServiceTLVTagsLoginCookie)
 	if !ok {
 		return errors.New("unable to get session id from payload")
 	}
 
-	// Trim the padding added to the auth cookie by the auth service.
-	sessionID = bytes.TrimRight(sessionID, "\x00")
-	sess, err := rt.RetrieveBOSSession(string(sessionID))
+	token, err := rt.CookieCracker.Crack(authCookie)
+	if err != nil {
+		return err
+	}
 
+	sess, err := rt.RegisterBOSSession(string(token))
 	if err != nil {
 		return err
 	}

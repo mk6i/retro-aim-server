@@ -30,7 +30,6 @@ func (m pipeRWC) Close() error {
 
 func TestBOSService_handleNewConnection(t *testing.T) {
 	sess := state.NewSession()
-	sess.SetID("login-cookie-1234")
 
 	clientReader, serverWriter := io.Pipe()
 	serverReader, clientWriter := io.Pipe()
@@ -48,11 +47,7 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 		flapSignonFrame = wire.FLAPSignonFrame{
 			FLAPVersion: 1,
 		}
-		// create padded auth cookie
-		cookie := make([]byte, 220)
-		copy(cookie, sess.ID())
-		flapSignonFrame.Append(wire.NewTLV(wire.OServiceTLVTagsLoginCookie, cookie))
-
+		flapSignonFrame.Append(wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")))
 		buf = &bytes.Buffer{}
 		assert.NoError(t, wire.Marshal(flapSignonFrame, buf))
 		flap = wire.FLAPFrame{
@@ -86,7 +81,7 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 
 	authService := newMockAuthService(t)
 	authService.EXPECT().
-		RetrieveBOSSession(sess.ID()).
+		RegisterBOSSession("user_screen_name").
 		Return(sess, nil)
 	authService.EXPECT().
 		Signout(mock.Anything, sess).
@@ -103,6 +98,11 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{},
 		})
 
+	cookieCracker := newMockCookieCracker(t)
+	cookieCracker.EXPECT().
+		Crack([]byte("the-cookie")).
+		Return([]byte("user_screen_name"), nil)
+
 	router := newMockHandler(t)
 	router.EXPECT().
 		Handle(mock.Anything, sess, mock.Anything, mock.Anything, mock.Anything).
@@ -115,6 +115,7 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 
 	rt := BOSServer{
 		AuthService:    authService,
+		CookieCracker:  cookieCracker,
 		Handler:        router,
 		Logger:         slog.Default(),
 		OnlineNotifier: onlineNotifier,

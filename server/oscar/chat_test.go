@@ -16,7 +16,6 @@ import (
 
 func TestChatService_handleNewConnection(t *testing.T) {
 	sess := state.NewSession()
-	sess.SetID("session-id-1234")
 
 	clientReader, serverWriter := io.Pipe()
 	serverReader, clientWriter := io.Pipe()
@@ -68,7 +67,7 @@ func TestChatService_handleNewConnection(t *testing.T) {
 
 	authService := newMockAuthService(t)
 	authService.EXPECT().
-		RetrieveChatSession([]byte(`the-chat-login-cookie`)).
+		RegisterChatSession([]byte(`user-screen-name`)).
 		Return(sess, nil)
 	authService.EXPECT().
 		SignoutChat(mock.Anything, sess).
@@ -85,6 +84,11 @@ func TestChatService_handleNewConnection(t *testing.T) {
 			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{},
 		})
 
+	cookieCracker := newMockCookieCracker(t)
+	cookieCracker.EXPECT().
+		Crack([]byte(`the-chat-login-cookie`)).
+		Return([]byte(`user-screen-name`), nil)
+
 	bosRouter := newMockHandler(t)
 	bosRouter.EXPECT().
 		Handle(mock.Anything, sess, mock.Anything, mock.Anything, mock.Anything).
@@ -92,6 +96,7 @@ func TestChatService_handleNewConnection(t *testing.T) {
 
 	rt := ChatServer{
 		AuthService:    authService,
+		CookieCracker:  cookieCracker,
 		Handler:        bosRouter,
 		Logger:         slog.Default(),
 		OnlineNotifier: onlineNotifier,

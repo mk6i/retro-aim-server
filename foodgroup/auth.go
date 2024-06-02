@@ -14,17 +14,16 @@ import (
 	"github.com/google/uuid"
 )
 
-// authCookieLen is the fixed auth cookie length.
-const authCookieLen = 256
-
 // NewAuthService creates a new instance of AuthService.
-func NewAuthService(cfg config.Config,
+func NewAuthService(
+	cfg config.Config,
 	sessionManager SessionManager,
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
 	userManager UserManager,
 	chatRegistry ChatRegistry,
 	legacyBuddyListManager LegacyBuddyListManager,
+	cookieIssuer CookieIssuer,
 ) *AuthService {
 	return &AuthService{
 		chatRegistry:           chatRegistry,
@@ -34,6 +33,7 @@ func NewAuthService(cfg config.Config,
 		messageRelayer:         messageRelayer,
 		sessionManager:         sessionManager,
 		userManager:            userManager,
+		cookieIssuer:           cookieIssuer,
 	}
 }
 
@@ -48,26 +48,27 @@ type AuthService struct {
 	messageRelayer         MessageRelayer
 	sessionManager         SessionManager
 	userManager            UserManager
+	cookieIssuer           CookieIssuer
 }
 
-// RetrieveChatSession returns a chat room session. Return nil if the session
-// does not exist.
-func (s AuthService) RetrieveChatSession(loginCookie []byte) (*state.Session, error) {
+// RegisterChatSession creates and returns a chat room session.
+func (s AuthService) RegisterChatSession(loginCookie []byte) (*state.Session, error) {
 	c := chatLoginCookie{}
 	if err := wire.Unmarshal(&c, bytes.NewBuffer(loginCookie)); err != nil {
 		return nil, err
 	}
-	_, chatSessMgr, err := s.chatRegistry.Retrieve(c.Cookie)
+	room, chatSessMgr, err := s.chatRegistry.Retrieve(c.ChatCookie)
 	if err != nil {
 		return nil, err
 	}
-	return chatSessMgr.(SessionManager).RetrieveSession(c.SessID), nil
+	chatSess := chatSessMgr.(SessionManager).AddSession(c.ScreenName)
+	chatSess.SetChatRoomCookie(room.Cookie)
+	return chatSess, nil
 }
 
-// RetrieveBOSSession returns a user's session. Return nil if the session does
-// not exist.
-func (s AuthService) RetrieveBOSSession(sessionID string) (*state.Session, error) {
-	return s.sessionManager.RetrieveSession(sessionID), nil
+// RegisterBOSSession creates and returns a user's session.
+func (s AuthService) RegisterBOSSession(sessionID string) (*state.Session, error) {
+	return s.sessionManager.AddSession(sessionID), nil
 }
 
 // Signout removes this user's session and notifies users who have this user on
@@ -167,11 +168,10 @@ func (s AuthService) BUCPChallenge(
 // (wire.LoginTLVTagsErrorSubcode).
 func (s AuthService) BUCPLogin(
 	bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest,
-	newUUIDFn func() uuid.UUID,
 	newUserFn func(screenName string) (state.User, error),
 ) (wire.SNACMessage, error) {
 
-	block, err := s.login(bodyIn.TLVList, newUserFn, newUUIDFn)
+	block, err := s.login(bodyIn.TLVList, newUserFn)
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}
@@ -197,12 +197,8 @@ func (s AuthService) BUCPLogin(
 // (wire.LoginTLVTagsReconnectHere) and an authorization cookie
 // (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
 // (wire.LoginTLVTagsErrorSubcode).
-func (s AuthService) FLAPLogin(
-	frame wire.FLAPSignonFrame,
-	newUUIDFn func() uuid.UUID,
-	newUserFn func(screenName string) (state.User, error),
-) (wire.TLVRestBlock, error) {
-	return s.login(frame.TLVList, newUserFn, newUUIDFn)
+func (s AuthService) FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName string) (state.User, error)) (wire.TLVRestBlock, error) {
+	return s.login(frame.TLVList, newUserFn)
 }
 
 // login validates a user's credentials and creates their session. it returns
@@ -210,7 +206,6 @@ func (s AuthService) FLAPLogin(
 func (s AuthService) login(
 	TLVList wire.TLVList,
 	newUserFn func(screenName string) (state.User, error),
-	newUUIDFn func() uuid.UUID,
 ) (wire.TLVRestBlock, error) {
 
 	screenName, found := TLVList.String(wire.LoginTLVTagsScreenName)
@@ -249,24 +244,16 @@ func (s AuthService) login(
 			}
 		}
 
-		sess := s.sessionManager.AddSession(newUUIDFn().String(), screenName)
-
-		// Some clients (such as perl NET::OSCAR) expect the auth cookie to be
-		// exactly 256 bytes, even though the cookie is stored in a
-		// variable-length TLV. Pad the auth cookie to make sure it's exactly
-		// 256 bytes.
-		if len(sess.ID()) > authCookieLen {
-			return wire.TLVRestBlock{}, fmt.Errorf("sess is too long, expect 256 bytes, got %d", len(sess.ID()))
+		cookie, err := s.cookieIssuer.Issue([]byte(screenName))
+		if err != nil {
+			return wire.TLVRestBlock{}, fmt.Errorf("failed to make auth cookie: %w", err)
 		}
-		authCookie := make([]byte, authCookieLen)
-		copy(authCookie, sess.ID())
-
 		// auth success
 		return wire.TLVRestBlock{
 			TLVList: []wire.TLV{
 				wire.NewTLV(wire.LoginTLVTagsScreenName, screenName),
 				wire.NewTLV(wire.LoginTLVTagsReconnectHere, net.JoinHostPort(s.config.OSCARHost, s.config.BOSPort)),
-				wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, authCookie),
+				wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, cookie),
 			},
 		}, nil
 	}

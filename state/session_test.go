@@ -19,15 +19,6 @@ func TestSession_SetAndGetAwayMessage(t *testing.T) {
 	assert.Equal(t, msg, s.AwayMessage())
 }
 
-func TestSession_SetAndGetID(t *testing.T) {
-	s := NewSession()
-	// make sure NewSession creates a default ID
-	assert.NotEmpty(t, s.SetID)
-	newID := "new-id"
-	s.SetID(newID)
-	assert.Equal(t, newID, s.ID())
-}
-
 func TestSession_IncrementAndGetWarning(t *testing.T) {
 	s := NewSession()
 	assert.Zero(t, s.Warning())

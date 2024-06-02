@@ -15,13 +15,11 @@ import (
 )
 
 func TestAuthService_BUCPLoginRequest(t *testing.T) {
-	sessUUID := uuid.UUID{1, 2, 3}
 	user := state.User{
 		ScreenName: "screen_name",
 		AuthKey:    "auth_key",
 	}
 	assert.NoError(t, user.HashPassword("the_password"))
-	userSession := newTestSession(user.ScreenName, sessOptID(sessUUID.String()))
 
 	cases := []struct {
 		// name is the unit test name
@@ -63,13 +61,10 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						},
 					},
 				},
-				sessionManagerParams: sessionManagerParams{
-					addSessionParams: addSessionParams{
-						{
-							sessID:     userSession.ID(),
-							screenName: user.ScreenName,
-							result:     userSession,
-						},
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data:   []byte(user.ScreenName),
+						cookie: []byte("the-cookie"),
 					},
 				},
 			},
@@ -83,8 +78,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
-								make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
+							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 						},
 					},
 				},
@@ -119,13 +113,10 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						},
 					},
 				},
-				sessionManagerParams: sessionManagerParams{
-					addSessionParams: addSessionParams{
-						{
-							sessID:     userSession.ID(),
-							screenName: user.ScreenName,
-							result:     userSession,
-						},
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data:   []byte(user.ScreenName),
+						cookie: []byte("the-cookie"),
 					},
 				},
 			},
@@ -142,8 +133,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
-								make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
+							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 						},
 					},
 				},
@@ -178,13 +168,10 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						},
 					},
 				},
-				sessionManagerParams: sessionManagerParams{
-					addSessionParams: addSessionParams{
-						{
-							sessID:     userSession.ID(),
-							screenName: user.ScreenName,
-							result:     userSession,
-						},
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data:   []byte(user.ScreenName),
+						cookie: []byte("the-cookie"),
 					},
 				},
 			},
@@ -201,8 +188,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
-								make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
+							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 						},
 					},
 				},
@@ -238,13 +224,10 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						},
 					},
 				},
-				sessionManagerParams: sessionManagerParams{
-					addSessionParams: addSessionParams{
-						{
-							sessID:     userSession.ID(),
-							screenName: user.ScreenName,
-							result:     userSession,
-						},
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data:   []byte(user.ScreenName),
+						cookie: []byte("the-cookie"),
 					},
 				},
 			},
@@ -261,8 +244,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
-								make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
+							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 						},
 					},
 				},
@@ -407,20 +389,20 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 					Return(params.err)
 			}
 			sessionManager := newMockSessionManager(t)
-			for _, params := range tc.mockParams.addSessionParams {
-				sessionManager.EXPECT().
-					AddSession(params.sessID, params.screenName).
-					Return(params.result)
+			cookieIssuer := newMockCookieIssuer(t)
+			for _, params := range tc.mockParams.cookieIssuerParams {
+				cookieIssuer.EXPECT().
+					Issue(params.data).
+					Return(params.cookie, params.err)
 			}
+
 			svc := AuthService{
 				config:         tc.cfg,
+				cookieIssuer:   cookieIssuer,
 				sessionManager: sessionManager,
 				userManager:    userManager,
 			}
-			fnNewUUID := func() uuid.UUID {
-				return sessUUID
-			}
-			outputSNAC, err := svc.BUCPLogin(tc.inputSNAC, fnNewUUID, tc.newUserFn)
+			outputSNAC, err := svc.BUCPLogin(tc.inputSNAC, tc.newUserFn)
 			assert.ErrorIs(t, err, tc.wantErr)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
@@ -428,13 +410,11 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 }
 
 func TestAuthService_FLAPLoginResponse(t *testing.T) {
-	sessUUID := uuid.UUID{1, 2, 3}
 	user := state.User{
 		ScreenName: "screen_name",
 		AuthKey:    "auth_key",
 	}
 	assert.NoError(t, user.HashPassword("the_password"))
-	userSession := newTestSession(user.ScreenName, sessOptID(sessUUID.String()))
 
 	// obfuscated password value: "the_password"
 	roastedPassword := []byte{0x87, 0x4E, 0xE4, 0x9B, 0x49, 0xE7, 0xA8, 0xE1, 0x06, 0xCC, 0xCB, 0x82}
@@ -479,13 +459,10 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 						},
 					},
 				},
-				sessionManagerParams: sessionManagerParams{
-					addSessionParams: addSessionParams{
-						{
-							sessID:     userSession.ID(),
-							screenName: user.ScreenName,
-							result:     userSession,
-						},
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data:   []byte(user.ScreenName),
+						cookie: []byte("the-cookie"),
 					},
 				},
 			},
@@ -493,8 +470,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVList: wire.TLVList{
 					wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
-						make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
+					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 				},
 			},
 		},
@@ -527,13 +503,10 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 						},
 					},
 				},
-				sessionManagerParams: sessionManagerParams{
-					addSessionParams: addSessionParams{
-						{
-							sessID:     userSession.ID(),
-							screenName: user.ScreenName,
-							result:     userSession,
-						},
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data:   []byte(user.ScreenName),
+						cookie: []byte("the-cookie"),
 					},
 				},
 			},
@@ -544,8 +517,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVList: wire.TLVList{
 					wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
-						make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
+					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 				},
 			},
 		},
@@ -578,13 +550,10 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 						},
 					},
 				},
-				sessionManagerParams: sessionManagerParams{
-					addSessionParams: addSessionParams{
-						{
-							sessID:     userSession.ID(),
-							screenName: user.ScreenName,
-							result:     userSession,
-						},
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data:   []byte(user.ScreenName),
+						cookie: []byte("the-cookie"),
 					},
 				},
 			},
@@ -595,8 +564,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVList: wire.TLVList{
 					wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
-						make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
+					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 				},
 			},
 		},
@@ -630,13 +598,10 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 						},
 					},
 				},
-				sessionManagerParams: sessionManagerParams{
-					addSessionParams: addSessionParams{
-						{
-							sessID:     userSession.ID(),
-							screenName: user.ScreenName,
-							result:     userSession,
-						},
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data:   []byte(user.ScreenName),
+						cookie: []byte("the-cookie"),
 					},
 				},
 			},
@@ -647,8 +612,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVList: wire.TLVList{
 					wire.NewTLV(wire.LoginTLVTagsScreenName, user.ScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, append([]byte(userSession.ID()),
-						make([]byte, authCookieLen-len([]byte(userSession.ID())))...)),
+					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 				},
 			},
 		},
@@ -783,20 +747,19 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 					Return(params.err)
 			}
 			sessionManager := newMockSessionManager(t)
-			for _, params := range tc.mockParams.addSessionParams {
-				sessionManager.EXPECT().
-					AddSession(params.sessID, params.screenName).
-					Return(params.result)
+			cookieIssuer := newMockCookieIssuer(t)
+			for _, params := range tc.mockParams.cookieIssuerParams {
+				cookieIssuer.EXPECT().
+					Issue(params.data).
+					Return(params.cookie, params.err)
 			}
 			svc := AuthService{
 				config:         tc.cfg,
+				cookieIssuer:   cookieIssuer,
 				sessionManager: sessionManager,
 				userManager:    userManager,
 			}
-			fnNewUUID := func() uuid.UUID {
-				return sessUUID
-			}
-			outputSNAC, err := svc.FLAPLogin(tc.inputSNAC, fnNewUUID, tc.newUserFn)
+			outputSNAC, err := svc.FLAPLogin(tc.inputSNAC, tc.newUserFn)
 			assert.ErrorIs(t, err, tc.wantErr)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
@@ -972,20 +935,20 @@ func TestAuthService_BUCPChallengeRequest(t *testing.T) {
 	}
 }
 
-func TestAuthService_RetrieveChatSession_HappyPath(t *testing.T) {
+func TestAuthService_RegisterChatSession_HappyPath(t *testing.T) {
 	cookie := "chat-1234"
-	sess := newTestSession("screen-name", sessOptCannedID)
+	sess := newTestSession("screen-name")
 
 	c := chatLoginCookie{
-		Cookie: cookie,
-		SessID: sess.ID(),
+		ChatCookie: cookie,
+		ScreenName: sess.ScreenName(),
 	}
 	buf := &bytes.Buffer{}
 	assert.NoError(t, wire.Marshal(c, buf))
 
 	sessionManager := newMockSessionManager(t)
 	sessionManager.EXPECT().
-		RetrieveSession(sess.ID()).
+		AddSession(sess.ScreenName()).
 		Return(sess)
 
 	chatRegistry := newMockChatRegistry(t)
@@ -993,20 +956,22 @@ func TestAuthService_RetrieveChatSession_HappyPath(t *testing.T) {
 		Retrieve(cookie).
 		Return(state.ChatRoom{}, sessionManager, nil)
 
-	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry, nil)
+	cookieIssuer := newMockCookieIssuer(t)
 
-	have, err := svc.RetrieveChatSession(buf.Bytes())
+	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry, nil, cookieIssuer)
+
+	have, err := svc.RegisterChatSession(buf.Bytes())
 	assert.NoError(t, err)
 	assert.Equal(t, sess, have)
 }
 
-func TestAuthService_RetrieveChatSession_ChatNotFound(t *testing.T) {
+func TestAuthService_RegisterBOSSession_ChatNotFound(t *testing.T) {
 	cookie := "chat-1234"
-	sess := newTestSession("screen-name", sessOptCannedID)
+	sess := newTestSession("screen-name")
 
 	c := chatLoginCookie{
-		Cookie: cookie,
-		SessID: sess.ID(),
+		ChatCookie: cookie,
+		ScreenName: sess.ScreenName(),
 	}
 	loginCookie := &bytes.Buffer{}
 	assert.NoError(t, wire.Marshal(c, loginCookie))
@@ -1016,66 +981,43 @@ func TestAuthService_RetrieveChatSession_ChatNotFound(t *testing.T) {
 		Retrieve(cookie).
 		Return(state.ChatRoom{}, nil, state.ErrChatRoomNotFound)
 
-	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry, nil)
+	cookieIssuer := newMockCookieIssuer(t)
+	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry, nil, cookieIssuer)
 
-	_, err := svc.RetrieveChatSession(loginCookie.Bytes())
+	_, err := svc.RegisterChatSession(loginCookie.Bytes())
 	assert.ErrorIs(t, err, state.ErrChatRoomNotFound)
 }
 
-func TestAuthService_RetrieveChatSession_SessionNotFound(t *testing.T) {
-	cookie := "chat-1234"
-	sess := newTestSession("screen-name", sessOptCannedID)
-
-	c := chatLoginCookie{
-		Cookie: cookie,
-		SessID: sess.ID(),
-	}
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(c, buf))
+func TestAuthService_RegisterBOSSession_HappyPath(t *testing.T) {
+	sess := newTestSession("screen-name")
 
 	sessionManager := newMockSessionManager(t)
 	sessionManager.EXPECT().
-		RetrieveSession(sess.ID()).
-		Return(nil)
-
-	chatRegistry := newMockChatRegistry(t)
-	chatRegistry.EXPECT().
-		Retrieve(cookie).
-		Return(state.ChatRoom{}, sessionManager, nil)
-
-	svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry, nil)
-
-	have, err := svc.RetrieveChatSession(buf.Bytes())
-	assert.NoError(t, err)
-	assert.Nil(t, have)
-}
-
-func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
-	sess := newTestSession("screen-name", sessOptCannedID)
-
-	sessionManager := newMockSessionManager(t)
-	sessionManager.EXPECT().
-		RetrieveSession(sess.ID()).
+		AddSession(sess.ScreenName()).
 		Return(sess)
 
-	svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil, nil)
+	cookieIssuer := newMockCookieIssuer(t)
 
-	have, err := svc.RetrieveBOSSession(sess.ID())
+	svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil, nil, cookieIssuer)
+
+	have, err := svc.RegisterBOSSession(sess.ScreenName())
 	assert.NoError(t, err)
 	assert.Equal(t, sess, have)
 }
 
-func TestAuthService_RetrieveBOSSession_SessionNotFound(t *testing.T) {
-	sess := newTestSession("screen-name", sessOptCannedID)
+func TestAuthService_RegisterBOSSession_SessionNotFound(t *testing.T) {
+	sess := newTestSession("screen-name")
 
 	sessionManager := newMockSessionManager(t)
 	sessionManager.EXPECT().
-		RetrieveSession(sess.ID()).
+		AddSession(sess.ScreenName()).
 		Return(nil)
 
-	svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil, nil)
+	cookieIssuer := newMockCookieIssuer(t)
 
-	have, err := svc.RetrieveBOSSession(sess.ID())
+	svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil, nil, cookieIssuer)
+
+	have, err := svc.RegisterBOSSession(sess.ScreenName())
 	assert.NoError(t, err)
 	assert.Nil(t, have)
 }
@@ -1213,7 +1155,9 @@ func TestAuthService_SignoutChat(t *testing.T) {
 				Retrieve(tt.chatRoom.Cookie).
 				Return(tt.chatRoom, chatSessionManager, tt.wantErr)
 
-			svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry, nil)
+			cookieIssuer := newMockCookieIssuer(t)
+
+			svc := NewAuthService(config.Config{}, nil, nil, nil, nil, chatRegistry, nil, cookieIssuer)
 
 			err := svc.SignoutChat(nil, tt.userSession)
 			assert.ErrorIs(t, err, tt.wantErr)
@@ -1339,7 +1283,9 @@ func TestAuthService_Signout(t *testing.T) {
 					Return(params.result)
 			}
 
-			svc := NewAuthService(config.Config{}, sessionManager, messageRelayer, feedbagManager, nil, nil, legacyBuddyListManager)
+			cookieIssuer := newMockCookieIssuer(t)
+
+			svc := NewAuthService(config.Config{}, sessionManager, messageRelayer, feedbagManager, nil, nil, legacyBuddyListManager, cookieIssuer)
 
 			err := svc.Signout(nil, tt.userSession)
 			assert.ErrorIs(t, err, tt.wantErr)

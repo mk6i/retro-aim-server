@@ -19,6 +19,7 @@ type mockParams struct {
 	profileManagerParams
 	sessionManagerParams
 	userManagerParams
+	cookieIssuerParams
 }
 
 // bartManagerParams is a helper struct that contains mock parameters for
@@ -279,24 +280,18 @@ type whoAddedUserParams []struct {
 	result         []string
 }
 
+// cookieIssuerParams is the list of parameters passed at the mock
+// CookieIssuer.Issue call site
+type cookieIssuerParams []struct {
+	data   []byte
+	cookie []byte
+	err    error
+}
+
 // sessOptWarning sets a warning level on the session object
 func sessOptWarning(level uint16) func(session *state.Session) {
 	return func(session *state.Session) {
 		session.IncrementWarning(level)
-	}
-}
-
-// sessOptCannedID sets a canned session ID ("user-session-id") on the session
-// object
-func sessOptCannedID(session *state.Session) {
-	session.SetID("user-session-id")
-}
-
-// sessOptCannedID sets a canned session ID ("user-session-id") on the session
-// object
-func sessOptID(ID string) func(session *state.Session) {
-	return func(session *state.Session) {
-		session.SetID(ID)
 	}
 }
 

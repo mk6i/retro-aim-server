@@ -87,7 +87,7 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 	s.chatRegistry.Register(room, chatSessMgr)
 
 	// add user to chat room
-	chatSess := chatSessMgr.AddSession(sess.ID(), sess.ScreenName())
+	chatSess := chatSessMgr.AddSession(sess.ScreenName())
 	chatSess.SetChatRoomCookie(room.Cookie)
 
 	return wire.SNACMessage{
@@ -115,7 +115,7 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 }
 
 // RequestRoomInfo returns wire.ChatNavNavInfo, which contains metadata for
-// the chat room specified in the inFrame.Cookie.
+// the chat room specified in the inFrame.hmacCookie.
 func (s ChatNavService) RequestRoomInfo(_ context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (wire.SNACMessage, error) {
 	room, _, err := s.chatRegistry.Retrieve(inBody.Cookie)
 	if err != nil {

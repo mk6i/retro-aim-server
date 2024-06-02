@@ -77,7 +77,7 @@ func (s *InMemorySessionManager) maybeRelayMessage(ctx context.Context, msg wire
 // AddSession adds a new session to the pool. It replaces an existing session
 // with a matching screen name, ensuring that each screen name is unique in the
 // pool.
-func (s *InMemorySessionManager) AddSession(sessID string, screenName string) *Session {
+func (s *InMemorySessionManager) AddSession(screenName string) *Session {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
 
@@ -89,15 +89,14 @@ func (s *InMemorySessionManager) AddSession(sessID string, screenName string) *S
 	for _, sess := range s.store {
 		if screenName == sess.ScreenName() {
 			sess.Close()
-			delete(s.store, sess.ID())
+			delete(s.store, screenName)
 			break
 		}
 	}
 
 	sess := NewSession()
-	sess.SetID(sessID)
 	sess.SetScreenName(screenName)
-	s.store[sess.ID()] = sess
+	s.store[sess.ScreenName()] = sess
 	return sess
 }
 
@@ -105,7 +104,7 @@ func (s *InMemorySessionManager) AddSession(sessID string, screenName string) *S
 func (s *InMemorySessionManager) RemoveSession(sess *Session) {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
-	delete(s.store, sess.ID())
+	delete(s.store, sess.ScreenName())
 }
 
 // RetrieveSession finds a session with a matching sessionID. Returns nil if

@@ -32,6 +32,9 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 		// expectSNACFrame is the SNAC frame sent from the server to the recipient
 		// client
 		expectOutput wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
 		// expectErr is the expected error returned by the router
 		expectErr error
 	}{
@@ -54,7 +57,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				OSCARHost:   "127.0.0.1",
 				ChatNavPort: "1234",
 			},
-			userSession: newTestSession("user_screen_name", sessOptCannedID),
+			userSession: newTestSession("user_screen_name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -73,11 +76,19 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, newTestSession("user_screen_name", sessOptCannedID).ID()),
+							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
 							wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.ChatNav),
 							wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
 							wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data:   []byte("user_screen_name"),
+						cookie: []byte("the-cookie"),
 					},
 				},
 			},
@@ -88,7 +99,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				AlertPort: "1234",
 			},
-			userSession: newTestSession("user_screen_name", sessOptCannedID),
+			userSession: newTestSession("user_screen_name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -107,11 +118,19 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, newTestSession("user_screen_name", sessOptCannedID).ID()),
+							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
 							wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Alert),
 							wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
 							wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data:   []byte("user_screen_name"),
+						cookie: []byte("the-cookie"),
 					},
 				},
 			},
@@ -130,7 +149,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				InstanceNumber: 16,
 				Name:           "my new chat",
 			},
-			userSession: newTestSession("user_screen_name", sessOptCannedID),
+			userSession: newTestSession("user_screen_name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -158,14 +177,22 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, chatLoginCookie{
-								Cookie: "the-chat-cookie",
-								SessID: "user-session-id",
-							}),
+							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
 							wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Chat),
 							wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
 							wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data: []byte{
+							0x0F, 't', 'h', 'e', '-', 'c', 'h', 'a', 't', '-', 'c', 'o', 'o', 'k', 'i', 'e',
+							0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
+						},
+						cookie: []byte("the-cookie"),
 					},
 				},
 			},
@@ -177,7 +204,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				ChatPort:  "1234",
 			},
 			chatRoom:    nil,
-			userSession: newTestSession("user_screen_name", sessOptCannedID),
+			userSession: newTestSession("user_screen_name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -209,16 +236,23 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			chatSess := &state.Session{}
 			if tc.chatRoom != nil {
 				sessionManager.EXPECT().
-					AddSession(tc.userSession.ID(), tc.userSession.ScreenName()).
+					AddSession(tc.userSession.ScreenName()).
 					Return(chatSess).
 					Maybe()
 				chatRegistry.Register(*tc.chatRoom, sessionManager)
+			}
+			cookieIssuer := newMockCookieIssuer(t)
+			for _, params := range tc.mockParams.cookieIssuerParams {
+				cookieIssuer.EXPECT().
+					Issue(params.data).
+					Return(params.cookie, params.err)
 			}
 			//
 			// send input SNAC
 			//
 			svc := NewOServiceServiceForBOS(OServiceService{
-				cfg: tc.cfg,
+				cfg:          tc.cfg,
+				cookieIssuer: cookieIssuer,
 			}, chatRegistry)
 
 			outputSNAC, err := svc.ServiceRequest(nil, tc.userSession, tc.inputSNAC.Frame,
@@ -226,10 +260,6 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
-			}
-			if tc.chatRoom != nil {
-				// assert the user session is linked to the chat room
-				assert.Equal(t, chatSess.ChatRoomCookie(), tc.chatRoom.Cookie)
 			}
 			//
 			// verify output
@@ -405,10 +435,11 @@ func TestSetUserInfoFields(t *testing.T) {
 					WhoAddedUser(params.userScreenName).
 					Return(params.result)
 			}
+			cookieIssuer := newMockCookieIssuer(t)
 			//
 			// send input SNAC
 			//
-			svc := NewOServiceService(config.Config{}, messageRelayer, feedbagManager, legacyBuddyListManager, slog.Default())
+			svc := NewOServiceService(config.Config{}, messageRelayer, feedbagManager, legacyBuddyListManager, slog.Default(), cookieIssuer)
 			outputSNAC, err := svc.SetUserInfoFields(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields))
 			assert.ErrorIs(t, err, tc.expectErr)
@@ -424,7 +455,8 @@ func TestSetUserInfoFields(t *testing.T) {
 }
 
 func TestOServiceService_RateParamsQuery(t *testing.T) {
-	svc := NewOServiceService(config.Config{}, nil, nil, nil, slog.Default())
+	cookieIssuer := newMockCookieIssuer(t)
+	svc := NewOServiceService(config.Config{}, nil, nil, nil, slog.Default(), cookieIssuer)
 
 	have := svc.RateParamsQuery(nil, wire.SNACFrame{RequestID: 1234})
 	want := wire.SNACMessage{
@@ -1349,7 +1381,8 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 }
 
 func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
-	svc := NewOServiceServiceForBOS(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default()), nil)
+	cookieIssuer := newMockCookieIssuer(t)
+	svc := NewOServiceServiceForBOS(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default(), cookieIssuer), nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1376,7 +1409,8 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForChat_OServiceHostOnline(t *testing.T) {
-	svc := NewOServiceServiceForChat(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default()), nil)
+	cookieIssuer := newMockCookieIssuer(t)
+	svc := NewOServiceServiceForChat(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default(), cookieIssuer), nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1396,7 +1430,8 @@ func TestOServiceServiceForChat_OServiceHostOnline(t *testing.T) {
 }
 
 func TestOServiceService_ClientVersions(t *testing.T) {
-	svc := NewOServiceService(config.Config{}, nil, nil, nil, slog.Default())
+	cookieIssuer := newMockCookieIssuer(t)
+	svc := NewOServiceService(config.Config{}, nil, nil, nil, slog.Default(), cookieIssuer)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1419,7 +1454,8 @@ func TestOServiceService_ClientVersions(t *testing.T) {
 }
 
 func TestOServiceService_UserInfoQuery(t *testing.T) {
-	svc := NewOServiceService(config.Config{}, nil, nil, nil, slog.Default())
+	cookieIssuer := newMockCookieIssuer(t)
+	svc := NewOServiceService(config.Config{}, nil, nil, nil, slog.Default(), cookieIssuer)
 	sess := newTestSession("test-user")
 
 	want := wire.SNACMessage{
@@ -1530,7 +1566,8 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 					WhoAddedUser(params.userScreenName).
 					Return(params.result)
 			}
-			svc := NewOServiceService(config.Config{}, messageRelayer, feedbagManager, legacyBuddyListManager, slog.Default())
+			cookieIssuer := newMockCookieIssuer(t)
+			svc := NewOServiceService(config.Config{}, messageRelayer, feedbagManager, legacyBuddyListManager, slog.Default(), cookieIssuer)
 
 			haveErr := svc.IdleNotification(nil, tt.sess, tt.bodyIn)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
@@ -1900,7 +1937,8 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
-	svc := NewOServiceServiceForChatNav(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default()), nil)
+	cookieIssuer := newMockCookieIssuer(t)
+	svc := NewOServiceServiceForChatNav(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default(), cookieIssuer), nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1920,7 +1958,8 @@ func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForAlert_HostOnline(t *testing.T) {
-	svc := NewOServiceServiceForAlert(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default()))
+	cookieIssuer := newMockCookieIssuer(t)
+	svc := NewOServiceServiceForAlert(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default(), cookieIssuer))
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1940,7 +1979,8 @@ func TestOServiceServiceForAlert_HostOnline(t *testing.T) {
 }
 
 func TestOServiceService_SetPrivacyFlags(t *testing.T) {
-	svc := NewOServiceServiceForAlert(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default()))
+	cookieIssuer := newMockCookieIssuer(t)
+	svc := NewOServiceServiceForAlert(*NewOServiceService(config.Config{}, nil, nil, nil, slog.Default(), cookieIssuer))
 	body := wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags{
 		PrivacyFlags: wire.OServicePrivacyFlagMember | wire.OServicePrivacyFlagIdle,
 	}

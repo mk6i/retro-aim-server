@@ -12,13 +12,13 @@ import (
 )
 
 func TestChatNavService_CreateRoom(t *testing.T) {
-	bosSess := newTestSession("user-screen-name", sessOptCannedID)
+	bosSess := newTestSession("user-screen-name")
 	chatSess := &state.Session{}
 
 	chatRegistry := state.NewChatRegistry()
 
 	sessionManager := newMockSessionManager(t)
-	sessionManager.EXPECT().AddSession(bosSess.ID(), bosSess.ScreenName()).
+	sessionManager.EXPECT().AddSession(bosSess.ScreenName()).
 		Return(chatSess)
 
 	newChatRoom := func() state.ChatRoom {
