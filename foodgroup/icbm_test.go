@@ -361,7 +361,6 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		// recipientBuddies is a list of the recipient's buddies that get
 		// updated warning level
 		recipientBuddies []string
-		broadcastMessage wire.SNACMessage
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC wire.SNACMessage
 		// expectSNACToClient is the SNAC sent from the server to the
@@ -379,16 +378,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientSession:    newTestSession("recipient-screen-name", sessOptCannedSignonTime),
 			recipientScreenName: "recipient-screen-name",
-			broadcastMessage: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.Buddy,
-					SubGroup:  wire.BuddyArrived,
-				},
-				Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-					TLVUserInfo: newTestSession("recipient-screen-name", sessOptCannedSignonTime, sessOptWarning(evilDeltaAnon)).TLVUserInfo(),
-				},
-			},
-			recipientBuddies: []string{"buddy1", "buddy2"},
+			recipientBuddies:    []string{"buddy1", "buddy2"},
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -419,10 +409,10 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
-					whoAddedUserParams: whoAddedUserParams{
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							userScreenName: "recipient-screen-name",
+							screenName: "recipient-screen-name",
 						},
 					},
 				},
@@ -435,15 +425,6 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			recipientSession:    newTestSession("recipient-screen-name", sessOptCannedSignonTime),
 			recipientScreenName: "recipient-screen-name",
 			recipientBuddies:    []string{"buddy1", "buddy2"},
-			broadcastMessage: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.Buddy,
-					SubGroup:  wire.BuddyArrived,
-				},
-				Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-					TLVUserInfo: newTestSession("recipient-screen-name", sessOptCannedSignonTime, sessOptWarning(evilDelta)).TLVUserInfo(),
-				},
-			},
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -478,10 +459,10 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
-					whoAddedUserParams: whoAddedUserParams{
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							userScreenName: "recipient-screen-name",
+							screenName: "recipient-screen-name",
 						},
 					},
 				},
@@ -632,14 +613,6 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				BlockedState(tc.senderSession.ScreenName(), tc.recipientScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
-			feedbagManager.EXPECT().
-				AdjacentUsers(tc.recipientScreenName).
-				Return(tc.recipientBuddies, nil).
-				Maybe()
-			feedbagManager.EXPECT().
-				Feedbag(tc.recipientScreenName).
-				Return(nil, nil).
-				Maybe()
 			messageRelayer := newMockMessageRelayer(t)
 			messageRelayer.EXPECT().
 				RetrieveByScreenName(tc.recipientScreenName).
@@ -648,20 +621,20 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			messageRelayer.EXPECT().
 				RelayToScreenName(mock.Anything, tc.recipientScreenName, tc.expectSNACToClient).
 				Maybe()
-			messageRelayer.EXPECT().
-				RelayToScreenNames(mock.Anything, tc.recipientBuddies, tc.broadcastMessage).
-				Maybe()
-			legacyBuddyListManager := newMockLegacyBuddyListManager(t)
-			for _, params := range tc.mockParams.whoAddedUserParams {
-				legacyBuddyListManager.EXPECT().
-					WhoAddedUser(params.userScreenName).
-					Return(params.result)
+			buddyUpdateBroadcaster := newMockBuddyBroadcaster(t)
+			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
+				p := params
+				buddyUpdateBroadcaster.EXPECT().
+					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
+						return s.ScreenName() == p.screenName
+					})).
+					Return(nil)
 			}
 			//
 			// send input SNAC
 			//
 			senderSession := newTestSession(tc.senderSession.ScreenName())
-			svc := NewICBMService(messageRelayer, feedbagManager, legacyBuddyListManager)
+			svc := NewICBMService(messageRelayer, feedbagManager, buddyUpdateBroadcaster)
 			outputSNAC, err := svc.EvilRequest(nil, senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest))
 			assert.NoError(t, err)

@@ -24,11 +24,11 @@ func NewLocateService(
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
 	profileManager ProfileManager,
-	legacyBuddyListManager LegacyBuddyListManager,
+	buddyUpdateBroadcaster BuddyBroadcaster,
 ) LocateService {
 	return LocateService{
+		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
 		feedbagManager:         feedbagManager,
-		legacyBuddyListManager: legacyBuddyListManager,
 		profileManager:         profileManager,
 		sessionManager:         messageRelayer,
 	}
@@ -38,8 +38,8 @@ func NewLocateService(
 // responsible for user profiles, user info lookups, directory information, and
 // keyword lookups.
 type LocateService struct {
+	buddyUpdateBroadcaster BuddyBroadcaster
 	feedbagManager         FeedbagManager
-	legacyBuddyListManager LegacyBuddyListManager
 	profileManager         ProfileManager
 	sessionManager         MessageRelayer
 }
@@ -81,7 +81,7 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 	// broadcast away message change to buddies
 	if awayMsg, hasAwayMsg := inBody.String(wire.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
 		sess.SetAwayMessage(awayMsg)
-		if err := broadcastArrival(ctx, sess, s.sessionManager, s.feedbagManager, s.legacyBuddyListManager); err != nil {
+		if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
 			return err
 		}
 	}

@@ -18,30 +18,30 @@ import (
 func NewOServiceService(
 	cfg config.Config,
 	messageRelayer MessageRelayer,
-	feedbagManager FeedbagManager,
 	legacyBuddyListManager LegacyBuddyListManager,
 	logger *slog.Logger,
 	cookieIssuer CookieIssuer,
+	buddyUpdateBroadcaster BuddyBroadcaster,
 ) *OServiceService {
 	return &OServiceService{
+		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
 		cfg:                    cfg,
-		feedbagManager:         feedbagManager,
-		legacyBuddyListManager: legacyBuddyListManager,
-		messageRelayer:         messageRelayer,
-		logger:                 logger,
 		cookieIssuer:           cookieIssuer,
+		legacyBuddyListManager: legacyBuddyListManager,
+		logger:                 logger,
+		messageRelayer:         messageRelayer,
 	}
 }
 
 // OServiceService provides functionality for the OService food group, which
 // provides an assortment of services useful across multiple food groups.
 type OServiceService struct {
+	buddyUpdateBroadcaster BuddyBroadcaster
 	cfg                    config.Config
-	feedbagManager         FeedbagManager
-	legacyBuddyListManager LegacyBuddyListManager
-	messageRelayer         MessageRelayer
-	logger                 *slog.Logger
 	cookieIssuer           CookieIssuer
+	legacyBuddyListManager LegacyBuddyListManager
+	logger                 *slog.Logger
+	messageRelayer         MessageRelayer
 }
 
 // ClientVersions informs the server what food group versions the client
@@ -428,13 +428,13 @@ func (s OServiceService) SetUserInfoFields(ctx context.Context, sess *state.Sess
 	if status, hasStatus := inBody.Uint32(wire.OServiceUserInfoStatus); hasStatus {
 		if status == wire.OServiceUserStatusAvailable {
 			sess.SetInvisible(false)
-			if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
+			if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
 				return wire.SNACMessage{}, err
 			}
 		}
 		if status&wire.OServiceUserStatusInvisible == wire.OServiceUserStatusInvisible {
 			sess.SetInvisible(true)
-			if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
+			if err := s.buddyUpdateBroadcaster.BroadcastBuddyDeparted(ctx, sess); err != nil {
 				return wire.SNACMessage{}, err
 			}
 		}
@@ -466,7 +466,7 @@ func (s OServiceService) IdleNotification(ctx context.Context, sess *state.Sessi
 	} else {
 		sess.SetIdle(time.Duration(bodyIn.IdleTime) * time.Second)
 	}
-	return broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager)
+	return s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess)
 }
 
 // SetPrivacyFlags sets client privacy settings. Currently, there's no action
@@ -656,7 +656,7 @@ func (s OServiceServiceForBOS) HostOnline() wire.SNACMessage {
 func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
 	sess.SetSignonComplete()
 
-	if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
+	if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
 		return err
 	}
 
@@ -667,7 +667,7 @@ func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x0
 		if buddySess == nil || buddySess.Invisible() {
 			continue
 		}
-		if err := unicastArrival(ctx, buddySess, sess, s.messageRelayer, s.feedbagManager); err != nil {
+		if err := s.buddyUpdateBroadcaster.UnicastBuddyArrived(ctx, buddySess, sess); err != nil {
 			return err
 		}
 	}

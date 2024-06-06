@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/mock"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -354,7 +353,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 					WhoAddedUser(params.userScreenName).
 					Return(params.result)
 			}
-			svc := NewLocateService(messageRelayer, feedbagManager, profileManager, legacyBuddyListManager)
+			svc := NewLocateService(messageRelayer, feedbagManager, profileManager, nil)
 			outputSNAC, err := svc.UserInfoQuery(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x02_0x05_LocateUserInfoQuery))
 			assert.NoError(t, err)
@@ -424,7 +423,7 @@ func TestLocateService_SetInfo(t *testing.T) {
 			},
 			mockParams: mockParams{
 				profileManagerParams: profileManagerParams{
-					upsertProfileParams: upsertProfileParams{
+					setProfileParams: setProfileParams{
 						{
 							screenName: "test-user",
 							body:       "profile-result",
@@ -444,39 +443,10 @@ func TestLocateService_SetInfo(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				messageRelayerParams: messageRelayerParams{
-					relayToScreenNamesParams: relayToScreenNamesParams{
-						{
-							screenNames: []string{"friend1", "friend2"},
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyArrived,
-								},
-								Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: newTestSession("user_screen_name", sessOptAwayMessage("this is my away message!")).TLVUserInfo(),
-								},
-							},
-						},
-					},
-				},
-				feedbagManagerParams: feedbagManagerParams{
-					adjacentUsersParams: adjacentUsersParams{
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
 							screenName: "user_screen_name",
-							users:      []string{"friend1", "friend2"},
-						},
-					},
-					feedbagParams: feedbagParams{
-						{
-							screenName: "user_screen_name",
-						},
-					},
-				},
-				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
-					whoAddedUserParams: whoAddedUserParams{
-						{
-							userScreenName: "user_screen_name",
 						},
 					},
 				},
@@ -485,35 +455,22 @@ func TestLocateService_SetInfo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			messageRelayer := newMockMessageRelayer(t)
-			for _, params := range tt.mockParams.relayToScreenNamesParams {
-				messageRelayer.EXPECT().
-					RelayToScreenNames(mock.Anything, params.screenNames, params.message)
-			}
-			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tt.mockParams.adjacentUsersParams {
-				feedbagManager.EXPECT().
-					AdjacentUsers(params.screenName).
-					Return(params.users, nil)
-			}
-			for _, params := range tt.mockParams.feedbagParams {
-				feedbagManager.EXPECT().
-					Feedbag(params.screenName).
-					Return(params.results, nil)
-			}
 			profileManager := newMockProfileManager(t)
-			for _, params := range tt.mockParams.upsertProfileParams {
+			for _, params := range tt.mockParams.setProfileParams {
 				profileManager.EXPECT().
 					SetProfile(params.screenName, params.body).
 					Return(nil)
 			}
-			legacyBuddyListManager := newMockLegacyBuddyListManager(t)
-			for _, params := range tt.mockParams.whoAddedUserParams {
-				legacyBuddyListManager.EXPECT().
-					WhoAddedUser(params.userScreenName).
-					Return(params.result)
+			buddyUpdateBroadcaster := newMockBuddyBroadcaster(t)
+			for _, params := range tt.mockParams.broadcastBuddyArrivedParams {
+				p := params
+				buddyUpdateBroadcaster.EXPECT().
+					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
+						return s.ScreenName() == p.screenName
+					})).
+					Return(nil)
 			}
-			svc := NewLocateService(messageRelayer, feedbagManager, profileManager, legacyBuddyListManager)
+			svc := NewLocateService(nil, nil, profileManager, buddyUpdateBroadcaster)
 			assert.Equal(t, tt.wantErr, svc.SetInfo(nil, tt.userSession, tt.inBody))
 		})
 	}

@@ -18,22 +18,20 @@ import (
 func NewAuthService(
 	cfg config.Config,
 	sessionManager SessionManager,
-	messageRelayer MessageRelayer,
-	feedbagManager FeedbagManager,
 	userManager UserManager,
 	chatRegistry ChatRegistry,
 	legacyBuddyListManager LegacyBuddyListManager,
 	cookieIssuer CookieIssuer,
+	buddyUpdateBroadcaster BuddyBroadcaster,
 ) *AuthService {
 	return &AuthService{
 		chatRegistry:           chatRegistry,
 		config:                 cfg,
-		feedbagManager:         feedbagManager,
 		legacyBuddyListManager: legacyBuddyListManager,
-		messageRelayer:         messageRelayer,
 		sessionManager:         sessionManager,
 		userManager:            userManager,
 		cookieIssuer:           cookieIssuer,
+		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
 	}
 }
 
@@ -41,14 +39,13 @@ func NewAuthService(
 // supports both FLAP (AIM v1.0-v3.0) and BUCP (AIM v3.5-v5.9) authentication
 // modes.
 type AuthService struct {
+	buddyUpdateBroadcaster BuddyBroadcaster
 	chatRegistry           ChatRegistry
 	config                 config.Config
-	feedbagManager         FeedbagManager
+	cookieIssuer           CookieIssuer
 	legacyBuddyListManager LegacyBuddyListManager
-	messageRelayer         MessageRelayer
 	sessionManager         SessionManager
 	userManager            UserManager
-	cookieIssuer           CookieIssuer
 }
 
 // RegisterChatSession creates and returns a chat room session.
@@ -74,7 +71,7 @@ func (s AuthService) RegisterBOSSession(sessionID string) (*state.Session, error
 // Signout removes this user's session and notifies users who have this user on
 // their buddy list about this user's departure.
 func (s AuthService) Signout(ctx context.Context, sess *state.Session) error {
-	if err := broadcastDeparture(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
+	if err := s.buddyUpdateBroadcaster.BroadcastBuddyDeparted(ctx, sess); err != nil {
 		return err
 	}
 	s.sessionManager.RemoveSession(sess)

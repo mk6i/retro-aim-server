@@ -104,3 +104,6 @@ packages:
       CookieIssuer:
         config:
           filename: "mock_cookie_issuer_test.go"
+      BuddyBroadcaster:
+        config:
+          filename: "mock_buddy_broadcaster_test.go"

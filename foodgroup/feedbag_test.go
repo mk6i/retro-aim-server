@@ -419,14 +419,6 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 							},
 						},
 					},
-					feedbagParams: feedbagParams{
-						{
-							screenName: "buddy_1_online",
-						},
-						{
-							screenName: "buddy_2_online",
-						},
-					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
@@ -439,30 +431,16 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 							sess:       newTestSession("buddy_2_online", sessOptCannedSignonTime),
 						},
 					},
-					relayToScreenNameParams: relayToScreenNameParams{
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					unicastBuddyArrivedParams: unicastBuddyArrivedParams{
 						{
-							screenName: "user_screen_name",
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyArrived,
-								},
-								Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: newTestSession("buddy_1_online", sessOptCannedSignonTime).TLVUserInfo(),
-								},
-							},
+							from: "buddy_1_online",
+							to:   "user_screen_name",
 						},
 						{
-							screenName: "user_screen_name",
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyArrived,
-								},
-								Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: newTestSession("buddy_2_online", sessOptCannedSignonTime).TLVUserInfo(),
-								},
-							},
+							from: "buddy_2_online",
+							to:   "user_screen_name",
 						},
 					},
 				},
@@ -615,36 +593,16 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 							sess:       newTestSession("buddy_1"),
 						},
 					},
-					relayToScreenNameParams: relayToScreenNameParams{
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					unicastBuddyDepartedParams: unicastBuddyDepartedParams{
 						{
-							screenName: "buddy_1",
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyDeparted,
-								},
-								Body: wire.SNAC_0x03_0x0C_BuddyDeparted{
-									TLVUserInfo: wire.TLVUserInfo{
-										ScreenName:   "user_screen_name",
-										WarningLevel: 0,
-									},
-								},
-							},
+							from: "user_screen_name",
+							to:   "buddy_1",
 						},
 						{
-							screenName: "user_screen_name",
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyDeparted,
-								},
-								Body: wire.SNAC_0x03_0x0C_BuddyDeparted{
-									TLVUserInfo: wire.TLVUserInfo{
-										ScreenName:   "buddy_1",
-										WarningLevel: 0,
-									},
-								},
-							},
+							from: "buddy_1",
+							to:   "user_screen_name",
 						},
 					},
 				},
@@ -912,34 +870,8 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 							},
 						},
 					},
-					adjacentUsersParams: adjacentUsersParams{
-						{
-							screenName: "user_screen_name",
-							users:      []string{"friend1"},
-						},
-					},
-					feedbagParams: feedbagParams{
-						{
-							screenName: "user_screen_name",
-							results: []wire.FeedbagItem{
-								{
-									Name:    "1",
-									ClassID: wire.FeedbagClassIdBart,
-									TLVLBlock: wire.TLVLBlock{
-										TLVList: wire.TLVList{
-											wire.NewTLV(wire.FeedbagAttributesBartInfo,
-												[]byte{
-													wire.BARTFlagsCustom,
-													0x07, // hash len
-													't', 'h', 'e', 'h', 'a', 's', 'h',
-												},
-											),
-										},
-									},
-								},
-							},
-						},
-					},
+					adjacentUsersParams: adjacentUsersParams{},
+					feedbagParams:       feedbagParams{},
 				},
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNameParams: relayToScreenNameParams{
@@ -962,34 +894,11 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 							},
 						},
 					},
-					relayToScreenNamesParams: relayToScreenNamesParams{
-						{
-							screenNames: []string{"friend1"},
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyArrived,
-								},
-								Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: userInfoWithBARTIcon(
-										newTestSession("user_screen_name"),
-										wire.BARTID{
-											Type: wire.BARTTypesBuddyIcon,
-											BARTInfo: wire.BARTInfo{
-												Flags: wire.BARTFlagsCustom,
-												Hash:  []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
-											},
-										},
-									),
-								},
-							},
-						},
-					},
 				},
-				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
-					whoAddedUserParams: whoAddedUserParams{
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							userScreenName: "user_screen_name",
+							screenName: "user_screen_name",
 						},
 					},
 				},
@@ -1046,66 +955,11 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 							},
 						},
 					},
-					adjacentUsersParams: adjacentUsersParams{
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
 							screenName: "user_screen_name",
-							users:      []string{"friend1"},
-						},
-					},
-					feedbagParams: feedbagParams{
-						{
-							screenName: "user_screen_name",
-							results: []wire.FeedbagItem{
-								{
-									Name:    "1",
-									ClassID: wire.FeedbagClassIdBart,
-									TLVLBlock: wire.TLVLBlock{
-										TLVList: wire.TLVList{
-											wire.NewTLV(wire.FeedbagAttributesBartInfo,
-												append(
-													[]byte{
-														wire.BARTFlagsKnown,
-														uint8(len(wire.GetClearIconHash())),
-													},
-													wire.GetClearIconHash()...,
-												),
-											),
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				messageRelayerParams: messageRelayerParams{
-					relayToScreenNamesParams: relayToScreenNamesParams{
-						{
-							screenNames: []string{"friend1"},
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyArrived,
-								},
-								Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: userInfoWithBARTIcon(
-										newTestSession("user_screen_name"),
-										wire.BARTID{
-											Type: wire.BARTTypesBuddyIcon,
-											BARTInfo: wire.BARTInfo{
-												Flags: wire.BARTFlagsKnown,
-												Hash:  wire.GetClearIconHash(),
-											},
-										},
-									),
-								},
-							},
-						},
-					},
-				},
-				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
-					whoAddedUserParams: whoAddedUserParams{
-						{
-							userScreenName: "user_screen_name",
 						},
 					},
 				},
@@ -1130,11 +984,6 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				feedbagManager.EXPECT().
 					FeedbagUpsert(params.screenName, params.items).
 					Return(nil)
-			}
-			for _, params := range tc.mockParams.feedbagManagerParams.adjacentUsersParams {
-				feedbagManager.EXPECT().
-					AdjacentUsers(params.screenName).
-					Return(params.users, params.err)
 			}
 			for _, params := range tc.mockParams.feedbagManagerParams.feedbagParams {
 				feedbagManager.EXPECT().
@@ -1167,14 +1016,40 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 					WhoAddedUser(params.userScreenName).
 					Return(params.result)
 			}
-
-			svc := FeedbagService{
-				bartManager:            bartManager,
-				feedbagManager:         feedbagManager,
-				legacyBuddyListManager: legacyBuddyListManager,
-				logger:                 slog.Default(),
-				messageRelayer:         messageRelayer,
+			buddyUpdateBroadcaster := newMockBuddyBroadcaster(t)
+			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
+				p := params
+				buddyUpdateBroadcaster.EXPECT().
+					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
+						return s.ScreenName() == p.screenName
+					})).
+					Return(nil)
 			}
+			for _, params := range tc.mockParams.unicastBuddyArrivedParams {
+				p := params
+				buddyUpdateBroadcaster.EXPECT().
+					UnicastBuddyArrived(mock.Anything,
+						mock.MatchedBy(func(s *state.Session) bool {
+							return s.ScreenName() == p.from
+						}),
+						mock.MatchedBy(func(s *state.Session) bool {
+							return s.ScreenName() == p.to
+						})).
+					Return(nil)
+			}
+			for _, params := range tc.mockParams.unicastBuddyDepartedParams {
+				p := params
+				buddyUpdateBroadcaster.EXPECT().
+					UnicastBuddyDeparted(mock.Anything,
+						mock.MatchedBy(func(s *state.Session) bool {
+							return s.ScreenName() == p.from
+						}),
+						mock.MatchedBy(func(s *state.Session) bool {
+							return s.ScreenName() == p.to
+						}))
+			}
+
+			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, bartManager, buddyUpdateBroadcaster)
 			output, err := svc.UpsertItem(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x13_0x08_FeedbagInsertItem).Items)
 			assert.NoError(t, err)
@@ -1276,17 +1151,6 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 							},
 						},
 					},
-					feedbagParams: feedbagParams{
-						{
-							screenName: "buddy_1_online",
-						},
-						{
-							screenName: "buddy_2_online",
-						},
-						{
-							screenName: "user_screen_name",
-						},
-					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
@@ -1299,54 +1163,24 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 							sess:       newTestSession("buddy_2_online", sessOptCannedSignonTime),
 						},
 					},
-					relayToScreenNameParams: relayToScreenNameParams{
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					unicastBuddyArrivedParams: unicastBuddyArrivedParams{
 						{
-							screenName: "user_screen_name",
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyArrived,
-								},
-								Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: newTestSession("buddy_1_online", sessOptCannedSignonTime).TLVUserInfo(),
-								},
-							},
+							from: "buddy_1_online",
+							to:   "user_screen_name",
 						},
 						{
-							screenName: "buddy_1_online",
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyArrived,
-								},
-								Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: newTestSession("user_screen_name", sessOptCannedSignonTime).TLVUserInfo(),
-								},
-							},
+							from: "buddy_2_online",
+							to:   "user_screen_name",
 						},
 						{
-							screenName: "user_screen_name",
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyArrived,
-								},
-								Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: newTestSession("buddy_2_online", sessOptCannedSignonTime).TLVUserInfo(),
-								},
-							},
+							from: "user_screen_name",
+							to:   "buddy_1_online",
 						},
 						{
-							screenName: "buddy_2_online",
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyArrived,
-								},
-								Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: newTestSession("user_screen_name", sessOptCannedSignonTime).TLVUserInfo(),
-								},
-							},
+							from: "user_screen_name",
+							to:   "buddy_2_online",
 						},
 					},
 				},
@@ -1441,11 +1275,6 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 							},
 						},
 					},
-					feedbagParams: feedbagParams{
-						{
-							screenName: "user_screen_name",
-						},
-					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
@@ -1454,18 +1283,12 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 							sess:       newTestSession("invisible_buddy_online", sessOptInvisible),
 						},
 					},
-					relayToScreenNameParams: relayToScreenNameParams{
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					unicastBuddyArrivedParams: unicastBuddyArrivedParams{
 						{
-							screenName: "invisible_buddy_online",
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyArrived,
-								},
-								Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: newTestSession("user_screen_name", sessOptCannedSignonTime).TLVUserInfo(),
-								},
-							},
+							from: "user_screen_name",
+							to:   "invisible_buddy_online",
 						},
 					},
 				},
@@ -1491,25 +1314,30 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 					FeedbagDelete(params.screenName, params.items).
 					Return(nil)
 			}
-			for _, params := range tc.mockParams.feedbagManagerParams.feedbagParams {
-				feedbagManager.EXPECT().
-					Feedbag(params.screenName).
-					Return(params.results, nil)
-			}
 			messageRelayer := newMockMessageRelayer(t)
 			for _, params := range tc.mockParams.messageRelayerParams.retrieveByScreenNameParams {
 				messageRelayer.EXPECT().
 					RetrieveByScreenName(params.screenName).
 					Return(params.sess)
 			}
-			for _, params := range tc.mockParams.messageRelayerParams.relayToScreenNameParams {
-				messageRelayer.EXPECT().
-					RelayToScreenName(mock.Anything, params.screenName, params.message)
+			buddyUpdateBroadcast := newMockBuddyBroadcaster(t)
+			for _, params := range tc.mockParams.unicastBuddyArrivedParams {
+				p := params
+				buddyUpdateBroadcast.EXPECT().
+					UnicastBuddyArrived(mock.Anything,
+						mock.MatchedBy(func(s *state.Session) bool {
+							return s.ScreenName() == p.from
+						}),
+						mock.MatchedBy(func(s *state.Session) bool {
+							return s.ScreenName() == p.to
+						})).
+					Return(nil)
 			}
 
 			svc := FeedbagService{
-				feedbagManager: feedbagManager,
-				messageRelayer: messageRelayer,
+				buddyUpdateBroadcaster: buddyUpdateBroadcast,
+				feedbagManager:         feedbagManager,
+				messageRelayer:         messageRelayer,
 			}
 			output, err := svc.DeleteItem(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x13_0x0A_FeedbagDeleteItem))
@@ -1528,78 +1356,47 @@ func TestFeedbagService_Use(t *testing.T) {
 		// bodyIn is the SNAC body sent from the arriving user's client to the
 		// server
 		bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline
-		// buddiesParams contains params for looking up arriving user's
-		// buddies
-		buddiesParams buddiesParams
-		// retrieveByScreenNameParams contains params for looking up the
-		// session for each of the arriving user's buddies
-		retrieveByScreenNameParams retrieveByScreenNameParams
-		// relayToScreenNameParams contains params for sending arrival
-		// notifications for each of the arriving user's buddies to the
-		// arriving user's client
-		relayToScreenNameParams relayToScreenNameParams
-		// feedbagParams contains params for retrieving a user's feedbag
-		feedbagParams feedbagParams
-		wantErr       error
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		wantErr    error
 	}{
 		{
 			name:   "notify arriving user's buddies of its arrival and populate the arriving user's buddy list",
 			sess:   newTestSession("test-user"),
 			bodyIn: wire.SNAC_0x01_0x02_OServiceClientOnline{},
-			buddiesParams: buddiesParams{
-				{
-					screenName: "test-user",
-					results:    []string{"buddy1", "buddy3"},
-				},
-			},
-			retrieveByScreenNameParams: retrieveByScreenNameParams{
-				{
-					screenName: "buddy1",
-					sess:       newTestSession("buddy1"),
-				},
-				{
-					screenName: "buddy3",
-					sess:       newTestSession("buddy3"),
-				},
-			},
-			relayToScreenNameParams: relayToScreenNameParams{
-				{
-					screenName: "test-user",
-					message: wire.SNACMessage{
-						Frame: wire.SNACFrame{
-							FoodGroup: wire.Buddy,
-							SubGroup:  wire.BuddyArrived,
-						},
-						Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-							TLVUserInfo: newTestSession("buddy1").TLVUserInfo(),
+			mockParams: mockParams{
+				feedbagManagerParams: feedbagManagerParams{
+					buddiesParams: buddiesParams{
+						{
+							screenName: "test-user",
+							results:    []string{"buddy1", "buddy3"},
 						},
 					},
 				},
-				{
-					screenName: "test-user",
-					message: wire.SNACMessage{
-						Frame: wire.SNACFrame{
-							FoodGroup: wire.Buddy,
-							SubGroup:  wire.BuddyArrived,
+				messageRelayerParams: messageRelayerParams{
+					retrieveByScreenNameParams: retrieveByScreenNameParams{
+						{
+							screenName: "buddy1",
+							sess:       newTestSession("buddy1"),
 						},
-						Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-							TLVUserInfo: newTestSession("buddy3").TLVUserInfo(),
+						{
+							screenName: "buddy3",
+							sess:       newTestSession("buddy3"),
 						},
 					},
 				},
-			},
-			feedbagParams: feedbagParams{
-				//{
-				//	screenName: "test-user",
-				//	results:    []wire.FeedbagItem{},
-				//},
-				{
-					screenName: "buddy1",
-					results:    []wire.FeedbagItem{},
-				},
-				{
-					screenName: "buddy3",
-					results:    []wire.FeedbagItem{},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					unicastBuddyArrivedParams: unicastBuddyArrivedParams{
+						{
+							from: "buddy1",
+							to:   "test-user",
+						},
+						{
+							from: "buddy3",
+							to:   "test-user",
+						},
+					},
 				},
 			},
 		},
@@ -1607,28 +1404,32 @@ func TestFeedbagService_Use(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
-			messageRelayer := newMockMessageRelayer(t)
-			for _, params := range tt.buddiesParams {
+			for _, params := range tt.mockParams.buddiesParams {
 				feedbagManager.EXPECT().
 					Buddies(params.screenName).
 					Return(params.results, nil)
 			}
-			for _, params := range tt.retrieveByScreenNameParams {
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.retrieveByScreenNameParams {
 				messageRelayer.EXPECT().
 					RetrieveByScreenName(params.screenName).
 					Return(params.sess)
 			}
-			for _, params := range tt.relayToScreenNameParams {
-				messageRelayer.EXPECT().
-					RelayToScreenName(mock.Anything, params.screenName, params.message)
-			}
-			for _, params := range tt.feedbagParams {
-				feedbagManager.EXPECT().
-					Feedbag(params.screenName).
-					Return(params.results, nil)
+			buddyUpdateBroadcast := newMockBuddyBroadcaster(t)
+			for _, params := range tt.mockParams.unicastBuddyArrivedParams {
+				p := params
+				buddyUpdateBroadcast.EXPECT().
+					UnicastBuddyArrived(mock.Anything,
+						mock.MatchedBy(func(s *state.Session) bool {
+							return s.ScreenName() == p.from
+						}),
+						mock.MatchedBy(func(s *state.Session) bool {
+							return s.ScreenName() == p.to
+						})).
+					Return(nil)
 			}
 
-			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, nil, nil)
+			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, nil, buddyUpdateBroadcast)
 
 			haveErr := svc.Use(nil, tt.sess)
 			assert.ErrorIs(t, tt.wantErr, haveErr)

@@ -16,11 +16,11 @@ const (
 func NewICBMService(
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
-	legacyBuddyListManager LegacyBuddyListManager,
+	buddyUpdateBroadcaster BuddyBroadcaster,
 ) *ICBMService {
 	return &ICBMService{
+		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
 		feedbagManager:         feedbagManager,
-		legacyBuddyListManager: legacyBuddyListManager,
 		messageRelayer:         messageRelayer,
 	}
 }
@@ -29,8 +29,8 @@ func NewICBMService(
 // responsible for sending and receiving instant messages and associated
 // functionality such as warning, typing events, etc.
 type ICBMService struct {
+	buddyUpdateBroadcaster BuddyBroadcaster
 	feedbagManager         FeedbagManager
-	legacyBuddyListManager LegacyBuddyListManager
 	messageRelayer         MessageRelayer
 }
 
@@ -255,7 +255,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 	})
 
 	// inform the warned user's buddies that their warning level has increased
-	if err := broadcastArrival(ctx, recipSess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
+	if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, recipSess); err != nil {
 		return wire.SNACMessage{}, err
 	}
 

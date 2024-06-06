@@ -20,6 +20,7 @@ type mockParams struct {
 	sessionManagerParams
 	userManagerParams
 	cookieIssuerParams
+	buddyBroadcasterParams
 }
 
 // bartManagerParams is a helper struct that contains mock parameters for
@@ -205,7 +206,7 @@ type relayToScreenNameParams []struct {
 // ProfileManager methods
 type profileManagerParams struct {
 	retrieveProfileParams
-	upsertProfileParams
+	setProfileParams
 }
 
 // retrieveByScreenNameParams is the list of parameters passed at the mock
@@ -216,9 +217,9 @@ type retrieveProfileParams []struct {
 	err        error
 }
 
-// upsertProfileParams is the list of parameters passed at the mock
+// setProfileParams is the list of parameters passed at the mock
 // ProfileManager.UpsertProfile call site
-type upsertProfileParams []struct {
+type setProfileParams []struct {
 	screenName string
 	body       any
 }
@@ -286,6 +287,45 @@ type cookieIssuerParams []struct {
 	data   []byte
 	cookie []byte
 	err    error
+}
+
+// buddyBroadcasterParams is a helper struct that contains mock parameters for
+// BuddyBroadcaster methods
+type buddyBroadcasterParams struct {
+	broadcastBuddyArrivedParams
+	broadcastBuddyDepartedParams
+	unicastBuddyArrivedParams
+	unicastBuddyDepartedParams
+}
+
+// broadcastBuddyArrivedParams is the list of parameters passed at the mock
+// BuddyBroadcaster.BroadcastBuddyArrived call site
+type broadcastBuddyArrivedParams []struct {
+	screenName string
+	err        error
+}
+
+// broadcastBuddyDepartedParams is the list of parameters passed at the mock
+// BuddyBroadcaster.BroadcastBuddyDeparted call site
+type broadcastBuddyDepartedParams []struct {
+	screenName string
+	err        error
+}
+
+// unicastBuddyArrivedParams is the list of parameters passed at the mock
+// BuddyBroadcaster.UnicastBuddyArrived call site
+type unicastBuddyArrivedParams []struct {
+	from string
+	to   string
+	err  error
+}
+
+// unicastBuddyDepartedParams is the list of parameters passed at the mock
+// BuddyBroadcaster.UnicastBuddyDeparted call site
+type unicastBuddyDepartedParams []struct {
+	from string
+	to   string
+	err  error
 }
 
 // sessOptWarning sets a warning level on the session object

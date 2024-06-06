@@ -38,19 +38,6 @@ func TestBARTService_UpsertItem(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				feedbagManagerParams: feedbagManagerParams{
-					adjacentUsersParams: adjacentUsersParams{
-						{
-							screenName: "user_screen_name",
-							users:      []string{"friend1"},
-						},
-					},
-					feedbagParams: feedbagParams{
-						{
-							screenName: "user_screen_name",
-						},
-					},
-				},
 				bartManagerParams: bartManagerParams{
 					bartManagerUpsertParams: bartManagerUpsertParams{
 						{
@@ -59,26 +46,10 @@ func TestBARTService_UpsertItem(t *testing.T) {
 						},
 					},
 				},
-				messageRelayerParams: messageRelayerParams{
-					relayToScreenNamesParams: relayToScreenNamesParams{
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenNames: []string{"friend1"},
-							message: wire.SNACMessage{
-								Frame: wire.SNACFrame{
-									FoodGroup: wire.Buddy,
-									SubGroup:  wire.BuddyArrived,
-								},
-								Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-									TLVUserInfo: newTestSession("user_screen_name").TLVUserInfo(),
-								},
-							},
-						},
-					},
-				},
-				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
-					whoAddedUserParams: whoAddedUserParams{
-						{
-							userScreenName: "user_screen_name",
+							screenName: "user_screen_name",
 						},
 					},
 				},
@@ -105,46 +76,22 @@ func TestBARTService_UpsertItem(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tc.mockParams.feedbagManagerParams.feedbagUpsertParams {
-				feedbagManager.EXPECT().
-					FeedbagUpsert(params.screenName, params.items).
-					Return(nil)
-			}
-			for _, params := range tc.mockParams.feedbagManagerParams.adjacentUsersParams {
-				feedbagManager.EXPECT().
-					AdjacentUsers(params.screenName).
-					Return(params.users, params.err)
-			}
-			for _, params := range tc.mockParams.feedbagManagerParams.feedbagParams {
-				feedbagManager.EXPECT().Feedbag(params.screenName).Return(params.results, nil)
-			}
-			messageRelayer := newMockMessageRelayer(t)
-			for _, params := range tc.mockParams.messageRelayerParams.relayToScreenNameParams {
-				messageRelayer.EXPECT().
-					RelayToScreenName(mock.Anything, params.screenName, params.message)
-			}
-			for _, params := range tc.mockParams.messageRelayerParams.relayToScreenNamesParams {
-				messageRelayer.EXPECT().
-					RelayToScreenNames(mock.Anything, params.screenNames, params.message)
-			}
 			bartManager := newMockBARTManager(t)
-			for _, params := range tc.mockParams.bartManagerParams.bartManagerUpsertParams {
+			for _, params := range tc.mockParams.bartManagerUpsertParams {
 				bartManager.EXPECT().
 					BARTUpsert(params.itemHash, params.payload).
 					Return(nil)
 			}
-			legacyBuddyListManager := newMockLegacyBuddyListManager(t)
-			for _, params := range tc.mockParams.deleteUserParams {
-				legacyBuddyListManager.EXPECT().DeleteUser(params.userScreenName)
+			buddyUpdateBroadcaster := newMockBuddyBroadcaster(t)
+			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
+				p := params
+				buddyUpdateBroadcaster.EXPECT().
+					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
+						return s.ScreenName() == p.screenName
+					})).
+					Return(nil)
 			}
-			for _, params := range tc.mockParams.whoAddedUserParams {
-				legacyBuddyListManager.EXPECT().
-					WhoAddedUser(params.userScreenName).
-					Return(params.result)
-			}
-
-			svc := NewBARTService(slog.Default(), bartManager, messageRelayer, feedbagManager, legacyBuddyListManager)
+			svc := NewBARTService(slog.Default(), bartManager, buddyUpdateBroadcaster)
 
 			output, err := svc.UpsertItem(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x10_0x02_BARTUploadQuery))
@@ -289,7 +236,7 @@ func TestBARTService_RetrieveItem(t *testing.T) {
 					Return(params.result, nil)
 			}
 
-			svc := NewBARTService(slog.Default(), bartManager, nil, nil, nil)
+			svc := NewBARTService(slog.Default(), bartManager, nil)
 
 			output, err := svc.RetrieveItem(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x10_0x04_BARTDownloadQuery))

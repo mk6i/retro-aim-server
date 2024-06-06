@@ -68,7 +68,7 @@ func (s BuddyService) AddBuddies(ctx context.Context, sess *state.Session, inBod
 			continue
 		}
 		// notify that buddy is online
-		if err := unicastArrival(ctx, buddy, sess, s.messageRelayer, s.feedbagManager); err != nil {
+		if err := s.UnicastBuddyArrived(ctx, buddy, sess); err != nil {
 			return err
 		}
 	}
@@ -81,30 +81,48 @@ func (s BuddyService) DelBuddies(_ context.Context, sess *state.Session, inBody 
 	}
 }
 
-// broadcastArrival sends the latest user info to the user's adjacent users.
+// UnicastBuddyArrived sends the latest user info to a particular user.
 // While updates are sent via the wire.BuddyArrived SNAC, the message is not
 // only used to indicate the user coming online. It can also notify changes to
 // buddy icons, warning levels, invisibility status, etc.
-func broadcastArrival(
-	ctx context.Context,
-	sess *state.Session,
-	messageRelayer MessageRelayer,
-	feedbagManager FeedbagManager,
-	legacyBuddyListManager LegacyBuddyListManager,
-) error {
+func (s BuddyService) UnicastBuddyArrived(ctx context.Context, from *state.Session, to *state.Session) error {
+	userInfo := from.TLVUserInfo()
+	icon, err := getBuddyIconRefFromFeedbag(from, s.feedbagManager)
+	switch {
+	case err != nil:
+		return err
+	case icon != nil:
+		userInfo.Append(wire.NewTLV(wire.OServiceUserInfoBARTInfo, *icon))
+	}
+	s.messageRelayer.RelayToScreenName(ctx, to.ScreenName(), wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.Buddy,
+			SubGroup:  wire.BuddyArrived,
+		},
+		Body: wire.SNAC_0x03_0x0B_BuddyArrived{
+			TLVUserInfo: userInfo,
+		},
+	})
+	return nil
+}
 
+// BroadcastBuddyArrived sends the latest user info to the user's adjacent users.
+// While updates are sent via the wire.BuddyArrived SNAC, the message is not
+// only used to indicate the user coming online. It can also notify changes to
+// buddy icons, warning levels, invisibility status, etc.
+func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error {
 	// find users who have this user on their server-side buddy list
-	recipients, err := feedbagManager.AdjacentUsers(sess.ScreenName())
+	recipients, err := s.feedbagManager.AdjacentUsers(sess.ScreenName())
 	if err != nil {
 		return err
 	}
 
 	// find users who have this user on their client-side buddy list
-	legacyUsers := legacyBuddyListManager.WhoAddedUser(sess.ScreenName())
+	legacyUsers := s.legacyBuddyListManager.WhoAddedUser(sess.ScreenName())
 	recipients = append(recipients, legacyUsers...)
 
 	userInfo := sess.TLVUserInfo()
-	icon, err := getBuddyIconRefFromFeedbag(sess, feedbagManager)
+	icon, err := getBuddyIconRefFromFeedbag(sess, s.feedbagManager)
 	switch {
 	case err != nil:
 		return err
@@ -112,7 +130,7 @@ func broadcastArrival(
 		userInfo.Append(wire.NewTLV(wire.OServiceUserInfoBARTInfo, *icon))
 	}
 
-	messageRelayer.RelayToScreenNames(ctx, recipients, wire.SNACMessage{
+	s.messageRelayer.RelayToScreenNames(ctx, recipients, wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyArrived,
@@ -138,6 +156,13 @@ func getBuddyIconRefFromFeedbag(sess *state.Session, feedbagManager FeedbagManag
 		if item.ClassID != wire.FeedbagClassIdBart {
 			continue
 		}
+		bartType, err := extractBARTItemType(item)
+		if err != nil {
+			return nil, err
+		}
+		if bartType != wire.BARTTypesBuddyIcon {
+			continue
+		}
 		b, hasBuf := item.Slice(wire.FeedbagAttributesBartInfo)
 		if !hasBuf {
 			return nil, errors.New("unable to extract icon payload")
@@ -145,13 +170,6 @@ func getBuddyIconRefFromFeedbag(sess *state.Session, feedbagManager FeedbagManag
 		bartInfo := wire.BARTInfo{}
 		if err := wire.Unmarshal(&bartInfo, bytes.NewBuffer(b)); err != nil {
 			return nil, err
-		}
-		bartType, err := extractBARTItemType(item)
-		if err != nil {
-			return nil, err
-		}
-		if bartType != wire.BARTTypesBuddyIcon {
-			continue
 		}
 		return &wire.BARTID{
 			Type: bartType,
@@ -179,23 +197,16 @@ func extractBARTItemType(item wire.FeedbagItem) (uint16, error) {
 	return bartType, nil
 }
 
-func broadcastDeparture(
-	ctx context.Context,
-	sess *state.Session,
-	messageRelayer MessageRelayer,
-	feedbagManager FeedbagManager,
-	legacyBuddyListManager LegacyBuddyListManager,
-) error {
-
-	recipients, err := feedbagManager.AdjacentUsers(sess.ScreenName())
+func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error {
+	recipients, err := s.feedbagManager.AdjacentUsers(sess.ScreenName())
 	if err != nil {
 		return err
 	}
 
-	legacyUsers := legacyBuddyListManager.WhoAddedUser(sess.ScreenName())
+	legacyUsers := s.legacyBuddyListManager.WhoAddedUser(sess.ScreenName())
 	recipients = append(recipients, legacyUsers...)
 
-	messageRelayer.RelayToScreenNames(ctx, recipients, wire.SNACMessage{
+	s.messageRelayer.RelayToScreenNames(ctx, recipients, wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyDeparted,
@@ -213,33 +224,8 @@ func broadcastDeparture(
 	return nil
 }
 
-// unicastArrival sends the latest user info to a particular user.
-// While updates are sent via the wire.BuddyArrived SNAC, the message is not
-// only used to indicate the user coming online. It can also notify changes to
-// buddy icons, warning levels, invisibility status, etc.
-func unicastArrival(ctx context.Context, from *state.Session, to *state.Session, messageRelayer MessageRelayer, feedbagManager FeedbagManager) error {
-	userInfo := from.TLVUserInfo()
-	icon, err := getBuddyIconRefFromFeedbag(from, feedbagManager)
-	switch {
-	case err != nil:
-		return err
-	case icon != nil:
-		userInfo.Append(wire.NewTLV(wire.OServiceUserInfoBARTInfo, *icon))
-	}
-	messageRelayer.RelayToScreenName(ctx, to.ScreenName(), wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Buddy,
-			SubGroup:  wire.BuddyArrived,
-		},
-		Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-			TLVUserInfo: userInfo,
-		},
-	})
-	return nil
-}
-
-func unicastDeparture(ctx context.Context, from *state.Session, to *state.Session, messageRelayer MessageRelayer) {
-	messageRelayer.RelayToScreenName(ctx, to.ScreenName(), wire.SNACMessage{
+func (s BuddyService) UnicastBuddyDeparted(ctx context.Context, from *state.Session, to *state.Session) {
+	s.messageRelayer.RelayToScreenName(ctx, to.ScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyDeparted,

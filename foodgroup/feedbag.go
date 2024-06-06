@@ -18,12 +18,12 @@ func NewFeedbagService(
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
 	bartManager BARTManager,
-	legacyBuddyListManager LegacyBuddyListManager,
+	buddyUpdateBroadcaster BuddyBroadcaster,
 ) FeedbagService {
 	return FeedbagService{
 		bartManager:            bartManager,
+		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
 		feedbagManager:         feedbagManager,
-		legacyBuddyListManager: legacyBuddyListManager,
 		logger:                 logger,
 		messageRelayer:         messageRelayer,
 	}
@@ -33,8 +33,8 @@ func NewFeedbagService(
 // handles buddy list management.
 type FeedbagService struct {
 	bartManager            BARTManager
+	buddyUpdateBroadcaster BuddyBroadcaster
 	feedbagManager         FeedbagManager
-	legacyBuddyListManager LegacyBuddyListManager
 	logger                 *slog.Logger
 	messageRelayer         MessageRelayer
 }
@@ -202,7 +202,7 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 			if buddy == nil || buddy.Invisible() {
 				continue
 			}
-			if err := unicastArrival(ctx, buddy, sess, s.messageRelayer, s.feedbagManager); err != nil {
+			if err := s.buddyUpdateBroadcaster.UnicastBuddyArrived(ctx, buddy, sess); err != nil {
 				return wire.SNACMessage{}, err
 			}
 		case wire.FeedbagClassIDDeny: // block buddy
@@ -214,9 +214,9 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 				continue // blocked buddy is offline, nothing to do here
 			}
 			// alert blocked buddy that current user is offline
-			unicastDeparture(ctx, sess, blockedSess, s.messageRelayer)
+			s.buddyUpdateBroadcaster.UnicastBuddyDeparted(ctx, sess, blockedSess)
 			// tell blocker that blocked user is offline
-			unicastDeparture(ctx, blockedSess, sess, s.messageRelayer)
+			s.buddyUpdateBroadcaster.UnicastBuddyDeparted(ctx, blockedSess, sess)
 		case wire.FeedbagClassIdBart:
 			if err := s.broadcastIconUpdate(ctx, sess, item); err != nil {
 				return wire.SNACMessage{}, err
@@ -256,7 +256,7 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 		s.logger.DebugContext(ctx, "user is clearing icon",
 			"hash", fmt.Sprintf("%x", btlv.Hash))
 		// tell buddies about the icon update
-		return broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager)
+		return s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess)
 	}
 
 	bid := wire.BARTID{
@@ -277,7 +277,7 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 		s.logger.DebugContext(ctx, "icon already exists in BART store, don't upload the icon file",
 			"hash", fmt.Sprintf("%x", btlv.Hash))
 		// tell buddies about the icon update
-		if err := broadcastArrival(ctx, sess, s.messageRelayer, s.feedbagManager, s.legacyBuddyListManager); err != nil {
+		if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
 			return err
 		}
 	}
@@ -312,13 +312,13 @@ func (s FeedbagService) DeleteItem(ctx context.Context, sess *state.Session, inF
 			}
 			if !sess.Invisible() {
 				// alert unblocked user that current user is online
-				if err := unicastArrival(ctx, sess, unblockedSess, s.messageRelayer, s.feedbagManager); err != nil {
+				if err := s.buddyUpdateBroadcaster.UnicastBuddyArrived(ctx, sess, unblockedSess); err != nil {
 					return wire.SNACMessage{}, err
 				}
 			}
 			if !unblockedSess.Invisible() {
 				// alert current user that unblocked user is online
-				if err := unicastArrival(ctx, unblockedSess, sess, s.messageRelayer, s.feedbagManager); err != nil {
+				if err := s.buddyUpdateBroadcaster.UnicastBuddyArrived(ctx, unblockedSess, sess); err != nil {
 					return wire.SNACMessage{}, err
 				}
 			}
@@ -358,7 +358,7 @@ func (s FeedbagService) Use(ctx context.Context, sess *state.Session) error {
 		if buddy == nil || buddy.Invisible() {
 			continue
 		}
-		if err := unicastArrival(ctx, buddy, sess, s.messageRelayer, s.feedbagManager); err != nil {
+		if err := s.buddyUpdateBroadcaster.UnicastBuddyArrived(ctx, buddy, sess); err != nil {
 			return err
 		}
 	}
