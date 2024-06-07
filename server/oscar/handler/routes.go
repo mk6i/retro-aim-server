@@ -18,10 +18,7 @@ type Handlers struct {
 	FeedbagHandler
 	ICBMHandler
 	LocateHandler
-	OServiceAlertHandler
-	OServiceBOSHandler
-	OServiceChatHandler
-	OServiceChatNavHandler
+	OServiceHandler
 	PermitDenyHandler
 }
 
@@ -72,16 +69,16 @@ func NewBOSRouter(h Handlers) oscar.Router {
 
 	router.Register(wire.PermitDeny, wire.PermitDenyRightsQuery, h.PermitDenyHandler.RightsQuery)
 
-	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceBOSHandler.ClientOnline)
-	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceBOSHandler.OServiceHandler.ClientVersions)
-	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceBOSHandler.OServiceHandler.IdleNotification)
-	router.Register(wire.OService, wire.OServiceNoop, h.OServiceBOSHandler.OServiceHandler.Noop)
-	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceBOSHandler.OServiceHandler.RateParamsQuery)
-	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceBOSHandler.OServiceHandler.RateParamsSubAdd)
-	router.Register(wire.OService, wire.OServiceServiceRequest, h.OServiceBOSHandler.ServiceRequest)
-	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceBOSHandler.OServiceHandler.SetUserInfoFields)
-	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceBOSHandler.OServiceHandler.UserInfoQuery)
-	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceBOSHandler.OServiceHandler.SetPrivacyFlags)
+	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceHandler.ClientOnline)
+	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceHandler.IdleNotification)
+	router.Register(wire.OService, wire.OServiceNoop, h.OServiceHandler.Noop)
+	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
+	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
+	router.Register(wire.OService, wire.OServiceServiceRequest, h.OServiceHandler.ServiceRequest)
+	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceHandler.SetUserInfoFields)
+	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceHandler.UserInfoQuery)
+	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
 
 	return router
 }
@@ -93,13 +90,13 @@ func NewChatRouter(h Handlers) oscar.Router {
 
 	router.Register(wire.Chat, wire.ChatChannelMsgToHost, h.ChatHandler.ChannelMsgToHost)
 
-	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceChatHandler.ClientOnline)
-	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceChatHandler.OServiceHandler.ClientVersions)
-	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceChatHandler.OServiceHandler.IdleNotification)
-	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceChatHandler.OServiceHandler.RateParamsQuery)
-	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceChatHandler.OServiceHandler.RateParamsSubAdd)
-	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceChatHandler.OServiceHandler.SetUserInfoFields)
-	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceChatHandler.OServiceHandler.UserInfoQuery)
+	router.Register(wire.OService, wire.OServiceClientOnline, h.ClientOnline)
+	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceHandler.IdleNotification)
+	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
+	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
+	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceHandler.SetUserInfoFields)
+	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceHandler.UserInfoQuery)
 
 	return router
 }
@@ -114,13 +111,13 @@ func NewChatNavRouter(h Handlers) oscar.Router {
 	router.Register(wire.ChatNav, wire.ChatNavRequestExchangeInfo, h.ChatNavHandler.RequestExchangeInfo)
 	router.Register(wire.ChatNav, wire.ChatNavRequestRoomInfo, h.ChatNavHandler.RequestRoomInfo)
 
-	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceChatNavHandler.ClientOnline)
-	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceChatNavHandler.OServiceHandler.ClientVersions)
-	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceChatNavHandler.OServiceHandler.IdleNotification)
-	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceChatNavHandler.OServiceHandler.RateParamsQuery)
-	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceChatNavHandler.OServiceHandler.RateParamsSubAdd)
-	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceChatNavHandler.OServiceHandler.SetUserInfoFields)
-	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceChatNavHandler.OServiceHandler.UserInfoQuery)
+	router.Register(wire.OService, wire.OServiceClientOnline, h.ClientOnline)
+	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceHandler.IdleNotification)
+	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
+	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
+	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceHandler.SetUserInfoFields)
+	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceHandler.UserInfoQuery)
 
 	return router
 }
@@ -132,10 +129,10 @@ func NewAlertRouter(h Handlers) oscar.Router {
 	router.Register(wire.Alert, wire.AlertNotifyDisplayCapabilities, h.AlertHandler.NotifyDisplayCapabilities)
 	router.Register(wire.Alert, wire.AlertUserOnline, h.AlertHandler.NotifyDisplayCapabilities)
 
-	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceAlertHandler.ClientOnline)
-	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceAlertHandler.OServiceHandler.ClientVersions)
-	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceAlertHandler.OServiceHandler.RateParamsQuery)
-	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceAlertHandler.OServiceHandler.RateParamsSubAdd)
+	router.Register(wire.OService, wire.OServiceClientOnline, h.ClientOnline)
+	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
+	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
 
 	return router
 }

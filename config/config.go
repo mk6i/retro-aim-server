@@ -3,7 +3,7 @@ package config
 //go:generate go run github.com/mk6i/retro-aim-server/cmd/config_generator windows settings.bat
 //go:generate go run github.com/mk6i/retro-aim-server/cmd/config_generator unix settings.env
 type Config struct {
-        ApiHost     string `envconfig:"API_HOST" require:"true" val:"127.0.0.1" description:"The hostname or address at which the management API listens."`
+	ApiHost     string `envconfig:"API_HOST" require:"true" val:"127.0.0.1" description:"The hostname or address at which the management API listens."`
 	ApiPort     string `envconfig:"API_PORT" required:"true" val:"8080" description:"The port that the management API service binds to."`
 	AlertPort   string `envconfig:"ALERT_PORT" required:"true" val:"5194" description:"The port that the Alert service binds to."`
 	AuthPort    string `envconfig:"AUTH_PORT" required:"true" val:"5190" description:"The port that the auth service binds to."`

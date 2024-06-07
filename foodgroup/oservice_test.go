@@ -250,10 +250,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			svc := NewOServiceServiceForBOS(OServiceService{
-				cfg:          tc.cfg,
-				cookieIssuer: cookieIssuer,
-			}, chatRegistry)
+			svc := NewOServiceServiceForBOS(tc.cfg, nil, nil, slog.Default(), cookieIssuer, nil, chatRegistry)
 
 			outputSNAC, err := svc.ServiceRequest(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x01_0x04_OServiceServiceRequest))
@@ -385,7 +382,11 @@ func TestSetUserInfoFields(t *testing.T) {
 					})).
 					Return(nil)
 			}
-			svc := NewOServiceService(config.Config{}, nil, nil, slog.Default(), nil, buddyUpdateBroadcaster)
+			svc := OServiceService{
+				cfg:                    config.Config{},
+				logger:                 slog.Default(),
+				buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+			}
 			outputSNAC, err := svc.SetUserInfoFields(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields))
 			assert.ErrorIs(t, err, tc.expectErr)
@@ -398,8 +399,10 @@ func TestSetUserInfoFields(t *testing.T) {
 }
 
 func TestOServiceService_RateParamsQuery(t *testing.T) {
-	cookieIssuer := newMockCookieIssuer(t)
-	svc := NewOServiceService(config.Config{}, nil, nil, slog.Default(), cookieIssuer, nil)
+	svc := OServiceService{
+		cfg:    config.Config{},
+		logger: slog.Default(),
+	}
 
 	have := svc.RateParamsQuery(nil, wire.SNACFrame{RequestID: 1234})
 	want := wire.SNACMessage{
@@ -1325,7 +1328,7 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 
 func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 	cookieIssuer := newMockCookieIssuer(t)
-	svc := NewOServiceServiceForBOS(*NewOServiceService(config.Config{}, nil, nil, slog.Default(), cookieIssuer, nil), nil)
+	svc := NewOServiceServiceForBOS(config.Config{}, nil, nil, slog.Default(), cookieIssuer, nil, nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1352,8 +1355,7 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForChat_OServiceHostOnline(t *testing.T) {
-	cookieIssuer := newMockCookieIssuer(t)
-	svc := NewOServiceServiceForChat(*NewOServiceService(config.Config{}, nil, nil, slog.Default(), cookieIssuer, nil), nil)
+	svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1373,8 +1375,10 @@ func TestOServiceServiceForChat_OServiceHostOnline(t *testing.T) {
 }
 
 func TestOServiceService_ClientVersions(t *testing.T) {
-	cookieIssuer := newMockCookieIssuer(t)
-	svc := NewOServiceService(config.Config{}, nil, nil, slog.Default(), cookieIssuer, nil)
+	svc := OServiceService{
+		cfg:    config.Config{},
+		logger: slog.Default(),
+	}
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1397,8 +1401,10 @@ func TestOServiceService_ClientVersions(t *testing.T) {
 }
 
 func TestOServiceService_UserInfoQuery(t *testing.T) {
-	cookieIssuer := newMockCookieIssuer(t)
-	svc := NewOServiceService(config.Config{}, nil, nil, slog.Default(), cookieIssuer, nil)
+	svc := OServiceService{
+		cfg:    config.Config{},
+		logger: slog.Default(),
+	}
 	sess := newTestSession("test-user")
 
 	want := wire.SNACMessage{
@@ -1471,8 +1477,11 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 					})).
 					Return(nil)
 			}
-			svc := NewOServiceService(config.Config{}, nil, nil, slog.Default(), nil, buddyUpdateBroadcaster)
-
+			svc := OServiceService{
+				cfg:                    config.Config{},
+				logger:                 slog.Default(),
+				buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+			}
 			haveErr := svc.IdleNotification(nil, tt.sess, tt.bodyIn)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
 		})
@@ -1616,9 +1625,8 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 						})).
 					Return(p.err)
 			}
-			oservicesvc := NewOServiceService(config.Config{}, messageRelayer, legacyBuddyListManager, slog.Default(), nil, buddyUpdateBroadcaster)
-			svc := NewOServiceServiceForBOS(*oservicesvc, nil)
 
+			svc := NewOServiceServiceForBOS(config.Config{}, messageRelayer, legacyBuddyListManager, slog.Default(), nil, buddyUpdateBroadcaster, nil)
 			haveErr := svc.ClientOnline(nil, tt.bodyIn, tt.sess)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
 		})
@@ -1749,19 +1757,16 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 			chatRegistry := state.NewChatRegistry()
 			chatRegistry.Register(chatRoom, chatMessageRelayer)
 
-			svc := NewOServiceServiceForChat(OServiceService{
-				messageRelayer: chatMessageRelayer,
-			}, chatRegistry)
+			svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, chatRegistry)
 
-			haveErr := svc.ClientOnline(nil, tt.joiningChatter)
+			haveErr := svc.ClientOnline(nil, wire.SNAC_0x01_0x02_OServiceClientOnline{}, tt.joiningChatter)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
 		})
 	}
 }
 
 func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
-	cookieIssuer := newMockCookieIssuer(t)
-	svc := NewOServiceServiceForChatNav(*NewOServiceService(config.Config{}, nil, nil, slog.Default(), cookieIssuer, nil), nil)
+	svc := NewOServiceServiceForChatNav(config.Config{}, slog.Default(), nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1781,8 +1786,7 @@ func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForAlert_HostOnline(t *testing.T) {
-	cookieIssuer := newMockCookieIssuer(t)
-	svc := NewOServiceServiceForAlert(*NewOServiceService(config.Config{}, nil, nil, slog.Default(), cookieIssuer, nil))
+	svc := NewOServiceServiceForAlert(config.Config{}, slog.Default(), nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1802,8 +1806,10 @@ func TestOServiceServiceForAlert_HostOnline(t *testing.T) {
 }
 
 func TestOServiceService_SetPrivacyFlags(t *testing.T) {
-	cookieIssuer := newMockCookieIssuer(t)
-	svc := NewOServiceServiceForAlert(*NewOServiceService(config.Config{}, nil, nil, slog.Default(), cookieIssuer, nil))
+	svc := OServiceService{
+		cfg:    config.Config{},
+		logger: slog.Default(),
+	}
 	body := wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags{
 		PrivacyFlags: wire.OServicePrivacyFlagMember | wire.OServicePrivacyFlagIdle,
 	}

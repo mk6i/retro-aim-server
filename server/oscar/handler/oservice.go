@@ -13,36 +13,25 @@ import (
 )
 
 type OServiceService interface {
+	ClientOnline(ctx context.Context, bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error
 	ClientVersions(ctx context.Context, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x17_OServiceClientVersions) wire.SNACMessage
+	HostOnline() wire.SNACMessage
 	IdleNotification(ctx context.Context, sess *state.Session, bodyIn wire.SNAC_0x01_0x11_OServiceIdleNotification) error
 	RateParamsQuery(ctx context.Context, frame wire.SNACFrame) wire.SNACMessage
 	RateParamsSubAdd(context.Context, wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd)
+	ServiceRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error)
 	SetPrivacyFlags(ctx context.Context, bodyIn wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags)
 	SetUserInfoFields(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (wire.SNACMessage, error)
 	UserInfoQuery(ctx context.Context, sess *state.Session, frame wire.SNACFrame) wire.SNACMessage
 }
 
-type OServiceBOSService interface {
-	OServiceService
-	HostOnline() wire.SNACMessage
-	ServiceRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error)
-	ClientOnline(ctx context.Context, bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error
-}
-
-type OServiceChatService interface {
-	OServiceService
-	HostOnline() wire.SNACMessage
-	ClientOnline(ctx context.Context, sess *state.Session) error
-}
-
-type OServiceChatNavService interface {
-	OServiceService
-	HostOnline() wire.SNACMessage
-}
-
-type OServiceAlertService interface {
-	OServiceService
-	HostOnline() wire.SNACMessage
+func NewOServiceHandler(logger *slog.Logger, oServiceService OServiceService) OServiceHandler {
+	return OServiceHandler{
+		OServiceService: oServiceService,
+		RouteLogger: middleware.RouteLogger{
+			Logger: logger,
+		},
+	}
 }
 
 type OServiceHandler struct {
@@ -120,123 +109,25 @@ func (h OServiceHandler) SetPrivacyFlags(ctx context.Context, sess *state.Sessio
 	return nil
 }
 
-func NewOServiceHandlerForBOS(logger *slog.Logger, oServiceService OServiceService, oServiceBOSService OServiceBOSService) OServiceBOSHandler {
-	return OServiceBOSHandler{
-		OServiceHandler: OServiceHandler{
-			OServiceService: oServiceService,
-			RouteLogger: middleware.RouteLogger{
-				Logger: logger,
-			},
-		},
-		OServiceBOSService: oServiceBOSService,
-	}
-}
-
-type OServiceBOSHandler struct {
-	OServiceHandler
-	OServiceBOSService
-}
-
-func (s OServiceBOSHandler) ServiceRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
+func (h OServiceHandler) ServiceRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x01_0x04_OServiceServiceRequest{}
 	if err := wire.Unmarshal(&inBody, r); err != nil {
 		return err
 	}
-	outSNAC, err := s.OServiceBOSService.ServiceRequest(ctx, sess, inFrame, inBody)
+	outSNAC, err := h.OServiceService.ServiceRequest(ctx, sess, inFrame, inBody)
 	if err != nil {
 		return err
 	}
-	s.LogRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
+	h.LogRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
 
-func (s OServiceBOSHandler) ClientOnline(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
+func (h OServiceHandler) ClientOnline(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x01_0x02_OServiceClientOnline{}
 	if err := wire.Unmarshal(&inBody, r); err != nil {
 		return err
 	}
-	s.Logger.InfoContext(ctx, "user signed on")
-	s.LogRequest(ctx, inFrame, inBody)
-	return s.OServiceBOSService.ClientOnline(ctx, inBody, sess)
-}
-
-func NewOServiceHandlerForChat(logger *slog.Logger, oServiceService OServiceService, oServiceChatService OServiceChatService) OServiceChatHandler {
-	return OServiceChatHandler{
-		OServiceHandler: OServiceHandler{
-			OServiceService: oServiceService,
-			RouteLogger: middleware.RouteLogger{
-				Logger: logger,
-			},
-		},
-		OServiceChatService: oServiceChatService,
-	}
-}
-
-type OServiceChatHandler struct {
-	OServiceHandler
-	OServiceChatService
-}
-
-func (s OServiceChatHandler) ClientOnline(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
-	inBody := wire.SNAC_0x01_0x02_OServiceClientOnline{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
-		return err
-	}
-	s.Logger.InfoContext(ctx, "user signed on")
-	s.LogRequest(ctx, inFrame, inBody)
-	return s.OServiceChatService.ClientOnline(ctx, sess)
-}
-
-func NewOServiceHandlerForChatNav(logger *slog.Logger, oServiceService OServiceService, oServiceChatNavService OServiceChatNavService) OServiceChatNavHandler {
-	return OServiceChatNavHandler{
-		OServiceHandler: OServiceHandler{
-			OServiceService: oServiceService,
-			RouteLogger: middleware.RouteLogger{
-				Logger: logger,
-			},
-		},
-		OServiceChatNavService: oServiceChatNavService,
-	}
-}
-
-type OServiceChatNavHandler struct {
-	OServiceHandler
-	OServiceChatNavService
-}
-
-func (s OServiceChatNavHandler) ClientOnline(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
-	inBody := wire.SNAC_0x01_0x02_OServiceClientOnline{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
-		return err
-	}
-	s.Logger.InfoContext(ctx, "user signed on")
-	s.LogRequest(ctx, inFrame, inBody)
-	return nil
-}
-
-func NewOServiceHandlerForAlert(logger *slog.Logger, oServiceService OServiceService, oServiceAlertService OServiceAlertService) OServiceAlertHandler {
-	return OServiceAlertHandler{
-		OServiceHandler: OServiceHandler{
-			OServiceService: oServiceService,
-			RouteLogger: middleware.RouteLogger{
-				Logger: logger,
-			},
-		},
-		OServiceAlertService: oServiceAlertService,
-	}
-}
-
-type OServiceAlertHandler struct {
-	OServiceHandler
-	OServiceAlertService
-}
-
-func (s OServiceAlertHandler) ClientOnline(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
-	inBody := wire.SNAC_0x01_0x02_OServiceClientOnline{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
-		return err
-	}
-	s.Logger.InfoContext(ctx, "user signed on")
-	s.LogRequest(ctx, inFrame, inBody)
-	return nil
+	h.Logger.InfoContext(ctx, "user signed on")
+	h.LogRequest(ctx, inFrame, inBody)
+	return h.OServiceService.ClientOnline(ctx, inBody, sess)
 }

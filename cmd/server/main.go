@@ -55,8 +55,7 @@ func main() {
 		buddyService := foodgroup.NewBuddyService(sessionManager, feedbagStore, adjListBuddyListStore)
 		authService := foodgroup.NewAuthService(cfg, sessionManager, feedbagStore, chatRegistry, adjListBuddyListStore, cookieBaker, buddyService)
 		bartService := foodgroup.NewBARTService(logger, feedbagStore, buddyService)
-		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, adjListBuddyListStore, logger, cookieBaker, buddyService)
-		oServiceServiceForBOS := foodgroup.NewOServiceServiceForBOS(*oServiceService, chatRegistry)
+		oServiceService := foodgroup.NewOServiceServiceForBOS(cfg, sessionManager, adjListBuddyListStore, logger, cookieBaker, buddyService, chatRegistry)
 		locateService := foodgroup.NewLocateService(sessionManager, feedbagStore, feedbagStore, buddyService)
 		newChatSessMgr := func() foodgroup.SessionManager { return state.NewInMemorySessionManager(logger) }
 		chatNavService := foodgroup.NewChatNavService(logger, chatRegistry, state.NewChatRoom, newChatSessMgr)
@@ -68,19 +67,19 @@ func main() {
 			AuthService: authService,
 			Config:      cfg,
 			Handler: handler.NewBOSRouter(handler.Handlers{
-				AlertHandler:       handler.NewAlertHandler(logger),
-				BARTHandler:        handler.NewBARTHandler(logger, bartService),
-				BuddyHandler:       handler.NewBuddyHandler(logger, buddyService),
-				ChatNavHandler:     handler.NewChatNavHandler(chatNavService, logger),
-				FeedbagHandler:     handler.NewFeedbagHandler(logger, feedbagService),
-				ICBMHandler:        handler.NewICBMHandler(logger, icbmService),
-				LocateHandler:      handler.NewLocateHandler(locateService, logger),
-				OServiceBOSHandler: handler.NewOServiceHandlerForBOS(logger, oServiceService, oServiceServiceForBOS),
-				PermitDenyHandler:  handler.NewPermitDenyHandler(logger, foodgroupService),
+				AlertHandler:      handler.NewAlertHandler(logger),
+				BARTHandler:       handler.NewBARTHandler(logger, bartService),
+				BuddyHandler:      handler.NewBuddyHandler(logger, buddyService),
+				ChatNavHandler:    handler.NewChatNavHandler(chatNavService, logger),
+				FeedbagHandler:    handler.NewFeedbagHandler(logger, feedbagService),
+				ICBMHandler:       handler.NewICBMHandler(logger, icbmService),
+				LocateHandler:     handler.NewLocateHandler(locateService, logger),
+				OServiceHandler:   handler.NewOServiceHandler(logger, oServiceService),
+				PermitDenyHandler: handler.NewPermitDenyHandler(logger, foodgroupService),
 			}),
 			CookieCracker:  cookieBaker,
 			Logger:         logger,
-			OnlineNotifier: oServiceServiceForBOS,
+			OnlineNotifier: oServiceService,
 			ListenAddr:     net.JoinHostPort("", cfg.BOSPort),
 		}.Start()
 		wg.Done()
@@ -89,19 +88,18 @@ func main() {
 		logger = logger.With("svc", "CHAT")
 		buddyService := foodgroup.NewBuddyService(nil, feedbagStore, adjListBuddyListStore)
 		authService := foodgroup.NewAuthService(cfg, sessionManager, feedbagStore, chatRegistry, adjListBuddyListStore, cookieBaker, buddyService)
-		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, adjListBuddyListStore, logger, cookieBaker, buddyService)
 		chatService := foodgroup.NewChatService(chatRegistry)
-		oServiceServiceForChat := foodgroup.NewOServiceServiceForChat(*oServiceService, chatRegistry)
+		oServiceService := foodgroup.NewOServiceServiceForChat(cfg, logger, buddyService, chatRegistry)
 
 		oscar.ChatServer{
 			AuthService: authService,
 			Config:      cfg,
 			Handler: handler.NewChatRouter(handler.Handlers{
-				ChatHandler:         handler.NewChatHandler(logger, chatService),
-				OServiceChatHandler: handler.NewOServiceHandlerForChat(logger, oServiceService, oServiceServiceForChat),
+				ChatHandler:     handler.NewChatHandler(logger, chatService),
+				OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
 			}),
 			Logger:         logger,
-			OnlineNotifier: oServiceServiceForChat,
+			OnlineNotifier: oServiceService,
 			CookieCracker:  cookieBaker,
 		}.Start()
 		wg.Done()
@@ -111,8 +109,7 @@ func main() {
 		sessionManager := state.NewInMemorySessionManager(logger)
 		buddyService := foodgroup.NewBuddyService(sessionManager, feedbagStore, adjListBuddyListStore)
 		authService := foodgroup.NewAuthService(cfg, sessionManager, feedbagStore, chatRegistry, adjListBuddyListStore, cookieBaker, buddyService)
-		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, adjListBuddyListStore, logger, cookieBaker, buddyService)
-		oServiceServiceForChatNav := foodgroup.NewOServiceServiceForChatNav(*oServiceService, chatRegistry)
+		oServiceService := foodgroup.NewOServiceServiceForChatNav(cfg, logger, buddyService)
 		newChatSessMgr := func() foodgroup.SessionManager { return state.NewInMemorySessionManager(logger) }
 		chatNavService := foodgroup.NewChatNavService(logger, chatRegistry, state.NewChatRoom, newChatSessMgr)
 
@@ -120,11 +117,11 @@ func main() {
 			AuthService: authService,
 			Config:      cfg,
 			Handler: handler.NewChatNavRouter(handler.Handlers{
-				ChatNavHandler:         handler.NewChatNavHandler(chatNavService, logger),
-				OServiceChatNavHandler: handler.NewOServiceHandlerForChatNav(logger, oServiceService, oServiceServiceForChatNav),
+				ChatNavHandler:  handler.NewChatNavHandler(chatNavService, logger),
+				OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
 			}),
 			Logger:         logger,
-			OnlineNotifier: oServiceServiceForChatNav,
+			OnlineNotifier: oServiceService,
 			ListenAddr:     net.JoinHostPort("", cfg.ChatNavPort),
 			CookieCracker:  cookieBaker,
 		}.Start()
@@ -135,19 +132,18 @@ func main() {
 		sessionManager := state.NewInMemorySessionManager(logger)
 		buddyService := foodgroup.NewBuddyService(sessionManager, feedbagStore, adjListBuddyListStore)
 		authService := foodgroup.NewAuthService(cfg, sessionManager, feedbagStore, chatRegistry, adjListBuddyListStore, cookieBaker, buddyService)
-		oServiceService := foodgroup.NewOServiceService(cfg, sessionManager, adjListBuddyListStore, logger, cookieBaker, buddyService)
-		oServiceServiceForAlert := foodgroup.NewOServiceServiceForAlert(*oServiceService)
+		oServiceService := foodgroup.NewOServiceServiceForAlert(cfg, logger, buddyService)
 
 		oscar.BOSServer{
 			AuthService: authService,
 			Config:      cfg,
 			Handler: handler.NewAlertRouter(handler.Handlers{
-				AlertHandler:         handler.NewAlertHandler(logger),
-				OServiceAlertHandler: handler.NewOServiceHandlerForAlert(logger, oServiceService, oServiceServiceForAlert),
+				AlertHandler:    handler.NewAlertHandler(logger),
+				OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
 			}),
 			CookieCracker:  cookieBaker,
 			Logger:         logger,
-			OnlineNotifier: oServiceServiceForAlert,
+			OnlineNotifier: oServiceService,
 			ListenAddr:     net.JoinHostPort("", cfg.AlertPort),
 		}.Start()
 		wg.Done()

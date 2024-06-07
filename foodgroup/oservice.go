@@ -14,34 +14,13 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-// NewOServiceService creates a new instance of OServiceService.
-func NewOServiceService(
-	cfg config.Config,
-	messageRelayer MessageRelayer,
-	legacyBuddyListManager LegacyBuddyListManager,
-	logger *slog.Logger,
-	cookieIssuer CookieIssuer,
-	buddyUpdateBroadcaster BuddyBroadcaster,
-) *OServiceService {
-	return &OServiceService{
-		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
-		cfg:                    cfg,
-		cookieIssuer:           cookieIssuer,
-		legacyBuddyListManager: legacyBuddyListManager,
-		logger:                 logger,
-		messageRelayer:         messageRelayer,
-	}
-}
-
 // OServiceService provides functionality for the OService food group, which
 // provides an assortment of services useful across multiple food groups.
 type OServiceService struct {
 	buddyUpdateBroadcaster BuddyBroadcaster
 	cfg                    config.Config
-	cookieIssuer           CookieIssuer
-	legacyBuddyListManager LegacyBuddyListManager
 	logger                 *slog.Logger
-	messageRelayer         MessageRelayer
+	foodGroups             []uint16
 }
 
 // ClientVersions informs the server what food group versions the client
@@ -490,11 +469,74 @@ func (s OServiceService) SetPrivacyFlags(ctx context.Context, bodyIn wire.SNAC_0
 func (s OServiceService) RateParamsSubAdd(context.Context, wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd) {
 }
 
+func (s OServiceService) ServiceRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.OService,
+			SubGroup:  wire.OServiceErr,
+			RequestID: frame.RequestID,
+		},
+		Body: wire.SNACError{
+			Code: wire.ErrorCodeNotSupportedByHost,
+		},
+	}, nil
+}
+
+// ClientOnline informs the server that the client is ready.
+func (s OServiceService) ClientOnline(ctx context.Context, bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
+	s.logger.DebugContext(ctx, "client is online", "group_versions", bodyIn.GroupVersions)
+	return nil
+}
+
+// HostOnline initiates the Alert protocol sequence.
+// It returns SNAC wire.OServiceHostOnline containing the list of food groups
+// supported by the Alert service.
+// Alert is provided by BOS in addition to the standalone Alert service.
+// AIM 4.x always creates a secondary TCP connection for Alert, whereas 5.x
+// can use the existing BOS connection for Alert services.
+func (s OServiceService) HostOnline() wire.SNACMessage {
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.OService,
+			SubGroup:  wire.OServiceHostOnline,
+		},
+		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+			FoodGroups: s.foodGroups,
+		},
+	}
+}
+
 // NewOServiceServiceForBOS creates a new instance of OServiceServiceForBOS.
-func NewOServiceServiceForBOS(oserviceService OServiceService, cr *state.ChatRegistry) *OServiceServiceForBOS {
+func NewOServiceServiceForBOS(
+	cfg config.Config,
+	messageRelayer MessageRelayer,
+	legacyBuddyListManager LegacyBuddyListManager,
+	logger *slog.Logger,
+	cookieIssuer CookieIssuer,
+	buddyUpdateBroadcaster BuddyBroadcaster,
+	cr *state.ChatRegistry,
+) *OServiceServiceForBOS {
 	return &OServiceServiceForBOS{
-		OServiceService: oserviceService,
-		chatRegistry:    cr,
+		chatRegistry:           cr,
+		cookieIssuer:           cookieIssuer,
+		legacyBuddyListManager: legacyBuddyListManager,
+		messageRelayer:         messageRelayer,
+		OServiceService: OServiceService{
+			buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+			cfg:                    cfg,
+			logger:                 logger,
+			foodGroups: []uint16{
+				wire.Alert,
+				wire.Buddy,
+				wire.ChatNav,
+				wire.Feedbag,
+				wire.ICBM,
+				wire.Locate,
+				wire.OService,
+				wire.BART,
+				wire.PermitDeny,
+			},
+		},
 	}
 }
 
@@ -502,7 +544,10 @@ func NewOServiceServiceForBOS(oserviceService OServiceService, cr *state.ChatReg
 // running on the BOS server.
 type OServiceServiceForBOS struct {
 	OServiceService
-	chatRegistry *state.ChatRegistry
+	chatRegistry           *state.ChatRegistry
+	cookieIssuer           CookieIssuer
+	legacyBuddyListManager LegacyBuddyListManager
+	messageRelayer         MessageRelayer
 }
 
 // chatLoginCookie represents credentials used to authenticate a user chat
@@ -622,34 +667,6 @@ func (s OServiceServiceForBOS) ServiceRequest(_ context.Context, sess *state.Ses
 	}
 }
 
-// HostOnline initiates the BOS protocol sequence.
-// It returns SNAC wire.OServiceHostOnline containing the list food groups
-// supported by the BOS service.
-// ChatNav is provided by BOS in addition to the standalone ChatNav service.
-// AIM 4.x always creates a secondary TCP connection for ChatNav, whereas 5.x
-// can use the existing BOS connection for ChatNav services.
-func (s OServiceServiceForBOS) HostOnline() wire.SNACMessage {
-	return wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceHostOnline,
-		},
-		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
-			FoodGroups: []uint16{
-				wire.Alert,
-				wire.Buddy,
-				wire.ChatNav,
-				wire.Feedbag,
-				wire.ICBM,
-				wire.Locate,
-				wire.OService,
-				wire.BART,
-				wire.PermitDeny,
-			},
-		},
-	}
-}
-
 // ClientOnline runs when the current user is ready to join.
 // It announces current user's arrival to users who have the current user on
 // their buddy list.
@@ -674,11 +691,19 @@ func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x0
 	return nil
 }
 
-// NewOServiceServiceForChat creates a new instance of OServiceServiceForChat.
-func NewOServiceServiceForChat(oserviceService OServiceService, chatRegistry *state.ChatRegistry) *OServiceServiceForChat {
+// NewOServiceServiceForChat creates a new instance of NewOServiceServiceForChat.
+func NewOServiceServiceForChat(cfg config.Config, logger *slog.Logger, buddyUpdateBroadcaster BuddyBroadcaster, cr *state.ChatRegistry) *OServiceServiceForChat {
 	return &OServiceServiceForChat{
-		OServiceService: oserviceService,
-		chatRegistry:    chatRegistry,
+		chatRegistry: cr,
+		OServiceService: OServiceService{
+			buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+			cfg:                    cfg,
+			logger:                 logger,
+			foodGroups: []uint16{
+				wire.OService,
+				wire.Chat,
+			},
+		},
 	}
 }
 
@@ -689,30 +714,12 @@ type OServiceServiceForChat struct {
 	chatRegistry *state.ChatRegistry
 }
 
-// HostOnline initiates the Chat protocol sequence.
-// It returns SNAC wire.OServiceHostOnline containing the list of food groups
-// supported by the Chat service.
-func (s OServiceServiceForChat) HostOnline() wire.SNACMessage {
-	return wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceHostOnline,
-		},
-		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
-			FoodGroups: []uint16{
-				wire.OService,
-				wire.Chat,
-			},
-		},
-	}
-}
-
 // ClientOnline runs when the current user is ready to join the chat.
 // Trigger the following actions:
 //   - Send current user the chat room metadata
 //   - Announce current user's arrival to other chat room participants
 //   - Send current user the chat room participant list
-func (s OServiceServiceForChat) ClientOnline(ctx context.Context, sess *state.Session) error {
+func (s OServiceServiceForChat) ClientOnline(ctx context.Context, _ wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
 	room, chatSessMgr, err := s.chatRegistry.Retrieve(sess.ChatRoomCookie())
 	if err != nil {
 		return err
@@ -723,72 +730,30 @@ func (s OServiceServiceForChat) ClientOnline(ctx context.Context, sess *state.Se
 	return nil
 }
 
-// NewOServiceServiceForChatNav creates a new instance of OServiceServiceForChat.
-func NewOServiceServiceForChatNav(oserviceService OServiceService, chatRegistry *state.ChatRegistry) *OServiceServiceForChatNav {
-	return &OServiceServiceForChatNav{
-		OServiceService: oserviceService,
-		chatRegistry:    chatRegistry,
-	}
-}
-
-// OServiceServiceForChatNav provides functionality for the OService food group
-// running on the Chat server.
-type OServiceServiceForChatNav struct {
-	OServiceService
-	chatRegistry *state.ChatRegistry
-}
-
-// HostOnline initiates the ChatNav protocol sequence.
-// It returns SNAC wire.OServiceHostOnline containing the list of food groups
-// supported by the ChatNav service.
-// ChatNav is provided by BOS in addition to the standalone ChatNav service.
-// AIM 4.x always creates a secondary TCP connection for ChatNav, whereas 5.x
-// can use the existing BOS connection for ChatNav services.
-func (s OServiceServiceForChatNav) HostOnline() wire.SNACMessage {
-	return wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceHostOnline,
-		},
-		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
-			FoodGroups: []uint16{
-				wire.ChatNav,
-				wire.OService,
-			},
+// NewOServiceServiceForChatNav creates a new instance of OServiceService for
+// ChatNav.
+func NewOServiceServiceForChatNav(cfg config.Config, logger *slog.Logger, buddyUpdateBroadcaster BuddyBroadcaster) *OServiceService {
+	return &OServiceService{
+		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+		cfg:                    cfg,
+		logger:                 logger,
+		foodGroups: []uint16{
+			wire.ChatNav,
+			wire.OService,
 		},
 	}
 }
 
-// NewOServiceServiceForAlert creates a new instance of OServiceServiceForAlert.
-func NewOServiceServiceForAlert(oserviceService OServiceService) *OServiceServiceForAlert {
-	return &OServiceServiceForAlert{
-		OServiceService: oserviceService,
-	}
-}
-
-// OServiceServiceForAlert provides functionality for the OService food group
-// running on the Alert server.
-type OServiceServiceForAlert struct {
-	OServiceService
-}
-
-// HostOnline initiates the Alert protocol sequence.
-// It returns SNAC wire.OServiceHostOnline containing the list of food groups
-// supported by the Alert service.
-// Alert is provided by BOS in addition to the standalone Alert service.
-// AIM 4.x always creates a secondary TCP connection for Alert, whereas 5.x
-// can use the existing BOS connection for Alert services.
-func (s OServiceServiceForAlert) HostOnline() wire.SNACMessage {
-	return wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceHostOnline,
-		},
-		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
-			FoodGroups: []uint16{
-				wire.Alert,
-				wire.OService,
-			},
+// NewOServiceServiceForAlert creates a new instance of OServiceService for the Alert
+// server.
+func NewOServiceServiceForAlert(cfg config.Config, logger *slog.Logger, buddyUpdateBroadcaster BuddyBroadcaster) *OServiceService {
+	return &OServiceService{
+		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+		cfg:                    cfg,
+		logger:                 logger,
+		foodGroups: []uint16{
+			wire.Alert,
+			wire.OService,
 		},
 	}
 }

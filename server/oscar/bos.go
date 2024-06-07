@@ -42,7 +42,7 @@ func (rt BOSServer) Start() {
 	}
 	defer listener.Close()
 
-	rt.Logger.Info("starting service", "host", net.JoinHostPort(rt.Config.OSCARHost, rt.Config.BOSPort))
+	rt.Logger.Info("starting service", "host", rt.ListenAddr)
 
 	for {
 		conn, err := listener.Accept()

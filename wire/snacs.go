@@ -1174,10 +1174,6 @@ const (
 	AlertUserOnline                uint16 = 0x0017
 )
 
-type SNACOServiceErr struct {
-	Code uint16
-}
-
 type TLVUserInfo struct {
 	ScreenName   string `len_prefix:"uint8"`
 	WarningLevel uint16

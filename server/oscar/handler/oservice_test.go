@@ -32,12 +32,12 @@ func TestOServiceBOSHandler_ClientOnline(t *testing.T) {
 		},
 	}
 
-	svc := newMockOServiceBOSService(t)
+	svc := newMockOServiceService(t)
 	svc.EXPECT().
 		ClientOnline(mock.Anything, input.Body, mock.Anything).
 		Return(nil)
 
-	h := NewOServiceHandlerForBOS(slog.Default(), nil, svc)
+	h := NewOServiceHandler(slog.Default(), svc)
 
 	responseWriter := newMockResponseWriter(t)
 
@@ -71,12 +71,12 @@ func TestOServiceBOSHandler_ServiceRequest(t *testing.T) {
 		},
 	}
 
-	svc := newMockOServiceBOSService(t)
+	svc := newMockOServiceService(t)
 	svc.EXPECT().
 		ServiceRequest(mock.Anything, mock.Anything, input.Frame, input.Body).
 		Return(output, nil)
 
-	h := NewOServiceHandlerForBOS(slog.Default(), nil, svc)
+	h := NewOServiceHandler(slog.Default(), svc)
 
 	responseWriter := newMockResponseWriter(t)
 	responseWriter.EXPECT().
@@ -109,12 +109,12 @@ func TestOServiceChatHandler_ClientOnline(t *testing.T) {
 		},
 	}
 
-	svc := newMockOServiceChatService(t)
+	svc := newMockOServiceService(t)
 	svc.EXPECT().
-		ClientOnline(mock.Anything, mock.Anything).
+		ClientOnline(mock.Anything, mock.Anything, mock.Anything).
 		Return(nil)
 
-	h := NewOServiceHandlerForChat(slog.Default(), nil, svc)
+	h := NewOServiceHandler(slog.Default(), svc)
 
 	responseWriter := newMockResponseWriter(t)
 
@@ -451,9 +451,11 @@ func TestOServiceChatNavHandler_ClientOnline(t *testing.T) {
 		},
 	}
 
-	svc := newMockOServiceChatNavService(t)
-
-	h := NewOServiceHandlerForChatNav(slog.Default(), nil, svc)
+	svc := newMockOServiceService(t)
+	svc.EXPECT().
+		ClientOnline(mock.Anything, input.Body, mock.Anything).
+		Return(nil)
+	h := NewOServiceHandler(slog.Default(), svc)
 
 	responseWriter := newMockResponseWriter(t)
 
@@ -483,9 +485,11 @@ func TestOServiceAlertHandler_ClientOnline(t *testing.T) {
 		},
 	}
 
-	svc := newMockOServiceAlertService(t)
-
-	h := NewOServiceHandlerForAlert(slog.Default(), nil, svc)
+	svc := newMockOServiceService(t)
+	svc.EXPECT().
+		ClientOnline(mock.Anything, input.Body, mock.Anything).
+		Return(nil)
+	h := NewOServiceHandler(slog.Default(), svc)
 
 	responseWriter := newMockResponseWriter(t)
 

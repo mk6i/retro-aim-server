@@ -24,6 +24,54 @@ func (_m *mockOServiceService) EXPECT() *mockOServiceService_Expecter {
 	return &mockOServiceService_Expecter{mock: &_m.Mock}
 }
 
+// ClientOnline provides a mock function with given fields: ctx, bodyIn, sess
+func (_m *mockOServiceService) ClientOnline(ctx context.Context, bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
+	ret := _m.Called(ctx, bodyIn, sess)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ClientOnline")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, wire.SNAC_0x01_0x02_OServiceClientOnline, *state.Session) error); ok {
+		r0 = rf(ctx, bodyIn, sess)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockOServiceService_ClientOnline_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ClientOnline'
+type mockOServiceService_ClientOnline_Call struct {
+	*mock.Call
+}
+
+// ClientOnline is a helper method to define mock.On call
+//   - ctx context.Context
+//   - bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline
+//   - sess *state.Session
+func (_e *mockOServiceService_Expecter) ClientOnline(ctx interface{}, bodyIn interface{}, sess interface{}) *mockOServiceService_ClientOnline_Call {
+	return &mockOServiceService_ClientOnline_Call{Call: _e.mock.On("ClientOnline", ctx, bodyIn, sess)}
+}
+
+func (_c *mockOServiceService_ClientOnline_Call) Run(run func(ctx context.Context, bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session)) *mockOServiceService_ClientOnline_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(wire.SNAC_0x01_0x02_OServiceClientOnline), args[2].(*state.Session))
+	})
+	return _c
+}
+
+func (_c *mockOServiceService_ClientOnline_Call) Return(_a0 error) *mockOServiceService_ClientOnline_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockOServiceService_ClientOnline_Call) RunAndReturn(run func(context.Context, wire.SNAC_0x01_0x02_OServiceClientOnline, *state.Session) error) *mockOServiceService_ClientOnline_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ClientVersions provides a mock function with given fields: ctx, frame, bodyIn
 func (_m *mockOServiceService) ClientVersions(ctx context.Context, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x17_OServiceClientVersions) wire.SNACMessage {
 	ret := _m.Called(ctx, frame, bodyIn)
@@ -68,6 +116,51 @@ func (_c *mockOServiceService_ClientVersions_Call) Return(_a0 wire.SNACMessage) 
 }
 
 func (_c *mockOServiceService_ClientVersions_Call) RunAndReturn(run func(context.Context, wire.SNACFrame, wire.SNAC_0x01_0x17_OServiceClientVersions) wire.SNACMessage) *mockOServiceService_ClientVersions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HostOnline provides a mock function with given fields:
+func (_m *mockOServiceService) HostOnline() wire.SNACMessage {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for HostOnline")
+	}
+
+	var r0 wire.SNACMessage
+	if rf, ok := ret.Get(0).(func() wire.SNACMessage); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(wire.SNACMessage)
+	}
+
+	return r0
+}
+
+// mockOServiceService_HostOnline_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HostOnline'
+type mockOServiceService_HostOnline_Call struct {
+	*mock.Call
+}
+
+// HostOnline is a helper method to define mock.On call
+func (_e *mockOServiceService_Expecter) HostOnline() *mockOServiceService_HostOnline_Call {
+	return &mockOServiceService_HostOnline_Call{Call: _e.mock.On("HostOnline")}
+}
+
+func (_c *mockOServiceService_HostOnline_Call) Run(run func()) *mockOServiceService_HostOnline_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *mockOServiceService_HostOnline_Call) Return(_a0 wire.SNACMessage) *mockOServiceService_HostOnline_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockOServiceService_HostOnline_Call) RunAndReturn(run func() wire.SNACMessage) *mockOServiceService_HostOnline_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -197,6 +290,65 @@ func (_c *mockOServiceService_RateParamsSubAdd_Call) Return() *mockOServiceServi
 }
 
 func (_c *mockOServiceService_RateParamsSubAdd_Call) RunAndReturn(run func(context.Context, wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd)) *mockOServiceService_RateParamsSubAdd_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ServiceRequest provides a mock function with given fields: ctx, sess, frame, bodyIn
+func (_m *mockOServiceService) ServiceRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
+	ret := _m.Called(ctx, sess, frame, bodyIn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ServiceRequest")
+	}
+
+	var r0 wire.SNACMessage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error)); ok {
+		return rf(ctx, sess, frame, bodyIn)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x01_0x04_OServiceServiceRequest) wire.SNACMessage); ok {
+		r0 = rf(ctx, sess, frame, bodyIn)
+	} else {
+		r0 = ret.Get(0).(wire.SNACMessage)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x01_0x04_OServiceServiceRequest) error); ok {
+		r1 = rf(ctx, sess, frame, bodyIn)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockOServiceService_ServiceRequest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ServiceRequest'
+type mockOServiceService_ServiceRequest_Call struct {
+	*mock.Call
+}
+
+// ServiceRequest is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sess *state.Session
+//   - frame wire.SNACFrame
+//   - bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest
+func (_e *mockOServiceService_Expecter) ServiceRequest(ctx interface{}, sess interface{}, frame interface{}, bodyIn interface{}) *mockOServiceService_ServiceRequest_Call {
+	return &mockOServiceService_ServiceRequest_Call{Call: _e.mock.On("ServiceRequest", ctx, sess, frame, bodyIn)}
+}
+
+func (_c *mockOServiceService_ServiceRequest_Call) Run(run func(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest)) *mockOServiceService_ServiceRequest_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACFrame), args[3].(wire.SNAC_0x01_0x04_OServiceServiceRequest))
+	})
+	return _c
+}
+
+func (_c *mockOServiceService_ServiceRequest_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockOServiceService_ServiceRequest_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockOServiceService_ServiceRequest_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error)) *mockOServiceService_ServiceRequest_Call {
 	_c.Call.Return(run)
 	return _c
 }
