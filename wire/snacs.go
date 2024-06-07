@@ -6,10 +6,6 @@ import (
 	"fmt"
 )
 
-// ErrUnsupportedFoodGroup indicates that a foodgroup value is either invalid
-// or unsupported by a method.
-var ErrUnsupportedFoodGroup = errors.New("foodgroup is unsupported")
-
 //
 // Food Group Codes
 //

@@ -89,7 +89,7 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 				// handler may write a response to the client connection.
 				if err := router.Handle(ctx, sess, inFrame, m.payload, flapc); err != nil {
 					middleware.LogRequestError(ctx, logger, inFrame, err)
-					if errors.Is(err, ErrRouteNotFound) || errors.Is(err, wire.ErrUnsupportedFoodGroup) {
+					if errors.Is(err, ErrRouteNotFound) {
 						if err1 := sendInvalidSNACErr(inFrame, flapc); err1 != nil {
 							return errors.Join(err1, err)
 						}

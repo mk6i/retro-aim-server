@@ -49,7 +49,16 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					FoodGroup: wire.ICBM,
 				},
 			},
-			expectErr: wire.ErrUnsupportedFoodGroup,
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeServiceUnavailable,
+				},
+			},
 		},
 		{
 			name: "request info for connecting to chat nav, return chat nav connection metadata",

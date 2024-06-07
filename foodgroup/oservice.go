@@ -559,14 +559,7 @@ type chatLoginCookie struct {
 
 // ServiceRequest handles service discovery, providing a host name and metadata
 // for connecting to the food group service specified in inFrame.
-// Depending on the food group specified, the method behaves as follows:
-// - ChatNav: Directs the user back to the current BOS server, which provides
-// ChatNav services. AIM 4.8 requests ChatNav service info even though
-// HostOnline reports it as available via BOS.
-// - Chat: Directs the client to the chat server along with metadata for
-// connecting to the chat room specified in inFrame.
-// - Other Food Groups: Returns wire.ErrUnsupportedFoodGroup.
-func (s OServiceServiceForBOS) ServiceRequest(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
+func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
 	switch inBody.FoodGroup {
 	case wire.Alert:
 		cookie, err := s.cookieIssuer.Issue([]byte(sess.ScreenName()))
@@ -662,8 +655,17 @@ func (s OServiceServiceForBOS) ServiceRequest(_ context.Context, sess *state.Ses
 			},
 		}, nil
 	default:
-		err := fmt.Errorf("%w. food group: %s", wire.ErrUnsupportedFoodGroup, wire.FoodGroupName(inBody.FoodGroup))
-		return wire.SNACMessage{}, err
+		s.logger.InfoContext(ctx, "client service request for unsupported service", "food_group", wire.FoodGroupName(inBody.FoodGroup))
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceErr,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNACError{
+				Code: wire.ErrorCodeServiceUnavailable,
+			},
+		}, nil
 	}
 }
 
