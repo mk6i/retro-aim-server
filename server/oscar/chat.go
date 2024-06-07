@@ -29,12 +29,12 @@ func (rt ChatServer) Start() {
 	addr := net.JoinHostPort("", rt.Config.ChatPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		rt.Logger.Error("unable to bind chat server address", "err", err.Error())
+		rt.Logger.Error("unable to bind server address", "host", addr, "err", err.Error())
 		os.Exit(1)
 	}
 	defer listener.Close()
 
-	rt.Logger.Info("starting chat service", "host", net.JoinHostPort(rt.Config.OSCARHost, rt.Config.ChatPort))
+	rt.Logger.Info("starting server", "listen_host", addr, "oscar_host", rt.Config.OSCARHost)
 
 	for {
 		conn, err := listener.Accept()

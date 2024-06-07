@@ -37,12 +37,12 @@ type BOSServer struct {
 func (rt BOSServer) Start() {
 	listener, err := net.Listen("tcp", rt.ListenAddr)
 	if err != nil {
-		rt.Logger.Error("unable to bind BOS server address", "err", err.Error())
+		rt.Logger.Error("unable to bind server address", "host", rt.ListenAddr, "err", err.Error())
 		os.Exit(1)
 	}
 	defer listener.Close()
 
-	rt.Logger.Info("starting service", "host", rt.ListenAddr)
+	rt.Logger.Info("starting server", "listen_host", rt.ListenAddr, "oscar_host", rt.Config.OSCARHost)
 
 	for {
 		conn, err := listener.Accept()

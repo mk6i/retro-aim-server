@@ -38,12 +38,12 @@ func (rt AuthServer) Start() {
 	addr := net.JoinHostPort("", rt.Config.AuthPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		rt.Logger.Error("unable to bind auth server address", "err", err.Error())
+		rt.Logger.Error("unable to bind server address", "host", addr, "err", err.Error())
 		os.Exit(1)
 	}
 	defer listener.Close()
 
-	rt.Logger.Info("starting auth service", "host", net.JoinHostPort(rt.Config.OSCARHost, rt.Config.AuthPort))
+	rt.Logger.Info("starting server", "listen_host", addr, "oscar_host", rt.Config.OSCARHost)
 
 	for {
 		conn, err := listener.Accept()

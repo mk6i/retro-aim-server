@@ -86,6 +86,7 @@ func main() {
 	}(logger)
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "CHAT")
+		sessionManager := state.NewInMemorySessionManager(logger)
 		buddyService := foodgroup.NewBuddyService(nil, feedbagStore, adjListBuddyListStore)
 		authService := foodgroup.NewAuthService(cfg, sessionManager, feedbagStore, chatRegistry, adjListBuddyListStore, cookieBaker, buddyService)
 		chatService := foodgroup.NewChatService(chatRegistry)
