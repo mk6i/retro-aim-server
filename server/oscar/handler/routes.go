@@ -136,3 +136,17 @@ func NewAlertRouter(h Handlers) oscar.Router {
 
 	return router
 }
+
+func NewBARTRouter(h Handlers) oscar.Router {
+	router := oscar.NewRouter()
+
+	router.Register(wire.BART, wire.BARTUploadQuery, h.BARTHandler.UploadQuery)
+	router.Register(wire.BART, wire.BARTDownloadQuery, h.BARTHandler.DownloadQuery)
+
+	router.Register(wire.OService, wire.OServiceClientOnline, h.ClientOnline)
+	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
+	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
+
+	return router
+}

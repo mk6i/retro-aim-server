@@ -44,7 +44,7 @@ func main() {
 	adjListBuddyListStore := state.NewAdjListBuddyListStore()
 
 	wg := sync.WaitGroup{}
-	wg.Add(6)
+	wg.Add(7)
 
 	go func() {
 		http.StartManagementAPI(cfg, feedbagStore, sessionManager, logger)
@@ -146,6 +146,28 @@ func main() {
 			Logger:         logger,
 			OnlineNotifier: oServiceService,
 			ListenAddr:     net.JoinHostPort("", cfg.AlertPort),
+		}.Start()
+		wg.Done()
+	}(logger)
+	go func(logger *slog.Logger) {
+		logger = logger.With("svc", "BART")
+		sessionManager := state.NewInMemorySessionManager(logger)
+		buddyService := foodgroup.NewBuddyService(sessionManager, feedbagStore, adjListBuddyListStore)
+		bartService := foodgroup.NewBARTService(logger, feedbagStore, buddyService)
+		authService := foodgroup.NewAuthService(cfg, sessionManager, feedbagStore, chatRegistry, adjListBuddyListStore, cookieBaker, buddyService)
+		oServiceService := foodgroup.NewOServiceServiceForBART(cfg, logger, buddyService)
+
+		oscar.BOSServer{
+			AuthService:   authService,
+			Config:        cfg,
+			CookieCracker: cookieBaker,
+			Handler: handler.NewBARTRouter(handler.Handlers{
+				BARTHandler:     handler.NewBARTHandler(logger, bartService),
+				OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
+			}),
+			ListenAddr:     net.JoinHostPort("", cfg.BARTPort),
+			Logger:         logger,
+			OnlineNotifier: oServiceService,
 		}.Start()
 		wg.Done()
 	}(logger)

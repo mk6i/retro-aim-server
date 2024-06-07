@@ -7,6 +7,7 @@ type Config struct {
 	ApiPort     string `envconfig:"API_PORT" required:"true" val:"8080" description:"The port that the management API service binds to."`
 	AlertPort   string `envconfig:"ALERT_PORT" required:"true" val:"5194" description:"The port that the Alert service binds to."`
 	AuthPort    string `envconfig:"AUTH_PORT" required:"true" val:"5190" description:"The port that the auth service binds to."`
+	BARTPort    string `envconfig:"BART_PORT" required:"true" val:"5195" description:"The port that the BART service binds to."`
 	BOSPort     string `envconfig:"BOS_PORT" required:"true" val:"5191" description:"The port that the BOS service binds to."`
 	ChatNavPort string `envconfig:"CHAT_NAV_PORT" required:"true" val:"5193" description:"The port that the chat nav service binds to."`
 	ChatPort    string `envconfig:"CHAT_PORT" required:"true" val:"5192" description:"The port that the chat service binds to."`

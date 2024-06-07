@@ -418,10 +418,10 @@ func (s OServiceService) SetUserInfoFields(ctx context.Context, sess *state.Sess
 			}
 		}
 		if status&wire.OServiceUserStatusDirectRequireAuth == wire.OServiceUserStatusDirectRequireAuth {
-			s.logger.InfoContext(ctx, "got unsupported status", "status", status)
+			s.logger.DebugContext(ctx, "got unsupported status", "status", status)
 		}
 		if status&wire.OServiceUserStatusHideIP == wire.OServiceUserStatusHideIP {
-			s.logger.InfoContext(ctx, "got unsupported status", "status", status)
+			s.logger.DebugContext(ctx, "got unsupported status", "status", status)
 		}
 	}
 	return wire.SNACMessage{
@@ -578,6 +578,29 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.AlertPort)),
 						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Alert),
+						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
+						wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+					},
+				},
+			},
+		}, nil
+	case wire.BART:
+		cookie, err := s.cookieIssuer.Issue([]byte(sess.ScreenName()))
+		if err != nil {
+			return wire.SNACMessage{}, err
+		}
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceServiceResponse,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.BARTPort)),
+						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, cookie),
+						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.BART),
 						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
 						wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 					},
@@ -755,6 +778,20 @@ func NewOServiceServiceForAlert(cfg config.Config, logger *slog.Logger, buddyUpd
 		logger:                 logger,
 		foodGroups: []uint16{
 			wire.Alert,
+			wire.OService,
+		},
+	}
+}
+
+// NewOServiceServiceForBART creates a new instance of OServiceService for the
+// BART server.
+func NewOServiceServiceForBART(cfg config.Config, logger *slog.Logger, buddyUpdateBroadcaster BuddyBroadcaster) *OServiceService {
+	return &OServiceService{
+		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+		cfg:                    cfg,
+		logger:                 logger,
+		foodGroups: []uint16{
+			wire.BART,
 			wire.OService,
 		},
 	}
