@@ -245,7 +245,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			chatSess := &state.Session{}
 			if tc.chatRoom != nil {
 				sessionManager.EXPECT().
-					AddSession(tc.userSession.ScreenName()).
+					AddSession(tc.userSession.IdentScreenName()).
 					Return(chatSess).
 					Maybe()
 				chatRegistry.Register(*tc.chatRoom, sessionManager)
@@ -329,7 +329,7 @@ func TestSetUserInfoFields(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 						},
 					},
 				},
@@ -364,7 +364,7 @@ func TestSetUserInfoFields(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyDepartedParams: broadcastBuddyDepartedParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 						},
 					},
 				},
@@ -379,7 +379,7 @@ func TestSetUserInfoFields(t *testing.T) {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().
 					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.ScreenName() == p.screenName
+						return s.IdentScreenName() == p.screenName
 					})).
 					Return(nil)
 			}
@@ -387,7 +387,7 @@ func TestSetUserInfoFields(t *testing.T) {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().
 					BroadcastBuddyDeparted(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.ScreenName() == p.screenName
+						return s.IdentScreenName() == p.screenName
 					})).
 					Return(nil)
 			}
@@ -1452,7 +1452,7 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: "test-user",
+							screenName: state.NewIdentScreenName("test-user"),
 						},
 					},
 				},
@@ -1468,7 +1468,7 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: "test-user",
+							screenName: state.NewIdentScreenName("test-user"),
 						},
 					},
 				},
@@ -1482,7 +1482,7 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().
 					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.ScreenName() == p.screenName
+						return s.IdentScreenName() == p.screenName
 					})).
 					Return(nil)
 			}
@@ -1522,19 +1522,22 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
 					legacyBuddiesParams: legacyBuddiesParams{
 						{
-							userScreenName: "test-user",
-							result:         []string{"buddy1", "buddy2"},
+							userScreenName: state.NewIdentScreenName("test-user"),
+							result: []state.IdentScreenName{
+								state.NewIdentScreenName("buddy1"),
+								state.NewIdentScreenName("buddy2"),
+							},
 						},
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "buddy1",
+							screenName: state.NewIdentScreenName("buddy1"),
 							sess:       newTestSession("buddy1", sessOptCannedSignonTime),
 						},
 						{
-							screenName: "buddy2",
+							screenName: state.NewIdentScreenName("buddy2"),
 							sess:       newTestSession("buddy2", sessOptCannedSignonTime),
 						},
 					},
@@ -1542,17 +1545,17 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: "test-user",
+							screenName: state.NewIdentScreenName("test-user"),
 						},
 					},
 					unicastBuddyArrivedParams: unicastBuddyArrivedParams{
 						{
-							from: "buddy1",
-							to:   "test-user",
+							from: state.NewIdentScreenName("buddy1"),
+							to:   state.NewIdentScreenName("test-user"),
 						},
 						{
-							from: "buddy2",
-							to:   "test-user",
+							from: state.NewIdentScreenName("buddy2"),
+							to:   state.NewIdentScreenName("test-user"),
 						},
 					},
 				},
@@ -1566,19 +1569,22 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
 					legacyBuddiesParams: legacyBuddiesParams{
 						{
-							userScreenName: "test-user",
-							result:         []string{"buddy1", "buddy2"},
+							userScreenName: state.NewIdentScreenName("test-user"),
+							result: []state.IdentScreenName{
+								state.NewIdentScreenName("buddy1"),
+								state.NewIdentScreenName("buddy2"),
+							},
 						},
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "buddy1",
+							screenName: state.NewIdentScreenName("buddy1"),
 							sess:       newTestSession("buddy1", sessOptCannedSignonTime, sessOptInvisible),
 						},
 						{
-							screenName: "buddy2",
+							screenName: state.NewIdentScreenName("buddy2"),
 							sess:       newTestSession("buddy2", sessOptCannedSignonTime),
 						},
 					},
@@ -1586,13 +1592,13 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: "test-user",
+							screenName: state.NewIdentScreenName("test-user"),
 						},
 					},
 					unicastBuddyArrivedParams: unicastBuddyArrivedParams{
 						{
-							from: "buddy2",
-							to:   "test-user",
+							from: state.NewIdentScreenName("buddy2"),
+							to:   state.NewIdentScreenName("test-user"),
 						},
 					},
 				},
@@ -1618,7 +1624,7 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().
 					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.ScreenName() == p.screenName
+						return s.IdentScreenName() == p.screenName
 					})).
 					Return(nil)
 			}
@@ -1627,10 +1633,10 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 				buddyUpdateBroadcaster.EXPECT().
 					UnicastBuddyArrived(mock.Anything,
 						mock.MatchedBy(func(s *state.Session) bool {
-							return s.ScreenName() == p.from
+							return s.IdentScreenName() == p.from
 						}),
 						mock.MatchedBy(func(s *state.Session) bool {
-							return s.ScreenName() == p.to
+							return s.IdentScreenName() == p.to
 						})).
 					Return(p.err)
 			}
@@ -1659,7 +1665,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 		message wire.SNACMessage
 	}
 	type sendToScreenNameParams []struct {
-		screenName string
+		screenName state.IdentScreenName
 		message    wire.SNACMessage
 	}
 
@@ -1710,7 +1716,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 			},
 			sendToScreenNameParams: sendToScreenNameParams{
 				{
-					screenName: chatter1.ScreenName(),
+					screenName: chatter1.IdentScreenName(),
 					message: wire.SNACMessage{
 						Frame: wire.SNACFrame{
 							FoodGroup: wire.Chat,
@@ -1728,7 +1734,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 					},
 				},
 				{
-					screenName: chatter1.ScreenName(),
+					screenName: chatter1.IdentScreenName(),
 					message: wire.SNACMessage{
 						Frame: wire.SNACFrame{
 							FoodGroup: wire.Chat,

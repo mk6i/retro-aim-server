@@ -60,7 +60,7 @@ func TestHandleChatConnection_MessageRelay(t *testing.T) {
 
 	// relay messages to user session
 	for _, msg := range inboundMsgs {
-		sessionManager.RelayToScreenName(context.Background(), "bob", msg)
+		sessionManager.RelayToScreenName(context.Background(), state.NewIdentScreenName("bob"), msg)
 	}
 
 	// consume and verify the relayed messages

@@ -81,7 +81,7 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 
 	authService := newMockAuthService(t)
 	authService.EXPECT().
-		RegisterBOSSession("user_screen_name").
+		RegisterBOSSession(state.NewIdentScreenName("user_screen_name")).
 		Return(sess, nil)
 	authService.EXPECT().
 		Signout(mock.Anything, sess).

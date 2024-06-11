@@ -34,10 +34,10 @@ type onlineUsers struct {
 
 type UserManager interface {
 	AllUsers() ([]state.User, error)
-	DeleteUser(screenName string) error
+	DeleteUser(screenName state.IdentScreenName) error
 	InsertUser(u state.User) error
 	SetUserPassword(u state.User) error
-	User(screenName string) (*state.User, error)
+	User(screenName state.IdentScreenName) (*state.User, error)
 }
 
 type SessionRetriever interface {
@@ -46,14 +46,11 @@ type SessionRetriever interface {
 
 func StartManagementAPI(cfg config.Config, userManager UserManager, sessionRetriever SessionRetriever, logger *slog.Logger) {
 	mux := http.NewServeMux()
-	newUser := func() state.User {
-		return state.User{AuthKey: uuid.New().String()}
-	}
 	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
-		userHandler(w, r, userManager, newUser, logger)
+		userHandler(w, r, userManager, uuid.New, logger)
 	})
 	mux.HandleFunc("/user/password", func(w http.ResponseWriter, r *http.Request) {
-		userPasswordHandler(w, r, userManager, newUser, logger)
+		userPasswordHandler(w, r, userManager, uuid.New, logger)
 	})
 	mux.HandleFunc("/user/login", func(w http.ResponseWriter, r *http.Request) {
 		loginHandler(w, r, userManager, logger)
@@ -70,32 +67,27 @@ func StartManagementAPI(cfg config.Config, userManager UserManager, sessionRetri
 	}
 }
 
-func userHandler(
-	w http.ResponseWriter,
-	r *http.Request,
-	userManager UserManager,
-	newUser func() state.User,
-	logger *slog.Logger,
-) {
+func userHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, newUUID func() uuid.UUID, logger *slog.Logger) {
 	switch r.Method {
 	case http.MethodDelete:
 		deleteUserHandler(w, r, userManager, logger)
 	case http.MethodGet:
 		getUserHandler(w, r, userManager, logger)
 	case http.MethodPost:
-		postUserHandler(w, r, userManager, newUser, logger)
+		postUserHandler(w, r, userManager, newUUID, logger)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
 func deleteUserHandler(w http.ResponseWriter, r *http.Request, manager UserManager, logger *slog.Logger) {
-	user := state.User{}
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "malformed input", http.StatusBadRequest)
+	user, err := userFromBody(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err := manager.DeleteUser(user.ScreenName)
+
+	err = manager.DeleteUser(user.DisplayScreenName.IdentScreenName())
 	switch {
 	case errors.Is(err, state.ErrNoUser):
 		http.Error(w, "user does not exist", http.StatusNotFound)
@@ -110,36 +102,25 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request, manager UserManag
 	fmt.Fprintln(w, "User account successfully deleted.")
 }
 
-func userPasswordHandler(
-	w http.ResponseWriter,
-	r *http.Request,
-	userManager UserManager,
-	userFactory func() state.User,
-	logger *slog.Logger,
-) {
+func userPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, newUUID func() uuid.UUID, logger *slog.Logger) {
 	switch r.Method {
 	case http.MethodPut:
-		putUserPasswordHandler(w, r, userManager, userFactory, logger)
+		putUserPasswordHandler(w, r, userManager, newUUID, logger)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
 // putUserPasswordHandler handles the PUT /user/password endpoint.
-func putUserPasswordHandler(
-	w http.ResponseWriter,
-	r *http.Request,
-	userManager UserManager,
-	newUser func() state.User,
-	logger *slog.Logger,
-) {
-	user := userWithPassword{
-		User: newUser(),
-	}
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "malformed input", http.StatusBadRequest)
+func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, newUUID func() uuid.UUID, logger *slog.Logger) {
+	user, err := userFromBody(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	user.AuthKey = newUUID().String()
+
+	user.IdentScreenName = user.DisplayScreenName.IdentScreenName()
 	if err := user.HashPassword(user.Password); err != nil {
 		logger.Error("error hashing user password in PUT /user/password", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -178,7 +159,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever Ses
 
 	for _, s := range allUsers {
 		ou.Sessions = append(ou.Sessions, userSession{
-			ScreenName: s.ScreenName(),
+			ScreenName: s.DisplayScreenName().String(),
 		})
 	}
 
@@ -204,27 +185,21 @@ func getUserHandler(w http.ResponseWriter, _ *http.Request, userManager UserMana
 }
 
 // postUserHandler handles the POST /user endpoint.
-func postUserHandler(
-	w http.ResponseWriter,
-	r *http.Request,
-	userManager UserManager,
-	newUser func() state.User,
-	logger *slog.Logger,
-) {
-	user := userWithPassword{
-		User: newUser(),
-	}
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "malformed input", http.StatusBadRequest)
+func postUserHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, newUUID func() uuid.UUID, logger *slog.Logger) {
+	user, err := userFromBody(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	user.AuthKey = newUUID().String()
+
 	if err := user.HashPassword(user.Password); err != nil {
 		logger.Error("error hashing user password in POST /user", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	err := userManager.InsertUser(user.User)
+	err = userManager.InsertUser(user.User)
 	switch {
 	case errors.Is(err, state.ErrDupUser):
 		http.Error(w, "user already exists", http.StatusConflict)
@@ -237,6 +212,15 @@ func postUserHandler(
 
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintln(w, "User account created successfully.")
+}
+
+func userFromBody(r *http.Request) (userWithPassword, error) {
+	user := userWithPassword{}
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		return userWithPassword{}, errors.New("malformed input")
+	}
+	user.IdentScreenName = user.DisplayScreenName.IdentScreenName()
+	return user, nil
 }
 
 // loginHandler is a temporary endpoint for validating user credentials for
@@ -272,7 +256,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request, userManager UserManage
 		return
 	}
 
-	username, password := pair[0], pair[1]
+	username, password := state.NewIdentScreenName(pair[0]), pair[1]
 
 	user, err := userManager.User(username)
 	if err != nil {

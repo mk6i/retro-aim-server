@@ -42,13 +42,13 @@ import (
 )
 
 type FeedbagManager interface {
-	BlockedState(screenName1, screenName2 string) (state.BlockedState, error)
-	Buddies(screenName string) ([]string, error)
-	FeedbagDelete(screenName string, items []wire.FeedbagItem) error
-	AdjacentUsers(screenName string) ([]string, error)
-	FeedbagLastModified(screenName string) (time.Time, error)
-	Feedbag(screenName string) ([]wire.FeedbagItem, error)
-	FeedbagUpsert(screenName string, items []wire.FeedbagItem) error
+	BlockedState(screenName1, screenName2 state.IdentScreenName) (state.BlockedState, error)
+	Buddies(screenName state.IdentScreenName) ([]state.IdentScreenName, error)
+	FeedbagDelete(screenName state.IdentScreenName, items []wire.FeedbagItem) error
+	AdjacentUsers(screenName state.IdentScreenName) ([]state.IdentScreenName, error)
+	FeedbagLastModified(screenName state.IdentScreenName) (time.Time, error)
+	Feedbag(screenName state.IdentScreenName) ([]wire.FeedbagItem, error)
+	FeedbagUpsert(screenName state.IdentScreenName, items []wire.FeedbagItem) error
 }
 
 // LegacyBuddyListManager defines operations for tracking user relationships
@@ -56,44 +56,44 @@ type FeedbagManager interface {
 // 4.3.
 type LegacyBuddyListManager interface {
 	// AddBuddy adds buddyScreenName to userScreenName's buddy list.
-	AddBuddy(userScreenName, buddyScreenName string)
+	AddBuddy(userScreenName, buddyScreenName state.IdentScreenName)
 
 	// Buddies returns a list of all buddies associated with the specified
 	// userScreenName.
-	Buddies(userScreenName string) []string
+	Buddies(userScreenName state.IdentScreenName) []state.IdentScreenName
 
 	// DeleteBuddy removes buddyScreenName from userScreenName's buddy list.
-	DeleteBuddy(userScreenName, buddyScreenName string)
+	DeleteBuddy(userScreenName, buddyScreenName state.IdentScreenName)
 
 	// DeleteUser removes userScreenName's buddy list.
-	DeleteUser(userScreenName string)
+	DeleteUser(userScreenName state.IdentScreenName)
 
 	// WhoAddedUser returns a list of screen names who have userScreenName in
 	// their buddy lists.
-	WhoAddedUser(userScreenName string) []string
+	WhoAddedUser(userScreenName state.IdentScreenName) []state.IdentScreenName
 }
 
 type UserManager interface {
-	User(screenName string) (*state.User, error)
+	User(screenName state.IdentScreenName) (*state.User, error)
 	InsertUser(u state.User) error
 }
 
 type SessionManager interface {
 	Empty() bool
-	AddSession(screenName string) *state.Session
+	AddSession(screenName state.DisplayScreenName) *state.Session
 	RemoveSession(sess *state.Session)
-	RetrieveSession(ID string) *state.Session
+	RetrieveSession(screenName state.IdentScreenName) *state.Session
 }
 
 type ProfileManager interface {
-	Profile(screenName string) (string, error)
-	SetProfile(screenName string, body string) error
+	Profile(screenName state.IdentScreenName) (string, error)
+	SetProfile(screenName state.IdentScreenName, body string) error
 }
 
 type MessageRelayer interface {
-	RelayToScreenNames(ctx context.Context, screenNames []string, msg wire.SNACMessage)
-	RetrieveByScreenName(screenName string) *state.Session
-	RelayToScreenName(ctx context.Context, screenName string, msg wire.SNACMessage)
+	RelayToScreenNames(ctx context.Context, screenNames []state.IdentScreenName, msg wire.SNACMessage)
+	RetrieveByScreenName(screenName state.IdentScreenName) *state.Session
+	RelayToScreenName(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage)
 }
 
 type ChatMessageRelayer interface {

@@ -91,7 +91,7 @@ func (s FeedbagService) RightsQuery(_ context.Context, inFrame wire.SNACFrame) w
 // Query fetches the user's feedbag (aka buddy list). It returns
 // wire.FeedbagReply, which contains feedbag entries.
 func (s FeedbagService) Query(_ context.Context, sess *state.Session, inFrame wire.SNACFrame) (wire.SNACMessage, error) {
-	fb, err := s.feedbagManager.Feedbag(sess.ScreenName())
+	fb, err := s.feedbagManager.Feedbag(sess.IdentScreenName())
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}
@@ -99,7 +99,7 @@ func (s FeedbagService) Query(_ context.Context, sess *state.Session, inFrame wi
 	lm := time.UnixMilli(0)
 
 	if len(fb) > 0 {
-		lm, err = s.feedbagManager.FeedbagLastModified(sess.ScreenName())
+		lm, err = s.feedbagManager.FeedbagLastModified(sess.IdentScreenName())
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}
@@ -124,7 +124,7 @@ func (s FeedbagService) Query(_ context.Context, sess *state.Session, inFrame wi
 // inBody.LastUpdate, else return wire.FeedbagReply, which contains feedbag
 // entries.
 func (s FeedbagService) QueryIfModified(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x05_FeedbagQueryIfModified) (wire.SNACMessage, error) {
-	fb, err := s.feedbagManager.Feedbag(sess.ScreenName())
+	fb, err := s.feedbagManager.Feedbag(sess.IdentScreenName())
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}
@@ -132,7 +132,7 @@ func (s FeedbagService) QueryIfModified(_ context.Context, sess *state.Session, 
 	lm := time.UnixMilli(0)
 
 	if len(fb) > 0 {
-		lm, err = s.feedbagManager.FeedbagLastModified(sess.ScreenName())
+		lm, err = s.feedbagManager.FeedbagLastModified(sess.IdentScreenName())
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}
@@ -177,7 +177,7 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 	for _, item := range items {
 		// don't let users block themselves, it causes the AIM client to go
 		// into a weird state.
-		if item.ClassID == 3 && item.Name == sess.ScreenName() {
+		if item.ClassID == 3 && state.NewIdentScreenName(item.Name) == sess.IdentScreenName() {
 			return wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					FoodGroup: wire.Feedbag,
@@ -191,14 +191,14 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 		}
 	}
 
-	if err := s.feedbagManager.FeedbagUpsert(sess.ScreenName(), items); err != nil {
+	if err := s.feedbagManager.FeedbagUpsert(sess.IdentScreenName(), items); err != nil {
 		return wire.SNACMessage{}, err
 	}
 
 	for _, item := range items {
 		switch item.ClassID {
 		case wire.FeedbagClassIdBuddy, wire.FeedbagClassIDPermit: // add new buddy
-			buddy := s.messageRelayer.RetrieveByScreenName(item.Name)
+			buddy := s.messageRelayer.RetrieveByScreenName(state.NewIdentScreenName(item.Name))
 			if buddy == nil || buddy.Invisible() {
 				continue
 			}
@@ -209,7 +209,7 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 			if sess.Invisible() {
 				continue // user's offline, don't send departure notification
 			}
-			blockedSess := s.messageRelayer.RetrieveByScreenName(item.Name)
+			blockedSess := s.messageRelayer.RetrieveByScreenName(state.NewIdentScreenName(item.Name))
 			if blockedSess == nil {
 				continue // blocked buddy is offline, nothing to do here
 			}
@@ -282,7 +282,7 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 		}
 	}
 
-	s.messageRelayer.RelayToScreenName(ctx, sess.ScreenName(), wire.SNACMessage{
+	s.messageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.OService,
 			SubGroup:  wire.OServiceBartReply,
@@ -300,13 +300,13 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 // Sends buddy arrival notifications to each unblocked buddy if current user is
 // visible. It returns wire.FeedbagStatus, which contains update confirmation.
 func (s FeedbagService) DeleteItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x0A_FeedbagDeleteItem) (wire.SNACMessage, error) {
-	if err := s.feedbagManager.FeedbagDelete(sess.ScreenName(), inBody.Items); err != nil {
+	if err := s.feedbagManager.FeedbagDelete(sess.IdentScreenName(), inBody.Items); err != nil {
 		return wire.SNACMessage{}, err
 	}
 
 	for _, item := range inBody.Items {
 		if item.ClassID == wire.FeedbagClassIDDeny {
-			unblockedSess := s.messageRelayer.RetrieveByScreenName(item.Name)
+			unblockedSess := s.messageRelayer.RetrieveByScreenName(state.NewIdentScreenName(item.Name))
 			if unblockedSess == nil {
 				continue // unblocked user is offline, nothing to do here
 			}
@@ -349,7 +349,7 @@ func (s FeedbagService) StartCluster(context.Context, wire.SNACFrame, wire.SNAC_
 // by AIM clients that use the feedbag food group for buddy list management (as
 // opposed to client-side management).
 func (s FeedbagService) Use(ctx context.Context, sess *state.Session) error {
-	buddies, err := s.feedbagManager.Buddies(sess.ScreenName())
+	buddies, err := s.feedbagManager.Buddies(sess.IdentScreenName())
 	if err != nil {
 		return err
 	}

@@ -14,11 +14,11 @@ func TestInMemorySessionManager_AddSession(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
 	want1 := sm.AddSession("user-screen-name")
-	have1 := sm.RetrieveByScreenName("user-screen-name")
+	have1 := sm.RetrieveByScreenName(NewIdentScreenName("user-screen-name"))
 	assert.Same(t, want1, have1)
 
 	want2 := sm.AddSession("user-screen-name")
-	have2 := sm.RetrieveByScreenName("user-screen-name")
+	have2 := sm.RetrieveByScreenName(NewIdentScreenName("user-screen-name"))
 	assert.Same(t, want2, have2)
 
 	// ensure that the second session created with the same screen name as the
@@ -29,23 +29,19 @@ func TestInMemorySessionManager_AddSession(t *testing.T) {
 func TestInMemorySessionManager_Remove(t *testing.T) {
 	tests := []struct {
 		name   string
-		given  []*Session
-		remove string
-		want   []string
+		given  []DisplayScreenName
+		remove IdentScreenName
+		want   []IdentScreenName
 	}{
 		{
 			name: "remove user that exists",
-			given: []*Session{
-				{
-					screenName: "user-screen-name-1",
-				},
-				{
-					screenName: "user-screen-name-2",
-				},
-			},
-			remove: "user-screen-name-1",
-			want: []string{
+			given: []DisplayScreenName{
+				"user-screen-name-1",
 				"user-screen-name-2",
+			},
+			remove: NewIdentScreenName("user-screen-name-1"),
+			want: []IdentScreenName{
+				NewIdentScreenName("user-screen-name-2"),
 			},
 		},
 	}
@@ -53,14 +49,14 @@ func TestInMemorySessionManager_Remove(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sm := NewInMemorySessionManager(slog.Default())
 
-			for _, sess := range tt.given {
-				sm.AddSession(sess.screenName)
+			for _, screenName := range tt.given {
+				sm.AddSession(screenName)
 			}
 
 			sm.RemoveSession(sm.RetrieveByScreenName(tt.remove))
 
 			for i, sess := range sm.AllSessions() {
-				assert.Equal(t, tt.want[i], sess.screenName)
+				assert.Equal(t, tt.want[i], sess.identScreenName)
 			}
 		})
 	}
@@ -68,23 +64,20 @@ func TestInMemorySessionManager_Remove(t *testing.T) {
 
 func TestInMemorySessionManager_Empty(t *testing.T) {
 	tests := []struct {
-		name   string
-		given  []*Session
-		remove string
-		want   bool
+		name  string
+		given []DisplayScreenName
+		want  bool
 	}{
 		{
 			name: "session manager is not empty",
-			given: []*Session{
-				{
-					screenName: "user-screen-name-1",
-				},
+			given: []DisplayScreenName{
+				"user-screen-name-1",
 			},
 			want: false,
 		},
 		{
 			name:  "session manager is empty",
-			given: []*Session{},
+			given: []DisplayScreenName{},
 			want:  true,
 		},
 	}
@@ -92,8 +85,8 @@ func TestInMemorySessionManager_Empty(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sm := NewInMemorySessionManager(slog.Default())
 
-			for _, sess := range tt.given {
-				sm.AddSession(sess.screenName)
+			for _, screenName := range tt.given {
+				sm.AddSession(screenName)
 			}
 
 			have := sm.Empty()
@@ -105,44 +98,39 @@ func TestInMemorySessionManager_Empty(t *testing.T) {
 func TestInMemorySessionManager_Retrieve(t *testing.T) {
 	tests := []struct {
 		name             string
-		given            []*Session
-		lookupScreenName string
-		remove           string
-		wantScreenName   string
+		given            []DisplayScreenName
+		lookupScreenName IdentScreenName
+		wantScreenName   IdentScreenName
 	}{
 		{
 			name: "lookup finds match",
-			given: []*Session{
-				{
-					screenName: "user-screen-name-1",
-				},
-				{
-					screenName: "user-screen-name-2",
-				},
+			given: []DisplayScreenName{
+				"user-screen-name-1",
+				"user-screen-name-2",
 			},
-			lookupScreenName: "user-screen-name-2",
-			wantScreenName:   "user-screen-name-2",
+			lookupScreenName: NewIdentScreenName("user-screen-name-2"),
+			wantScreenName:   NewIdentScreenName("user-screen-name-2"),
 		},
 		{
 			name:             "lookup does not find match",
-			given:            []*Session{},
-			lookupScreenName: "user-screen-name-3",
-			wantScreenName:   "",
+			given:            []DisplayScreenName{},
+			lookupScreenName: NewIdentScreenName("user-screen-name-3"),
+			wantScreenName:   NewIdentScreenName(""),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sm := NewInMemorySessionManager(slog.Default())
 
-			for _, sess := range tt.given {
-				sm.AddSession(sess.screenName)
+			for _, screenName := range tt.given {
+				sm.AddSession(screenName)
 			}
 
 			have := sm.RetrieveSession(tt.lookupScreenName)
 			if have == nil {
 				assert.Empty(t, tt.wantScreenName)
 			} else {
-				assert.Equal(t, tt.wantScreenName, have.ScreenName())
+				assert.Equal(t, tt.wantScreenName, have.IdentScreenName())
 			}
 		})
 	}
@@ -157,7 +145,10 @@ func TestInMemorySessionManager_RelayToScreenNames(t *testing.T) {
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
-	recips := []string{"user-screen-name-1", "user-screen-name-2"}
+	recips := []IdentScreenName{
+		NewIdentScreenName("user-screen-name-1"),
+		NewIdentScreenName("user-screen-name-2"),
+	}
 	sm.RelayToScreenNames(context.Background(), recips, want)
 
 	select {
@@ -229,7 +220,7 @@ func TestInMemorySessionManager_RelayToScreenName_SessionExists(t *testing.T) {
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
-	recip := "user-screen-name-1"
+	recip := NewIdentScreenName("user-screen-name-1")
 	sm.RelayToScreenName(context.Background(), recip, want)
 
 	select {
@@ -251,7 +242,7 @@ func TestInMemorySessionManager_RelayToScreenName_SessionNotExist(t *testing.T) 
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
-	recip := "user-screen-name-2"
+	recip := NewIdentScreenName("user-screen-name-2")
 	sm.RelayToScreenName(context.Background(), recip, want)
 
 	select {
@@ -275,7 +266,7 @@ func TestInMemorySessionManager_RelayToScreenName_SkipFullSession(t *testing.T) 
 		wantCount++
 	}
 
-	recip := "user-screen-name-1"
+	recip := NewIdentScreenName("user-screen-name-1")
 	sm.RelayToScreenName(context.Background(), recip, msg)
 
 	haveCount := 0

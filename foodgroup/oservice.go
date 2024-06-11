@@ -562,7 +562,7 @@ type chatLoginCookie struct {
 func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
 	switch inBody.FoodGroup {
 	case wire.Alert:
-		cookie, err := s.cookieIssuer.Issue([]byte(sess.ScreenName()))
+		cookie, err := s.cookieIssuer.Issue([]byte(sess.IdentScreenName().String()))
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}
@@ -585,7 +585,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			},
 		}, nil
 	case wire.BART:
-		cookie, err := s.cookieIssuer.Issue([]byte(sess.ScreenName()))
+		cookie, err := s.cookieIssuer.Issue([]byte(sess.IdentScreenName().String()))
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}
@@ -608,7 +608,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			},
 		}, nil
 	case wire.ChatNav:
-		cookie, err := s.cookieIssuer.Issue([]byte(sess.ScreenName()))
+		cookie, err := s.cookieIssuer.Issue([]byte(sess.IdentScreenName().String()))
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}
@@ -648,7 +648,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 
 		loginCookie := chatLoginCookie{
 			ChatCookie: room.Cookie,
-			ScreenName: sess.ScreenName(),
+			ScreenName: sess.IdentScreenName().String(),
 		}
 		buf := &bytes.Buffer{}
 		if err := wire.Marshal(loginCookie, buf); err != nil {
@@ -703,7 +703,7 @@ func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x0
 	}
 
 	// send buddy arrival events to client-side buddy list
-	buddies := s.legacyBuddyListManager.Buddies(sess.ScreenName())
+	buddies := s.legacyBuddyListManager.Buddies(sess.IdentScreenName())
 	for _, buddy := range buddies {
 		buddySess := s.messageRelayer.RetrieveByScreenName(buddy)
 		if buddySess == nil || buddySess.Invisible() {

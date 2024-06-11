@@ -69,7 +69,7 @@ type userManagerParams struct {
 // getUserParams is the list of parameters passed at the mock
 // UserManager.User call site
 type getUserParams []struct {
-	screenName string
+	screenName state.IdentScreenName
 	result     *state.User
 	err        error
 }
@@ -92,8 +92,7 @@ type sessionManagerParams struct {
 // addSessionParams is the list of parameters passed at the mock
 // SessionManager.AddSession call site
 type addSessionParams []struct {
-	sessID     string
-	screenName string
+	screenName state.DisplayScreenName
 	result     *state.Session
 }
 
@@ -124,8 +123,8 @@ type feedbagManagerParams struct {
 // blockedStateParams is the list of parameters passed at the mock
 // FeedbagManager.BlockedState call site
 type blockedStateParams []struct {
-	screenName1 string
-	screenName2 string
+	screenName1 state.IdentScreenName
+	screenName2 state.IdentScreenName
 	result      state.BlockedState
 	err         error
 }
@@ -133,43 +132,43 @@ type blockedStateParams []struct {
 // adjacentUsersParams is the list of parameters passed at the mock
 // FeedbagManager.AdjacentUsers call site
 type adjacentUsersParams []struct {
-	screenName string
-	users      []string
+	screenName state.IdentScreenName
+	users      []state.IdentScreenName
 	err        error
 }
 
 // feedbagUpsertParams is the list of parameters passed at the mock
 // FeedbagManager.FeedbagUpsert call site
 type feedbagUpsertParams []struct {
-	screenName string
+	screenName state.IdentScreenName
 	items      []wire.FeedbagItem
 }
 
 // buddiesParams is the list of parameters passed at the mock
 // FeedbagManager.Buddies call site
 type buddiesParams []struct {
-	screenName string
-	results    []string
+	screenName state.IdentScreenName
+	results    []state.IdentScreenName
 }
 
 // feedbagParams is the list of parameters passed at the mock
 // FeedbagManager.Feedbag call site
 type feedbagParams []struct {
-	screenName string
+	screenName state.IdentScreenName
 	results    []wire.FeedbagItem
 }
 
 // feedbagLastModifiedParams is the list of parameters passed at the mock
 // FeedbagManager.FeedbagLastModified call site
 type feedbagLastModifiedParams []struct {
-	screenName string
+	screenName state.IdentScreenName
 	result     time.Time
 }
 
 // feedbagDeleteParams is the list of parameters passed at the mock
 // FeedbagManager.FeedbagDelete call site
 type feedbagDeleteParams []struct {
-	screenName string
+	screenName state.IdentScreenName
 	items      []wire.FeedbagItem
 }
 
@@ -184,21 +183,21 @@ type messageRelayerParams struct {
 // retrieveByScreenNameParams is the list of parameters passed at the mock
 // MessageRelayer.RetrieveByScreenName call site
 type retrieveByScreenNameParams []struct {
-	screenName string
+	screenName state.IdentScreenName
 	sess       *state.Session
 }
 
 // relayToScreenNamesParams is the list of parameters passed at the mock
 // MessageRelayer.RelayToScreenNames call site
 type relayToScreenNamesParams []struct {
-	screenNames []string
+	screenNames []state.IdentScreenName
 	message     wire.SNACMessage
 }
 
 // relayToScreenNameParams is the list of parameters passed at the mock
 // MessageRelayer.RelayToScreenName call site
 type relayToScreenNameParams []struct {
-	screenName string
+	screenName state.IdentScreenName
 	message    wire.SNACMessage
 }
 
@@ -210,17 +209,17 @@ type profileManagerParams struct {
 }
 
 // retrieveByScreenNameParams is the list of parameters passed at the mock
-// ProfileManager.RetrieveProfile call site
+// ProfileManager.Profile call site
 type retrieveProfileParams []struct {
-	screenName string
+	screenName state.IdentScreenName
 	result     string
 	err        error
 }
 
 // setProfileParams is the list of parameters passed at the mock
-// ProfileManager.UpsertProfile call site
+// ProfileManager.SetProfile call site
 type setProfileParams []struct {
-	screenName string
+	screenName state.IdentScreenName
 	body       any
 }
 
@@ -250,35 +249,35 @@ type legacyBuddyListManagerParams struct {
 // legacyBuddiesParams is the list of parameters passed at the mock
 // LegacyBuddyListManager.AddBuddy call site
 type addBuddyParams []struct {
-	userScreenName  string
-	buddyScreenName string
+	userScreenName  state.IdentScreenName
+	buddyScreenName state.IdentScreenName
 }
 
 // legacyBuddiesParams is the list of parameters passed at the mock
 // LegacyBuddyListManager.DeleteBuddy call site
 type deleteBuddyParams []struct {
-	userScreenName  string
-	buddyScreenName string
+	userScreenName  state.IdentScreenName
+	buddyScreenName state.IdentScreenName
 }
 
 // deleteUserParams is the list of parameters passed at the mock
 // LegacyBuddyListManager.DeleteUser call site
 type deleteUserParams []struct {
-	userScreenName string
+	userScreenName state.IdentScreenName
 }
 
 // legacyBuddiesParams is the list of parameters passed at the mock
 // LegacyBuddyListManager.Buddies call site
 type legacyBuddiesParams []struct {
-	userScreenName string
-	result         []string
+	userScreenName state.IdentScreenName
+	result         []state.IdentScreenName
 }
 
 // whoAddedUserParams is the list of parameters passed at the mock
 // LegacyBuddyListManager.WhoAddedUser call site
 type whoAddedUserParams []struct {
-	userScreenName string
-	result         []string
+	userScreenName state.IdentScreenName
+	result         []state.IdentScreenName
 }
 
 // cookieIssuerParams is the list of parameters passed at the mock
@@ -301,30 +300,30 @@ type buddyBroadcasterParams struct {
 // broadcastBuddyArrivedParams is the list of parameters passed at the mock
 // BuddyBroadcaster.BroadcastBuddyArrived call site
 type broadcastBuddyArrivedParams []struct {
-	screenName string
+	screenName state.IdentScreenName
 	err        error
 }
 
 // broadcastBuddyDepartedParams is the list of parameters passed at the mock
 // BuddyBroadcaster.BroadcastBuddyDeparted call site
 type broadcastBuddyDepartedParams []struct {
-	screenName string
+	screenName state.IdentScreenName
 	err        error
 }
 
 // unicastBuddyArrivedParams is the list of parameters passed at the mock
 // BuddyBroadcaster.UnicastBuddyArrived call site
 type unicastBuddyArrivedParams []struct {
-	from string
-	to   string
+	from state.IdentScreenName
+	to   state.IdentScreenName
 	err  error
 }
 
 // unicastBuddyDepartedParams is the list of parameters passed at the mock
 // BuddyBroadcaster.UnicastBuddyDeparted call site
 type unicastBuddyDepartedParams []struct {
-	from string
-	to   string
+	from state.IdentScreenName
+	to   state.IdentScreenName
 	err  error
 }
 
@@ -388,9 +387,10 @@ func sessOptCaps(caps [][16]byte) func(session *state.Session) {
 
 // newTestSession creates a session object with 0 or more functional options
 // applied
-func newTestSession(screenName string, options ...func(session *state.Session)) *state.Session {
+func newTestSession(screenName state.DisplayScreenName, options ...func(session *state.Session)) *state.Session {
 	s := state.NewSession()
-	s.SetScreenName(screenName)
+	s.SetIdentScreenName(screenName.IdentScreenName())
+	s.SetDisplayScreenName(screenName)
 	for _, op := range options {
 		op(s)
 	}

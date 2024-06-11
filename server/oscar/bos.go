@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/mk6i/retro-aim-server/config"
+	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
@@ -77,12 +78,12 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 		return errors.New("unable to get session id from payload")
 	}
 
-	token, err := rt.CookieCracker.Crack(authCookie)
+	screenName, err := rt.CookieCracker.Crack(authCookie)
 	if err != nil {
 		return err
 	}
 
-	sess, err := rt.RegisterBOSSession(string(token))
+	sess, err := rt.RegisterBOSSession(state.NewIdentScreenName(string(screenName)))
 	if err != nil {
 		return err
 	}
@@ -98,7 +99,7 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 		}
 	}()
 
-	ctx = context.WithValue(ctx, "screenName", sess.ScreenName())
+	ctx = context.WithValue(ctx, "screenName", sess.IdentScreenName())
 
 	msg := rt.OnlineNotifier.HostOnline()
 	if err := flapc.SendSNAC(msg.Frame, msg.Body); err != nil {

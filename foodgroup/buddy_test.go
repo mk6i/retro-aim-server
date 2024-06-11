@@ -70,29 +70,29 @@ func TestBuddyService_AddBuddies(t *testing.T) {
 				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
 					addBuddyParams: addBuddyParams{
 						{
-							userScreenName:  "user_screen_name",
-							buddyScreenName: "buddy_1_online",
+							userScreenName:  state.NewIdentScreenName("user_screen_name"),
+							buddyScreenName: state.NewIdentScreenName("buddy_1_online"),
 						},
 						{
-							userScreenName:  "user_screen_name",
-							buddyScreenName: "buddy_2_offline",
+							userScreenName:  state.NewIdentScreenName("user_screen_name"),
+							buddyScreenName: state.NewIdentScreenName("buddy_2_offline"),
 						},
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "buddy_1_online",
+							screenName: state.NewIdentScreenName("buddy_1_online"),
 							sess:       newTestSession("buddy_1_online", sessOptCannedSignonTime),
 						},
 						{
-							screenName: "buddy_2_offline",
+							screenName: state.NewIdentScreenName("buddy_2_offline"),
 							sess:       nil,
 						},
 					},
 					relayToScreenNameParams: relayToScreenNameParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.Buddy,
@@ -108,7 +108,7 @@ func TestBuddyService_AddBuddies(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagParams: feedbagParams{
 						{
-							screenName: "buddy_1_online",
+							screenName: state.NewIdentScreenName("buddy_1_online"),
 						},
 					},
 				},
@@ -133,12 +133,12 @@ func TestBuddyService_AddBuddies(t *testing.T) {
 				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
 					addBuddyParams: addBuddyParams{
 						{
-							userScreenName:  "user_screen_name",
-							buddyScreenName: "buddy_1_online",
+							userScreenName:  state.NewIdentScreenName("user_screen_name"),
+							buddyScreenName: state.NewIdentScreenName("buddy_1_online"),
 						},
 						{
-							userScreenName:  "user_screen_name",
-							buddyScreenName: "buddy_2_offline",
+							userScreenName:  state.NewIdentScreenName("user_screen_name"),
+							buddyScreenName: state.NewIdentScreenName("buddy_2_offline"),
 						},
 					},
 				},
@@ -212,12 +212,12 @@ func TestBuddyService_DelBuddies(t *testing.T) {
 				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
 					deleteBuddyParams: deleteBuddyParams{
 						{
-							userScreenName:  "user_screen_name",
-							buddyScreenName: "buddy_1_online",
+							userScreenName:  state.NewIdentScreenName("user_screen_name"),
+							buddyScreenName: state.NewIdentScreenName("buddy_1_online"),
 						},
 						{
-							userScreenName:  "user_screen_name",
-							buddyScreenName: "buddy_2_offline",
+							userScreenName:  state.NewIdentScreenName("user_screen_name"),
+							buddyScreenName: state.NewIdentScreenName("buddy_2_offline"),
 						},
 					},
 				},
@@ -256,13 +256,13 @@ func TestBuddyService_BroadcastBuddyArrived(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					adjacentUsersParams: adjacentUsersParams{
 						{
-							screenName: "user_screen_name",
-							users:      []string{"friend1"},
+							screenName: state.NewIdentScreenName("user_screen_name"),
+							users:      []state.IdentScreenName{state.NewIdentScreenName("friend1")},
 						},
 					},
 					feedbagParams: feedbagParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							results:    []wire.FeedbagItem{},
 						},
 					},
@@ -270,7 +270,10 @@ func TestBuddyService_BroadcastBuddyArrived(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNamesParams: relayToScreenNamesParams{
 						{
-							screenNames: []string{"friend1", "friend2"},
+							screenNames: []state.IdentScreenName{
+								state.NewIdentScreenName("friend1"),
+								state.NewIdentScreenName("friend2"),
+							},
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.Buddy,
@@ -286,8 +289,8 @@ func TestBuddyService_BroadcastBuddyArrived(t *testing.T) {
 				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
 					whoAddedUserParams: whoAddedUserParams{
 						{
-							userScreenName: "user_screen_name",
-							result:         []string{"friend2"},
+							userScreenName: state.NewIdentScreenName("user_screen_name"),
+							result:         []state.IdentScreenName{state.NewIdentScreenName("friend2")},
 						},
 					},
 				},
@@ -300,13 +303,13 @@ func TestBuddyService_BroadcastBuddyArrived(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					adjacentUsersParams: adjacentUsersParams{
 						{
-							screenName: "user_screen_name",
-							users:      []string{"friend1"},
+							screenName: state.NewIdentScreenName("user_screen_name"),
+							users:      []state.IdentScreenName{state.NewIdentScreenName("friend1")},
 						},
 					},
 					feedbagParams: feedbagParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							results: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIdBuddy,
@@ -334,7 +337,7 @@ func TestBuddyService_BroadcastBuddyArrived(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNamesParams: relayToScreenNamesParams{
 						{
-							screenNames: []string{"friend1"},
+							screenNames: []state.IdentScreenName{state.NewIdentScreenName("friend1")},
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.Buddy,
@@ -359,8 +362,8 @@ func TestBuddyService_BroadcastBuddyArrived(t *testing.T) {
 				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
 					whoAddedUserParams: whoAddedUserParams{
 						{
-							userScreenName: "user_screen_name",
-							result:         []string{},
+							userScreenName: state.NewIdentScreenName("user_screen_name"),
+							result:         []state.IdentScreenName{},
 						},
 					},
 				},
@@ -418,15 +421,18 @@ func TestBuddyService_BroadcastDeparture(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					adjacentUsersParams: adjacentUsersParams{
 						{
-							screenName: "user_screen_name",
-							users:      []string{"friend1"},
+							screenName: state.NewIdentScreenName("user_screen_name"),
+							users:      []state.IdentScreenName{state.NewIdentScreenName("friend1")},
 						},
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNamesParams: relayToScreenNamesParams{
 						{
-							screenNames: []string{"friend1", "friend2"},
+							screenNames: []state.IdentScreenName{
+								state.NewIdentScreenName("friend1"),
+								state.NewIdentScreenName("friend2"),
+							},
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.Buddy,
@@ -445,8 +451,8 @@ func TestBuddyService_BroadcastDeparture(t *testing.T) {
 				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
 					whoAddedUserParams: whoAddedUserParams{
 						{
-							userScreenName: "user_screen_name",
-							result:         []string{"friend2"},
+							userScreenName: state.NewIdentScreenName("user_screen_name"),
+							result:         []state.IdentScreenName{state.NewIdentScreenName("friend2")},
 						},
 					},
 				},
@@ -502,7 +508,7 @@ func TestBuddyService_UnicastBuddyDeparted(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNameParams: relayToScreenNameParams{
 						{
-							screenName: "dest_screen_name",
+							screenName: state.NewIdentScreenName("dest_screen_name"),
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.Buddy,
@@ -557,7 +563,7 @@ func TestBuddyService_UnicastBuddyArrived(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagParams: feedbagParams{
 						{
-							screenName: "src_screen_name",
+							screenName: state.NewIdentScreenName("src_screen_name"),
 							results:    []wire.FeedbagItem{},
 						},
 					},
@@ -565,7 +571,7 @@ func TestBuddyService_UnicastBuddyArrived(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNameParams: relayToScreenNameParams{
 						{
-							screenName: "dest_screen_name",
+							screenName: state.NewIdentScreenName("dest_screen_name"),
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.Buddy,
@@ -588,7 +594,7 @@ func TestBuddyService_UnicastBuddyArrived(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagParams: feedbagParams{
 						{
-							screenName: "src_screen_name",
+							screenName: state.NewIdentScreenName("src_screen_name"),
 							results: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIdBuddy,
@@ -616,7 +622,7 @@ func TestBuddyService_UnicastBuddyArrived(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNameParams: relayToScreenNameParams{
 						{
-							screenName: "dest_screen_name",
+							screenName: state.NewIdentScreenName("dest_screen_name"),
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.Buddy,

@@ -15,66 +15,11 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
-	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// BlockedState represents the blocked status between two users
-type BlockedState int
-
 //go:embed migrations/*
 var migrations embed.FS
-
-var (
-	// ErrDupUser indicates that a user already exists.
-	ErrDupUser = errors.New("user already exists")
-	// ErrNoUser indicates that a user does not exist.
-	ErrNoUser = errors.New("user does not exist")
-)
-
-const (
-	// BlockedNo indicates that neither user blocks the other.
-	BlockedNo BlockedState = iota
-	// BlockedA indicates that user A blocks user B.
-	BlockedA
-	// BlockedB indicates that user B blocks user A.
-	BlockedB
-)
-
-// User represents a user account.
-type User struct {
-	// ScreenName is the AIM screen name.
-	ScreenName string `json:"screen_name"`
-	// AuthKey is the salt for the MD5 password hash.
-	AuthKey string `json:"-"`
-	// StrongMD5Pass is the MD5 password hash format used by AIM v4.8-v5.9.
-	StrongMD5Pass []byte `json:"-"`
-	// WeakMD5Pass is the MD5 password hash format used by AIM v3.5-v4.7. This
-	// hash is used to authenticate roasted passwords for AIM v1.0-v3.0.
-	WeakMD5Pass []byte `json:"-"`
-}
-
-// ValidateHash checks if md5Hash is identical to one of the password hashes.
-func (u *User) ValidateHash(md5Hash []byte) bool {
-	return bytes.Equal(u.StrongMD5Pass, md5Hash) || bytes.Equal(u.WeakMD5Pass, md5Hash)
-}
-
-// ValidateRoastedPass checks if the provided roasted password matches the MD5
-// hash of the user's actual password. A roasted password is a XOR-obfuscated
-// form of the real password, intended to add a simple layer of security.
-func (u *User) ValidateRoastedPass(roastedPass []byte) bool {
-	clearPass := wire.RoastPassword(roastedPass)
-	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey) // todo remove string conversion
-	return bytes.Equal(u.WeakMD5Pass, md5Hash)
-}
-
-// HashPassword computes MD5 hashes of the user's password. It computes both
-// weak and strong variants and stores them in the struct.
-func (u *User) HashPassword(passwd string) error {
-	u.WeakMD5Pass = wire.WeakMD5PasswordHash(passwd, u.AuthKey)
-	u.StrongMD5Pass = wire.StrongMD5PasswordHash(passwd, u.AuthKey)
-	return nil
-}
 
 // SQLiteUserStore stores user feedbag (buddy list), profile, and
 // authentication credentials information in a SQLite database.
@@ -122,10 +67,10 @@ func (f SQLiteUserStore) runMigrations() error {
 	return nil
 }
 
-// AllUsers returns all stored users. It only populates the User.ScreenName field
-// populated in the returned slice.
+// AllUsers returns all stored users. It only populates the User.IdentScreenName and
+// User.DisplayScreenName fields in the return slice.
 func (f SQLiteUserStore) AllUsers() ([]User, error) {
-	q := `SELECT screenName FROM user`
+	q := `SELECT identScreenName, displayScreenName FROM users`
 	rows, err := f.db.Query(q)
 	if err != nil {
 		return nil, err
@@ -134,11 +79,14 @@ func (f SQLiteUserStore) AllUsers() ([]User, error) {
 
 	var users []User
 	for rows.Next() {
-		u := User{}
-		if err := rows.Scan(&u.ScreenName); err != nil {
+		var identSN, displaySN string
+		if err := rows.Scan(&identSN, &displaySN); err != nil {
 			return nil, err
 		}
-		users = append(users, u)
+		users = append(users, User{
+			IdentScreenName:   NewIdentScreenName(identSN),
+			DisplayScreenName: DisplayScreenName(displaySN),
+		})
 	}
 
 	if err := rows.Err(); err != nil {
@@ -150,18 +98,22 @@ func (f SQLiteUserStore) AllUsers() ([]User, error) {
 
 // User looks up a user by screen name. It populates the User record with
 // credentials that can be used to validate the user's password.
-func (f SQLiteUserStore) User(screenName string) (*User, error) {
+func (f SQLiteUserStore) User(screenName IdentScreenName) (*User, error) {
 	q := `
 		SELECT
-			screenName, 
-			authKey, 
+			displayScreenName,
+			authKey,
 			weakMD5Pass,
 			strongMD5Pass
-		FROM user
-		WHERE screenName = ?
+		FROM users
+		WHERE identScreenName = ?
 	`
-	u := &User{}
-	err := f.db.QueryRow(q, screenName).Scan(&u.ScreenName, &u.AuthKey, &u.WeakMD5Pass, &u.StrongMD5Pass)
+	u := &User{
+		IdentScreenName: screenName,
+	}
+	err := f.db.QueryRow(q, screenName.String()).
+		Scan(&u.DisplayScreenName, &u.AuthKey, &u.WeakMD5Pass, &u.StrongMD5Pass)
+
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -172,11 +124,11 @@ func (f SQLiteUserStore) User(screenName string) (*User, error) {
 // same screen name already exists.
 func (f SQLiteUserStore) InsertUser(u User) error {
 	q := `
-		INSERT INTO user (screenName, authKey, weakMD5Pass, strongMD5Pass)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT (screenName) DO NOTHING
+		INSERT INTO users (identScreenName, displayScreenName, authKey, weakMD5Pass, strongMD5Pass)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT (identScreenName) DO NOTHING
 	`
-	result, err := f.db.Exec(q, u.ScreenName, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass)
+	result, err := f.db.Exec(q, u.IdentScreenName.String(), u.DisplayScreenName, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass)
 	if err != nil {
 		return err
 	}
@@ -194,11 +146,11 @@ func (f SQLiteUserStore) InsertUser(u User) error {
 
 // DeleteUser deletes a user from the store. Return ErrNoUser if the user did
 // not exist prior to deletion.
-func (f SQLiteUserStore) DeleteUser(screenName string) error {
+func (f SQLiteUserStore) DeleteUser(screenName IdentScreenName) error {
 	q := `
-		DELETE FROM user WHERE screenName = ?
+		DELETE FROM users WHERE identScreenName = ?
 	`
-	result, err := f.db.Exec(q, screenName)
+	result, err := f.db.Exec(q, screenName.String())
 	if err != nil {
 		return err
 	}
@@ -215,43 +167,44 @@ func (f SQLiteUserStore) DeleteUser(screenName string) error {
 }
 
 // SetUserPassword sets the user's password hashes and auth key.
-func (f SQLiteUserStore) SetUserPassword(u User) error {
+func (f SQLiteUserStore) SetUserPassword(u User) (err error) {
 	tx, err := f.db.Begin()
 	if err != nil {
-		return err
+		return
 	}
 
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			err = errors.Join(err, tx.Rollback())
 		}
 	}()
 
 	q := `
-		UPDATE user
+		UPDATE users
 		SET authKey = ?, weakMD5Pass = ?, strongMD5Pass = ?
-		WHERE screenName = ?
+		WHERE identScreenName = ?
 	`
-	result, err := tx.Exec(q, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass, u.ScreenName)
+	result, err := tx.Exec(q, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass, u.IdentScreenName.String())
 	if err != nil {
-		return err
+		return
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return
 	}
 
 	if rowsAffected == 0 {
 		// it's possible the user didn't change OR the user doesn't exist.
 		// check if the user exists.
 		var exists int
-		err = tx.QueryRow("SELECT COUNT(*) FROM user WHERE screenName = ?", u.ScreenName).Scan(&exists)
+		err = tx.QueryRow("SELECT COUNT(*) FROM users WHERE identScreenName = ?", u.IdentScreenName.String()).Scan(&exists)
 		if err != nil {
-			return err // Handle possible SQL errors during the select
+			return // Handle possible SQL errors during the select
 		}
 		if exists == 0 {
-			return ErrNoUser // User does not exist
+			err = ErrNoUser // User does not exist
+			return
 		}
 	}
 
@@ -259,7 +212,7 @@ func (f SQLiteUserStore) SetUserPassword(u User) error {
 }
 
 // Feedbag fetches the contents of a user's feedbag (buddy list).
-func (f SQLiteUserStore) Feedbag(screenName string) ([]wire.FeedbagItem, error) {
+func (f SQLiteUserStore) Feedbag(screenName IdentScreenName) ([]wire.FeedbagItem, error) {
 	q := `
 		SELECT 
 			groupID,
@@ -271,7 +224,7 @@ func (f SQLiteUserStore) Feedbag(screenName string) ([]wire.FeedbagItem, error) 
 		WHERE screenName = ?
 	`
 
-	rows, err := f.db.Query(q, screenName)
+	rows, err := f.db.Query(q, screenName.String())
 	if err != nil {
 		return nil, err
 	}
@@ -295,20 +248,20 @@ func (f SQLiteUserStore) Feedbag(screenName string) ([]wire.FeedbagItem, error) 
 
 // FeedbagLastModified returns the last time a user's feedbag (buddy list) was
 // updated.
-func (f SQLiteUserStore) FeedbagLastModified(screenName string) (time.Time, error) {
+func (f SQLiteUserStore) FeedbagLastModified(screenName IdentScreenName) (time.Time, error) {
 	var lastModified sql.NullInt64
 	q := `SELECT MAX(lastModified) FROM feedbag WHERE screenName = ?`
-	err := f.db.QueryRow(q, screenName).Scan(&lastModified)
+	err := f.db.QueryRow(q, screenName.String()).Scan(&lastModified)
 	return time.Unix(lastModified.Int64, 0), err
 }
 
 // FeedbagDelete deletes an entry from a user's feedbag (buddy list).
-func (f SQLiteUserStore) FeedbagDelete(screenName string, items []wire.FeedbagItem) error {
+func (f SQLiteUserStore) FeedbagDelete(screenName IdentScreenName, items []wire.FeedbagItem) error {
 	// todo add transaction
 	q := `DELETE FROM feedbag WHERE screenName = ? AND itemID = ?`
 
 	for _, item := range items {
-		if _, err := f.db.Exec(q, screenName, item.ItemID); err != nil {
+		if _, err := f.db.Exec(q, screenName.String(), item.ItemID); err != nil {
 			return err
 		}
 	}
@@ -318,7 +271,7 @@ func (f SQLiteUserStore) FeedbagDelete(screenName string, items []wire.FeedbagIt
 
 // FeedbagUpsert upserts an entry to a user's feedbag (buddy list). An entry is
 // created if it doesn't already exist, or modified if it already exists.
-func (f SQLiteUserStore) FeedbagUpsert(screenName string, items []wire.FeedbagItem) error {
+func (f SQLiteUserStore) FeedbagUpsert(screenName IdentScreenName, items []wire.FeedbagItem) error {
 	q := `
 		INSERT INTO feedbag (screenName, groupID, itemID, classID, name, attributes, lastModified)
 		VALUES (?, ?, ?, ?, ?, ?, UNIXEPOCH())
@@ -335,8 +288,15 @@ func (f SQLiteUserStore) FeedbagUpsert(screenName string, items []wire.FeedbagIt
 			return err
 		}
 
+		// todo are these all the right items?
+		if item.ClassID == wire.FeedbagClassIdBuddy ||
+			item.ClassID == wire.FeedbagClassIDPermit ||
+			item.ClassID == wire.FeedbagClassIDDeny {
+			// insert screen name identifier
+			item.Name = NewIdentScreenName(item.Name).String()
+		}
 		_, err := f.db.Exec(q,
-			screenName,
+			screenName.String(),
 			item.GroupID,
 			item.ItemID,
 			item.ClassID,
@@ -352,7 +312,7 @@ func (f SQLiteUserStore) FeedbagUpsert(screenName string, items []wire.FeedbagIt
 
 // AdjacentUsers returns all users who have screenName in their buddy list.
 // Exclude users who are on screenName's block list.
-func (f SQLiteUserStore) AdjacentUsers(screenName string) ([]string, error) {
+func (f SQLiteUserStore) AdjacentUsers(screenName IdentScreenName) ([]IdentScreenName, error) {
 	q := `
 		SELECT f.screenName
 		FROM feedbag f
@@ -364,19 +324,19 @@ func (f SQLiteUserStore) AdjacentUsers(screenName string) ([]string, error) {
 		AND NOT EXISTS(SELECT 1 FROM feedbag WHERE screenName = f.screenName AND name = f.name AND classID = 3)
 	`
 
-	rows, err := f.db.Query(q, screenName, screenName, screenName)
+	rows, err := f.db.Query(q, screenName.String(), screenName.String(), screenName.String())
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var items []string
+	var items []IdentScreenName
 	for rows.Next() {
 		var sn string
 		if err := rows.Scan(&sn); err != nil {
 			return nil, err
 		}
-		items = append(items, sn)
+		items = append(items, NewIdentScreenName(sn))
 	}
 
 	return items, nil
@@ -384,7 +344,7 @@ func (f SQLiteUserStore) AdjacentUsers(screenName string) ([]string, error) {
 
 // Buddies returns all user's buddies. Don't return a buddy if the user has
 // them on their block list.
-func (f SQLiteUserStore) Buddies(screenName string) ([]string, error) {
+func (f SQLiteUserStore) Buddies(screenName IdentScreenName) ([]IdentScreenName, error) {
 	q := `
 		SELECT f.name
 		FROM feedbag f
@@ -395,26 +355,26 @@ func (f SQLiteUserStore) Buddies(screenName string) ([]string, error) {
 		AND NOT EXISTS(SELECT 1 FROM feedbag WHERE screenName = ? AND name = f.name AND classID = 3)
 	`
 
-	rows, err := f.db.Query(q, screenName, screenName, screenName)
+	rows, err := f.db.Query(q, screenName.String(), screenName.String(), screenName.String())
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var items []string
+	var items []IdentScreenName
 	for rows.Next() {
 		var sn string
 		if err := rows.Scan(&sn); err != nil {
 			return nil, err
 		}
-		items = append(items, sn)
+		items = append(items, NewIdentScreenName(sn))
 	}
 
 	return items, nil
 }
 
 // BlockedState returns the BlockedState between two users.
-func (f SQLiteUserStore) BlockedState(screenNameA, screenNameB string) (BlockedState, error) {
+func (f SQLiteUserStore) BlockedState(screenName1, screenName2 IdentScreenName) (BlockedState, error) {
 	q := `
 		SELECT EXISTS(SELECT 1
 					  FROM feedbag f
@@ -428,7 +388,7 @@ func (f SQLiteUserStore) BlockedState(screenNameA, screenNameB string) (BlockedS
 						AND f.screenName = ?
 						AND f.name = ?)
 	`
-	row, err := f.db.Query(q, screenNameA, screenNameB, screenNameB, screenNameA)
+	row, err := f.db.Query(q, screenName1.String(), screenName2.String(), screenName2.String(), screenName1.String())
 	if err != nil {
 		return BlockedNo, err
 	}
@@ -460,14 +420,14 @@ func (f SQLiteUserStore) BlockedState(screenNameA, screenNameB string) (BlockedS
 
 // Profile fetches a user profile. Return empty string if the user
 // does not exist or has no profile.
-func (f SQLiteUserStore) Profile(screenName string) (string, error) {
+func (f SQLiteUserStore) Profile(screenName IdentScreenName) (string, error) {
 	q := `
 		SELECT IFNULL(body, '')
 		FROM profile
 		WHERE screenName = ?
 	`
 	var profile string
-	err := f.db.QueryRow(q, screenName).Scan(&profile)
+	err := f.db.QueryRow(q, screenName.String()).Scan(&profile)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return "", err
 	}
@@ -475,14 +435,14 @@ func (f SQLiteUserStore) Profile(screenName string) (string, error) {
 }
 
 // SetProfile sets the text contents of a user's profile.
-func (f SQLiteUserStore) SetProfile(screenName string, body string) error {
+func (f SQLiteUserStore) SetProfile(screenName IdentScreenName, body string) error {
 	q := `
 		INSERT INTO profile (screenName, body)
 		VALUES (?, ?)
 		ON CONFLICT (screenName)
 			DO UPDATE SET body = excluded.body
 	`
-	_, err := f.db.Exec(q, screenName, body)
+	_, err := f.db.Exec(q, screenName.String(), body)
 	return err
 }
 
@@ -508,19 +468,4 @@ func (f SQLiteUserStore) BARTRetrieve(hash []byte) ([]byte, error) {
 		err = nil
 	}
 	return body, nil
-}
-
-// NewStubUser creates a new user with canned credentials. The default password
-// is "welcome1". This is typically used for development purposes.
-func NewStubUser(screenName string) (User, error) {
-	uid, err := uuid.NewRandom()
-	if err != nil {
-		return User{}, err
-	}
-	u := User{
-		ScreenName: screenName,
-		AuthKey:    uid.String(),
-	}
-	err = u.HashPassword("welcome1")
-	return u, err
 }

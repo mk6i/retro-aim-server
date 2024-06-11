@@ -25,27 +25,27 @@ func (_m *mockFeedbagManager) EXPECT() *mockFeedbagManager_Expecter {
 }
 
 // AdjacentUsers provides a mock function with given fields: screenName
-func (_m *mockFeedbagManager) AdjacentUsers(screenName string) ([]string, error) {
+func (_m *mockFeedbagManager) AdjacentUsers(screenName state.IdentScreenName) ([]state.IdentScreenName, error) {
 	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AdjacentUsers")
 	}
 
-	var r0 []string
+	var r0 []state.IdentScreenName
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) ([]string, error)); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) ([]state.IdentScreenName, error)); ok {
 		return rf(screenName)
 	}
-	if rf, ok := ret.Get(0).(func(string) []string); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) []state.IdentScreenName); ok {
 		r0 = rf(screenName)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
+			r0 = ret.Get(0).([]state.IdentScreenName)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
+	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
 		r1 = rf(screenName)
 	} else {
 		r1 = ret.Error(1)
@@ -60,30 +60,30 @@ type mockFeedbagManager_AdjacentUsers_Call struct {
 }
 
 // AdjacentUsers is a helper method to define mock.On call
-//   - screenName string
+//   - screenName state.IdentScreenName
 func (_e *mockFeedbagManager_Expecter) AdjacentUsers(screenName interface{}) *mockFeedbagManager_AdjacentUsers_Call {
 	return &mockFeedbagManager_AdjacentUsers_Call{Call: _e.mock.On("AdjacentUsers", screenName)}
 }
 
-func (_c *mockFeedbagManager_AdjacentUsers_Call) Run(run func(screenName string)) *mockFeedbagManager_AdjacentUsers_Call {
+func (_c *mockFeedbagManager_AdjacentUsers_Call) Run(run func(screenName state.IdentScreenName)) *mockFeedbagManager_AdjacentUsers_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(state.IdentScreenName))
 	})
 	return _c
 }
 
-func (_c *mockFeedbagManager_AdjacentUsers_Call) Return(_a0 []string, _a1 error) *mockFeedbagManager_AdjacentUsers_Call {
+func (_c *mockFeedbagManager_AdjacentUsers_Call) Return(_a0 []state.IdentScreenName, _a1 error) *mockFeedbagManager_AdjacentUsers_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockFeedbagManager_AdjacentUsers_Call) RunAndReturn(run func(string) ([]string, error)) *mockFeedbagManager_AdjacentUsers_Call {
+func (_c *mockFeedbagManager_AdjacentUsers_Call) RunAndReturn(run func(state.IdentScreenName) ([]state.IdentScreenName, error)) *mockFeedbagManager_AdjacentUsers_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // BlockedState provides a mock function with given fields: screenName1, screenName2
-func (_m *mockFeedbagManager) BlockedState(screenName1 string, screenName2 string) (state.BlockedState, error) {
+func (_m *mockFeedbagManager) BlockedState(screenName1 state.IdentScreenName, screenName2 state.IdentScreenName) (state.BlockedState, error) {
 	ret := _m.Called(screenName1, screenName2)
 
 	if len(ret) == 0 {
@@ -92,16 +92,16 @@ func (_m *mockFeedbagManager) BlockedState(screenName1 string, screenName2 strin
 
 	var r0 state.BlockedState
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string) (state.BlockedState, error)); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName, state.IdentScreenName) (state.BlockedState, error)); ok {
 		return rf(screenName1, screenName2)
 	}
-	if rf, ok := ret.Get(0).(func(string, string) state.BlockedState); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName, state.IdentScreenName) state.BlockedState); ok {
 		r0 = rf(screenName1, screenName2)
 	} else {
 		r0 = ret.Get(0).(state.BlockedState)
 	}
 
-	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+	if rf, ok := ret.Get(1).(func(state.IdentScreenName, state.IdentScreenName) error); ok {
 		r1 = rf(screenName1, screenName2)
 	} else {
 		r1 = ret.Error(1)
@@ -116,15 +116,15 @@ type mockFeedbagManager_BlockedState_Call struct {
 }
 
 // BlockedState is a helper method to define mock.On call
-//   - screenName1 string
-//   - screenName2 string
+//   - screenName1 state.IdentScreenName
+//   - screenName2 state.IdentScreenName
 func (_e *mockFeedbagManager_Expecter) BlockedState(screenName1 interface{}, screenName2 interface{}) *mockFeedbagManager_BlockedState_Call {
 	return &mockFeedbagManager_BlockedState_Call{Call: _e.mock.On("BlockedState", screenName1, screenName2)}
 }
 
-func (_c *mockFeedbagManager_BlockedState_Call) Run(run func(screenName1 string, screenName2 string)) *mockFeedbagManager_BlockedState_Call {
+func (_c *mockFeedbagManager_BlockedState_Call) Run(run func(screenName1 state.IdentScreenName, screenName2 state.IdentScreenName)) *mockFeedbagManager_BlockedState_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
+		run(args[0].(state.IdentScreenName), args[1].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -134,33 +134,33 @@ func (_c *mockFeedbagManager_BlockedState_Call) Return(_a0 state.BlockedState, _
 	return _c
 }
 
-func (_c *mockFeedbagManager_BlockedState_Call) RunAndReturn(run func(string, string) (state.BlockedState, error)) *mockFeedbagManager_BlockedState_Call {
+func (_c *mockFeedbagManager_BlockedState_Call) RunAndReturn(run func(state.IdentScreenName, state.IdentScreenName) (state.BlockedState, error)) *mockFeedbagManager_BlockedState_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Buddies provides a mock function with given fields: screenName
-func (_m *mockFeedbagManager) Buddies(screenName string) ([]string, error) {
+func (_m *mockFeedbagManager) Buddies(screenName state.IdentScreenName) ([]state.IdentScreenName, error) {
 	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Buddies")
 	}
 
-	var r0 []string
+	var r0 []state.IdentScreenName
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) ([]string, error)); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) ([]state.IdentScreenName, error)); ok {
 		return rf(screenName)
 	}
-	if rf, ok := ret.Get(0).(func(string) []string); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) []state.IdentScreenName); ok {
 		r0 = rf(screenName)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
+			r0 = ret.Get(0).([]state.IdentScreenName)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
+	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
 		r1 = rf(screenName)
 	} else {
 		r1 = ret.Error(1)
@@ -175,30 +175,30 @@ type mockFeedbagManager_Buddies_Call struct {
 }
 
 // Buddies is a helper method to define mock.On call
-//   - screenName string
+//   - screenName state.IdentScreenName
 func (_e *mockFeedbagManager_Expecter) Buddies(screenName interface{}) *mockFeedbagManager_Buddies_Call {
 	return &mockFeedbagManager_Buddies_Call{Call: _e.mock.On("Buddies", screenName)}
 }
 
-func (_c *mockFeedbagManager_Buddies_Call) Run(run func(screenName string)) *mockFeedbagManager_Buddies_Call {
+func (_c *mockFeedbagManager_Buddies_Call) Run(run func(screenName state.IdentScreenName)) *mockFeedbagManager_Buddies_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(state.IdentScreenName))
 	})
 	return _c
 }
 
-func (_c *mockFeedbagManager_Buddies_Call) Return(_a0 []string, _a1 error) *mockFeedbagManager_Buddies_Call {
+func (_c *mockFeedbagManager_Buddies_Call) Return(_a0 []state.IdentScreenName, _a1 error) *mockFeedbagManager_Buddies_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockFeedbagManager_Buddies_Call) RunAndReturn(run func(string) ([]string, error)) *mockFeedbagManager_Buddies_Call {
+func (_c *mockFeedbagManager_Buddies_Call) RunAndReturn(run func(state.IdentScreenName) ([]state.IdentScreenName, error)) *mockFeedbagManager_Buddies_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Feedbag provides a mock function with given fields: screenName
-func (_m *mockFeedbagManager) Feedbag(screenName string) ([]wire.FeedbagItem, error) {
+func (_m *mockFeedbagManager) Feedbag(screenName state.IdentScreenName) ([]wire.FeedbagItem, error) {
 	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
@@ -207,10 +207,10 @@ func (_m *mockFeedbagManager) Feedbag(screenName string) ([]wire.FeedbagItem, er
 
 	var r0 []wire.FeedbagItem
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) ([]wire.FeedbagItem, error)); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) ([]wire.FeedbagItem, error)); ok {
 		return rf(screenName)
 	}
-	if rf, ok := ret.Get(0).(func(string) []wire.FeedbagItem); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) []wire.FeedbagItem); ok {
 		r0 = rf(screenName)
 	} else {
 		if ret.Get(0) != nil {
@@ -218,7 +218,7 @@ func (_m *mockFeedbagManager) Feedbag(screenName string) ([]wire.FeedbagItem, er
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
+	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
 		r1 = rf(screenName)
 	} else {
 		r1 = ret.Error(1)
@@ -233,14 +233,14 @@ type mockFeedbagManager_Feedbag_Call struct {
 }
 
 // Feedbag is a helper method to define mock.On call
-//   - screenName string
+//   - screenName state.IdentScreenName
 func (_e *mockFeedbagManager_Expecter) Feedbag(screenName interface{}) *mockFeedbagManager_Feedbag_Call {
 	return &mockFeedbagManager_Feedbag_Call{Call: _e.mock.On("Feedbag", screenName)}
 }
 
-func (_c *mockFeedbagManager_Feedbag_Call) Run(run func(screenName string)) *mockFeedbagManager_Feedbag_Call {
+func (_c *mockFeedbagManager_Feedbag_Call) Run(run func(screenName state.IdentScreenName)) *mockFeedbagManager_Feedbag_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -250,13 +250,13 @@ func (_c *mockFeedbagManager_Feedbag_Call) Return(_a0 []wire.FeedbagItem, _a1 er
 	return _c
 }
 
-func (_c *mockFeedbagManager_Feedbag_Call) RunAndReturn(run func(string) ([]wire.FeedbagItem, error)) *mockFeedbagManager_Feedbag_Call {
+func (_c *mockFeedbagManager_Feedbag_Call) RunAndReturn(run func(state.IdentScreenName) ([]wire.FeedbagItem, error)) *mockFeedbagManager_Feedbag_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // FeedbagDelete provides a mock function with given fields: screenName, items
-func (_m *mockFeedbagManager) FeedbagDelete(screenName string, items []wire.FeedbagItem) error {
+func (_m *mockFeedbagManager) FeedbagDelete(screenName state.IdentScreenName, items []wire.FeedbagItem) error {
 	ret := _m.Called(screenName, items)
 
 	if len(ret) == 0 {
@@ -264,7 +264,7 @@ func (_m *mockFeedbagManager) FeedbagDelete(screenName string, items []wire.Feed
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, []wire.FeedbagItem) error); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName, []wire.FeedbagItem) error); ok {
 		r0 = rf(screenName, items)
 	} else {
 		r0 = ret.Error(0)
@@ -279,15 +279,15 @@ type mockFeedbagManager_FeedbagDelete_Call struct {
 }
 
 // FeedbagDelete is a helper method to define mock.On call
-//   - screenName string
+//   - screenName state.IdentScreenName
 //   - items []wire.FeedbagItem
 func (_e *mockFeedbagManager_Expecter) FeedbagDelete(screenName interface{}, items interface{}) *mockFeedbagManager_FeedbagDelete_Call {
 	return &mockFeedbagManager_FeedbagDelete_Call{Call: _e.mock.On("FeedbagDelete", screenName, items)}
 }
 
-func (_c *mockFeedbagManager_FeedbagDelete_Call) Run(run func(screenName string, items []wire.FeedbagItem)) *mockFeedbagManager_FeedbagDelete_Call {
+func (_c *mockFeedbagManager_FeedbagDelete_Call) Run(run func(screenName state.IdentScreenName, items []wire.FeedbagItem)) *mockFeedbagManager_FeedbagDelete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].([]wire.FeedbagItem))
+		run(args[0].(state.IdentScreenName), args[1].([]wire.FeedbagItem))
 	})
 	return _c
 }
@@ -297,13 +297,13 @@ func (_c *mockFeedbagManager_FeedbagDelete_Call) Return(_a0 error) *mockFeedbagM
 	return _c
 }
 
-func (_c *mockFeedbagManager_FeedbagDelete_Call) RunAndReturn(run func(string, []wire.FeedbagItem) error) *mockFeedbagManager_FeedbagDelete_Call {
+func (_c *mockFeedbagManager_FeedbagDelete_Call) RunAndReturn(run func(state.IdentScreenName, []wire.FeedbagItem) error) *mockFeedbagManager_FeedbagDelete_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // FeedbagLastModified provides a mock function with given fields: screenName
-func (_m *mockFeedbagManager) FeedbagLastModified(screenName string) (time.Time, error) {
+func (_m *mockFeedbagManager) FeedbagLastModified(screenName state.IdentScreenName) (time.Time, error) {
 	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
@@ -312,16 +312,16 @@ func (_m *mockFeedbagManager) FeedbagLastModified(screenName string) (time.Time,
 
 	var r0 time.Time
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (time.Time, error)); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) (time.Time, error)); ok {
 		return rf(screenName)
 	}
-	if rf, ok := ret.Get(0).(func(string) time.Time); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) time.Time); ok {
 		r0 = rf(screenName)
 	} else {
 		r0 = ret.Get(0).(time.Time)
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
+	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
 		r1 = rf(screenName)
 	} else {
 		r1 = ret.Error(1)
@@ -336,14 +336,14 @@ type mockFeedbagManager_FeedbagLastModified_Call struct {
 }
 
 // FeedbagLastModified is a helper method to define mock.On call
-//   - screenName string
+//   - screenName state.IdentScreenName
 func (_e *mockFeedbagManager_Expecter) FeedbagLastModified(screenName interface{}) *mockFeedbagManager_FeedbagLastModified_Call {
 	return &mockFeedbagManager_FeedbagLastModified_Call{Call: _e.mock.On("FeedbagLastModified", screenName)}
 }
 
-func (_c *mockFeedbagManager_FeedbagLastModified_Call) Run(run func(screenName string)) *mockFeedbagManager_FeedbagLastModified_Call {
+func (_c *mockFeedbagManager_FeedbagLastModified_Call) Run(run func(screenName state.IdentScreenName)) *mockFeedbagManager_FeedbagLastModified_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -353,13 +353,13 @@ func (_c *mockFeedbagManager_FeedbagLastModified_Call) Return(_a0 time.Time, _a1
 	return _c
 }
 
-func (_c *mockFeedbagManager_FeedbagLastModified_Call) RunAndReturn(run func(string) (time.Time, error)) *mockFeedbagManager_FeedbagLastModified_Call {
+func (_c *mockFeedbagManager_FeedbagLastModified_Call) RunAndReturn(run func(state.IdentScreenName) (time.Time, error)) *mockFeedbagManager_FeedbagLastModified_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // FeedbagUpsert provides a mock function with given fields: screenName, items
-func (_m *mockFeedbagManager) FeedbagUpsert(screenName string, items []wire.FeedbagItem) error {
+func (_m *mockFeedbagManager) FeedbagUpsert(screenName state.IdentScreenName, items []wire.FeedbagItem) error {
 	ret := _m.Called(screenName, items)
 
 	if len(ret) == 0 {
@@ -367,7 +367,7 @@ func (_m *mockFeedbagManager) FeedbagUpsert(screenName string, items []wire.Feed
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, []wire.FeedbagItem) error); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName, []wire.FeedbagItem) error); ok {
 		r0 = rf(screenName, items)
 	} else {
 		r0 = ret.Error(0)
@@ -382,15 +382,15 @@ type mockFeedbagManager_FeedbagUpsert_Call struct {
 }
 
 // FeedbagUpsert is a helper method to define mock.On call
-//   - screenName string
+//   - screenName state.IdentScreenName
 //   - items []wire.FeedbagItem
 func (_e *mockFeedbagManager_Expecter) FeedbagUpsert(screenName interface{}, items interface{}) *mockFeedbagManager_FeedbagUpsert_Call {
 	return &mockFeedbagManager_FeedbagUpsert_Call{Call: _e.mock.On("FeedbagUpsert", screenName, items)}
 }
 
-func (_c *mockFeedbagManager_FeedbagUpsert_Call) Run(run func(screenName string, items []wire.FeedbagItem)) *mockFeedbagManager_FeedbagUpsert_Call {
+func (_c *mockFeedbagManager_FeedbagUpsert_Call) Run(run func(screenName state.IdentScreenName, items []wire.FeedbagItem)) *mockFeedbagManager_FeedbagUpsert_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].([]wire.FeedbagItem))
+		run(args[0].(state.IdentScreenName), args[1].([]wire.FeedbagItem))
 	})
 	return _c
 }
@@ -400,7 +400,7 @@ func (_c *mockFeedbagManager_FeedbagUpsert_Call) Return(_a0 error) *mockFeedbagM
 	return _c
 }
 
-func (_c *mockFeedbagManager_FeedbagUpsert_Call) RunAndReturn(run func(string, []wire.FeedbagItem) error) *mockFeedbagManager_FeedbagUpsert_Call {
+func (_c *mockFeedbagManager_FeedbagUpsert_Call) RunAndReturn(run func(state.IdentScreenName, []wire.FeedbagItem) error) *mockFeedbagManager_FeedbagUpsert_Call {
 	_c.Call.Return(run)
 	return _c
 }

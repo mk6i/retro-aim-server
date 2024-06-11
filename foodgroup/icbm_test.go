@@ -229,18 +229,18 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			//
 			feedbagManager := newMockFeedbagManager(t)
 			feedbagManager.EXPECT().
-				BlockedState(tc.senderSession.ScreenName(),
-					tc.inputSNAC.Body.(wire.SNAC_0x04_0x06_ICBMChannelMsgToHost).ScreenName).
+				BlockedState(tc.senderSession.IdentScreenName(),
+					state.NewIdentScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x06_ICBMChannelMsgToHost).ScreenName)).
 				Return(tc.blockedState, nil).
 				Maybe()
 			messageRelayer := newMockMessageRelayer(t)
 			messageRelayer.EXPECT().
-				RetrieveByScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x06_ICBMChannelMsgToHost).ScreenName).
+				RetrieveByScreenName(state.NewIdentScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x06_ICBMChannelMsgToHost).ScreenName)).
 				Return(tc.recipientSession).
 				Maybe()
 			if tc.recipientSession != nil {
 				messageRelayer.EXPECT().
-					RelayToScreenName(mock.Anything, tc.recipientSession.ScreenName(), tc.expectSNACToClient).
+					RelayToScreenName(mock.Anything, tc.recipientSession.IdentScreenName(), tc.expectSNACToClient).
 					Maybe()
 			}
 			//
@@ -265,7 +265,7 @@ func TestICBMService_ClientEvent(t *testing.T) {
 		// blockedState is the response to the sender/recipient block check
 		blockedState state.BlockedState
 		// senderScreenName is the screen name of the user sending the event
-		senderScreenName string
+		senderScreenName state.DisplayScreenName
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC wire.SNACMessage
 		// expectSNACToClient is the SNAC sent from the server to the
@@ -323,13 +323,15 @@ func TestICBMService_ClientEvent(t *testing.T) {
 			//
 			feedbagManager := newMockFeedbagManager(t)
 			feedbagManager.EXPECT().
-				BlockedState(tc.senderScreenName, tc.inputSNAC.Body.(wire.SNAC_0x04_0x14_ICBMClientEvent).ScreenName).
+				BlockedState(tc.senderScreenName.IdentScreenName(),
+					state.NewIdentScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x14_ICBMClientEvent).ScreenName)).
 				Return(tc.blockedState, nil).
 				Maybe()
 			messageRelayer := newMockMessageRelayer(t)
 			if tc.blockedState == state.BlockedNo {
 				messageRelayer.EXPECT().
-					RelayToScreenName(mock.Anything, tc.inputSNAC.Body.(wire.SNAC_0x04_0x14_ICBMClientEvent).ScreenName,
+					RelayToScreenName(mock.Anything,
+						state.NewIdentScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x14_ICBMClientEvent).ScreenName),
 						tc.expectSNACToClient)
 			}
 			//
@@ -357,10 +359,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		// recipientSession is the session of the user receiving the EvilNotification
 		recipientSession *state.Session
 		// recipientScreenName is the screen name of the user receiving the EvilNotification
-		recipientScreenName string
-		// recipientBuddies is a list of the recipient's buddies that get
-		// updated warning level
-		recipientBuddies []string
+		recipientScreenName state.IdentScreenName
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC wire.SNACMessage
 		// expectSNACToClient is the SNAC sent from the server to the
@@ -377,8 +376,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			blockedState:        state.BlockedNo,
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientSession:    newTestSession("recipient-screen-name", sessOptCannedSignonTime),
-			recipientScreenName: "recipient-screen-name",
-			recipientBuddies:    []string{"buddy1", "buddy2"},
+			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -412,7 +410,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: "recipient-screen-name",
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
 						},
 					},
 				},
@@ -423,8 +421,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			blockedState:        state.BlockedNo,
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientSession:    newTestSession("recipient-screen-name", sessOptCannedSignonTime),
-			recipientScreenName: "recipient-screen-name",
-			recipientBuddies:    []string{"buddy1", "buddy2"},
+			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -462,7 +459,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: "recipient-screen-name",
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
 						},
 					},
 				},
@@ -473,8 +470,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			blockedState:        state.BlockedA,
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientSession:    nil,
-			recipientScreenName: "recipient-screen-name",
-			recipientBuddies:    []string{"buddy1", "buddy2"},
+			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -500,8 +496,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			blockedState:        state.BlockedB,
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientSession:    nil,
-			recipientScreenName: "recipient-screen-name",
-			recipientBuddies:    []string{"buddy1", "buddy2"},
+			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -526,7 +521,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			name:                "don't let users warn themselves",
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientSession:    nil,
-			recipientScreenName: "sender-screen-name",
+			recipientScreenName: state.NewIdentScreenName("sender-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -552,8 +547,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			blockedState:        state.BlockedNo,
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientSession:    nil,
-			recipientScreenName: "recipient-screen-name",
-			recipientBuddies:    []string{"buddy1", "buddy2"},
+			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -579,8 +573,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			blockedState:        state.BlockedNo,
 			senderSession:       newTestSession("sender-screen-name"),
 			recipientSession:    nil,
-			recipientScreenName: "recipient-screen-name",
-			recipientBuddies:    []string{"buddy1", "buddy2"},
+			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -610,7 +603,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			//
 			feedbagManager := newMockFeedbagManager(t)
 			feedbagManager.EXPECT().
-				BlockedState(tc.senderSession.ScreenName(), tc.recipientScreenName).
+				BlockedState(tc.senderSession.IdentScreenName(), tc.recipientScreenName).
 				Return(tc.blockedState, nil).
 				Maybe()
 			messageRelayer := newMockMessageRelayer(t)
@@ -626,14 +619,14 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().
 					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.ScreenName() == p.screenName
+						return s.IdentScreenName() == p.screenName
 					})).
 					Return(nil)
 			}
 			//
 			// send input SNAC
 			//
-			senderSession := newTestSession(tc.senderSession.ScreenName())
+			senderSession := newTestSession(tc.senderSession.DisplayScreenName())
 			svc := NewICBMService(messageRelayer, feedbagManager, buddyUpdateBroadcaster)
 			outputSNAC, err := svc.EvilRequest(nil, senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest))

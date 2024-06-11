@@ -21,7 +21,7 @@ func (_m *mockSessionManager) EXPECT() *mockSessionManager_Expecter {
 }
 
 // AddSession provides a mock function with given fields: screenName
-func (_m *mockSessionManager) AddSession(screenName string) *state.Session {
+func (_m *mockSessionManager) AddSession(screenName state.DisplayScreenName) *state.Session {
 	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
@@ -29,7 +29,7 @@ func (_m *mockSessionManager) AddSession(screenName string) *state.Session {
 	}
 
 	var r0 *state.Session
-	if rf, ok := ret.Get(0).(func(string) *state.Session); ok {
+	if rf, ok := ret.Get(0).(func(state.DisplayScreenName) *state.Session); ok {
 		r0 = rf(screenName)
 	} else {
 		if ret.Get(0) != nil {
@@ -46,14 +46,14 @@ type mockSessionManager_AddSession_Call struct {
 }
 
 // AddSession is a helper method to define mock.On call
-//   - screenName string
+//   - screenName state.DisplayScreenName
 func (_e *mockSessionManager_Expecter) AddSession(screenName interface{}) *mockSessionManager_AddSession_Call {
 	return &mockSessionManager_AddSession_Call{Call: _e.mock.On("AddSession", screenName)}
 }
 
-func (_c *mockSessionManager_AddSession_Call) Run(run func(screenName string)) *mockSessionManager_AddSession_Call {
+func (_c *mockSessionManager_AddSession_Call) Run(run func(screenName state.DisplayScreenName)) *mockSessionManager_AddSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(state.DisplayScreenName))
 	})
 	return _c
 }
@@ -63,7 +63,7 @@ func (_c *mockSessionManager_AddSession_Call) Return(_a0 *state.Session) *mockSe
 	return _c
 }
 
-func (_c *mockSessionManager_AddSession_Call) RunAndReturn(run func(string) *state.Session) *mockSessionManager_AddSession_Call {
+func (_c *mockSessionManager_AddSession_Call) RunAndReturn(run func(state.DisplayScreenName) *state.Session) *mockSessionManager_AddSession_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -146,17 +146,17 @@ func (_c *mockSessionManager_RemoveSession_Call) RunAndReturn(run func(*state.Se
 	return _c
 }
 
-// RetrieveSession provides a mock function with given fields: ID
-func (_m *mockSessionManager) RetrieveSession(ID string) *state.Session {
-	ret := _m.Called(ID)
+// RetrieveSession provides a mock function with given fields: screenName
+func (_m *mockSessionManager) RetrieveSession(screenName state.IdentScreenName) *state.Session {
+	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RetrieveSession")
 	}
 
 	var r0 *state.Session
-	if rf, ok := ret.Get(0).(func(string) *state.Session); ok {
-		r0 = rf(ID)
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *state.Session); ok {
+		r0 = rf(screenName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*state.Session)
@@ -172,14 +172,14 @@ type mockSessionManager_RetrieveSession_Call struct {
 }
 
 // RetrieveSession is a helper method to define mock.On call
-//   - ID string
-func (_e *mockSessionManager_Expecter) RetrieveSession(ID interface{}) *mockSessionManager_RetrieveSession_Call {
-	return &mockSessionManager_RetrieveSession_Call{Call: _e.mock.On("RetrieveSession", ID)}
+//   - screenName state.IdentScreenName
+func (_e *mockSessionManager_Expecter) RetrieveSession(screenName interface{}) *mockSessionManager_RetrieveSession_Call {
+	return &mockSessionManager_RetrieveSession_Call{Call: _e.mock.On("RetrieveSession", screenName)}
 }
 
-func (_c *mockSessionManager_RetrieveSession_Call) Run(run func(ID string)) *mockSessionManager_RetrieveSession_Call {
+func (_c *mockSessionManager_RetrieveSession_Call) Run(run func(screenName state.IdentScreenName)) *mockSessionManager_RetrieveSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -189,7 +189,7 @@ func (_c *mockSessionManager_RetrieveSession_Call) Return(_a0 *state.Session) *m
 	return _c
 }
 
-func (_c *mockSessionManager_RetrieveSession_Call) RunAndReturn(run func(string) *state.Session) *mockSessionManager_RetrieveSession_Call {
+func (_c *mockSessionManager_RetrieveSession_Call) RunAndReturn(run func(state.IdentScreenName) *state.Session) *mockSessionManager_RetrieveSession_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -58,14 +58,28 @@ func (s AuthService) RegisterChatSession(loginCookie []byte) (*state.Session, er
 	if err != nil {
 		return nil, err
 	}
-	chatSess := chatSessMgr.(SessionManager).AddSession(c.ScreenName)
+	u, err := s.userManager.User(state.NewIdentScreenName(c.ScreenName))
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve user: %w", err)
+	}
+	if u == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+	chatSess := chatSessMgr.(SessionManager).AddSession(u.DisplayScreenName)
 	chatSess.SetChatRoomCookie(room.Cookie)
 	return chatSess, nil
 }
 
 // RegisterBOSSession creates and returns a user's session.
-func (s AuthService) RegisterBOSSession(sessionID string) (*state.Session, error) {
-	return s.sessionManager.AddSession(sessionID), nil
+func (s AuthService) RegisterBOSSession(screenName state.IdentScreenName) (*state.Session, error) {
+	u, err := s.userManager.User(screenName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve user: %w", err)
+	}
+	if u == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+	return s.sessionManager.AddSession(u.DisplayScreenName), nil
 }
 
 // Signout removes this user's session and notifies users who have this user on
@@ -75,7 +89,7 @@ func (s AuthService) Signout(ctx context.Context, sess *state.Session) error {
 		return err
 	}
 	s.sessionManager.RemoveSession(sess)
-	s.legacyBuddyListManager.DeleteUser(sess.ScreenName())
+	s.legacyBuddyListManager.DeleteUser(sess.IdentScreenName())
 	return nil
 }
 
@@ -113,7 +127,7 @@ func (s AuthService) BUCPChallenge(
 
 	var authKey string
 
-	user, err := s.userManager.User(screenName)
+	user, err := s.userManager.User(state.NewIdentScreenName(screenName))
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}
@@ -163,10 +177,7 @@ func (s AuthService) BUCPChallenge(
 // (wire.LoginTLVTagsReconnectHere) and an authorization cookie
 // (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
 // (wire.LoginTLVTagsErrorSubcode).
-func (s AuthService) BUCPLogin(
-	bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest,
-	newUserFn func(screenName string) (state.User, error),
-) (wire.SNACMessage, error) {
+func (s AuthService) BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error) {
 
 	block, err := s.login(bodyIn.TLVList, newUserFn)
 	if err != nil {
@@ -194,7 +205,7 @@ func (s AuthService) BUCPLogin(
 // (wire.LoginTLVTagsReconnectHere) and an authorization cookie
 // (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
 // (wire.LoginTLVTagsErrorSubcode).
-func (s AuthService) FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName string) (state.User, error)) (wire.TLVRestBlock, error) {
+func (s AuthService) FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error) {
 	return s.login(frame.TLVList, newUserFn)
 }
 
@@ -202,7 +213,7 @@ func (s AuthService) FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screen
 // metadata used in both BUCP and FLAP authentication responses.
 func (s AuthService) login(
 	TLVList wire.TLVList,
-	newUserFn func(screenName string) (state.User, error),
+	newUserFn func(screenName state.DisplayScreenName) (state.User, error),
 ) (wire.TLVRestBlock, error) {
 
 	screenName, found := TLVList.String(wire.LoginTLVTagsScreenName)
@@ -210,7 +221,7 @@ func (s AuthService) login(
 		return wire.TLVRestBlock{}, errors.New("screen name doesn't exist in tlv")
 	}
 
-	user, err := s.userManager.User(screenName)
+	user, err := s.userManager.User(state.NewIdentScreenName(screenName))
 	if err != nil {
 		return wire.TLVRestBlock{}, err
 	}
@@ -230,7 +241,7 @@ func (s AuthService) login(
 		if !loginOK {
 			// make login succeed anyway. create new user if the account
 			// doesn't already exist.
-			newUser, err := newUserFn(screenName)
+			newUser, err := newUserFn(state.DisplayScreenName(screenName))
 			if err != nil {
 				return wire.TLVRestBlock{}, err
 			}

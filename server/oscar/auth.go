@@ -16,9 +16,9 @@ import (
 
 type AuthService interface {
 	BUCPChallenge(bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
-	BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, fn func(screenName string) (state.User, error)) (wire.SNACMessage, error)
-	FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName string) (state.User, error)) (wire.TLVRestBlock, error)
-	RegisterBOSSession(sessionID string) (*state.Session, error)
+	BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
+	FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error)
+	RegisterBOSSession(screenName state.IdentScreenName) (*state.Session, error)
 	RegisterChatSession(loginCookie []byte) (*state.Session, error)
 	Signout(ctx context.Context, sess *state.Session) error
 	SignoutChat(ctx context.Context, sess *state.Session) error

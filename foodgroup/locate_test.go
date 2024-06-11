@@ -31,8 +31,8 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					blockedStateParams: blockedStateParams{
 						{
-							screenName1: "user_screen_name",
-							screenName2: "requested-user",
+							screenName1: state.NewIdentScreenName("user_screen_name"),
+							screenName2: state.NewIdentScreenName("requested-user"),
 							result:      state.BlockedNo,
 						},
 					},
@@ -40,7 +40,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "requested-user",
+							screenName: state.NewIdentScreenName("requested-user"),
 							sess: newTestSession("requested-user",
 								sessOptCannedSignonTime,
 								sessOptCannedAwayMessage),
@@ -79,8 +79,8 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					blockedStateParams: blockedStateParams{
 						{
-							screenName1: "user_screen_name",
-							screenName2: "requested-user",
+							screenName1: state.NewIdentScreenName("user_screen_name"),
+							screenName2: state.NewIdentScreenName("requested-user"),
 							result:      state.BlockedNo,
 						},
 					},
@@ -88,7 +88,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "requested-user",
+							screenName: state.NewIdentScreenName("requested-user"),
 							sess: newTestSession("requested-user",
 								sessOptCannedSignonTime,
 								sessOptCannedAwayMessage),
@@ -98,7 +98,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				profileManagerParams: profileManagerParams{
 					retrieveProfileParams: retrieveProfileParams{
 						{
-							screenName: "requested-user",
+							screenName: state.NewIdentScreenName("requested-user"),
 							result:     "this is my profile!",
 						},
 					},
@@ -141,8 +141,8 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					blockedStateParams: blockedStateParams{
 						{
-							screenName1: "user_screen_name",
-							screenName2: "requested-user",
+							screenName1: state.NewIdentScreenName("user_screen_name"),
+							screenName2: state.NewIdentScreenName("requested-user"),
 							result:      state.BlockedNo,
 						},
 					},
@@ -150,7 +150,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "requested-user",
+							screenName: state.NewIdentScreenName("requested-user"),
 							sess: newTestSession("requested-user",
 								sessOptCannedSignonTime,
 								sessOptCannedAwayMessage),
@@ -160,7 +160,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				profileManagerParams: profileManagerParams{
 					retrieveProfileParams: retrieveProfileParams{
 						{
-							screenName: "requested-user",
+							screenName: state.NewIdentScreenName("requested-user"),
 							result:     "this is my profile!",
 						},
 					},
@@ -203,8 +203,8 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					blockedStateParams: blockedStateParams{
 						{
-							screenName1: "user_screen_name",
-							screenName2: "requested-user",
+							screenName1: state.NewIdentScreenName("user_screen_name"),
+							screenName2: state.NewIdentScreenName("requested-user"),
 							result:      state.BlockedNo,
 						},
 					},
@@ -212,7 +212,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "requested-user",
+							screenName: state.NewIdentScreenName("requested-user"),
 							sess: newTestSession("requested-user",
 								sessOptCannedSignonTime,
 								sessOptCannedAwayMessage),
@@ -257,8 +257,8 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					blockedStateParams: blockedStateParams{
 						{
-							screenName1: "user_screen_name",
-							screenName2: "requested-user",
+							screenName1: state.NewIdentScreenName("user_screen_name"),
+							screenName2: state.NewIdentScreenName("requested-user"),
 							result:      state.BlockedB,
 						},
 					},
@@ -290,8 +290,8 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					blockedStateParams: blockedStateParams{
 						{
-							screenName1: "user_screen_name",
-							screenName2: "non_existent_requested_user",
+							screenName1: state.NewIdentScreenName("user_screen_name"),
+							screenName2: state.NewIdentScreenName("non_existent_requested_user"),
 							result:      state.BlockedNo,
 						},
 					},
@@ -299,7 +299,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "non_existent_requested_user",
+							screenName: state.NewIdentScreenName("non_existent_requested_user"),
 							sess:       nil,
 						},
 					},
@@ -425,7 +425,7 @@ func TestLocateService_SetInfo(t *testing.T) {
 				profileManagerParams: profileManagerParams{
 					setProfileParams: setProfileParams{
 						{
-							screenName: "test-user",
+							screenName: state.NewIdentScreenName("test-user"),
 							body:       "profile-result",
 						},
 					},
@@ -446,7 +446,7 @@ func TestLocateService_SetInfo(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 						},
 					},
 				},
@@ -466,7 +466,7 @@ func TestLocateService_SetInfo(t *testing.T) {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().
 					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.ScreenName() == p.screenName
+						return s.IdentScreenName() == p.screenName
 					})).
 					Return(nil)
 			}

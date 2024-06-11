@@ -73,7 +73,7 @@ func (s LocateService) RightsQuery(_ context.Context, inFrame wire.SNACFrame) wi
 func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x02_0x04_LocateSetInfo) error {
 	// update profile
 	if profile, hasProfile := inBody.String(wire.LocateTLVTagsInfoSigData); hasProfile {
-		if err := s.profileManager.SetProfile(sess.ScreenName(), profile); err != nil {
+		if err := s.profileManager.SetProfile(sess.IdentScreenName(), profile); err != nil {
 			return err
 		}
 	}
@@ -111,7 +111,9 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 // profile, if requested, and/or the away message, if requested. This is a v2
 // of UserInfoQuery.
 func (s LocateService) UserInfoQuery(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery) (wire.SNACMessage, error) {
-	blocked, err := s.feedbagManager.BlockedState(sess.ScreenName(), inBody.ScreenName)
+	identScreenName := state.NewIdentScreenName(inBody.ScreenName)
+
+	blocked, err := s.feedbagManager.BlockedState(sess.IdentScreenName(), identScreenName)
 	switch {
 	case err != nil:
 		return wire.SNACMessage{}, err
@@ -128,7 +130,7 @@ func (s LocateService) UserInfoQuery(_ context.Context, sess *state.Session, inF
 		}, nil
 	}
 
-	buddySess := s.sessionManager.RetrieveByScreenName(inBody.ScreenName)
+	buddySess := s.sessionManager.RetrieveByScreenName(identScreenName)
 	if buddySess == nil {
 		return wire.SNACMessage{
 			Frame: wire.SNACFrame{
@@ -145,7 +147,7 @@ func (s LocateService) UserInfoQuery(_ context.Context, sess *state.Session, inF
 	var list wire.TLVList
 
 	if inBody.RequestProfile() {
-		profile, err := s.profileManager.Profile(inBody.ScreenName)
+		profile, err := s.profileManager.Profile(identScreenName)
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}

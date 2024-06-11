@@ -38,7 +38,7 @@ func TestFeedbagService_Query(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagParams: feedbagParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							results:    []wire.FeedbagItem{},
 						},
 					},
@@ -68,7 +68,7 @@ func TestFeedbagService_Query(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagParams: feedbagParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							results: []wire.FeedbagItem{
 								{
 									Name: "buddy_1",
@@ -81,7 +81,7 @@ func TestFeedbagService_Query(t *testing.T) {
 					},
 					feedbagLastModifiedParams: feedbagLastModifiedParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							result:     time.UnixMilli(1696472198082),
 						},
 					},
@@ -162,7 +162,7 @@ func TestFeedbagService_QueryIfModified(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagParams: feedbagParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							results:    []wire.FeedbagItem{},
 						},
 					},
@@ -194,7 +194,7 @@ func TestFeedbagService_QueryIfModified(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagParams: feedbagParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							results: []wire.FeedbagItem{
 								{
 									Name: "buddy_1",
@@ -207,7 +207,7 @@ func TestFeedbagService_QueryIfModified(t *testing.T) {
 					},
 					feedbagLastModifiedParams: feedbagLastModifiedParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							result:     time.UnixMilli(200000),
 						},
 					},
@@ -248,7 +248,7 @@ func TestFeedbagService_QueryIfModified(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagParams: feedbagParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							results: []wire.FeedbagItem{
 								{
 									Name: "buddy_1",
@@ -261,7 +261,7 @@ func TestFeedbagService_QueryIfModified(t *testing.T) {
 					},
 					feedbagLastModifiedParams: feedbagLastModifiedParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							result:     time.UnixMilli(100000),
 						},
 					},
@@ -406,7 +406,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagUpsertParams: feedbagUpsertParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIDPermit,
@@ -423,11 +423,11 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "buddy_1_online",
+							screenName: state.NewIdentScreenName("buddy_1_online"),
 							sess:       newTestSession("buddy_1_online", sessOptCannedSignonTime),
 						},
 						{
-							screenName: "buddy_2_online",
+							screenName: state.NewIdentScreenName("buddy_2_online"),
 							sess:       newTestSession("buddy_2_online", sessOptCannedSignonTime),
 						},
 					},
@@ -435,12 +435,12 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					unicastBuddyArrivedParams: unicastBuddyArrivedParams{
 						{
-							from: "buddy_1_online",
-							to:   "user_screen_name",
+							from: state.NewIdentScreenName("buddy_1_online"),
+							to:   state.NewIdentScreenName("user_screen_name"),
 						},
 						{
-							from: "buddy_2_online",
-							to:   "user_screen_name",
+							from: state.NewIdentScreenName("buddy_2_online"),
+							to:   state.NewIdentScreenName("user_screen_name"),
 						},
 					},
 				},
@@ -476,7 +476,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagUpsertParams: feedbagUpsertParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIDPermit,
@@ -489,7 +489,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "buddy_offline",
+							screenName: state.NewIdentScreenName("buddy_offline"),
 							sess:       nil,
 						},
 					},
@@ -526,7 +526,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagUpsertParams: feedbagUpsertParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIDPermit,
@@ -539,7 +539,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "invisible_buddy_online",
+							screenName: state.NewIdentScreenName("invisible_buddy_online"),
 							sess:       newTestSession("invisible_buddy_online", sessOptInvisible),
 						},
 					},
@@ -576,7 +576,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagUpsertParams: feedbagUpsertParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIDDeny,
@@ -589,7 +589,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "buddy_1",
+							screenName: state.NewIdentScreenName("buddy_1"),
 							sess:       newTestSession("buddy_1"),
 						},
 					},
@@ -597,12 +597,12 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					unicastBuddyDepartedParams: unicastBuddyDepartedParams{
 						{
-							from: "user_screen_name",
-							to:   "buddy_1",
+							from: state.NewIdentScreenName("user_screen_name"),
+							to:   state.NewIdentScreenName("buddy_1"),
 						},
 						{
-							from: "buddy_1",
-							to:   "user_screen_name",
+							from: state.NewIdentScreenName("buddy_1"),
+							to:   state.NewIdentScreenName("user_screen_name"),
 						},
 					},
 				},
@@ -638,7 +638,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagUpsertParams: feedbagUpsertParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIDDeny,
@@ -651,7 +651,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "buddy_1",
+							screenName: state.NewIdentScreenName("buddy_1"),
 							sess:       nil,
 						},
 					},
@@ -688,7 +688,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagUpsertParams: feedbagUpsertParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIDDeny,
@@ -771,7 +771,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagUpsertParams: feedbagUpsertParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIdBart,
@@ -790,7 +790,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNameParams: relayToScreenNameParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.OService,
@@ -855,7 +855,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagUpsertParams: feedbagUpsertParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIdBart,
@@ -876,7 +876,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNameParams: relayToScreenNameParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.OService,
@@ -898,7 +898,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 						},
 					},
 				},
@@ -940,7 +940,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagUpsertParams: feedbagUpsertParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIdBart,
@@ -959,7 +959,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 						},
 					},
 				},
@@ -1021,7 +1021,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().
 					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.ScreenName() == p.screenName
+						return s.IdentScreenName() == p.screenName
 					})).
 					Return(nil)
 			}
@@ -1030,10 +1030,10 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				buddyUpdateBroadcaster.EXPECT().
 					UnicastBuddyArrived(mock.Anything,
 						mock.MatchedBy(func(s *state.Session) bool {
-							return s.ScreenName() == p.from
+							return s.IdentScreenName() == p.from
 						}),
 						mock.MatchedBy(func(s *state.Session) bool {
-							return s.ScreenName() == p.to
+							return s.IdentScreenName() == p.to
 						})).
 					Return(nil)
 			}
@@ -1042,10 +1042,10 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				buddyUpdateBroadcaster.EXPECT().
 					UnicastBuddyDeparted(mock.Anything,
 						mock.MatchedBy(func(s *state.Session) bool {
-							return s.ScreenName() == p.from
+							return s.IdentScreenName() == p.from
 						}),
 						mock.MatchedBy(func(s *state.Session) bool {
-							return s.ScreenName() == p.to
+							return s.IdentScreenName() == p.to
 						}))
 			}
 
@@ -1092,7 +1092,7 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagDeleteParams: feedbagDeleteParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIdBuddy,
@@ -1138,7 +1138,7 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagDeleteParams: feedbagDeleteParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIDDeny,
@@ -1155,11 +1155,11 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "buddy_1_online",
+							screenName: state.NewIdentScreenName("buddy_1_online"),
 							sess:       newTestSession("buddy_1_online", sessOptCannedSignonTime),
 						},
 						{
-							screenName: "buddy_2_online",
+							screenName: state.NewIdentScreenName("buddy_2_online"),
 							sess:       newTestSession("buddy_2_online", sessOptCannedSignonTime),
 						},
 					},
@@ -1167,20 +1167,20 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					unicastBuddyArrivedParams: unicastBuddyArrivedParams{
 						{
-							from: "buddy_1_online",
-							to:   "user_screen_name",
+							from: state.NewIdentScreenName("buddy_1_online"),
+							to:   state.NewIdentScreenName("user_screen_name"),
 						},
 						{
-							from: "buddy_2_online",
-							to:   "user_screen_name",
+							from: state.NewIdentScreenName("buddy_2_online"),
+							to:   state.NewIdentScreenName("user_screen_name"),
 						},
 						{
-							from: "user_screen_name",
-							to:   "buddy_1_online",
+							from: state.NewIdentScreenName("user_screen_name"),
+							to:   state.NewIdentScreenName("buddy_1_online"),
 						},
 						{
-							from: "user_screen_name",
-							to:   "buddy_2_online",
+							from: state.NewIdentScreenName("user_screen_name"),
+							to:   state.NewIdentScreenName("buddy_2_online"),
 						},
 					},
 				},
@@ -1216,7 +1216,7 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagDeleteParams: feedbagDeleteParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIDDeny,
@@ -1229,7 +1229,7 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "buddy_offline",
+							screenName: state.NewIdentScreenName("buddy_offline"),
 							sess:       nil,
 						},
 					},
@@ -1266,7 +1266,7 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					feedbagDeleteParams: feedbagDeleteParams{
 						{
-							screenName: "user_screen_name",
+							screenName: state.NewIdentScreenName("user_screen_name"),
 							items: []wire.FeedbagItem{
 								{
 									ClassID: wire.FeedbagClassIDDeny,
@@ -1279,7 +1279,7 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "invisible_buddy_online",
+							screenName: state.NewIdentScreenName("invisible_buddy_online"),
 							sess:       newTestSession("invisible_buddy_online", sessOptInvisible),
 						},
 					},
@@ -1287,8 +1287,8 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					unicastBuddyArrivedParams: unicastBuddyArrivedParams{
 						{
-							from: "user_screen_name",
-							to:   "invisible_buddy_online",
+							from: state.NewIdentScreenName("user_screen_name"),
+							to:   state.NewIdentScreenName("invisible_buddy_online"),
 						},
 					},
 				},
@@ -1326,10 +1326,10 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 				buddyUpdateBroadcast.EXPECT().
 					UnicastBuddyArrived(mock.Anything,
 						mock.MatchedBy(func(s *state.Session) bool {
-							return s.ScreenName() == p.from
+							return s.IdentScreenName() == p.from
 						}),
 						mock.MatchedBy(func(s *state.Session) bool {
-							return s.ScreenName() == p.to
+							return s.IdentScreenName() == p.to
 						})).
 					Return(nil)
 			}
@@ -1369,19 +1369,22 @@ func TestFeedbagService_Use(t *testing.T) {
 				feedbagManagerParams: feedbagManagerParams{
 					buddiesParams: buddiesParams{
 						{
-							screenName: "test-user",
-							results:    []string{"buddy1", "buddy3"},
+							screenName: state.NewIdentScreenName("test-user"),
+							results: []state.IdentScreenName{
+								state.NewIdentScreenName("buddy1"),
+								state.NewIdentScreenName("buddy3"),
+							},
 						},
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					retrieveByScreenNameParams: retrieveByScreenNameParams{
 						{
-							screenName: "buddy1",
+							screenName: state.NewIdentScreenName("buddy1"),
 							sess:       newTestSession("buddy1"),
 						},
 						{
-							screenName: "buddy3",
+							screenName: state.NewIdentScreenName("buddy3"),
 							sess:       newTestSession("buddy3"),
 						},
 					},
@@ -1389,12 +1392,12 @@ func TestFeedbagService_Use(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					unicastBuddyArrivedParams: unicastBuddyArrivedParams{
 						{
-							from: "buddy1",
-							to:   "test-user",
+							from: state.NewIdentScreenName("buddy1"),
+							to:   state.NewIdentScreenName("test-user"),
 						},
 						{
-							from: "buddy3",
-							to:   "test-user",
+							from: state.NewIdentScreenName("buddy3"),
+							to:   state.NewIdentScreenName("test-user"),
 						},
 					},
 				},
@@ -1421,10 +1424,10 @@ func TestFeedbagService_Use(t *testing.T) {
 				buddyUpdateBroadcast.EXPECT().
 					UnicastBuddyArrived(mock.Anything,
 						mock.MatchedBy(func(s *state.Session) bool {
-							return s.ScreenName() == p.from
+							return s.IdentScreenName() == p.from
 						}),
 						mock.MatchedBy(func(s *state.Session) bool {
-							return s.ScreenName() == p.to
+							return s.IdentScreenName() == p.to
 						})).
 					Return(nil)
 			}

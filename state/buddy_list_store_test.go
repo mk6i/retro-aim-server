@@ -8,68 +8,79 @@ import (
 
 func TestAdjListBuddyListStore_AddBuddy_Buddies(t *testing.T) {
 	store := NewAdjListBuddyListStore()
-	store.AddBuddy("alice", "bob")
-	store.AddBuddy("bob", "alice")
-	store.AddBuddy("alice", "charlie")
-	store.AddBuddy("alice", "dave")
-	store.AddBuddy("dave", "bob")
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("bob"))
+	store.AddBuddy(NewIdentScreenName("bob"), NewIdentScreenName("alice"))
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("charlie"))
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("dave"))
+	store.AddBuddy(NewIdentScreenName("dave"), NewIdentScreenName("bob"))
 
-	buddies := store.Buddies("alice")
-	assert.ElementsMatch(t, []string{"bob", "charlie", "dave"}, buddies)
+	buddies := store.Buddies(NewIdentScreenName("alice"))
+	assert.ElementsMatch(t, []IdentScreenName{
+		NewIdentScreenName("bob"),
+		NewIdentScreenName("charlie"),
+		NewIdentScreenName("dave"),
+	}, buddies)
 }
 
 func TestAdjListBuddyListStore_DeleteBuddy_OneBuddy(t *testing.T) {
 	store := NewAdjListBuddyListStore()
-	store.AddBuddy("alice", "bob")
-	store.AddBuddy("bob", "alice")
-	store.AddBuddy("alice", "charlie")
-	store.AddBuddy("alice", "dave")
-	store.AddBuddy("dave", "bob")
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("bob"))
+	store.AddBuddy(NewIdentScreenName("bob"), NewIdentScreenName("alice"))
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("charlie"))
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("dave"))
+	store.AddBuddy(NewIdentScreenName("dave"), NewIdentScreenName("bob"))
 
-	store.DeleteBuddy("alice", "bob")
+	store.DeleteBuddy(NewIdentScreenName("alice"), NewIdentScreenName("bob"))
 
-	buddies := store.Buddies("alice")
-	assert.ElementsMatch(t, []string{"charlie", "dave"}, buddies)
+	buddies := store.Buddies(NewIdentScreenName("alice"))
+	assert.ElementsMatch(t, []IdentScreenName{
+		NewIdentScreenName("charlie"),
+		NewIdentScreenName("dave"),
+	}, buddies)
 }
 
 func TestAdjListBuddyListStore_DeleteBuddy_AllBuddies(t *testing.T) {
 	store := NewAdjListBuddyListStore()
-	store.AddBuddy("alice", "bob")
-	store.AddBuddy("bob", "alice")
-	store.AddBuddy("alice", "charlie")
-	store.AddBuddy("alice", "dave")
-	store.AddBuddy("dave", "bob")
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("bob"))
+	store.AddBuddy(NewIdentScreenName("bob"), NewIdentScreenName("alice"))
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("charlie"))
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("dave"))
+	store.AddBuddy(NewIdentScreenName("dave"), NewIdentScreenName("bob"))
 
-	store.DeleteBuddy("alice", "bob")
-	store.DeleteBuddy("alice", "charlie")
-	store.DeleteBuddy("alice", "dave")
+	store.DeleteBuddy(NewIdentScreenName("alice"), NewIdentScreenName("bob"))
+	store.DeleteBuddy(NewIdentScreenName("alice"), NewIdentScreenName("charlie"))
+	store.DeleteBuddy(NewIdentScreenName("alice"), NewIdentScreenName("dave"))
 
-	buddies := store.Buddies("alice")
+	buddies := store.Buddies(NewIdentScreenName("alice"))
 	assert.Nil(t, buddies)
 }
 
 func TestAdjListBuddyListStore_DeleteUser(t *testing.T) {
 	store := NewAdjListBuddyListStore()
-	store.AddBuddy("alice", "bob")
-	store.AddBuddy("bob", "alice")
-	store.AddBuddy("alice", "charlie")
-	store.AddBuddy("alice", "dave")
-	store.AddBuddy("dave", "bob")
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("bob"))
+	store.AddBuddy(NewIdentScreenName("bob"), NewIdentScreenName("alice"))
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("charlie"))
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("dave"))
+	store.AddBuddy(NewIdentScreenName("dave"), NewIdentScreenName("bob"))
 
-	store.DeleteUser("alice")
+	store.DeleteUser(NewIdentScreenName("alice"))
 
-	buddies := store.Buddies("alice")
+	buddies := store.Buddies(NewIdentScreenName("alice"))
 	assert.Nil(t, buddies)
 }
 
 func TestAdjListBuddyListStore_WhoAddedUser(t *testing.T) {
 	store := NewAdjListBuddyListStore()
-	store.AddBuddy("alice", "bob")
-	store.AddBuddy("alice", "charlie")
-	store.AddBuddy("charlie", "bob")
-	store.AddBuddy("dave", "bob")
-	store.AddBuddy("dave", "alive")
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("bob"))
+	store.AddBuddy(NewIdentScreenName("alice"), NewIdentScreenName("charlie"))
+	store.AddBuddy(NewIdentScreenName("charlie"), NewIdentScreenName("bob"))
+	store.AddBuddy(NewIdentScreenName("dave"), NewIdentScreenName("bob"))
+	store.AddBuddy(NewIdentScreenName("dave"), NewIdentScreenName("alive"))
 
-	whoAddedBob := store.WhoAddedUser("bob")
-	assert.ElementsMatch(t, []string{"alice", "charlie", "dave"}, whoAddedBob)
+	whoAddedBob := store.WhoAddedUser(NewIdentScreenName("bob"))
+	assert.ElementsMatch(t, []IdentScreenName{
+		NewIdentScreenName("alice"),
+		NewIdentScreenName("charlie"),
+		NewIdentScreenName("dave"),
+	}, whoAddedBob)
 }

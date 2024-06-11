@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -16,7 +17,8 @@ import (
 func TestSessionHandler_GET(t *testing.T) {
 	fnNewSess := func(screenName string) *state.Session {
 		sess := state.NewSession()
-		sess.SetScreenName(screenName)
+		sess.SetIdentScreenName(state.NewIdentScreenName(screenName))
+		sess.SetDisplayScreenName(state.DisplayScreenName(screenName))
 		return sess
 	}
 	tt := []struct {
@@ -100,8 +102,14 @@ func TestUserHandler_GET(t *testing.T) {
 		{
 			name: "user store containing 2 users",
 			users: []state.User{
-				{ScreenName: "userA"},
-				{ScreenName: "userB"},
+				{
+					DisplayScreenName: "userA",
+					IdentScreenName:   state.NewIdentScreenName("userA"),
+				},
+				{
+					DisplayScreenName: "userB",
+					IdentScreenName:   state.NewIdentScreenName("userB"),
+				},
 			},
 			want:       `[{"screen_name":"userA"},{"screen_name":"userB"}]`,
 			statusCode: http.StatusOK,
@@ -142,6 +150,7 @@ func TestUserHandler_POST(t *testing.T) {
 	tt := []struct {
 		name           string
 		body           string
+		UUID           uuid.UUID
 		user           state.User
 		userHandlerErr error
 		want           string
@@ -150,10 +159,12 @@ func TestUserHandler_POST(t *testing.T) {
 		{
 			name: "with valid user",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
+			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
 			user: func() state.User {
 				user := state.User{
-					AuthKey:    "theAuthKey",
-					ScreenName: "userA",
+					AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+					DisplayScreenName: "userA",
+					IdentScreenName:   state.NewIdentScreenName("userA"),
 				}
 				assert.NoError(t, user.HashPassword("thepassword"))
 				return user
@@ -171,10 +182,12 @@ func TestUserHandler_POST(t *testing.T) {
 		{
 			name: "user handler error",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
+			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
 			user: func() state.User {
 				user := state.User{
-					AuthKey:    "theAuthKey",
-					ScreenName: "userA",
+					AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+					DisplayScreenName: "userA",
+					IdentScreenName:   state.NewIdentScreenName("userA"),
 				}
 				assert.NoError(t, user.HashPassword("thepassword"))
 				return user
@@ -186,10 +199,12 @@ func TestUserHandler_POST(t *testing.T) {
 		{
 			name: "duplicate user",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
+			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
 			user: func() state.User {
 				user := state.User{
-					AuthKey:    "theAuthKey",
-					ScreenName: "userA",
+					AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+					DisplayScreenName: "userA",
+					IdentScreenName:   state.NewIdentScreenName("userA"),
 				}
 				assert.NoError(t, user.HashPassword("thepassword"))
 				return user
@@ -206,16 +221,14 @@ func TestUserHandler_POST(t *testing.T) {
 			responseRecorder := httptest.NewRecorder()
 
 			userManager := newMockUserManager(t)
-			if tc.user.ScreenName != "" {
+			if tc.user.IdentScreenName.String() != "" {
 				userManager.EXPECT().
 					InsertUser(tc.user).
 					Return(tc.userHandlerErr)
 			}
 
-			newUser := func() state.User {
-				return tc.user
-			}
-			userHandler(responseRecorder, request, userManager, newUser, slog.Default())
+			newUUID := func() uuid.UUID { return tc.UUID }
+			userHandler(responseRecorder, request, userManager, newUUID, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
@@ -241,7 +254,7 @@ func TestUserHandler_DELETE(t *testing.T) {
 			name: "with valid user",
 			body: `{"screen_name":"userA"}`,
 			user: state.User{
-				ScreenName: "userA",
+				IdentScreenName: state.NewIdentScreenName("userA"),
 			},
 			want:       `User account successfully deleted.`,
 			statusCode: http.StatusNoContent,
@@ -250,7 +263,7 @@ func TestUserHandler_DELETE(t *testing.T) {
 			name: "with non-existent user",
 			body: `{"screen_name":"userA"}`,
 			user: state.User{
-				ScreenName: "userA",
+				IdentScreenName: state.NewIdentScreenName("userA"),
 			},
 			userHandlerErr: state.ErrNoUser,
 			want:           `user does not exist`,
@@ -267,7 +280,7 @@ func TestUserHandler_DELETE(t *testing.T) {
 			name: "user handler error",
 			body: `{"screen_name":"userA"}`,
 			user: state.User{
-				ScreenName: "userA",
+				IdentScreenName: state.NewIdentScreenName("userA"),
 			},
 			userHandlerErr: io.EOF,
 			want:           `internal server error`,
@@ -281,9 +294,9 @@ func TestUserHandler_DELETE(t *testing.T) {
 			responseRecorder := httptest.NewRecorder()
 
 			userManager := newMockUserManager(t)
-			if tc.user.ScreenName != "" {
+			if tc.user.IdentScreenName.String() != "" {
 				userManager.EXPECT().
-					DeleteUser(tc.user.ScreenName).
+					DeleteUser(tc.user.IdentScreenName).
 					Return(tc.userHandlerErr)
 			}
 
@@ -305,6 +318,7 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 		name           string
 		body           string
 		user           state.User
+		UUID           uuid.UUID
 		userHandlerErr error
 		want           string
 		statusCode     int
@@ -312,10 +326,12 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 		{
 			name: "with valid password",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
+			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
 			user: func() state.User {
 				user := state.User{
-					AuthKey:    "theAuthKey",
-					ScreenName: "userA",
+					AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+					DisplayScreenName: "userA",
+					IdentScreenName:   state.NewIdentScreenName("userA"),
 				}
 				assert.NoError(t, user.HashPassword("thepassword"))
 				return user
@@ -333,10 +349,12 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 		{
 			name: "user password handler error",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
+			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
 			user: func() state.User {
 				user := state.User{
-					AuthKey:    "theAuthKey",
-					ScreenName: "userA",
+					AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+					DisplayScreenName: "userA",
+					IdentScreenName:   state.NewIdentScreenName("userA"),
 				}
 				assert.NoError(t, user.HashPassword("thepassword"))
 				return user
@@ -348,10 +366,12 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 		{
 			name: "user doesn't exist",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
+			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
 			user: func() state.User {
 				user := state.User{
-					AuthKey:    "theAuthKey",
-					ScreenName: "userA",
+					AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+					DisplayScreenName: "userA",
+					IdentScreenName:   state.NewIdentScreenName("userA"),
 				}
 				assert.NoError(t, user.HashPassword("thepassword"))
 				return user
@@ -368,16 +388,14 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 			responseRecorder := httptest.NewRecorder()
 
 			userManager := newMockUserManager(t)
-			if tc.user.ScreenName != "" {
+			if tc.user.IdentScreenName.String() != "" {
 				userManager.EXPECT().
 					SetUserPassword(tc.user).
 					Return(tc.userHandlerErr)
 			}
 
-			uf := func() state.User {
-				return tc.user
-			}
-			userPasswordHandler(responseRecorder, request, userManager, uf, slog.Default())
+			newUUID := func() uuid.UUID { return tc.UUID }
+			userPasswordHandler(responseRecorder, request, userManager, newUUID, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)

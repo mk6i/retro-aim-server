@@ -78,7 +78,7 @@ func (_c *mockUserManager_AllUsers_Call) RunAndReturn(run func() ([]state.User, 
 }
 
 // DeleteUser provides a mock function with given fields: screenName
-func (_m *mockUserManager) DeleteUser(screenName string) error {
+func (_m *mockUserManager) DeleteUser(screenName state.IdentScreenName) error {
 	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
@@ -86,7 +86,7 @@ func (_m *mockUserManager) DeleteUser(screenName string) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) error); ok {
 		r0 = rf(screenName)
 	} else {
 		r0 = ret.Error(0)
@@ -101,14 +101,14 @@ type mockUserManager_DeleteUser_Call struct {
 }
 
 // DeleteUser is a helper method to define mock.On call
-//   - screenName string
+//   - screenName state.IdentScreenName
 func (_e *mockUserManager_Expecter) DeleteUser(screenName interface{}) *mockUserManager_DeleteUser_Call {
 	return &mockUserManager_DeleteUser_Call{Call: _e.mock.On("DeleteUser", screenName)}
 }
 
-func (_c *mockUserManager_DeleteUser_Call) Run(run func(screenName string)) *mockUserManager_DeleteUser_Call {
+func (_c *mockUserManager_DeleteUser_Call) Run(run func(screenName state.IdentScreenName)) *mockUserManager_DeleteUser_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -118,7 +118,7 @@ func (_c *mockUserManager_DeleteUser_Call) Return(_a0 error) *mockUserManager_De
 	return _c
 }
 
-func (_c *mockUserManager_DeleteUser_Call) RunAndReturn(run func(string) error) *mockUserManager_DeleteUser_Call {
+func (_c *mockUserManager_DeleteUser_Call) RunAndReturn(run func(state.IdentScreenName) error) *mockUserManager_DeleteUser_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -216,7 +216,7 @@ func (_c *mockUserManager_SetUserPassword_Call) RunAndReturn(run func(state.User
 }
 
 // User provides a mock function with given fields: screenName
-func (_m *mockUserManager) User(screenName string) (*state.User, error) {
+func (_m *mockUserManager) User(screenName state.IdentScreenName) (*state.User, error) {
 	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
@@ -225,10 +225,10 @@ func (_m *mockUserManager) User(screenName string) (*state.User, error) {
 
 	var r0 *state.User
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (*state.User, error)); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) (*state.User, error)); ok {
 		return rf(screenName)
 	}
-	if rf, ok := ret.Get(0).(func(string) *state.User); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *state.User); ok {
 		r0 = rf(screenName)
 	} else {
 		if ret.Get(0) != nil {
@@ -236,7 +236,7 @@ func (_m *mockUserManager) User(screenName string) (*state.User, error) {
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
+	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
 		r1 = rf(screenName)
 	} else {
 		r1 = ret.Error(1)
@@ -251,14 +251,14 @@ type mockUserManager_User_Call struct {
 }
 
 // User is a helper method to define mock.On call
-//   - screenName string
+//   - screenName state.IdentScreenName
 func (_e *mockUserManager_Expecter) User(screenName interface{}) *mockUserManager_User_Call {
 	return &mockUserManager_User_Call{Call: _e.mock.On("User", screenName)}
 }
 
-func (_c *mockUserManager_User_Call) Run(run func(screenName string)) *mockUserManager_User_Call {
+func (_c *mockUserManager_User_Call) Run(run func(screenName state.IdentScreenName)) *mockUserManager_User_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -268,7 +268,7 @@ func (_c *mockUserManager_User_Call) Return(_a0 *state.User, _a1 error) *mockUse
 	return _c
 }
 
-func (_c *mockUserManager_User_Call) RunAndReturn(run func(string) (*state.User, error)) *mockUserManager_User_Call {
+func (_c *mockUserManager_User_Call) RunAndReturn(run func(state.IdentScreenName) (*state.User, error)) *mockUserManager_User_Call {
 	_c.Call.Return(run)
 	return _c
 }

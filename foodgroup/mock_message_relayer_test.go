@@ -25,7 +25,7 @@ func (_m *mockMessageRelayer) EXPECT() *mockMessageRelayer_Expecter {
 }
 
 // RelayToScreenName provides a mock function with given fields: ctx, screenName, msg
-func (_m *mockMessageRelayer) RelayToScreenName(ctx context.Context, screenName string, msg wire.SNACMessage) {
+func (_m *mockMessageRelayer) RelayToScreenName(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage) {
 	_m.Called(ctx, screenName, msg)
 }
 
@@ -36,15 +36,15 @@ type mockMessageRelayer_RelayToScreenName_Call struct {
 
 // RelayToScreenName is a helper method to define mock.On call
 //   - ctx context.Context
-//   - screenName string
+//   - screenName state.IdentScreenName
 //   - msg wire.SNACMessage
 func (_e *mockMessageRelayer_Expecter) RelayToScreenName(ctx interface{}, screenName interface{}, msg interface{}) *mockMessageRelayer_RelayToScreenName_Call {
 	return &mockMessageRelayer_RelayToScreenName_Call{Call: _e.mock.On("RelayToScreenName", ctx, screenName, msg)}
 }
 
-func (_c *mockMessageRelayer_RelayToScreenName_Call) Run(run func(ctx context.Context, screenName string, msg wire.SNACMessage)) *mockMessageRelayer_RelayToScreenName_Call {
+func (_c *mockMessageRelayer_RelayToScreenName_Call) Run(run func(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage)) *mockMessageRelayer_RelayToScreenName_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(wire.SNACMessage))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName), args[2].(wire.SNACMessage))
 	})
 	return _c
 }
@@ -54,13 +54,13 @@ func (_c *mockMessageRelayer_RelayToScreenName_Call) Return() *mockMessageRelaye
 	return _c
 }
 
-func (_c *mockMessageRelayer_RelayToScreenName_Call) RunAndReturn(run func(context.Context, string, wire.SNACMessage)) *mockMessageRelayer_RelayToScreenName_Call {
+func (_c *mockMessageRelayer_RelayToScreenName_Call) RunAndReturn(run func(context.Context, state.IdentScreenName, wire.SNACMessage)) *mockMessageRelayer_RelayToScreenName_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // RelayToScreenNames provides a mock function with given fields: ctx, screenNames, msg
-func (_m *mockMessageRelayer) RelayToScreenNames(ctx context.Context, screenNames []string, msg wire.SNACMessage) {
+func (_m *mockMessageRelayer) RelayToScreenNames(ctx context.Context, screenNames []state.IdentScreenName, msg wire.SNACMessage) {
 	_m.Called(ctx, screenNames, msg)
 }
 
@@ -71,15 +71,15 @@ type mockMessageRelayer_RelayToScreenNames_Call struct {
 
 // RelayToScreenNames is a helper method to define mock.On call
 //   - ctx context.Context
-//   - screenNames []string
+//   - screenNames []state.IdentScreenName
 //   - msg wire.SNACMessage
 func (_e *mockMessageRelayer_Expecter) RelayToScreenNames(ctx interface{}, screenNames interface{}, msg interface{}) *mockMessageRelayer_RelayToScreenNames_Call {
 	return &mockMessageRelayer_RelayToScreenNames_Call{Call: _e.mock.On("RelayToScreenNames", ctx, screenNames, msg)}
 }
 
-func (_c *mockMessageRelayer_RelayToScreenNames_Call) Run(run func(ctx context.Context, screenNames []string, msg wire.SNACMessage)) *mockMessageRelayer_RelayToScreenNames_Call {
+func (_c *mockMessageRelayer_RelayToScreenNames_Call) Run(run func(ctx context.Context, screenNames []state.IdentScreenName, msg wire.SNACMessage)) *mockMessageRelayer_RelayToScreenNames_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]string), args[2].(wire.SNACMessage))
+		run(args[0].(context.Context), args[1].([]state.IdentScreenName), args[2].(wire.SNACMessage))
 	})
 	return _c
 }
@@ -89,13 +89,13 @@ func (_c *mockMessageRelayer_RelayToScreenNames_Call) Return() *mockMessageRelay
 	return _c
 }
 
-func (_c *mockMessageRelayer_RelayToScreenNames_Call) RunAndReturn(run func(context.Context, []string, wire.SNACMessage)) *mockMessageRelayer_RelayToScreenNames_Call {
+func (_c *mockMessageRelayer_RelayToScreenNames_Call) RunAndReturn(run func(context.Context, []state.IdentScreenName, wire.SNACMessage)) *mockMessageRelayer_RelayToScreenNames_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // RetrieveByScreenName provides a mock function with given fields: screenName
-func (_m *mockMessageRelayer) RetrieveByScreenName(screenName string) *state.Session {
+func (_m *mockMessageRelayer) RetrieveByScreenName(screenName state.IdentScreenName) *state.Session {
 	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
@@ -103,7 +103,7 @@ func (_m *mockMessageRelayer) RetrieveByScreenName(screenName string) *state.Ses
 	}
 
 	var r0 *state.Session
-	if rf, ok := ret.Get(0).(func(string) *state.Session); ok {
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *state.Session); ok {
 		r0 = rf(screenName)
 	} else {
 		if ret.Get(0) != nil {
@@ -120,14 +120,14 @@ type mockMessageRelayer_RetrieveByScreenName_Call struct {
 }
 
 // RetrieveByScreenName is a helper method to define mock.On call
-//   - screenName string
+//   - screenName state.IdentScreenName
 func (_e *mockMessageRelayer_Expecter) RetrieveByScreenName(screenName interface{}) *mockMessageRelayer_RetrieveByScreenName_Call {
 	return &mockMessageRelayer_RetrieveByScreenName_Call{Call: _e.mock.On("RetrieveByScreenName", screenName)}
 }
 
-func (_c *mockMessageRelayer_RetrieveByScreenName_Call) Run(run func(screenName string)) *mockMessageRelayer_RetrieveByScreenName_Call {
+func (_c *mockMessageRelayer_RetrieveByScreenName_Call) Run(run func(screenName state.IdentScreenName)) *mockMessageRelayer_RetrieveByScreenName_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -137,7 +137,7 @@ func (_c *mockMessageRelayer_RetrieveByScreenName_Call) Return(_a0 *state.Sessio
 	return _c
 }
 
-func (_c *mockMessageRelayer_RetrieveByScreenName_Call) RunAndReturn(run func(string) *state.Session) *mockMessageRelayer_RetrieveByScreenName_Call {
+func (_c *mockMessageRelayer_RetrieveByScreenName_Call) RunAndReturn(run func(state.IdentScreenName) *state.Session) *mockMessageRelayer_RetrieveByScreenName_Call {
 	_c.Call.Return(run)
 	return _c
 }

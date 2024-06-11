@@ -23,21 +23,22 @@ const (
 // Session represents a user's current session. Unless stated otherwise, all
 // methods may be safely accessed by multiple goroutines.
 type Session struct {
-	awayMessage    string
-	chatRoomCookie string
-	closed         bool
-	idle           bool
-	idleTime       time.Time
-	invisible      bool
-	msgCh          chan wire.SNACMessage
-	mutex          sync.RWMutex
-	nowFn          func() time.Time
-	signonComplete bool
-	screenName     string
-	signonTime     time.Time
-	stopCh         chan struct{}
-	warning        uint16
-	caps           [][16]byte
+	awayMessage       string
+	caps              [][16]byte
+	chatRoomCookie    string
+	closed            bool
+	displayScreenName DisplayScreenName
+	identScreenName   IdentScreenName
+	idle              bool
+	idleTime          time.Time
+	invisible         bool
+	msgCh             chan wire.SNACMessage
+	mutex             sync.RWMutex
+	nowFn             func() time.Time
+	signonComplete    bool
+	signonTime        time.Time
+	stopCh            chan struct{}
+	warning           uint16
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
@@ -74,18 +75,32 @@ func (s *Session) Invisible() bool {
 	return s.invisible
 }
 
-// SetScreenName sets the user's screen name.
-func (s *Session) SetScreenName(screenName string) {
+// SetIdentScreenName sets the user's screen name.
+func (s *Session) SetIdentScreenName(screenName IdentScreenName) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.screenName = screenName
+	s.identScreenName = screenName
 }
 
-// ScreenName returns the user's screen name.
-func (s *Session) ScreenName() string {
+// IdentScreenName returns the user's screen name.
+func (s *Session) IdentScreenName() IdentScreenName {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	return s.screenName
+	return s.identScreenName
+}
+
+// SetDisplayScreenName sets the user's screen name.
+func (s *Session) SetDisplayScreenName(displayScreenName DisplayScreenName) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.displayScreenName = displayScreenName
+}
+
+// DisplayScreenName returns the user's screen name.
+func (s *Session) DisplayScreenName() DisplayScreenName {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.displayScreenName
 }
 
 // SetSignonTime sets the user's sign-ontime.
@@ -159,7 +174,7 @@ func (s *Session) TLVUserInfo() wire.TLVUserInfo {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return wire.TLVUserInfo{
-		ScreenName:   s.screenName,
+		ScreenName:   string(s.displayScreenName),
 		WarningLevel: s.warning,
 		TLVBlock: wire.TLVBlock{
 			TLVList: s.userInfo(),

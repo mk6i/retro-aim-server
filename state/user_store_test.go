@@ -14,7 +14,7 @@ const testFile string = "aim_test.db"
 
 func TestUserStore(t *testing.T) {
 
-	const screenName = "sn2day"
+	screenName := NewIdentScreenName("sn2day")
 
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
@@ -54,7 +54,7 @@ func TestUserStore(t *testing.T) {
 
 func TestFeedbagDelete(t *testing.T) {
 
-	const screenName = "sn2day"
+	screenName := NewIdentScreenName("sn2day")
 
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
@@ -111,7 +111,7 @@ func TestFeedbagDelete(t *testing.T) {
 
 func TestLastModifiedEmpty(t *testing.T) {
 
-	const screenName = "sn2day"
+	screenName := NewIdentScreenName("sn2day")
 
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
@@ -129,7 +129,7 @@ func TestLastModifiedEmpty(t *testing.T) {
 
 func TestLastModifiedNotEmpty(t *testing.T) {
 
-	const screenName = "sn2day"
+	screenName := NewIdentScreenName("sn2day")
 
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
@@ -159,7 +159,7 @@ func TestLastModifiedNotEmpty(t *testing.T) {
 
 func TestProfile(t *testing.T) {
 
-	const screenName = "sn2day"
+	screenName := NewIdentScreenName("sn2day")
 
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
@@ -169,7 +169,7 @@ func TestProfile(t *testing.T) {
 	assert.NoError(t, err)
 
 	u := User{
-		ScreenName: screenName,
+		IdentScreenName: screenName,
 	}
 	if err := f.InsertUser(u); err != nil {
 		t.Fatalf("failed to upsert new user: %s", err.Error())
@@ -215,7 +215,7 @@ func TestProfile(t *testing.T) {
 
 func TestProfileNonExistent(t *testing.T) {
 
-	const screenName = "sn2day"
+	screenName := NewIdentScreenName("sn2day")
 
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
@@ -242,12 +242,12 @@ func TestAdjacentUsers(t *testing.T) {
 	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
 	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
 
-	users, err := f.AdjacentUsers("userA")
+	users, err := f.AdjacentUsers(NewIdentScreenName("userA"))
 	if len(users) != 0 {
 		t.Fatalf("expected no interested users, got %v", users)
 	}
 
-	users, err = f.AdjacentUsers("userB")
+	users, err = f.AdjacentUsers(NewIdentScreenName("userB"))
 	if len(users) != 0 {
 		t.Fatalf("expected no interested users, got %v", users)
 	}
@@ -265,12 +265,12 @@ func TestUserStoreBuddiesBlockedUser(t *testing.T) {
 	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
 	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
 
-	users, err := f.Buddies("userA")
+	users, err := f.Buddies(NewIdentScreenName("userA"))
 	if len(users) != 0 {
 		t.Fatalf("expected no buddies, got %v", users)
 	}
 
-	users, err = f.Buddies("userB")
+	users, err = f.Buddies(NewIdentScreenName("userB"))
 	if len(users) != 0 {
 		t.Fatalf("expected no buddies, got %v", users)
 	}
@@ -285,12 +285,35 @@ func TestUserStoreBlockedA(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',0,13852,3,'userB',NULL,1691286176)`)
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
+	sn1 := NewIdentScreenName("userA")
+	sn2 := NewIdentScreenName("userB")
 
-	sn1 := "userA"
-	sn2 := "userB"
+	err = f.FeedbagUpsert(sn1, []wire.FeedbagItem{
+		{
+			GroupID: 0,
+			ItemID:  13852,
+			ClassID: 3,
+			Name:    "userB",
+		},
+		{
+			GroupID: 27631,
+			ItemID:  4016,
+			ClassID: 0,
+			Name:    "userB",
+		},
+	})
+	assert.NoError(t, err)
+
+	err = f.FeedbagUpsert(sn2, []wire.FeedbagItem{
+		{
+			GroupID: 28330,
+			ItemID:  8120,
+			ClassID: 0,
+			Name:    "userA",
+		},
+	})
+	assert.NoError(t, err)
+
 	blocked, err := f.BlockedState(sn1, sn2)
 	if err != nil {
 		t.Fatalf("db err: %s", err.Error())
@@ -308,12 +331,35 @@ func TestUserStoreBlockedB(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',0,13852,3,'userA',NULL,1691286176)`)
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
+	sn1 := NewIdentScreenName("userA")
+	sn2 := NewIdentScreenName("userB")
 
-	sn1 := "userA"
-	sn2 := "userB"
+	err = f.FeedbagUpsert(sn1, []wire.FeedbagItem{
+		{
+			GroupID: 27631,
+			ItemID:  4016,
+			ClassID: 0,
+			Name:    "userB",
+		},
+	})
+	assert.NoError(t, err)
+
+	err = f.FeedbagUpsert(sn2, []wire.FeedbagItem{
+		{
+			GroupID: 0,
+			ItemID:  13852,
+			ClassID: 3,
+			Name:    "userA",
+		},
+		{
+			GroupID: 28330,
+			ItemID:  8120,
+			ClassID: 0,
+			Name:    "userA",
+		},
+	})
+	assert.NoError(t, err)
+
 	blocked, err := f.BlockedState(sn1, sn2)
 	if err != nil {
 		t.Fatalf("db err: %s", err.Error())
@@ -334,8 +380,8 @@ func TestUserStoreBlockedNoBlocked(t *testing.T) {
 	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
 	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
 
-	sn1 := "userA"
-	sn2 := "userB"
+	sn1 := NewIdentScreenName("userA")
+	sn2 := NewIdentScreenName("userB")
 	blocked, err := f.BlockedState(sn1, sn2)
 	if err != nil {
 		t.Fatalf("db err: %s", err.Error())
@@ -353,24 +399,24 @@ func TestGetUser(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	expectUser := &User{
-		ScreenName:    "testscreenname",
-		AuthKey:       "theauthkey",
-		StrongMD5Pass: []byte("thepasshash"),
-	}
-	_, err = f.db.Exec(`INSERT INTO user (ScreenName, authKey, strongMD5Pass) VALUES(?, ?, ?)`,
-		expectUser.ScreenName, expectUser.AuthKey, expectUser.StrongMD5Pass)
-	if err != nil {
-		t.Fatalf("failed to insert user: %s", err.Error())
-	}
+	screenName := NewIdentScreenName("testscreenname")
 
-	actualUser, err := f.User(expectUser.ScreenName)
+	insertedUser := &User{
+		IdentScreenName:   screenName,
+		DisplayScreenName: DisplayScreenName("testscreenname"),
+		AuthKey:           "theauthkey",
+		StrongMD5Pass:     []byte("thepasshash"),
+	}
+	err = f.InsertUser(*insertedUser)
+	assert.NoError(t, err)
+
+	actualUser, err := f.User(screenName)
 	if err != nil {
 		t.Fatalf("failed to get user: %s", err.Error())
 	}
 
-	if !reflect.DeepEqual(expectUser, actualUser) {
-		t.Fatalf("users are not equal. expect: %v actual: %v", expectUser, actualUser)
+	if !reflect.DeepEqual(insertedUser, actualUser) {
+		t.Fatalf("users are not equal. expect: %v actual: %v", insertedUser, actualUser)
 	}
 }
 
@@ -382,7 +428,7 @@ func TestGetUserNotFound(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	actualUser, err := f.User("testscreenname")
+	actualUser, err := f.User(NewIdentScreenName("testscreenname"))
 	if err != nil {
 		t.Fatalf("failed to get user: %s", err.Error())
 	}
@@ -403,9 +449,18 @@ func TestSQLiteUserStore_Users(t *testing.T) {
 	}
 
 	want := []User{
-		{ScreenName: "userA"},
-		{ScreenName: "userB"},
-		{ScreenName: "userC"},
+		{
+			IdentScreenName:   NewIdentScreenName("userA"),
+			DisplayScreenName: "userA",
+		},
+		{
+			IdentScreenName:   NewIdentScreenName("userB"),
+			DisplayScreenName: "userB",
+		},
+		{
+			IdentScreenName:   NewIdentScreenName("userC"),
+			DisplayScreenName: "userC",
+		},
 	}
 
 	for _, u := range want {
@@ -427,18 +482,27 @@ func TestSQLiteUserStore_DeleteUser_DeleteExistentUser(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	err = f.InsertUser(User{ScreenName: "userA"})
+	err = f.InsertUser(User{
+		IdentScreenName:   NewIdentScreenName("userA"),
+		DisplayScreenName: "userA",
+	})
 	assert.NoError(t, err)
-	err = f.InsertUser(User{ScreenName: "userB"})
+	err = f.InsertUser(User{
+		IdentScreenName:   NewIdentScreenName("userB"),
+		DisplayScreenName: "userB",
+	})
 	assert.NoError(t, err)
 
-	err = f.DeleteUser("userA")
+	err = f.DeleteUser(NewIdentScreenName("userA"))
 	assert.NoError(t, err)
 
 	have, err := f.AllUsers()
 	assert.NoError(t, err)
 
-	want := []User{{ScreenName: "userB"}}
+	want := []User{{
+		IdentScreenName:   NewIdentScreenName("userB"),
+		DisplayScreenName: "userB",
+	}}
 	assert.Equal(t, want, have)
 }
 
@@ -450,7 +514,7 @@ func TestSQLiteUserStore_DeleteUser_DeleteNonExistentUser(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	err = f.DeleteUser("userA")
+	err = f.DeleteUser(NewIdentScreenName("userA"))
 	assert.ErrorIs(t, ErrNoUser, err)
 }
 
@@ -462,21 +526,29 @@ func TestSQLiteUserStore_Buddies(t *testing.T) {
 	feedbagStore, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	assert.NoError(t, feedbagStore.FeedbagUpsert("userA", []wire.FeedbagItem{
-		{Name: "userB", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
-		{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
-		{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
-	}))
-	assert.NoError(t, feedbagStore.FeedbagUpsert("userB", []wire.FeedbagItem{
-		{Name: "userA", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
-		{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
-		{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
-	}))
+	assert.NoError(t, feedbagStore.FeedbagUpsert(
+		NewIdentScreenName("userA"),
+		[]wire.FeedbagItem{
+			{Name: "userB", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
+			{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
+			{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
+		}))
+	assert.NoError(t, feedbagStore.FeedbagUpsert(
+		NewIdentScreenName("userB"),
+		[]wire.FeedbagItem{
+			{Name: "userA", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
+			{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
+			{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
+		}))
 
-	want := []string{"userB", "userC", "userD"}
-	have, err := feedbagStore.Buddies("userA")
+	have, err := feedbagStore.Buddies(NewIdentScreenName("userA"))
 	assert.NoError(t, err)
 
+	want := []IdentScreenName{
+		NewIdentScreenName("userB"),
+		NewIdentScreenName("userC"),
+		NewIdentScreenName("userD"),
+	}
 	assert.Equal(t, want, have)
 }
 
@@ -485,8 +557,9 @@ func TestNewStubUser(t *testing.T) {
 	assert.NoError(t, err)
 
 	want := User{
-		ScreenName: "userA",
-		AuthKey:    have.AuthKey,
+		IdentScreenName:   NewIdentScreenName("userA"),
+		DisplayScreenName: "userA",
+		AuthKey:           have.AuthKey,
 	}
 	assert.NoError(t, want.HashPassword("welcome1"))
 
@@ -501,24 +574,33 @@ func TestSQLiteUserStore_AdjacentUsers(t *testing.T) {
 	feedbagStore, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	assert.NoError(t, feedbagStore.FeedbagUpsert("userA", []wire.FeedbagItem{
-		{Name: "userB", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
-		{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
-		{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
-	}))
-	assert.NoError(t, feedbagStore.FeedbagUpsert("userB", []wire.FeedbagItem{
-		{Name: "userA", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
-		{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
-		{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
-	}))
-	assert.NoError(t, feedbagStore.FeedbagUpsert("userC", []wire.FeedbagItem{
-		{Name: "userA", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
-		{Name: "userB", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
-		{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
-	}))
+	assert.NoError(t, feedbagStore.FeedbagUpsert(
+		NewIdentScreenName("userA"),
+		[]wire.FeedbagItem{
+			{Name: "userB", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
+			{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
+			{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
+		}))
+	assert.NoError(t, feedbagStore.FeedbagUpsert(
+		NewIdentScreenName("userB"),
+		[]wire.FeedbagItem{
+			{Name: "userA", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
+			{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
+			{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
+		}))
+	assert.NoError(t, feedbagStore.FeedbagUpsert(
+		NewIdentScreenName("userC"),
+		[]wire.FeedbagItem{
+			{Name: "userA", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
+			{Name: "userB", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
+			{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
+		}))
 
-	want := []string{"userB", "userC"}
-	have, err := feedbagStore.AdjacentUsers("userA")
+	want := []IdentScreenName{
+		NewIdentScreenName("userB"),
+		NewIdentScreenName("userC"),
+	}
+	have, err := feedbagStore.AdjacentUsers(NewIdentScreenName("userA"))
 	assert.NoError(t, err)
 
 	assert.Equal(t, want, have)
@@ -545,4 +627,58 @@ func TestSQLiteUserStore_BARTUpsertAndRetrieve(t *testing.T) {
 	b, err = feedbagStore.BARTRetrieve(hash)
 	assert.NoError(t, err)
 	assert.Equal(t, item, b)
+}
+
+func TestSQLiteUserStore_SetUserPassword_UserExists(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	feedbagStore, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	u := User{
+		IdentScreenName:   NewIdentScreenName("theuser"),
+		DisplayScreenName: "theUser",
+	}
+	err = u.HashPassword("thepassword")
+	assert.NoError(t, err)
+
+	err = feedbagStore.InsertUser(u)
+	assert.NoError(t, err)
+
+	err = u.HashPassword("thenewpassword")
+	assert.NoError(t, err)
+
+	err = feedbagStore.SetUserPassword(u)
+	assert.NoError(t, err)
+
+	gotUser, err := feedbagStore.User(u.IdentScreenName)
+	assert.NoError(t, err)
+
+	valid := gotUser.ValidateHash(u.StrongMD5Pass)
+	assert.True(t, valid)
+}
+
+func TestSQLiteUserStore_SetUserPassword_ErrNoUser(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	feedbagStore, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	u := User{
+		IdentScreenName:   NewIdentScreenName("theuser"),
+		DisplayScreenName: "theUser",
+	}
+	err = u.HashPassword("thepassword")
+	assert.NoError(t, err)
+
+	err = feedbagStore.SetUserPassword(u)
+	assert.ErrorIs(t, err, ErrNoUser)
+
+	// make sure previous transaction previously closed
+	err = feedbagStore.SetUserPassword(u)
+	assert.ErrorIs(t, err, ErrNoUser)
 }

@@ -58,7 +58,7 @@ func (s ICBMService) ParameterQuery(_ context.Context, inFrame wire.SNACFrame) w
 // the wire.ICBMChannelMsgToHost message contains a request acknowledgement
 // flag.
 func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*wire.SNACMessage, error) {
-	blocked, err := s.feedbagManager.BlockedState(sess.ScreenName(), inBody.ScreenName)
+	blocked, err := s.feedbagManager.BlockedState(sess.IdentScreenName(), state.NewIdentScreenName(inBody.ScreenName))
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		}, nil
 	}
 
-	recipSess := s.messageRelayer.RetrieveByScreenName(inBody.ScreenName)
+	recipSess := s.messageRelayer.RetrieveByScreenName(state.NewIdentScreenName(inBody.ScreenName))
 	if recipSess == nil {
 		return &wire.SNACMessage{
 			Frame: wire.SNACFrame{
@@ -98,7 +98,7 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		Cookie:    inBody.Cookie,
 		ChannelID: inBody.ChannelID,
 		TLVUserInfo: wire.TLVUserInfo{
-			ScreenName:   sess.ScreenName(),
+			ScreenName:   string(sess.DisplayScreenName()),
 			WarningLevel: sess.Warning(),
 		},
 		TLVRestBlock: wire.TLVRestBlock{
@@ -115,7 +115,7 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 	// far as I can tell.
 	clientIM.AppendList(inBody.TLVRestBlock.TLVList)
 
-	s.messageRelayer.RelayToScreenName(ctx, recipSess.ScreenName(), wire.SNACMessage{
+	s.messageRelayer.RelayToScreenName(ctx, recipSess.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.ICBM,
 			SubGroup:  wire.ICBMChannelMsgToClient,
@@ -146,7 +146,7 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 // ClientEvent relays SNAC wire.ICBMClientEvent typing events from the
 // sender to the recipient.
 func (s ICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x14_ICBMClientEvent) error {
-	blocked, err := s.feedbagManager.BlockedState(sess.ScreenName(), inBody.ScreenName)
+	blocked, err := s.feedbagManager.BlockedState(sess.IdentScreenName(), state.NewIdentScreenName(inBody.ScreenName))
 
 	switch {
 	case err != nil:
@@ -154,7 +154,7 @@ func (s ICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFra
 	case blocked != state.BlockedNo:
 		return nil
 	default:
-		s.messageRelayer.RelayToScreenName(ctx, inBody.ScreenName, wire.SNACMessage{
+		s.messageRelayer.RelayToScreenName(ctx, state.NewIdentScreenName(inBody.ScreenName), wire.SNACMessage{
 			Frame: wire.SNACFrame{
 				FoodGroup: wire.ICBM,
 				SubGroup:  wire.ICBMClientEvent,
@@ -163,7 +163,7 @@ func (s ICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFra
 			Body: wire.SNAC_0x04_0x14_ICBMClientEvent{
 				Cookie:     inBody.Cookie,
 				ChannelID:  inBody.ChannelID,
-				ScreenName: sess.ScreenName(),
+				ScreenName: string(sess.DisplayScreenName()),
 				Event:      inBody.Event,
 			},
 		})
@@ -179,9 +179,11 @@ func (s ICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFra
 // warning was sent. Users may not warn themselves or warn users they have
 // blocked or are blocked by.
 func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x08_ICBMEvilRequest) (wire.SNACMessage, error) {
+	identScreenName := state.NewIdentScreenName(inBody.ScreenName)
+
 	// don't let users warn themselves, it causes the AIM client to go into a
 	// weird state.
-	if inBody.ScreenName == sess.ScreenName() {
+	if identScreenName == sess.IdentScreenName() {
 		return wire.SNACMessage{
 			Frame: wire.SNACFrame{
 				FoodGroup: wire.ICBM,
@@ -194,7 +196,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		}, nil
 	}
 
-	blocked, err := s.feedbagManager.BlockedState(sess.ScreenName(), inBody.ScreenName)
+	blocked, err := s.feedbagManager.BlockedState(sess.IdentScreenName(), identScreenName)
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}
@@ -211,7 +213,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		}, nil
 	}
 
-	recipSess := s.messageRelayer.RetrieveByScreenName(inBody.ScreenName)
+	recipSess := s.messageRelayer.RetrieveByScreenName(identScreenName)
 	if recipSess == nil {
 		return wire.SNACMessage{
 			Frame: wire.SNACFrame{
@@ -236,7 +238,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		notif = wire.SNAC_0x01_0x10_OServiceEvilNotification{
 			NewEvil: recipSess.Warning(),
 			TLVUserInfo: wire.TLVUserInfo{
-				ScreenName:   sess.ScreenName(),
+				ScreenName:   sess.IdentScreenName().String(),
 				WarningLevel: recipSess.Warning(),
 			},
 		}
@@ -246,7 +248,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		}
 	}
 
-	s.messageRelayer.RelayToScreenName(ctx, recipSess.ScreenName(), wire.SNACMessage{
+	s.messageRelayer.RelayToScreenName(ctx, recipSess.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.OService,
 			SubGroup:  wire.OServiceEvilNotification,

@@ -38,10 +38,10 @@ func TestSession_SetAndGetInvisible(t *testing.T) {
 
 func TestSession_SetAndGetScreenName(t *testing.T) {
 	s := NewSession()
-	assert.Empty(t, s.ScreenName())
-	sn := "user-screen-name"
-	s.SetScreenName(sn)
-	assert.Equal(t, sn, s.ScreenName())
+	assert.Empty(t, s.IdentScreenName())
+	sn := NewIdentScreenName("user-screen-name")
+	s.SetIdentScreenName(sn)
+	assert.Equal(t, sn, s.IdentScreenName())
 }
 
 func TestSession_SetAndGetChatRoomCookie(t *testing.T) {
@@ -63,7 +63,8 @@ func TestSession_TLVUserInfo(t *testing.T) {
 			givenSessionFn: func() *Session {
 				s := NewSession()
 				s.SetSignonTime(time.Unix(1, 0))
-				s.SetScreenName("xXAIMUSERXx")
+				s.SetIdentScreenName(NewIdentScreenName("xXAIMUSERXx"))
+				s.SetDisplayScreenName("xXAIMUSERXx")
 				s.IncrementWarning(10)
 				return s
 			},

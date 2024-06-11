@@ -81,7 +81,7 @@ func setOnlineChatUsers(ctx context.Context, sess *state.Session, chatMessageRel
 		snacPayloadOut.Users = append(snacPayloadOut.Users, uSess.TLVUserInfo())
 	}
 
-	chatMessageRelayer.RelayToScreenName(ctx, sess.ScreenName(), wire.SNACMessage{
+	chatMessageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Chat,
 			SubGroup:  wire.ChatUsersJoined,
@@ -119,7 +119,7 @@ func alertUserLeft(ctx context.Context, sess *state.Session, chatMessageRelayer 
 }
 
 func sendChatRoomInfoUpdate(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer, room state.ChatRoom) {
-	chatMessageRelayer.RelayToScreenName(ctx, sess.ScreenName(), wire.SNACMessage{
+	chatMessageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Chat,
 			SubGroup:  wire.ChatRoomInfoUpdate,

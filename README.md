@@ -65,7 +65,7 @@ Invoke-WebRequest -Uri http://localhost:8080/user -Method Get
 
 ```powershell
 Invoke-WebRequest -Uri http://localhost:8080/user `
-  -Body '{"screen_name":"myscreenname", "password":"thepassword"}' `
+  -Body '{"screen_name":"MyScreenName", "password":"thepassword"}' `
   -Method Post `
   -ContentType "application/json"
 ```
@@ -83,7 +83,7 @@ Invoke-WebRequest -Uri http://localhost:8080/user `
 
 ```powershell
 Invoke-WebRequest -Uri http://localhost:8080/user/password `
-  -Body '{"screen_name":"myscreenname", "password":"thenewpassword"}' `
+  -Body '{"screen_name":"MyScreenName", "password":"thenewpassword"}' `
   -Method Put `
   -ContentType "application/json"
 ```
@@ -107,7 +107,7 @@ curl http://localhost:8080/user
 #### Create Users
 
 ```shell
-curl -d'{"screen_name":"myscreenname", "password":"thepassword"}' http://localhost:8080/user
+curl -d'{"screen_name":"MyScreenName", "password":"thepassword"}' http://localhost:8080/user
 ```
 
 #### Delete Users
@@ -119,7 +119,7 @@ curl -X DELETE -d '{"screen_name": "user123"}' http://localhost:8080/user
 #### Change Password
 
 ```shell
-curl -X PUT -d'{"screen_name":"myscreenname", "password":"thenewpassword"}' http://localhost:8080/user/password
+curl -X PUT -d'{"screen_name":"MyScreenName", "password":"thenewpassword"}' http://localhost:8080/user/password
 ```
 
 #### List Active Sessions

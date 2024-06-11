@@ -57,13 +57,13 @@ func (s BuddyService) RightsQuery(_ context.Context, frameIn wire.SNACFrame) wir
 
 func (s BuddyService) AddBuddies(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x04_BuddyAddBuddies) error {
 	for _, entry := range inBody.Buddies {
-		s.legacyBuddyListManager.AddBuddy(sess.ScreenName(), entry.ScreenName)
+		s.legacyBuddyListManager.AddBuddy(sess.IdentScreenName(), state.NewIdentScreenName(entry.ScreenName))
 		if !sess.SignonComplete() {
 			// client has not completed sign-on sequence, so any arrival
 			// messages sent at this point would be ignored by the client.
 			continue
 		}
-		buddy := s.messageRelayer.RetrieveByScreenName(entry.ScreenName)
+		buddy := s.messageRelayer.RetrieveByScreenName(state.NewIdentScreenName(entry.ScreenName))
 		if buddy == nil || buddy.Invisible() {
 			continue
 		}
@@ -77,7 +77,7 @@ func (s BuddyService) AddBuddies(ctx context.Context, sess *state.Session, inBod
 
 func (s BuddyService) DelBuddies(_ context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies) {
 	for _, entry := range inBody.Buddies {
-		s.legacyBuddyListManager.DeleteBuddy(sess.ScreenName(), entry.ScreenName)
+		s.legacyBuddyListManager.DeleteBuddy(sess.IdentScreenName(), state.NewIdentScreenName(entry.ScreenName))
 	}
 }
 
@@ -94,7 +94,7 @@ func (s BuddyService) UnicastBuddyArrived(ctx context.Context, from *state.Sessi
 	case icon != nil:
 		userInfo.Append(wire.NewTLV(wire.OServiceUserInfoBARTInfo, *icon))
 	}
-	s.messageRelayer.RelayToScreenName(ctx, to.ScreenName(), wire.SNACMessage{
+	s.messageRelayer.RelayToScreenName(ctx, to.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyArrived,
@@ -112,13 +112,13 @@ func (s BuddyService) UnicastBuddyArrived(ctx context.Context, from *state.Sessi
 // buddy icons, warning levels, invisibility status, etc.
 func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error {
 	// find users who have this user on their server-side buddy list
-	recipients, err := s.feedbagManager.AdjacentUsers(sess.ScreenName())
+	recipients, err := s.feedbagManager.AdjacentUsers(sess.IdentScreenName())
 	if err != nil {
 		return err
 	}
 
 	// find users who have this user on their client-side buddy list
-	legacyUsers := s.legacyBuddyListManager.WhoAddedUser(sess.ScreenName())
+	legacyUsers := s.legacyBuddyListManager.WhoAddedUser(sess.IdentScreenName())
 	recipients = append(recipients, legacyUsers...)
 
 	userInfo := sess.TLVUserInfo()
@@ -147,7 +147,7 @@ func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, sess *state.Ses
 // from their feedbag. If it exists, the buddy icon is the feedbag item of
 // class wire.FeedbagClassIdBart with BART type wire.BARTTypesBuddyIcon.
 func getBuddyIconRefFromFeedbag(sess *state.Session, feedbagManager FeedbagManager) (*wire.BARTID, error) {
-	items, err := feedbagManager.Feedbag(sess.ScreenName())
+	items, err := feedbagManager.Feedbag(sess.IdentScreenName())
 	if err != nil {
 		return nil, err
 	}
@@ -198,12 +198,12 @@ func extractBARTItemType(item wire.FeedbagItem) (uint16, error) {
 }
 
 func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error {
-	recipients, err := s.feedbagManager.AdjacentUsers(sess.ScreenName())
+	recipients, err := s.feedbagManager.AdjacentUsers(sess.IdentScreenName())
 	if err != nil {
 		return err
 	}
 
-	legacyUsers := s.legacyBuddyListManager.WhoAddedUser(sess.ScreenName())
+	legacyUsers := s.legacyBuddyListManager.WhoAddedUser(sess.IdentScreenName())
 	recipients = append(recipients, legacyUsers...)
 
 	s.messageRelayer.RelayToScreenNames(ctx, recipients, wire.SNACMessage{
@@ -215,7 +215,7 @@ func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Se
 			TLVUserInfo: wire.TLVUserInfo{
 				// don't include the TLV block, otherwise the AIM client fails
 				// to process the block event
-				ScreenName:   sess.ScreenName(),
+				ScreenName:   string(sess.DisplayScreenName()),
 				WarningLevel: sess.Warning(),
 			},
 		},
@@ -225,7 +225,7 @@ func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Se
 }
 
 func (s BuddyService) UnicastBuddyDeparted(ctx context.Context, from *state.Session, to *state.Session) {
-	s.messageRelayer.RelayToScreenName(ctx, to.ScreenName(), wire.SNACMessage{
+	s.messageRelayer.RelayToScreenName(ctx, to.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyDeparted,
@@ -234,7 +234,7 @@ func (s BuddyService) UnicastBuddyDeparted(ctx context.Context, from *state.Sess
 			TLVUserInfo: wire.TLVUserInfo{
 				// don't include the TLV block, otherwise the AIM client fails
 				// to process the block event
-				ScreenName:   from.ScreenName(),
+				ScreenName:   string(from.DisplayScreenName()),
 				WarningLevel: from.Warning(),
 			},
 		},
