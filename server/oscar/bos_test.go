@@ -81,7 +81,7 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 
 	authService := newMockAuthService(t)
 	authService.EXPECT().
-		RegisterBOSSession(state.NewIdentScreenName("user_screen_name")).
+		RegisterBOSSession([]byte("the-cookie")).
 		Return(sess, nil)
 	authService.EXPECT().
 		Signout(mock.Anything, sess).
@@ -98,11 +98,6 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{},
 		})
 
-	cookieCracker := newMockCookieCracker(t)
-	cookieCracker.EXPECT().
-		Crack([]byte("the-cookie")).
-		Return([]byte("user_screen_name"), nil)
-
 	router := newMockHandler(t)
 	router.EXPECT().
 		Handle(mock.Anything, sess, mock.Anything, mock.Anything, mock.Anything).
@@ -115,7 +110,6 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 
 	rt := BOSServer{
 		AuthService:    authService,
-		CookieCracker:  cookieCracker,
 		Handler:        router,
 		Logger:         slog.Default(),
 		OnlineNotifier: onlineNotifier,

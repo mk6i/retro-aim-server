@@ -281,7 +281,7 @@ type whoAddedUserParams []struct {
 }
 
 // cookieIssuerParams is the list of parameters passed at the mock
-// CookieIssuer.Issue call site
+// CookieBaker.Issue call site
 type cookieIssuerParams []struct {
 	data   []byte
 	cookie []byte

@@ -512,7 +512,7 @@ func NewOServiceServiceForBOS(
 	messageRelayer MessageRelayer,
 	legacyBuddyListManager LegacyBuddyListManager,
 	logger *slog.Logger,
-	cookieIssuer CookieIssuer,
+	cookieIssuer CookieBaker,
 	buddyUpdateBroadcaster BuddyBroadcaster,
 	cr *state.ChatRegistry,
 ) *OServiceServiceForBOS {
@@ -545,7 +545,7 @@ func NewOServiceServiceForBOS(
 type OServiceServiceForBOS struct {
 	OServiceService
 	chatRegistry           *state.ChatRegistry
-	cookieIssuer           CookieIssuer
+	cookieIssuer           CookieBaker
 	legacyBuddyListManager LegacyBuddyListManager
 	messageRelayer         MessageRelayer
 }

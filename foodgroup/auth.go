@@ -21,7 +21,7 @@ func NewAuthService(
 	userManager UserManager,
 	chatRegistry ChatRegistry,
 	legacyBuddyListManager LegacyBuddyListManager,
-	cookieIssuer CookieIssuer,
+	cookieBaker CookieBaker,
 	buddyUpdateBroadcaster BuddyBroadcaster,
 ) *AuthService {
 	return &AuthService{
@@ -30,7 +30,7 @@ func NewAuthService(
 		legacyBuddyListManager: legacyBuddyListManager,
 		sessionManager:         sessionManager,
 		userManager:            userManager,
-		cookieIssuer:           cookieIssuer,
+		cookieBaker:            cookieBaker,
 		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
 	}
 }
@@ -42,18 +42,23 @@ type AuthService struct {
 	buddyUpdateBroadcaster BuddyBroadcaster
 	chatRegistry           ChatRegistry
 	config                 config.Config
-	cookieIssuer           CookieIssuer
+	cookieBaker            CookieBaker
 	legacyBuddyListManager LegacyBuddyListManager
 	sessionManager         SessionManager
 	userManager            UserManager
 }
 
 // RegisterChatSession creates and returns a chat room session.
-func (s AuthService) RegisterChatSession(loginCookie []byte) (*state.Session, error) {
-	c := chatLoginCookie{}
-	if err := wire.Unmarshal(&c, bytes.NewBuffer(loginCookie)); err != nil {
+func (s AuthService) RegisterChatSession(authCookie []byte) (*state.Session, error) {
+	token, err := s.cookieBaker.Crack(authCookie)
+	if err != nil {
 		return nil, err
 	}
+	c := chatLoginCookie{}
+	if err := wire.Unmarshal(&c, bytes.NewBuffer(token)); err != nil {
+		return nil, err
+	}
+
 	room, chatSessMgr, err := s.chatRegistry.Retrieve(c.ChatCookie)
 	if err != nil {
 		return nil, err
@@ -65,20 +70,28 @@ func (s AuthService) RegisterChatSession(loginCookie []byte) (*state.Session, er
 	if u == nil {
 		return nil, fmt.Errorf("user not found")
 	}
+
 	chatSess := chatSessMgr.(SessionManager).AddSession(u.DisplayScreenName)
 	chatSess.SetChatRoomCookie(room.Cookie)
+
 	return chatSess, nil
 }
 
 // RegisterBOSSession creates and returns a user's session.
-func (s AuthService) RegisterBOSSession(screenName state.IdentScreenName) (*state.Session, error) {
-	u, err := s.userManager.User(screenName)
+func (s AuthService) RegisterBOSSession(authCookie []byte) (*state.Session, error) {
+	screenName, err := s.cookieBaker.Crack(authCookie)
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := s.userManager.User(state.NewIdentScreenName(string(screenName)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
 	}
 	if u == nil {
 		return nil, fmt.Errorf("user not found")
 	}
+
 	return s.sessionManager.AddSession(u.DisplayScreenName), nil
 }
 
@@ -252,7 +265,7 @@ func (s AuthService) login(
 			}
 		}
 
-		cookie, err := s.cookieIssuer.Issue([]byte(screenName))
+		cookie, err := s.cookieBaker.Issue([]byte(screenName))
 		if err != nil {
 			return wire.TLVRestBlock{}, fmt.Errorf("failed to make auth cookie: %w", err)
 		}

@@ -250,7 +250,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					Maybe()
 				chatRegistry.Register(*tc.chatRoom, sessionManager)
 			}
-			cookieIssuer := newMockCookieIssuer(t)
+			cookieIssuer := newMockCookieBaker(t)
 			for _, params := range tc.mockParams.cookieIssuerParams {
 				cookieIssuer.EXPECT().
 					Issue(params.data).
@@ -1336,7 +1336,7 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 }
 
 func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
-	cookieIssuer := newMockCookieIssuer(t)
+	cookieIssuer := newMockCookieBaker(t)
 	svc := NewOServiceServiceForBOS(config.Config{}, nil, nil, slog.Default(), cookieIssuer, nil, nil)
 
 	want := wire.SNACMessage{

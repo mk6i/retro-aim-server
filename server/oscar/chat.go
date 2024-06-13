@@ -21,7 +21,6 @@ type ChatServer struct {
 	Logger *slog.Logger
 	OnlineNotifier
 	config.Config
-	CookieCracker
 }
 
 // Start creates a TCP server that implements that chat flow.
@@ -63,18 +62,12 @@ func (rt ChatServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 		return err
 	}
 
-	var ok bool
-	loginCookie, ok := flap.Slice(wire.OServiceTLVTagsLoginCookie)
+	authCookie, ok := flap.Slice(wire.OServiceTLVTagsLoginCookie)
 	if !ok {
 		return errors.New("unable to get login cookie from payload")
 	}
 
-	token, err := rt.CookieCracker.Crack(loginCookie)
-	if err != nil {
-		return err
-	}
-
-	chatSess, err := rt.RegisterChatSession(token)
+	chatSess, err := rt.RegisterChatSession(authCookie)
 	if err != nil {
 		return err
 	}

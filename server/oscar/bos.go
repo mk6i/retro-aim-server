@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/mk6i/retro-aim-server/config"
-	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
@@ -24,7 +23,6 @@ type OnlineNotifier interface {
 // service.
 type BOSServer struct {
 	AuthService
-	CookieCracker
 	Handler
 	ListenAddr string
 	Logger     *slog.Logger
@@ -78,12 +76,7 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 		return errors.New("unable to get session id from payload")
 	}
 
-	screenName, err := rt.CookieCracker.Crack(authCookie)
-	if err != nil {
-		return err
-	}
-
-	sess, err := rt.RegisterBOSSession(state.NewIdentScreenName(string(screenName)))
+	sess, err := rt.RegisterBOSSession(authCookie)
 	if err != nil {
 		return err
 	}

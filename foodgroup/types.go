@@ -113,7 +113,8 @@ type BARTManager interface {
 	BARTRetrieve(itemHash []byte) ([]byte, error)
 }
 
-type CookieIssuer interface {
+type CookieBaker interface {
+	Crack(data []byte) ([]byte, error)
 	Issue(data []byte) ([]byte, error)
 }
 

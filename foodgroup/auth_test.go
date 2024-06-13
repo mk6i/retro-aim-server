@@ -389,16 +389,16 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 					Return(params.err)
 			}
 			sessionManager := newMockSessionManager(t)
-			cookieIssuer := newMockCookieIssuer(t)
+			cookieBaker := newMockCookieBaker(t)
 			for _, params := range tc.mockParams.cookieIssuerParams {
-				cookieIssuer.EXPECT().
+				cookieBaker.EXPECT().
 					Issue(params.data).
 					Return(params.cookie, params.err)
 			}
 
 			svc := AuthService{
 				config:         tc.cfg,
-				cookieIssuer:   cookieIssuer,
+				cookieBaker:    cookieBaker,
 				sessionManager: sessionManager,
 				userManager:    userManager,
 			}
@@ -747,15 +747,15 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 					Return(params.err)
 			}
 			sessionManager := newMockSessionManager(t)
-			cookieIssuer := newMockCookieIssuer(t)
+			cookieBaker := newMockCookieBaker(t)
 			for _, params := range tc.mockParams.cookieIssuerParams {
-				cookieIssuer.EXPECT().
+				cookieBaker.EXPECT().
 					Issue(params.data).
 					Return(params.cookie, params.err)
 			}
 			svc := AuthService{
 				config:         tc.cfg,
-				cookieIssuer:   cookieIssuer,
+				cookieBaker:    cookieBaker,
 				sessionManager: sessionManager,
 				userManager:    userManager,
 			}
@@ -936,15 +936,7 @@ func TestAuthService_BUCPChallengeRequest(t *testing.T) {
 }
 
 func TestAuthService_RegisterChatSession_HappyPath(t *testing.T) {
-	cookie := "chat-1234"
 	sess := newTestSession("screen-name")
-
-	c := chatLoginCookie{
-		ChatCookie: cookie,
-		ScreenName: sess.IdentScreenName().String(),
-	}
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(c, buf))
 
 	sessionManager := newMockSessionManager(t)
 	sessionManager.EXPECT().
@@ -958,26 +950,38 @@ func TestAuthService_RegisterChatSession_HappyPath(t *testing.T) {
 			DisplayScreenName: sess.DisplayScreenName(),
 		}, nil)
 
+	chatCookie := "the-chat-cookie"
 	chatRegistry := newMockChatRegistry(t)
 	chatRegistry.EXPECT().
-		Retrieve(cookie).
+		Retrieve(chatCookie).
 		Return(state.ChatRoom{}, sessionManager, nil)
 
-	cookieIssuer := newMockCookieIssuer(t)
+	c := chatLoginCookie{
+		ChatCookie: chatCookie,
+		ScreenName: sess.IdentScreenName().String(),
+	}
+	chatCookieBuf := &bytes.Buffer{}
+	assert.NoError(t, wire.Marshal(c, chatCookieBuf))
 
-	svc := NewAuthService(config.Config{}, nil, userManager, chatRegistry, nil, cookieIssuer, nil)
+	authCookie := []byte("the-auth-cookie")
+	cookieBaker := newMockCookieBaker(t)
+	cookieBaker.EXPECT().
+		Crack(authCookie).
+		Return(chatCookieBuf.Bytes(), nil)
 
-	have, err := svc.RegisterChatSession(buf.Bytes())
+	svc := NewAuthService(config.Config{}, nil, userManager, chatRegistry, nil, cookieBaker, nil)
+
+	have, err := svc.RegisterChatSession(authCookie)
 	assert.NoError(t, err)
 	assert.Equal(t, sess, have)
 }
 
-func TestAuthService_RegisterBOSSession_ChatNotFound(t *testing.T) {
-	cookie := "chat-1234"
+func TestAuthService_RegisterChatSession_ChatNotFound(t *testing.T) {
+	chatCookie := "the-chat-cookie"
 	sess := newTestSession("screen-name")
 
 	c := chatLoginCookie{
-		ChatCookie: cookie,
+		ChatCookie: chatCookie,
 		ScreenName: sess.IdentScreenName().String(),
 	}
 	loginCookie := &bytes.Buffer{}
@@ -985,13 +989,18 @@ func TestAuthService_RegisterBOSSession_ChatNotFound(t *testing.T) {
 
 	chatRegistry := newMockChatRegistry(t)
 	chatRegistry.EXPECT().
-		Retrieve(cookie).
+		Retrieve(chatCookie).
 		Return(state.ChatRoom{}, nil, state.ErrChatRoomNotFound)
 
-	cookieIssuer := newMockCookieIssuer(t)
-	svc := NewAuthService(config.Config{}, nil, nil, chatRegistry, nil, cookieIssuer, nil)
+	authCookie := []byte("the-auth-cookie")
+	cookieBaker := newMockCookieBaker(t)
+	cookieBaker.EXPECT().
+		Crack(authCookie).
+		Return(loginCookie.Bytes(), nil)
 
-	_, err := svc.RegisterChatSession(loginCookie.Bytes())
+	svc := NewAuthService(config.Config{}, nil, nil, chatRegistry, nil, cookieBaker, nil)
+
+	_, err := svc.RegisterChatSession(authCookie)
 	assert.ErrorIs(t, err, state.ErrChatRoomNotFound)
 }
 
@@ -1003,16 +1012,21 @@ func TestAuthService_RegisterBOSSession_HappyPath(t *testing.T) {
 		AddSession(sess.DisplayScreenName()).
 		Return(sess)
 
-	cookieIssuer := newMockCookieIssuer(t)
+	authCookie := []byte(`the-auth-cookie`)
+
+	cookieBaker := newMockCookieBaker(t)
+	cookieBaker.EXPECT().
+		Crack(authCookie).
+		Return([]byte("screen-name"), nil)
 
 	userManager := newMockUserManager(t)
 	userManager.EXPECT().
 		User(sess.IdentScreenName()).
 		Return(&state.User{DisplayScreenName: sess.DisplayScreenName()}, nil)
 
-	svc := NewAuthService(config.Config{}, sessionManager, userManager, nil, nil, cookieIssuer, nil)
+	svc := NewAuthService(config.Config{}, sessionManager, userManager, nil, nil, cookieBaker, nil)
 
-	have, err := svc.RegisterBOSSession(sess.IdentScreenName())
+	have, err := svc.RegisterBOSSession(authCookie)
 	assert.NoError(t, err)
 	assert.Equal(t, sess, have)
 }
@@ -1025,16 +1039,21 @@ func TestAuthService_RegisterBOSSession_SessionNotFound(t *testing.T) {
 		AddSession(sess.DisplayScreenName()).
 		Return(nil)
 
-	cookieIssuer := newMockCookieIssuer(t)
+	authCookie := []byte(`the-auth-cookie`)
+	cookieBaker := newMockCookieBaker(t)
+
+	cookieBaker.EXPECT().
+		Crack(authCookie).
+		Return([]byte("screen-name"), nil)
 
 	userManager := newMockUserManager(t)
 	userManager.EXPECT().
 		User(sess.IdentScreenName()).
 		Return(&state.User{DisplayScreenName: sess.DisplayScreenName()}, nil)
 
-	svc := NewAuthService(config.Config{}, sessionManager, userManager, nil, nil, cookieIssuer, nil)
+	svc := NewAuthService(config.Config{}, sessionManager, userManager, nil, nil, cookieBaker, nil)
 
-	have, err := svc.RegisterBOSSession(sess.IdentScreenName())
+	have, err := svc.RegisterBOSSession(authCookie)
 	assert.NoError(t, err)
 	assert.Nil(t, have)
 }
@@ -1172,9 +1191,9 @@ func TestAuthService_SignoutChat(t *testing.T) {
 				Retrieve(tt.chatRoom.Cookie).
 				Return(tt.chatRoom, chatSessionManager, tt.wantErr)
 
-			cookieIssuer := newMockCookieIssuer(t)
+			cookieBaker := newMockCookieBaker(t)
 
-			svc := NewAuthService(config.Config{}, nil, nil, chatRegistry, nil, cookieIssuer, nil)
+			svc := NewAuthService(config.Config{}, nil, nil, chatRegistry, nil, cookieBaker, nil)
 
 			err := svc.SignoutChat(nil, tt.userSession)
 			assert.ErrorIs(t, err, tt.wantErr)

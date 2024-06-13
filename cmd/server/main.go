@@ -77,7 +77,6 @@ func main() {
 				OServiceHandler:   handler.NewOServiceHandler(logger, oServiceService),
 				PermitDenyHandler: handler.NewPermitDenyHandler(logger, foodgroupService),
 			}),
-			CookieCracker:  cookieBaker,
 			Logger:         logger,
 			OnlineNotifier: oServiceService,
 			ListenAddr:     net.JoinHostPort("", cfg.BOSPort),
@@ -101,7 +100,6 @@ func main() {
 			}),
 			Logger:         logger,
 			OnlineNotifier: oServiceService,
-			CookieCracker:  cookieBaker,
 		}.Start()
 		wg.Done()
 	}(logger)
@@ -124,7 +122,6 @@ func main() {
 			Logger:         logger,
 			OnlineNotifier: oServiceService,
 			ListenAddr:     net.JoinHostPort("", cfg.ChatNavPort),
-			CookieCracker:  cookieBaker,
 		}.Start()
 		wg.Done()
 	}(logger)
@@ -142,7 +139,6 @@ func main() {
 				AlertHandler:    handler.NewAlertHandler(logger),
 				OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
 			}),
-			CookieCracker:  cookieBaker,
 			Logger:         logger,
 			OnlineNotifier: oServiceService,
 			ListenAddr:     net.JoinHostPort("", cfg.AlertPort),
@@ -158,9 +154,8 @@ func main() {
 		oServiceService := foodgroup.NewOServiceServiceForBART(cfg, logger, buddyService)
 
 		oscar.BOSServer{
-			AuthService:   authService,
-			Config:        cfg,
-			CookieCracker: cookieBaker,
+			AuthService: authService,
+			Config:      cfg,
 			Handler: handler.NewBARTRouter(handler.Handlers{
 				BARTHandler:     handler.NewBARTHandler(logger, bartService),
 				OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
@@ -176,10 +171,9 @@ func main() {
 		authHandler := foodgroup.NewAuthService(cfg, sessionManager, feedbagStore, chatRegistry, adjListBuddyListStore, cookieBaker, nil)
 
 		oscar.AuthServer{
-			AuthService:   authHandler,
-			Config:        cfg,
-			Logger:        logger,
-			CookieCracker: cookieBaker,
+			AuthService: authHandler,
+			Config:      cfg,
+			Logger:      logger,
 		}.Start()
 		wg.Done()
 	}(logger)

@@ -17,9 +17,6 @@ packages:
       OnlineNotifier:
         config:
           filename: "mock_online_notifier_test.go"
-      CookieCracker:
-        config:
-          filename: "mock_cookie_cracker_test.go"
   github.com/mk6i/retro-aim-server/server/http:
     interfaces:
       UserManager:
@@ -89,9 +86,9 @@ packages:
       LegacyBuddyListManager:
         config:
           filename: "mock_legacy_buddy_list_manager_test.go"
-      CookieIssuer:
+      CookieBaker:
         config:
-          filename: "mock_cookie_issuer_test.go"
+          filename: "mock_cookie_baker_test.go"
       BuddyBroadcaster:
         config:
           filename: "mock_buddy_broadcaster_test.go"

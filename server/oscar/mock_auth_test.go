@@ -197,9 +197,9 @@ func (_c *mockAuthService_FLAPLogin_Call) RunAndReturn(run func(wire.FLAPSignonF
 	return _c
 }
 
-// RegisterBOSSession provides a mock function with given fields: screenName
-func (_m *mockAuthService) RegisterBOSSession(screenName state.IdentScreenName) (*state.Session, error) {
-	ret := _m.Called(screenName)
+// RegisterBOSSession provides a mock function with given fields: authCookie
+func (_m *mockAuthService) RegisterBOSSession(authCookie []byte) (*state.Session, error) {
+	ret := _m.Called(authCookie)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RegisterBOSSession")
@@ -207,19 +207,19 @@ func (_m *mockAuthService) RegisterBOSSession(screenName state.IdentScreenName) 
 
 	var r0 *state.Session
 	var r1 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) (*state.Session, error)); ok {
-		return rf(screenName)
+	if rf, ok := ret.Get(0).(func([]byte) (*state.Session, error)); ok {
+		return rf(authCookie)
 	}
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *state.Session); ok {
-		r0 = rf(screenName)
+	if rf, ok := ret.Get(0).(func([]byte) *state.Session); ok {
+		r0 = rf(authCookie)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*state.Session)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
-		r1 = rf(screenName)
+	if rf, ok := ret.Get(1).(func([]byte) error); ok {
+		r1 = rf(authCookie)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -233,14 +233,14 @@ type mockAuthService_RegisterBOSSession_Call struct {
 }
 
 // RegisterBOSSession is a helper method to define mock.On call
-//   - screenName state.IdentScreenName
-func (_e *mockAuthService_Expecter) RegisterBOSSession(screenName interface{}) *mockAuthService_RegisterBOSSession_Call {
-	return &mockAuthService_RegisterBOSSession_Call{Call: _e.mock.On("RegisterBOSSession", screenName)}
+//   - authCookie []byte
+func (_e *mockAuthService_Expecter) RegisterBOSSession(authCookie interface{}) *mockAuthService_RegisterBOSSession_Call {
+	return &mockAuthService_RegisterBOSSession_Call{Call: _e.mock.On("RegisterBOSSession", authCookie)}
 }
 
-func (_c *mockAuthService_RegisterBOSSession_Call) Run(run func(screenName state.IdentScreenName)) *mockAuthService_RegisterBOSSession_Call {
+func (_c *mockAuthService_RegisterBOSSession_Call) Run(run func(authCookie []byte)) *mockAuthService_RegisterBOSSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
+		run(args[0].([]byte))
 	})
 	return _c
 }
@@ -250,14 +250,14 @@ func (_c *mockAuthService_RegisterBOSSession_Call) Return(_a0 *state.Session, _a
 	return _c
 }
 
-func (_c *mockAuthService_RegisterBOSSession_Call) RunAndReturn(run func(state.IdentScreenName) (*state.Session, error)) *mockAuthService_RegisterBOSSession_Call {
+func (_c *mockAuthService_RegisterBOSSession_Call) RunAndReturn(run func([]byte) (*state.Session, error)) *mockAuthService_RegisterBOSSession_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// RegisterChatSession provides a mock function with given fields: loginCookie
-func (_m *mockAuthService) RegisterChatSession(loginCookie []byte) (*state.Session, error) {
-	ret := _m.Called(loginCookie)
+// RegisterChatSession provides a mock function with given fields: authCookie
+func (_m *mockAuthService) RegisterChatSession(authCookie []byte) (*state.Session, error) {
+	ret := _m.Called(authCookie)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RegisterChatSession")
@@ -266,10 +266,10 @@ func (_m *mockAuthService) RegisterChatSession(loginCookie []byte) (*state.Sessi
 	var r0 *state.Session
 	var r1 error
 	if rf, ok := ret.Get(0).(func([]byte) (*state.Session, error)); ok {
-		return rf(loginCookie)
+		return rf(authCookie)
 	}
 	if rf, ok := ret.Get(0).(func([]byte) *state.Session); ok {
-		r0 = rf(loginCookie)
+		r0 = rf(authCookie)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*state.Session)
@@ -277,7 +277,7 @@ func (_m *mockAuthService) RegisterChatSession(loginCookie []byte) (*state.Sessi
 	}
 
 	if rf, ok := ret.Get(1).(func([]byte) error); ok {
-		r1 = rf(loginCookie)
+		r1 = rf(authCookie)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -291,12 +291,12 @@ type mockAuthService_RegisterChatSession_Call struct {
 }
 
 // RegisterChatSession is a helper method to define mock.On call
-//   - loginCookie []byte
-func (_e *mockAuthService_Expecter) RegisterChatSession(loginCookie interface{}) *mockAuthService_RegisterChatSession_Call {
-	return &mockAuthService_RegisterChatSession_Call{Call: _e.mock.On("RegisterChatSession", loginCookie)}
+//   - authCookie []byte
+func (_e *mockAuthService_Expecter) RegisterChatSession(authCookie interface{}) *mockAuthService_RegisterChatSession_Call {
+	return &mockAuthService_RegisterChatSession_Call{Call: _e.mock.On("RegisterChatSession", authCookie)}
 }
 
-func (_c *mockAuthService_RegisterChatSession_Call) Run(run func(loginCookie []byte)) *mockAuthService_RegisterChatSession_Call {
+func (_c *mockAuthService_RegisterChatSession_Call) Run(run func(authCookie []byte)) *mockAuthService_RegisterChatSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].([]byte))
 	})
