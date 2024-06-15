@@ -627,7 +627,8 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			// send input SNAC
 			//
 			senderSession := newTestSession(tc.senderSession.DisplayScreenName())
-			svc := NewICBMService(messageRelayer, feedbagManager, buddyUpdateBroadcaster)
+			svc := NewICBMService(messageRelayer, feedbagManager, nil)
+			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
 			outputSNAC, err := svc.EvilRequest(nil, senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest))
 			assert.NoError(t, err)

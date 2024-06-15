@@ -18,11 +18,11 @@ func NewFeedbagService(
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
 	bartManager BARTManager,
-	buddyUpdateBroadcaster BuddyBroadcaster,
+	legacyBuddyListManager LegacyBuddyListManager,
 ) FeedbagService {
 	return FeedbagService{
 		bartManager:            bartManager,
-		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
 		feedbagManager:         feedbagManager,
 		logger:                 logger,
 		messageRelayer:         messageRelayer,
@@ -33,7 +33,7 @@ func NewFeedbagService(
 // handles buddy list management.
 type FeedbagService struct {
 	bartManager            BARTManager
-	buddyUpdateBroadcaster BuddyBroadcaster
+	buddyUpdateBroadcaster buddyBroadcaster
 	feedbagManager         FeedbagManager
 	logger                 *slog.Logger
 	messageRelayer         MessageRelayer

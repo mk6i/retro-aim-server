@@ -17,7 +17,7 @@ import (
 // OServiceService provides functionality for the OService food group, which
 // provides an assortment of services useful across multiple food groups.
 type OServiceService struct {
-	buddyUpdateBroadcaster BuddyBroadcaster
+	buddyUpdateBroadcaster buddyBroadcaster
 	cfg                    config.Config
 	logger                 *slog.Logger
 	foodGroups             []uint16
@@ -513,8 +513,8 @@ func NewOServiceServiceForBOS(
 	legacyBuddyListManager LegacyBuddyListManager,
 	logger *slog.Logger,
 	cookieIssuer CookieBaker,
-	buddyUpdateBroadcaster BuddyBroadcaster,
 	cr *state.ChatRegistry,
+	feedbagManager FeedbagManager,
 ) *OServiceServiceForBOS {
 	return &OServiceServiceForBOS{
 		chatRegistry:           cr,
@@ -522,7 +522,7 @@ func NewOServiceServiceForBOS(
 		legacyBuddyListManager: legacyBuddyListManager,
 		messageRelayer:         messageRelayer,
 		OServiceService: OServiceService{
-			buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+			buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
 			cfg:                    cfg,
 			logger:                 logger,
 			foodGroups: []uint16{
@@ -717,11 +717,18 @@ func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x0
 }
 
 // NewOServiceServiceForChat creates a new instance of NewOServiceServiceForChat.
-func NewOServiceServiceForChat(cfg config.Config, logger *slog.Logger, buddyUpdateBroadcaster BuddyBroadcaster, cr *state.ChatRegistry) *OServiceServiceForChat {
+func NewOServiceServiceForChat(
+	cfg config.Config,
+	logger *slog.Logger,
+	cr *state.ChatRegistry,
+	messageRelayer MessageRelayer,
+	legacyBuddyListManager LegacyBuddyListManager,
+	feedbagManager FeedbagManager,
+) *OServiceServiceForChat {
 	return &OServiceServiceForChat{
 		chatRegistry: cr,
 		OServiceService: OServiceService{
-			buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+			buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
 			cfg:                    cfg,
 			logger:                 logger,
 			foodGroups: []uint16{
@@ -757,9 +764,15 @@ func (s OServiceServiceForChat) ClientOnline(ctx context.Context, _ wire.SNAC_0x
 
 // NewOServiceServiceForChatNav creates a new instance of OServiceService for
 // ChatNav.
-func NewOServiceServiceForChatNav(cfg config.Config, logger *slog.Logger, buddyUpdateBroadcaster BuddyBroadcaster) *OServiceService {
+func NewOServiceServiceForChatNav(
+	cfg config.Config,
+	logger *slog.Logger,
+	messageRelayer MessageRelayer,
+	legacyBuddyListManager LegacyBuddyListManager,
+	feedbagManager FeedbagManager,
+) *OServiceService {
 	return &OServiceService{
-		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
 		cfg:                    cfg,
 		logger:                 logger,
 		foodGroups: []uint16{
@@ -771,9 +784,15 @@ func NewOServiceServiceForChatNav(cfg config.Config, logger *slog.Logger, buddyU
 
 // NewOServiceServiceForAlert creates a new instance of OServiceService for the Alert
 // server.
-func NewOServiceServiceForAlert(cfg config.Config, logger *slog.Logger, buddyUpdateBroadcaster BuddyBroadcaster) *OServiceService {
+func NewOServiceServiceForAlert(
+	cfg config.Config,
+	logger *slog.Logger,
+	messageRelayer MessageRelayer,
+	legacyBuddyListManager LegacyBuddyListManager,
+	feedbagManager FeedbagManager,
+) *OServiceService {
 	return &OServiceService{
-		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
 		cfg:                    cfg,
 		logger:                 logger,
 		foodGroups: []uint16{
@@ -785,9 +804,15 @@ func NewOServiceServiceForAlert(cfg config.Config, logger *slog.Logger, buddyUpd
 
 // NewOServiceServiceForBART creates a new instance of OServiceService for the
 // BART server.
-func NewOServiceServiceForBART(cfg config.Config, logger *slog.Logger, buddyUpdateBroadcaster BuddyBroadcaster) *OServiceService {
+func NewOServiceServiceForBART(
+	cfg config.Config,
+	logger *slog.Logger,
+	messageRelayer MessageRelayer,
+	legacyBuddyListManager LegacyBuddyListManager,
+	feedbagManager FeedbagManager,
+) *OServiceService {
 	return &OServiceService{
-		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
 		cfg:                    cfg,
 		logger:                 logger,
 		foodGroups: []uint16{

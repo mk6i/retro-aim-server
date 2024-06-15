@@ -118,7 +118,7 @@ type CookieBaker interface {
 	Issue(data []byte) ([]byte, error)
 }
 
-type BuddyBroadcaster interface {
+type buddyBroadcaster interface {
 	BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error
 	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
 	UnicastBuddyArrived(ctx context.Context, from *state.Session, to *state.Session) error

@@ -259,7 +259,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			svc := NewOServiceServiceForBOS(tc.cfg, nil, nil, slog.Default(), cookieIssuer, nil, chatRegistry)
+			svc := NewOServiceServiceForBOS(tc.cfg, nil, nil, slog.Default(), cookieIssuer, chatRegistry, nil)
 
 			outputSNAC, err := svc.ServiceRequest(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x01_0x04_OServiceServiceRequest))
@@ -1364,7 +1364,7 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForChat_OServiceHostOnline(t *testing.T) {
-	svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, nil)
+	svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, nil, nil, nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1641,7 +1641,8 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 					Return(p.err)
 			}
 
-			svc := NewOServiceServiceForBOS(config.Config{}, messageRelayer, legacyBuddyListManager, slog.Default(), nil, buddyUpdateBroadcaster, nil)
+			svc := NewOServiceServiceForBOS(config.Config{}, messageRelayer, legacyBuddyListManager, slog.Default(), nil, nil, nil)
+			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
 			haveErr := svc.ClientOnline(nil, tt.bodyIn, tt.sess)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
 		})
@@ -1772,7 +1773,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 			chatRegistry := state.NewChatRegistry()
 			chatRegistry.Register(chatRoom, chatMessageRelayer)
 
-			svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, chatRegistry)
+			svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), chatRegistry, nil, nil, nil)
 
 			haveErr := svc.ClientOnline(nil, wire.SNAC_0x01_0x02_OServiceClientOnline{}, tt.joiningChatter)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
@@ -1781,7 +1782,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
-	svc := NewOServiceServiceForChatNav(config.Config{}, slog.Default(), nil)
+	svc := NewOServiceServiceForChatNav(config.Config{}, slog.Default(), nil, nil, nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1801,7 +1802,7 @@ func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForAlert_HostOnline(t *testing.T) {
-	svc := NewOServiceServiceForAlert(config.Config{}, slog.Default(), nil)
+	svc := NewOServiceServiceForAlert(config.Config{}, slog.Default(), nil, nil, nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{

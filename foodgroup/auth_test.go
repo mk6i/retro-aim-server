@@ -969,7 +969,7 @@ func TestAuthService_RegisterChatSession_HappyPath(t *testing.T) {
 		Crack(authCookie).
 		Return(chatCookieBuf.Bytes(), nil)
 
-	svc := NewAuthService(config.Config{}, nil, userManager, chatRegistry, nil, cookieBaker, nil)
+	svc := NewAuthService(config.Config{}, nil, userManager, chatRegistry, nil, cookieBaker, nil, nil)
 
 	have, err := svc.RegisterChatSession(authCookie)
 	assert.NoError(t, err)
@@ -998,7 +998,7 @@ func TestAuthService_RegisterChatSession_ChatNotFound(t *testing.T) {
 		Crack(authCookie).
 		Return(loginCookie.Bytes(), nil)
 
-	svc := NewAuthService(config.Config{}, nil, nil, chatRegistry, nil, cookieBaker, nil)
+	svc := NewAuthService(config.Config{}, nil, nil, chatRegistry, nil, cookieBaker, nil, nil)
 
 	_, err := svc.RegisterChatSession(authCookie)
 	assert.ErrorIs(t, err, state.ErrChatRoomNotFound)
@@ -1024,7 +1024,7 @@ func TestAuthService_RegisterBOSSession_HappyPath(t *testing.T) {
 		User(sess.IdentScreenName()).
 		Return(&state.User{DisplayScreenName: sess.DisplayScreenName()}, nil)
 
-	svc := NewAuthService(config.Config{}, sessionManager, userManager, nil, nil, cookieBaker, nil)
+	svc := NewAuthService(config.Config{}, sessionManager, userManager, nil, nil, cookieBaker, nil, nil)
 
 	have, err := svc.RegisterBOSSession(authCookie)
 	assert.NoError(t, err)
@@ -1051,7 +1051,7 @@ func TestAuthService_RegisterBOSSession_SessionNotFound(t *testing.T) {
 		User(sess.IdentScreenName()).
 		Return(&state.User{DisplayScreenName: sess.DisplayScreenName()}, nil)
 
-	svc := NewAuthService(config.Config{}, sessionManager, userManager, nil, nil, cookieBaker, nil)
+	svc := NewAuthService(config.Config{}, sessionManager, userManager, nil, nil, cookieBaker, nil, nil)
 
 	have, err := svc.RegisterBOSSession(authCookie)
 	assert.NoError(t, err)
@@ -1193,7 +1193,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 
 			cookieBaker := newMockCookieBaker(t)
 
-			svc := NewAuthService(config.Config{}, nil, nil, chatRegistry, nil, cookieBaker, nil)
+			svc := NewAuthService(config.Config{}, nil, nil, chatRegistry, nil, cookieBaker, nil, nil)
 
 			err := svc.SignoutChat(nil, tt.userSession)
 			assert.ErrorIs(t, err, tt.wantErr)
@@ -1262,7 +1262,8 @@ func TestAuthService_Signout(t *testing.T) {
 					})).
 					Return(nil)
 			}
-			svc := NewAuthService(config.Config{}, sessionManager, nil, nil, legacyBuddyListManager, nil, buddyUpdateBroadcaster)
+			svc := NewAuthService(config.Config{}, sessionManager, nil, nil, legacyBuddyListManager, nil, nil, nil)
+			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
 
 			err := svc.Signout(nil, tt.userSession)
 			assert.ErrorIs(t, err, tt.wantErr)

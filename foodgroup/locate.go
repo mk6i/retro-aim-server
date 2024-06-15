@@ -24,10 +24,10 @@ func NewLocateService(
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
 	profileManager ProfileManager,
-	buddyUpdateBroadcaster BuddyBroadcaster,
+	legacyBuddyListManager LegacyBuddyListManager,
 ) LocateService {
 	return LocateService{
-		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
 		feedbagManager:         feedbagManager,
 		profileManager:         profileManager,
 		sessionManager:         messageRelayer,
@@ -38,7 +38,7 @@ func NewLocateService(
 // responsible for user profiles, user info lookups, directory information, and
 // keyword lookups.
 type LocateService struct {
-	buddyUpdateBroadcaster BuddyBroadcaster
+	buddyUpdateBroadcaster buddyBroadcaster
 	feedbagManager         FeedbagManager
 	profileManager         ProfileManager
 	sessionManager         MessageRelayer

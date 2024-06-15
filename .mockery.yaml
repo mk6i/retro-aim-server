@@ -89,6 +89,6 @@ packages:
       CookieBaker:
         config:
           filename: "mock_cookie_baker_test.go"
-      BuddyBroadcaster:
+      buddyBroadcaster:
         config:
           filename: "mock_buddy_broadcaster_test.go"

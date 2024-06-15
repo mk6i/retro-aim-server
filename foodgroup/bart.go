@@ -22,17 +22,17 @@ var blankGIF = []byte{
 // errKnownIconsOnly indicates that a non-known buddy icon was requested
 var errKnownIconsOnly = errors.New("can only satisfy requests for known icons")
 
-func NewBARTService(logger *slog.Logger, bartManager BARTManager, buddyUpdateBroadcaster BuddyBroadcaster) BARTService {
+func NewBARTService(logger *slog.Logger, bartManager BARTManager, messageRelayer MessageRelayer, feedbagManager FeedbagManager, legacyBuddyListManager LegacyBuddyListManager) BARTService {
 	return BARTService{
 		bartManager:            bartManager,
-		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
 		logger:                 logger,
 	}
 }
 
 type BARTService struct {
 	bartManager            BARTManager
-	buddyUpdateBroadcaster BuddyBroadcaster
+	buddyUpdateBroadcaster buddyBroadcaster
 	logger                 *slog.Logger
 }
 

@@ -16,10 +16,10 @@ const (
 func NewICBMService(
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
-	buddyUpdateBroadcaster BuddyBroadcaster,
+	legacyBuddyListManager LegacyBuddyListManager,
 ) *ICBMService {
 	return &ICBMService{
-		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
 		feedbagManager:         feedbagManager,
 		messageRelayer:         messageRelayer,
 	}
@@ -29,7 +29,7 @@ func NewICBMService(
 // responsible for sending and receiving instant messages and associated
 // functionality such as warning, typing events, etc.
 type ICBMService struct {
-	buddyUpdateBroadcaster BuddyBroadcaster
+	buddyUpdateBroadcaster buddyBroadcaster
 	feedbagManager         FeedbagManager
 	messageRelayer         MessageRelayer
 }

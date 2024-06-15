@@ -22,16 +22,17 @@ func NewAuthService(
 	chatRegistry ChatRegistry,
 	legacyBuddyListManager LegacyBuddyListManager,
 	cookieBaker CookieBaker,
-	buddyUpdateBroadcaster BuddyBroadcaster,
+	messageRelayer MessageRelayer,
+	feedbagManager FeedbagManager,
 ) *AuthService {
 	return &AuthService{
+		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
 		chatRegistry:           chatRegistry,
 		config:                 cfg,
+		cookieBaker:            cookieBaker,
 		legacyBuddyListManager: legacyBuddyListManager,
 		sessionManager:         sessionManager,
 		userManager:            userManager,
-		cookieBaker:            cookieBaker,
-		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
 	}
 }
 
@@ -39,7 +40,7 @@ func NewAuthService(
 // supports both FLAP (AIM v1.0-v3.0) and BUCP (AIM v3.5-v5.9) authentication
 // modes.
 type AuthService struct {
-	buddyUpdateBroadcaster BuddyBroadcaster
+	buddyUpdateBroadcaster buddyBroadcaster
 	chatRegistry           ChatRegistry
 	config                 config.Config
 	cookieBaker            CookieBaker

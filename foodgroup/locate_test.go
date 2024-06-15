@@ -470,7 +470,8 @@ func TestLocateService_SetInfo(t *testing.T) {
 					})).
 					Return(nil)
 			}
-			svc := NewLocateService(nil, nil, profileManager, buddyUpdateBroadcaster)
+			svc := NewLocateService(nil, nil, profileManager, nil)
+			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
 			assert.Equal(t, tt.wantErr, svc.SetInfo(nil, tt.userSession, tt.inBody))
 		})
 	}

@@ -289,7 +289,7 @@ type cookieIssuerParams []struct {
 }
 
 // buddyBroadcasterParams is a helper struct that contains mock parameters for
-// BuddyBroadcaster methods
+// buddyBroadcaster methods
 type buddyBroadcasterParams struct {
 	broadcastBuddyArrivedParams
 	broadcastBuddyDepartedParams
@@ -298,21 +298,21 @@ type buddyBroadcasterParams struct {
 }
 
 // broadcastBuddyArrivedParams is the list of parameters passed at the mock
-// BuddyBroadcaster.BroadcastBuddyArrived call site
+// buddyBroadcaster.BroadcastBuddyArrived call site
 type broadcastBuddyArrivedParams []struct {
 	screenName state.IdentScreenName
 	err        error
 }
 
 // broadcastBuddyDepartedParams is the list of parameters passed at the mock
-// BuddyBroadcaster.BroadcastBuddyDeparted call site
+// buddyBroadcaster.BroadcastBuddyDeparted call site
 type broadcastBuddyDepartedParams []struct {
 	screenName state.IdentScreenName
 	err        error
 }
 
 // unicastBuddyArrivedParams is the list of parameters passed at the mock
-// BuddyBroadcaster.UnicastBuddyArrived call site
+// buddyBroadcaster.UnicastBuddyArrived call site
 type unicastBuddyArrivedParams []struct {
 	from state.IdentScreenName
 	to   state.IdentScreenName
@@ -320,7 +320,7 @@ type unicastBuddyArrivedParams []struct {
 }
 
 // unicastBuddyDepartedParams is the list of parameters passed at the mock
-// BuddyBroadcaster.UnicastBuddyDeparted call site
+// buddyBroadcaster.UnicastBuddyDeparted call site
 type unicastBuddyDepartedParams []struct {
 	from state.IdentScreenName
 	to   state.IdentScreenName

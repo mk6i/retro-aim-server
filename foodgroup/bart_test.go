@@ -91,7 +91,8 @@ func TestBARTService_UpsertItem(t *testing.T) {
 					})).
 					Return(nil)
 			}
-			svc := NewBARTService(slog.Default(), bartManager, buddyUpdateBroadcaster)
+			svc := NewBARTService(slog.Default(), bartManager, nil, nil, nil)
+			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
 
 			output, err := svc.UpsertItem(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x10_0x02_BARTUploadQuery))
@@ -236,7 +237,7 @@ func TestBARTService_RetrieveItem(t *testing.T) {
 					Return(params.result, nil)
 			}
 
-			svc := NewBARTService(slog.Default(), bartManager, nil)
+			svc := NewBARTService(slog.Default(), bartManager, nil, nil, nil)
 
 			output, err := svc.RetrieveItem(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x10_0x04_BARTDownloadQuery))

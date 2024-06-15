@@ -1049,7 +1049,8 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 						}))
 			}
 
-			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, bartManager, buddyUpdateBroadcaster)
+			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, bartManager, nil)
+			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
 			output, err := svc.UpsertItem(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x13_0x08_FeedbagInsertItem).Items)
 			assert.NoError(t, err)
@@ -1432,7 +1433,8 @@ func TestFeedbagService_Use(t *testing.T) {
 					Return(nil)
 			}
 
-			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, nil, buddyUpdateBroadcast)
+			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, nil, nil)
+			svc.buddyUpdateBroadcaster = buddyUpdateBroadcast
 
 			haveErr := svc.Use(nil, tt.sess)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
