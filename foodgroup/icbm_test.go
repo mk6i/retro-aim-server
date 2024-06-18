@@ -614,7 +614,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			messageRelayer.EXPECT().
 				RelayToScreenName(mock.Anything, tc.recipientScreenName, tc.expectSNACToClient).
 				Maybe()
-			buddyUpdateBroadcaster := newMockBuddyBroadcaster(t)
+			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().

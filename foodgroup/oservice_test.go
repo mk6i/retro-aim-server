@@ -374,7 +374,7 @@ func TestSetUserInfoFields(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			buddyUpdateBroadcaster := newMockBuddyBroadcaster(t)
+			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().
@@ -1477,7 +1477,7 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			buddyUpdateBroadcaster := newMockBuddyBroadcaster(t)
+			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tt.mockParams.broadcastBuddyArrivedParams {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().
@@ -1619,7 +1619,7 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 					Buddies(params.userScreenName).
 					Return(params.result)
 			}
-			buddyUpdateBroadcaster := newMockBuddyBroadcaster(t)
+			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tt.mockParams.broadcastBuddyArrivedParams {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().

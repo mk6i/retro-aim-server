@@ -1253,7 +1253,7 @@ func TestAuthService_Signout(t *testing.T) {
 			for _, params := range tt.mockParams.deleteUserParams {
 				legacyBuddyListManager.EXPECT().DeleteUser(params.userScreenName)
 			}
-			buddyUpdateBroadcaster := newMockBuddyBroadcaster(t)
+			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tt.mockParams.broadcastBuddyDepartedParams {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().

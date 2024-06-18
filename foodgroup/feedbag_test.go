@@ -1016,7 +1016,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 					WhoAddedUser(params.userScreenName).
 					Return(params.result)
 			}
-			buddyUpdateBroadcaster := newMockBuddyBroadcaster(t)
+			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().
@@ -1321,7 +1321,7 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 					RetrieveByScreenName(params.screenName).
 					Return(params.sess)
 			}
-			buddyUpdateBroadcast := newMockBuddyBroadcaster(t)
+			buddyUpdateBroadcast := newMockbuddyBroadcaster(t)
 			for _, params := range tc.mockParams.unicastBuddyArrivedParams {
 				p := params
 				buddyUpdateBroadcast.EXPECT().
@@ -1419,7 +1419,7 @@ func TestFeedbagService_Use(t *testing.T) {
 					RetrieveByScreenName(params.screenName).
 					Return(params.sess)
 			}
-			buddyUpdateBroadcast := newMockBuddyBroadcaster(t)
+			buddyUpdateBroadcast := newMockbuddyBroadcaster(t)
 			for _, params := range tt.mockParams.unicastBuddyArrivedParams {
 				p := params
 				buddyUpdateBroadcast.EXPECT().

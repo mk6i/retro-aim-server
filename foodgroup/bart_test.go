@@ -82,7 +82,7 @@ func TestBARTService_UpsertItem(t *testing.T) {
 					BARTUpsert(params.itemHash, params.payload).
 					Return(nil)
 			}
-			buddyUpdateBroadcaster := newMockBuddyBroadcaster(t)
+			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().

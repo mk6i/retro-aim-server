@@ -461,7 +461,7 @@ func TestLocateService_SetInfo(t *testing.T) {
 					SetProfile(params.screenName, params.body).
 					Return(nil)
 			}
-			buddyUpdateBroadcaster := newMockBuddyBroadcaster(t)
+			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tt.mockParams.broadcastBuddyArrivedParams {
 				p := params
 				buddyUpdateBroadcaster.EXPECT().
