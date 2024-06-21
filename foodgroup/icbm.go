@@ -238,8 +238,8 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		notif = wire.SNAC_0x01_0x10_OServiceEvilNotification{
 			NewEvil: recipSess.Warning(),
 			TLVUserInfo: wire.TLVUserInfo{
-				ScreenName:   sess.IdentScreenName().String(),
-				WarningLevel: recipSess.Warning(),
+				ScreenName:   sess.DisplayScreenName().String(),
+				WarningLevel: sess.Warning(),
 			},
 		}
 	} else {
