@@ -419,7 +419,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		{
 			name:                "transmit non-anonymous warning from sender to recipient",
 			blockedState:        state.BlockedNo,
-			senderSession:       newTestSession("sender-screen-name"),
+			senderSession:       newTestSession("sender-screen-name", sessOptWarning(110)),
 			recipientSession:    newTestSession("recipient-screen-name", sessOptCannedSignonTime),
 			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
 			inputSNAC: wire.SNACMessage{
@@ -440,7 +440,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					NewEvil: evilDelta,
 					TLVUserInfo: wire.TLVUserInfo{
 						ScreenName:   "sender-screen-name",
-						WarningLevel: 100,
+						WarningLevel: 110,
 					},
 				},
 			},
@@ -626,10 +626,9 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			senderSession := newTestSession(tc.senderSession.DisplayScreenName())
 			svc := NewICBMService(messageRelayer, feedbagManager, nil)
 			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
-			outputSNAC, err := svc.EvilRequest(nil, senderSession, tc.inputSNAC.Frame,
+			outputSNAC, err := svc.EvilRequest(nil, tc.senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
