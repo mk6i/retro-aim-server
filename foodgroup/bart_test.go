@@ -205,27 +205,6 @@ func TestBARTService_RetrieveItem(t *testing.T) {
 				},
 			},
 		},
-		{
-			name:        "retrieve unknown icon, expect err",
-			userSession: newTestSession("user_screen_name"),
-			inputSNAC: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					RequestID: 1234,
-				},
-				Body: wire.SNAC_0x10_0x04_BARTDownloadQuery{
-					ScreenName: "user_screen_name",
-					Command:    1,
-					BARTID: wire.BARTID{
-						Type: wire.BARTTypesBuddyIcon,
-						BARTInfo: wire.BARTInfo{
-							Flags: wire.BARTFlagsUnknown,
-							Hash:  wire.GetClearIconHash(),
-						},
-					},
-				},
-			},
-			expectErr: errKnownIconsOnly,
-		},
 	}
 
 	for _, tc := range cases {

@@ -3,7 +3,6 @@ package foodgroup
 import (
 	"context"
 	"crypto/md5"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -18,9 +17,6 @@ var blankGIF = []byte{
 	0x00, 0x00, 0x00, 0x21, 0xf9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x00,
 	0x32, 0x00, 0x32, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3b,
 }
-
-// errKnownIconsOnly indicates that a non-known buddy icon was requested
-var errKnownIconsOnly = errors.New("can only satisfy requests for known icons")
 
 func NewBARTService(logger *slog.Logger, bartManager BARTManager, messageRelayer MessageRelayer, feedbagManager FeedbagManager, legacyBuddyListManager LegacyBuddyListManager) BARTService {
 	return BARTService{
@@ -72,11 +68,10 @@ func (s BARTService) UpsertItem(ctx context.Context, sess *state.Session, inFram
 	}, nil
 }
 
+// RetrieveItem fetches a BART item from the data store. The item is selected
+// based on inBody.Hash. It's unclear what effect inBody.Flags is supposed to
+// have on the request.
 func (s BARTService) RetrieveItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x10_0x04_BARTDownloadQuery) (wire.SNACMessage, error) {
-	if inBody.Flags != wire.BARTFlagsKnown {
-		return wire.SNACMessage{}, errKnownIconsOnly
-	}
-
 	var icon []byte
 	if inBody.HasClearIconHash() {
 		icon = blankGIF
