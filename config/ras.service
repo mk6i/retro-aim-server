@@ -5,8 +5,10 @@ Description=Retro AIM Server
 Type=simple
 User=ras
 Group=ras
+Environment="ADMIN_PORT=5196"
 Environment="ALERT_PORT=5194"
 Environment="AUTH_PORT=5190"
+Environment="BART_PORT=5195"
 Environment="BOS_PORT=5191"
 Environment="CHAT_NAV_PORT=5193"
 Environment="CHAT_PORT=5192"

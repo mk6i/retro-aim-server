@@ -634,6 +634,111 @@ type SNAC_0x04_0x14_ICBMClientEvent struct {
 }
 
 //
+// 0x07: Admin
+//
+
+const (
+	AdminErr                uint16 = 0x0001
+	AdminInfoQuery          uint16 = 0x0002
+	AdminInfoReply          uint16 = 0x0003
+	AdminInfoChangeRequest  uint16 = 0x0004
+	AdminInfoChangeReply    uint16 = 0x0005
+	AdminAcctConfirmRequest uint16 = 0x0006
+	AdminAcctConfirmReply   uint16 = 0x0007
+	AdminAcctDeleteRequest  uint16 = 0x0008
+	AdminAcctDeleteReply    uint16 = 0x0009
+
+	AdminInfoErrorValidateNickName              uint16 = 0x0001
+	AdminInfoErrorValidatePassword              uint16 = 0x0002
+	AdminInfoErrorValidateEmail                 uint16 = 0x0003
+	AdminInfoErrorServiceTempUnavailable        uint16 = 0x0004
+	AdminInfoErrorFieldChangeTempUnavailable    uint16 = 0x0005
+	AdminInfoErrorInvalidNickName               uint16 = 0x0006
+	AdminInfoErrorInvalidPassword               uint16 = 0x0007
+	AdminInfoErrorInvalidEmail                  uint16 = 0x0008
+	AdminInfoErrorInvalidRegistrationPreference uint16 = 0x0009
+	AdminInfoErrorInvalidOldPassword            uint16 = 0x000A
+	AdminInfoErrorInvalidNickNameLength         uint16 = 0x000B
+	AdminInfoErrorInvalidPasswordLength         uint16 = 0x000C
+	AdminInfoErrorInvalidEmailLength            uint16 = 0x000D
+	AdminInfoErrorInvalidOldPasswordLength      uint16 = 0x000E
+	AdminInfoErrorNeedOldPassword               uint16 = 0x000F
+	AdminInfoErrorReadOnlyField                 uint16 = 0x0010
+	AdminInfoErrorWriteOnlyField                uint16 = 0x0011
+	AdminInfoErrorUnsupportedType               uint16 = 0x0012
+	AdminInfoErrorAllOtherErrors                uint16 = 0x0013
+	AdminInfoErrorBadSnac                       uint16 = 0x0014
+	AdminInfoErrorInvalidAccount                uint16 = 0x0015
+	AdminInfoErrorDeletedAccount                uint16 = 0x0016
+	AdminInfoErrorExpiredAccount                uint16 = 0x0017
+	AdminInfoErrorNoDatabaseAccess              uint16 = 0x0018
+	AdminInfoErrorInvalidDatabaseFields         uint16 = 0x0019
+	AdminInfoErrorBadDatabaseStatus             uint16 = 0x001A
+	AdminInfoErrorMigrationCancel               uint16 = 0x001B
+	AdminInfoErrorInternalError                 uint16 = 0x001C
+	AdminInfoErrorPendingRequest                uint16 = 0x001D
+	AdminInfoErrorNotDTStatus                   uint16 = 0x001E
+	AdminInfoErrorOutstandingConfirm            uint16 = 0x001F
+	AdminInfoErrorNoEmailAddress                uint16 = 0x0020
+	AdminInfoErrorOverLimit                     uint16 = 0x0021
+	AdminInfoErrorEmailHostFail                 uint16 = 0x0022
+	AdminInfoErrorDNSFail                       uint16 = 0x0023
+
+	AdminInfoRegStatusNoDisclosure    uint16 = 0x01
+	AdminInfoRegStatusLimitDisclosure uint16 = 0x02
+	AdminInfoRegStatusFullDisclosure  uint16 = 0x03
+
+	AdminInfoPermissionsReadOnly1 uint16 = 0x01
+	AdminInfoPermissionsReadOnly2 uint16 = 0x02
+	AdminInfoPermissionsReadWrite uint16 = 0x03
+
+	AdminAcctConfirmStatusEmailSent        uint16 = 0x00
+	AdminAcctConfirmStatusAlreadyConfirmed uint16 = 0x1E
+	AdminAcctConfirmStatusServerError      uint16 = 0x23
+
+	AdminTLVScreenNameFormatted uint16 = 0x01
+	AdminTLVNewPassword         uint16 = 0x02
+	AdminTLVUrl                 uint16 = 0x04
+	AdminTLVErrorCode           uint16 = 0x08
+	AdminTLVEmailAddress        uint16 = 0x11
+	AdminTLVOldPassword         uint16 = 0x12
+	AdminTLVRegistrationStatus  uint16 = 0x13
+)
+
+// Used when client wants to get its account information
+// - AdminTLVScreenNameFormatted
+// - AdminTLVEmailAddress
+// - AdminTLVRegistrationStatus
+type SNAC_0x07_0x02_AdminInfoQuery struct {
+	TLVRestBlock
+}
+
+type SNAC_0x07_0x03_AdminInfoReply struct {
+	Permissions uint16
+	TLVBlock
+}
+
+// AdminTLVScreenNameFormatted - change screenname formatting
+// AdminTLVEmailAddress - change account email
+// AdminTLVRegistrationStatus - change registration status
+// AdminTLVNewPassword, AdminTLVOldPassword - change password
+type SNAC_0x07_0x04_AdminInfoChangeRequest struct {
+	TLVRestBlock
+}
+
+type SNAC_0x07_0x05_AdminChangeReply struct {
+	Permissions uint16
+	TLVBlock
+}
+
+type SNAC_0x07_0x06_AdminConfirmRequest struct{}
+
+type SNAC_0x07_0x07_AdminConfirmReply struct {
+	Status uint16
+	TLV
+}
+
+//
 // 0x09: PermitDeny
 //
 

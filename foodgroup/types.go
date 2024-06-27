@@ -161,3 +161,7 @@ type buddyBroadcaster interface {
 	UnicastBuddyArrived(ctx context.Context, from *state.Session, to *state.Session) error
 	UnicastBuddyDeparted(ctx context.Context, from *state.Session, to *state.Session)
 }
+
+type AccountManager interface {
+	UpdateDisplayScreenName(displayScreenName state.DisplayScreenName) error
+}

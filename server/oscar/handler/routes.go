@@ -10,6 +10,7 @@ import (
 // specific handler responsible for a distinct aspect of the OSCAR service,
 // such as managing buddy lists, chat sessions, and user alerts.
 type Handlers struct {
+	AdminHandler
 	AlertHandler
 	BARTHandler
 	BuddyHandler
@@ -147,6 +148,21 @@ func NewBARTRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
+
+	return router
+}
+
+func NewAdminRouter(h Handlers) oscar.Router {
+	router := oscar.NewRouter()
+
+	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceHandler.ClientOnline)
+	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
+	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
+
+	router.Register(wire.Admin, wire.AdminAcctConfirmRequest, h.AdminHandler.ConfirmRequest)
+	router.Register(wire.Admin, wire.AdminInfoQuery, h.AdminHandler.InfoQuery)
+	router.Register(wire.Admin, wire.AdminInfoChangeRequest, h.AdminHandler.InfoChangeRequest)
 
 	return router
 }

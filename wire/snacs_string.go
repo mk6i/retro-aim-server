@@ -276,6 +276,17 @@ var subGroupName = map[uint16]map[uint16]string{
 		PermitDenyAddTempPermitListEntries: "PermitDenyAddTempPermitListEntries",
 		PermitDenyDelTempPermitListEntries: "PermitDenyDelTempPermitListEntries",
 	},
+	Admin: {
+		AdminErr:                "AdminErr",
+		AdminInfoQuery:          "AdminInfoQuery",
+		AdminInfoReply:          "AdminInfoReply",
+		AdminInfoChangeRequest:  "AdminInfoChangeRequest",
+		AdminInfoChangeReply:    "AdminInfoChangeReply",
+		AdminAcctConfirmRequest: "AdminAcctConfirmRequest",
+		AdminAcctConfirmReply:   "AdminAcctConfirmReply",
+		AdminAcctDeleteRequest:  "AdminAcctDeleteRequest",
+		AdminAcctDeleteReply:    "AdminAcctDeleteReply",
+	},
 }
 
 // SubGroupName gets the string name of a subgroup within a food group. It

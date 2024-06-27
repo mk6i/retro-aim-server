@@ -19,6 +19,7 @@ type AuthService interface {
 	BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
 	FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error)
 	RegisterBOSSession(authCookie []byte) (*state.Session, error)
+	RetrieveBOSSession(authCookie []byte) (*state.Session, error)
 	RegisterChatSession(authCookie []byte) (*state.Session, error)
 	Signout(ctx context.Context, sess *state.Session) error
 	SignoutChat(ctx context.Context, sess *state.Session)

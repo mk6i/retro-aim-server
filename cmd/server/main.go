@@ -141,6 +141,26 @@ func main() {
 		wg.Done()
 	}(logger)
 	go func(logger *slog.Logger) {
+		logger = logger.With("svc", "ADMIN")
+		buddyService := foodgroup.NewBuddyService(sessionManager, feedbagStore, adjListBuddyListStore)
+		adminService := foodgroup.NewAdminService(sessionManager, feedbagStore, buddyService)
+		authService := foodgroup.NewAuthService(cfg, sessionManager, chatSessionManager, feedbagStore, adjListBuddyListStore, cookieBaker, sessionManager, feedbagStore, chatSessionManager)
+		oServiceService := foodgroup.NewOServiceServiceForAdmin(cfg, logger, buddyService)
+
+		oscar.AdminServer{
+			AuthService: authService,
+			Config:      cfg,
+			Handler: handler.NewAdminRouter(handler.Handlers{
+				AdminHandler:    handler.NewAdminHandler(logger, adminService),
+				OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
+			}),
+			Logger:         logger,
+			OnlineNotifier: oServiceService,
+			ListenAddr:     net.JoinHostPort("", cfg.AdminPort),
+		}.Start()
+		wg.Done()
+	}(logger)
+	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "BART")
 		sessionManager := state.NewInMemorySessionManager(logger)
 		bartService := foodgroup.NewBARTService(logger, feedbagStore, sessionManager, feedbagStore, adjListBuddyListStore)
