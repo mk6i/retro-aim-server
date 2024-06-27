@@ -70,8 +70,7 @@ func TestChatService_handleNewConnection(t *testing.T) {
 		RegisterChatSession([]byte(`the-chat-login-cookie`)).
 		Return(sess, nil)
 	authService.EXPECT().
-		SignoutChat(mock.Anything, sess).
-		Return(nil)
+		SignoutChat(mock.Anything, sess)
 
 	onlineNotifier := newMockOnlineNotifier(t)
 	onlineNotifier.EXPECT().

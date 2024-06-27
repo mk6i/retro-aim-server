@@ -18,21 +18,23 @@ import (
 func NewAuthService(
 	cfg config.Config,
 	sessionManager SessionManager,
+	chatSessionRegistry ChatSessionRegistry,
 	userManager UserManager,
-	chatRegistry ChatRegistry,
 	legacyBuddyListManager LegacyBuddyListManager,
 	cookieBaker CookieBaker,
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
+	chatMessageRelayer ChatMessageRelayer,
 ) *AuthService {
 	return &AuthService{
 		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
-		chatRegistry:           chatRegistry,
+		chatSessionRegistry:    chatSessionRegistry,
 		config:                 cfg,
 		cookieBaker:            cookieBaker,
 		legacyBuddyListManager: legacyBuddyListManager,
 		sessionManager:         sessionManager,
 		userManager:            userManager,
+		chatMessageRelayer:     chatMessageRelayer,
 	}
 }
 
@@ -41,15 +43,23 @@ func NewAuthService(
 // modes.
 type AuthService struct {
 	buddyUpdateBroadcaster buddyBroadcaster
-	chatRegistry           ChatRegistry
+	chatMessageRelayer     ChatMessageRelayer
+	chatSessionRegistry    ChatSessionRegistry
 	config                 config.Config
 	cookieBaker            CookieBaker
 	legacyBuddyListManager LegacyBuddyListManager
 	sessionManager         SessionManager
 	userManager            UserManager
+	chatRoomManager        ChatRoomRegistry
 }
 
-// RegisterChatSession creates and returns a chat room session.
+// RegisterChatSession adds a user to a chat room. The authCookie param is an
+// opaque token returned by {{OServiceService.ServiceRequest}} that identifies
+// the user and chat room. It returns the session object registered in the
+// ChatSessionRegistry.
+// This method does not verify that the user and chat room exist because it
+// implicitly trusts the contents of the token signed by
+// {{OServiceService.ServiceRequest}}.
 func (s AuthService) RegisterChatSession(authCookie []byte) (*state.Session, error) {
 	token, err := s.cookieBaker.Crack(authCookie)
 	if err != nil {
@@ -59,23 +69,7 @@ func (s AuthService) RegisterChatSession(authCookie []byte) (*state.Session, err
 	if err := wire.Unmarshal(&c, bytes.NewBuffer(token)); err != nil {
 		return nil, err
 	}
-
-	room, chatSessMgr, err := s.chatRegistry.Retrieve(c.ChatCookie)
-	if err != nil {
-		return nil, err
-	}
-	u, err := s.userManager.User(state.NewIdentScreenName(c.ScreenName))
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve user: %w", err)
-	}
-	if u == nil {
-		return nil, fmt.Errorf("user not found")
-	}
-
-	chatSess := chatSessMgr.(SessionManager).AddSession(u.DisplayScreenName)
-	chatSess.SetChatRoomCookie(room.Cookie)
-
-	return chatSess, nil
+	return s.chatSessionRegistry.AddSession(c.ChatCookie, c.ScreenName), nil
 }
 
 // RegisterBOSSession creates and returns a user's session.
@@ -108,18 +102,10 @@ func (s AuthService) Signout(ctx context.Context, sess *state.Session) error {
 }
 
 // SignoutChat removes user from chat room and notifies remaining participants
-// of their departure. If user is the last to leave, the chat room is deleted.
-func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session) error {
-	chatRoom, chatSessMgr, err := s.chatRegistry.Retrieve(sess.ChatRoomCookie())
-	if err != nil {
-		return err
-	}
-	alertUserLeft(ctx, sess, chatSessMgr.(ChatMessageRelayer))
-	chatSessMgr.(SessionManager).RemoveSession(sess)
-	if chatSessMgr.(SessionManager).Empty() {
-		s.chatRegistry.Remove(chatRoom.Cookie)
-	}
-	return nil
+// of their departure.
+func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session) {
+	alertUserLeft(ctx, sess, s.chatMessageRelayer)
+	s.chatSessionRegistry.RemoveSession(sess)
 }
 
 // BUCPChallenge processes a BUCP authentication challenge request. It

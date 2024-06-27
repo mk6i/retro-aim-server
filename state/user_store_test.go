@@ -682,3 +682,183 @@ func TestSQLiteUserStore_SetUserPassword_ErrNoUser(t *testing.T) {
 	err = feedbagStore.SetUserPassword(u)
 	assert.ErrorIs(t, err, ErrNoUser)
 }
+
+func TestSQLiteUserStore_ChatRoomByCookie_RoomFound(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	userStore, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	chatRoom := NewChatRoom()
+	chatRoom.Exchange = 4
+	chatRoom.Name = "my new chat room!"
+	chatRoom.Creator = NewIdentScreenName("the-screen-name")
+
+	err = userStore.CreateChatRoom(chatRoom)
+	assert.NoError(t, err)
+
+	gotRoom, err := userStore.ChatRoomByCookie(chatRoom.Cookie)
+	assert.NoError(t, err)
+	assert.Equal(t, chatRoom, gotRoom)
+}
+
+func TestSQLiteUserStore_ChatRoomByCookie_RoomNotFound(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	userStore, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	_, err = userStore.ChatRoomByCookie("the-chat-cookie")
+	assert.ErrorIs(t, err, ErrChatRoomNotFound)
+}
+
+func TestSQLiteUserStore_ChatRoomByName_RoomFound(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	userStore, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	chatRoom := NewChatRoom()
+	chatRoom.Exchange = 4
+	chatRoom.Name = "my new chat room!"
+	chatRoom.Creator = NewIdentScreenName("the-screen-name")
+
+	err = userStore.CreateChatRoom(chatRoom)
+	assert.NoError(t, err)
+
+	gotRoom, err := userStore.ChatRoomByName(chatRoom.Exchange, chatRoom.Name)
+	assert.NoError(t, err)
+	assert.Equal(t, chatRoom, gotRoom)
+}
+
+func TestSQLiteUserStore_ChatRoomByName_RoomNotFound(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	userStore, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	_, err = userStore.ChatRoomByName(4, "the-chat-room")
+	assert.ErrorIs(t, err, ErrChatRoomNotFound)
+}
+
+func TestSQLiteUserStore_AllChatRooms(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	userStore, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	chatRooms := []ChatRoom{
+		{
+			Cookie:   "chat-room-1",
+			Exchange: 4,
+			Name:     "chat room 1",
+		},
+		{
+			Cookie:   "chat-room-2",
+			Exchange: 4,
+			Name:     "chat room 2",
+		},
+		{
+			Cookie:   "chat-room-3",
+			Exchange: 5,
+			Name:     "chat room 3",
+		},
+	}
+
+	for _, room := range chatRooms {
+		err = userStore.CreateChatRoom(room)
+		assert.NoError(t, err)
+	}
+
+	// public exchange
+	gotRooms, err := userStore.AllChatRooms(5)
+	assert.NoError(t, err)
+
+	assert.Equal(t, chatRooms[2:], gotRooms)
+
+	// private exchange
+	gotRooms, err = userStore.AllChatRooms(4)
+	assert.NoError(t, err)
+
+	assert.Equal(t, chatRooms[0:2], gotRooms)
+}
+
+func TestSQLiteUserStore_CreateChatRoom_ErrChatRoomExists(t *testing.T) {
+
+	tt := []struct {
+		name         string
+		firstInsert  ChatRoom
+		secondInsert ChatRoom
+		wantErr      error
+	}{
+		{
+			name: "create two rooms with same exchange/name, different cookie",
+			firstInsert: ChatRoom{
+				Cookie:   "chat-room-1",
+				Exchange: 4,
+				Name:     "chat room 1",
+			},
+			secondInsert: ChatRoom{
+				Cookie:   "chat-room-1-new",
+				Exchange: 4,
+				Name:     "chat room 1",
+			},
+			wantErr: ErrDupChatRoom,
+		},
+		{
+			name: "create two rooms with different exchange/name, same cookie",
+			firstInsert: ChatRoom{
+				Cookie:   "chat-room",
+				Exchange: 5,
+				Name:     "chat room 1",
+			},
+			secondInsert: ChatRoom{
+				Cookie:   "chat-room",
+				Exchange: 4,
+				Name:     "chat room 2",
+			},
+			wantErr: ErrDupChatRoom,
+		},
+		{
+			name: "create two rooms with different cookie/exchange, same name",
+			firstInsert: ChatRoom{
+				Cookie:   "chat-room-1",
+				Exchange: 5,
+				Name:     "chat room",
+			},
+			secondInsert: ChatRoom{
+				Cookie:   "chat-room-2",
+				Exchange: 4,
+				Name:     "chat room",
+			},
+			wantErr: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				assert.NoError(t, os.Remove(testFile))
+			}()
+
+			userStore, err := NewSQLiteUserStore(testFile)
+			assert.NoError(t, err)
+
+			err = userStore.CreateChatRoom(tc.firstInsert)
+			assert.NoError(t, err)
+
+			err = userStore.CreateChatRoom(tc.secondInsert)
+			assert.ErrorIs(t, err, tc.wantErr)
+		})
+	}
+}

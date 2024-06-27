@@ -9,16 +9,16 @@ import (
 )
 
 // NewChatService creates a new instance of ChatService.
-func NewChatService(chatRegistry ChatRegistry) *ChatService {
+func NewChatService(chatMessageRelayer ChatMessageRelayer) *ChatService {
 	return &ChatService{
-		chatRegistry: chatRegistry,
+		chatMessageRelayer: chatMessageRelayer,
 	}
 }
 
 // ChatService provides functionality for the Chat food group, which is
 // responsible for sending and receiving chat messages.
 type ChatService struct {
-	chatRegistry ChatRegistry
+	chatMessageRelayer ChatMessageRelayer
 }
 
 // ChannelMsgToHost relays wire.ChatChannelMsgToClient SNAC sent from a user
@@ -50,12 +50,8 @@ func (s ChatService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		},
 	}
 
-	_, chatSessMgr, err := s.chatRegistry.Retrieve(sess.ChatRoomCookie())
-	if err != nil {
-		return nil, err
-	}
 	// send message to all the participants except sender
-	chatSessMgr.(ChatMessageRelayer).RelayToAllExcept(ctx, sess, wire.SNACMessage{
+	s.chatMessageRelayer.RelayToAllExcept(ctx, sess.ChatRoomCookie(), sess.IdentScreenName(), wire.SNACMessage{
 		Frame: frameOut,
 		Body:  bodyOut,
 	})
@@ -75,13 +71,13 @@ func (s ChatService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 
 func setOnlineChatUsers(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer) {
 	snacPayloadOut := wire.SNAC_0x0E_0x03_ChatUsersJoined{}
-	sessions := chatMessageRelayer.AllSessions()
+	sessions := chatMessageRelayer.AllSessions(sess.ChatRoomCookie())
 
 	for _, uSess := range sessions {
 		snacPayloadOut.Users = append(snacPayloadOut.Users, uSess.TLVUserInfo())
 	}
 
-	chatMessageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), wire.SNACMessage{
+	chatMessageRelayer.RelayToScreenName(ctx, sess.ChatRoomCookie(), sess.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Chat,
 			SubGroup:  wire.ChatUsersJoined,
@@ -91,7 +87,7 @@ func setOnlineChatUsers(ctx context.Context, sess *state.Session, chatMessageRel
 }
 
 func alertUserJoined(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer) {
-	chatMessageRelayer.RelayToAllExcept(ctx, sess, wire.SNACMessage{
+	chatMessageRelayer.RelayToAllExcept(ctx, sess.ChatRoomCookie(), sess.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Chat,
 			SubGroup:  wire.ChatUsersJoined,
@@ -105,7 +101,7 @@ func alertUserJoined(ctx context.Context, sess *state.Session, chatMessageRelaye
 }
 
 func alertUserLeft(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer) {
-	chatMessageRelayer.RelayToAllExcept(ctx, sess, wire.SNACMessage{
+	chatMessageRelayer.RelayToAllExcept(ctx, sess.ChatRoomCookie(), sess.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Chat,
 			SubGroup:  wire.ChatUsersLeft,
@@ -119,7 +115,7 @@ func alertUserLeft(ctx context.Context, sess *state.Session, chatMessageRelayer 
 }
 
 func sendChatRoomInfoUpdate(ctx context.Context, sess *state.Session, chatMessageRelayer ChatMessageRelayer, room state.ChatRoom) {
-	chatMessageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), wire.SNACMessage{
+	chatMessageRelayer.RelayToScreenName(ctx, sess.ChatRoomCookie(), sess.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Chat,
 			SubGroup:  wire.ChatRoomInfoUpdate,

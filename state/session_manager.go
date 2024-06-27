@@ -34,19 +34,6 @@ func (s *InMemorySessionManager) RelayToAll(ctx context.Context, msg wire.SNACMe
 	}
 }
 
-// RelayToAllExcept relays a message to all session in the pool except for one
-// particular session.
-func (s *InMemorySessionManager) RelayToAllExcept(ctx context.Context, except *Session, msg wire.SNACMessage) {
-	s.mapMutex.RLock()
-	defer s.mapMutex.RUnlock()
-	for _, sess := range s.store {
-		if sess == except {
-			continue
-		}
-		s.maybeRelayMessage(ctx, msg, sess)
-	}
-}
-
 // RelayToScreenName relays a message to a session with a matching screen name.
 func (s *InMemorySessionManager) RelayToScreenName(ctx context.Context, screenName IdentScreenName, msg wire.SNACMessage) {
 	sess := s.RetrieveByScreenName(screenName)
@@ -160,4 +147,101 @@ func (s *InMemorySessionManager) AllSessions() []*Session {
 		sessions = append(sessions, sess)
 	}
 	return sessions
+}
+
+// NewInMemoryChatSessionManager creates a new instance of
+// InMemoryChatSessionManager.
+func NewInMemoryChatSessionManager(logger *slog.Logger) *InMemoryChatSessionManager {
+	return &InMemoryChatSessionManager{
+		store:  make(map[string]*InMemorySessionManager),
+		logger: logger,
+	}
+}
+
+// InMemoryChatSessionManager manages chat sessions for multiple chat rooms
+// stored in memory. It provides thread-safe operations to add, remove, and
+// manipulate sessions as well as relay messages to participants.
+type InMemoryChatSessionManager struct {
+	logger   *slog.Logger
+	mapMutex sync.RWMutex
+	store    map[string]*InMemorySessionManager
+}
+
+// AddSession adds a user to a chat room.
+func (s *InMemoryChatSessionManager) AddSession(chatCookie string, screenName DisplayScreenName) *Session {
+	s.mapMutex.Lock()
+	defer s.mapMutex.Unlock()
+
+	if _, ok := s.store[chatCookie]; !ok {
+		s.store[chatCookie] = NewInMemorySessionManager(s.logger)
+	}
+
+	sessionManager := s.store[chatCookie]
+	sess := sessionManager.AddSession(screenName)
+	sess.SetChatRoomCookie(chatCookie)
+	return sess
+}
+
+// RemoveSession removes a user session from a chat room.
+func (s *InMemoryChatSessionManager) RemoveSession(sess *Session) {
+	s.mapMutex.Lock()
+	defer s.mapMutex.Unlock()
+
+	sessionManager, ok := s.store[sess.ChatRoomCookie()]
+	if !ok {
+		panic("attempting to remove a session after its room has been deleted")
+	}
+	sessionManager.RemoveSession(sess)
+	if sessionManager.Empty() {
+		delete(s.store, sess.ChatRoomCookie())
+	}
+}
+
+// AllSessions returns all chat room participants. Returns
+// ErrChatRoomNotFound if the room does not exist.
+func (s *InMemoryChatSessionManager) AllSessions(cookie string) []*Session {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+
+	sessionManager, ok := s.store[cookie]
+	if !ok {
+		s.logger.Debug("trying to get sessions for non-existent room", "cookie", cookie)
+		return nil
+	}
+	return sessionManager.AllSessions()
+}
+
+// RelayToAllExcept sends a message to all chat room participants except for
+// the participant with a particular screen name. Returns ErrChatRoomNotFound
+// if the room does not exist for cookie.
+func (s *InMemoryChatSessionManager) RelayToAllExcept(ctx context.Context, cookie string, except IdentScreenName, msg wire.SNACMessage) {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+
+	sessionManager, ok := s.store[cookie]
+	if !ok {
+		s.logger.Error("trying to relay message to all for non-existent room", "cookie", cookie)
+		return
+	}
+
+	for _, sess := range sessionManager.AllSessions() {
+		if sess.IdentScreenName() == except {
+			continue
+		}
+		sessionManager.maybeRelayMessage(ctx, msg, sess)
+	}
+}
+
+// RelayToScreenName sends a message to a chat room user. Returns
+// ErrChatRoomNotFound if the room does not exist for cookie.
+func (s *InMemoryChatSessionManager) RelayToScreenName(ctx context.Context, cookie string, recipient IdentScreenName, msg wire.SNACMessage) {
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+
+	sessionManager, ok := s.store[cookie]
+	if !ok {
+		s.logger.Error("trying to relay message to screen name for non-existent room", "cookie", cookie)
+		return
+	}
+	sessionManager.RelayToScreenName(ctx, recipient, msg)
 }

@@ -513,11 +513,11 @@ func NewOServiceServiceForBOS(
 	legacyBuddyListManager LegacyBuddyListManager,
 	logger *slog.Logger,
 	cookieIssuer CookieBaker,
-	cr *state.ChatRegistry,
 	feedbagManager FeedbagManager,
+	chatRoomManager ChatRoomRegistry,
 ) *OServiceServiceForBOS {
 	return &OServiceServiceForBOS{
-		chatRegistry:           cr,
+		chatRoomManager:        chatRoomManager,
 		cookieIssuer:           cookieIssuer,
 		legacyBuddyListManager: legacyBuddyListManager,
 		messageRelayer:         messageRelayer,
@@ -544,7 +544,7 @@ func NewOServiceServiceForBOS(
 // running on the BOS server.
 type OServiceServiceForBOS struct {
 	OServiceService
-	chatRegistry           *state.ChatRegistry
+	chatRoomManager        ChatRoomRegistry
 	cookieIssuer           CookieBaker
 	legacyBuddyListManager LegacyBuddyListManager
 	messageRelayer         MessageRelayer
@@ -553,8 +553,8 @@ type OServiceServiceForBOS struct {
 // chatLoginCookie represents credentials used to authenticate a user chat
 // session.
 type chatLoginCookie struct {
-	ChatCookie string `len_prefix:"uint8"`
-	ScreenName string `len_prefix:"uint8"`
+	ChatCookie string                  `len_prefix:"uint8"`
+	ScreenName state.DisplayScreenName `len_prefix:"uint8"`
 }
 
 // ServiceRequest handles service discovery, providing a host name and metadata
@@ -641,14 +641,14 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			return wire.SNACMessage{}, err
 		}
 
-		room, _, err := s.chatRegistry.Retrieve(roomSNAC.Cookie)
+		room, err := s.chatRoomManager.ChatRoomByCookie(roomSNAC.Cookie)
 		if err != nil {
 			return wire.SNACMessage{}, fmt.Errorf("unable to retrieve room info: %w", err)
 		}
 
 		loginCookie := chatLoginCookie{
 			ChatCookie: room.Cookie,
-			ScreenName: sess.IdentScreenName().String(),
+			ScreenName: sess.DisplayScreenName(),
 		}
 		buf := &bytes.Buffer{}
 		if err := wire.Marshal(loginCookie, buf); err != nil {
@@ -720,13 +720,13 @@ func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x0
 func NewOServiceServiceForChat(
 	cfg config.Config,
 	logger *slog.Logger,
-	cr *state.ChatRegistry,
 	messageRelayer MessageRelayer,
 	legacyBuddyListManager LegacyBuddyListManager,
 	feedbagManager FeedbagManager,
+	chatRoomManager ChatRoomRegistry,
+	chatMessageRelayer ChatMessageRelayer,
 ) *OServiceServiceForChat {
 	return &OServiceServiceForChat{
-		chatRegistry: cr,
 		OServiceService: OServiceService{
 			buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
 			cfg:                    cfg,
@@ -736,6 +736,8 @@ func NewOServiceServiceForChat(
 				wire.Chat,
 			},
 		},
+		chatRoomManager:    chatRoomManager,
+		chatMessageRelayer: chatMessageRelayer,
 	}
 }
 
@@ -743,7 +745,8 @@ func NewOServiceServiceForChat(
 // running on the Chat server.
 type OServiceServiceForChat struct {
 	OServiceService
-	chatRegistry *state.ChatRegistry
+	chatRoomManager    ChatRoomRegistry
+	chatMessageRelayer ChatMessageRelayer
 }
 
 // ClientOnline runs when the current user is ready to join the chat.
@@ -752,13 +755,13 @@ type OServiceServiceForChat struct {
 //   - Announce current user's arrival to other chat room participants
 //   - Send current user the chat room participant list
 func (s OServiceServiceForChat) ClientOnline(ctx context.Context, _ wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
-	room, chatSessMgr, err := s.chatRegistry.Retrieve(sess.ChatRoomCookie())
+	room, err := s.chatRoomManager.ChatRoomByCookie(sess.ChatRoomCookie())
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting chat room: %w", err)
 	}
-	sendChatRoomInfoUpdate(ctx, sess, chatSessMgr.(ChatMessageRelayer), room)
-	alertUserJoined(ctx, sess, chatSessMgr.(ChatMessageRelayer))
-	setOnlineChatUsers(ctx, sess, chatSessMgr.(ChatMessageRelayer))
+	sendChatRoomInfoUpdate(ctx, sess, s.chatMessageRelayer, room)
+	alertUserJoined(ctx, sess, s.chatMessageRelayer)
+	setOnlineChatUsers(ctx, sess, s.chatMessageRelayer)
 	return nil
 }
 

@@ -21,7 +21,7 @@ type AuthService interface {
 	RegisterBOSSession(authCookie []byte) (*state.Session, error)
 	RegisterChatSession(authCookie []byte) (*state.Session, error)
 	Signout(ctx context.Context, sess *state.Session) error
-	SignoutChat(ctx context.Context, sess *state.Session) error
+	SignoutChat(ctx context.Context, sess *state.Session)
 }
 
 // AuthServer is an authentication server for both FLAP (AIM v1.0-3.0) and BUCP

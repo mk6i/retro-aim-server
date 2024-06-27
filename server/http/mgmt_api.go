@@ -18,33 +18,16 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-type userWithPassword struct {
-	state.User
-	Password string `json:"password,omitempty"`
-}
+func StartManagementAPI(
+	cfg config.Config,
+	userManager UserManager,
+	sessionRetriever SessionRetriever,
+	chatRoomRetriever ChatRoomRetriever,
+	chatRoomCreator ChatRoomCreator,
+	chatSessionRetriever ChatSessionRetriever,
+	logger *slog.Logger,
+) {
 
-type userSession struct {
-	ScreenName string `json:"screen_name"`
-}
-
-type onlineUsers struct {
-	Count    int           `json:"count"`
-	Sessions []userSession `json:"sessions"`
-}
-
-type UserManager interface {
-	AllUsers() ([]state.User, error)
-	DeleteUser(screenName state.IdentScreenName) error
-	InsertUser(u state.User) error
-	SetUserPassword(u state.User) error
-	User(screenName state.IdentScreenName) (*state.User, error)
-}
-
-type SessionRetriever interface {
-	AllSessions() []*state.Session
-}
-
-func StartManagementAPI(cfg config.Config, userManager UserManager, sessionRetriever SessionRetriever, logger *slog.Logger) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
 		userHandler(w, r, userManager, uuid.New, logger)
@@ -57,6 +40,12 @@ func StartManagementAPI(cfg config.Config, userManager UserManager, sessionRetri
 	})
 	mux.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) {
 		sessionHandler(w, r, sessionRetriever)
+	})
+	mux.HandleFunc("/chat/room/public", func(w http.ResponseWriter, r *http.Request) {
+		publicChatHandler(w, r, chatRoomRetriever, chatRoomCreator, chatSessionRetriever, state.NewChatRoom, logger)
+	})
+	mux.HandleFunc("/chat/room/private", func(w http.ResponseWriter, r *http.Request) {
+		privateChatHandler(w, r, chatRoomRetriever, chatSessionRetriever, logger)
 	})
 
 	addr := net.JoinHostPort(cfg.ApiHost, cfg.ApiPort)
@@ -274,4 +263,128 @@ func loginHandler(w http.ResponseWriter, r *http.Request, userManager UserManage
 	// Successfully authenticated
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("200 OK: Successfully Authenticated\n"))
+}
+
+func publicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatSessionRetriever ChatSessionRetriever, newChatRoom func() state.ChatRoom, logger *slog.Logger) {
+	switch r.Method {
+	case http.MethodGet:
+		getPublicChatHandler(w, r, chatRoomRetriever, chatSessionRetriever, logger)
+	case http.MethodPost:
+		postPublicChatHandler(w, r, chatRoomCreator, newChatRoom, logger)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func privateChatHandler(w http.ResponseWriter, r *http.Request, chatRoomRetriever ChatRoomRetriever, chatSessionRetriever ChatSessionRetriever, logger *slog.Logger) {
+	switch r.Method {
+	case http.MethodGet:
+		getPrivateChatHandler(w, r, chatRoomRetriever, chatSessionRetriever, logger)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// getPublicChatHandler handles the GET /chat/room/public endpoint.
+func getPublicChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetriever ChatRoomRetriever, chatSessionRetriever ChatSessionRetriever, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+	rooms, err := chatRoomRetriever.AllChatRooms(state.PublicExchange)
+	if err != nil {
+		logger.Error("error in GET /chat/rooms/public", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	out := make([]chatRoom, len(rooms))
+	for i, room := range rooms {
+		sessions := chatSessionRetriever.AllSessions(room.Cookie)
+		cr := chatRoom{
+			CreateTime:   room.CreateTime,
+			Name:         room.Name,
+			Participants: make([]userHandle, 0, len(sessions)),
+			URL:          room.URL().String(),
+		}
+		for _, sess := range sessions {
+			cr.Participants = append(cr.Participants, userHandle{
+				ID:         sess.IdentScreenName().String(),
+				ScreenName: sess.DisplayScreenName().String(),
+			})
+		}
+
+		out[i] = cr
+	}
+
+	if err := json.NewEncoder(w).Encode(out); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// postPublicChatHandler handles the POST /chat/room/public endpoint.
+func postPublicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomCreator ChatRoomCreator, newChatRoom func() state.ChatRoom, logger *slog.Logger) {
+	input := chatRoomCreate{}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, "invalid input", http.StatusBadRequest)
+		return
+	}
+
+	input.Name = strings.TrimSpace(input.Name)
+	if input.Name == "" || len(input.Name) > 50 {
+		http.Error(w, "chat room name must be between 1 and 50 characters", http.StatusBadRequest)
+		return
+	}
+
+	cr := newChatRoom()
+	cr.Name = input.Name
+	cr.Exchange = state.PublicExchange
+
+	err := chatRoomCreator.CreateChatRoom(cr)
+	switch {
+	case errors.Is(err, state.ErrDupChatRoom):
+		http.Error(w, "Chat room already exists.", http.StatusConflict)
+		return
+	case err != nil:
+		logger.Error("error inserting chat room POST /chat/room/public", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	fmt.Fprintln(w, "Chat room created successfully.")
+}
+
+// getPrivateChatHandler handles the GET /chat/room/private endpoint.
+func getPrivateChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetriever ChatRoomRetriever, chatSessionRetriever ChatSessionRetriever, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+	rooms, err := chatRoomRetriever.AllChatRooms(state.PrivateExchange)
+	if err != nil {
+		logger.Error("error in GET /chat/rooms/private", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	out := make([]chatRoom, len(rooms))
+	for i, room := range rooms {
+		sessions := chatSessionRetriever.AllSessions(room.Cookie)
+		cr := chatRoom{
+			CreateTime:   room.CreateTime,
+			CreatorID:    room.Creator.String(),
+			Name:         room.Name,
+			Participants: make([]userHandle, 0, len(sessions)),
+			URL:          room.URL().String(),
+		}
+		for _, sess := range sessions {
+			cr.Participants = append(cr.Participants, userHandle{
+				ID:         sess.IdentScreenName().String(),
+				ScreenName: sess.DisplayScreenName().String(),
+			})
+		}
+
+		out[i] = cr
+	}
+
+	if err := json.NewEncoder(w).Encode(out); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }

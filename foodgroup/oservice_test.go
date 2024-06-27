@@ -22,8 +22,6 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 		name string
 		// config is the application config
 		cfg config.Config
-		// chatRoom is the chat room the user connects to
-		chatRoom *state.ChatRoom
 		// userSession is the session of the user requesting the chat service
 		// info
 		userSession *state.Session
@@ -150,14 +148,6 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				ChatPort:  "1234",
 			},
-			chatRoom: &state.ChatRoom{
-				CreateTime:     time.UnixMilli(0),
-				DetailLevel:    4,
-				Exchange:       8,
-				Cookie:         "the-chat-cookie",
-				InstanceNumber: 16,
-				Name:           "my new chat",
-			},
 			userSession: newTestSession("user_screen_name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -186,7 +176,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte("the-auth-cookie")),
 							wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Chat),
 							wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
 							wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
@@ -195,13 +185,28 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
+				chatRoomRegistryParams: chatRoomRegistryParams{
+					chatRoomByCookieParams: chatRoomByCookieParams{
+						{
+							cookie: "the-chat-cookie",
+							room: state.ChatRoom{
+								CreateTime:     time.UnixMilli(0),
+								DetailLevel:    4,
+								Exchange:       8,
+								Cookie:         "the-chat-cookie",
+								InstanceNumber: 16,
+								Name:           "my new chat",
+							},
+						},
+					},
+				},
 				cookieIssuerParams: cookieIssuerParams{
 					{
 						data: []byte{
 							0x0F, 't', 'h', 'e', '-', 'c', 'h', 'a', 't', '-', 'c', 'o', 'o', 'k', 'i', 'e',
 							0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
 						},
-						cookie: []byte("the-cookie"),
+						cookie: []byte("the-auth-cookie"),
 					},
 				},
 			},
@@ -212,7 +217,6 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				ChatPort:  "1234",
 			},
-			chatRoom:    nil,
 			userSession: newTestSession("user_screen_name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -231,6 +235,16 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					},
 				},
 			},
+			mockParams: mockParams{
+				chatRoomRegistryParams: chatRoomRegistryParams{
+					chatRoomByCookieParams: chatRoomByCookieParams{
+						{
+							cookie: "the-chat-cookie",
+							err:    state.ErrChatRoomNotFound,
+						},
+					},
+				},
+			},
 			expectErr: state.ErrChatRoomNotFound,
 		},
 	}
@@ -240,15 +254,11 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			//
 			// initialize dependencies
 			//
-			sessionManager := newMockSessionManager(t)
-			chatRegistry := state.NewChatRegistry()
-			chatSess := &state.Session{}
-			if tc.chatRoom != nil {
-				sessionManager.EXPECT().
-					AddSession(tc.userSession.IdentScreenName()).
-					Return(chatSess).
-					Maybe()
-				chatRegistry.Register(*tc.chatRoom, sessionManager)
+			chatRoomManager := newMockChatRoomRegistry(t)
+			for _, params := range tc.mockParams.chatRoomByCookieParams {
+				chatRoomManager.EXPECT().
+					ChatRoomByCookie(params.cookie).
+					Return(params.room, params.err)
 			}
 			cookieIssuer := newMockCookieBaker(t)
 			for _, params := range tc.mockParams.cookieIssuerParams {
@@ -259,7 +269,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			svc := NewOServiceServiceForBOS(tc.cfg, nil, nil, slog.Default(), cookieIssuer, chatRegistry, nil)
+			svc := NewOServiceServiceForBOS(tc.cfg, nil, nil, slog.Default(), cookieIssuer, nil, chatRoomManager)
 
 			outputSNAC, err := svc.ServiceRequest(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x01_0x04_OServiceServiceRequest))
@@ -1364,7 +1374,7 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForChat_OServiceHostOnline(t *testing.T) {
-	svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, nil, nil, nil)
+	svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, nil, nil, nil, nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1660,16 +1670,6 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 		Name:           "the-chat-room",
 	}
 
-	type participantsParams []*state.Session
-	type broadcastExcept []struct {
-		sess    *state.Session
-		message wire.SNACMessage
-	}
-	type sendToScreenNameParams []struct {
-		screenName state.IdentScreenName
-		message    wire.SNACMessage
-	}
-
 	tests := []struct {
 		// name is the name of the test
 		name string
@@ -1677,16 +1677,8 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 		joiningChatter *state.Session
 		// bodyIn is the SNAC body sent from the arriving user's client to the
 		// server
-		bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline
-		// participantsParams contains all the chat room participants
-		participantsParams participantsParams
-		// broadcastExcept contains params for broadcasting chat arrival to all
-		// chat participants except the user joining
-		broadcastExcept broadcastExcept
-		// relayToScreenNameParams contains params for sending chat room
-		// metadata and chat participant list to joining user
-		sendToScreenNameParams sendToScreenNameParams
-		wantErr                error
+		bodyIn  wire.SNAC_0x01_0x02_OServiceClientOnline
+		wantErr error
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1695,56 +1687,82 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 			name:           "upon joining, send chat room metadata and participant list to joining user; alert arrival to existing participants",
 			joiningChatter: chatter1,
 			bodyIn:         wire.SNAC_0x01_0x02_OServiceClientOnline{},
-			broadcastExcept: broadcastExcept{
-				{
-					sess: chatter1,
-					message: wire.SNACMessage{
-						Frame: wire.SNACFrame{
-							FoodGroup: wire.Chat,
-							SubGroup:  wire.ChatUsersJoined,
+			mockParams: mockParams{
+				chatMessageRelayerParams: chatMessageRelayerParams{
+					chatRelayToAllExceptParams: chatRelayToAllExceptParams{
+						{
+							screenName: state.NewIdentScreenName("chatter-1"),
+							cookie:     "the-cookie",
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.Chat,
+									SubGroup:  wire.ChatUsersJoined,
+								},
+								Body: wire.SNAC_0x0E_0x03_ChatUsersJoined{
+									Users: []wire.TLVUserInfo{
+										chatter1.TLVUserInfo(),
+									},
+								},
+							},
 						},
-						Body: wire.SNAC_0x0E_0x03_ChatUsersJoined{
-							Users: []wire.TLVUserInfo{
-								chatter1.TLVUserInfo(),
+					},
+					chatAllSessionsParams: chatAllSessionsParams{
+						{
+							cookie: "the-cookie",
+							sessions: []*state.Session{
+								chatter1,
+								chatter2,
+							},
+						},
+					},
+					chatRelayToScreenNameParams: chatRelayToScreenNameParams{
+						{
+							cookie:     "the-cookie",
+							screenName: chatter1.IdentScreenName(),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.Chat,
+									SubGroup:  wire.ChatRoomInfoUpdate,
+								},
+								Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+									Exchange:       chatRoom.Exchange,
+									Cookie:         chatRoom.Cookie,
+									InstanceNumber: chatRoom.InstanceNumber,
+									DetailLevel:    chatRoom.DetailLevel,
+									TLVBlock: wire.TLVBlock{
+										TLVList: chatRoom.TLVList(),
+									},
+								},
+							},
+						},
+						{
+							cookie:     "the-cookie",
+							screenName: chatter1.IdentScreenName(),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.Chat,
+									SubGroup:  wire.ChatUsersJoined,
+								},
+								Body: wire.SNAC_0x0E_0x03_ChatUsersJoined{
+									Users: []wire.TLVUserInfo{
+										chatter1.TLVUserInfo(),
+										chatter2.TLVUserInfo(),
+									},
+								},
 							},
 						},
 					},
 				},
-			},
-			participantsParams: participantsParams{
-				chatter1,
-				chatter2,
-			},
-			sendToScreenNameParams: sendToScreenNameParams{
-				{
-					screenName: chatter1.IdentScreenName(),
-					message: wire.SNACMessage{
-						Frame: wire.SNACFrame{
-							FoodGroup: wire.Chat,
-							SubGroup:  wire.ChatRoomInfoUpdate,
-						},
-						Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-							Exchange:       chatRoom.Exchange,
-							Cookie:         chatRoom.Cookie,
-							InstanceNumber: chatRoom.InstanceNumber,
-							DetailLevel:    chatRoom.DetailLevel,
-							TLVBlock: wire.TLVBlock{
-								TLVList: chatRoom.TLVList(),
-							},
-						},
-					},
-				},
-				{
-					screenName: chatter1.IdentScreenName(),
-					message: wire.SNACMessage{
-						Frame: wire.SNACFrame{
-							FoodGroup: wire.Chat,
-							SubGroup:  wire.ChatUsersJoined,
-						},
-						Body: wire.SNAC_0x0E_0x03_ChatUsersJoined{
-							Users: []wire.TLVUserInfo{
-								chatter1.TLVUserInfo(),
-								chatter2.TLVUserInfo(),
+				chatRoomRegistryParams: chatRoomRegistryParams{
+					chatRoomByCookieParams: chatRoomByCookieParams{
+						{
+							cookie: "the-cookie",
+							room: state.ChatRoom{
+								Cookie:         "the-cookie",
+								DetailLevel:    1,
+								Exchange:       2,
+								InstanceNumber: 3,
+								Name:           "the-chat-room",
 							},
 						},
 					},
@@ -1754,26 +1772,28 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			chatRoomManager := newMockChatRoomRegistry(t)
+			for _, params := range tt.mockParams.chatRoomByCookieParams {
+				chatRoomManager.EXPECT().
+					ChatRoomByCookie(params.cookie).
+					Return(params.room, params.err)
+			}
 			chatMessageRelayer := newMockChatMessageRelayer(t)
-			for _, params := range tt.broadcastExcept {
+			for _, params := range tt.mockParams.chatRelayToAllExceptParams {
 				chatMessageRelayer.EXPECT().
-					RelayToAllExcept(mock.Anything, params.sess, params.message).
-					Maybe()
+					RelayToAllExcept(mock.Anything, params.cookie, params.screenName, params.message)
 			}
-			chatMessageRelayer.EXPECT().
-				AllSessions().
-				Return(tt.participantsParams).
-				Maybe()
-			for _, params := range tt.sendToScreenNameParams {
+			for _, params := range tt.mockParams.chatAllSessionsParams {
 				chatMessageRelayer.EXPECT().
-					RelayToScreenName(mock.Anything, params.screenName, params.message).
-					Maybe()
+					AllSessions(params.cookie).
+					Return(params.sessions)
+			}
+			for _, params := range tt.mockParams.chatRelayToScreenNameParams {
+				chatMessageRelayer.EXPECT().
+					RelayToScreenName(mock.Anything, params.cookie, params.screenName, params.message)
 			}
 
-			chatRegistry := state.NewChatRegistry()
-			chatRegistry.Register(chatRoom, chatMessageRelayer)
-
-			svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), chatRegistry, nil, nil, nil)
+			svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, nil, nil, chatRoomManager, chatMessageRelayer)
 
 			haveErr := svc.ClientOnline(nil, wire.SNAC_0x01_0x02_OServiceClientOnline{}, tt.joiningChatter)
 			assert.ErrorIs(t, tt.wantErr, haveErr)

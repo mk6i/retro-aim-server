@@ -84,7 +84,7 @@ func (_c *mockChatNavService_CreateRoom_Call) RunAndReturn(run func(context.Cont
 }
 
 // ExchangeInfo provides a mock function with given fields: ctx, inFrame, inBody
-func (_m *mockChatNavService) ExchangeInfo(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) wire.SNACMessage {
+func (_m *mockChatNavService) ExchangeInfo(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) (wire.SNACMessage, error) {
 	ret := _m.Called(ctx, inFrame, inBody)
 
 	if len(ret) == 0 {
@@ -92,13 +92,23 @@ func (_m *mockChatNavService) ExchangeInfo(ctx context.Context, inFrame wire.SNA
 	}
 
 	var r0 wire.SNACMessage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, wire.SNACFrame, wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) (wire.SNACMessage, error)); ok {
+		return rf(ctx, inFrame, inBody)
+	}
 	if rf, ok := ret.Get(0).(func(context.Context, wire.SNACFrame, wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) wire.SNACMessage); ok {
 		r0 = rf(ctx, inFrame, inBody)
 	} else {
 		r0 = ret.Get(0).(wire.SNACMessage)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, wire.SNACFrame, wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) error); ok {
+		r1 = rf(ctx, inFrame, inBody)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // mockChatNavService_ExchangeInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExchangeInfo'
@@ -121,12 +131,12 @@ func (_c *mockChatNavService_ExchangeInfo_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *mockChatNavService_ExchangeInfo_Call) Return(_a0 wire.SNACMessage) *mockChatNavService_ExchangeInfo_Call {
-	_c.Call.Return(_a0)
+func (_c *mockChatNavService_ExchangeInfo_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockChatNavService_ExchangeInfo_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockChatNavService_ExchangeInfo_Call) RunAndReturn(run func(context.Context, wire.SNACFrame, wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) wire.SNACMessage) *mockChatNavService_ExchangeInfo_Call {
+func (_c *mockChatNavService_ExchangeInfo_Call) RunAndReturn(run func(context.Context, wire.SNACFrame, wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) (wire.SNACMessage, error)) *mockChatNavService_ExchangeInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

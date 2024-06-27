@@ -25,6 +25,15 @@ packages:
       SessionRetriever:
         config:
           filename: "mock_session_retriever_test.go"
+      ChatRoomRetriever:
+        config:
+          filename: "mock_chat_room_retriever_test.go"
+      ChatRoomCreator:
+        config:
+          filename: "mock_chat_room_creator_test.go"
+      ChatSessionRetriever:
+        config:
+          filename: "mock_chat_session_retriever_test.go"
   github.com/mk6i/retro-aim-server/server/oscar/handler:
     interfaces:
       ResponseWriter:
@@ -68,6 +77,9 @@ packages:
       ProfileManager:
         config:
           filename: "mock_profile_manager_test.go"
+      ChatSessionRegistry:
+        config:
+          filename: "mock_chat_session_registry_test.go"
       SessionManager:
         config:
           filename: "mock_session_manager_test.go"
@@ -77,9 +89,9 @@ packages:
       ChatMessageRelayer:
         config:
           filename: "mock_chat_message_relayer_test.go"
-      ChatRegistry:
+      ChatRoomRegistry:
         config:
-          filename: "mock_chat_registry_test.go"
+          filename: "mock_chat_room_registry_test.go"
       BARTManager:
         config:
           filename: "mock_bart_manager_test.go"

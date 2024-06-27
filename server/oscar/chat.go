@@ -78,9 +78,7 @@ func (rt ChatServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 	defer func() {
 		chatSess.Close()
 		rwc.Close()
-		if err := rt.SignoutChat(ctx, chatSess); err != nil {
-			rt.Logger.ErrorContext(ctx, "unable to sign out user", "err", err.Error())
-		}
+		rt.SignoutChat(ctx, chatSess)
 	}()
 
 	msg := rt.HostOnline()

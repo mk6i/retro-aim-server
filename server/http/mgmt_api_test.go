@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -422,5 +423,259 @@ func TestUserHandler_DisallowedMethod(t *testing.T) {
 	wantBody := `method not allowed`
 	if strings.TrimSpace(responseRecorder.Body.String()) != wantBody {
 		t.Errorf("want '%s', got '%s'", wantBody, responseRecorder.Body)
+	}
+}
+
+func TestPublicChatHandler_GET(t *testing.T) {
+	fnNewSess := func(screenName string) *state.Session {
+		sess := state.NewSession()
+		sess.SetIdentScreenName(state.NewIdentScreenName(screenName))
+		sess.SetDisplayScreenName(state.DisplayScreenName(screenName))
+		return sess
+	}
+	type allChatRoomsParams struct {
+		exchange uint16
+		result   []state.ChatRoom
+		err      error
+	}
+	type allSessionsParams struct {
+		cookie string
+		result []*state.Session
+	}
+
+	tt := []struct {
+		name               string
+		allChatRoomsParams allChatRoomsParams
+		allSessionsParams  []allSessionsParams
+		userHandlerErr     error
+		want               string
+		statusCode         int
+	}{
+		{
+			name: "multiple chat rooms with participants",
+			allChatRoomsParams: allChatRoomsParams{
+				exchange: state.PublicExchange,
+				result: []state.ChatRoom{
+					{
+						Cookie:     "chat-room-1-cookie",
+						Creator:    state.NewIdentScreenName("chat-room-1-creator"),
+						Name:       "chat-room-1-name",
+						CreateTime: time.Date(2024, 06, 01, 1, 2, 3, 4, time.UTC),
+					},
+					{
+						Cookie:     "chat-room-2-cookie",
+						Creator:    state.NewIdentScreenName("chat-room-2-creator"),
+						Name:       "chat-room-2-name",
+						CreateTime: time.Date(2022, 01, 04, 6, 8, 1, 2, time.UTC),
+					},
+				},
+			},
+			allSessionsParams: []allSessionsParams{
+				{
+					cookie: "chat-room-1-cookie",
+					result: []*state.Session{
+						fnNewSess("userA"),
+						fnNewSess("userB"),
+					},
+				},
+				{
+					cookie: "chat-room-2-cookie",
+					result: []*state.Session{
+						fnNewSess("userC"),
+						fnNewSess("userD"),
+					},
+				},
+			},
+			want:       `[{"name":"chat-room-1-name","create_time":"2024-06-01T01:02:03.000000004Z","url":"aim:gochat?exchange=0\u0026roomname=chat-room-1-name","participants":[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]},{"name":"chat-room-2-name","create_time":"2022-01-04T06:08:01.000000002Z","url":"aim:gochat?exchange=0\u0026roomname=chat-room-2-name","participants":[{"id":"userc","screen_name":"userC"},{"id":"userd","screen_name":"userD"}]}]`,
+			statusCode: http.StatusOK,
+		},
+		{
+			name: "chat room without participants",
+			allChatRoomsParams: allChatRoomsParams{
+				exchange: state.PublicExchange,
+				result: []state.ChatRoom{
+					{
+						Cookie:     "chat-room-1-cookie",
+						Creator:    state.NewIdentScreenName("chat-room-1-creator"),
+						Name:       "chat-room-1-name",
+						CreateTime: time.Date(2024, 06, 01, 1, 2, 3, 4, time.UTC),
+					},
+				},
+			},
+			allSessionsParams: []allSessionsParams{
+				{
+					cookie: "chat-room-1-cookie",
+					result: []*state.Session{},
+				},
+			},
+			want:       `[{"name":"chat-room-1-name","create_time":"2024-06-01T01:02:03.000000004Z","url":"aim:gochat?exchange=0\u0026roomname=chat-room-1-name","participants":[]}]`,
+			statusCode: http.StatusOK,
+		},
+		{
+			name: "no chat rooms",
+			allChatRoomsParams: allChatRoomsParams{
+				exchange: state.PublicExchange,
+				result:   []state.ChatRoom{},
+			},
+			allSessionsParams: []allSessionsParams{},
+			want:              `[]`,
+			statusCode:        http.StatusOK,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/chat/room/public", nil)
+			responseRecorder := httptest.NewRecorder()
+
+			chatRoomRetriever := newMockChatRoomRetriever(t)
+			chatRoomRetriever.EXPECT().
+				AllChatRooms(tc.allChatRoomsParams.exchange).
+				Return(tc.allChatRoomsParams.result, tc.allChatRoomsParams.err)
+
+			chatSessionRetriever := newMockChatSessionRetriever(t)
+			for _, params := range tc.allSessionsParams {
+				chatSessionRetriever.EXPECT().
+					AllSessions(params.cookie).
+					Return(params.result)
+			}
+
+			getPublicChatHandler(responseRecorder, request, chatRoomRetriever, chatSessionRetriever, slog.Default())
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
+func TestPrivateChatHandler_GET(t *testing.T) {
+	fnNewSess := func(screenName string) *state.Session {
+		sess := state.NewSession()
+		sess.SetIdentScreenName(state.NewIdentScreenName(screenName))
+		sess.SetDisplayScreenName(state.DisplayScreenName(screenName))
+		return sess
+	}
+	type allChatRoomsParams struct {
+		exchange uint16
+		result   []state.ChatRoom
+		err      error
+	}
+	type allSessionsParams struct {
+		cookie string
+		result []*state.Session
+	}
+
+	tt := []struct {
+		name               string
+		allChatRoomsParams allChatRoomsParams
+		allSessionsParams  []allSessionsParams
+		userHandlerErr     error
+		want               string
+		statusCode         int
+	}{
+		{
+			name: "multiple chat rooms with participants",
+			allChatRoomsParams: allChatRoomsParams{
+				exchange: state.PrivateExchange,
+				result: []state.ChatRoom{
+					{
+						Cookie:     "chat-room-1-cookie",
+						Creator:    state.NewIdentScreenName("chat-room-1-creator"),
+						Name:       "chat-room-1-name",
+						CreateTime: time.Date(2024, 06, 01, 1, 2, 3, 4, time.UTC),
+					},
+					{
+						Cookie:     "chat-room-2-cookie",
+						Creator:    state.NewIdentScreenName("chat-room-2-creator"),
+						Name:       "chat-room-2-name",
+						CreateTime: time.Date(2022, 01, 04, 6, 8, 1, 2, time.UTC),
+					},
+				},
+			},
+			allSessionsParams: []allSessionsParams{
+				{
+					cookie: "chat-room-1-cookie",
+					result: []*state.Session{
+						fnNewSess("userA"),
+						fnNewSess("userB"),
+					},
+				},
+				{
+					cookie: "chat-room-2-cookie",
+					result: []*state.Session{
+						fnNewSess("userC"),
+						fnNewSess("userD"),
+					},
+				},
+			},
+			want:       `[{"name":"chat-room-1-name","create_time":"2024-06-01T01:02:03.000000004Z","creator_id":"chat-room-1-creator","url":"aim:gochat?exchange=0\u0026roomname=chat-room-1-name","participants":[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]},{"name":"chat-room-2-name","create_time":"2022-01-04T06:08:01.000000002Z","creator_id":"chat-room-2-creator","url":"aim:gochat?exchange=0\u0026roomname=chat-room-2-name","participants":[{"id":"userc","screen_name":"userC"},{"id":"userd","screen_name":"userD"}]}]`,
+			statusCode: http.StatusOK,
+		},
+		{
+			name: "chat room without participants",
+			allChatRoomsParams: allChatRoomsParams{
+				exchange: state.PrivateExchange,
+				result: []state.ChatRoom{
+					{
+						Cookie:     "chat-room-1-cookie",
+						Creator:    state.NewIdentScreenName("chat-room-1-creator"),
+						Name:       "chat-room-1-name",
+						CreateTime: time.Date(2024, 06, 01, 1, 2, 3, 4, time.UTC),
+					},
+				},
+			},
+			allSessionsParams: []allSessionsParams{
+				{
+					cookie: "chat-room-1-cookie",
+					result: []*state.Session{},
+				},
+			},
+			want:       `[{"name":"chat-room-1-name","create_time":"2024-06-01T01:02:03.000000004Z","creator_id":"chat-room-1-creator","url":"aim:gochat?exchange=0\u0026roomname=chat-room-1-name","participants":[]}]`,
+			statusCode: http.StatusOK,
+		},
+		{
+			name: "no chat rooms",
+			allChatRoomsParams: allChatRoomsParams{
+				exchange: state.PrivateExchange,
+				result:   []state.ChatRoom{},
+			},
+			allSessionsParams: []allSessionsParams{},
+			want:              `[]`,
+			statusCode:        http.StatusOK,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/chat/room/private", nil)
+			responseRecorder := httptest.NewRecorder()
+
+			chatRoomRetriever := newMockChatRoomRetriever(t)
+			chatRoomRetriever.EXPECT().
+				AllChatRooms(tc.allChatRoomsParams.exchange).
+				Return(tc.allChatRoomsParams.result, tc.allChatRoomsParams.err)
+
+			chatSessionRetriever := newMockChatSessionRetriever(t)
+			for _, params := range tc.allSessionsParams {
+				chatSessionRetriever.EXPECT().
+					AllSessions(params.cookie).
+					Return(params.result)
+			}
+
+			getPrivateChatHandler(responseRecorder, request, chatRoomRetriever, chatSessionRetriever, slog.Default())
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
 	}
 }

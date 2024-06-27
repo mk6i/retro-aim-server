@@ -361,21 +361,8 @@ func (_c *mockAuthService_Signout_Call) RunAndReturn(run func(context.Context, *
 }
 
 // SignoutChat provides a mock function with given fields: ctx, sess
-func (_m *mockAuthService) SignoutChat(ctx context.Context, sess *state.Session) error {
-	ret := _m.Called(ctx, sess)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SignoutChat")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session) error); ok {
-		r0 = rf(ctx, sess)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
+func (_m *mockAuthService) SignoutChat(ctx context.Context, sess *state.Session) {
+	_m.Called(ctx, sess)
 }
 
 // mockAuthService_SignoutChat_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SignoutChat'
@@ -397,12 +384,12 @@ func (_c *mockAuthService_SignoutChat_Call) Run(run func(ctx context.Context, se
 	return _c
 }
 
-func (_c *mockAuthService_SignoutChat_Call) Return(_a0 error) *mockAuthService_SignoutChat_Call {
-	_c.Call.Return(_a0)
+func (_c *mockAuthService_SignoutChat_Call) Return() *mockAuthService_SignoutChat_Call {
+	_c.Call.Return()
 	return _c
 }
 
-func (_c *mockAuthService_SignoutChat_Call) RunAndReturn(run func(context.Context, *state.Session) error) *mockAuthService_SignoutChat_Call {
+func (_c *mockAuthService_SignoutChat_Call) RunAndReturn(run func(context.Context, *state.Session)) *mockAuthService_SignoutChat_Call {
 	_c.Call.Return(run)
 	return _c
 }

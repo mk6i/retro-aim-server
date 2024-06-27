@@ -936,29 +936,17 @@ func TestAuthService_BUCPChallengeRequest(t *testing.T) {
 }
 
 func TestAuthService_RegisterChatSession_HappyPath(t *testing.T) {
-	sess := newTestSession("screen-name")
-
-	sessionManager := newMockSessionManager(t)
-	sessionManager.EXPECT().
-		AddSession(sess.DisplayScreenName()).
-		Return(sess)
-
-	userManager := newMockUserManager(t)
-	userManager.EXPECT().
-		User(sess.IdentScreenName()).
-		Return(&state.User{
-			DisplayScreenName: sess.DisplayScreenName(),
-		}, nil)
+	sess := newTestSession("ScreenName")
 
 	chatCookie := "the-chat-cookie"
-	chatRegistry := newMockChatRegistry(t)
-	chatRegistry.EXPECT().
-		Retrieve(chatCookie).
-		Return(state.ChatRoom{}, sessionManager, nil)
+	chatSessionRegistry := newMockChatSessionRegistry(t)
+	chatSessionRegistry.EXPECT().
+		AddSession(chatCookie, sess.DisplayScreenName()).
+		Return(sess)
 
 	c := chatLoginCookie{
 		ChatCookie: chatCookie,
-		ScreenName: sess.IdentScreenName().String(),
+		ScreenName: sess.DisplayScreenName(),
 	}
 	chatCookieBuf := &bytes.Buffer{}
 	assert.NoError(t, wire.Marshal(c, chatCookieBuf))
@@ -969,39 +957,11 @@ func TestAuthService_RegisterChatSession_HappyPath(t *testing.T) {
 		Crack(authCookie).
 		Return(chatCookieBuf.Bytes(), nil)
 
-	svc := NewAuthService(config.Config{}, nil, userManager, chatRegistry, nil, cookieBaker, nil, nil)
+	svc := NewAuthService(config.Config{}, nil, chatSessionRegistry, nil, nil, cookieBaker, nil, nil, nil)
 
 	have, err := svc.RegisterChatSession(authCookie)
 	assert.NoError(t, err)
 	assert.Equal(t, sess, have)
-}
-
-func TestAuthService_RegisterChatSession_ChatNotFound(t *testing.T) {
-	chatCookie := "the-chat-cookie"
-	sess := newTestSession("screen-name")
-
-	c := chatLoginCookie{
-		ChatCookie: chatCookie,
-		ScreenName: sess.IdentScreenName().String(),
-	}
-	loginCookie := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(c, loginCookie))
-
-	chatRegistry := newMockChatRegistry(t)
-	chatRegistry.EXPECT().
-		Retrieve(chatCookie).
-		Return(state.ChatRoom{}, nil, state.ErrChatRoomNotFound)
-
-	authCookie := []byte("the-auth-cookie")
-	cookieBaker := newMockCookieBaker(t)
-	cookieBaker.EXPECT().
-		Crack(authCookie).
-		Return(loginCookie.Bytes(), nil)
-
-	svc := NewAuthService(config.Config{}, nil, nil, chatRegistry, nil, cookieBaker, nil, nil)
-
-	_, err := svc.RegisterChatSession(authCookie)
-	assert.ErrorIs(t, err, state.ErrChatRoomNotFound)
 }
 
 func TestAuthService_RegisterBOSSession_HappyPath(t *testing.T) {
@@ -1024,7 +984,7 @@ func TestAuthService_RegisterBOSSession_HappyPath(t *testing.T) {
 		User(sess.IdentScreenName()).
 		Return(&state.User{DisplayScreenName: sess.DisplayScreenName()}, nil)
 
-	svc := NewAuthService(config.Config{}, sessionManager, userManager, nil, nil, cookieBaker, nil, nil)
+	svc := NewAuthService(config.Config{}, sessionManager, nil, userManager, nil, cookieBaker, nil, nil, nil)
 
 	have, err := svc.RegisterBOSSession(authCookie)
 	assert.NoError(t, err)
@@ -1051,7 +1011,7 @@ func TestAuthService_RegisterBOSSession_SessionNotFound(t *testing.T) {
 		User(sess.IdentScreenName()).
 		Return(&state.User{DisplayScreenName: sess.DisplayScreenName()}, nil)
 
-	svc := NewAuthService(config.Config{}, sessionManager, userManager, nil, nil, cookieBaker, nil, nil)
+	svc := NewAuthService(config.Config{}, sessionManager, nil, userManager, nil, cookieBaker, nil, nil, nil)
 
 	have, err := svc.RegisterBOSSession(authCookie)
 	assert.NoError(t, err)
@@ -1059,8 +1019,6 @@ func TestAuthService_RegisterBOSSession_SessionNotFound(t *testing.T) {
 }
 
 func TestAuthService_SignoutChat(t *testing.T) {
-	sess := newTestSession("", sessOptCannedSignonTime, sessOptChatRoomCookie("the-chat-cookie"))
-
 	tests := []struct {
 		// name is the unit test name
 		name string
@@ -1068,23 +1026,21 @@ func TestAuthService_SignoutChat(t *testing.T) {
 		userSession *state.Session
 		// chatRoom is the chat room user is exiting
 		chatRoom state.ChatRoom
-		// wantErr is the error we expect from the method
-		wantErr error
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
 	}{
 		{
 			name:        "user signs out of chat room, room is empty after user leaves",
-			userSession: sess,
+			userSession: newTestSession("the-screen-name", sessOptCannedSignonTime, sessOptChatRoomCookie("the-chat-cookie")),
 			chatRoom: state.ChatRoom{
 				Cookie: "the-chat-cookie",
 			},
 			mockParams: mockParams{
 				chatMessageRelayerParams: chatMessageRelayerParams{
-					broadcastExceptParams: broadcastExceptParams{
+					chatRelayToAllExceptParams: chatRelayToAllExceptParams{
 						{
-							except: sess,
+							screenName: state.NewIdentScreenName("the-screen-name"),
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.Chat,
@@ -1092,7 +1048,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 								},
 								Body: wire.SNAC_0x0E_0x04_ChatUsersLeft{
 									Users: []wire.TLVUserInfo{
-										sess.TLVUserInfo(),
+										newTestSession("the-screen-name", sessOptCannedSignonTime, sessOptChatRoomCookie("the-chat-cookie")).TLVUserInfo(),
 									},
 								},
 							},
@@ -1107,7 +1063,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 					},
 					removeSessionParams: removeSessionParams{
 						{
-							sess: sess,
+							screenName: state.NewIdentScreenName("the-screen-name"),
 						},
 					},
 				},
@@ -1115,15 +1071,15 @@ func TestAuthService_SignoutChat(t *testing.T) {
 		},
 		{
 			name:        "user signs out of chat room, room is not empty after user leaves",
-			userSession: sess,
+			userSession: newTestSession("the-screen-name", sessOptCannedSignonTime, sessOptChatRoomCookie("the-chat-cookie")),
 			chatRoom: state.ChatRoom{
 				Cookie: "the-chat-cookie",
 			},
 			mockParams: mockParams{
 				chatMessageRelayerParams: chatMessageRelayerParams{
-					broadcastExceptParams: broadcastExceptParams{
+					chatRelayToAllExceptParams: chatRelayToAllExceptParams{
 						{
-							except: sess,
+							screenName: state.NewIdentScreenName("the-screen-name"),
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.Chat,
@@ -1131,7 +1087,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 								},
 								Body: wire.SNAC_0x0E_0x04_ChatUsersLeft{
 									Users: []wire.TLVUserInfo{
-										sess.TLVUserInfo(),
+										newTestSession("the-screen-name", sessOptCannedSignonTime, sessOptChatRoomCookie("the-chat-cookie")).TLVUserInfo(),
 									},
 								},
 							},
@@ -1146,64 +1102,33 @@ func TestAuthService_SignoutChat(t *testing.T) {
 					},
 					removeSessionParams: removeSessionParams{
 						{
-							sess: sess,
+							screenName: state.NewIdentScreenName("the-screen-name"),
 						},
 					},
 				},
 			},
 		},
-		{
-			name:        "user can't sign out because chat room doesn't exist",
-			userSession: sess,
-			chatRoom: state.ChatRoom{
-				Cookie: "the-chat-cookie",
-			},
-			wantErr: state.ErrChatRoomNotFound,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			chatMessageRelayer := newMockChatMessageRelayer(t)
-			for _, params := range tt.mockParams.broadcastExceptParams {
+			for _, params := range tt.mockParams.chatRelayToAllExceptParams {
 				chatMessageRelayer.EXPECT().
-					RelayToAllExcept(nil, params.except, params.message)
+					RelayToAllExcept(nil, tt.chatRoom.Cookie, params.screenName, params.message)
 			}
-
-			sessionManager := newMockSessionManager(t)
-			chatRegistry := newMockChatRegistry(t)
+			sessionManager := newMockChatSessionRegistry(t)
 			for _, params := range tt.mockParams.removeSessionParams {
-				sessionManager.EXPECT().RemoveSession(params.sess)
+				sessionManager.EXPECT().
+					RemoveSession(matchSession(params.screenName))
 			}
-			for _, params := range tt.mockParams.emptyParams {
-				sessionManager.EXPECT().Empty().Return(params.result)
-				if params.result {
-					chatRegistry.EXPECT().Remove(tt.chatRoom.Cookie)
-				}
-			}
-			chatSessionManager := struct {
-				ChatMessageRelayer
-				SessionManager
-			}{
-				chatMessageRelayer,
-				sessionManager,
-			}
-			chatRegistry.EXPECT().
-				Retrieve(tt.chatRoom.Cookie).
-				Return(tt.chatRoom, chatSessionManager, tt.wantErr)
 
-			cookieBaker := newMockCookieBaker(t)
-
-			svc := NewAuthService(config.Config{}, nil, nil, chatRegistry, nil, cookieBaker, nil, nil)
-
-			err := svc.SignoutChat(nil, tt.userSession)
-			assert.ErrorIs(t, err, tt.wantErr)
+			svc := NewAuthService(config.Config{}, nil, sessionManager, nil, nil, nil, nil, nil, chatMessageRelayer)
+			svc.SignoutChat(nil, tt.userSession)
 		})
 	}
 }
 
 func TestAuthService_Signout(t *testing.T) {
-	sess := newTestSession("user_screen_name", sessOptCannedSignonTime)
-
 	tests := []struct {
 		// name is the unit test name
 		name string
@@ -1217,12 +1142,12 @@ func TestAuthService_Signout(t *testing.T) {
 	}{
 		{
 			name:        "user signs out of chat room, room is empty after user leaves",
-			userSession: sess,
+			userSession: newTestSession("user_screen_name", sessOptCannedSignonTime),
 			mockParams: mockParams{
 				sessionManagerParams: sessionManagerParams{
 					removeSessionParams: removeSessionParams{
 						{
-							sess: sess,
+							screenName: state.NewIdentScreenName("user_screen_name"),
 						},
 					},
 				},
@@ -1247,7 +1172,7 @@ func TestAuthService_Signout(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sessionManager := newMockSessionManager(t)
 			for _, params := range tt.mockParams.removeSessionParams {
-				sessionManager.EXPECT().RemoveSession(params.sess)
+				sessionManager.EXPECT().RemoveSession(matchSession(params.screenName))
 			}
 			legacyBuddyListManager := newMockLegacyBuddyListManager(t)
 			for _, params := range tt.mockParams.deleteUserParams {
@@ -1262,7 +1187,7 @@ func TestAuthService_Signout(t *testing.T) {
 					})).
 					Return(nil)
 			}
-			svc := NewAuthService(config.Config{}, sessionManager, nil, nil, legacyBuddyListManager, nil, nil, nil)
+			svc := NewAuthService(config.Config{}, sessionManager, nil, nil, legacyBuddyListManager, nil, nil, nil, nil)
 			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
 
 			err := svc.Signout(nil, tt.userSession)

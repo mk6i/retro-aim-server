@@ -283,16 +283,17 @@ loop:
 	assert.Equal(t, wantCount, haveCount)
 }
 
-func TestInMemorySessionManager_RelayToAllExcept(t *testing.T) {
-	sm := NewInMemorySessionManager(slog.Default())
+func TestInMemoryChatSessionManager_RelayToAllExcept_HappyPath(t *testing.T) {
+	sm := NewInMemoryChatSessionManager(slog.Default())
 
-	user1 := sm.AddSession("user-screen-name-1")
-	user2 := sm.AddSession("user-screen-name-2")
-	user3 := sm.AddSession("user-screen-name-3")
+	cookie := "the-cookie"
+	user1 := sm.AddSession(cookie, "user-screen-name-1")
+	user2 := sm.AddSession(cookie, "user-screen-name-2")
+	user3 := sm.AddSession(cookie, "user-screen-name-3")
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
-	sm.RelayToAllExcept(context.Background(), user2, want)
+	sm.RelayToAllExcept(context.Background(), cookie, user2.IdentScreenName(), want)
 
 	select {
 	case have := <-user1.ReceiveMessage():
@@ -309,4 +310,59 @@ func TestInMemorySessionManager_RelayToAllExcept(t *testing.T) {
 	case have := <-user3.ReceiveMessage():
 		assert.Equal(t, want, have)
 	}
+}
+
+func TestInMemoryChatSessionManager_AllSessions_RoomExists(t *testing.T) {
+	sm := NewInMemoryChatSessionManager(slog.Default())
+
+	user1 := sm.AddSession("the-cookie", "user-screen-name-1")
+	user2 := sm.AddSession("the-cookie", "user-screen-name-2")
+
+	sessions := sm.AllSessions("the-cookie")
+	assert.Len(t, sessions, 2)
+
+	lookup := make(map[*Session]bool)
+	for _, session := range sessions {
+		lookup[session] = true
+	}
+
+	assert.True(t, lookup[user1])
+	assert.True(t, lookup[user2])
+}
+
+func TestInMemoryChatSessionManager_RelayToScreenName_SessionAndChatRoomExist(t *testing.T) {
+	sm := NewInMemoryChatSessionManager(slog.Default())
+
+	user1 := sm.AddSession("chat-room-1", "user-screen-name-1")
+	user2 := sm.AddSession("chat-room-1", "user-screen-name-2")
+
+	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
+
+	recip := NewIdentScreenName("user-screen-name-1")
+	sm.RelayToScreenName(context.Background(), "chat-room-1", recip, want)
+
+	select {
+	case have := <-user1.ReceiveMessage():
+		assert.Equal(t, want, have)
+	}
+
+	select {
+	case <-user2.ReceiveMessage():
+		assert.Fail(t, "user 2 should not receive a message")
+	default:
+	}
+}
+
+func TestInMemoryChatSessionManager_RemoveSession(t *testing.T) {
+	sm := NewInMemoryChatSessionManager(slog.Default())
+
+	user1 := sm.AddSession("chat-room-1", "user-screen-name-1")
+	user2 := sm.AddSession("chat-room-1", "user-screen-name-2")
+
+	assert.Len(t, sm.AllSessions("chat-room-1"), 2)
+
+	sm.RemoveSession(user1)
+	sm.RemoveSession(user2)
+
+	assert.Empty(t, sm.AllSessions("chat-room-1"))
 }

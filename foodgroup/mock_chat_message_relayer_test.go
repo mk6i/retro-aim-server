@@ -24,17 +24,17 @@ func (_m *mockChatMessageRelayer) EXPECT() *mockChatMessageRelayer_Expecter {
 	return &mockChatMessageRelayer_Expecter{mock: &_m.Mock}
 }
 
-// AllSessions provides a mock function with given fields:
-func (_m *mockChatMessageRelayer) AllSessions() []*state.Session {
-	ret := _m.Called()
+// AllSessions provides a mock function with given fields: chatCookie
+func (_m *mockChatMessageRelayer) AllSessions(chatCookie string) []*state.Session {
+	ret := _m.Called(chatCookie)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AllSessions")
 	}
 
 	var r0 []*state.Session
-	if rf, ok := ret.Get(0).(func() []*state.Session); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) []*state.Session); ok {
+		r0 = rf(chatCookie)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*state.Session)
@@ -50,13 +50,14 @@ type mockChatMessageRelayer_AllSessions_Call struct {
 }
 
 // AllSessions is a helper method to define mock.On call
-func (_e *mockChatMessageRelayer_Expecter) AllSessions() *mockChatMessageRelayer_AllSessions_Call {
-	return &mockChatMessageRelayer_AllSessions_Call{Call: _e.mock.On("AllSessions")}
+//   - chatCookie string
+func (_e *mockChatMessageRelayer_Expecter) AllSessions(chatCookie interface{}) *mockChatMessageRelayer_AllSessions_Call {
+	return &mockChatMessageRelayer_AllSessions_Call{Call: _e.mock.On("AllSessions", chatCookie)}
 }
 
-func (_c *mockChatMessageRelayer_AllSessions_Call) Run(run func()) *mockChatMessageRelayer_AllSessions_Call {
+func (_c *mockChatMessageRelayer_AllSessions_Call) Run(run func(chatCookie string)) *mockChatMessageRelayer_AllSessions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -66,14 +67,14 @@ func (_c *mockChatMessageRelayer_AllSessions_Call) Return(_a0 []*state.Session) 
 	return _c
 }
 
-func (_c *mockChatMessageRelayer_AllSessions_Call) RunAndReturn(run func() []*state.Session) *mockChatMessageRelayer_AllSessions_Call {
+func (_c *mockChatMessageRelayer_AllSessions_Call) RunAndReturn(run func(string) []*state.Session) *mockChatMessageRelayer_AllSessions_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// RelayToAllExcept provides a mock function with given fields: ctx, except, msg
-func (_m *mockChatMessageRelayer) RelayToAllExcept(ctx context.Context, except *state.Session, msg wire.SNACMessage) {
-	_m.Called(ctx, except, msg)
+// RelayToAllExcept provides a mock function with given fields: ctx, chatCookie, except, msg
+func (_m *mockChatMessageRelayer) RelayToAllExcept(ctx context.Context, chatCookie string, except state.IdentScreenName, msg wire.SNACMessage) {
+	_m.Called(ctx, chatCookie, except, msg)
 }
 
 // mockChatMessageRelayer_RelayToAllExcept_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RelayToAllExcept'
@@ -83,15 +84,16 @@ type mockChatMessageRelayer_RelayToAllExcept_Call struct {
 
 // RelayToAllExcept is a helper method to define mock.On call
 //   - ctx context.Context
-//   - except *state.Session
+//   - chatCookie string
+//   - except state.IdentScreenName
 //   - msg wire.SNACMessage
-func (_e *mockChatMessageRelayer_Expecter) RelayToAllExcept(ctx interface{}, except interface{}, msg interface{}) *mockChatMessageRelayer_RelayToAllExcept_Call {
-	return &mockChatMessageRelayer_RelayToAllExcept_Call{Call: _e.mock.On("RelayToAllExcept", ctx, except, msg)}
+func (_e *mockChatMessageRelayer_Expecter) RelayToAllExcept(ctx interface{}, chatCookie interface{}, except interface{}, msg interface{}) *mockChatMessageRelayer_RelayToAllExcept_Call {
+	return &mockChatMessageRelayer_RelayToAllExcept_Call{Call: _e.mock.On("RelayToAllExcept", ctx, chatCookie, except, msg)}
 }
 
-func (_c *mockChatMessageRelayer_RelayToAllExcept_Call) Run(run func(ctx context.Context, except *state.Session, msg wire.SNACMessage)) *mockChatMessageRelayer_RelayToAllExcept_Call {
+func (_c *mockChatMessageRelayer_RelayToAllExcept_Call) Run(run func(ctx context.Context, chatCookie string, except state.IdentScreenName, msg wire.SNACMessage)) *mockChatMessageRelayer_RelayToAllExcept_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACMessage))
+		run(args[0].(context.Context), args[1].(string), args[2].(state.IdentScreenName), args[3].(wire.SNACMessage))
 	})
 	return _c
 }
@@ -101,14 +103,14 @@ func (_c *mockChatMessageRelayer_RelayToAllExcept_Call) Return() *mockChatMessag
 	return _c
 }
 
-func (_c *mockChatMessageRelayer_RelayToAllExcept_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACMessage)) *mockChatMessageRelayer_RelayToAllExcept_Call {
+func (_c *mockChatMessageRelayer_RelayToAllExcept_Call) RunAndReturn(run func(context.Context, string, state.IdentScreenName, wire.SNACMessage)) *mockChatMessageRelayer_RelayToAllExcept_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// RelayToScreenName provides a mock function with given fields: ctx, screenName, msg
-func (_m *mockChatMessageRelayer) RelayToScreenName(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage) {
-	_m.Called(ctx, screenName, msg)
+// RelayToScreenName provides a mock function with given fields: ctx, chatCookie, recipient, msg
+func (_m *mockChatMessageRelayer) RelayToScreenName(ctx context.Context, chatCookie string, recipient state.IdentScreenName, msg wire.SNACMessage) {
+	_m.Called(ctx, chatCookie, recipient, msg)
 }
 
 // mockChatMessageRelayer_RelayToScreenName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RelayToScreenName'
@@ -118,15 +120,16 @@ type mockChatMessageRelayer_RelayToScreenName_Call struct {
 
 // RelayToScreenName is a helper method to define mock.On call
 //   - ctx context.Context
-//   - screenName state.IdentScreenName
+//   - chatCookie string
+//   - recipient state.IdentScreenName
 //   - msg wire.SNACMessage
-func (_e *mockChatMessageRelayer_Expecter) RelayToScreenName(ctx interface{}, screenName interface{}, msg interface{}) *mockChatMessageRelayer_RelayToScreenName_Call {
-	return &mockChatMessageRelayer_RelayToScreenName_Call{Call: _e.mock.On("RelayToScreenName", ctx, screenName, msg)}
+func (_e *mockChatMessageRelayer_Expecter) RelayToScreenName(ctx interface{}, chatCookie interface{}, recipient interface{}, msg interface{}) *mockChatMessageRelayer_RelayToScreenName_Call {
+	return &mockChatMessageRelayer_RelayToScreenName_Call{Call: _e.mock.On("RelayToScreenName", ctx, chatCookie, recipient, msg)}
 }
 
-func (_c *mockChatMessageRelayer_RelayToScreenName_Call) Run(run func(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage)) *mockChatMessageRelayer_RelayToScreenName_Call {
+func (_c *mockChatMessageRelayer_RelayToScreenName_Call) Run(run func(ctx context.Context, chatCookie string, recipient state.IdentScreenName, msg wire.SNACMessage)) *mockChatMessageRelayer_RelayToScreenName_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(state.IdentScreenName), args[2].(wire.SNACMessage))
+		run(args[0].(context.Context), args[1].(string), args[2].(state.IdentScreenName), args[3].(wire.SNACMessage))
 	})
 	return _c
 }
@@ -136,90 +139,7 @@ func (_c *mockChatMessageRelayer_RelayToScreenName_Call) Return() *mockChatMessa
 	return _c
 }
 
-func (_c *mockChatMessageRelayer_RelayToScreenName_Call) RunAndReturn(run func(context.Context, state.IdentScreenName, wire.SNACMessage)) *mockChatMessageRelayer_RelayToScreenName_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// RelayToScreenNames provides a mock function with given fields: ctx, screenNames, msg
-func (_m *mockChatMessageRelayer) RelayToScreenNames(ctx context.Context, screenNames []state.IdentScreenName, msg wire.SNACMessage) {
-	_m.Called(ctx, screenNames, msg)
-}
-
-// mockChatMessageRelayer_RelayToScreenNames_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RelayToScreenNames'
-type mockChatMessageRelayer_RelayToScreenNames_Call struct {
-	*mock.Call
-}
-
-// RelayToScreenNames is a helper method to define mock.On call
-//   - ctx context.Context
-//   - screenNames []state.IdentScreenName
-//   - msg wire.SNACMessage
-func (_e *mockChatMessageRelayer_Expecter) RelayToScreenNames(ctx interface{}, screenNames interface{}, msg interface{}) *mockChatMessageRelayer_RelayToScreenNames_Call {
-	return &mockChatMessageRelayer_RelayToScreenNames_Call{Call: _e.mock.On("RelayToScreenNames", ctx, screenNames, msg)}
-}
-
-func (_c *mockChatMessageRelayer_RelayToScreenNames_Call) Run(run func(ctx context.Context, screenNames []state.IdentScreenName, msg wire.SNACMessage)) *mockChatMessageRelayer_RelayToScreenNames_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]state.IdentScreenName), args[2].(wire.SNACMessage))
-	})
-	return _c
-}
-
-func (_c *mockChatMessageRelayer_RelayToScreenNames_Call) Return() *mockChatMessageRelayer_RelayToScreenNames_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *mockChatMessageRelayer_RelayToScreenNames_Call) RunAndReturn(run func(context.Context, []state.IdentScreenName, wire.SNACMessage)) *mockChatMessageRelayer_RelayToScreenNames_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// RetrieveByScreenName provides a mock function with given fields: screenName
-func (_m *mockChatMessageRelayer) RetrieveByScreenName(screenName state.IdentScreenName) *state.Session {
-	ret := _m.Called(screenName)
-
-	if len(ret) == 0 {
-		panic("no return value specified for RetrieveByScreenName")
-	}
-
-	var r0 *state.Session
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *state.Session); ok {
-		r0 = rf(screenName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*state.Session)
-		}
-	}
-
-	return r0
-}
-
-// mockChatMessageRelayer_RetrieveByScreenName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RetrieveByScreenName'
-type mockChatMessageRelayer_RetrieveByScreenName_Call struct {
-	*mock.Call
-}
-
-// RetrieveByScreenName is a helper method to define mock.On call
-//   - screenName state.IdentScreenName
-func (_e *mockChatMessageRelayer_Expecter) RetrieveByScreenName(screenName interface{}) *mockChatMessageRelayer_RetrieveByScreenName_Call {
-	return &mockChatMessageRelayer_RetrieveByScreenName_Call{Call: _e.mock.On("RetrieveByScreenName", screenName)}
-}
-
-func (_c *mockChatMessageRelayer_RetrieveByScreenName_Call) Run(run func(screenName state.IdentScreenName)) *mockChatMessageRelayer_RetrieveByScreenName_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
-	})
-	return _c
-}
-
-func (_c *mockChatMessageRelayer_RetrieveByScreenName_Call) Return(_a0 *state.Session) *mockChatMessageRelayer_RetrieveByScreenName_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockChatMessageRelayer_RetrieveByScreenName_Call) RunAndReturn(run func(state.IdentScreenName) *state.Session) *mockChatMessageRelayer_RetrieveByScreenName_Call {
+func (_c *mockChatMessageRelayer_RelayToScreenName_Call) RunAndReturn(run func(context.Context, string, state.IdentScreenName, wire.SNACMessage)) *mockChatMessageRelayer_RelayToScreenName_Call {
 	_c.Call.Return(run)
 	return _c
 }

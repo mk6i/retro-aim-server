@@ -58,26 +58,29 @@ func TestChatService_ChannelMsgToHost(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				chatRegistryParams: chatRegistryParams{
-					chatRegistryRetrieveParams: chatRegistryRetrieveParams{
-						cookie: "the-chat-cookie",
-					},
-				},
-			},
-			expectSNACToParticipants: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.Chat,
-					SubGroup:  wire.ChatChannelMsgToClient,
-				},
-				Body: wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
-					Cookie:  1234,
-					Channel: 14,
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatTLVSenderInformation,
-								newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
-							wire.NewTLV(wire.ChatTLVPublicWhisperFlag, []byte{}),
-							wire.NewTLV(wire.ChatTLVMessageInformation, []byte{}),
+				chatMessageRelayerParams: chatMessageRelayerParams{
+					chatRelayToAllExceptParams: chatRelayToAllExceptParams{
+						{
+							screenName: state.NewIdentScreenName("user_sending_chat_msg"),
+							cookie:     "the-chat-cookie",
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.Chat,
+									SubGroup:  wire.ChatChannelMsgToClient,
+								},
+								Body: wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+									Cookie:  1234,
+									Channel: 14,
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ChatTLVSenderInformation,
+												newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
+											wire.NewTLV(wire.ChatTLVPublicWhisperFlag, []byte{}),
+											wire.NewTLV(wire.ChatTLVMessageInformation, []byte{}),
+										},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -128,82 +131,45 @@ func TestChatService_ChannelMsgToHost(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				chatRegistryParams: chatRegistryParams{
-					chatRegistryRetrieveParams: chatRegistryRetrieveParams{
-						cookie: "the-chat-cookie",
-					},
-				},
-			},
-			expectSNACToParticipants: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.Chat,
-					SubGroup:  wire.ChatChannelMsgToClient,
-				},
-				Body: wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
-					Cookie:  1234,
-					Channel: 14,
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatTLVSenderInformation,
-								newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
-							wire.NewTLV(wire.ChatTLVPublicWhisperFlag, []byte{}),
-							wire.NewTLV(wire.ChatTLVMessageInformation, []byte{}),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "send chat room message, fail due to missing chat room",
-			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime,
-				sessOptChatRoomCookie("the-chat-cookie")),
-			inputSNAC: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					RequestID: 1234,
-				},
-				Body: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
-					Cookie:  1234,
-					Channel: 14,
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							{
-								Tag:   wire.ChatTLVPublicWhisperFlag,
-								Value: []byte{},
-							},
-							{
-								Tag:   wire.ChatTLVMessageInformation,
-								Value: []byte{},
+				chatMessageRelayerParams: chatMessageRelayerParams{
+					chatRelayToAllExceptParams: chatRelayToAllExceptParams{
+						{
+							screenName: state.NewIdentScreenName("user_sending_chat_msg"),
+							cookie:     "the-chat-cookie",
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.Chat,
+									SubGroup:  wire.ChatChannelMsgToClient,
+								},
+								Body: wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+									Cookie:  1234,
+									Channel: 14,
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ChatTLVSenderInformation,
+												newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
+											wire.NewTLV(wire.ChatTLVPublicWhisperFlag, []byte{}),
+											wire.NewTLV(wire.ChatTLVMessageInformation, []byte{}),
+										},
+									},
+								},
 							},
 						},
 					},
 				},
 			},
-			mockParams: mockParams{
-				chatRegistryParams: chatRegistryParams{
-					chatRegistryRetrieveParams: chatRegistryRetrieveParams{
-						cookie: "the-chat-cookie",
-						err:    state.ErrChatRoomNotFound,
-					},
-				},
-			},
-			wantErr: state.ErrChatRoomNotFound,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			chatSessMgr := newMockChatMessageRelayer(t)
-			if tc.mockParams.chatRegistryRetrieveParams.err == nil {
-				chatSessMgr.EXPECT().
-					RelayToAllExcept(mock.Anything, tc.userSession, tc.expectSNACToParticipants)
+			chatMessageRelayer := newMockChatMessageRelayer(t)
+			for _, params := range tc.mockParams.chatRelayToAllExceptParams {
+				chatMessageRelayer.EXPECT().
+					RelayToAllExcept(mock.Anything, params.cookie, params.screenName, params.message)
 			}
 
-			chatRegistry := newMockChatRegistry(t)
-			chatRegistry.EXPECT().
-				Retrieve(tc.mockParams.chatRegistryRetrieveParams.cookie).
-				Return(state.ChatRoom{}, chatSessMgr, tc.mockParams.chatRegistryRetrieveParams.err)
-
-			svc := NewChatService(chatRegistry)
+			svc := NewChatService(chatMessageRelayer)
 			outputSNAC, err := svc.ChannelMsgToHost(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x0E_0x05_ChatChannelMsgToHost))
 			assert.ErrorIs(t, err, tc.wantErr)

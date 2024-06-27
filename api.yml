@@ -111,3 +111,95 @@ paths:
           description: Bad request. Invalid input data.
         '404':
           description: User not found.
+
+  /chat/room/public:
+    get:
+      summary: List all public chat rooms
+      description: Retrieve a list of all public chat rooms in exchange 5.
+      responses:
+        '200':
+          description: Successful response containing a list of chat rooms.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Name of the chat room.
+                    create_time:
+                      type: string
+                      format: date-time
+                      description: The timestamp when the chat room was created.
+                    participants:
+                      type: array
+                      description: List of participants in the chat room.
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            description: Unique identifier of the participant.
+                          screen_name:
+                            type: string
+                            description: Screen name of the participant.
+
+    post:
+      summary: Create a new public chat room
+      description: Create a new public chat room in exchange 5.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name of the chat room.
+      responses:
+        '201':
+          description: Chat room created successfully.
+        '400':
+          description: Bad request. Invalid input data.
+        '409':
+          description: Chat room already exists.
+
+  /chat/room/private:
+    get:
+      summary: List all private chat rooms
+      description: Retrieve a list of all private chat rooms in exchange 4.
+      responses:
+        '200':
+          description: Successful response containing a list of chat rooms.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Name of the chat room.
+                    create_time:
+                      type: string
+                      format: date-time
+                      description: The timestamp when the chat room was created.
+                    creator_id:
+                      type: string
+                      description: The chat room creator user ID.
+                    participants:
+                      type: array
+                      description: List of participants in the chat room.
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            description: Unique identifier of the participant.
+                          screen_name:
+                            type: string
+                            description: Screen name of the participant.

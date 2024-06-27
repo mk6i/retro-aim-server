@@ -3,6 +3,8 @@ package foodgroup
 import (
 	"time"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
@@ -12,7 +14,6 @@ import (
 type mockParams struct {
 	bartManagerParams
 	chatMessageRelayerParams
-	chatRegistryParams
 	feedbagManagerParams
 	legacyBuddyListManagerParams
 	messageRelayerParams
@@ -21,6 +22,7 @@ type mockParams struct {
 	userManagerParams
 	cookieIssuerParams
 	buddyBroadcasterParams
+	chatRoomRegistryParams
 }
 
 // bartManagerParams is a helper struct that contains mock parameters for
@@ -42,21 +44,6 @@ type bartManagerRetrieveParams []struct {
 type bartManagerUpsertParams []struct {
 	itemHash []byte
 	payload  []byte
-}
-
-// chatRegistryParams is a helper struct that contains mock parameters for
-// ChatRegistry methods
-type chatRegistryParams struct {
-	chatRegistryRetrieveParams
-}
-
-// chatRegistryRetrieveParams is the list of parameters passed at the mock
-// ChatRegistry.Retrieve call site
-type chatRegistryRetrieveParams struct {
-	cookie         string
-	retChatRoom    state.ChatRoom
-	retChatSessMgr any
-	err            error
 }
 
 // userManagerParams is a helper struct that contains mock parameters for
@@ -99,7 +86,7 @@ type addSessionParams []struct {
 // removeSessionParams is the list of parameters passed at the mock
 // SessionManager.RemoveSession call site
 type removeSessionParams []struct {
-	sess *state.Session
+	screenName state.IdentScreenName
 }
 
 // emptyParams is the list of parameters passed at the mock
@@ -197,6 +184,7 @@ type relayToScreenNamesParams []struct {
 // relayToScreenNameParams is the list of parameters passed at the mock
 // MessageRelayer.RelayToScreenName call site
 type relayToScreenNameParams []struct {
+	cookie     string
 	screenName state.IdentScreenName
 	message    wire.SNACMessage
 }
@@ -226,14 +214,35 @@ type setProfileParams []struct {
 // chatMessageRelayerParams is a helper struct that contains mock parameters
 // for ChatMessageRelayer methods
 type chatMessageRelayerParams struct {
-	broadcastExceptParams
+	chatAllSessionsParams
+	chatRelayToAllExceptParams
+	chatRelayToScreenNameParams
 }
 
-// broadcastExceptParams is the list of parameters passed at the mock
+// chatAllSessionsParams is the list of parameters passed at the mock
+// ChatMessageRelayer.AllSessions call site
+type chatAllSessionsParams []struct {
+	cookie   string
+	sessions []*state.Session
+	err      error
+}
+
+// chatRelayToAllExceptParams is the list of parameters passed at the mock
 // ChatMessageRelayer.RelayToAllExcept call site
-type broadcastExceptParams []struct {
-	except  *state.Session
-	message wire.SNACMessage
+type chatRelayToAllExceptParams []struct {
+	cookie     string
+	screenName state.IdentScreenName
+	message    wire.SNACMessage
+	err        error
+}
+
+// chatRelayToScreenNameParams is the list of parameters passed at the mock
+// ChatMessageRelayer.RelayToScreenName call site
+type chatRelayToScreenNameParams []struct {
+	cookie     string
+	screenName state.IdentScreenName
+	message    wire.SNACMessage
+	err        error
 }
 
 // legacyBuddyListManagerParams is a helper struct that contains mock
@@ -327,6 +336,40 @@ type unicastBuddyDepartedParams []struct {
 	err  error
 }
 
+// chatRoomRegistryParams is a helper struct that contains mock parameters for
+// ChatRoomRegistry methods
+type chatRoomRegistryParams struct {
+	chatRoomByCookieParams
+	chatRoomByNameParams
+	createChatRoomParams
+}
+
+// chatRoomByCookieParams is the list of parameters passed at the mock
+// ChatRoomRegistry.ChatRoomByCookie call site
+type chatRoomByCookieParams []struct {
+	cookie string
+	room   state.ChatRoom
+	err    error
+}
+
+// chatRoomByCookieParams is the list of parameters passed at the mock
+// ChatRoomRegistry.ChatRoomByName call site
+type chatRoomByNameParams []struct {
+	exchange uint16
+	name     string
+	room     state.ChatRoom
+	err      error
+}
+
+// createChatRoomParams is the list of parameters passed at the mock
+// ChatRoomRegistry.CreateChatRoom call site
+type createChatRoomParams []struct {
+	exchange uint16
+	name     string
+	room     state.ChatRoom
+	err      error
+}
+
 // sessOptWarning sets a warning level on the session object
 func sessOptWarning(level uint16) func(session *state.Session) {
 	return func(session *state.Session) {
@@ -401,4 +444,11 @@ func userInfoWithBARTIcon(sess *state.Session, bid wire.BARTID) wire.TLVUserInfo
 	info := sess.TLVUserInfo()
 	info.Append(wire.NewTLV(wire.OServiceUserInfoBARTInfo, bid))
 	return info
+}
+
+// matchSession matches a mock call based session ident screen name.
+func matchSession(mustMatch state.IdentScreenName) interface{} {
+	return mock.MatchedBy(func(s *state.Session) bool {
+		return mustMatch == s.IdentScreenName()
+	})
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
-	_ "github.com/mattn/go-sqlite3"
+	sqlite "github.com/mattn/go-sqlite3"
 )
 
 //go:embed migrations/*
@@ -467,5 +467,118 @@ func (f SQLiteUserStore) BARTRetrieve(hash []byte) ([]byte, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
 	}
-	return body, nil
+	return body, err
+}
+
+// ChatRoomByCookie looks up a chat room by cookie. Returns
+// ErrChatRoomNotFound if the room does not exist for cookie.
+func (f SQLiteUserStore) ChatRoomByCookie(cookie string) (ChatRoom, error) {
+	chatRoom := ChatRoom{
+		Cookie: cookie,
+	}
+
+	q := `
+		SELECT exchange, name, created, creator
+		FROM chatRoom
+		WHERE cookie = ?
+	`
+	var creator string
+	err := f.db.QueryRow(q, cookie).Scan(
+		&chatRoom.Exchange,
+		&chatRoom.Name,
+		&chatRoom.CreateTime,
+		&creator,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = ErrChatRoomNotFound
+	}
+	chatRoom.Creator = NewIdentScreenName(creator)
+
+	return chatRoom, err
+}
+
+// ChatRoomByName looks up a chat room by exchange and name. Returns
+// ErrChatRoomNotFound if the room does not exist for exchange and name.
+func (f SQLiteUserStore) ChatRoomByName(exchange uint16, name string) (ChatRoom, error) {
+	chatRoom := ChatRoom{
+		Exchange: exchange,
+		Name:     name,
+	}
+
+	q := `
+		SELECT cookie, created, creator
+		FROM chatRoom
+		WHERE exchange = ? AND name = ?
+	`
+	var creator string
+	err := f.db.QueryRow(q, exchange, name).Scan(
+		&chatRoom.Cookie,
+		&chatRoom.CreateTime,
+		&creator,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = ErrChatRoomNotFound
+	}
+	chatRoom.Creator = NewIdentScreenName(creator)
+
+	return chatRoom, err
+}
+
+// CreateChatRoom creates a new chat room.
+func (f SQLiteUserStore) CreateChatRoom(chatRoom ChatRoom) error {
+	q := `
+		INSERT INTO chatRoom (cookie, exchange, name, created, creator)
+		VALUES (?, ?, ?, ?, ?)
+	`
+	_, err := f.db.Exec(
+		q,
+		chatRoom.Cookie,
+		chatRoom.Exchange,
+		chatRoom.Name,
+		chatRoom.CreateTime,
+		chatRoom.Creator.String(),
+	)
+
+	if err != nil {
+		if sqliteErr, ok := err.(sqlite.Error); ok {
+			if sqliteErr.ExtendedCode == sqlite.ErrConstraintUnique || sqliteErr.ExtendedCode == sqlite.ErrConstraintPrimaryKey {
+				err = ErrDupChatRoom
+			}
+		}
+		err = fmt.Errorf("CreateChatRoom: %w", err)
+	}
+	return err
+}
+
+func (f SQLiteUserStore) AllChatRooms(exchange uint16) ([]ChatRoom, error) {
+	q := `
+		SELECT cookie, created, creator, name
+		FROM chatRoom
+		WHERE exchange = ?
+		ORDER BY created ASC
+	`
+	rows, err := f.db.Query(q, exchange)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []ChatRoom
+	for rows.Next() {
+		cr := ChatRoom{
+			Exchange: exchange,
+		}
+		var creator string
+		if err := rows.Scan(&cr.Cookie, &cr.CreateTime, &creator, &cr.Name); err != nil {
+			return nil, err
+		}
+		cr.Creator = NewIdentScreenName(creator)
+		users = append(users, cr)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }

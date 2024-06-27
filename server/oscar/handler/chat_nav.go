@@ -14,7 +14,7 @@ import (
 
 type ChatNavService interface {
 	CreateRoom(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (wire.SNACMessage, error)
-	ExchangeInfo(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) wire.SNACMessage
+	ExchangeInfo(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) (wire.SNACMessage, error)
 	RequestChatRights(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 	RequestRoomInfo(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (wire.SNACMessage, error)
 }
@@ -44,7 +44,10 @@ func (rt ChatNavHandler) RequestExchangeInfo(ctx context.Context, _ *state.Sessi
 	if err := wire.Unmarshal(&inBody, r); err != nil {
 		return err
 	}
-	outSNAC := rt.ChatNavService.ExchangeInfo(ctx, inFrame, inBody)
+	outSNAC, err := rt.ChatNavService.ExchangeInfo(ctx, inFrame, inBody)
+	if err != nil {
+		return err
+	}
 	rt.LogRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }

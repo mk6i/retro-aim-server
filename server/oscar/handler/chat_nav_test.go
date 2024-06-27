@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 
 	"github.com/stretchr/testify/assert"
@@ -29,9 +30,11 @@ func TestChatNavHandler_CreateRoom(t *testing.T) {
 		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{},
 	}
 
+	sess := state.NewSession()
+
 	svc := newMockChatNavService(t)
 	svc.EXPECT().
-		CreateRoom(mock.Anything, mock.Anything, input.Frame, input.Body).
+		CreateRoom(mock.Anything, sess, input.Frame, input.Body).
 		Return(output, nil)
 
 	h := NewChatNavHandler(svc, slog.Default())
@@ -44,7 +47,7 @@ func TestChatNavHandler_CreateRoom(t *testing.T) {
 	buf := &bytes.Buffer{}
 	assert.NoError(t, wire.Marshal(input.Body, buf))
 
-	assert.NoError(t, h.CreateRoom(nil, nil, input.Frame, buf, ss))
+	assert.NoError(t, h.CreateRoom(nil, sess, input.Frame, buf, ss))
 }
 
 func TestChatNavHandler_CreateRoom_ReadErr(t *testing.T) {
@@ -65,9 +68,11 @@ func TestChatNavHandler_CreateRoom_ReadErr(t *testing.T) {
 		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{},
 	}
 
+	sess := state.NewSession()
+
 	svc := newMockChatNavService(t)
 	svc.EXPECT().
-		CreateRoom(mock.Anything, mock.Anything, input.Frame, input.Body).
+		CreateRoom(mock.Anything, sess, input.Frame, input.Body).
 		Return(output, nil)
 
 	h := NewChatNavHandler(svc, slog.Default())
@@ -80,7 +85,7 @@ func TestChatNavHandler_CreateRoom_ReadErr(t *testing.T) {
 	buf := &bytes.Buffer{}
 	assert.NoError(t, wire.Marshal(input.Body, buf))
 
-	assert.NoError(t, h.CreateRoom(nil, nil, input.Frame, buf, ss))
+	assert.NoError(t, h.CreateRoom(nil, sess, input.Frame, buf, ss))
 }
 
 func TestChatNavHandler_RequestChatRights(t *testing.T) {
@@ -174,7 +179,7 @@ func TestChatNavHandler_RequestExchangeInfo(t *testing.T) {
 	svc := newMockChatNavService(t)
 	svc.EXPECT().
 		ExchangeInfo(mock.Anything, input.Frame, input.Body).
-		Return(output)
+		Return(output, nil)
 
 	h := NewChatNavHandler(svc, slog.Default())
 
