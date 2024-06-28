@@ -862,3 +862,41 @@ func TestSQLiteUserStore_CreateChatRoom_ErrChatRoomExists(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateDisplayScreenName(t *testing.T) {
+
+	screenNameOriginal := DisplayScreenName("chattingchuck")
+	screenNameFormatted := DisplayScreenName("Chatting Chuck")
+
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	user := User{
+		DisplayScreenName: screenNameOriginal,
+		IdentScreenName:   screenNameOriginal.IdentScreenName(),
+	}
+	userFormatted := User{
+		DisplayScreenName: screenNameFormatted,
+		IdentScreenName:   screenNameFormatted.IdentScreenName(),
+	}
+	if err := f.InsertUser(user); err != nil {
+		t.Fatalf("failed to upsert new user: %s", err.Error())
+	}
+
+	err = f.UpdateDisplayScreenName(screenNameFormatted)
+	if err != nil {
+		t.Fatalf("failed to update display screen name: %s", err.Error())
+	}
+
+	dbUser, err := f.User(screenNameOriginal.IdentScreenName())
+	if err != nil {
+		t.Fatalf("failed to retrieve screen name: %s", err.Error())
+	}
+	if !reflect.DeepEqual(userFormatted, *dbUser) {
+		t.Fatalf("users did not match:\n expected: %v\n actual: %v", userFormatted, dbUser)
+	}
+}

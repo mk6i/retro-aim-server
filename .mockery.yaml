@@ -69,6 +69,9 @@ packages:
       PermitDenyService:
         config:
           filename: "mock_permit_deny_test.go"
+      AdminService:
+        config:
+          filename: "mock_admin_test.go"
   github.com/mk6i/retro-aim-server/foodgroup:
     interfaces:
       FeedbagManager:
@@ -107,3 +110,6 @@ packages:
       buddyBroadcaster:
         config:
           filename: "mock_buddy_broadcaster_test.go"
+      AccountManager:
+        config:
+          filename: "mock_account_manager_test.go"
