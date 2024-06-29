@@ -143,7 +143,7 @@ func main() {
 	go func(logger *slog.Logger) {
 		logger = logger.With("svc", "ADMIN")
 		buddyService := foodgroup.NewBuddyService(sessionManager, feedbagStore, adjListBuddyListStore)
-		adminService := foodgroup.NewAdminService(sessionManager, feedbagStore, buddyService)
+		adminService := foodgroup.NewAdminService(sessionManager, feedbagStore, buddyService, sessionManager)
 		authService := foodgroup.NewAuthService(cfg, sessionManager, chatSessionManager, feedbagStore, adjListBuddyListStore, cookieBaker, sessionManager, feedbagStore, chatSessionManager)
 		oServiceService := foodgroup.NewOServiceServiceForAdmin(cfg, logger, buddyService)
 
