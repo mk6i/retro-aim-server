@@ -11,8 +11,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/mk6i/retro-aim-server/state"
+	"github.com/mk6i/retro-aim-server/wire"
 )
 
 func TestSessionHandler_GET(t *testing.T) {
@@ -675,6 +677,78 @@ func TestPrivateChatHandler_GET(t *testing.T) {
 
 			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
 				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
+func TestInstantMessageHandler_POST(t *testing.T) {
+	type relayToScreenNameParams struct {
+		sender    state.IdentScreenName
+		recipient state.IdentScreenName
+		msg       string
+	}
+
+	tt := []struct {
+		name                    string
+		relayToScreenNameParams []relayToScreenNameParams
+		body                    string
+		want                    string
+		statusCode              int
+	}{
+		{
+			name: "send an instant message",
+			relayToScreenNameParams: []relayToScreenNameParams{
+				{
+					sender:    state.NewIdentScreenName("sender_sn"),
+					recipient: state.NewIdentScreenName("recip_sn"),
+					msg:       "hello world!",
+				},
+			},
+			body:       `{"from":"sender_sn","to":"recip_sn","text":"hello world!"}`,
+			want:       `Message sent successfully.`,
+			statusCode: http.StatusOK,
+		},
+		{
+			name:       "with malformed body",
+			body:       `{"screen_name":"userA", "password":"thepassword"`,
+			want:       `malformed input`,
+			statusCode: http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/user", strings.NewReader(tc.body))
+			responseRecorder := httptest.NewRecorder()
+
+			messageRelayer := newMockMessageRelayer(t)
+
+			for _, params := range tc.relayToScreenNameParams {
+				validateSNAC := func(msg wire.SNACMessage) bool {
+					body := msg.Body.(wire.SNAC_0x04_0x07_ICBMChannelMsgToClient)
+					assert.Equal(t, params.sender.String(), body.TLVUserInfo.ScreenName)
+
+					b, ok := body.Slice(wire.ICBMTLVAOLIMData)
+					assert.True(t, ok)
+
+					txt, err := wire.UnmarshalICBMMessageText(b)
+					assert.NoError(t, err)
+					assert.Equal(t, params.msg, txt)
+					return true
+				}
+				messageRelayer.EXPECT().
+					RelayToScreenName(mock.Anything, params.recipient, mock.MatchedBy(validateSNAC))
+			}
+
+			postInstantMessageHandler(responseRecorder, request, messageRelayer, slog.Default())
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("want '%s', got '%s'", tc.want, responseRecorder.Body)
 			}
 		})
 	}

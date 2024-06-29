@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -25,6 +26,7 @@ func StartManagementAPI(
 	chatRoomRetriever ChatRoomRetriever,
 	chatRoomCreator ChatRoomCreator,
 	chatSessionRetriever ChatSessionRetriever,
+	messageRelayer MessageRelayer,
 	logger *slog.Logger,
 ) {
 
@@ -46,6 +48,9 @@ func StartManagementAPI(
 	})
 	mux.HandleFunc("/chat/room/private", func(w http.ResponseWriter, r *http.Request) {
 		privateChatHandler(w, r, chatRoomRetriever, chatSessionRetriever, logger)
+	})
+	mux.HandleFunc("/instant-message", func(w http.ResponseWriter, r *http.Request) {
+		instantMessageHandler(w, r, messageRelayer, logger)
 	})
 
 	addr := net.JoinHostPort(cfg.ApiHost, cfg.ApiPort)
@@ -387,4 +392,51 @@ func getPrivateChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetri
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func instantMessageHandler(w http.ResponseWriter, r *http.Request, messageRelayer MessageRelayer, logger *slog.Logger) {
+	switch r.Method {
+	case http.MethodPost:
+		postInstantMessageHandler(w, r, messageRelayer, logger)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// postIMHandler handles the POST /instant-message endpoint.
+func postInstantMessageHandler(w http.ResponseWriter, r *http.Request, messageRelayer MessageRelayer, logger *slog.Logger) {
+	input := instantMessage{}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, "malformed input", http.StatusBadRequest)
+		return
+	}
+
+	tlv, err := wire.ICBMFragmentList(input.Text)
+	if err != nil {
+		logger.Error("error sending message POST /instant-message", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	msg := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICBM,
+			SubGroup:  wire.ICBMChannelMsgToClient,
+		},
+		Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+			ChannelID: 1,
+			TLVUserInfo: wire.TLVUserInfo{
+				ScreenName: input.From,
+			},
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(wire.ICBMTLVAOLIMData, tlv),
+				},
+			},
+		},
+	}
+	messageRelayer.RelayToScreenName(context.Background(), state.NewIdentScreenName(input.To), msg)
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "Message sent successfully.")
 }

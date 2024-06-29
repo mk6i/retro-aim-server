@@ -34,6 +34,9 @@ packages:
       ChatSessionRetriever:
         config:
           filename: "mock_chat_session_retriever_test.go"
+      MessageRelayer:
+        config:
+          filename: "mock_message_relayer_test.go"
   github.com/mk6i/retro-aim-server/server/oscar/handler:
     interfaces:
       ResponseWriter:

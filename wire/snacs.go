@@ -546,9 +546,16 @@ type SNAC_0x04_0x06_ICBMChannelMsgToHost struct {
 	TLVRestBlock
 }
 
-// ComposeMessage inserts message text into SNAC(0x04,0x06). It populates TLV
-// 0x02 with fragments that contain the message text and requisite metadata.
-func (m *SNAC_0x04_0x06_ICBMChannelMsgToHost) ComposeMessage(text string) error {
+type SNAC_0x04_0x07_ICBMChannelMsgToClient struct {
+	Cookie    uint64
+	ChannelID uint16
+	TLVUserInfo
+	TLVRestBlock
+}
+
+// ICBMFragmentList creates an ICBM fragment list for an instant message
+// payload.
+func ICBMFragmentList(text string) ([]ICBMFragment, error) {
 	msg := ICBMMessage{
 		Charset:  ICBMMessageEncodingASCII,
 		Language: 0, // not clear what this means, but it works
@@ -556,10 +563,10 @@ func (m *SNAC_0x04_0x06_ICBMChannelMsgToHost) ComposeMessage(text string) error 
 	}
 	msgBuf := bytes.Buffer{}
 	if err := Marshal(msg, &msgBuf); err != nil {
-		return fmt.Errorf("unable to marshal ICBM message: %w", err)
+		return nil, fmt.Errorf("unable to marshal ICBM message: %w", err)
 	}
 
-	m.Append(NewTLV(ICBMTLVAOLIMData, []ICBMFragment{
+	return []ICBMFragment{
 		{
 			ID:      5, // 5 = capabilities
 			Version: 1,
@@ -570,27 +577,14 @@ func (m *SNAC_0x04_0x06_ICBMChannelMsgToHost) ComposeMessage(text string) error 
 			Version: 1,
 			Payload: msgBuf.Bytes(),
 		},
-	}))
-
-	return nil
+	}, nil
 }
 
-type SNAC_0x04_0x07_ICBMChannelMsgToClient struct {
-	Cookie    uint64
-	ChannelID uint16
-	TLVUserInfo
-	TLVRestBlock
-}
-
-// ExtractMessageText extracts the message text from SNAC(0x04,0x07).
-func (s SNAC_0x04_0x07_ICBMChannelMsgToClient) ExtractMessageText() (string, error) {
-	fragment, ok := s.Slice(ICBMTLVAOLIMData)
-	if !ok {
-		return "", errors.New("ICBM message does not contain a fragment")
-	}
-
+// UnmarshalICBMMessageText extracts message text from an ICBM fragment list.
+// Param b is a slice from TLV wire.ICBMTLVAOLIMData.
+func UnmarshalICBMMessageText(b []byte) (string, error) {
 	var frags []ICBMFragment
-	if err := Unmarshal(&frags, bytes.NewBuffer(fragment)); err != nil {
+	if err := Unmarshal(&frags, bytes.NewBuffer(b)); err != nil {
 		return "", fmt.Errorf("unable to unmarshal ICBM fragment: %w", err)
 	}
 

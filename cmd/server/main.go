@@ -47,7 +47,7 @@ func main() {
 	wg.Add(7)
 
 	go func() {
-		http.StartManagementAPI(cfg, feedbagStore, sessionManager, feedbagStore, feedbagStore, chatSessionManager, logger)
+		http.StartManagementAPI(cfg, feedbagStore, sessionManager, feedbagStore, feedbagStore, chatSessionManager, sessionManager, logger)
 		wg.Done()
 	}()
 	go func(logger *slog.Logger) {

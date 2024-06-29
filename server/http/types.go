@@ -1,9 +1,11 @@
 package http
 
 import (
+	"context"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/state"
+	"github.com/mk6i/retro-aim-server/wire"
 )
 
 type ChatRoomRetriever interface {
@@ -28,6 +30,10 @@ type UserManager interface {
 	InsertUser(u state.User) error
 	SetUserPassword(u state.User) error
 	User(screenName state.IdentScreenName) (*state.User, error)
+}
+
+type MessageRelayer interface {
+	RelayToScreenName(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage)
 }
 
 type userWithPassword struct {
@@ -59,4 +65,10 @@ type chatRoom struct {
 	CreatorID    string       `json:"creator_id,omitempty"`
 	URL          string       `json:"url"`
 	Participants []userHandle `json:"participants"`
+}
+
+type instantMessage struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+	Text string `json:"text"`
 }
