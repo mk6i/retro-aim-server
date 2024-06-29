@@ -266,6 +266,22 @@ func TestAdminService_InfoChangeRequest(t *testing.T) {
 						},
 					},
 				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("Chatting Chuck"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.OService,
+									SubGroup:  wire.OServiceUserInfoUpdate,
+								},
+								Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+									TLVUserInfo: newTestSession("Chatting Chuck").TLVUserInfo(),
+								},
+							},
+						},
+					},
+				},
 			},
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -358,6 +374,7 @@ func TestAdminService_InfoChangeRequest(t *testing.T) {
 			sessionManager := newMockSessionManager(t)
 			accountManager := newMockAccountManager(t)
 			buddyBroadcaster := newMockbuddyBroadcaster(t)
+			messageRelayer := newMockMessageRelayer(t)
 
 			for _, params := range tc.mockParams.accountManagerParams.accountManagerUpdateDisplayScreenNameParams {
 				accountManager.EXPECT().
@@ -374,10 +391,17 @@ func TestAdminService_InfoChangeRequest(t *testing.T) {
 					Return(nil)
 			}
 
+			for _, params := range tc.mockParams.messageRelayerParams.relayToScreenNameParams {
+				p := params
+				messageRelayer.EXPECT().
+					RelayToScreenName(mock.Anything, p.screenName, p.message)
+			}
+
 			svc := AdminService{
 				sessionManager:         sessionManager,
 				accountManager:         accountManager,
 				buddyUpdateBroadcaster: buddyBroadcaster,
+				messageRelayer:         messageRelayer,
 			}
 			outputSNAC, err := svc.InfoChangeRequest(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
 			assert.ErrorIs(t, err, tc.expectErr)

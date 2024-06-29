@@ -12,11 +12,13 @@ func NewAdminService(
 	sessionManager SessionManager,
 	accountManager AccountManager,
 	buddyUpdateBroadcaster buddyBroadcaster,
+	messageRelayer MessageRelayer,
 ) *AdminService {
 	return &AdminService{
 		sessionManager:         sessionManager,
 		accountManager:         accountManager,
 		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+		messageRelayer:         messageRelayer,
 	}
 }
 
@@ -27,6 +29,7 @@ type AdminService struct {
 	sessionManager         SessionManager
 	accountManager         AccountManager
 	buddyUpdateBroadcaster buddyBroadcaster
+	messageRelayer         MessageRelayer
 }
 
 // ConfirmRequest returns the ScreenName account status. It returns SNAC
@@ -145,6 +148,15 @@ func (s AdminService) InfoChangeRequest(ctx context.Context, sess *state.Session
 		if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
 			return wire.SNACMessage{}, err
 		}
+		s.messageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceUserInfoUpdate,
+			},
+			Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+				TLVUserInfo: sess.TLVUserInfo(),
+			},
+		})
 		return replyMessage(wire.AdminTLVScreenNameFormatted, proposedName.String()), nil
 	}
 	return wire.SNACMessage{
