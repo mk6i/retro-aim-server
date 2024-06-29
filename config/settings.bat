@@ -22,6 +22,9 @@ set CHAT_NAV_PORT=5193
 rem The port that the chat service binds to.
 set CHAT_PORT=5192
 
+rem The port that the admin service binds to.
+set ADMIN_PORT=5196
+
 rem The path to the SQLite database file. The file and DB schema are
 rem auto-created if they doesn't exist.
 set DB_PATH=oscar.sqlite
@@ -45,6 +48,6 @@ rem For local development, the default loopback address should work provided the
 rem server and AIM client(s) are running on the same machine. For LAN-only
 rem clients, a private IP address (e.g. 192.168..) or hostname should suffice.
 rem For clients connecting over the Internet, specify your public IP address and
-rem ensure that TCP ports 5190-5194 are open on your firewall.
+rem ensure that TCP ports 5190-5196 are open on your firewall.
 set OSCAR_HOST=127.0.0.1
 

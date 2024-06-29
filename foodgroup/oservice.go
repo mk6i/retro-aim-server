@@ -561,6 +561,29 @@ type chatLoginCookie struct {
 // for connecting to the food group service specified in inFrame.
 func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
 	switch inBody.FoodGroup {
+	case wire.Admin:
+		cookie, err := s.cookieIssuer.Issue([]byte(sess.IdentScreenName().String()))
+		if err != nil {
+			return wire.SNACMessage{}, err
+		}
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceServiceResponse,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.AdminPort)),
+						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, cookie),
+						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Admin),
+						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
+						wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+					},
+				},
+			},
+		}, nil
 	case wire.Alert:
 		cookie, err := s.cookieIssuer.Issue([]byte(sess.IdentScreenName().String()))
 		if err != nil {
@@ -801,6 +824,19 @@ func NewOServiceServiceForAlert(
 		foodGroups: []uint16{
 			wire.Alert,
 			wire.OService,
+		},
+	}
+}
+
+// NewOServiceServiceForAdmin creates a new instance of OServiceService for Admin server.
+func NewOServiceServiceForAdmin(cfg config.Config, logger *slog.Logger, buddyUpdateBroadcaster buddyBroadcaster) *OServiceService {
+	return &OServiceService{
+		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+		cfg:                    cfg,
+		logger:                 logger,
+		foodGroups: []uint16{
+			wire.OService,
+			wire.Admin,
 		},
 	}
 }

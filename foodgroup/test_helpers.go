@@ -23,6 +23,7 @@ type mockParams struct {
 	cookieIssuerParams
 	buddyBroadcasterParams
 	chatRoomRegistryParams
+	accountManagerParams
 }
 
 // bartManagerParams is a helper struct that contains mock parameters for
@@ -295,6 +296,19 @@ type cookieIssuerParams []struct {
 	data   []byte
 	cookie []byte
 	err    error
+}
+
+// accountManagerParams is a helper struct that contains mock parameters for
+// accountManager methods
+type accountManagerParams struct {
+	accountManagerUpdateDisplayScreenNameParams
+}
+
+// accountManagerUpdateDisplayScreenNameParams is the list of parameters passed at the mock
+// accountManager.UpdateDisplayScreenName call site
+type accountManagerUpdateDisplayScreenNameParams []struct {
+	displayScreenName state.DisplayScreenName
+	err               error
 }
 
 // buddyBroadcasterParams is a helper struct that contains mock parameters for

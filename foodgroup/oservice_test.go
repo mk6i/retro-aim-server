@@ -143,6 +143,48 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "request info for connecting to admin svc, return admin svc connection metadata",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				AdminPort: "1234",
+			},
+			userSession: newTestSession("user_screen_name"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.Admin,
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Admin),
+							wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
+							wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data:   []byte("user_screen_name"),
+						cookie: []byte("the-cookie"),
+					},
+				},
+			},
+		},
+		{
 			name: "request info for connecting to chat room, return chat service and chat room metadata",
 			cfg: config.Config{
 				OSCARHost: "127.0.0.1",

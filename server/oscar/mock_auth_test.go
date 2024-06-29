@@ -313,6 +313,64 @@ func (_c *mockAuthService_RegisterChatSession_Call) RunAndReturn(run func([]byte
 	return _c
 }
 
+// RetrieveBOSSession provides a mock function with given fields: authCookie
+func (_m *mockAuthService) RetrieveBOSSession(authCookie []byte) (*state.Session, error) {
+	ret := _m.Called(authCookie)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RetrieveBOSSession")
+	}
+
+	var r0 *state.Session
+	var r1 error
+	if rf, ok := ret.Get(0).(func([]byte) (*state.Session, error)); ok {
+		return rf(authCookie)
+	}
+	if rf, ok := ret.Get(0).(func([]byte) *state.Session); ok {
+		r0 = rf(authCookie)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*state.Session)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func([]byte) error); ok {
+		r1 = rf(authCookie)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockAuthService_RetrieveBOSSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RetrieveBOSSession'
+type mockAuthService_RetrieveBOSSession_Call struct {
+	*mock.Call
+}
+
+// RetrieveBOSSession is a helper method to define mock.On call
+//   - authCookie []byte
+func (_e *mockAuthService_Expecter) RetrieveBOSSession(authCookie interface{}) *mockAuthService_RetrieveBOSSession_Call {
+	return &mockAuthService_RetrieveBOSSession_Call{Call: _e.mock.On("RetrieveBOSSession", authCookie)}
+}
+
+func (_c *mockAuthService_RetrieveBOSSession_Call) Run(run func(authCookie []byte)) *mockAuthService_RetrieveBOSSession_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]byte))
+	})
+	return _c
+}
+
+func (_c *mockAuthService_RetrieveBOSSession_Call) Return(_a0 *state.Session, _a1 error) *mockAuthService_RetrieveBOSSession_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockAuthService_RetrieveBOSSession_Call) RunAndReturn(run func([]byte) (*state.Session, error)) *mockAuthService_RetrieveBOSSession_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Signout provides a mock function with given fields: ctx, sess
 func (_m *mockAuthService) Signout(ctx context.Context, sess *state.Session) error {
 	ret := _m.Called(ctx, sess)

@@ -90,6 +90,24 @@ func (s AuthService) RegisterBOSSession(authCookie []byte) (*state.Session, erro
 	return s.sessionManager.AddSession(u.DisplayScreenName), nil
 }
 
+// RetrieveBOSSession returns a user's existing session
+func (s AuthService) RetrieveBOSSession(authCookie []byte) (*state.Session, error) {
+	screenName, err := s.cookieBaker.Crack(authCookie)
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := s.userManager.User(state.NewIdentScreenName(string(screenName)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve user: %w", err)
+	}
+	if u == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	return s.sessionManager.RetrieveSession(u.IdentScreenName), nil
+}
+
 // Signout removes this user's session and notifies users who have this user on
 // their buddy list about this user's departure.
 func (s AuthService) Signout(ctx context.Context, sess *state.Session) error {

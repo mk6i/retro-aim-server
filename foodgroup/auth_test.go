@@ -991,6 +991,87 @@ func TestAuthService_RegisterBOSSession_HappyPath(t *testing.T) {
 	assert.Equal(t, sess, have)
 }
 
+func TestAuthService_RegisterBOSSession_SessionNotFound(t *testing.T) {
+	sess := newTestSession("screen-name")
+
+	sessionManager := newMockSessionManager(t)
+	sessionManager.EXPECT().
+		AddSession(sess.DisplayScreenName()).
+		Return(nil)
+
+	authCookie := []byte(`the-auth-cookie`)
+	cookieBaker := newMockCookieBaker(t)
+
+	cookieBaker.EXPECT().
+		Crack(authCookie).
+		Return([]byte("screen-name"), nil)
+
+	userManager := newMockUserManager(t)
+	userManager.EXPECT().
+		User(sess.IdentScreenName()).
+		Return(&state.User{DisplayScreenName: sess.DisplayScreenName()}, nil)
+
+	svc := NewAuthService(config.Config{}, sessionManager, nil, userManager, nil, cookieBaker, nil, nil, nil)
+
+	have, err := svc.RegisterBOSSession(authCookie)
+	assert.NoError(t, err)
+	assert.Nil(t, have)
+}
+
+func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
+	sess := newTestSession("screen-name")
+
+	sessionManager := newMockSessionManager(t)
+	sessionManager.EXPECT().
+		RetrieveSession(sess.IdentScreenName()).
+		Return(sess)
+
+	authCookie := []byte(`the-auth-cookie`)
+
+	cookieBaker := newMockCookieBaker(t)
+	cookieBaker.EXPECT().
+		Crack(authCookie).
+		Return([]byte("screen-name"), nil)
+
+	userManager := newMockUserManager(t)
+	userManager.EXPECT().
+		User(sess.IdentScreenName()).
+		Return(&state.User{IdentScreenName: sess.IdentScreenName()}, nil)
+
+	svc := NewAuthService(config.Config{}, sessionManager, nil, userManager, nil, cookieBaker, nil, nil, nil)
+
+	have, err := svc.RetrieveBOSSession(authCookie)
+	assert.NoError(t, err)
+	assert.Equal(t, sess, have)
+}
+
+func TestAuthService_RetrieveBOSSession_SessionNotFound(t *testing.T) {
+	sess := newTestSession("screen-name")
+
+	sessionManager := newMockSessionManager(t)
+	sessionManager.EXPECT().
+		RetrieveSession(sess.IdentScreenName()).
+		Return(nil)
+
+	authCookie := []byte(`the-auth-cookie`)
+	cookieBaker := newMockCookieBaker(t)
+
+	cookieBaker.EXPECT().
+		Crack(authCookie).
+		Return([]byte("screen-name"), nil)
+
+	userManager := newMockUserManager(t)
+	userManager.EXPECT().
+		User(sess.IdentScreenName()).
+		Return(&state.User{IdentScreenName: sess.IdentScreenName()}, nil)
+
+	svc := NewAuthService(config.Config{}, sessionManager, nil, userManager, nil, cookieBaker, nil, nil, nil)
+
+	have, err := svc.RetrieveBOSSession(authCookie)
+	assert.NoError(t, err)
+	assert.Nil(t, have)
+}
+
 func TestAuthService_SignoutChat(t *testing.T) {
 	tests := []struct {
 		// name is the unit test name

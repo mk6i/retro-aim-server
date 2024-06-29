@@ -582,3 +582,14 @@ func (f SQLiteUserStore) AllChatRooms(exchange uint16) ([]ChatRoom, error) {
 
 	return users, nil
 }
+
+// UpdateDisplayScreenName updates the user's DisplayScreenName
+func (f SQLiteUserStore) UpdateDisplayScreenName(displayScreenName DisplayScreenName) error {
+	q := `
+		UPDATE users
+		SET displayScreenName = ?
+		WHERE identScreenName = ?
+	`
+	_, err := f.db.Exec(q, displayScreenName.String(), displayScreenName.IdentScreenName().String())
+	return err
+}
