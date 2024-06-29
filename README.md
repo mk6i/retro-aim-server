@@ -20,6 +20,7 @@ The following features are supported:
 - [x] Buddy Icons (v4.x, v5.x)
 - [x] Buddy List
 - [x] Chat Rooms
+- [x] Public & Private Chat Exchanges
 - [x] Instant Messaging
 - [x] User Profiles
 - [x] Blocking (v3.5+)

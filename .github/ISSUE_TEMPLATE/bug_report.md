@@ -1,51 +1,42 @@
 ---
-name: Bug report
-about: Use this ONLY for bugs in retro-aim-server itself.
+name: Bug report 🐞
+about: Use this template to report bugs in Retro AIM Server.
+
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 
 ---
+
 <!--
-    # ###
-    NOTE: Please update to the latest version of retro-aim-server before reporting an issue!
-    This saves you and us a lot of time and troubleshooting.
-    # ###
+    ### 🚀 Please Update First! 🚀
+    Please ensure you're using the latest [release](https://github.com/mk6i/retro-aim-server/releases) of Retro AIM Server before reporting.
 -->
 
 <!--
-Please fill out the following template to make solving your problem easier and faster for us.
-This is only a guideline. If you think that parts are unnecessary for your issue, feel free to remove them.
+Hello! 👋 Thank you for reporting an issue with Retro AIM Server. To help us solve the problem quickly, please fill out the following template.
+Feel free to adjust or remove any parts that aren't relevant to your issue.
 
-Remember to hide/redact personal or confidential information,
-such as passwords, IP addresses, and DNS names as appropriate.
+Remember to avoid sharing sensitive information like passwords or personal data.
 -->
 
-### Subject of the issue
-<!-- Describe your issue here. -->
+### Subject of the Issue
+<!-- Briefly describe the problem you're encountering. -->
 
-### Deployment environment
+### Deployment Environment
+* **Retro AIM Server Version**: <!-- Version number -->
+* **Installation Method**: <!-- Pre-built, built from source, etc. -->
+* **Client(s) Used**: <!-- AIM 5.1.3036, Miranda IM 0.10.80, Pidgin 2.12, etc. -->
+* **Other Relevant Details**: <!-- Any additional context about your setup -->
 
-<!-- The version number -->
-<!-- Remember to check if your issue exists on the latest version first! -->
-* retro-aim-server version:
+### Steps to Reproduce
+<!-- Detailed steps to reproduce the issue. Include any specific settings or configurations you used. -->
 
-<!-- How the server was installed: Pre-built, built from source, etc. -->
-* Install method:
+### Expected Behavior
+<!-- Describe what you expected to happen. -->
 
-* Clients used: <!-- AIM 5.1.3036, Miranda IM 0.10.80, Pidgin 2.12, etc. -->
+### Actual Behavior
+<!-- Describe what actually happened instead. -->
 
-* Other relevant details:
-
-### Steps to reproduce
-<!-- Tell us how to reproduce this issue. What parameters did you set (differently from the defaults)
-and how did you start retro-aim-server? -->
-
-### Expected behaviour
-<!-- Tell us what you expected to happen -->
-
-### Actual behaviour
-<!-- Tell us what actually happened -->
-
-### Troubleshooting data
-<!-- Share any log files, screenshots, or other relevant troubleshooting data -->
+### Troubleshooting Data
+<!-- Attach any relevant log files, screenshots, or other troubleshooting data that might help diagnose the issue. -->

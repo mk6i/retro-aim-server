@@ -19,7 +19,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.22'
+
+      - name: Go Format
+        run: |
+          gofmt -s -l .
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
+
+      - name: Go Vet
+        run: go vet ./...
 
       - name: Build
         run: go build -v ./...
