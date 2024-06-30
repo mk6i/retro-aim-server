@@ -34,3 +34,10 @@ func (rt PermitDenyHandler) RightsQuery(ctx context.Context, _ *state.Session, i
 	rt.LogRequestAndResponse(ctx, inFrame, nil, outSNAC.Frame, outSNAC.Body)
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
+
+func (rt PermitDenyHandler) AddPermListEntries(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
+	//outSNAC := rt.PermitDenyService.RightsQuery(ctx, inFrame)
+	//rt.LogRequestAndResponse(ctx, inFrame, nil, outSNAC.Frame, outSNAC.Body)
+	//return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
+	return nil
+}

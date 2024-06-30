@@ -18,6 +18,7 @@ type Handlers struct {
 	ChatNavHandler
 	FeedbagHandler
 	ICBMHandler
+	ICQHandler
 	LocateHandler
 	OServiceHandler
 	PermitDenyHandler
@@ -53,6 +54,8 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.Feedbag, wire.FeedbagUpdateItem, h.FeedbagHandler.UpdateItem)
 	router.Register(wire.Feedbag, wire.FeedbagUse, h.FeedbagHandler.Use)
 
+	router.Register(wire.ICQ, wire.ICQDBQuery, h.ICQHandler.DBQuery)
+
 	router.Register(wire.ICBM, wire.ICBMAddParameters, h.ICBMHandler.AddParameters)
 	router.Register(wire.ICBM, wire.ICBMChannelMsgToHost, h.ICBMHandler.ChannelMsgToHost)
 	router.Register(wire.ICBM, wire.ICBMClientErr, h.ICBMHandler.ClientErr)
@@ -69,6 +72,7 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.Locate, wire.LocateUserInfoQuery2, h.LocateHandler.UserInfoQuery2)
 
 	router.Register(wire.PermitDeny, wire.PermitDenyRightsQuery, h.PermitDenyHandler.RightsQuery)
+	router.Register(wire.PermitDeny, wire.PermitDenyAddPermListEntries, h.PermitDenyHandler.AddPermListEntries)
 
 	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceHandler.ClientOnline)
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)

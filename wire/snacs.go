@@ -903,8 +903,39 @@ type SNAC_0x0E_0x06_ChatChannelMsgToClient struct {
 }
 
 //
-// 0x10: BART
+// 0x0F: ICQ
 //
+
+const (
+	ICQErr     uint16 = 0x0001
+	ICQDBQuery uint16 = 0x0002
+	ICQDBReply uint16 = 0x0003
+)
+
+const (
+	ICQReqTypeOfflineMsg uint16 = 0x003C
+	ICQReqTypeDeleteMsg  uint16 = 0x003E
+	ICQReqTypeInfo       uint16 = 0x07D0
+)
+
+type ICQMetadata struct {
+	ChunkSize  uint16
+	UIN        uint32
+	ReqType    uint16
+	Seq        uint16
+	ReqSubType uint16
+}
+
+type SNAC_0x0F_0x02_ICQDBQuery struct {
+	TLVRestBlock
+}
+
+type SNAC_0x0F_0x02_ICQDBReply struct {
+	TLVRestBlock
+}
+
+//
+// 0x10: BART
 //
 
 const (

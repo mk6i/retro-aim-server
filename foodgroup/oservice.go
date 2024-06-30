@@ -535,6 +535,7 @@ func NewOServiceServiceForBOS(
 				wire.OService,
 				wire.BART,
 				wire.PermitDeny,
+				wire.ICQ,
 			},
 		},
 	}
