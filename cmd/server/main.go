@@ -59,7 +59,7 @@ func main() {
 		feedbagService := foodgroup.NewFeedbagService(logger, sessionManager, feedbagStore, feedbagStore, adjListBuddyListStore)
 		foodgroupService := foodgroup.NewPermitDenyService()
 		icbmService := foodgroup.NewICBMService(sessionManager, feedbagStore, adjListBuddyListStore)
-		icqService := foodgroup.NewICQService()
+		icqService := foodgroup.NewICQService(sessionManager)
 		locateService := foodgroup.NewLocateService(sessionManager, feedbagStore, feedbagStore, adjListBuddyListStore)
 		oServiceService := foodgroup.NewOServiceServiceForBOS(cfg, sessionManager, adjListBuddyListStore, logger, cookieBaker, feedbagStore, feedbagStore)
 
