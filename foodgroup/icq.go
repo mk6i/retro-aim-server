@@ -67,24 +67,33 @@ func (s ICQService) DBQuery(ctx context.Context, sess *state.Session, frame wire
 			}
 
 			subTypes := []uint16{
-				0x00C8,
+				0x00FA,
 				0x00DC,
 				0x00EB,
 				0x010E,
 				0x00D2,
 				0x00E6,
 				0x00F0,
-				0x00FA,
+				0x00C8,
 			}
 
-			seq := uint16(1)
-			for _, subType := range subTypes {
-				snac, err := getSNAC(0x07DA, subType, userInfo.SearchUIN, seq)
+			//seq := uint16(1)
+			for i, subType := range subTypes {
+				icqMD.Seq++
+				snac, err := getSNAC(0x07DA, subType, userInfo.SearchUIN, icqMD.Seq)
 				if err != nil {
 					return err
 				}
-				s.messageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), snac)
-				seq++
+				//seq++
+				snac.Frame.Flags = setFirstBit(1)
+				if i == len(subTypes)-1 {
+					snac.Frame.Flags = 0
+				}
+				sess.RelayMessage(snac)
+				//if i == 2 {
+				//	break
+				//}
+				//s.messageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), snac)
 			}
 
 			fmt.Println("hello")
@@ -95,6 +104,10 @@ func (s ICQService) DBQuery(ctx context.Context, sess *state.Session, frame wire
 	return nil
 }
 
+func setFirstBit(n uint16) uint16 {
+	return n | 1
+}
+
 type ReqUserInfo struct {
 	SearchUIN uint32
 }
@@ -103,8 +116,7 @@ func getSNAC(reqType uint16, reqSubType uint16, uin uint32, seq uint16) (wire.SN
 	snac := wire.SNAC_0x0F_0x02_ICQDBReply{}
 
 	md := wire.ICQMetadata{
-		ChunkSize: uint16(2) + // data chunk size (TLV.Length-2)
-			uint16(4) + // request owner uin
+		ChunkSize: uint16(4) + // request owner uin
 			uint16(2) + // data type: META_DATA
 			uint16(2) + // 	request sequence number
 			uint16(2) + // 	data subtype: META_BASIC_USERINFO
@@ -116,11 +128,22 @@ func getSNAC(reqType uint16, reqSubType uint16, uin uint32, seq uint16) (wire.SN
 	}
 
 	buf := &bytes.Buffer{}
-	err := wire.Marshal(md, buf)
-	if err != nil {
+	ok := uint8(0x0)
+	if err := binary.Write(buf, binary.LittleEndian, md.ChunkSize); err != nil {
 		return wire.SNACMessage{}, err
 	}
-	ok := uint8(0)
+	if err := binary.Write(buf, binary.LittleEndian, md.UIN); err != nil {
+		return wire.SNACMessage{}, err
+	}
+	if err := binary.Write(buf, binary.LittleEndian, md.ReqType); err != nil {
+		return wire.SNACMessage{}, err
+	}
+	if err := binary.Write(buf, binary.LittleEndian, md.Seq); err != nil {
+		return wire.SNACMessage{}, err
+	}
+	if err := binary.Write(buf, binary.LittleEndian, md.ReqSubType); err != nil {
+		return wire.SNACMessage{}, err
+	}
 	if err := binary.Write(buf, binary.LittleEndian, ok); err != nil {
 		return wire.SNACMessage{}, err
 	}

@@ -39,6 +39,6 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 	if err != nil {
 		return err
 	}
-	rt.LogRequest(ctx, inFrame, inBody)
+	//rt.LogRequest(ctx, inFrame, inBody)
 	return nil
 }
