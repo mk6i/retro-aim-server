@@ -378,10 +378,8 @@ type chatRoomByNameParams []struct {
 // createChatRoomParams is the list of parameters passed at the mock
 // ChatRoomRegistry.CreateChatRoom call site
 type createChatRoomParams []struct {
-	exchange uint16
-	name     string
-	room     state.ChatRoom
-	err      error
+	room state.ChatRoom
+	err  error
 }
 
 // sessOptWarning sets a warning level on the session object
