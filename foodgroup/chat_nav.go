@@ -24,6 +24,13 @@ var defaultExchangeCfg = wire.TLVBlock{
 	},
 }
 
+var (
+	errChatNavRoomNameMissing    = errors.New("unable to find chat name in TLV payload")
+	errChatNavRoomCreateFailed   = errors.New("unable to create chat room")
+	errChatNavRetrieveFailed     = errors.New("unable to retrieve chat room chat room")
+	errChatNavMismatchedExchange = errors.New("chat room exchange does not match requested exchange")
+)
+
 // NewChatNavService creates a new instance of NewChatNavService.
 func NewChatNavService(logger *slog.Logger, chatRoomManager ChatRoomRegistry, fnNewChatRoom func() state.ChatRoom) *ChatNavService {
 	return &ChatNavService{
@@ -73,7 +80,8 @@ func (s ChatNavService) RequestChatRights(_ context.Context, inFrame wire.SNACFr
 // chat room.
 func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (wire.SNACMessage, error) {
 	if err := validateExchange(inBody.Exchange); err != nil {
-		return wire.SNACMessage{}, err
+		s.logger.Debug("error validating exchange: " + err.Error())
+		return sendChatNavErrorSNAC(inFrame, wire.ErrorCodeNotSupportedByHost)
 	}
 	if inBody.Cookie != "create" {
 		s.logger.Info("got a non-create cookie", "value", inBody.Cookie)
@@ -81,7 +89,7 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 
 	name, hasName := inBody.String(wire.ChatRoomTLVRoomName)
 	if !hasName {
-		return wire.SNACMessage{}, errors.New("unable to find chat name in TLV payload")
+		return wire.SNACMessage{}, errChatNavRoomNameMissing
 	}
 
 	// todo call ChatRoomByName and CreateChatRoom in a txn
@@ -90,8 +98,8 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 	switch {
 	case errors.Is(err, state.ErrChatRoomNotFound):
 		if inBody.Exchange == state.PublicExchange {
-			return wire.SNACMessage{}, fmt.Errorf("community chat rooms can only be created on exchange %d",
-				state.PrivateExchange)
+			s.logger.Debug(fmt.Sprintf("public chat room not found: %s:%d", name, inBody.Exchange))
+			return sendChatNavErrorSNAC(inFrame, wire.ErrorCodeNoMatch)
 		}
 
 		room = s.fnNewChatRoom()
@@ -102,14 +110,12 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 		room.Name = name
 
 		if err := s.chatRoomManager.CreateChatRoom(room); err != nil {
-			return wire.SNACMessage{}, fmt.Errorf("unable to create chat room: %w", err)
+			return wire.SNACMessage{}, fmt.Errorf("%w: %w", errChatNavRoomCreateFailed, err)
 		}
 		break
 	case err != nil:
-		return wire.SNACMessage{}, fmt.Errorf("unable to retrieve chat room chat room %s on exchange %d: %w",
-			name, inBody.Exchange, err)
+		return wire.SNACMessage{}, fmt.Errorf("%w: %w", errChatNavRetrieveFailed, err)
 	}
-
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.ChatNav,
@@ -138,16 +144,17 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 // the chat room specified in the inFrame.hmacCookie.
 func (s ChatNavService) RequestRoomInfo(_ context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (wire.SNACMessage, error) {
 	if err := validateExchange(inBody.Exchange); err != nil {
-		return wire.SNACMessage{}, err
+		s.logger.Debug("error validating exchange: " + err.Error())
+		return sendChatNavErrorSNAC(inFrame, wire.ErrorCodeNotSupportedByHost)
 	}
 
 	room, err := s.chatRoomManager.ChatRoomByCookie(inBody.Cookie)
 	if err != nil {
-		return wire.SNACMessage{}, fmt.Errorf("unable to find chat room: %w", err)
+		return wire.SNACMessage{}, fmt.Errorf("%w: %w", state.ErrChatRoomNotFound, err)
 	}
 
 	if room.Exchange != inBody.Exchange {
-		return wire.SNACMessage{}, errors.New("chat room exchange does not match requested exchange")
+		return wire.SNACMessage{}, errChatNavMismatchedExchange
 	}
 
 	return wire.SNACMessage{
@@ -176,7 +183,8 @@ func (s ChatNavService) RequestRoomInfo(_ context.Context, inFrame wire.SNACFram
 
 func (s ChatNavService) ExchangeInfo(_ context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo) (wire.SNACMessage, error) {
 	if err := validateExchange(inBody.Exchange); err != nil {
-		return wire.SNACMessage{}, err
+		s.logger.Debug("error validating exchange: " + err.Error())
+		return sendChatNavErrorSNAC(inFrame, wire.ErrorCodeNotSupportedByHost)
 	}
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -194,6 +202,20 @@ func (s ChatNavService) ExchangeInfo(_ context.Context, inFrame wire.SNACFrame, 
 					}),
 				},
 			},
+		},
+	}, nil
+}
+
+// sendChatNavErrorSNAC returns a ChatNavErr SNAC and logs an error for the operator
+func sendChatNavErrorSNAC(inFrame wire.SNACFrame, errorCode uint16) (wire.SNACMessage, error) {
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ChatNav,
+			SubGroup:  wire.ChatNavErr,
+			RequestID: inFrame.RequestID,
+		},
+		Body: wire.SNACError{
+			Code: errorCode,
 		},
 	}, nil
 }
