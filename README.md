@@ -97,6 +97,21 @@ This request lists sessions for all logged in users.
 Invoke-WebRequest -Uri http://localhost:8080/session -Method Get
 ```
 
+#### Create Public Chat Room
+
+```powershell
+Invoke-WebRequest -Uri http://localhost:8080/chat/room/public `
+  -Body '{"name":"Office Hijinks"}' `
+  -Method Post `
+  -ContentType "application/json"
+```
+
+#### List Public Chat Rooms
+
+```powershell
+Invoke-WebRequest -Uri http://localhost:8080/chat/room/public -Method Get
+```
+
 ### macOS / Linux
 
 #### List Users
@@ -129,6 +144,18 @@ This request lists sessions for all logged in users.
 
 ```shell
 curl http://localhost:8080/session
+```
+
+#### Create Public Chat Room
+
+```shell
+curl -d'{"name":"Office Hijinks"}' http://localhost:8080/chat/room/public
+```
+
+#### List Public Chat Rooms
+
+```shell
+curl http://localhost:8080/chat/room/public
 ```
 
 ## 🔗 Acknowledgements
