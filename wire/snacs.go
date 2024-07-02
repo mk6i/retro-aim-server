@@ -942,8 +942,9 @@ type ICQUserInfo struct {
 	HomeAddress  string `len_prefix:"uint16"`
 	CellPhone    string `len_prefix:"uint16"`
 	ZipCode      string `len_prefix:"uint16"`
-	CountryCode  string `len_prefix:"uint16"`
+	CountryCode  uint16
 	GMTOffset    uint8
+	AuthFlag     uint8
 	WebAware     uint8
 	DCPerms      uint8
 	PublishEmail uint8
@@ -951,7 +952,7 @@ type ICQUserInfo struct {
 
 type ICQMoreUserInfo struct {
 	Success      uint8
-	Age          uint16
+	Age          uint8
 	Gender       uint8
 	HomePageAddr string `len_prefix:"uint16"`
 	BirthYear    uint16
