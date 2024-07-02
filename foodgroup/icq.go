@@ -57,6 +57,72 @@ func (s ICQService) DBQuery(ctx context.Context, sess *state.Session, frame wire
 				return nil
 			}
 
+			// send SNAC(15,03)/07DA/00C8
+			icqMD.Seq++
+			snac, err := GetICQUserInfo(userInfo.SearchUIN, icqMD.Seq)
+			if err != nil {
+				return fmt.Errorf("get ICQ user info: %w", err)
+			}
+			sess.RelayMessage(snac)
+
+			// send SNAC(15,03)/07DA/00DC
+			icqMD.Seq++
+			snac, err = GetICQMoreUserInfo(userInfo.SearchUIN, icqMD.Seq)
+			if err != nil {
+				return fmt.Errorf("get ICQ user more: %w", err)
+			}
+			sess.RelayMessage(snac)
+
+			// send SNAC(15,03)/07DA/00EB
+			icqMD.Seq++
+			snac, err = GetICQInfoEmailMore(userInfo.SearchUIN, icqMD.Seq)
+			if err != nil {
+				return fmt.Errorf("get ICQ email more: %w", err)
+			}
+			sess.RelayMessage(snac)
+
+			// send SNAC(15,03)/07DA/010E
+			icqMD.Seq++
+			snac, err = GetICQHomepageCat(userInfo.SearchUIN, icqMD.Seq)
+			if err != nil {
+				return fmt.Errorf("get ICQ homepage cat: %w", err)
+			}
+			sess.RelayMessage(snac)
+
+			// send SNAC(15,03)/07DA/00D2
+			icqMD.Seq++
+			snac, err = GetICQMetaWorkUserInfo(userInfo.SearchUIN, icqMD.Seq)
+			if err != nil {
+				return fmt.Errorf("get ICQ work user info: %w", err)
+			}
+			sess.RelayMessage(snac)
+
+			// send SNAC(15,03)/07DA/00E6
+			icqMD.Seq++
+			snac, err = GetICQUserNotes(userInfo.SearchUIN, icqMD.Seq)
+			if err != nil {
+				return fmt.Errorf("get ICQ user notes: %w", err)
+			}
+			sess.RelayMessage(snac)
+
+			// send SNAC(15,03)/07DA/00F0
+			icqMD.Seq++
+			snac, err = GetICQUserInterests(userInfo.SearchUIN, icqMD.Seq)
+			if err != nil {
+				return fmt.Errorf("get ICQ user interests: %w", err)
+			}
+			sess.RelayMessage(snac)
+
+			// send SNAC(15,03)/07DA/00FA
+			icqMD.Seq++
+			snac, err = GetICQMetaAffiliationsUserInfo(userInfo.SearchUIN, icqMD.Seq)
+			if err != nil {
+				return fmt.Errorf("get ICQ affiliations user: %w", err)
+			}
+			sess.RelayMessage(snac)
+
+			// SNAC 1
+
 			//subTypes := []uint16{
 			//	0x00FA,
 			//	0x00DC,
@@ -101,6 +167,278 @@ func setFirstBit(n uint16) uint16 {
 
 type ReqUserInfo struct {
 	SearchUIN uint32
+}
+
+func GetICQUserInfo(uin uint32, seq uint16) (wire.SNACMessage, error) {
+	buf := &bytes.Buffer{}
+	userInfo := wire.ICQUserInfo{}
+	if err := wire.MarshalICQ(userInfo, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	md := wire.ICQMetadata{
+		UIN:        uin,
+		ReqType:    0x07DA,
+		ReqSubType: 0x00C8,
+		Seq:        seq,
+	}
+	if err := wire.MarshalICQ(md, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICQ,
+			SubGroup:  wire.ICQDBReply,
+		},
+		Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(0x01, wire.ICQChunk{
+						Body: buf.Bytes(),
+					}),
+				},
+			},
+		},
+	}, nil
+}
+
+func GetICQMoreUserInfo(uin uint32, seq uint16) (wire.SNACMessage, error) {
+	buf := &bytes.Buffer{}
+	userInfo := wire.ICQMoreUserInfo{}
+	if err := wire.MarshalICQ(userInfo, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	md := wire.ICQMetadata{
+		UIN:        uin,
+		ReqType:    0x07DA,
+		ReqSubType: 0x00DC,
+		Seq:        seq,
+	}
+	if err := wire.MarshalICQ(md, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICQ,
+			SubGroup:  wire.ICQDBReply,
+		},
+		Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(0x01, wire.ICQChunk{
+						Body: buf.Bytes(),
+					}),
+				},
+			},
+		},
+	}, nil
+}
+
+func GetICQInfoEmailMore(uin uint32, seq uint16) (wire.SNACMessage, error) {
+	buf := &bytes.Buffer{}
+	userInfo := wire.ICQInfoEmailMore{}
+	if err := wire.MarshalICQ(userInfo, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	md := wire.ICQMetadata{
+		UIN:        uin,
+		ReqType:    0x07DA,
+		ReqSubType: 0x00EB,
+		Seq:        seq,
+	}
+	if err := wire.MarshalICQ(md, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICQ,
+			SubGroup:  wire.ICQDBReply,
+		},
+		Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(0x01, wire.ICQChunk{
+						Body: buf.Bytes(),
+					}),
+				},
+			},
+		},
+	}, nil
+}
+
+func GetICQHomepageCat(uin uint32, seq uint16) (wire.SNACMessage, error) {
+	buf := &bytes.Buffer{}
+	userInfo := wire.ICQHomepageCat{}
+	if err := wire.MarshalICQ(userInfo, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	md := wire.ICQMetadata{
+		UIN:        uin,
+		ReqType:    0x07DA,
+		ReqSubType: 0x010E,
+		Seq:        seq,
+	}
+	if err := wire.MarshalICQ(md, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICQ,
+			SubGroup:  wire.ICQDBReply,
+		},
+		Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(0x01, wire.ICQChunk{
+						Body: buf.Bytes(),
+					}),
+				},
+			},
+		},
+	}, nil
+}
+
+func GetICQMetaWorkUserInfo(uin uint32, seq uint16) (wire.SNACMessage, error) {
+	buf := &bytes.Buffer{}
+	userInfo := wire.ICQMetaWorkUserInfo{}
+	if err := wire.MarshalICQ(userInfo, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	md := wire.ICQMetadata{
+		UIN:        uin,
+		ReqType:    0x07DA,
+		ReqSubType: 0x00D2,
+		Seq:        seq,
+	}
+	if err := wire.MarshalICQ(md, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICQ,
+			SubGroup:  wire.ICQDBReply,
+		},
+		Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(0x01, wire.ICQChunk{
+						Body: buf.Bytes(),
+					}),
+				},
+			},
+		},
+	}, nil
+}
+
+func GetICQUserNotes(uin uint32, seq uint16) (wire.SNACMessage, error) {
+	buf := &bytes.Buffer{}
+	userInfo := wire.ICQUserNotes{}
+	if err := wire.MarshalICQ(userInfo, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	md := wire.ICQMetadata{
+		UIN:        uin,
+		ReqType:    0x07DA,
+		ReqSubType: 0x00E6,
+		Seq:        seq,
+	}
+	if err := wire.MarshalICQ(md, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICQ,
+			SubGroup:  wire.ICQDBReply,
+		},
+		Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(0x01, wire.ICQChunk{
+						Body: buf.Bytes(),
+					}),
+				},
+			},
+		},
+	}, nil
+}
+
+func GetICQUserInterests(uin uint32, seq uint16) (wire.SNACMessage, error) {
+	buf := &bytes.Buffer{}
+	userInfo := wire.ICQUserInterests{}
+	if err := wire.MarshalICQ(userInfo, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	md := wire.ICQMetadata{
+		UIN:        uin,
+		ReqType:    0x07DA,
+		ReqSubType: 0x00F0,
+		Seq:        seq,
+	}
+	if err := wire.MarshalICQ(md, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICQ,
+			SubGroup:  wire.ICQDBReply,
+		},
+		Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(0x01, wire.ICQChunk{
+						Body: buf.Bytes(),
+					}),
+				},
+			},
+		},
+	}, nil
+}
+
+func GetICQMetaAffiliationsUserInfo(uin uint32, seq uint16) (wire.SNACMessage, error) {
+	buf := &bytes.Buffer{}
+	userInfo := wire.ICQMetaAffiliationsUserInfo{}
+	if err := wire.MarshalICQ(userInfo, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	md := wire.ICQMetadata{
+		UIN:        uin,
+		ReqType:    0x07DA,
+		ReqSubType: 0x00FA,
+		Seq:        seq,
+	}
+	if err := wire.MarshalICQ(md, buf); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICQ,
+			SubGroup:  wire.ICQDBReply,
+		},
+		Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(0x01, wire.ICQChunk{
+						Body: buf.Bytes(),
+					}),
+				},
+			},
+		},
+	}, nil
 }
 
 //func getSNAC(reqType uint16, reqSubType uint16, uin uint32, seq uint16) (wire.SNACMessage, error) {
