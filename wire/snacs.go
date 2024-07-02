@@ -918,12 +918,110 @@ const (
 	ICQReqTypeInfo       uint16 = 0x07D0
 )
 
+type ICQChunk struct {
+	Body []byte `len_prefix:"uint16"`
+}
+
 type ICQMetadata struct {
-	ChunkSize  uint16
 	UIN        uint32
 	ReqType    uint16
 	Seq        uint16
 	ReqSubType uint16
+}
+
+type ICQUserInfo struct {
+	Success      uint8
+	Nickname     string `len_prefix:"uint16"`
+	FirstName    string `len_prefix:"uint16"`
+	LastName     string `len_prefix:"uint16"`
+	Email        string `len_prefix:"uint16"`
+	HomeCity     string `len_prefix:"uint16"`
+	HomeState    string `len_prefix:"uint16"`
+	HomePhone    string `len_prefix:"uint16"`
+	HomeFax      string `len_prefix:"uint16"`
+	HomeAddress  string `len_prefix:"uint16"`
+	CellPhone    string `len_prefix:"uint16"`
+	ZipCode      string `len_prefix:"uint16"`
+	CountryCode  string `len_prefix:"uint16"`
+	GMTOffset    uint8
+	WebAware     uint8
+	DCPerms      uint8
+	PublishEmail uint8
+}
+
+type ICQMoreUserInfo struct {
+	Success      uint8
+	Age          uint16
+	Gender       uint8
+	HomePageAddr string `len_prefix:"uint16"`
+	BirthYear    uint16
+	BirthMonth   uint8
+	BirthDay     uint8
+	Lang1        uint8
+	Lang2        uint8
+	Lang3        uint8
+	Unknown      uint16
+	City         string `len_prefix:"uint16"`
+	State        string `len_prefix:"uint16"`
+	CountryCode  uint16
+	TimeZone     uint8
+}
+
+type ICQInfoEmailMore struct {
+	Success uint8
+	Emails  []struct {
+		Flag  uint8  // (0-publish, 1-don't)
+		Email string `len_prefix:"uint16"`
+	} `count_prefix:"uint8"`
+}
+
+type ICQHomepageCat struct {
+	Success  uint8
+	Enabled  uint8
+	CatCode  uint16
+	Keywords string `len_prefix:"uint16"`
+	Unknown  uint8
+}
+
+type ICQMetaWorkUserInfo struct {
+	Success        uint8
+	City           string `len_prefix:"uint16"`
+	State          string `len_prefix:"uint16"`
+	Phone          string `len_prefix:"uint16"`
+	Fax            string `len_prefix:"uint16"`
+	Address        string `len_prefix:"uint16"`
+	ZIP            string `len_prefix:"uint16"`
+	CountryCode    uint16
+	Company        string `len_prefix:"uint16"`
+	Department     string `len_prefix:"uint16"`
+	Position       string `len_prefix:"uint16"`
+	OccupationCode uint16
+	WebPage        string `len_prefix:"uint16"`
+}
+
+type ICQUserNotes struct {
+	Success uint8
+	Notes   string `len_prefix:"uint16"`
+}
+
+type ICQUserInterests struct {
+	Success   uint8
+	Interests []struct {
+		Code    uint16
+		Keyword string `len_prefix:"uint16"`
+	} `count_prefix:"uint8"`
+}
+
+type ICQMetaAffiliationsUserInfo struct {
+	Success          uint8
+	PastAffiliations []struct {
+		Code    uint16
+		Keyword string `len_prefix:"uint16"`
+	} `count_prefix:"uint8"`
+	Affiliations []struct {
+		Code    uint16
+		Keyword string `len_prefix:"uint16"`
+	} `count_prefix:"uint8"`
 }
 
 type SNAC_0x0F_0x02_ICQDBQuery struct {

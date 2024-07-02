@@ -12,14 +12,17 @@ import (
 var ErrUnmarshalFailure = errors.New("failed to unmarshal")
 
 func Unmarshal(v any, r io.Reader) error {
-	return unmarshal(reflect.TypeOf(v).Elem(), reflect.ValueOf(v).Elem(), "", r)
+	return unmarshal(reflect.TypeOf(v).Elem(), reflect.ValueOf(v).Elem(), "", r, binary.BigEndian)
+}
+func UnmarshalICQ(v any, r io.Reader) error {
+	return unmarshal(reflect.TypeOf(v).Elem(), reflect.ValueOf(v).Elem(), "", r, binary.LittleEndian)
 }
 
-func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Reader) error {
+func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Reader, order binary.ByteOrder) error {
 	switch v.Kind() {
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
-			if err := unmarshal(t.Field(i).Type, v.Field(i), t.Field(i).Tag, r); err != nil {
+			if err := unmarshal(t.Field(i).Type, v.Field(i), t.Field(i).Tag, r, order); err != nil {
 				return err
 			}
 		}
@@ -30,13 +33,13 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 			switch lenTag {
 			case "uint8":
 				var l uint8
-				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+				if err := binary.Read(r, order, &l); err != nil {
 					return err
 				}
 				bufLen = int(l)
 			case "uint16":
 				var l uint16
-				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+				if err := binary.Read(r, order, &l); err != nil {
 					return err
 				}
 				bufLen = int(l)
@@ -57,28 +60,28 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 		return nil
 	case reflect.Uint8:
 		var l uint8
-		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		if err := binary.Read(r, order, &l); err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(l))
 		return nil
 	case reflect.Uint16:
 		var l uint16
-		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		if err := binary.Read(r, order, &l); err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(l))
 		return nil
 	case reflect.Uint32:
 		var l uint32
-		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		if err := binary.Read(r, order, &l); err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(l))
 		return nil
 	case reflect.Uint64:
 		var l uint64
-		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		if err := binary.Read(r, order, &l); err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(l))
@@ -89,13 +92,13 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 			switch lenTag {
 			case "uint8":
 				var l uint8
-				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+				if err := binary.Read(r, order, &l); err != nil {
 					return err
 				}
 				bufLen = int(l)
 			case "uint16":
 				var l uint16
-				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+				if err := binary.Read(r, order, &l); err != nil {
 					return err
 				}
 				bufLen = int(l)
@@ -113,7 +116,7 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 			slice := reflect.New(v.Type()).Elem()
 			// todo: if this is a slice of scalars, there should be no need to
 			//  call Unmarshal on each element. it should be possible to just
-			//  call binary.Read(r, binary.BigEndian, []byte)
+			//  call binary.Read(r, order, []byte)
 			for b.Len() > 0 {
 				v1 := reflect.New(v.Type().Elem()).Interface()
 				if err := Unmarshal(v1, b); err != nil {
@@ -127,13 +130,13 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 			switch countTag {
 			case "uint8":
 				var l uint8
-				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+				if err := binary.Read(r, order, &l); err != nil {
 					return err
 				}
 				count = int(l)
 			case "uint16":
 				var l uint16
-				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+				if err := binary.Read(r, order, &l); err != nil {
 					return err
 				}
 				count = int(l)

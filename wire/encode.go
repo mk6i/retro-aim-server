@@ -13,17 +13,21 @@ var ErrMarshalFailure = errors.New("failed to marshal")
 var ErrMarshalFailureNilSNAC = errors.New("attempting to marshal a nil SNAC")
 
 func Marshal(v any, w io.Writer) error {
-	return marshal(reflect.TypeOf(v), reflect.ValueOf(v), "", w)
+	return marshal(reflect.TypeOf(v), reflect.ValueOf(v), "", w, binary.BigEndian)
 }
 
-func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer) error {
+func MarshalICQ(v any, w io.Writer) error {
+	return marshal(reflect.TypeOf(v), reflect.ValueOf(v), "", w, binary.LittleEndian)
+}
+
+func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer, order binary.ByteOrder) error {
 	if t == nil {
 		return ErrMarshalFailureNilSNAC
 	}
 	switch t.Kind() {
 	case reflect.Struct:
 		for i := 0; i < t.NumField(); i++ {
-			if err := marshal(t.Field(i).Type, v.Field(i), t.Field(i).Tag, w); err != nil {
+			if err := marshal(t.Field(i).Type, v.Field(i), t.Field(i).Tag, w, order); err != nil {
 				return err
 			}
 		}
@@ -32,18 +36,18 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 		if lenTag, ok := tag.Lookup("len_prefix"); ok {
 			switch lenTag {
 			case "uint8":
-				if err := binary.Write(w, binary.BigEndian, uint8(len(v.String()))); err != nil {
+				if err := binary.Write(w, order, uint8(len(v.String()))); err != nil {
 					return err
 				}
 			case "uint16":
-				if err := binary.Write(w, binary.BigEndian, uint16(len(v.String()))); err != nil {
+				if err := binary.Write(w, order, uint16(len(v.String()))); err != nil {
 					return err
 				}
 			default:
 				return fmt.Errorf("%w: unsupported len_prefix type %s. allowed types: uint8, uint16", ErrMarshalFailure, lenTag)
 			}
 		}
-		return binary.Write(w, binary.BigEndian, []byte(v.String()))
+		return binary.Write(w, order, []byte(v.String()))
 	case reflect.Slice:
 		// todo: only write to temporary buffer if len_prefix is set
 		buf := &bytes.Buffer{}
@@ -55,7 +59,7 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 				}
 			}
 		} else {
-			if err := binary.Write(buf, binary.BigEndian, v.Interface()); err != nil {
+			if err := binary.Write(buf, order, v.Interface()); err != nil {
 				return fmt.Errorf("%w: error marshalling %s", ErrMarshalFailure, t.Elem().Kind())
 			}
 		}
@@ -65,11 +69,11 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 			hasLenPrefix = true
 			switch l {
 			case "uint8":
-				if err := binary.Write(w, binary.BigEndian, uint8(buf.Len())); err != nil {
+				if err := binary.Write(w, order, uint8(buf.Len())); err != nil {
 					return err
 				}
 			case "uint16":
-				if err := binary.Write(w, binary.BigEndian, uint16(buf.Len())); err != nil {
+				if err := binary.Write(w, order, uint16(buf.Len())); err != nil {
 					return err
 				}
 			default:
@@ -82,11 +86,11 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 			}
 			switch l {
 			case "uint8":
-				if err := binary.Write(w, binary.BigEndian, uint8(v.Len())); err != nil {
+				if err := binary.Write(w, order, uint8(v.Len())); err != nil {
 					return err
 				}
 			case "uint16":
-				if err := binary.Write(w, binary.BigEndian, uint16(v.Len())); err != nil {
+				if err := binary.Write(w, order, uint16(v.Len())); err != nil {
 					return err
 				}
 			default:
@@ -99,7 +103,7 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 		}
 		return nil
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return binary.Write(w, binary.BigEndian, v.Interface())
+		return binary.Write(w, order, v.Interface())
 	default:
 		return fmt.Errorf("%w: unsupported type %v", ErrMarshalFailure, t.Kind())
 	}
