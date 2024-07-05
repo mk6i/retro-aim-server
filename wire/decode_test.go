@@ -349,6 +349,99 @@ func TestUnmarshal(t *testing.T) {
 				[]byte{0x0, 0x02}, /* count prefix */
 				[]byte{0x0, 0xa, 0x0, 0x2, 0x4, 0xd2, 0x0, 0x14, 0x0, 0x2, 0x4, 0xd2}...), /* slice val */
 		},
+		{
+			name: "struct with uint8 len_prefix",
+			prototype: &struct {
+				Val0 uint8
+				Val1 struct {
+					Val2 uint16
+					Val3 uint8
+				} `len_prefix:"uint8"`
+				Val4 uint16
+			}{},
+			want: &struct {
+				Val0 uint8
+				Val1 struct {
+					Val2 uint16
+					Val3 uint8
+				} `len_prefix:"uint8"`
+				Val4 uint16
+			}{
+				Val0: 34,
+				Val1: struct {
+					Val2 uint16
+					Val3 uint8
+				}{
+					Val2: 16,
+					Val3: 10,
+				},
+				Val4: 32,
+			},
+			given: []byte{
+				0x22,       // Val0
+				0x03,       // Val1 struct len
+				0x00, 0x10, // Val2
+				0x0A,       // Val3
+				0x00, 0x20, // Val2
+			},
+		},
+		{
+			name: "struct with uint16 len_prefix",
+			prototype: &struct {
+				Val0 uint8
+				Val1 struct {
+					Val2 uint16
+					Val3 uint8
+				} `len_prefix:"uint16"`
+				Val4 uint16
+			}{},
+			want: &struct {
+				Val0 uint8
+				Val1 struct {
+					Val2 uint16
+					Val3 uint8
+				} `len_prefix:"uint16"`
+				Val4 uint16
+			}{
+				Val0: 34,
+				Val1: struct {
+					Val2 uint16
+					Val3 uint8
+				}{
+					Val2: 16,
+					Val3: 10,
+				},
+				Val4: 32,
+			},
+			given: []byte{
+				0x22,       // Val0
+				0x00, 0x03, // Val1 struct len
+				0x00, 0x10, // Val2
+				0x0A,       // Val3
+				0x00, 0x20, // Val2
+			},
+		},
+		{
+			name: "struct with uint16 len_prefix with read error",
+			prototype: &struct {
+				Val1 struct {
+					Val2 uint16
+				} `len_prefix:"uint16"`
+			}{},
+			given: []byte{
+				0x00, 0x10, // 16 byte len, but the body is truncated
+			},
+			wantErr: io.EOF,
+		},
+		{
+			name: "struct with unknown len_prefix",
+			prototype: &struct {
+				Val1 struct {
+					Val2 uint16
+				} `len_prefix:"uint128"`
+			}{},
+			wantErr: ErrUnmarshalFailure,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -22,25 +22,35 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 	}
 	switch t.Kind() {
 	case reflect.Struct:
-		for i := 0; i < t.NumField(); i++ {
-			if err := marshal(t.Field(i).Type, v.Field(i), t.Field(i).Tag, w); err != nil {
+		marshalEachField := func(w io.Writer) error {
+			for i := 0; i < t.NumField(); i++ {
+				if err := marshal(t.Field(i).Type, v.Field(i), t.Field(i).Tag, w); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		if lenTag, ok := tag.Lookup("len_prefix"); ok {
+			buf := &bytes.Buffer{}
+			if err := marshalEachField(buf); err != nil {
 				return err
 			}
+			// write struct length
+			if err := writeUnsignedInt(lenTag, buf.Len(), w); err != nil {
+				return err
+			}
+			// write struct bytes
+			if buf.Len() > 0 {
+				_, err := w.Write(buf.Bytes())
+				return err
+			}
+			return nil
 		}
-		return nil
+		return marshalEachField(w)
 	case reflect.String:
 		if lenTag, ok := tag.Lookup("len_prefix"); ok {
-			switch lenTag {
-			case "uint8":
-				if err := binary.Write(w, binary.BigEndian, uint8(len(v.String()))); err != nil {
-					return err
-				}
-			case "uint16":
-				if err := binary.Write(w, binary.BigEndian, uint16(len(v.String()))); err != nil {
-					return err
-				}
-			default:
-				return fmt.Errorf("%w: unsupported len_prefix type %s. allowed types: uint8, uint16", ErrMarshalFailure, lenTag)
+			if err := writeUnsignedInt(lenTag, len(v.String()), w); err != nil {
+				return err
 			}
 		}
 		return binary.Write(w, binary.BigEndian, []byte(v.String()))
@@ -63,34 +73,16 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 		var hasLenPrefix bool
 		if l, ok := tag.Lookup("len_prefix"); ok {
 			hasLenPrefix = true
-			switch l {
-			case "uint8":
-				if err := binary.Write(w, binary.BigEndian, uint8(buf.Len())); err != nil {
-					return err
-				}
-			case "uint16":
-				if err := binary.Write(w, binary.BigEndian, uint16(buf.Len())); err != nil {
-					return err
-				}
-			default:
-				return fmt.Errorf("%w: unsupported len_prefix type %s. allowed types: uint8, uint16", ErrMarshalFailure, l)
+			if err := writeUnsignedInt(l, buf.Len(), w); err != nil {
+				return err
 			}
 		}
 		if l, ok := tag.Lookup("count_prefix"); ok {
 			if hasLenPrefix {
 				return fmt.Errorf("%w: struct elem has both len_prefix and count_prefix: ", ErrMarshalFailure)
 			}
-			switch l {
-			case "uint8":
-				if err := binary.Write(w, binary.BigEndian, uint8(v.Len())); err != nil {
-					return err
-				}
-			case "uint16":
-				if err := binary.Write(w, binary.BigEndian, uint16(v.Len())); err != nil {
-					return err
-				}
-			default:
-				return fmt.Errorf("%w: unsupported count_prefix type %s. allowed types: uint8, uint16", ErrMarshalFailure, l)
+			if err := writeUnsignedInt(l, v.Len(), w); err != nil {
+				return err
 			}
 		}
 		if buf.Len() > 0 {
@@ -103,4 +95,20 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 	default:
 		return fmt.Errorf("%w: unsupported type %v", ErrMarshalFailure, t.Kind())
 	}
+}
+
+func writeUnsignedInt(intType string, intVal int, w io.Writer) error {
+	switch intType {
+	case "uint8":
+		if err := binary.Write(w, binary.BigEndian, uint8(intVal)); err != nil {
+			return err
+		}
+	case "uint16":
+		if err := binary.Write(w, binary.BigEndian, uint16(intVal)); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("%w: unsupported type %s. allowed types: uint8, uint16", ErrMarshalFailure, intType)
+	}
+	return nil
 }

@@ -18,6 +18,19 @@ func Unmarshal(v any, r io.Reader) error {
 func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Reader) error {
 	switch v.Kind() {
 	case reflect.Struct:
+		if lenTag, ok := tag.Lookup("len_prefix"); ok {
+			bufLen, err := readUnsignedInt(lenTag, r)
+			if err != nil {
+				return err
+			}
+			b := make([]byte, bufLen)
+			if bufLen > 0 {
+				if _, err := io.ReadFull(r, b); err != nil {
+					return err
+				}
+			}
+			r = bytes.NewBuffer(b)
+		}
 		for i := 0; i < v.NumField(); i++ {
 			if err := unmarshal(t.Field(i).Type, v.Field(i), t.Field(i).Tag, r); err != nil {
 				return err
@@ -27,21 +40,9 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 	case reflect.String:
 		var bufLen int
 		if lenTag, ok := tag.Lookup("len_prefix"); ok {
-			switch lenTag {
-			case "uint8":
-				var l uint8
-				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-					return err
-				}
-				bufLen = int(l)
-			case "uint16":
-				var l uint16
-				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-					return err
-				}
-				bufLen = int(l)
-			default:
-				return fmt.Errorf("%w: unsupported len_prefix type %s. allowed types: uint8, uint16", ErrUnmarshalFailure, lenTag)
+			var err error
+			if bufLen, err = readUnsignedInt(lenTag, r); err != nil {
+				return err
 			}
 		} else {
 			return fmt.Errorf("%w: missing len_prefix tag", ErrUnmarshalFailure)
@@ -85,24 +86,10 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 		return nil
 	case reflect.Slice:
 		if lenTag, ok := tag.Lookup("len_prefix"); ok {
-			var bufLen int
-			switch lenTag {
-			case "uint8":
-				var l uint8
-				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-					return err
-				}
-				bufLen = int(l)
-			case "uint16":
-				var l uint16
-				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-					return err
-				}
-				bufLen = int(l)
-			default:
-				return fmt.Errorf("%w: unsupported len_prefix type %s. allowed types: uint8, uint16", ErrUnmarshalFailure, lenTag)
+			bufLen, err := readUnsignedInt(lenTag, r)
+			if err != nil {
+				return err
 			}
-
 			buf := make([]byte, bufLen)
 			if bufLen > 0 {
 				if _, err := io.ReadFull(r, buf); err != nil {
@@ -123,24 +110,10 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 			}
 			v.Set(slice)
 		} else if countTag, ok := tag.Lookup("count_prefix"); ok {
-			var count int
-			switch countTag {
-			case "uint8":
-				var l uint8
-				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-					return err
-				}
-				count = int(l)
-			case "uint16":
-				var l uint16
-				if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-					return err
-				}
-				count = int(l)
-			default:
-				return fmt.Errorf("%w: unsupported count_prefix type %s. allowed types: uint8, uint16", ErrUnmarshalFailure, lenTag)
+			count, err := readUnsignedInt(countTag, r)
+			if err != nil {
+				return err
 			}
-
 			slice := reflect.New(v.Type()).Elem()
 			for i := 0; i < count; i++ {
 				v1 := reflect.New(v.Type().Elem()).Interface()
@@ -168,4 +141,25 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 	default:
 		return fmt.Errorf("%w: unsupported type %v", ErrUnmarshalFailure, t.Kind())
 	}
+}
+
+func readUnsignedInt(intType string, r io.Reader) (int, error) {
+	var bufLen int
+	switch intType {
+	case "uint8":
+		var l uint8
+		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+			return 0, err
+		}
+		bufLen = int(l)
+	case "uint16":
+		var l uint16
+		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+			return 0, err
+		}
+		bufLen = int(l)
+	default:
+		return 0, fmt.Errorf("%w: unsupported len_prefix type %s. allowed types: uint8, uint16", ErrUnmarshalFailure, intType)
+	}
+	return bufLen, nil
 }

@@ -329,6 +329,111 @@ func TestMarshal(t *testing.T) {
 			given:   nil,
 			wantErr: ErrMarshalFailureNilSNAC,
 		},
+		{
+			name: "struct with uint8 len_prefix",
+			w:    &bytes.Buffer{},
+			given: struct {
+				Val0 uint8
+				Val1 struct {
+					Val2 uint16
+					Val3 uint8
+				} `len_prefix:"uint8"`
+				Val4 uint16
+			}{
+				Val0: 34,
+				Val1: struct {
+					Val2 uint16
+					Val3 uint8
+				}{
+					Val2: 16,
+					Val3: 10,
+				},
+				Val4: 32,
+			},
+			want: append(
+				[]byte{
+					0x22,       // Val0
+					0x03,       // Val1 struct len
+					0x00, 0x10, // Val2
+					0x0A,       // Val3
+					0x00, 0x20, // Val2
+				}),
+		},
+		{
+			name: "struct with uint16 len_prefix",
+			w:    &bytes.Buffer{},
+			given: struct {
+				Val0 uint8
+				Val1 struct {
+					Val2 uint16
+					Val3 uint8
+				} `len_prefix:"uint16"`
+				Val4 uint16
+			}{
+				Val0: 34,
+				Val1: struct {
+					Val2 uint16
+					Val3 uint8
+				}{
+					Val2: 16,
+					Val3: 10,
+				},
+				Val4: 32,
+			},
+			want: []byte{
+				0x22,       // Val0
+				0x00, 0x03, // Val1 struct len
+				0x00, 0x10, // Val2
+				0x0A,       // Val3
+				0x00, 0x20, // Val2
+			},
+		},
+		{
+			name: "invalid struct with uint16 len_prefix",
+			w:    &bytes.Buffer{},
+			given: struct {
+				Val1 struct {
+					Val2 int
+				} `len_prefix:"uint16"`
+			}{
+				Val1: struct {
+					Val2 int
+				}{
+					Val2: 16,
+				},
+			},
+			wantErr: ErrMarshalFailure,
+		},
+		{
+			name: "empty struct with uint16 len_prefix",
+			w:    &bytes.Buffer{},
+			given: struct {
+				Val1 struct {
+				} `len_prefix:"uint16"`
+			}{
+				Val1: struct {
+				}{},
+			},
+			want: []byte{
+				0x00, 0x00, // 0-len
+			},
+		},
+		{
+			name: "struct with unknown len_prefix",
+			w:    &bytes.Buffer{},
+			given: struct {
+				Val1 struct {
+					Val2 uint16
+				} `len_prefix:"uint128"`
+			}{
+				Val1: struct {
+					Val2 uint16
+				}{
+					Val2: 16,
+				},
+			},
+			wantErr: ErrMarshalFailure,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
