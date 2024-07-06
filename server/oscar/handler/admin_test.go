@@ -31,7 +31,7 @@ func TestAdminHandler_ConfirmRequest(t *testing.T) {
 
 	svc := newMockAdminService(t)
 	svc.EXPECT().
-		ConfirmRequest(mock.Anything, input.Frame).
+		ConfirmRequest(nil, mock.Anything, input.Frame).
 		Return(output, nil)
 
 	h := NewAdminHandler(slog.Default(), svc)
@@ -77,7 +77,7 @@ func TestAdminHandler_InfoQuery_RegistrationStatus(t *testing.T) {
 
 	svc := newMockAdminService(t)
 	svc.EXPECT().
-		ConfirmRequest(mock.Anything, input.Frame).
+		ConfirmRequest(mock.Anything, mock.Anything, input.Frame).
 		Return(output, nil)
 
 	h := NewAdminHandler(slog.Default(), svc)

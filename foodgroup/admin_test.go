@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"net/mail"
 	"testing"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -21,17 +22,21 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
+		// userSession is the session of the user
+		userSession *state.Session
 		// expectOutput is the SNAC sent from the server to client
 		expectOutput wire.SNACMessage
 		// expectErr is the expected error returned
 		expectErr error
 	}{
 		{
-			name: "user confirms their account",
+			name:        "unconfirmed account sends confirmation request",
+			userSession: newTestSession("chattingchuck"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					FoodGroup: wire.Admin,
 					SubGroup:  wire.AdminAcctConfirmRequest,
+					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x07_0x06_AdminConfirmRequest{},
 			},
@@ -39,9 +44,122 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 				Frame: wire.SNACFrame{
 					FoodGroup: wire.Admin,
 					SubGroup:  wire.AdminAcctConfirmReply,
+					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x07_0x07_AdminConfirmReply{
 					Status: wire.AdminAcctConfirmStatusEmailSent,
+				},
+			},
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerEmailAddressByNameParams: accountManagerEmailAddressByNameParams{
+						{
+
+							screenName: state.NewIdentScreenName("chattingchuck"),
+							emailAddress: &mail.Address{
+								Address: "chuck@aol.com",
+							},
+							err: nil,
+						},
+					},
+					accountManagerConfirmStatusByNameParams: accountManagerConfirmStatusByNameParams{
+						{
+							screenName:    state.NewIdentScreenName("chattingchuck"),
+							confirmStatus: false,
+							err:           nil,
+						},
+					},
+					accountManagerUpdateConfirmStatusParams: accountManagerUpdateConfirmStatusParams{
+						{
+							confirmStatus: true,
+							screenName:    state.NewIdentScreenName("chattingchuck"),
+							err:           nil,
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
+						{
+							screenName: state.NewIdentScreenName("Chatting Chuck"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "already confirmed account sends confirmation request",
+			userSession: newTestSession("chattingchuck"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminAcctConfirmRequest,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x07_0x06_AdminConfirmRequest{},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminAcctConfirmReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x07_0x07_AdminConfirmReply{
+					Status: wire.AdminAcctConfirmStatusAlreadyConfirmed,
+				},
+			},
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerEmailAddressByNameParams: accountManagerEmailAddressByNameParams{
+						{
+
+							screenName: state.NewIdentScreenName("chattingchuck"),
+							emailAddress: &mail.Address{
+								Address: "chuck@aol.com",
+							},
+							err: nil,
+						},
+					},
+					accountManagerConfirmStatusByNameParams: accountManagerConfirmStatusByNameParams{
+						{
+							screenName:    state.NewIdentScreenName("chattingchuck"),
+							confirmStatus: true,
+							err:           nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "acccount with no email address sends confirmation request",
+			userSession: newTestSession("chattingchuck"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminAcctConfirmRequest,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x07_0x06_AdminConfirmRequest{},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminAcctConfirmReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x07_0x07_AdminConfirmReply{
+					Status: wire.AdminAcctConfirmStatusServerError,
+				},
+			},
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerEmailAddressByNameParams: accountManagerEmailAddressByNameParams{
+						{
+
+							screenName:   state.NewIdentScreenName("chattingchuck"),
+							emailAddress: nil,
+							err:          state.ErrNoEmailAddress,
+						},
+					},
 				},
 			},
 		},
@@ -52,12 +170,33 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 			sessionManager := newMockSessionManager(t)
 			accountManager := newMockAccountManager(t)
 			buddyBroadcaster := newMockbuddyBroadcaster(t)
+
+			for _, params := range tc.mockParams.accountManagerParams.accountManagerEmailAddressByNameParams {
+				accountManager.EXPECT().
+					EmailAddressByName(params.screenName).
+					Return(params.emailAddress, params.err)
+			}
+			for _, params := range tc.mockParams.accountManagerParams.accountManagerConfirmStatusByNameParams {
+				accountManager.EXPECT().
+					ConfirmStatusByName(params.screenName).
+					Return(params.confirmStatus, params.err)
+			}
+			for _, params := range tc.mockParams.accountManagerParams.accountManagerUpdateConfirmStatusParams {
+				accountManager.EXPECT().
+					UpdateConfirmStatus(params.confirmStatus, params.screenName).
+					Return(params.err)
+			}
+			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
+				buddyBroadcaster.EXPECT().
+					BroadcastBuddyArrived(mock.Anything, tc.userSession).
+					Return(params.err)
+			}
 			svc := AdminService{
 				sessionManager:         sessionManager,
 				accountManager:         accountManager,
 				buddyUpdateBroadcaster: buddyBroadcaster,
 			}
-			outputSNAC, err := svc.ConfirmRequest(nil, tc.inputSNAC.Frame)
+			outputSNAC, err := svc.ConfirmRequest(nil, tc.userSession, tc.inputSNAC.Frame)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -111,7 +250,18 @@ func TestAdminService_InfoQuery(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusFullDisclosure),
+							wire.NewTLV(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusLimitDisclosure),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerRegStatusByNameParams: accountManagerRegStatusByNameParams{
+						{
+							screenName: state.NewIdentScreenName("chattingchuck"),
+							regStatus:  wire.AdminInfoRegStatusLimitDisclosure,
+							err:        nil,
 						},
 					},
 				},
@@ -143,7 +293,63 @@ func TestAdminService_InfoQuery(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVEmailAddress, "chattingchuck@aol.com"), // todo: get from session
+							wire.NewTLV(wire.AdminTLVEmailAddress, "chattingchuck@aol.com"),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerEmailAddressByNameParams: accountManagerEmailAddressByNameParams{
+						{
+							screenName: state.NewIdentScreenName("chattingchuck"),
+							emailAddress: &mail.Address{
+								Address: "chattingchuck@aol.com",
+							},
+							err: nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "user requests account email address but not set",
+			userSession: newTestSession("chattingchuck"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoQuery,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x02_AdminInfoQuery{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVEmailAddress, uint16(0x00))},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x03_AdminInfoReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVEmailAddress, ""),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerEmailAddressByNameParams: accountManagerEmailAddressByNameParams{
+						{
+							screenName:   state.NewIdentScreenName("chattingchuck"),
+							emailAddress: nil,
+							err:          state.ErrNoEmailAddress,
 						},
 					},
 				},
@@ -215,6 +421,19 @@ func TestAdminService_InfoQuery(t *testing.T) {
 			sessionManager := newMockSessionManager(t)
 			accountManager := newMockAccountManager(t)
 			buddyBroadcaster := newMockbuddyBroadcaster(t)
+
+			for _, params := range tc.mockParams.accountManagerParams.accountManagerRegStatusByNameParams {
+				accountManager.EXPECT().
+					RegStatusByName(params.screenName).
+					Return(params.regStatus, params.err)
+			}
+
+			for _, params := range tc.mockParams.accountManagerParams.accountManagerEmailAddressByNameParams {
+				accountManager.EXPECT().
+					EmailAddressByName(params.screenName).
+					Return(params.emailAddress, params.err)
+			}
+
 			svc := AdminService{
 				sessionManager:         sessionManager,
 				accountManager:         accountManager,
@@ -230,7 +449,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 	}
 }
 
-func TestAdminService_InfoChangeRequest(t *testing.T) {
+func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -332,16 +551,22 @@ func TestAdminService_InfoChangeRequest(t *testing.T) {
 			expectOutput: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					FoodGroup: wire.Admin,
-					SubGroup:  wire.AdminErr,
+					SubGroup:  wire.AdminInfoChangeReply,
 					RequestID: 1337,
 				},
-				Body: wire.SNACError{
-					Code: wire.AdminInfoErrorInvalidNickNameLength,
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidNickNameLength),
+							wire.NewTLV(wire.AdminTLVUrl, ""),
+						},
+					},
 				},
 			},
 		},
 		{
-			name:        "proposed screen name does not match session's screen name (malicous client)",
+			name:        "proposed screen name does not match session screen name",
 			userSession: newTestSession("chattingchuck"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -359,11 +584,50 @@ func TestAdminService_InfoChangeRequest(t *testing.T) {
 			expectOutput: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					FoodGroup: wire.Admin,
-					SubGroup:  wire.AdminErr,
+					SubGroup:  wire.AdminInfoChangeReply,
 					RequestID: 1337,
 				},
-				Body: wire.SNACError{
-					Code: wire.AdminInfoErrorInvalidNickName,
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVErrorCode, wire.AdminInfoErrorValidateNickName),
+							wire.NewTLV(wire.AdminTLVUrl, ""),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "proposed screen name ends in a space",
+			userSession: newTestSession("chattingchuck"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVScreenNameFormatted, "ChattingChuck ")},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidNickName),
+							wire.NewTLV(wire.AdminTLVUrl, ""),
+						},
+					},
 				},
 			},
 		},
@@ -388,13 +652,307 @@ func TestAdminService_InfoChangeRequest(t *testing.T) {
 					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
 						return s.IdentScreenName() == p.screenName
 					})).
-					Return(nil)
+					Return(p.err)
 			}
 
 			for _, params := range tc.mockParams.messageRelayerParams.relayToScreenNameParams {
 				p := params
 				messageRelayer.EXPECT().
 					RelayToScreenName(mock.Anything, p.screenName, p.message)
+			}
+
+			svc := AdminService{
+				sessionManager:         sessionManager,
+				accountManager:         accountManager,
+				buddyUpdateBroadcaster: buddyBroadcaster,
+				messageRelayer:         messageRelayer,
+			}
+			outputSNAC, err := svc.InfoChangeRequest(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
+			assert.ErrorIs(t, err, tc.expectErr)
+			if tc.expectErr != nil {
+				return
+			}
+			assert.Equal(t, tc.expectOutput, outputSNAC)
+		})
+	}
+}
+
+func TestAdminService_InfoChangeRequest_EmailAddress(t *testing.T) {
+	// One case needs a 320 character long email address
+	longEmailAddress := "longemailaddress@"
+	for i := 0; i < 50; i++ {
+		longEmailAddress += "domain"
+	}
+	longEmailAddress += ".com"
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// cfg is the app configuration
+		cfg config.Config
+		// inputSNAC is the SNAC sent from the client to the server
+		inputSNAC wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// userSession is the session of the user
+		userSession *state.Session
+		// expectOutput is the SNAC sent from the server to client
+		expectOutput wire.SNACMessage
+		// expectErr is the expected error returned
+		expectErr error
+	}{
+		{
+			name:        "user changes email address successfully",
+			userSession: newTestSession("chattingchuck"),
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerUpdateEmailAddressParams: accountManagerUpdateEmailAddressParams{
+						{
+							screenName: state.NewIdentScreenName("chattingchuck"),
+							emailAddress: &mail.Address{
+								Address: "chattingchuck@aol.com",
+							},
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVEmailAddress, "chattingchuck@aol.com"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVEmailAddress, "chattingchuck@aol.com"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "proposed email address invalid rfc 5322 format",
+			userSession: newTestSession("chattingchuck"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVEmailAddress, "chattingchuck@@@@@@@aol.com"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidEmail),
+							wire.NewTLV(wire.AdminTLVUrl, ""),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "proposed email address too long",
+			userSession: newTestSession("chattingchuck"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVEmailAddress, longEmailAddress),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidEmailLength),
+							wire.NewTLV(wire.AdminTLVUrl, ""),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sessionManager := newMockSessionManager(t)
+			accountManager := newMockAccountManager(t)
+			buddyBroadcaster := newMockbuddyBroadcaster(t)
+			messageRelayer := newMockMessageRelayer(t)
+
+			for _, params := range tc.mockParams.accountManagerParams.accountManagerUpdateEmailAddressParams {
+				accountManager.EXPECT().
+					UpdateEmailAddress(params.emailAddress, params.screenName).
+					Return(params.err)
+			}
+
+			svc := AdminService{
+				sessionManager:         sessionManager,
+				accountManager:         accountManager,
+				buddyUpdateBroadcaster: buddyBroadcaster,
+				messageRelayer:         messageRelayer,
+			}
+			outputSNAC, err := svc.InfoChangeRequest(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
+			assert.ErrorIs(t, err, tc.expectErr)
+			if tc.expectErr != nil {
+				return
+			}
+			assert.Equal(t, tc.expectOutput, outputSNAC)
+		})
+	}
+}
+
+func TestAdminService_InfoChangeRequest_RegStatus(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// cfg is the app configuration
+		cfg config.Config
+		// inputSNAC is the SNAC sent from the client to the server
+		inputSNAC wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// userSession is the session of the user
+		userSession *state.Session
+		// expectOutput is the SNAC sent from the server to client
+		expectOutput wire.SNACMessage
+		// expectErr is the expected error returned
+		expectErr error
+	}{
+		{
+			name:        "user changes reg preference successfully",
+			userSession: newTestSession("chattingchuck"),
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerUpdateRegStatusParams: accountManagerUpdateRegStatusParams{
+						{
+							screenName: state.NewIdentScreenName("chattingchuck"),
+							regStatus:  wire.AdminInfoRegStatusNoDisclosure,
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusNoDisclosure),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusNoDisclosure),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "proposed reg preference invalid",
+			userSession: newTestSession("chattingchuck"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVRegistrationStatus, uint16(0x1337)),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidRegistrationPreference),
+							wire.NewTLV(wire.AdminTLVUrl, ""),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sessionManager := newMockSessionManager(t)
+			accountManager := newMockAccountManager(t)
+			buddyBroadcaster := newMockbuddyBroadcaster(t)
+			messageRelayer := newMockMessageRelayer(t)
+
+			for _, params := range tc.mockParams.accountManagerParams.accountManagerUpdateRegStatusParams {
+				accountManager.EXPECT().
+					UpdateRegStatus(params.regStatus, params.screenName).
+					Return(params.err)
 			}
 
 			svc := AdminService{

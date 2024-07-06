@@ -24,9 +24,9 @@ func (_m *mockAdminService) EXPECT() *mockAdminService_Expecter {
 	return &mockAdminService_Expecter{mock: &_m.Mock}
 }
 
-// ConfirmRequest provides a mock function with given fields: _a0, frame
-func (_m *mockAdminService) ConfirmRequest(_a0 context.Context, frame wire.SNACFrame) (wire.SNACMessage, error) {
-	ret := _m.Called(_a0, frame)
+// ConfirmRequest provides a mock function with given fields: ctx, sess, frame
+func (_m *mockAdminService) ConfirmRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame) (wire.SNACMessage, error) {
+	ret := _m.Called(ctx, sess, frame)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ConfirmRequest")
@@ -34,17 +34,17 @@ func (_m *mockAdminService) ConfirmRequest(_a0 context.Context, frame wire.SNACF
 
 	var r0 wire.SNACMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, wire.SNACFrame) (wire.SNACMessage, error)); ok {
-		return rf(_a0, frame)
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame) (wire.SNACMessage, error)); ok {
+		return rf(ctx, sess, frame)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, wire.SNACFrame) wire.SNACMessage); ok {
-		r0 = rf(_a0, frame)
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame) wire.SNACMessage); ok {
+		r0 = rf(ctx, sess, frame)
 	} else {
 		r0 = ret.Get(0).(wire.SNACMessage)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, wire.SNACFrame) error); ok {
-		r1 = rf(_a0, frame)
+	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, wire.SNACFrame) error); ok {
+		r1 = rf(ctx, sess, frame)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -58,15 +58,16 @@ type mockAdminService_ConfirmRequest_Call struct {
 }
 
 // ConfirmRequest is a helper method to define mock.On call
-//   - _a0 context.Context
+//   - ctx context.Context
+//   - sess *state.Session
 //   - frame wire.SNACFrame
-func (_e *mockAdminService_Expecter) ConfirmRequest(_a0 interface{}, frame interface{}) *mockAdminService_ConfirmRequest_Call {
-	return &mockAdminService_ConfirmRequest_Call{Call: _e.mock.On("ConfirmRequest", _a0, frame)}
+func (_e *mockAdminService_Expecter) ConfirmRequest(ctx interface{}, sess interface{}, frame interface{}) *mockAdminService_ConfirmRequest_Call {
+	return &mockAdminService_ConfirmRequest_Call{Call: _e.mock.On("ConfirmRequest", ctx, sess, frame)}
 }
 
-func (_c *mockAdminService_ConfirmRequest_Call) Run(run func(_a0 context.Context, frame wire.SNACFrame)) *mockAdminService_ConfirmRequest_Call {
+func (_c *mockAdminService_ConfirmRequest_Call) Run(run func(ctx context.Context, sess *state.Session, frame wire.SNACFrame)) *mockAdminService_ConfirmRequest_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(wire.SNACFrame))
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACFrame))
 	})
 	return _c
 }
@@ -76,7 +77,7 @@ func (_c *mockAdminService_ConfirmRequest_Call) Return(_a0 wire.SNACMessage, _a1
 	return _c
 }
 
-func (_c *mockAdminService_ConfirmRequest_Call) RunAndReturn(run func(context.Context, wire.SNACFrame) (wire.SNACMessage, error)) *mockAdminService_ConfirmRequest_Call {
+func (_c *mockAdminService_ConfirmRequest_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACFrame) (wire.SNACMessage, error)) *mockAdminService_ConfirmRequest_Call {
 	_c.Call.Return(run)
 	return _c
 }

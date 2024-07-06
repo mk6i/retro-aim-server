@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"net/mail"
 	"time"
 
 	"github.com/stretchr/testify/mock"
@@ -302,6 +303,12 @@ type cookieIssuerParams []struct {
 // accountManager methods
 type accountManagerParams struct {
 	accountManagerUpdateDisplayScreenNameParams
+	accountManagerUpdateEmailAddressParams
+	accountManagerEmailAddressByNameParams
+	accountManagerUpdateRegStatusParams
+	accountManagerRegStatusByNameParams
+	accountManagerUpdateConfirmStatusParams
+	accountManagerConfirmStatusByNameParams
 }
 
 // accountManagerUpdateDisplayScreenNameParams is the list of parameters passed at the mock
@@ -309,6 +316,54 @@ type accountManagerParams struct {
 type accountManagerUpdateDisplayScreenNameParams []struct {
 	displayScreenName state.DisplayScreenName
 	err               error
+}
+
+// accountManagerUpdateEmailAddressParams is the list of parameters passed at the mock
+// accountManager.UpdateEmailAddress call site
+type accountManagerUpdateEmailAddressParams []struct {
+	emailAddress *mail.Address
+	screenName   state.IdentScreenName
+	err          error
+}
+
+// accountManagerEmailAddressByNameParams is the list of parameters passed at the mock
+// accountManager.EmailAddressByName call site
+type accountManagerEmailAddressByNameParams []struct {
+	screenName   state.IdentScreenName
+	emailAddress *mail.Address
+	err          error
+}
+
+// accountManagerUpdateRegStatusParams is the list of parameters passed at the mock
+// accountManager.UpdateRegStatus call site
+type accountManagerUpdateRegStatusParams []struct {
+	regStatus  uint16
+	screenName state.IdentScreenName
+	err        error
+}
+
+// accountManagerRegStatusByNameParams is the list of parameters passed at the mock
+// accountManager.RegStatusByName call site
+type accountManagerRegStatusByNameParams []struct {
+	screenName state.IdentScreenName
+	regStatus  uint16
+	err        error
+}
+
+// accountManagerUpdateConfirmStatusParams is the list of parameters passed at the mock
+// accountManager.UpdateConfirmStatus call site
+type accountManagerUpdateConfirmStatusParams []struct {
+	confirmStatus bool
+	screenName    state.IdentScreenName
+	err           error
+}
+
+// accountManagerConfirmStatusByNameParams is the list of parameters passed at the mock
+// accountManager.ConfirmStatusByName call site
+type accountManagerConfirmStatusByNameParams []struct {
+	screenName    state.IdentScreenName
+	confirmStatus bool
+	err           error
 }
 
 // buddyBroadcasterParams is a helper struct that contains mock parameters for
