@@ -134,12 +134,13 @@ const (
 	OServiceBartQuery2        uint16 = 0x0022
 	OServiceBartReply2        uint16 = 0x0023
 
-	OServiceUserInfoUserFlags uint16 = 0x01
-	OServiceUserInfoSignonTOD uint16 = 0x03
-	OServiceUserInfoIdleTime  uint16 = 0x04
-	OServiceUserInfoStatus    uint16 = 0x06
-	OServiceUserInfoOscarCaps uint16 = 0x0D
-	OServiceUserInfoBARTInfo  uint16 = 0x1D
+	OServiceUserInfoUserFlags  uint16 = 0x01
+	OServiceUserInfoSignonTOD  uint16 = 0x03
+	OServiceUserInfoIdleTime   uint16 = 0x04
+	OServiceUserInfoStatus     uint16 = 0x06
+	OServiceUserInfoOscarCaps  uint16 = 0x0D
+	OServiceUserInfoBARTInfo   uint16 = 0x1D
+	OServiceUserInfoUserFlags2 uint16 = 0x1F
 
 	OServiceUserStatusAvailable         uint32 = 0x00000000 // user is available
 	OServiceUserStatusAway              uint32 = 0x00000001 // user is away
@@ -154,8 +155,25 @@ const (
 	OServiceUserStatusICQHomePage       uint32 = 0x00200000
 	OServiceUserStatusDirectRequireAuth uint32 = 0x10000000
 
-	OServiceUserFlagOSCARFree   uint16 = 0x0010 // AIM (not AOL) account
-	OServiceUserFlagUnavailable uint16 = 0x0020 // user is away
+	OServiceUserFlagUnconfirmed    uint16 = 0x0001 // Unconfirmed account
+	OServiceUserFlagAdministrator  uint16 = 0x0002 // Server Administrator
+	OServiceUserFlagAOL            uint16 = 0x0004 // AOL (staff?) account
+	OServiceUserFlagOSCARPay       uint16 = 0x0008 // Commercial account
+	OServiceUserFlagOSCARFree      uint16 = 0x0010 // AIM (not AOL) account
+	OServiceUserFlagUnavailable    uint16 = 0x0020 // user is away
+	OServiceUserFlagICQ            uint16 = 0x0040 // ICQ user (OServiceUserFlagOSCARFree should also be set)
+	OServiceUserFlagWireless       uint16 = 0x0080 // On mobile device
+	OServiceUserFlagInternal       uint16 = 0x0100 // Internal account
+	OServiceUserFlagFish           uint16 = 0x0200 // IM forwarding enabled
+	OServiceUserFlagBot            uint16 = 0x0400 // Bot account
+	OServiceUserFlagBeast          uint16 = 0x0800 // Unknown
+	OServiceUserFlagOneWayWireless uint16 = 0x1000 // On one way mobile device
+	OServiceUserFlagOfficial       uint16 = 0x2000 // Unknown
+
+	OServiceUserFlag2BuddyMatchDirect   uint32 = 0x00010000 // Unknown
+	OServiceUserFlag2BuddyMatchIndirect uint32 = 0x00020000 // Unknown
+	OServiceUserFlag2NoKnockKnock       uint32 = 0x00040000 // Sender is safe
+	OServiceUserFlag2ForwardMobile      uint32 = 0x00080000 // Forward to mobile if no acive session
 
 	OServicePrivacyFlagIdle   uint32 = 0x00000001
 	OServicePrivacyFlagMember uint32 = 0x00000002

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"net/mail"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/wire"
@@ -597,4 +598,89 @@ func (f SQLiteUserStore) UpdateDisplayScreenName(displayScreenName DisplayScreen
 	`
 	_, err := f.db.Exec(q, displayScreenName.String(), displayScreenName.IdentScreenName().String())
 	return err
+}
+
+// UpdateEmailAddress updates the user's EmailAddress
+func (f SQLiteUserStore) UpdateEmailAddress(emailAddress *mail.Address, screenName IdentScreenName) error {
+	q := `
+		UPDATE users
+		SET emailAddress = ?
+		WHERE identScreenName = ?
+	`
+	_, err := f.db.Exec(q, emailAddress.Address, screenName.String())
+	return err
+}
+
+// EmailAddressByName retrieves the user's EmailAddress
+func (f SQLiteUserStore) EmailAddressByName(screenName IdentScreenName) (*mail.Address, error) {
+	q := `
+		SELECT emailAddress
+		FROM users
+		WHERE identScreenName = ?
+	`
+	var emailAddress string
+	err := f.db.QueryRow(q, screenName.String()).Scan(&emailAddress)
+	// username isn't found for some reason
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	e, err := mail.ParseAddress(emailAddress)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrNoEmailAddress, err)
+	}
+	return e, nil
+}
+
+// UpdateRegStatus updates the user's registration status preference
+func (f SQLiteUserStore) UpdateRegStatus(regStatus uint16, screenName IdentScreenName) error {
+	q := `
+		UPDATE users
+		SET regStatus = ?
+		WHERE identScreenName = ?
+	`
+	_, err := f.db.Exec(q, regStatus, screenName.String())
+	return err
+}
+
+// RegStatusByName retrieves the user's registration status preference
+func (f SQLiteUserStore) RegStatusByName(screenName IdentScreenName) (uint16, error) {
+	q := `
+		SELECT regStatus
+		FROM users
+		WHERE identScreenName = ?
+	`
+	var regStatus uint16
+	err := f.db.QueryRow(q, screenName.String()).Scan(&regStatus)
+	// username isn't found for some reason
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return 0, err
+	}
+	return regStatus, nil
+}
+
+// UpdateConfirmStatus updates the user's confirmation status
+func (f SQLiteUserStore) UpdateConfirmStatus(confirmStatus bool, screenName IdentScreenName) error {
+	q := `
+		UPDATE users
+		SET confirmStatus = ?
+		WHERE identScreenName = ?
+	`
+	_, err := f.db.Exec(q, confirmStatus, screenName.String())
+	return err
+}
+
+// ConfirmStatusByName retrieves the user's confirmation status
+func (f SQLiteUserStore) ConfirmStatusByName(screenName IdentScreenName) (bool, error) {
+	q := `
+		SELECT confirmStatus
+		FROM users
+		WHERE identScreenName = ?
+	`
+	var confirmStatus bool
+	err := f.db.QueryRow(q, screenName.String()).Scan(&confirmStatus)
+	// username isn't found for some reason
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return false, err
+	}
+	return confirmStatus, nil
 }

@@ -1,0 +1,6 @@
+ALTER TABLE users
+    ADD COLUMN confirmStatus     BOOL DEFAULT FALSE;
+ALTER TABLE users
+    ADD COLUMN emailAddress      VARCHAR(320) NOT NULL DEFAULT '';
+ALTER TABLE users
+    ADD COLUMN regStatus         INT NOT NULL DEFAULT 3;

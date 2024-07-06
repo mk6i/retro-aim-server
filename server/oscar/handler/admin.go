@@ -27,13 +27,13 @@ type AdminHandler struct {
 }
 
 type AdminService interface {
-	ConfirmRequest(_ context.Context, frame wire.SNACFrame) (wire.SNACMessage, error)
+	ConfirmRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame) (wire.SNACMessage, error)
 	InfoQuery(ctx context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x07_0x02_AdminInfoQuery) (wire.SNACMessage, error)
 	InfoChangeRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x07_0x04_AdminInfoChangeRequest) (wire.SNACMessage, error)
 }
 
-func (rt AdminHandler) ConfirmRequest(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
-	outSNAC, err := rt.AdminService.ConfirmRequest(ctx, inFrame)
+func (rt AdminHandler) ConfirmRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
+	outSNAC, err := rt.AdminService.ConfirmRequest(ctx, sess, inFrame)
 	if err != nil {
 		return err
 	}

@@ -25,6 +25,7 @@ func NewAuthService(
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
 	chatMessageRelayer ChatMessageRelayer,
+	accountManager AccountManager,
 ) *AuthService {
 	return &AuthService{
 		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
@@ -35,6 +36,7 @@ func NewAuthService(
 		sessionManager:         sessionManager,
 		userManager:            userManager,
 		chatMessageRelayer:     chatMessageRelayer,
+		accountManager:         accountManager,
 	}
 }
 
@@ -51,6 +53,7 @@ type AuthService struct {
 	sessionManager         SessionManager
 	userManager            UserManager
 	chatRoomManager        ChatRoomRegistry
+	accountManager         AccountManager
 }
 
 // RegisterChatSession adds a user to a chat room. The authCookie param is an
@@ -87,7 +90,15 @@ func (s AuthService) RegisterBOSSession(authCookie []byte) (*state.Session, erro
 		return nil, fmt.Errorf("user not found")
 	}
 
-	return s.sessionManager.AddSession(u.DisplayScreenName), nil
+	sess := s.sessionManager.AddSession(u.DisplayScreenName)
+	// Set the unconfirmed user info flag if this account is unconfirmed
+	if confirmed, err := s.accountManager.ConfirmStatusByName(sess.IdentScreenName()); err != nil {
+		return nil, fmt.Errorf("error setting unconfirmed user flag: %w", err)
+	} else if !confirmed {
+		sess.SetUserInfoFlag(wire.OServiceUserFlagUnconfirmed)
+	}
+
+	return sess, nil
 }
 
 // RetrieveBOSSession returns a user's existing session
