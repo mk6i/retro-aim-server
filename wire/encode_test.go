@@ -350,14 +350,13 @@ func TestMarshal(t *testing.T) {
 				},
 				Val4: 32,
 			},
-			want: append(
-				[]byte{
-					0x22,       // Val0
-					0x03,       // Val1 struct len
-					0x00, 0x10, // Val2
-					0x0A,       // Val3
-					0x00, 0x20, // Val2
-				}),
+			want: []byte{
+				0x22,       // Val0
+				0x03,       // Val1 struct len
+				0x00, 0x10, // Val2
+				0x0A,       // Val3
+				0x00, 0x20, // Val2
+			},
 		},
 		{
 			name: "struct with uint16 len_prefix",
