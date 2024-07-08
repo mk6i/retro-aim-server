@@ -37,17 +37,13 @@ type MessageRelayer interface {
 }
 
 type userWithPassword struct {
-	state.User
-	Password string `json:"password,omitempty"`
-}
-
-type userSession struct {
 	ScreenName string `json:"screen_name"`
+	Password   string `json:"password,omitempty"`
 }
 
 type onlineUsers struct {
-	Count    int           `json:"count"`
-	Sessions []userSession `json:"sessions"`
+	Count    int          `json:"count"`
+	Sessions []userHandle `json:"sessions"`
 }
 
 type userHandle struct {

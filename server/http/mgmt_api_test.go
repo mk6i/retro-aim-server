@@ -43,7 +43,7 @@ func TestSessionHandler_GET(t *testing.T) {
 				fnNewSess("userA"),
 				fnNewSess("userB"),
 			},
-			want:       `{"count":2,"sessions":[{"screen_name":"userA"},{"screen_name":"userB"}]}`,
+			want:       `{"count":2,"sessions":[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]}`,
 			statusCode: http.StatusOK,
 		},
 	}
@@ -114,7 +114,7 @@ func TestUserHandler_GET(t *testing.T) {
 					IdentScreenName:   state.NewIdentScreenName("userB"),
 				},
 			},
-			want:       `[{"screen_name":"userA"},{"screen_name":"userB"}]`,
+			want:       `[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]`,
 			statusCode: http.StatusOK,
 		},
 		{
@@ -332,9 +332,8 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
 			user: func() state.User {
 				user := state.User{
-					AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-					DisplayScreenName: "userA",
-					IdentScreenName:   state.NewIdentScreenName("userA"),
+					AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+					IdentScreenName: state.NewIdentScreenName("userA"),
 				}
 				assert.NoError(t, user.HashPassword("thepassword"))
 				return user
@@ -355,9 +354,8 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
 			user: func() state.User {
 				user := state.User{
-					AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-					DisplayScreenName: "userA",
-					IdentScreenName:   state.NewIdentScreenName("userA"),
+					AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+					IdentScreenName: state.NewIdentScreenName("userA"),
 				}
 				assert.NoError(t, user.HashPassword("thepassword"))
 				return user
@@ -372,9 +370,8 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
 			user: func() state.User {
 				user := state.User{
-					AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-					DisplayScreenName: "userA",
-					IdentScreenName:   state.NewIdentScreenName("userA"),
+					AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+					IdentScreenName: state.NewIdentScreenName("userA"),
 				}
 				assert.NoError(t, user.HashPassword("thepassword"))
 				return user

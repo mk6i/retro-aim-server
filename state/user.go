@@ -87,16 +87,16 @@ func NewStubUser(screenName DisplayScreenName) (User, error) {
 // User represents a user account.
 type User struct {
 	// IdentScreenName is the AIM screen name.
-	IdentScreenName IdentScreenName `json:"-"`
+	IdentScreenName IdentScreenName
 	// DisplayScreenName is the formatted screen name.
-	DisplayScreenName DisplayScreenName `json:"screen_name"`
+	DisplayScreenName DisplayScreenName
 	// AuthKey is the salt for the MD5 password hash.
-	AuthKey string `json:"-"`
+	AuthKey string
 	// StrongMD5Pass is the MD5 password hash format used by AIM v4.8-v5.9.
-	StrongMD5Pass []byte `json:"-"`
+	StrongMD5Pass []byte
 	// WeakMD5Pass is the MD5 password hash format used by AIM v3.5-v4.7. This
 	// hash is used to authenticate roasted passwords for AIM v1.0-v3.0.
-	WeakMD5Pass []byte `json:"-"`
+	WeakMD5Pass []byte
 }
 
 // ValidateHash checks if md5Hash is identical to one of the password hashes.

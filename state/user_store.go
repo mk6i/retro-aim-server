@@ -166,7 +166,12 @@ func (f SQLiteUserStore) DeleteUser(screenName IdentScreenName) error {
 	return nil
 }
 
-// SetUserPassword sets the user's password hashes and auth key.
+// SetUserPassword sets the user's password hashes and auth key. The following
+// fields must be set on u:
+// - AuthKey
+// - WeakMD5Pass
+// - StrongMD5Pass
+// - IdentScreenName
 func (f SQLiteUserStore) SetUserPassword(u User) (err error) {
 	tx, err := f.db.Begin()
 	if err != nil {

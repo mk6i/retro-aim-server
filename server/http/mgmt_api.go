@@ -81,7 +81,7 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request, manager UserManag
 		return
 	}
 
-	err = manager.DeleteUser(user.DisplayScreenName.IdentScreenName())
+	err = manager.DeleteUser(state.NewIdentScreenName(user.ScreenName))
 	switch {
 	case errors.Is(err, state.ErrNoUser):
 		http.Error(w, "user does not exist", http.StatusNotFound)
@@ -107,21 +107,24 @@ func userPasswordHandler(w http.ResponseWriter, r *http.Request, userManager Use
 
 // putUserPasswordHandler handles the PUT /user/password endpoint.
 func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, newUUID func() uuid.UUID, logger *slog.Logger) {
-	user, err := userFromBody(r)
+	input, err := userFromBody(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	user.AuthKey = newUUID().String()
 
-	user.IdentScreenName = user.DisplayScreenName.IdentScreenName()
-	if err := user.HashPassword(user.Password); err != nil {
+	user := state.User{
+		AuthKey:         newUUID().String(),
+		IdentScreenName: state.NewIdentScreenName(input.ScreenName),
+	}
+
+	if err := user.HashPassword(input.Password); err != nil {
 		logger.Error("error hashing user password in PUT /user/password", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	if err := userManager.SetUserPassword(user.User); err != nil {
+	if err := userManager.SetUserPassword(user); err != nil {
 		switch {
 		case errors.Is(err, state.ErrNoUser):
 			http.Error(w, "user does not exist", http.StatusNotFound)
@@ -148,13 +151,14 @@ func sessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever Ses
 
 	ou := onlineUsers{
 		Count:    len(allUsers),
-		Sessions: make([]userSession, 0),
+		Sessions: make([]userHandle, len(allUsers)),
 	}
 
-	for _, s := range allUsers {
-		ou.Sessions = append(ou.Sessions, userSession{
+	for i, s := range allUsers {
+		ou.Sessions[i] = userHandle{
+			ID:         s.IdentScreenName().String(),
 			ScreenName: s.DisplayScreenName().String(),
-		})
+		}
 	}
 
 	if err := json.NewEncoder(w).Encode(ou); err != nil {
@@ -166,13 +170,23 @@ func sessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever Ses
 // getUserHandler handles the GET /user endpoint.
 func getUserHandler(w http.ResponseWriter, _ *http.Request, userManager UserManager, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "application/json")
+
 	users, err := userManager.AllUsers()
 	if err != nil {
 		logger.Error("error in GET /user", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	if err := json.NewEncoder(w).Encode(users); err != nil {
+
+	out := make([]userHandle, len(users))
+	for i, u := range users {
+		out[i] = userHandle{
+			ID:         u.IdentScreenName.String(),
+			ScreenName: u.DisplayScreenName.String(),
+		}
+	}
+
+	if err := json.NewEncoder(w).Encode(out); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -180,20 +194,26 @@ func getUserHandler(w http.ResponseWriter, _ *http.Request, userManager UserMana
 
 // postUserHandler handles the POST /user endpoint.
 func postUserHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, newUUID func() uuid.UUID, logger *slog.Logger) {
-	user, err := userFromBody(r)
+	input, err := userFromBody(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	user.AuthKey = newUUID().String()
 
-	if err := user.HashPassword(user.Password); err != nil {
+	sn := state.DisplayScreenName(input.ScreenName)
+	user := state.User{
+		AuthKey:           newUUID().String(),
+		DisplayScreenName: sn,
+		IdentScreenName:   sn.IdentScreenName(),
+	}
+
+	if err := user.HashPassword(input.Password); err != nil {
 		logger.Error("error hashing user password in POST /user", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	err = userManager.InsertUser(user.User)
+	err = userManager.InsertUser(user)
 	switch {
 	case errors.Is(err, state.ErrDupUser):
 		http.Error(w, "user already exists", http.StatusConflict)
@@ -213,7 +233,6 @@ func userFromBody(r *http.Request) (userWithPassword, error) {
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		return userWithPassword{}, errors.New("malformed input")
 	}
-	user.IdentScreenName = user.DisplayScreenName.IdentScreenName()
 	return user, nil
 }
 
@@ -306,14 +325,14 @@ func getPublicChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetrie
 		cr := chatRoom{
 			CreateTime:   room.CreateTime,
 			Name:         room.Name,
-			Participants: make([]userHandle, 0, len(sessions)),
+			Participants: make([]userHandle, len(sessions)),
 			URL:          room.URL().String(),
 		}
-		for _, sess := range sessions {
-			cr.Participants = append(cr.Participants, userHandle{
+		for j, sess := range sessions {
+			cr.Participants[j] = userHandle{
 				ID:         sess.IdentScreenName().String(),
 				ScreenName: sess.DisplayScreenName().String(),
-			})
+			}
 		}
 
 		out[i] = cr
@@ -375,14 +394,14 @@ func getPrivateChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetri
 			CreateTime:   room.CreateTime,
 			CreatorID:    room.Creator.String(),
 			Name:         room.Name,
-			Participants: make([]userHandle, 0, len(sessions)),
+			Participants: make([]userHandle, len(sessions)),
 			URL:          room.URL().String(),
 		}
-		for _, sess := range sessions {
-			cr.Participants = append(cr.Participants, userHandle{
+		for j, sess := range sessions {
+			cr.Participants[j] = userHandle{
 				ID:         sess.IdentScreenName().String(),
 				ScreenName: sess.DisplayScreenName().String(),
-			})
+			}
 		}
 
 		out[i] = cr

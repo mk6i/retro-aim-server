@@ -18,9 +18,12 @@ paths:
                 items:
                   type: object
                   properties:
+                    id:
+                      type: string
+                      description: User's unique identifier.
                     screen_name:
                       type: string
-                      description: The user's screen name.
+                      description: User's screen name.
     post:
       summary: Create a new user
       description: Create a new user account with a screen name and password.
@@ -83,9 +86,12 @@ paths:
                     items:
                       type: object
                       properties:
+                        id:
+                          type: string
+                          description: User's unique identifier.
                         screen_name:
                           type: string
-                          description: The screen name associated with the session.
+                          description: User's screen name.
 
   /user/password:
     put:
@@ -141,10 +147,10 @@ paths:
                         properties:
                           id:
                             type: string
-                            description: Unique identifier of the participant.
+                            description: User's unique identifier.
                           screen_name:
                             type: string
-                            description: Screen name of the participant.
+                            description: User's screen name.
 
     post:
       summary: Create a new public chat room
@@ -199,10 +205,10 @@ paths:
                         properties:
                           id:
                             type: string
-                            description: Unique identifier of the participant.
+                            description: User's unique identifier.
                           screen_name:
                             type: string
-                            description: Screen name of the participant.
+                            description: User's screen name.
 
   /instant-message:
     post:
@@ -229,5 +235,3 @@ paths:
           description: Message sent successfully.
         '400':
           description: Bad request. Invalid input data.
-        '404':
-          description: User not found.
