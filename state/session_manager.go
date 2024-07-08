@@ -63,7 +63,9 @@ func (s *InMemorySessionManager) maybeRelayMessage(ctx context.Context, msg wire
 
 // AddSession adds a new session to the pool. It replaces an existing session
 // with a matching screen name, ensuring that each screen name is unique in the
-// pool.
+// pool. This method does not return a nil session value. It's possible to add
+// a non-existent user to the session. Callers should ensure that the account
+// represented by displayScreenName is valid.
 func (s *InMemorySessionManager) AddSession(displayScreenName DisplayScreenName) *Session {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
