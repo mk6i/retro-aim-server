@@ -1,4 +1,4 @@
-CREATE TEMPORARY TABLE user_backup
+CREATE TABLE user_backup
 (
     screenName VARCHAR(16) PRIMARY KEY,
     authKey    TEXT,
