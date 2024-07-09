@@ -39,18 +39,43 @@ type Session struct {
 	signonTime        time.Time
 	stopCh            chan struct{}
 	warning           uint16
+	userInfoFlags     uint16
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
 // up to 1000 pending messages before blocking.
 func NewSession() *Session {
 	return &Session{
-		msgCh:      make(chan wire.SNACMessage, 1000),
-		nowFn:      time.Now,
-		stopCh:     make(chan struct{}),
-		signonTime: time.Now(),
-		caps:       make([][16]byte, 0),
+		msgCh:         make(chan wire.SNACMessage, 1000),
+		nowFn:         time.Now,
+		stopCh:        make(chan struct{}),
+		signonTime:    time.Now(),
+		caps:          make([][16]byte, 0),
+		userInfoFlags: wire.OServiceUserFlagOSCARFree,
 	}
+}
+
+// SetUserInfoFlag sets a flag to and returns UserInfoFlags
+func (s *Session) SetUserInfoFlag(flag uint16) (flags uint16) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.userInfoFlags |= flag
+	return s.userInfoFlags
+}
+
+// ClearUserInfoFlag clear a flag from and returns UserInfoFlags
+func (s *Session) ClearUserInfoFlag(flag uint16) (flags uint16) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.userInfoFlags &^= flag
+	return s.userInfoFlags
+}
+
+// UserInfoFlags returns UserInfoFlags
+func (s *Session) UserInfoFlags() (flags uint16) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.userInfoFlags
 }
 
 // IncrementWarning increments the user's warning level. To decrease, pass a
@@ -126,10 +151,17 @@ func (s *Session) UnsetIdle() {
 	s.idle = false
 }
 
-// SetAwayMessage sets the user's away message.
+// SetAwayMessage sets the user's away message, and
+// sets or clears the OServiceUserFlagUnavailable flag
 func (s *Session) SetAwayMessage(awayMessage string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	if awayMessage != "" {
+		s.userInfoFlags |= wire.OServiceUserFlagUnavailable
+	} else {
+		s.userInfoFlags &^= wire.OServiceUserFlagUnavailable
+	}
+
 	s.awayMessage = awayMessage
 }
 
@@ -188,12 +220,8 @@ func (s *Session) userInfo() wire.TLVList {
 	// sign-in timestamp
 	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(s.signonTime.Unix())))
 
-	// away message status
-	if s.awayMessage != "" {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoUserFlags, wire.OServiceUserFlagOSCARFree|wire.OServiceUserFlagUnavailable))
-	} else {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoUserFlags, wire.OServiceUserFlagOSCARFree))
-	}
+	// user info flags
+	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoUserFlags, s.UserInfoFlags()))
 
 	// reflects invisibility toggle status back to toggling client
 	if s.invisible {

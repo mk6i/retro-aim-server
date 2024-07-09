@@ -35,6 +35,7 @@ package foodgroup
 
 import (
 	"context"
+	"net/mail"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -164,4 +165,10 @@ type buddyBroadcaster interface {
 
 type AccountManager interface {
 	UpdateDisplayScreenName(displayScreenName state.DisplayScreenName) error
+	UpdateEmailAddress(emailAddress *mail.Address, screenName state.IdentScreenName) error
+	EmailAddressByName(screenName state.IdentScreenName) (*mail.Address, error)
+	UpdateRegStatus(regStatus uint16, screenName state.IdentScreenName) error
+	RegStatusByName(screenName state.IdentScreenName) (uint16, error)
+	UpdateConfirmStatus(confirmStatus bool, screenName state.IdentScreenName) error
+	ConfirmStatusByName(screnName state.IdentScreenName) (bool, error)
 }

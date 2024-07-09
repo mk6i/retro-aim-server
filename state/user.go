@@ -18,6 +18,8 @@ var (
 	ErrDupUser = errors.New("user already exists")
 	// ErrNoUser indicates that a user does not exist.
 	ErrNoUser = errors.New("user does not exist")
+	// ErrNoEmail indicates that a user has not set an email address.
+	ErrNoEmailAddress = errors.New("user has no email address")
 )
 
 const (
