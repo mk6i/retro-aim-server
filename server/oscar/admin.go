@@ -1,6 +1,7 @@
 package oscar
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -96,30 +97,46 @@ func (rt AdminServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteC
 }
 
 func dispatchIncomingMessagesSimple(ctx context.Context, sess *state.Session, flapc *wire.FlapClient, r io.Reader, logger *slog.Logger, router Handler, config config.Config) error {
-	// buffered so that the go routine has room to exit
-	msgCh := make(chan incomingMessage, 1)
-	readErrCh := make(chan error, 1)
-	go consumeFLAPFrames(r, msgCh, readErrCh)
-
 	defer func() {
 		logger.InfoContext(ctx, "user disconnected")
 	}()
 
+	// buffered so that the go routine has room to exit
+	msgCh := make(chan wire.FLAPFrame, 1)
+	errCh := make(chan error, 1)
+
+	// consume flap frames
+	go func() {
+		defer close(msgCh)
+		defer close(errCh)
+
+		for {
+			frame := wire.FLAPFrame{}
+			if err := wire.Unmarshal(&frame, r); err != nil {
+				errCh <- err
+				return
+			}
+			msgCh <- frame
+		}
+	}()
+
 	for {
 		select {
-		case m, ok := <-msgCh:
+		case flap, ok := <-msgCh:
 			if !ok {
 				return nil
 			}
-			switch m.flap.FrameType {
+			switch flap.FrameType {
 			case wire.FLAPFrameData:
+				flapBuf := bytes.NewBuffer(flap.Payload)
+
 				inFrame := wire.SNACFrame{}
-				if err := wire.Unmarshal(&inFrame, m.payload); err != nil {
+				if err := wire.Unmarshal(&inFrame, flapBuf); err != nil {
 					return err
 				}
 				// route a client request to the appropriate service handler. the
 				// handler may write a response to the client connection.
-				if err := router.Handle(ctx, sess, inFrame, m.payload, flapc); err != nil {
+				if err := router.Handle(ctx, sess, inFrame, flapBuf, flapc); err != nil {
 					middleware.LogRequestError(ctx, logger, inFrame, err)
 					if errors.Is(err, ErrRouteNotFound) {
 						if err1 := sendInvalidSNACErr(inFrame, flapc); err1 != nil {
@@ -133,18 +150,18 @@ func dispatchIncomingMessagesSimple(ctx context.Context, sess *state.Session, fl
 					return err
 				}
 			case wire.FLAPFrameSignon:
-				return fmt.Errorf("shouldn't get FLAPFrameSignon. flap: %v", m.flap)
+				return fmt.Errorf("shouldn't get FLAPFrameSignon. flap: %v", flap)
 			case wire.FLAPFrameError:
-				return fmt.Errorf("got FLAPFrameError. flap: %v", m.flap)
+				return fmt.Errorf("got FLAPFrameError. flap: %v", flap)
 			case wire.FLAPFrameSignoff:
-				logger.InfoContext(ctx, "got FLAPFrameSignoff", "flap", m.flap)
+				logger.InfoContext(ctx, "got FLAPFrameSignoff", "flap", flap)
 				return nil
 			case wire.FLAPFrameKeepAlive:
 				logger.DebugContext(ctx, "keepalive heartbeat")
 			default:
-				return fmt.Errorf("got unknown FLAP frame type. flap: %v", m.flap)
+				return fmt.Errorf("got unknown FLAP frame type. flap: %v", flap)
 			}
-		case err := <-readErrCh:
+		case err := <-errCh:
 			if !errors.Is(io.EOF, err) {
 				logger.ErrorContext(ctx, "client disconnected with error", "err", err)
 			}

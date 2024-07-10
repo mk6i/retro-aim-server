@@ -20,25 +20,21 @@ func TestBUCPAuthService_handleNewConnection(t *testing.T) {
 		// < receive FLAPSignonFrame
 		flap := wire.FLAPFrame{}
 		assert.NoError(t, wire.Unmarshal(&flap, serverReader))
-		buf, err := flap.ReadBody(serverReader)
-		assert.NoError(t, err)
 		flapSignonFrame := wire.FLAPSignonFrame{}
-		assert.NoError(t, wire.Unmarshal(&flapSignonFrame, buf))
+		assert.NoError(t, wire.Unmarshal(&flapSignonFrame, bytes.NewBuffer(flap.Payload)))
 
 		// > send FLAPSignonFrame
 		flapSignonFrame = wire.FLAPSignonFrame{
 			FLAPVersion: 1,
 		}
-		buf = &bytes.Buffer{}
+		buf := &bytes.Buffer{}
 		assert.NoError(t, wire.Marshal(flapSignonFrame, buf))
 		flap = wire.FLAPFrame{
-			StartMarker:   42,
-			FrameType:     wire.FLAPFrameSignon,
-			PayloadLength: uint16(buf.Len()),
+			StartMarker: 42,
+			FrameType:   wire.FLAPFrameSignon,
+			Payload:     buf.Bytes(),
 		}
 		assert.NoError(t, wire.Marshal(flap, serverWriter))
-		_, err = serverWriter.Write(buf.Bytes())
-		assert.NoError(t, err)
 
 		// > send SNAC_0x17_0x06_BUCPChallengeRequest
 		flapc := wire.NewFlapClient(0, serverReader, serverWriter)

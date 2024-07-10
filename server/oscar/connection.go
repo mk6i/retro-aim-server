@@ -14,11 +14,6 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-type incomingMessage struct {
-	flap    wire.FLAPFrame
-	payload *bytes.Buffer
-}
-
 func sendInvalidSNACErr(frameIn wire.SNACFrame, rw ResponseWriter) error {
 	frameOut := wire.SNACFrame{
 		FoodGroup: frameIn.FoodGroup,
@@ -31,30 +26,6 @@ func sendInvalidSNACErr(frameIn wire.SNACFrame, rw ResponseWriter) error {
 	return rw.SendSNAC(frameOut, bodyOut)
 }
 
-func consumeFLAPFrames(r io.Reader, msgCh chan incomingMessage, errCh chan error) {
-	defer close(msgCh)
-	defer close(errCh)
-
-	for {
-		in := incomingMessage{}
-		if err := wire.Unmarshal(&in.flap, r); err != nil {
-			errCh <- err
-			return
-		}
-
-		if in.flap.PayloadLength > 0 {
-			buf := make([]byte, in.flap.PayloadLength)
-			if _, err := io.ReadFull(r, buf); err != nil {
-				errCh <- err
-				return
-			}
-			in.payload = bytes.NewBuffer(buf)
-		}
-
-		msgCh <- in
-	}
-}
-
 // dispatchIncomingMessages receives incoming messages and sends them to the
 // appropriate message handler. Messages from the client are sent to the
 // router. Messages relayed from the user session are forwarded to the client.
@@ -64,30 +35,46 @@ func consumeFLAPFrames(r io.Reader, msgCh chan incomingMessage, errCh chan error
 //
 // todo: this method has too many params and should be folded into a new type
 func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient, r io.Reader, logger *slog.Logger, router Handler, config config.Config) error {
-	// buffered so that the go routine has room to exit
-	msgCh := make(chan incomingMessage, 1)
-	readErrCh := make(chan error, 1)
-	go consumeFLAPFrames(r, msgCh, readErrCh)
-
 	defer func() {
 		logger.InfoContext(ctx, "user disconnected")
 	}()
 
+	// buffered so that the go routine has room to exit
+	msgCh := make(chan wire.FLAPFrame, 1)
+	errCh := make(chan error, 1)
+
+	// consume flap frames
+	go func() {
+		defer close(msgCh)
+		defer close(errCh)
+
+		for {
+			frame := wire.FLAPFrame{}
+			if err := wire.Unmarshal(&frame, r); err != nil {
+				errCh <- err
+				return
+			}
+			msgCh <- frame
+		}
+	}()
+
 	for {
 		select {
-		case m, ok := <-msgCh:
+		case flap, ok := <-msgCh:
 			if !ok {
 				return nil
 			}
-			switch m.flap.FrameType {
+			switch flap.FrameType {
 			case wire.FLAPFrameData:
+				flapBuf := bytes.NewBuffer(flap.Payload)
+
 				inFrame := wire.SNACFrame{}
-				if err := wire.Unmarshal(&inFrame, m.payload); err != nil {
+				if err := wire.Unmarshal(&inFrame, flapBuf); err != nil {
 					return err
 				}
 				// route a client request to the appropriate service handler. the
 				// handler may write a response to the client connection.
-				if err := router.Handle(ctx, sess, inFrame, m.payload, flapc); err != nil {
+				if err := router.Handle(ctx, sess, inFrame, flapBuf, flapc); err != nil {
 					middleware.LogRequestError(ctx, logger, inFrame, err)
 					if errors.Is(err, ErrRouteNotFound) {
 						if err1 := sendInvalidSNACErr(inFrame, flapc); err1 != nil {
@@ -101,16 +88,16 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 					return err
 				}
 			case wire.FLAPFrameSignon:
-				return fmt.Errorf("shouldn't get FLAPFrameSignon. flap: %v", m.flap)
+				return fmt.Errorf("shouldn't get FLAPFrameSignon. flap: %v", flap)
 			case wire.FLAPFrameError:
-				return fmt.Errorf("got FLAPFrameError. flap: %v", m.flap)
+				return fmt.Errorf("got FLAPFrameError. flap: %v", flap)
 			case wire.FLAPFrameSignoff:
-				logger.InfoContext(ctx, "got FLAPFrameSignoff", "flap", m.flap)
+				logger.InfoContext(ctx, "got FLAPFrameSignoff", "flap", flap)
 				return nil
 			case wire.FLAPFrameKeepAlive:
 				logger.DebugContext(ctx, "keepalive heartbeat")
 			default:
-				return fmt.Errorf("got unknown FLAP frame type. flap: %v", m.flap)
+				return fmt.Errorf("got unknown FLAP frame type. flap: %v", flap)
 			}
 		case m := <-sess.ReceiveMessage():
 			// forward a notification sent from another client to this client
@@ -126,7 +113,7 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
 			}
 			return nil
-		case err := <-readErrCh:
+		case err := <-errCh:
 			if !errors.Is(io.EOF, err) {
 				logger.ErrorContext(ctx, "client disconnected with error", "err", err)
 			}

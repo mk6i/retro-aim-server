@@ -1,6 +1,7 @@
 package oscar
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log/slog"
@@ -67,13 +68,12 @@ func TestHandleChatConnection_MessageRelay(t *testing.T) {
 	for i := 0; i < len(inboundMsgs); i++ {
 		flap := wire.FLAPFrame{}
 		assert.NoError(t, wire.Unmarshal(&flap, clientReader))
-		snac, err := flap.ReadBody(clientReader)
-		assert.NoError(t, err)
 		frame := wire.SNACFrame{}
-		assert.NoError(t, wire.Unmarshal(&frame, snac))
+		buf := bytes.NewBuffer(flap.Payload)
+		assert.NoError(t, wire.Unmarshal(&frame, buf))
 		assert.Equal(t, inboundMsgs[i].Frame, frame)
 		body := wire.SNAC_0x0E_0x03_ChatUsersJoined{}
-		assert.NoError(t, wire.Unmarshal(&body, snac))
+		assert.NoError(t, wire.Unmarshal(&body, buf))
 		assert.Equal(t, inboundMsgs[i].Body, body)
 	}
 

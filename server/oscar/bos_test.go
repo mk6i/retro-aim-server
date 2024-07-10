@@ -38,39 +38,31 @@ func TestBOSService_handleNewConnection(t *testing.T) {
 		// < receive FLAPSignonFrame
 		flap := wire.FLAPFrame{}
 		assert.NoError(t, wire.Unmarshal(&flap, serverReader))
-		buf, err := flap.ReadBody(serverReader)
-		assert.NoError(t, err)
 		flapSignonFrame := wire.FLAPSignonFrame{}
-		assert.NoError(t, wire.Unmarshal(&flapSignonFrame, buf))
+		assert.NoError(t, wire.Unmarshal(&flapSignonFrame, bytes.NewBuffer(flap.Payload)))
 
 		// > send FLAPSignonFrame
 		flapSignonFrame = wire.FLAPSignonFrame{
 			FLAPVersion: 1,
 		}
 		flapSignonFrame.Append(wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")))
-		buf = &bytes.Buffer{}
+		buf := &bytes.Buffer{}
 		assert.NoError(t, wire.Marshal(flapSignonFrame, buf))
 		flap = wire.FLAPFrame{
-			StartMarker:   42,
-			FrameType:     wire.FLAPFrameSignon,
-			PayloadLength: uint16(buf.Len()),
+			StartMarker: 42,
+			FrameType:   wire.FLAPFrameSignon,
+			Payload:     buf.Bytes(),
 		}
 		assert.NoError(t, wire.Marshal(flap, serverWriter))
-		_, err = serverWriter.Write(buf.Bytes())
-		assert.NoError(t, err)
+
+		flapc := wire.NewFlapClient(0, serverReader, serverWriter)
 
 		// < receive SNAC_0x01_0x03_OServiceHostOnline
-		flap = wire.FLAPFrame{}
-		assert.NoError(t, wire.Unmarshal(&flap, serverReader))
-		buf, err = flap.ReadBody(serverReader)
-		assert.NoError(t, err)
 		frame := wire.SNACFrame{}
-		assert.NoError(t, wire.Unmarshal(&frame, buf))
 		body := wire.SNAC_0x01_0x03_OServiceHostOnline{}
-		assert.NoError(t, wire.Unmarshal(&body, buf))
+		assert.NoError(t, flapc.ReceiveSNAC(&frame, &body))
 
 		// send the first request that should get relayed to BOSRouter.Handle
-		flapc := wire.NewFlapClient(0, nil, serverWriter)
 		frame = wire.SNACFrame{
 			FoodGroup: wire.OService,
 			SubGroup:  wire.OServiceClientOnline,

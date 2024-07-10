@@ -20,20 +20,10 @@ const (
 )
 
 type FLAPFrame struct {
-	StartMarker   uint8
-	FrameType     uint8
-	Sequence      uint16
-	PayloadLength uint16
-}
-
-func (f FLAPFrame) ReadBody(r io.Reader) (*bytes.Buffer, error) {
-	b := make([]byte, f.PayloadLength)
-	if f.PayloadLength > 0 {
-		if _, err := io.ReadFull(r, b); err != nil {
-			return nil, err
-		}
-	}
-	return bytes.NewBuffer(b), nil
+	StartMarker uint8
+	FrameType   uint8
+	Sequence    uint16
+	Payload     []byte `len_prefix:"uint16"`
 }
 
 type SNACFrame struct {
@@ -89,16 +79,12 @@ func (f *FlapClient) SendSignonFrame(tlvs []TLV) error {
 	}
 
 	flap := FLAPFrame{
-		StartMarker:   42,
-		FrameType:     FLAPFrameSignon,
-		Sequence:      uint16(f.sequence),
-		PayloadLength: uint16(buf.Len()),
+		StartMarker: 42,
+		FrameType:   FLAPFrameSignon,
+		Sequence:    uint16(f.sequence),
+		Payload:     buf.Bytes(),
 	}
 	if err := Marshal(flap, f.w); err != nil {
-		return err
-	}
-
-	if _, err := f.w.Write(buf.Bytes()); err != nil {
 		return err
 	}
 
@@ -114,13 +100,8 @@ func (f *FlapClient) ReceiveSignonFrame() (FLAPSignonFrame, error) {
 		return FLAPSignonFrame{}, err
 	}
 
-	buf, err := flap.ReadBody(f.r)
-	if err != nil {
-		return FLAPSignonFrame{}, err
-	}
-
 	signonFrame := FLAPSignonFrame{}
-	if err := Unmarshal(&signonFrame, buf); err != nil {
+	if err := Unmarshal(&signonFrame, bytes.NewBuffer(flap.Payload)); err != nil {
 		return FLAPSignonFrame{}, err
 	}
 
@@ -129,21 +110,13 @@ func (f *FlapClient) ReceiveSignonFrame() (FLAPSignonFrame, error) {
 
 // ReceiveFLAP receives a FLAP frame and body. It only returns a body if the
 // FLAP frame is a data frame.
-func (f *FlapClient) ReceiveFLAP() (FLAPFrame, *bytes.Buffer, error) {
+func (f *FlapClient) ReceiveFLAP() (FLAPFrame, error) {
 	flap := FLAPFrame{}
-	if err := Unmarshal(&flap, f.r); err != nil {
-		return flap, nil, fmt.Errorf("unable to unmarshal FLAP frame: %w", err)
-	}
-
-	if flap.FrameType != FLAPFrameData {
-		return flap, nil, nil
-	}
-
-	buf, err := flap.ReadBody(f.r)
+	err := Unmarshal(&flap, f.r)
 	if err != nil {
-		err = fmt.Errorf("unable to read FLAP body: %w", err)
+		err = fmt.Errorf("unable to unmarshal FLAP frame: %w", err)
 	}
-	return flap, buf, err
+	return flap, err
 }
 
 // SendSignoffFrame sends a sign-off FLAP frame with attached TLVs as the last
@@ -157,23 +130,14 @@ func (f *FlapClient) SendSignoffFrame(tlvs TLVRestBlock) error {
 	}
 
 	flap := FLAPFrame{
-		StartMarker:   42,
-		FrameType:     FLAPFrameSignoff,
-		Sequence:      uint16(f.sequence),
-		PayloadLength: uint16(tlvBuf.Len()),
+		StartMarker: 42,
+		FrameType:   FLAPFrameSignoff,
+		Sequence:    uint16(f.sequence),
+		Payload:     tlvBuf.Bytes(),
 	}
 
 	if err := Marshal(flap, f.w); err != nil {
 		return err
-	}
-
-	expectLen := tlvBuf.Len()
-	c, err := f.w.Write(tlvBuf.Bytes())
-	if err != nil {
-		return err
-	}
-	if c != expectLen {
-		panic("did not write the expected # of bytes")
 	}
 
 	f.sequence++
@@ -191,16 +155,12 @@ func (f *FlapClient) SendSNAC(frame SNACFrame, body any) error {
 	}
 
 	flap := FLAPFrame{
-		StartMarker:   42,
-		FrameType:     FLAPFrameData,
-		Sequence:      uint16(f.sequence),
-		PayloadLength: uint16(snacBuf.Len()),
+		StartMarker: 42,
+		FrameType:   FLAPFrameData,
+		Sequence:    uint16(f.sequence),
+		Payload:     snacBuf.Bytes(),
 	}
 	if err := Marshal(flap, f.w); err != nil {
-		return err
-	}
-
-	if _, err := f.w.Write(snacBuf.Bytes()); err != nil {
 		return err
 	}
 
@@ -214,10 +174,7 @@ func (f *FlapClient) ReceiveSNAC(frame *SNACFrame, body any) error {
 	if err := Unmarshal(&flap, f.r); err != nil {
 		return err
 	}
-	buf, err := flap.ReadBody(f.r)
-	if err != nil {
-		return err
-	}
+	buf := bytes.NewBuffer(flap.Payload)
 	if err := Unmarshal(frame, buf); err != nil {
 		return err
 	}
@@ -229,10 +186,9 @@ func (f *FlapClient) Disconnect() error {
 	// gracefully disconnect so that the client does not try to
 	// reconnect when the connection closes.
 	flap := FLAPFrame{
-		StartMarker:   42,
-		FrameType:     FLAPFrameSignoff,
-		Sequence:      uint16(f.sequence),
-		PayloadLength: uint16(0),
+		StartMarker: 42,
+		FrameType:   FLAPFrameSignoff,
+		Sequence:    uint16(f.sequence),
 	}
 	return Marshal(flap, f.w)
 }
