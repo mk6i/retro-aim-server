@@ -233,18 +233,19 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 	}
 	recipSess.IncrementWarning(increase)
 
-	var notif any
+	notif := wire.SNAC_0x01_0x10_OServiceEvilNotification{
+		NewEvil: recipSess.Warning(),
+	}
+
+	// append info about user who sent the warning
 	if inBody.SendAs == 0 {
-		notif = wire.SNAC_0x01_0x10_OServiceEvilNotification{
-			NewEvil: recipSess.Warning(),
+		notif.Snitcher = &struct {
+			wire.TLVUserInfo
+		}{
 			TLVUserInfo: wire.TLVUserInfo{
 				ScreenName:   sess.DisplayScreenName().String(),
 				WarningLevel: sess.Warning(),
 			},
-		}
-	} else {
-		notif = wire.SNAC_0x01_0x10_OServiceEvilNotificationAnon{
-			NewEvil: recipSess.Warning(),
 		}
 	}
 

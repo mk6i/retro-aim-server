@@ -268,11 +268,11 @@ type SNAC_0x01_0x0F_OServiceUserInfoUpdate struct {
 
 type SNAC_0x01_0x10_OServiceEvilNotification struct {
 	NewEvil uint16
-	TLVUserInfo
-}
-
-type SNAC_0x01_0x10_OServiceEvilNotificationAnon struct {
-	NewEvil uint16
+	// Snitcher specifies the user who sent the warning. Nil pointer indicates
+	// an anonymous warning.
+	Snitcher *struct {
+		TLVUserInfo
+	} `oscar:"optional"`
 }
 
 type SNAC_0x01_0x11_OServiceIdleNotification struct {

@@ -391,7 +391,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					FoodGroup: wire.OService,
 					SubGroup:  wire.OServiceEvilNotification,
 				},
-				Body: wire.SNAC_0x01_0x10_OServiceEvilNotificationAnon{
+				Body: wire.SNAC_0x01_0x10_OServiceEvilNotification{
 					NewEvil: evilDeltaAnon,
 				},
 			},
@@ -438,9 +438,13 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				},
 				Body: wire.SNAC_0x01_0x10_OServiceEvilNotification{
 					NewEvil: evilDelta,
-					TLVUserInfo: wire.TLVUserInfo{
-						ScreenName:   "sender-screen-name",
-						WarningLevel: 110,
+					Snitcher: &struct {
+						wire.TLVUserInfo
+					}{
+						wire.TLVUserInfo{
+							ScreenName:   "sender-screen-name",
+							WarningLevel: 110,
+						},
 					},
 				},
 			},
