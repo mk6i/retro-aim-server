@@ -75,7 +75,7 @@ var rateLimitSNAC = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
 		Pairs []struct {
 			FoodGroup uint16
 			SubGroup  uint16
-		} `count_prefix:"uint16"`
+		} `oscar:"count_prefix=uint16"`
 	}{
 		{
 			ID: 1,
@@ -553,8 +553,8 @@ type OServiceServiceForBOS struct {
 // chatLoginCookie represents credentials used to authenticate a user chat
 // session.
 type chatLoginCookie struct {
-	ChatCookie string                  `len_prefix:"uint8"`
-	ScreenName state.DisplayScreenName `len_prefix:"uint8"`
+	ChatCookie string                  `oscar:"len_prefix=uint8"`
+	ScreenName state.DisplayScreenName `oscar:"len_prefix=uint8"`
 }
 
 // ServiceRequest handles service discovery, providing a host name and metadata

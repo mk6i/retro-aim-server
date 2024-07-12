@@ -12,50 +12,38 @@ import (
 var ErrUnmarshalFailure = errors.New("failed to unmarshal")
 
 func Unmarshal(v any, r io.Reader) error {
-	return unmarshal(reflect.TypeOf(v).Elem(), reflect.ValueOf(v).Elem(), "", r)
+	if err := unmarshal(reflect.TypeOf(v).Elem(), reflect.ValueOf(v).Elem(), "", r); err != nil {
+		return fmt.Errorf("%w: %w", ErrUnmarshalFailure, err)
+	}
+	return nil
 }
 
 func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Reader) error {
+	oscTag, err := parseOSCARTag(tag)
+	if err != nil {
+		return fmt.Errorf("error parsing tag: %w", err)
+	}
+
+	if oscTag.optional {
+		v.Set(reflect.New(t.Elem()))
+		err := unmarshalStruct(t.Elem(), v.Elem(), oscTag, r)
+		if errors.Is(err, io.EOF) {
+			// no values to read, but that's ok since this struct is optional
+			v.Set(reflect.Zero(t))
+			err = nil
+		}
+		return err
+	} else if v.Kind() == reflect.Ptr {
+		return errNonOptionalPointer
+	}
+
 	switch v.Kind() {
-	case reflect.Struct:
-		if lenTag, ok := tag.Lookup("len_prefix"); ok {
-			bufLen, err := readUnsignedInt(lenTag, r)
-			if err != nil {
-				return err
-			}
-			b := make([]byte, bufLen)
-			if bufLen > 0 {
-				if _, err := io.ReadFull(r, b); err != nil {
-					return err
-				}
-			}
-			r = bytes.NewBuffer(b)
-		}
-		for i := 0; i < v.NumField(); i++ {
-			if err := unmarshal(t.Field(i).Type, v.Field(i), t.Field(i).Tag, r); err != nil {
-				return err
-			}
-		}
-		return nil
+	case reflect.Slice:
+		return unmarshalSlice(v, oscTag, r)
 	case reflect.String:
-		var bufLen int
-		if lenTag, ok := tag.Lookup("len_prefix"); ok {
-			var err error
-			if bufLen, err = readUnsignedInt(lenTag, r); err != nil {
-				return err
-			}
-		} else {
-			return fmt.Errorf("%w: missing len_prefix tag", ErrUnmarshalFailure)
-		}
-		buf := make([]byte, bufLen)
-		if bufLen > 0 {
-			if _, err := io.ReadFull(r, buf); err != nil {
-				return err
-			}
-		}
-		// todo is there a more efficient way?
-		v.SetString(string(buf))
-		return nil
+		return unmarshalString(v, oscTag, r)
+	case reflect.Struct:
+		return unmarshalStruct(t, v, oscTag, r)
 	case reflect.Uint8:
 		var l uint8
 		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
@@ -84,82 +72,132 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 		}
 		v.Set(reflect.ValueOf(l))
 		return nil
-	case reflect.Slice:
-		if lenTag, ok := tag.Lookup("len_prefix"); ok {
-			bufLen, err := readUnsignedInt(lenTag, r)
-			if err != nil {
-				return err
-			}
-			buf := make([]byte, bufLen)
-			if bufLen > 0 {
-				if _, err := io.ReadFull(r, buf); err != nil {
-					return err
-				}
-			}
-			b := bytes.NewBuffer(buf)
-			slice := reflect.New(v.Type()).Elem()
-			// todo: if this is a slice of scalars, there should be no need to
-			//  call Unmarshal on each element. it should be possible to just
-			//  call binary.Read(r, binary.BigEndian, []byte)
-			for b.Len() > 0 {
-				v1 := reflect.New(v.Type().Elem()).Interface()
-				if err := Unmarshal(v1, b); err != nil {
-					return err
-				}
-				slice = reflect.Append(slice, reflect.ValueOf(v1).Elem())
-			}
-			v.Set(slice)
-		} else if countTag, ok := tag.Lookup("count_prefix"); ok {
-			count, err := readUnsignedInt(countTag, r)
-			if err != nil {
-				return err
-			}
-			slice := reflect.New(v.Type()).Elem()
-			for i := 0; i < count; i++ {
-				v1 := reflect.New(v.Type().Elem()).Interface()
-				if err := Unmarshal(v1, r); err != nil {
-					return err
-				}
-				slice = reflect.Append(slice, reflect.ValueOf(v1).Elem())
-			}
-			v.Set(slice)
-		} else {
-			slice := reflect.New(v.Type()).Elem()
-			for {
-				v1 := reflect.New(v.Type().Elem()).Interface()
-				if err := Unmarshal(v1, r); err != nil {
-					if err == io.EOF {
-						break
-					}
-					return err
-				}
-				slice = reflect.Append(slice, reflect.ValueOf(v1).Elem())
-			}
-			v.Set(slice)
-		}
-		return nil
 	default:
-		return fmt.Errorf("%w: unsupported type %v", ErrUnmarshalFailure, t.Kind())
+		return fmt.Errorf("unsupported type %v", t.Kind())
 	}
 }
 
-func readUnsignedInt(intType string, r io.Reader) (int, error) {
+func unmarshalSlice(v reflect.Value, oscTag oscarTag, r io.Reader) error {
+	slice := reflect.New(v.Type()).Elem()
+	elemType := v.Type().Elem()
+
+	if oscTag.hasLenPrefix {
+		bufLen, err := unmarshalUnsignedInt(oscTag.lenPrefix, r)
+		if err != nil {
+			return err
+		}
+		b := make([]byte, bufLen)
+		if bufLen > 0 {
+			if _, err := io.ReadFull(r, b); err != nil {
+				return err
+			}
+		}
+		buf := bytes.NewBuffer(b)
+		for buf.Len() > 0 {
+			elem := reflect.New(elemType).Elem()
+			if err := unmarshal(elemType, elem, "", buf); err != nil {
+				return err
+			}
+			slice = reflect.Append(slice, elem)
+		}
+	} else if oscTag.hasCountPrefix {
+		count, err := unmarshalUnsignedInt(oscTag.countPrefix, r)
+		if err != nil {
+			return err
+		}
+
+		for i := 0; i < count; i++ {
+			elem := reflect.New(elemType).Elem()
+			if err := unmarshal(elemType, elem, "", r); err != nil {
+				return err
+			}
+			slice = reflect.Append(slice, elem)
+		}
+	} else {
+		for {
+			elem := reflect.New(elemType).Elem()
+			if err := unmarshal(elemType, elem, "", r); err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return err
+			}
+			slice = reflect.Append(slice, elem)
+		}
+	}
+	v.Set(slice)
+	return nil
+}
+
+func unmarshalString(v reflect.Value, oscTag oscarTag, r io.Reader) error {
+	if !oscTag.hasLenPrefix {
+		return fmt.Errorf("missing len_prefix tag")
+	}
+	bufLen, err := unmarshalUnsignedInt(oscTag.lenPrefix, r)
+	if err != nil {
+		return err
+	}
+	buf := make([]byte, bufLen)
+	if bufLen > 0 {
+		if _, err := io.ReadFull(r, buf); err != nil {
+			return err
+		}
+	}
+	// todo is there a more efficient way?
+	v.SetString(string(buf))
+	return nil
+}
+
+func unmarshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, r io.Reader) error {
+	if oscTag.hasLenPrefix {
+		bufLen, err := unmarshalUnsignedInt(oscTag.lenPrefix, r)
+		if err != nil {
+			return err
+		}
+		b := make([]byte, bufLen)
+		if bufLen > 0 {
+			if _, err := io.ReadFull(r, b); err != nil {
+				return err
+			}
+		}
+		r = bytes.NewBuffer(b)
+	}
+	for i := 0; i < v.NumField(); i++ {
+		field := t.Field(i)
+		value := v.Field(i)
+		if field.Type.Kind() == reflect.Ptr {
+			if i != v.NumField()-1 {
+				return fmt.Errorf("pointer type found at non-final field %s", field.Name)
+			}
+			if field.Type.Elem().Kind() != reflect.Struct {
+				return fmt.Errorf("%w: field %s must point to a struct, got %v instead",
+					errNonOptionalPointer, field.Name, field.Type.Elem().Kind())
+			}
+		}
+		if err := unmarshal(field.Type, value, field.Tag, r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func unmarshalUnsignedInt(intType reflect.Kind, r io.Reader) (int, error) {
 	var bufLen int
 	switch intType {
-	case "uint8":
+	case reflect.Uint8:
 		var l uint8
 		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
 			return 0, err
 		}
 		bufLen = int(l)
-	case "uint16":
+	case reflect.Uint16:
 		var l uint16
 		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
 			return 0, err
 		}
 		bufLen = int(l)
 	default:
-		return 0, fmt.Errorf("%w: unsupported len_prefix type %s. allowed types: uint8, uint16", ErrUnmarshalFailure, intType)
+		panic(fmt.Sprintf("unsupported type %s. allowed types: uint8, uint16", intType))
 	}
 	return bufLen, nil
 }

@@ -205,7 +205,7 @@ type SNAC_0x01_0x04_OServiceServiceRequest struct {
 
 type SNAC_0x01_0x04_TLVRoomInfo struct {
 	Exchange       uint16
-	Cookie         string `len_prefix:"uint8"`
+	Cookie         string `oscar:"len_prefix=uint8"`
 	InstanceNumber uint16
 }
 
@@ -248,13 +248,13 @@ type SNAC_0x01_0x07_OServiceRateParamsReply struct {
 		MaxLevel        uint32
 		LastTime        uint32
 		CurrentState    uint8
-	} `count_prefix:"uint16"`
+	} `oscar:"count_prefix=uint16"`
 	RateGroups []struct {
 		ID    uint16
 		Pairs []struct {
 			FoodGroup uint16
 			SubGroup  uint16
-		} `count_prefix:"uint16"`
+		} `oscar:"count_prefix=uint16"`
 	}
 }
 
@@ -390,7 +390,7 @@ type SNAC_0x02_0x0A_LocateSetDirReply struct {
 }
 
 type SNAC_0x02_0x0B_LocateGetDirInfo struct {
-	WatcherScreenNames string `len_prefix:"uint8"`
+	WatcherScreenNames string `oscar:"len_prefix=uint8"`
 }
 
 type SNAC_0x02_0x0F_LocateSetKeywordInfo struct {
@@ -404,7 +404,7 @@ type SNAC_0x02_0x10_LocateSetKeywordReply struct {
 
 type SNAC_0x02_0x05_LocateUserInfoQuery struct {
 	Type       uint16
-	ScreenName string `len_prefix:"uint8"`
+	ScreenName string `oscar:"len_prefix=uint8"`
 }
 
 func (s SNAC_0x02_0x05_LocateUserInfoQuery) RequestProfile() bool {
@@ -417,7 +417,7 @@ func (s SNAC_0x02_0x05_LocateUserInfoQuery) RequestAwayMessage() bool {
 
 type SNAC_0x02_0x15_LocateUserInfoQuery2 struct {
 	Type2      uint32
-	ScreenName string `len_prefix:"uint8"`
+	ScreenName string `oscar:"len_prefix=uint8"`
 }
 
 //
@@ -456,13 +456,13 @@ type SNAC_0x03_0x03_BuddyRightsReply struct {
 
 type SNAC_0x03_0x04_BuddyAddBuddies struct {
 	Buddies []struct {
-		ScreenName string `len_prefix:"uint8"`
+		ScreenName string `oscar:"len_prefix=uint8"`
 	}
 }
 
 type SNAC_0x03_0x05_BuddyDelBuddies struct {
 	Buddies []struct {
-		ScreenName string `len_prefix:"uint8"`
+		ScreenName string `oscar:"len_prefix=uint8"`
 	}
 }
 
@@ -529,7 +529,7 @@ const (
 type ICBMFragment struct {
 	ID      uint8
 	Version uint8
-	Payload []byte `len_prefix:"uint16"`
+	Payload []byte `oscar:"len_prefix=uint16"`
 }
 
 // ICBMMessage represents the text component of an ICBM message.
@@ -560,7 +560,7 @@ type SNAC_0x04_0x05_ICBMParameterReply struct {
 type SNAC_0x04_0x06_ICBMChannelMsgToHost struct {
 	Cookie     uint64
 	ChannelID  uint16
-	ScreenName string `len_prefix:"uint8"`
+	ScreenName string `oscar:"len_prefix=uint8"`
 	TLVRestBlock
 }
 
@@ -622,7 +622,7 @@ func UnmarshalICBMMessageText(b []byte) (string, error) {
 
 type SNAC_0x04_0x08_ICBMEvilRequest struct {
 	SendAs     uint16
-	ScreenName string `len_prefix:"uint8"`
+	ScreenName string `oscar:"len_prefix=uint8"`
 }
 
 type SNAC_0x04_0x09_ICBMEvilReply struct {
@@ -633,7 +633,7 @@ type SNAC_0x04_0x09_ICBMEvilReply struct {
 type SNAC_0x04_0x0B_ICBMClientErr struct {
 	Cookie     uint64
 	ChannelID  uint16
-	ScreenName string `len_prefix:"uint8"`
+	ScreenName string `oscar:"len_prefix=uint8"`
 	Code       uint16
 	ErrInfo    []byte
 }
@@ -641,13 +641,13 @@ type SNAC_0x04_0x0B_ICBMClientErr struct {
 type SNAC_0x04_0x0C_ICBMHostAck struct {
 	Cookie     uint64
 	ChannelID  uint16
-	ScreenName string `len_prefix:"uint8"`
+	ScreenName string `oscar:"len_prefix=uint8"`
 }
 
 type SNAC_0x04_0x14_ICBMClientEvent struct {
 	Cookie     uint64
 	ChannelID  uint16
-	ScreenName string `len_prefix:"uint8"`
+	ScreenName string `oscar:"len_prefix=uint8"`
 	Event      uint16
 }
 
@@ -808,7 +808,7 @@ type SNAC_0x0D_0x03_ChatNavRequestExchangeInfo struct {
 
 type SNAC_0x0D_0x04_ChatNavRequestRoomInfo struct {
 	Exchange       uint16
-	Cookie         string `len_prefix:"uint8"`
+	Cookie         string `oscar:"len_prefix=uint8"`
 	InstanceNumber uint16
 	DetailLevel    uint8
 }
@@ -894,7 +894,7 @@ const (
 
 type SNAC_0x0E_0x02_ChatRoomInfoUpdate struct {
 	Exchange       uint16
-	Cookie         string `len_prefix:"uint8"`
+	Cookie         string `oscar:"len_prefix=uint8"`
 	InstanceNumber uint16
 	DetailLevel    uint8
 	TLVBlock
@@ -998,7 +998,7 @@ func GetClearIconHash() []byte {
 // BARTInfo represents a BART feedbag item
 type BARTInfo struct {
 	Flags uint8
-	Hash  []byte `len_prefix:"uint8"`
+	Hash  []byte `oscar:"len_prefix=uint8"`
 }
 
 // HasClearIconHash reports whether the BART ID hash contains the
@@ -1014,7 +1014,7 @@ type BARTID struct {
 
 type SNAC_0x10_0x02_BARTUploadQuery struct {
 	Type uint16
-	Data []byte `len_prefix:"uint16"`
+	Data []byte `oscar:"len_prefix=uint16"`
 }
 
 type SNAC_0x10_0x03_BARTUploadReply struct {
@@ -1023,15 +1023,15 @@ type SNAC_0x10_0x03_BARTUploadReply struct {
 }
 
 type SNAC_0x10_0x04_BARTDownloadQuery struct {
-	ScreenName string `len_prefix:"uint8"`
+	ScreenName string `oscar:"len_prefix=uint8"`
 	Command    uint8
 	BARTID
 }
 
 type SNAC_0x10_0x05_BARTDownloadReply struct {
-	ScreenName string `len_prefix:"uint8"`
+	ScreenName string `oscar:"len_prefix=uint8"`
 	BARTID     BARTID
-	Data       []byte `len_prefix:"uint16"`
+	Data       []byte `oscar:"len_prefix=uint16"`
 }
 
 // 0x13: Feedbag
@@ -1202,7 +1202,7 @@ type SNAC_0x13_0x05_FeedbagQueryIfModified struct {
 
 type SNAC_0x13_0x06_FeedbagReply struct {
 	Version    uint8
-	Items      []FeedbagItem `count_prefix:"uint16"`
+	Items      []FeedbagItem `oscar:"count_prefix=uint16"`
 	LastUpdate uint32
 }
 
@@ -1255,7 +1255,7 @@ type SNAC_0x17_0x06_BUCPChallengeRequest struct {
 }
 
 type SNAC_0x17_0x07_BUCPChallengeResponse struct {
-	AuthKey string `len_prefix:"uint16"`
+	AuthKey string `oscar:"len_prefix=uint16"`
 }
 
 //
@@ -1288,13 +1288,13 @@ const (
 )
 
 type TLVUserInfo struct {
-	ScreenName   string `len_prefix:"uint8"`
+	ScreenName   string `oscar:"len_prefix=uint8"`
 	WarningLevel uint16
 	TLVBlock
 }
 
 type FeedbagItem struct {
-	Name    string `len_prefix:"uint16"`
+	Name    string `oscar:"len_prefix=uint16"`
 	GroupID uint16
 	ItemID  uint16
 	ClassID uint16

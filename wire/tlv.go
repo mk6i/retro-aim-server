@@ -11,7 +11,7 @@ import (
 // together in arrays.
 type TLV struct {
 	Tag   uint16
-	Value []byte `len_prefix:"uint16"`
+	Value []byte `oscar:"len_prefix=uint16"`
 }
 
 // NewTLV creates a new instance of TLV.
@@ -41,13 +41,13 @@ type TLVRestBlock struct {
 // TLVBlock is a type of TLV array that has the TLV element count encoded as a
 // 2-byte value at the beginning of the encoded blob.
 type TLVBlock struct {
-	TLVList `count_prefix:"uint16"`
+	TLVList `oscar:"count_prefix=uint16"`
 }
 
 // TLVLBlock is a type of TLV array that has the TLV blob byte-length encoded
 // as a 2-byte value at the beginning of the encoded blob.
 type TLVLBlock struct {
-	TLVList `len_prefix:"uint16"`
+	TLVList `oscar:"len_prefix=uint16"`
 }
 
 // TLVList is a list of TLV elements. It provides methods to append and access

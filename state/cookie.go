@@ -87,12 +87,12 @@ func (c HMACCookieBaker) Crack(data []byte) ([]byte, error) {
 
 type hmacTokenPayload struct {
 	Expiry uint32
-	Data   []byte `len_prefix:"uint16"`
+	Data   []byte `oscar:"len_prefix=uint16"`
 }
 
 type hmacToken struct {
-	Data []byte `len_prefix:"uint16"`
-	Sig  []byte `len_prefix:"uint16"`
+	Data []byte `oscar:"len_prefix=uint16"`
+	Sig  []byte `oscar:"len_prefix=uint16"`
 }
 
 func (h *hmacToken) hash(key []byte) {

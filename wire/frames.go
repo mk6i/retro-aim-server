@@ -23,7 +23,7 @@ type FLAPFrame struct {
 	StartMarker uint8
 	FrameType   uint8
 	Sequence    uint16
-	Payload     []byte `len_prefix:"uint16"`
+	Payload     []byte `oscar:"len_prefix=uint16"`
 }
 
 type SNACFrame struct {

@@ -99,10 +99,10 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "string8",
 			prototype: &struct {
-				Val string `len_prefix:"uint8"`
+				Val string `oscar:"len_prefix=uint8"`
 			}{},
 			want: &struct {
-				Val string `len_prefix:"uint8"`
+				Val string `oscar:"len_prefix=uint8"`
 			}{
 				Val: "test-value",
 			},
@@ -113,7 +113,7 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "string8 read error",
 			prototype: &struct {
-				Val string `len_prefix:"uint8"`
+				Val string `oscar:"len_prefix=uint8"`
 			}{},
 			given:   []byte{},
 			wantErr: io.EOF,
@@ -121,10 +121,10 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "string16",
 			prototype: &struct {
-				Val string `len_prefix:"uint16"`
+				Val string `oscar:"len_prefix=uint16"`
 			}{},
 			want: &struct {
-				Val string `len_prefix:"uint16"`
+				Val string `oscar:"len_prefix=uint16"`
 			}{
 				Val: "test-value",
 			},
@@ -135,7 +135,7 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "string16 read error",
 			prototype: &struct {
-				Val string `len_prefix:"uint16"`
+				Val string `oscar:"len_prefix=uint16"`
 			}{},
 			given:   []byte{},
 			wantErr: io.EOF,
@@ -143,7 +143,7 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "unsupported string prefix type",
 			prototype: &struct {
-				Val string `len_prefix:"uint128"`
+				Val string `oscar:"len_prefix=uint128"`
 			}{},
 			wantErr: ErrUnmarshalFailure,
 			given: append(
@@ -163,7 +163,7 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "partial string8",
 			prototype: &struct {
-				Val string `len_prefix:"uint8"`
+				Val string `oscar:"len_prefix=uint8"`
 			}{},
 			wantErr: io.EOF,
 			given: append(
@@ -173,10 +173,10 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "byte slice with uint8 len_prefix",
 			prototype: &struct {
-				Val []byte `len_prefix:"uint8"`
+				Val []byte `oscar:"len_prefix=uint8"`
 			}{},
 			want: &struct {
-				Val []byte `len_prefix:"uint8"`
+				Val []byte `oscar:"len_prefix=uint8"`
 			}{
 				Val: []byte(`hello`),
 			},
@@ -187,7 +187,7 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "slice of invalid type with uint8 len_prefix",
 			prototype: &struct {
-				Val []int `len_prefix:"uint8"`
+				Val []int `oscar:"len_prefix=uint8"`
 			}{},
 			wantErr: ErrUnmarshalFailure,
 			given:   []byte{0x04, 0x65, 0x6c, 0x6c, 0x6f},
@@ -195,7 +195,7 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "byte slice with uint8 len_prefix with read error",
 			prototype: &struct {
-				Val []byte `len_prefix:"uint8"`
+				Val []byte `oscar:"len_prefix=uint8"`
 			}{},
 			wantErr: io.EOF,
 			given: append(
@@ -205,7 +205,7 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "byte slice with uint8 len_prefix read error",
 			prototype: &struct {
-				Val []byte `len_prefix:"uint8"`
+				Val []byte `oscar:"len_prefix=uint8"`
 			}{},
 			wantErr: io.EOF,
 			given:   []byte{},
@@ -213,10 +213,10 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "byte slice with uint16 len_prefix",
 			prototype: &struct {
-				Val []byte `len_prefix:"uint16"`
+				Val []byte `oscar:"len_prefix=uint16"`
 			}{},
 			want: &struct {
-				Val []byte `len_prefix:"uint16"`
+				Val []byte `oscar:"len_prefix=uint16"`
 			}{
 				Val: []byte(`hello`),
 			},
@@ -227,7 +227,7 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "byte slice with uint16 len_prefix read error",
 			prototype: &struct {
-				Val []byte `len_prefix:"uint16"`
+				Val []byte `oscar:"len_prefix=uint16"`
 			}{},
 			wantErr: io.EOF,
 			given:   []byte{},
@@ -235,7 +235,7 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "byte slice with invalid len_prefix",
 			prototype: &struct {
-				Val []byte `len_prefix:"uint128"`
+				Val []byte `oscar:"len_prefix=uint128"`
 			}{},
 			wantErr: ErrUnmarshalFailure,
 			given: append(
@@ -268,10 +268,10 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "struct slice with uint8 count_prefix",
 			prototype: &struct {
-				Val []TLV `count_prefix:"uint8"`
+				Val []TLV `oscar:"count_prefix=uint8"`
 			}{},
 			want: &struct {
-				Val []TLV `count_prefix:"uint8"`
+				Val []TLV `oscar:"count_prefix=uint8"`
 			}{
 				Val: []TLV{
 					NewTLV(10, uint16(1234)),
@@ -287,7 +287,7 @@ func TestUnmarshal(t *testing.T) {
 			prototype: &struct {
 				Val []struct {
 					Val int16
-				} `count_prefix:"uint8"`
+				} `oscar:"count_prefix=uint8"`
 			}{},
 			wantErr: ErrUnmarshalFailure,
 			given: append(
@@ -297,7 +297,7 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "struct slice with uint8 count_prefix read error",
 			prototype: &struct {
-				Val []TLV `count_prefix:"uint8"`
+				Val []TLV `oscar:"count_prefix=uint8"`
 			}{},
 			wantErr: io.EOF,
 			given:   []byte{},
@@ -305,10 +305,10 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "struct slice with uint16 count_prefix",
 			prototype: &struct {
-				Val []TLV `count_prefix:"uint16"`
+				Val []TLV `oscar:"count_prefix=uint16"`
 			}{},
 			want: &struct {
-				Val []TLV `count_prefix:"uint16"`
+				Val []TLV `oscar:"count_prefix=uint16"`
 			}{
 				Val: []TLV{
 					NewTLV(10, uint16(1234)),
@@ -324,7 +324,7 @@ func TestUnmarshal(t *testing.T) {
 			prototype: &struct {
 				Val []struct {
 					Val int16
-				} `count_prefix:"uint16"`
+				} `oscar:"count_prefix=uint16"`
 			}{},
 			wantErr: ErrUnmarshalFailure,
 			given: append(
@@ -334,7 +334,7 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "struct slice with uint16 count_prefix read error",
 			prototype: &struct {
-				Val []TLV `count_prefix:"uint16"`
+				Val []TLV `oscar:"count_prefix=uint16"`
 			}{},
 			wantErr: io.EOF,
 			given:   []byte{},
@@ -342,7 +342,7 @@ func TestUnmarshal(t *testing.T) {
 		{
 			name: "struct slice with invalid count_prefix",
 			prototype: &struct {
-				Val []TLV `count_prefix:"uint128"`
+				Val []TLV `oscar:"count_prefix=uint128"`
 			}{},
 			wantErr: ErrUnmarshalFailure,
 			given: append(
@@ -356,7 +356,7 @@ func TestUnmarshal(t *testing.T) {
 				Val1 struct {
 					Val2 uint16
 					Val3 uint8
-				} `len_prefix:"uint8"`
+				} `oscar:"len_prefix=uint8"`
 				Val4 uint16
 			}{},
 			want: &struct {
@@ -364,7 +364,7 @@ func TestUnmarshal(t *testing.T) {
 				Val1 struct {
 					Val2 uint16
 					Val3 uint8
-				} `len_prefix:"uint8"`
+				} `oscar:"len_prefix=uint8"`
 				Val4 uint16
 			}{
 				Val0: 34,
@@ -392,7 +392,7 @@ func TestUnmarshal(t *testing.T) {
 				Val1 struct {
 					Val2 uint16
 					Val3 uint8
-				} `len_prefix:"uint16"`
+				} `oscar:"len_prefix=uint16"`
 				Val4 uint16
 			}{},
 			want: &struct {
@@ -400,7 +400,7 @@ func TestUnmarshal(t *testing.T) {
 				Val1 struct {
 					Val2 uint16
 					Val3 uint8
-				} `len_prefix:"uint16"`
+				} `oscar:"len_prefix=uint16"`
 				Val4 uint16
 			}{
 				Val0: 34,
@@ -426,7 +426,7 @@ func TestUnmarshal(t *testing.T) {
 			prototype: &struct {
 				Val1 struct {
 					Val2 uint16
-				} `len_prefix:"uint16"`
+				} `oscar:"len_prefix=uint16"`
 			}{},
 			given: []byte{
 				0x00, 0x10, // 16 byte len, but the body is truncated
@@ -438,9 +438,172 @@ func TestUnmarshal(t *testing.T) {
 			prototype: &struct {
 				Val1 struct {
 					Val2 uint16
-				} `len_prefix:"uint128"`
+				} `oscar:"len_prefix=uint128"`
 			}{},
 			wantErr: ErrUnmarshalFailure,
+		},
+		{
+			name: "optional struct has value",
+			prototype: &struct {
+				Val0     uint16
+				Optional *struct {
+					Val1 uint16
+				} `oscar:"optional"`
+			}{},
+			want: &struct {
+				Val0     uint16
+				Optional *struct {
+					Val1 uint16
+				} `oscar:"optional"`
+			}{
+				Val0: 34,
+				Optional: &struct {
+					Val1 uint16
+				}{
+					Val1: 100,
+				},
+			},
+			given: []byte{
+				0x00, 0x22, // Val0
+				0x00, 0x64, // Val1
+			},
+		},
+		{
+			name: "optional struct with value missing `optional` struct tag",
+			prototype: &struct {
+				Val0     uint16
+				Optional *struct {
+					Val1 uint16
+				}
+			}{},
+			given: []byte{
+				0x00, 0x22, // Val0
+				0x00, 0x64, // Val1
+			},
+			wantErr: ErrUnmarshalFailure,
+		},
+		{
+			name: "optional struct doesn't have value",
+			prototype: &struct {
+				Val0     uint16
+				Optional *struct {
+					Val1 uint16
+				} `oscar:"optional"`
+			}{},
+			want: &struct {
+				Val0     uint16
+				Optional *struct {
+					Val1 uint16
+				} `oscar:"optional"`
+			}{
+				Val0:     34,
+				Optional: nil,
+			},
+			given: []byte{
+				0x00, 0x22, // Val0
+			},
+		},
+		{
+			name: "optional struct followed by value throws error",
+			prototype: &struct {
+				Optional *struct {
+					Val0 uint16
+				} `oscar:"optional"`
+				Val1 uint16
+			}{},
+			wantErr: ErrUnmarshalFailure,
+			given: []byte{
+				0x00, 0x22, // Val0
+				0x00, 0x22, // Val1
+			},
+		},
+		{
+			name: "optional non-struct field throws error",
+			prototype: &struct {
+				Optional *uint16 `oscar:"optional"`
+			}{},
+			wantErr: ErrUnmarshalFailure,
+			given: []byte{
+				0x00, 0x22, // Val0
+			},
+		},
+		{
+			name: "non-struct pointer value throws error",
+			prototype: func() any {
+				val := 10
+				ptr1 := &val
+				return &ptr1
+			}(),
+			wantErr: ErrUnmarshalFailure,
+			given: []byte{
+				0x00, 0x22, // Val0
+			},
+		},
+		{
+			name: "optional struct with uint16 len_prefix and value",
+			prototype: &struct {
+				Val0 uint8
+				Val1 *struct {
+					Val2 uint16
+					Val3 uint8
+				} `oscar:"len_prefix=uint16,optional"`
+			}{},
+			want: &struct {
+				Val0 uint8
+				Val1 *struct {
+					Val2 uint16
+					Val3 uint8
+				} `oscar:"len_prefix=uint16,optional"`
+			}{
+				Val0: 34,
+				Val1: &struct {
+					Val2 uint16
+					Val3 uint8
+				}{
+					Val2: 16,
+					Val3: 10,
+				},
+			},
+			given: []byte{
+				0x22,       // Val0
+				0x00, 0x03, // Val1 struct len
+				0x00, 0x10, // Val2
+				0x0A,       // Val3
+				0x00, 0x20, // Val2
+			},
+		},
+		{
+			name: "optional struct with uint16 len_prefix and no value",
+			prototype: &struct {
+				Val0 uint8
+				Val1 *struct {
+					Val2 uint16
+					Val3 uint8
+				} `oscar:"len_prefix=uint16,optional"`
+			}{},
+			want: &struct {
+				Val0 uint8
+				Val1 *struct {
+					Val2 uint16
+					Val3 uint8
+				} `oscar:"len_prefix=uint16,optional"`
+			}{
+				Val0: 34,
+				Val1: nil,
+			},
+			given: []byte{
+				0x22, // Val0
+			},
+		},
+		{
+			name: "optional field that isn't a pointer to a struct is unsupported",
+			prototype: &struct {
+				Val1 *string `oscar:"optional"`
+			}{},
+			given: []byte{
+				0x00,
+			},
+			wantErr: errNonOptionalPointer,
 		},
 	}
 	for _, tt := range tests {

@@ -65,7 +65,7 @@ func TestBuddyHandler_AddBuddies(t *testing.T) {
 		},
 		Body: wire.SNAC_0x03_0x04_BuddyAddBuddies{
 			Buddies: []struct {
-				ScreenName string `len_prefix:"uint8"`
+				ScreenName string `oscar:"len_prefix=uint8"`
 			}{
 				{
 					ScreenName: "user1",
@@ -97,7 +97,7 @@ func TestBuddyHandler_DelBuddies(t *testing.T) {
 		},
 		Body: wire.SNAC_0x03_0x05_BuddyDelBuddies{
 			Buddies: []struct {
-				ScreenName string `len_prefix:"uint8"`
+				ScreenName string `oscar:"len_prefix=uint8"`
 			}{
 				{
 					ScreenName: "user1",

@@ -56,7 +56,7 @@ func TestBuddyService_AddBuddies(t *testing.T) {
 			sess: newTestSession("user_screen_name", sessOptSignonComplete),
 			bodyIn: wire.SNAC_0x03_0x04_BuddyAddBuddies{
 				Buddies: []struct {
-					ScreenName string `len_prefix:"uint8"`
+					ScreenName string `oscar:"len_prefix=uint8"`
 				}{
 					{
 						ScreenName: "buddy_1_online",
@@ -119,7 +119,7 @@ func TestBuddyService_AddBuddies(t *testing.T) {
 			sess: newTestSession("user_screen_name"),
 			bodyIn: wire.SNAC_0x03_0x04_BuddyAddBuddies{
 				Buddies: []struct {
-					ScreenName string `len_prefix:"uint8"`
+					ScreenName string `oscar:"len_prefix=uint8"`
 				}{
 					{
 						ScreenName: "buddy_1_online",
@@ -198,7 +198,7 @@ func TestBuddyService_DelBuddies(t *testing.T) {
 			sess: newTestSession("user_screen_name", sessOptSignonComplete),
 			bodyIn: wire.SNAC_0x03_0x05_BuddyDelBuddies{
 				Buddies: []struct {
-					ScreenName string `len_prefix:"uint8"`
+					ScreenName string `oscar:"len_prefix=uint8"`
 				}{
 					{
 						ScreenName: "buddy_1_online",

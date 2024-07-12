@@ -503,7 +503,7 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 				Pairs []struct {
 					FoodGroup uint16
 					SubGroup  uint16
-				} `count_prefix:"uint16"`
+				} `oscar:"count_prefix=uint16"`
 			}{
 				{
 					ID: 1,
