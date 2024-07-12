@@ -2,9 +2,10 @@ package handler
 
 import (
 	"context"
-	"github.com/mk6i/retro-aim-server/server/oscar"
 	"io"
 	"log/slog"
+
+	"github.com/mk6i/retro-aim-server/server/oscar"
 
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
@@ -35,7 +36,7 @@ type ICBMHandler struct {
 func (h ICBMHandler) AddParameters(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x04_0x02_ICBMAddParameters{}
 	h.LogRequest(ctx, inFrame, inBody)
-	return wire.Unmarshal(&inBody, r)
+	return wire.UnmarshalBE(&inBody, r)
 }
 
 func (h ICBMHandler) ParameterQuery(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
@@ -46,7 +47,7 @@ func (h ICBMHandler) ParameterQuery(ctx context.Context, _ *state.Session, inFra
 
 func (h ICBMHandler) ChannelMsgToHost(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := h.ICBMService.ChannelMsgToHost(ctx, sess, inFrame, inBody)
@@ -63,7 +64,7 @@ func (h ICBMHandler) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 
 func (h ICBMHandler) EvilRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x04_0x08_ICBMEvilRequest{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := h.ICBMService.EvilRequest(ctx, sess, inFrame, inBody)
@@ -77,12 +78,12 @@ func (h ICBMHandler) EvilRequest(ctx context.Context, sess *state.Session, inFra
 func (h ICBMHandler) ClientErr(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x04_0x0B_ICBMClientErr{}
 	h.LogRequest(ctx, inFrame, inBody)
-	return wire.Unmarshal(&inBody, r)
+	return wire.UnmarshalBE(&inBody, r)
 }
 
 func (h ICBMHandler) ClientEvent(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x04_0x14_ICBMClientEvent{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	h.LogRequest(ctx, inFrame, inBody)

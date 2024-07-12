@@ -11,14 +11,24 @@ import (
 
 var ErrUnmarshalFailure = errors.New("failed to unmarshal")
 
-func Unmarshal(v any, r io.Reader) error {
-	if err := unmarshal(reflect.TypeOf(v).Elem(), reflect.ValueOf(v).Elem(), "", r); err != nil {
+// UnmarshalBE unmarshalls OSCAR protocol messages in big-endian format.
+func UnmarshalBE(v any, r io.Reader) error {
+	if err := unmarshal(reflect.TypeOf(v).Elem(), reflect.ValueOf(v).Elem(), "", r, binary.BigEndian); err != nil {
 		return fmt.Errorf("%w: %w", ErrUnmarshalFailure, err)
 	}
 	return nil
 }
 
-func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Reader) error {
+// UnmarshalLE unmarshalls OSCAR protocol messages in little-endian format.
+func UnmarshalLE(v any, r io.Reader) error {
+	if err := unmarshal(reflect.TypeOf(v).Elem(), reflect.ValueOf(v).Elem(), "", r, binary.LittleEndian); err != nil {
+		return fmt.Errorf("%w: %w", ErrUnmarshalFailure, err)
+	}
+	return nil
+}
+
+// MarshalLE marshals ICQ protocol messages in little-endian format.
+func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Reader, order binary.ByteOrder) error {
 	oscTag, err := parseOSCARTag(tag)
 	if err != nil {
 		return fmt.Errorf("error parsing tag: %w", err)
@@ -26,7 +36,7 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 
 	if oscTag.optional {
 		v.Set(reflect.New(t.Elem()))
-		err := unmarshalStruct(t.Elem(), v.Elem(), oscTag, r)
+		err := unmarshalStruct(t.Elem(), v.Elem(), oscTag, r, order)
 		if errors.Is(err, io.EOF) {
 			// no values to read, but that's ok since this struct is optional
 			v.Set(reflect.Zero(t))
@@ -39,35 +49,35 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 
 	switch v.Kind() {
 	case reflect.Slice:
-		return unmarshalSlice(v, oscTag, r)
+		return unmarshalSlice(v, oscTag, r, order)
 	case reflect.String:
-		return unmarshalString(v, oscTag, r)
+		return unmarshalString(v, oscTag, r, order)
 	case reflect.Struct:
-		return unmarshalStruct(t, v, oscTag, r)
+		return unmarshalStruct(t, v, oscTag, r, order)
 	case reflect.Uint8:
 		var l uint8
-		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		if err := binary.Read(r, order, &l); err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(l))
 		return nil
 	case reflect.Uint16:
 		var l uint16
-		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		if err := binary.Read(r, order, &l); err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(l))
 		return nil
 	case reflect.Uint32:
 		var l uint32
-		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		if err := binary.Read(r, order, &l); err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(l))
 		return nil
 	case reflect.Uint64:
 		var l uint64
-		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		if err := binary.Read(r, order, &l); err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(l))
@@ -77,12 +87,12 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 	}
 }
 
-func unmarshalSlice(v reflect.Value, oscTag oscarTag, r io.Reader) error {
+func unmarshalSlice(v reflect.Value, oscTag oscarTag, r io.Reader, order binary.ByteOrder) error {
 	slice := reflect.New(v.Type()).Elem()
 	elemType := v.Type().Elem()
 
 	if oscTag.hasLenPrefix {
-		bufLen, err := unmarshalUnsignedInt(oscTag.lenPrefix, r)
+		bufLen, err := unmarshalUnsignedInt(oscTag.lenPrefix, r, order)
 		if err != nil {
 			return err
 		}
@@ -95,20 +105,20 @@ func unmarshalSlice(v reflect.Value, oscTag oscarTag, r io.Reader) error {
 		buf := bytes.NewBuffer(b)
 		for buf.Len() > 0 {
 			elem := reflect.New(elemType).Elem()
-			if err := unmarshal(elemType, elem, "", buf); err != nil {
+			if err := unmarshal(elemType, elem, "", buf, order); err != nil {
 				return err
 			}
 			slice = reflect.Append(slice, elem)
 		}
 	} else if oscTag.hasCountPrefix {
-		count, err := unmarshalUnsignedInt(oscTag.countPrefix, r)
+		count, err := unmarshalUnsignedInt(oscTag.countPrefix, r, order)
 		if err != nil {
 			return err
 		}
 
 		for i := 0; i < count; i++ {
 			elem := reflect.New(elemType).Elem()
-			if err := unmarshal(elemType, elem, "", r); err != nil {
+			if err := unmarshal(elemType, elem, "", r, order); err != nil {
 				return err
 			}
 			slice = reflect.Append(slice, elem)
@@ -116,7 +126,7 @@ func unmarshalSlice(v reflect.Value, oscTag oscarTag, r io.Reader) error {
 	} else {
 		for {
 			elem := reflect.New(elemType).Elem()
-			if err := unmarshal(elemType, elem, "", r); err != nil {
+			if err := unmarshal(elemType, elem, "", r, order); err != nil {
 				if errors.Is(err, io.EOF) {
 					break
 				}
@@ -129,11 +139,11 @@ func unmarshalSlice(v reflect.Value, oscTag oscarTag, r io.Reader) error {
 	return nil
 }
 
-func unmarshalString(v reflect.Value, oscTag oscarTag, r io.Reader) error {
+func unmarshalString(v reflect.Value, oscTag oscarTag, r io.Reader, order binary.ByteOrder) error {
 	if !oscTag.hasLenPrefix {
 		return fmt.Errorf("missing len_prefix tag")
 	}
-	bufLen, err := unmarshalUnsignedInt(oscTag.lenPrefix, r)
+	bufLen, err := unmarshalUnsignedInt(oscTag.lenPrefix, r, order)
 	if err != nil {
 		return err
 	}
@@ -148,9 +158,9 @@ func unmarshalString(v reflect.Value, oscTag oscarTag, r io.Reader) error {
 	return nil
 }
 
-func unmarshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, r io.Reader) error {
+func unmarshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, r io.Reader, order binary.ByteOrder) error {
 	if oscTag.hasLenPrefix {
-		bufLen, err := unmarshalUnsignedInt(oscTag.lenPrefix, r)
+		bufLen, err := unmarshalUnsignedInt(oscTag.lenPrefix, r, order)
 		if err != nil {
 			return err
 		}
@@ -174,25 +184,25 @@ func unmarshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, r io.Read
 					errNonOptionalPointer, field.Name, field.Type.Elem().Kind())
 			}
 		}
-		if err := unmarshal(field.Type, value, field.Tag, r); err != nil {
+		if err := unmarshal(field.Type, value, field.Tag, r, order); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func unmarshalUnsignedInt(intType reflect.Kind, r io.Reader) (int, error) {
+func unmarshalUnsignedInt(intType reflect.Kind, r io.Reader, order binary.ByteOrder) (int, error) {
 	var bufLen int
 	switch intType {
 	case reflect.Uint8:
 		var l uint8
-		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		if err := binary.Read(r, order, &l); err != nil {
 			return 0, err
 		}
 		bufLen = int(l)
 	case reflect.Uint16:
 		var l uint16
-		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		if err := binary.Read(r, order, &l); err != nil {
 			return 0, err
 		}
 		bufLen = int(l)

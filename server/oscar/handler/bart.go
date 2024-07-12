@@ -32,7 +32,7 @@ type BARTHandler struct {
 
 func (h BARTHandler) UploadQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x10_0x02_BARTUploadQuery{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := h.UpsertItem(ctx, sess, inFrame, inBody)
@@ -45,7 +45,7 @@ func (h BARTHandler) UploadQuery(ctx context.Context, sess *state.Session, inFra
 
 func (h BARTHandler) DownloadQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x10_0x04_BARTDownloadQuery{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := h.RetrieveItem(ctx, sess, inFrame, inBody)

@@ -18,14 +18,23 @@ var (
 	errInvalidStructTag      = errors.New("invalid struct tag")
 )
 
-func Marshal(v any, w io.Writer) error {
-	if err := marshal(reflect.TypeOf(v), reflect.ValueOf(v), "", w); err != nil {
+// MarshalBE marshals OSCAR protocol messages in big-endian format.
+func MarshalBE(v any, w io.Writer) error {
+	if err := marshal(reflect.TypeOf(v), reflect.ValueOf(v), "", w, binary.BigEndian); err != nil {
 		return fmt.Errorf("%w: %w", ErrMarshalFailure, err)
 	}
 	return nil
 }
 
-func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer) error {
+// MarshalLE marshals ICQ protocol messages in little-endian format.
+func MarshalLE(v any, w io.Writer) error {
+	if err := marshal(reflect.TypeOf(v), reflect.ValueOf(v), "", w, binary.LittleEndian); err != nil {
+		return fmt.Errorf("%w: %w", ErrMarshalFailure, err)
+	}
+	return nil
+}
+
+func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer, order binary.ByteOrder) error {
 	if t == nil {
 		return errMarshalFailureNilSNAC
 	}
@@ -43,46 +52,46 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 			return nil // nil value
 		}
 		// dereference pointer
-		return marshalStruct(t.Elem(), v.Elem(), oscTag, w)
+		return marshalStruct(t.Elem(), v.Elem(), oscTag, w, order)
 	} else if t.Kind() == reflect.Ptr {
 		return errNonOptionalPointer
 	}
 
 	switch t.Kind() {
 	case reflect.Slice:
-		return marshalSlice(t, v, oscTag, w)
+		return marshalSlice(t, v, oscTag, w, order)
 	case reflect.String:
-		return marshalString(oscTag, v, w)
+		return marshalString(oscTag, v, w, order)
 	case reflect.Struct:
-		return marshalStruct(t, v, oscTag, w)
+		return marshalStruct(t, v, oscTag, w, order)
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return binary.Write(w, binary.BigEndian, v.Interface())
+		return binary.Write(w, order, v.Interface())
 	default:
 		return fmt.Errorf("unsupported type %v", t.Kind())
 	}
 }
 
-func marshalSlice(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer) error {
+func marshalSlice(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer, order binary.ByteOrder) error {
 	// todo: only write to temporary buffer if len_prefix is set
 	buf := &bytes.Buffer{}
 	if t.Elem().Kind() == reflect.Struct {
 		for j := 0; j < v.Len(); j++ {
-			if err := marshalStruct(t.Elem(), v.Index(j), oscarTag{}, buf); err != nil {
+			if err := marshalStruct(t.Elem(), v.Index(j), oscarTag{}, buf, order); err != nil {
 				return err
 			}
 		}
 	} else {
-		if err := binary.Write(buf, binary.BigEndian, v.Interface()); err != nil {
+		if err := binary.Write(buf, order, v.Interface()); err != nil {
 			return fmt.Errorf("error marshalling %s", t.Elem().Kind())
 		}
 	}
 
 	if oscTag.hasLenPrefix {
-		if err := marshalUnsignedInt(oscTag.lenPrefix, buf.Len(), w); err != nil {
+		if err := marshalUnsignedInt(oscTag.lenPrefix, buf.Len(), w, order); err != nil {
 			return err
 		}
 	} else if oscTag.hasCountPrefix {
-		if err := marshalUnsignedInt(oscTag.countPrefix, v.Len(), w); err != nil {
+		if err := marshalUnsignedInt(oscTag.countPrefix, v.Len(), w, order); err != nil {
 			return err
 		}
 	}
@@ -93,16 +102,16 @@ func marshalSlice(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer)
 	return nil
 }
 
-func marshalString(oscTag oscarTag, v reflect.Value, w io.Writer) error {
+func marshalString(oscTag oscarTag, v reflect.Value, w io.Writer, order binary.ByteOrder) error {
 	if oscTag.hasLenPrefix {
-		if err := marshalUnsignedInt(oscTag.lenPrefix, len(v.String()), w); err != nil {
+		if err := marshalUnsignedInt(oscTag.lenPrefix, len(v.String()), w, order); err != nil {
 			return err
 		}
 	}
-	return binary.Write(w, binary.BigEndian, []byte(v.String()))
+	return binary.Write(w, order, []byte(v.String()))
 }
 
-func marshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer) error {
+func marshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer, order binary.ByteOrder) error {
 	marshalEachField := func(w io.Writer) error {
 		for i := 0; i < t.NumField(); i++ {
 			field := t.Field(i)
@@ -116,7 +125,7 @@ func marshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer
 						field.Type.Elem().Kind())
 				}
 			}
-			if err := marshal(field.Type, value, field.Tag, w); err != nil {
+			if err := marshal(field.Type, value, field.Tag, w, order); err != nil {
 				return err
 			}
 		}
@@ -128,7 +137,7 @@ func marshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer
 			return err
 		}
 		// write struct length
-		if err := marshalUnsignedInt(oscTag.lenPrefix, buf.Len(), w); err != nil {
+		if err := marshalUnsignedInt(oscTag.lenPrefix, buf.Len(), w, order); err != nil {
 			return err
 		}
 		// write struct bytes
@@ -141,14 +150,14 @@ func marshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer
 	return marshalEachField(w)
 }
 
-func marshalUnsignedInt(intType reflect.Kind, intVal int, w io.Writer) error {
+func marshalUnsignedInt(intType reflect.Kind, intVal int, w io.Writer, order binary.ByteOrder) error {
 	switch intType {
 	case reflect.Uint8:
-		if err := binary.Write(w, binary.BigEndian, uint8(intVal)); err != nil {
+		if err := binary.Write(w, order, uint8(intVal)); err != nil {
 			return err
 		}
 	case reflect.Uint16:
-		if err := binary.Write(w, binary.BigEndian, uint16(intVal)); err != nil {
+		if err := binary.Write(w, order, uint16(intVal)); err != nil {
 			return err
 		}
 	default:

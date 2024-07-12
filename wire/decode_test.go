@@ -611,7 +611,7 @@ func TestUnmarshal(t *testing.T) {
 
 			r := bytes.NewBuffer(tt.given)
 
-			err := Unmarshal(tt.prototype, r)
+			err := UnmarshalBE(tt.prototype, r)
 			assert.ErrorIs(t, err, tt.wantErr)
 			if tt.wantErr == nil {
 				assert.Equal(t, tt.want, tt.prototype)

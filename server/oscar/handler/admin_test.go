@@ -42,7 +42,7 @@ func TestAdminHandler_ConfirmRequest(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ConfirmRequest(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -88,7 +88,7 @@ func TestAdminHandler_InfoQuery_RegistrationStatus(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ConfirmRequest(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -134,7 +134,7 @@ func TestAdminHandler_InfoChangeRequest_ScreenNameFormatted(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.InfoChangeRequest(nil, nil, input.Frame, buf, responseWriter))
 }

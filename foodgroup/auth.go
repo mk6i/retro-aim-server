@@ -69,7 +69,7 @@ func (s AuthService) RegisterChatSession(authCookie []byte) (*state.Session, err
 		return nil, err
 	}
 	c := chatLoginCookie{}
-	if err := wire.Unmarshal(&c, bytes.NewBuffer(token)); err != nil {
+	if err := wire.UnmarshalBE(&c, bytes.NewBuffer(token)); err != nil {
 		return nil, err
 	}
 	return s.chatSessionRegistry.AddSession(c.ChatCookie, c.ScreenName), nil

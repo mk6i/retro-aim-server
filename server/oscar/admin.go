@@ -112,7 +112,7 @@ func dispatchIncomingMessagesSimple(ctx context.Context, sess *state.Session, fl
 
 		for {
 			frame := wire.FLAPFrame{}
-			if err := wire.Unmarshal(&frame, r); err != nil {
+			if err := wire.UnmarshalBE(&frame, r); err != nil {
 				errCh <- err
 				return
 			}
@@ -131,7 +131,7 @@ func dispatchIncomingMessagesSimple(ctx context.Context, sess *state.Session, fl
 				flapBuf := bytes.NewBuffer(flap.Payload)
 
 				inFrame := wire.SNACFrame{}
-				if err := wire.Unmarshal(&inFrame, flapBuf); err != nil {
+				if err := wire.UnmarshalBE(&inFrame, flapBuf); err != nil {
 					return err
 				}
 				// route a client request to the appropriate service handler. the

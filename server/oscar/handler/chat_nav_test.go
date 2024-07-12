@@ -45,7 +45,7 @@ func TestChatNavHandler_CreateRoom(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.CreateRoom(nil, sess, input.Frame, buf, ss))
 }
@@ -83,7 +83,7 @@ func TestChatNavHandler_CreateRoom_ReadErr(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.CreateRoom(nil, sess, input.Frame, buf, ss))
 }
@@ -117,7 +117,7 @@ func TestChatNavHandler_RequestChatRights(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.RequestChatRights(nil, nil, input.Frame, buf, ss))
 }
@@ -153,7 +153,7 @@ func TestChatNavHandler_RequestRoomInfo(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.RequestRoomInfo(nil, nil, input.Frame, buf, ss))
 }
@@ -189,7 +189,7 @@ func TestChatNavHandler_RequestExchangeInfo(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.RequestExchangeInfo(nil, nil, input.Frame, buf, ss))
 }

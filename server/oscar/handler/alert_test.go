@@ -22,7 +22,7 @@ func TestAlertHandler_NotifyCapabilities(t *testing.T) {
 	h := NewAlertHandler(slog.Default())
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.NotifyCapabilities(nil, nil, input.Frame, buf, nil))
 }
@@ -39,7 +39,7 @@ func TestAlertHandler_NotifyDisplayCapabilities(t *testing.T) {
 	h := NewAlertHandler(slog.Default())
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.NotifyDisplayCapabilities(nil, nil, input.Frame, buf, nil))
 }

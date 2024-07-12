@@ -35,7 +35,7 @@ func (c HMACCookieBaker) Issue(data []byte) ([]byte, error) {
 		Data:   data,
 	}
 	buf := &bytes.Buffer{}
-	if err := wire.Marshal(payload, buf); err != nil {
+	if err := wire.MarshalBE(payload, buf); err != nil {
 		return nil, fmt.Errorf("unable to marshal auth authCookie: %w", err)
 	}
 
@@ -46,7 +46,7 @@ func (c HMACCookieBaker) Issue(data []byte) ([]byte, error) {
 
 	buf.Reset()
 
-	if err := wire.Marshal(hmacTok, buf); err != nil {
+	if err := wire.MarshalBE(hmacTok, buf); err != nil {
 		return nil, fmt.Errorf("unable to marshal auth authCookie: %w", err)
 	}
 
@@ -64,7 +64,7 @@ func (c HMACCookieBaker) Issue(data []byte) ([]byte, error) {
 
 func (c HMACCookieBaker) Crack(data []byte) ([]byte, error) {
 	hmacTok := hmacToken{}
-	if err := wire.Unmarshal(&hmacTok, bytes.NewBuffer(data)); err != nil {
+	if err := wire.UnmarshalBE(&hmacTok, bytes.NewBuffer(data)); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal HMAC cooie: %w", err)
 	}
 
@@ -73,7 +73,7 @@ func (c HMACCookieBaker) Crack(data []byte) ([]byte, error) {
 	}
 
 	payload := hmacTokenPayload{}
-	if err := wire.Unmarshal(&payload, bytes.NewBuffer(hmacTok.Data)); err != nil {
+	if err := wire.UnmarshalBE(&payload, bytes.NewBuffer(hmacTok.Data)); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal HMAC cookie payload: %w", err)
 	}
 

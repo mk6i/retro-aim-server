@@ -243,7 +243,7 @@ func (f SQLiteUserStore) Feedbag(screenName IdentScreenName) ([]wire.FeedbagItem
 		if err := rows.Scan(&item.GroupID, &item.ItemID, &item.ClassID, &item.Name, &attrs); err != nil {
 			return nil, err
 		}
-		if err := wire.Unmarshal(&item.TLVLBlock, bytes.NewBuffer(attrs)); err != nil {
+		if err := wire.UnmarshalBE(&item.TLVLBlock, bytes.NewBuffer(attrs)); err != nil {
 			return items, err
 		}
 		items = append(items, item)
@@ -290,7 +290,7 @@ func (f SQLiteUserStore) FeedbagUpsert(screenName IdentScreenName, items []wire.
 
 	for _, item := range items {
 		buf := &bytes.Buffer{}
-		if err := wire.Marshal(item.TLVLBlock, buf); err != nil {
+		if err := wire.MarshalBE(item.TLVLBlock, buf); err != nil {
 			return err
 		}
 

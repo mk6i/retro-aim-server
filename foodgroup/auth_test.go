@@ -949,7 +949,7 @@ func TestAuthService_RegisterChatSession_HappyPath(t *testing.T) {
 		ScreenName: sess.DisplayScreenName(),
 	}
 	chatCookieBuf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(c, chatCookieBuf))
+	assert.NoError(t, wire.MarshalBE(c, chatCookieBuf))
 
 	authCookie := []byte("the-auth-cookie")
 	cookieBaker := newMockCookieBaker(t)

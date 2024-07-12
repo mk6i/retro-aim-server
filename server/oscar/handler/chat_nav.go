@@ -41,7 +41,7 @@ func (rt ChatNavHandler) RequestChatRights(ctx context.Context, _ *state.Session
 
 func (rt ChatNavHandler) RequestExchangeInfo(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := rt.ChatNavService.ExchangeInfo(ctx, inFrame, inBody)
@@ -54,7 +54,7 @@ func (rt ChatNavHandler) RequestExchangeInfo(ctx context.Context, _ *state.Sessi
 
 func (rt ChatNavHandler) RequestRoomInfo(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := rt.ChatNavService.RequestRoomInfo(ctx, inFrame, inBody)
@@ -67,7 +67,7 @@ func (rt ChatNavHandler) RequestRoomInfo(ctx context.Context, _ *state.Session, 
 
 func (rt ChatNavHandler) CreateRoom(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := rt.ChatNavService.CreateRoom(ctx, sess, inFrame, inBody)

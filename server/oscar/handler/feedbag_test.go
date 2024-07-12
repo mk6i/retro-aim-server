@@ -48,7 +48,7 @@ func TestFeedbagHandler_DeleteItem(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.DeleteItem(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -67,7 +67,7 @@ func TestFeedbagHandler_EndCluster(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.EndCluster(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -109,7 +109,7 @@ func TestFeedbagHandler_InsertItem(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.InsertItem(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -154,7 +154,7 @@ func TestFeedbagHandler_Query(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.Query(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -192,7 +192,7 @@ func TestFeedbagHandler_QueryIfModified(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.QueryIfModified(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -244,7 +244,7 @@ func TestFeedbagHandler_RightsQuery(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.RightsQuery(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -276,7 +276,7 @@ func TestFeedbagHandler_StartCluster(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.StartCluster(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -318,7 +318,7 @@ func TestFeedbagHandler_UpdateItem(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.UpdateItem(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -341,7 +341,7 @@ func TestFeedbagHandler_Use(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.Use(nil, nil, input.Frame, buf, responseWriter))
 }

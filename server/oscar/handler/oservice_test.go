@@ -42,7 +42,7 @@ func TestOServiceBOSHandler_ClientOnline(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ClientOnline(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -84,7 +84,7 @@ func TestOServiceBOSHandler_ServiceRequest(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ServiceRequest(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -119,7 +119,7 @@ func TestOServiceChatHandler_ClientOnline(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ClientOnline(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -150,7 +150,7 @@ func TestOServiceHandler_IdleNotification(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.IdleNotification(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -197,7 +197,7 @@ func TestOServiceHandler_ClientVersions(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ClientVersions(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -248,7 +248,7 @@ func TestOServiceHandler_RateParamsQuery(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.RateParamsQuery(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -282,7 +282,7 @@ func TestOServiceHandler_RateParamsSubAdd(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.RateParamsSubAdd(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -331,7 +331,7 @@ func TestOServiceHandler_SetUserInfoFields(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.SetUserInfoFields(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -374,7 +374,7 @@ func TestOServiceHandler_UserInfoQuery(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.UserInfoQuery(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -396,7 +396,7 @@ func TestOServiceHandler_Noop(t *testing.T) {
 
 	responseWriter := newMockResponseWriter(t)
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.Noop(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -426,7 +426,7 @@ func TestOServiceHandler_SetPrivacyFlags(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.SetPrivacyFlags(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -460,7 +460,7 @@ func TestOServiceChatNavHandler_ClientOnline(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ClientOnline(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -494,7 +494,7 @@ func TestOServiceAlertHandler_ClientOnline(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ClientOnline(nil, nil, input.Frame, buf, responseWriter))
 }

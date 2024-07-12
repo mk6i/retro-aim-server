@@ -38,7 +38,7 @@ type FeedbagHandler struct {
 
 func (h FeedbagHandler) RightsQuery(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x13_0x02_FeedbagRightsQuery{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC := h.FeedbagService.RightsQuery(ctx, inFrame)
@@ -57,7 +57,7 @@ func (h FeedbagHandler) Query(ctx context.Context, sess *state.Session, inFrame 
 
 func (h FeedbagHandler) QueryIfModified(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x13_0x05_FeedbagQueryIfModified{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := h.FeedbagService.QueryIfModified(ctx, sess, inFrame, inBody)
@@ -75,7 +75,7 @@ func (h FeedbagHandler) Use(ctx context.Context, sess *state.Session, inFrame wi
 
 func (h FeedbagHandler) InsertItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x13_0x08_FeedbagInsertItem{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := h.FeedbagService.UpsertItem(ctx, sess, inFrame, inBody.Items)
@@ -88,7 +88,7 @@ func (h FeedbagHandler) InsertItem(ctx context.Context, sess *state.Session, inF
 
 func (h FeedbagHandler) UpdateItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x13_0x09_FeedbagUpdateItem{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := h.FeedbagService.UpsertItem(ctx, sess, inFrame, inBody.Items)
@@ -101,7 +101,7 @@ func (h FeedbagHandler) UpdateItem(ctx context.Context, sess *state.Session, inF
 
 func (h FeedbagHandler) DeleteItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x13_0x0A_FeedbagDeleteItem{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := h.FeedbagService.DeleteItem(ctx, sess, inFrame, inBody)
@@ -114,7 +114,7 @@ func (h FeedbagHandler) DeleteItem(ctx context.Context, sess *state.Session, inF
 
 func (h FeedbagHandler) StartCluster(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x13_0x11_FeedbagStartCluster{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	h.FeedbagService.StartCluster(ctx, inFrame, inBody)

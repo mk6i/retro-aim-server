@@ -42,7 +42,7 @@ func TestBARTHandler_DownloadQuery(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.DownloadQuery(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -80,7 +80,7 @@ func TestBARTHandler_UploadQuery(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.UploadQuery(nil, nil, input.Frame, buf, responseWriter))
 }

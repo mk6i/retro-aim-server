@@ -67,13 +67,13 @@ func TestHandleChatConnection_MessageRelay(t *testing.T) {
 	// consume and verify the relayed messages
 	for i := 0; i < len(inboundMsgs); i++ {
 		flap := wire.FLAPFrame{}
-		assert.NoError(t, wire.Unmarshal(&flap, clientReader))
+		assert.NoError(t, wire.UnmarshalBE(&flap, clientReader))
 		frame := wire.SNACFrame{}
 		buf := bytes.NewBuffer(flap.Payload)
-		assert.NoError(t, wire.Unmarshal(&frame, buf))
+		assert.NoError(t, wire.UnmarshalBE(&frame, buf))
 		assert.Equal(t, inboundMsgs[i].Frame, frame)
 		body := wire.SNAC_0x0E_0x03_ChatUsersJoined{}
-		assert.NoError(t, wire.Unmarshal(&body, buf))
+		assert.NoError(t, wire.UnmarshalBE(&body, buf))
 		assert.Equal(t, inboundMsgs[i].Body, body)
 	}
 
@@ -84,7 +84,7 @@ func TestHandleChatConnection_MessageRelay(t *testing.T) {
 	// verify the connection handler sends client disconnection message before
 	// terminating
 	flap := wire.FLAPFrame{}
-	assert.NoError(t, wire.Unmarshal(&flap, clientReader))
+	assert.NoError(t, wire.UnmarshalBE(&flap, clientReader))
 	assert.Equal(t, wire.FLAPFrameSignoff, flap.FrameType)
 }
 
@@ -134,7 +134,7 @@ func TestHandleChatConnection_ClientRequest(t *testing.T) {
 			Run(func(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter) {
 				defer wg.Done()
 				body := wire.SNAC_0x0E_0x03_ChatUsersJoined{}
-				assert.NoError(t, wire.Unmarshal(&body, r))
+				assert.NoError(t, wire.UnmarshalBE(&body, r))
 				assert.Equal(t, msg.Body, body)
 			}).
 			Return(nil)
@@ -163,6 +163,6 @@ func TestHandleChatConnection_ClientRequest(t *testing.T) {
 	// verify the connection handler sends client disconnection message before
 	// terminating
 	flap := wire.FLAPFrame{}
-	assert.NoError(t, wire.Unmarshal(&flap, clientReader))
+	assert.NoError(t, wire.UnmarshalBE(&flap, clientReader))
 	assert.Equal(t, wire.FLAPFrameSignoff, flap.FrameType)
 }

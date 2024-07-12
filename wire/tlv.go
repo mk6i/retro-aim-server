@@ -23,7 +23,7 @@ func NewTLV(tag uint16, val any) TLV {
 		t.Value = val.([]byte)
 	} else {
 		buf := &bytes.Buffer{}
-		if err := Marshal(val, buf); err != nil {
+		if err := MarshalBE(val, buf); err != nil {
 			panic(fmt.Sprintf("unable to create TLV: %s", err.Error()))
 		}
 		t.Value = buf.Bytes()

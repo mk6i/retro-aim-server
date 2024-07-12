@@ -596,7 +596,7 @@ func TestMarshal(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := Marshal(tt.given, tt.w)
+			err := MarshalBE(tt.given, tt.w)
 			assert.ErrorIs(t, err, tt.wantErr)
 			if tt.wantErr == nil {
 				if w, ok := tt.w.(*bytes.Buffer); ok {

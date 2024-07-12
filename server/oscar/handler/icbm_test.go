@@ -27,7 +27,7 @@ func TestICBMHandler_AddParameters(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.AddParameters(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -65,7 +65,7 @@ func TestICBMHandler_ChannelMsgToHost(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ChannelMsgToHost(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -86,7 +86,7 @@ func TestICBMHandler_ClientErr(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ClientErr(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -112,7 +112,7 @@ func TestICBMHandler_ClientEvent(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ClientEvent(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -150,7 +150,7 @@ func TestICBMHandler_EvilRequest(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.EvilRequest(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -186,7 +186,7 @@ func TestICBMHandler_ParameterQuery(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ParameterQuery(nil, nil, input.Frame, buf, responseWriter))
 }

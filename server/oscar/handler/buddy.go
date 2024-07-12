@@ -33,7 +33,7 @@ type BuddyHandler struct {
 
 func (rt BuddyHandler) RightsQuery(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inSNAC := wire.SNAC_0x03_0x02_BuddyRightsQuery{}
-	if err := wire.Unmarshal(&inSNAC, r); err != nil {
+	if err := wire.UnmarshalBE(&inSNAC, r); err != nil {
 		return err
 	}
 	outSNAC := rt.BuddyService.RightsQuery(ctx, inFrame)
@@ -43,7 +43,7 @@ func (rt BuddyHandler) RightsQuery(ctx context.Context, _ *state.Session, inFram
 
 func (rt BuddyHandler) AddBuddies(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inSNAC := wire.SNAC_0x03_0x04_BuddyAddBuddies{}
-	if err := wire.Unmarshal(&inSNAC, r); err != nil {
+	if err := wire.UnmarshalBE(&inSNAC, r); err != nil {
 		return err
 	}
 	rt.LogRequest(ctx, inFrame, inSNAC)
@@ -52,7 +52,7 @@ func (rt BuddyHandler) AddBuddies(ctx context.Context, sess *state.Session, inFr
 
 func (rt BuddyHandler) DelBuddies(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inSNAC := wire.SNAC_0x03_0x05_BuddyDelBuddies{}
-	if err := wire.Unmarshal(&inSNAC, r); err != nil {
+	if err := wire.UnmarshalBE(&inSNAC, r); err != nil {
 		return err
 	}
 	rt.LogRequest(ctx, inFrame, inSNAC)

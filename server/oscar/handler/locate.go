@@ -42,7 +42,7 @@ func (h LocateHandler) RightsQuery(ctx context.Context, _ *state.Session, inFram
 
 func (h LocateHandler) SetInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x02_0x04_LocateSetInfo{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	h.LogRequest(ctx, inFrame, inBody)
@@ -51,7 +51,7 @@ func (h LocateHandler) SetInfo(ctx context.Context, sess *state.Session, inFrame
 
 func (h LocateHandler) SetDirInfo(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x02_0x09_LocateSetDirInfo{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC := h.LocateService.SetDirInfo(ctx, inFrame)
@@ -62,12 +62,12 @@ func (h LocateHandler) SetDirInfo(ctx context.Context, _ *state.Session, inFrame
 func (h LocateHandler) GetDirInfo(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x02_0x0B_LocateGetDirInfo{}
 	h.LogRequest(ctx, inFrame, inBody)
-	return wire.Unmarshal(&inBody, r)
+	return wire.UnmarshalBE(&inBody, r)
 }
 
 func (h LocateHandler) SetKeywordInfo(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x02_0x0F_LocateSetKeywordInfo{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC := h.LocateService.SetKeywordInfo(ctx, inFrame)
@@ -77,7 +77,7 @@ func (h LocateHandler) SetKeywordInfo(ctx context.Context, _ *state.Session, inF
 
 func (h LocateHandler) UserInfoQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x02_0x05_LocateUserInfoQuery{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := h.LocateService.UserInfoQuery(ctx, sess, inFrame, inBody)
@@ -90,7 +90,7 @@ func (h LocateHandler) UserInfoQuery(ctx context.Context, sess *state.Session, i
 
 func (h LocateHandler) UserInfoQuery2(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x02_0x15_LocateUserInfoQuery2{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	// SNAC functionality for LocateUserInfoQuery and LocateUserInfoQuery2 is

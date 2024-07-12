@@ -74,7 +74,7 @@ func (f *FlapClient) SendSignonFrame(tlvs []TLV) error {
 		signonFrame.AppendList(tlvs)
 	}
 	buf := &bytes.Buffer{}
-	if err := Marshal(signonFrame, buf); err != nil {
+	if err := MarshalBE(signonFrame, buf); err != nil {
 		return err
 	}
 
@@ -84,7 +84,7 @@ func (f *FlapClient) SendSignonFrame(tlvs []TLV) error {
 		Sequence:    uint16(f.sequence),
 		Payload:     buf.Bytes(),
 	}
-	if err := Marshal(flap, f.w); err != nil {
+	if err := MarshalBE(flap, f.w); err != nil {
 		return err
 	}
 
@@ -96,12 +96,12 @@ func (f *FlapClient) SendSignonFrame(tlvs []TLV) error {
 // ReceiveSignonFrame receives a signon FLAP response message.
 func (f *FlapClient) ReceiveSignonFrame() (FLAPSignonFrame, error) {
 	flap := FLAPFrame{}
-	if err := Unmarshal(&flap, f.r); err != nil {
+	if err := UnmarshalBE(&flap, f.r); err != nil {
 		return FLAPSignonFrame{}, err
 	}
 
 	signonFrame := FLAPSignonFrame{}
-	if err := Unmarshal(&signonFrame, bytes.NewBuffer(flap.Payload)); err != nil {
+	if err := UnmarshalBE(&signonFrame, bytes.NewBuffer(flap.Payload)); err != nil {
 		return FLAPSignonFrame{}, err
 	}
 
@@ -112,7 +112,7 @@ func (f *FlapClient) ReceiveSignonFrame() (FLAPSignonFrame, error) {
 // FLAP frame is a data frame.
 func (f *FlapClient) ReceiveFLAP() (FLAPFrame, error) {
 	flap := FLAPFrame{}
-	err := Unmarshal(&flap, f.r)
+	err := UnmarshalBE(&flap, f.r)
 	if err != nil {
 		err = fmt.Errorf("unable to unmarshal FLAP frame: %w", err)
 	}
@@ -125,7 +125,7 @@ func (f *FlapClient) ReceiveFLAP() (FLAPFrame, error) {
 // todo: combine this method with Disconnect()
 func (f *FlapClient) SendSignoffFrame(tlvs TLVRestBlock) error {
 	tlvBuf := &bytes.Buffer{}
-	if err := Marshal(tlvs, tlvBuf); err != nil {
+	if err := MarshalBE(tlvs, tlvBuf); err != nil {
 		return err
 	}
 
@@ -136,7 +136,7 @@ func (f *FlapClient) SendSignoffFrame(tlvs TLVRestBlock) error {
 		Payload:     tlvBuf.Bytes(),
 	}
 
-	if err := Marshal(flap, f.w); err != nil {
+	if err := MarshalBE(flap, f.w); err != nil {
 		return err
 	}
 
@@ -147,10 +147,10 @@ func (f *FlapClient) SendSignoffFrame(tlvs TLVRestBlock) error {
 // SendSNAC sends a SNAC message wrapped in a FLAP frame.
 func (f *FlapClient) SendSNAC(frame SNACFrame, body any) error {
 	snacBuf := &bytes.Buffer{}
-	if err := Marshal(frame, snacBuf); err != nil {
+	if err := MarshalBE(frame, snacBuf); err != nil {
 		return err
 	}
-	if err := Marshal(body, snacBuf); err != nil {
+	if err := MarshalBE(body, snacBuf); err != nil {
 		return err
 	}
 
@@ -160,7 +160,7 @@ func (f *FlapClient) SendSNAC(frame SNACFrame, body any) error {
 		Sequence:    uint16(f.sequence),
 		Payload:     snacBuf.Bytes(),
 	}
-	if err := Marshal(flap, f.w); err != nil {
+	if err := MarshalBE(flap, f.w); err != nil {
 		return err
 	}
 
@@ -171,14 +171,14 @@ func (f *FlapClient) SendSNAC(frame SNACFrame, body any) error {
 // ReceiveSNAC receives a SNAC message wrapped in a FLAP frame.
 func (f *FlapClient) ReceiveSNAC(frame *SNACFrame, body any) error {
 	flap := FLAPFrame{}
-	if err := Unmarshal(&flap, f.r); err != nil {
+	if err := UnmarshalBE(&flap, f.r); err != nil {
 		return err
 	}
 	buf := bytes.NewBuffer(flap.Payload)
-	if err := Unmarshal(frame, buf); err != nil {
+	if err := UnmarshalBE(frame, buf); err != nil {
 		return err
 	}
-	return Unmarshal(body, buf)
+	return UnmarshalBE(body, buf)
 }
 
 // Disconnect sends a signoff FLAP frame.
@@ -190,5 +190,5 @@ func (f *FlapClient) Disconnect() error {
 		FrameType:   FLAPFrameSignoff,
 		Sequence:    uint16(f.sequence),
 	}
-	return Marshal(flap, f.w)
+	return MarshalBE(flap, f.w)
 }

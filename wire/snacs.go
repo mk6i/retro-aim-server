@@ -580,7 +580,7 @@ func ICBMFragmentList(text string) ([]ICBMFragment, error) {
 		Text:     []byte(text),
 	}
 	msgBuf := bytes.Buffer{}
-	if err := Marshal(msg, &msgBuf); err != nil {
+	if err := MarshalBE(msg, &msgBuf); err != nil {
 		return nil, fmt.Errorf("unable to marshal ICBM message: %w", err)
 	}
 
@@ -602,14 +602,14 @@ func ICBMFragmentList(text string) ([]ICBMFragment, error) {
 // Param b is a slice from TLV wire.ICBMTLVAOLIMData.
 func UnmarshalICBMMessageText(b []byte) (string, error) {
 	var frags []ICBMFragment
-	if err := Unmarshal(&frags, bytes.NewBuffer(b)); err != nil {
+	if err := UnmarshalBE(&frags, bytes.NewBuffer(b)); err != nil {
 		return "", fmt.Errorf("unable to unmarshal ICBM fragment: %w", err)
 	}
 
 	for _, frag := range frags {
 		if frag.ID == 1 { // 1 = message text
 			msg := ICBMMessage{}
-			err := Unmarshal(&msg, bytes.NewBuffer(frag.Payload))
+			err := UnmarshalBE(&msg, bytes.NewBuffer(frag.Payload))
 			if err != nil {
 				err = fmt.Errorf("unable to unmarshal ICBM message: %w", err)
 			}

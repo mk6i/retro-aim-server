@@ -44,7 +44,7 @@ func TestChatHandler_ChannelMsgToHost_WithReflectedResponse(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ChannelMsgToHost(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -73,7 +73,7 @@ func TestChatHandler_ChannelMsgToHost_WithoutReflectedResponse(t *testing.T) {
 	responseWriter := newMockResponseWriter(t) // omit mock handler call
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.ChannelMsgToHost(nil, nil, input.Frame, buf, responseWriter))
 }

@@ -245,7 +245,7 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Session, item wire.FeedbagItem) error {
 	btlv := wire.BARTInfo{}
 	if b, hasBuf := item.Slice(wire.FeedbagAttributesBartInfo); hasBuf {
-		if err := wire.Unmarshal(&btlv, bytes.NewBuffer(b)); err != nil {
+		if err := wire.UnmarshalBE(&btlv, bytes.NewBuffer(b)); err != nil {
 			return err
 		}
 	} else {

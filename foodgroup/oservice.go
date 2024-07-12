@@ -660,7 +660,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 		}
 
 		roomSNAC := wire.SNAC_0x01_0x04_TLVRoomInfo{}
-		if err := wire.Unmarshal(&roomSNAC, bytes.NewBuffer(roomMeta)); err != nil {
+		if err := wire.UnmarshalBE(&roomSNAC, bytes.NewBuffer(roomMeta)); err != nil {
 			return wire.SNACMessage{}, err
 		}
 
@@ -674,7 +674,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			ScreenName: sess.DisplayScreenName(),
 		}
 		buf := &bytes.Buffer{}
-		if err := wire.Marshal(loginCookie, buf); err != nil {
+		if err := wire.MarshalBE(loginCookie, buf); err != nil {
 			return wire.SNACMessage{}, err
 		}
 		cookie, err := s.cookieIssuer.Issue(buf.Bytes())

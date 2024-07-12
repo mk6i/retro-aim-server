@@ -27,7 +27,7 @@ func TestLocateHandler_GetDirInfo(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.GetDirInfo(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -67,7 +67,7 @@ func TestLocateHandler_RightsQuery(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.RightsQuery(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -112,7 +112,7 @@ func TestLocateHandler_SetDirInfo(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.SetDirInfo(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -144,7 +144,7 @@ func TestLocateHandler_SetInfo(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.SetInfo(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -189,7 +189,7 @@ func TestLocateHandler_SetKeywordInfo(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.SetKeywordInfo(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -237,7 +237,7 @@ func TestLocateHandler_UserInfoQuery(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.UserInfoQuery(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -285,7 +285,7 @@ func TestLocateHandler_UserInfoQuery2(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.UserInfoQuery2(nil, nil, input.Frame, buf, responseWriter))
 }

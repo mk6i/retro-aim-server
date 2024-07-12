@@ -43,7 +43,7 @@ func (rt AdminHandler) ConfirmRequest(ctx context.Context, sess *state.Session, 
 
 func (rt AdminHandler) InfoQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x07_0x02_AdminInfoQuery{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := rt.AdminService.InfoQuery(ctx, sess, inFrame, inBody)
@@ -56,7 +56,7 @@ func (rt AdminHandler) InfoQuery(ctx context.Context, sess *state.Session, inFra
 
 func (rt AdminHandler) InfoChangeRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x07_0x04_AdminInfoChangeRequest{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := rt.AdminService.InfoChangeRequest(ctx, sess, inFrame, inBody)

@@ -52,7 +52,7 @@ func TestBuddyHandler_RightsQuery(t *testing.T) {
 		Return(nil)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.RightsQuery(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -84,7 +84,7 @@ func TestBuddyHandler_AddBuddies(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.AddBuddies(nil, nil, input.Frame, buf, responseWriter))
 }
@@ -115,7 +115,7 @@ func TestBuddyHandler_DelBuddies(t *testing.T) {
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.Marshal(input.Body, buf))
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
 	assert.NoError(t, h.DelBuddies(nil, nil, input.Frame, buf, responseWriter))
 }

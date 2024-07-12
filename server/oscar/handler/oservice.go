@@ -47,12 +47,12 @@ func (h OServiceHandler) RateParamsQuery(ctx context.Context, _ *state.Session, 
 
 func (h OServiceHandler) RateParamsSubAdd(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	h.OServiceService.RateParamsSubAdd(ctx, inBody)
 	h.LogRequest(ctx, inFrame, inBody)
-	return wire.Unmarshal(&inBody, r)
+	return wire.UnmarshalBE(&inBody, r)
 }
 
 func (h OServiceHandler) UserInfoQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
@@ -63,7 +63,7 @@ func (h OServiceHandler) UserInfoQuery(ctx context.Context, sess *state.Session,
 
 func (h OServiceHandler) IdleNotification(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x01_0x11_OServiceIdleNotification{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	h.LogRequest(ctx, inFrame, inBody)
@@ -72,7 +72,7 @@ func (h OServiceHandler) IdleNotification(ctx context.Context, sess *state.Sessi
 
 func (h OServiceHandler) ClientVersions(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x01_0x17_OServiceClientVersions{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC := h.OServiceService.ClientVersions(ctx, inFrame, inBody)
@@ -82,7 +82,7 @@ func (h OServiceHandler) ClientVersions(ctx context.Context, _ *state.Session, i
 
 func (h OServiceHandler) SetUserInfoFields(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := h.OServiceService.SetUserInfoFields(ctx, sess, inFrame, inBody)
@@ -101,7 +101,7 @@ func (h OServiceHandler) Noop(ctx context.Context, sess *state.Session, inFrame 
 
 func (h OServiceHandler) SetPrivacyFlags(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	h.OServiceService.SetPrivacyFlags(ctx, inBody)
@@ -111,7 +111,7 @@ func (h OServiceHandler) SetPrivacyFlags(ctx context.Context, sess *state.Sessio
 
 func (h OServiceHandler) ServiceRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x01_0x04_OServiceServiceRequest{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	outSNAC, err := h.OServiceService.ServiceRequest(ctx, sess, inFrame, inBody)
@@ -124,7 +124,7 @@ func (h OServiceHandler) ServiceRequest(ctx context.Context, sess *state.Session
 
 func (h OServiceHandler) ClientOnline(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x01_0x02_OServiceClientOnline{}
-	if err := wire.Unmarshal(&inBody, r); err != nil {
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
 	h.Logger.InfoContext(ctx, "user signed on")

@@ -168,7 +168,7 @@ func getBuddyIconRefFromFeedbag(sess *state.Session, feedbagManager FeedbagManag
 			return nil, errors.New("unable to extract icon payload")
 		}
 		bartInfo := wire.BARTInfo{}
-		if err := wire.Unmarshal(&bartInfo, bytes.NewBuffer(b)); err != nil {
+		if err := wire.UnmarshalBE(&bartInfo, bytes.NewBuffer(b)); err != nil {
 			return nil, err
 		}
 		return &wire.BARTID{
