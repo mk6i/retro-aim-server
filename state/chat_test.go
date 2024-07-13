@@ -21,6 +21,7 @@ func TestChatRoom_TLVList(t *testing.T) {
 		wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
 		wire.NewTLV(wire.ChatRoomTLVFullyQualifiedName, room.Name),
 		wire.NewTLV(wire.ChatRoomTLVRoomName, room.Name),
+		wire.NewTLV(wire.ChatRoomTLVMaxMsgVisLen, uint16(1024)),
 	}
 
 	assert.Equal(t, want, have)

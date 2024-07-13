@@ -15,10 +15,9 @@ import (
 
 func TestChatNavService_CreateRoom(t *testing.T) {
 	basicChatRoom := state.ChatRoom{
-		Cookie:         "dummy-cookie",
+		Cookie:         "4-2-the-chat-room-name",
 		CreateTime:     time.UnixMilli(0),
 		Creator:        state.NewIdentScreenName("the-screen-name"),
-		DetailLevel:    3,
 		Exchange:       4,
 		InstanceNumber: 2,
 		Name:           "the-chat-room-name",
@@ -27,7 +26,6 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 		Cookie:         "dummy-cookie",
 		CreateTime:     time.UnixMilli(0),
 		Creator:        state.NewIdentScreenName("the-screen-name"),
-		DetailLevel:    3,
 		Exchange:       5,
 		InstanceNumber: 2,
 		Name:           "the-public-chat-room-name",
@@ -55,7 +53,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					Exchange:       basicChatRoom.Exchange,
 					Cookie:         "create", // actual canned value sent by AIM client
 					InstanceNumber: basicChatRoom.InstanceNumber,
-					DetailLevel:    basicChatRoom.DetailLevel,
+					DetailLevel:    detailLevel,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name),
@@ -78,7 +76,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 									Exchange:       basicChatRoom.Exchange,
 									Cookie:         basicChatRoom.Cookie,
 									InstanceNumber: basicChatRoom.InstanceNumber,
-									DetailLevel:    basicChatRoom.DetailLevel,
+									DetailLevel:    detailLevel,
 									TLVBlock: wire.TLVBlock{
 										TLVList: basicChatRoom.TLVList(),
 									},
@@ -112,7 +110,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					Exchange:       basicChatRoom.Exchange,
 					Cookie:         "create", // actual canned value sent by AIM client
 					InstanceNumber: basicChatRoom.InstanceNumber,
-					DetailLevel:    basicChatRoom.DetailLevel,
+					DetailLevel:    detailLevel,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name),
@@ -135,7 +133,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 									Exchange:       basicChatRoom.Exchange,
 									Cookie:         basicChatRoom.Cookie,
 									InstanceNumber: basicChatRoom.InstanceNumber,
-									DetailLevel:    basicChatRoom.DetailLevel,
+									DetailLevel:    detailLevel,
 									TLVBlock: wire.TLVBlock{
 										TLVList: basicChatRoom.TLVList(),
 									},
@@ -177,7 +175,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					Exchange:       publicChatRoom.Exchange,
 					Cookie:         "create", // actual canned value sent by AIM client
 					InstanceNumber: publicChatRoom.InstanceNumber,
-					DetailLevel:    publicChatRoom.DetailLevel,
+					DetailLevel:    detailLevel,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.ChatRoomTLVRoomName, publicChatRoom.Name),
@@ -200,7 +198,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 									Exchange:       publicChatRoom.Exchange,
 									Cookie:         publicChatRoom.Cookie,
 									InstanceNumber: publicChatRoom.InstanceNumber,
-									DetailLevel:    publicChatRoom.DetailLevel,
+									DetailLevel:    detailLevel,
 									TLVBlock: wire.TLVBlock{
 										TLVList: publicChatRoom.TLVList(),
 									},
@@ -234,7 +232,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					Exchange:       publicChatRoom.Exchange,
 					Cookie:         "create", // actual canned value sent by AIM client
 					InstanceNumber: publicChatRoom.InstanceNumber,
-					DetailLevel:    publicChatRoom.DetailLevel,
+					DetailLevel:    detailLevel,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.ChatRoomTLVRoomName, publicChatRoom.Name),
@@ -279,7 +277,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					Exchange:       1337,
 					Cookie:         "create", // actual canned value sent by AIM client
 					InstanceNumber: basicChatRoom.InstanceNumber,
-					DetailLevel:    basicChatRoom.DetailLevel,
+					DetailLevel:    detailLevel,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name),
@@ -310,7 +308,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					Exchange:       basicChatRoom.Exchange,
 					Cookie:         "create", // actual canned value sent by AIM client
 					InstanceNumber: basicChatRoom.InstanceNumber,
-					DetailLevel:    basicChatRoom.DetailLevel,
+					DetailLevel:    detailLevel,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{}, // intentionally empty for test
 					},
@@ -331,7 +329,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					Exchange:       basicChatRoom.Exchange,
 					Cookie:         "create", // actual canned value sent by AIM client
 					InstanceNumber: basicChatRoom.InstanceNumber,
-					DetailLevel:    basicChatRoom.DetailLevel,
+					DetailLevel:    detailLevel,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name),
@@ -374,7 +372,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					Exchange:       basicChatRoom.Exchange,
 					Cookie:         "create", // actual canned value sent by AIM client
 					InstanceNumber: basicChatRoom.InstanceNumber,
-					DetailLevel:    basicChatRoom.DetailLevel,
+					DetailLevel:    detailLevel,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name),
@@ -453,7 +451,7 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 						TLVList: wire.TLVList{
 							wire.NewTLV(0x04, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 								Cookie:         "the-chat-cookie",
-								DetailLevel:    2,
+								DetailLevel:    detailLevel,
 								Exchange:       state.PrivateExchange,
 								InstanceNumber: 8,
 								TLVBlock: wire.TLVBlock{
@@ -471,7 +469,6 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 							cookie: "the-chat-cookie",
 							room: state.ChatRoom{
 								Cookie:         "the-chat-cookie",
-								DetailLevel:    2,
 								Exchange:       state.PrivateExchange,
 								InstanceNumber: 8,
 							},
@@ -502,7 +499,7 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 						TLVList: wire.TLVList{
 							wire.NewTLV(0x04, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 								Cookie:         "the-chat-cookie",
-								DetailLevel:    2,
+								DetailLevel:    detailLevel,
 								Exchange:       state.PublicExchange,
 								InstanceNumber: 8,
 								TLVBlock: wire.TLVBlock{
@@ -520,7 +517,6 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 							cookie: "the-chat-cookie",
 							room: state.ChatRoom{
 								Cookie:         "the-chat-cookie",
-								DetailLevel:    2,
 								Exchange:       state.PublicExchange,
 								InstanceNumber: 8,
 							},
@@ -571,7 +567,6 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 							cookie: "the-chat-cookie",
 							room: state.ChatRoom{
 								Cookie:         "the-chat-cookie",
-								DetailLevel:    2,
 								Exchange:       state.PublicExchange,
 								InstanceNumber: 8,
 							},
@@ -600,7 +595,6 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 							cookie: "the-chat-cookie",
 							room: state.ChatRoom{
 								Cookie:         "the-chat-cookie",
-								DetailLevel:    2,
 								Exchange:       state.PrivateExchange,
 								InstanceNumber: 8,
 							},

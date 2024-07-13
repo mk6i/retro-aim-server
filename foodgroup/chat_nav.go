@@ -31,6 +31,10 @@ var (
 	errChatNavMismatchedExchange = errors.New("chat room exchange does not match requested exchange")
 )
 
+// detailLevel is the detail level of the chat room (whatever that means).
+// Pidgin 2.13.0 expects value 0x02.
+const detailLevel uint8 = 2
+
 // NewChatNavService creates a new instance of NewChatNavService.
 func NewChatNavService(logger *slog.Logger, chatRoomManager ChatRoomRegistry, fnNewChatRoom func() state.ChatRoom) *ChatNavService {
 	return &ChatNavService{
@@ -104,10 +108,16 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 
 		room = s.fnNewChatRoom()
 		room.Creator = sess.IdentScreenName()
-		room.DetailLevel = inBody.DetailLevel
 		room.Exchange = inBody.Exchange
 		room.InstanceNumber = inBody.InstanceNumber
 		room.Name = name
+		// According to Pidgin, the chat cookie is a 3-part identifier. The
+		// third segment is the chat name, which is shown explicitly in the
+		// Pidgin code. We can assume that the first two parts were the
+		// exchange and instance number. As of now, Pidgin is the only client
+		// that cares about the cookie format, and it only cares about the chat
+		// name segment.
+		room.Cookie = fmt.Sprintf("%d-%d-%s", inBody.Exchange, inBody.InstanceNumber, name)
 
 		if err := s.chatRoomManager.CreateChatRoom(room); err != nil {
 			return wire.SNACMessage{}, fmt.Errorf("%w: %w", errChatNavRoomCreateFailed, err)
@@ -129,7 +139,7 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 						Exchange:       room.Exchange,
 						Cookie:         room.Cookie,
 						InstanceNumber: room.InstanceNumber,
-						DetailLevel:    room.DetailLevel,
+						DetailLevel:    detailLevel,
 						TLVBlock: wire.TLVBlock{
 							TLVList: room.TLVList(),
 						},
@@ -170,7 +180,7 @@ func (s ChatNavService) RequestRoomInfo(_ context.Context, inFrame wire.SNACFram
 						Exchange:       room.Exchange,
 						Cookie:         room.Cookie,
 						InstanceNumber: room.InstanceNumber,
-						DetailLevel:    room.DetailLevel,
+						DetailLevel:    detailLevel,
 						TLVBlock: wire.TLVBlock{
 							TLVList: room.TLVList(),
 						},

@@ -233,7 +233,6 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 							cookie: "the-chat-cookie",
 							room: state.ChatRoom{
 								CreateTime:     time.UnixMilli(0),
-								DetailLevel:    4,
 								Exchange:       8,
 								Cookie:         "the-chat-cookie",
 								InstanceNumber: 16,
@@ -1706,7 +1705,6 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 	chatter2 := newTestSession("chatter-2", sessOptChatRoomCookie("the-cookie"))
 	chatRoom := state.ChatRoom{
 		Cookie:         "the-cookie",
-		DetailLevel:    1,
 		Exchange:       2,
 		InstanceNumber: 3,
 		Name:           "the-chat-room",
@@ -1770,7 +1768,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 									Exchange:       chatRoom.Exchange,
 									Cookie:         chatRoom.Cookie,
 									InstanceNumber: chatRoom.InstanceNumber,
-									DetailLevel:    chatRoom.DetailLevel,
+									DetailLevel:    detailLevel,
 									TLVBlock: wire.TLVBlock{
 										TLVList: chatRoom.TLVList(),
 									},
@@ -1801,7 +1799,6 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 							cookie: "the-cookie",
 							room: state.ChatRoom{
 								Cookie:         "the-cookie",
-								DetailLevel:    1,
 								Exchange:       2,
 								InstanceNumber: 3,
 								Name:           "the-chat-room",

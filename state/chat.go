@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/mk6i/retro-aim-server/wire"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -34,8 +32,6 @@ type ChatRoom struct {
 	CreateTime time.Time
 	// Creator is the screen name of the user who created the chat room.
 	Creator IdentScreenName
-	// DetailLevel is the detail level of the chat room.  Unclear what this value means.
-	DetailLevel uint8
 	// Exchange indicates which exchange the chatroom belongs to. Typically, a canned value.
 	Exchange uint16
 	// InstanceNumber indicates which instance chatroom exists in. Typically, a canned value.
@@ -79,13 +75,13 @@ func (c ChatRoom) TLVList() []wire.TLV {
 		wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
 		wire.NewTLV(wire.ChatRoomTLVFullyQualifiedName, c.Name),
 		wire.NewTLV(wire.ChatRoomTLVRoomName, c.Name),
+		wire.NewTLV(wire.ChatRoomTLVMaxMsgVisLen, uint16(1024)),
 	}
 }
 
 // NewChatRoom creates new state.ChatRoom objects
 func NewChatRoom() ChatRoom {
 	return ChatRoom{
-		Cookie:     uuid.New().String(),
 		CreateTime: time.Now().UTC(),
 	}
 }

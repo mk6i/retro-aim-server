@@ -124,7 +124,7 @@ func sendChatRoomInfoUpdate(ctx context.Context, sess *state.Session, chatMessag
 			Exchange:       room.Exchange,
 			Cookie:         room.Cookie,
 			InstanceNumber: room.InstanceNumber,
-			DetailLevel:    room.DetailLevel,
+			DetailLevel:    detailLevel,
 			TLVBlock: wire.TLVBlock{
 				TLVList: room.TLVList(),
 			},
