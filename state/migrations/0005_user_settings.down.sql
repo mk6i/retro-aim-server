@@ -8,7 +8,7 @@ CREATE TABLE users_backup
 );
 
 INSERT INTO users_backup (identScreenName, displayScreenName, authKey, strongMD5Pass, weakMD5Pass)
-SELECT dentScreenName, displayScreenName, authKey, strongMD5Pass, weakMD5Pass
+SELECT identScreenName, displayScreenName, authKey, strongMD5Pass, weakMD5Pass
 FROM users;
 
 DROP TABLE users;
