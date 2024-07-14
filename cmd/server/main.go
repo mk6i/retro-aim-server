@@ -55,7 +55,7 @@ func main() {
 		authService := foodgroup.NewAuthService(cfg, sessionManager, chatSessionManager, feedbagStore, adjListBuddyListStore, cookieBaker, sessionManager, feedbagStore, chatSessionManager, feedbagStore)
 		bartService := foodgroup.NewBARTService(logger, feedbagStore, sessionManager, feedbagStore, adjListBuddyListStore)
 		buddyService := foodgroup.NewBuddyService(sessionManager, feedbagStore, adjListBuddyListStore)
-		chatNavService := foodgroup.NewChatNavService(logger, feedbagStore, state.NewChatRoom)
+		chatNavService := foodgroup.NewChatNavService(logger, feedbagStore)
 		feedbagService := foodgroup.NewFeedbagService(logger, sessionManager, feedbagStore, feedbagStore, adjListBuddyListStore)
 		foodgroupService := foodgroup.NewPermitDenyService()
 		icbmService := foodgroup.NewICBMService(sessionManager, feedbagStore, adjListBuddyListStore)
@@ -105,7 +105,7 @@ func main() {
 		logger = logger.With("svc", "CHAT_NAV")
 		sessionManager := state.NewInMemorySessionManager(logger)
 		authService := foodgroup.NewAuthService(cfg, sessionManager, chatSessionManager, feedbagStore, adjListBuddyListStore, cookieBaker, sessionManager, feedbagStore, chatSessionManager, feedbagStore)
-		chatNavService := foodgroup.NewChatNavService(logger, feedbagStore, state.NewChatRoom)
+		chatNavService := foodgroup.NewChatNavService(logger, feedbagStore)
 		oServiceService := foodgroup.NewOServiceServiceForChatNav(cfg, logger, sessionManager, adjListBuddyListStore, feedbagStore)
 
 		oscar.BOSServer{

@@ -44,7 +44,7 @@ func StartManagementAPI(
 		sessionHandler(w, r, sessionRetriever)
 	})
 	mux.HandleFunc("/chat/room/public", func(w http.ResponseWriter, r *http.Request) {
-		publicChatHandler(w, r, chatRoomRetriever, chatRoomCreator, chatSessionRetriever, state.NewChatRoom, logger)
+		publicChatHandler(w, r, chatRoomRetriever, chatRoomCreator, chatSessionRetriever, logger)
 	})
 	mux.HandleFunc("/chat/room/private", func(w http.ResponseWriter, r *http.Request) {
 		privateChatHandler(w, r, chatRoomRetriever, chatSessionRetriever, logger)
@@ -93,7 +93,7 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request, manager UserManag
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-	fmt.Fprintln(w, "User account successfully deleted.")
+	_, _ = fmt.Fprintln(w, "User account successfully deleted.")
 }
 
 func userPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, newUUID func() uuid.UUID, logger *slog.Logger) {
@@ -225,7 +225,7 @@ func postUserHandler(w http.ResponseWriter, r *http.Request, userManager UserMan
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintln(w, "User account created successfully.")
+	_, _ = fmt.Fprintln(w, "User account created successfully.")
 }
 
 func userFromBody(r *http.Request) (userWithPassword, error) {
@@ -244,28 +244,28 @@ func loginHandler(w http.ResponseWriter, r *http.Request, userManager UserManage
 		// No authentication header found
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Header().Set("WWW-Authenticate", `Basic realm="User Login"`)
-		w.Write([]byte("401 Unauthorized\n"))
+		_, _ = w.Write([]byte("401 Unauthorized\n"))
 		return
 	}
 
 	auth := strings.SplitN(authHeader, " ", 2)
 	if len(auth) != 2 || auth[0] != "Basic" {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("401 Unauthorized: Missing Basic prefix\n"))
+		_, _ = w.Write([]byte("401 Unauthorized: Missing Basic prefix\n"))
 		return
 	}
 
 	payload, err := base64.StdEncoding.DecodeString(auth[1])
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("401 Unauthorized: Invalid Base64 Encoding\n"))
+		_, _ = w.Write([]byte("401 Unauthorized: Invalid Base64 Encoding\n"))
 		return
 	}
 
 	pair := strings.SplitN(string(payload), ":", 2)
 	if len(pair) != 2 {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("401 Unauthorized: Invalid Authentication Token\n"))
+		_, _ = w.Write([]byte("401 Unauthorized: Invalid Authentication Token\n"))
 		return
 	}
 
@@ -274,27 +274,27 @@ func loginHandler(w http.ResponseWriter, r *http.Request, userManager UserManage
 	user, err := userManager.User(username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("500 InternalServerError\n"))
+		_, _ = w.Write([]byte("500 InternalServerError\n"))
 		logger.Error("error getting user", "err", err.Error())
 		return
 	}
 	if user == nil || !user.ValidateHash(wire.StrongMD5PasswordHash(password, user.AuthKey)) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("401 Unauthorized: Invalid Credentials\n"))
+		_, _ = w.Write([]byte("401 Unauthorized: Invalid Credentials\n"))
 		return
 	}
 
 	// Successfully authenticated
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("200 OK: Successfully Authenticated\n"))
+	_, _ = w.Write([]byte("200 OK: Successfully Authenticated\n"))
 }
 
-func publicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatSessionRetriever ChatSessionRetriever, newChatRoom func() state.ChatRoom, logger *slog.Logger) {
+func publicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatSessionRetriever ChatSessionRetriever, logger *slog.Logger) {
 	switch r.Method {
 	case http.MethodGet:
 		getPublicChatHandler(w, r, chatRoomRetriever, chatSessionRetriever, logger)
 	case http.MethodPost:
-		postPublicChatHandler(w, r, chatRoomCreator, newChatRoom, logger)
+		postPublicChatHandler(w, r, chatRoomCreator, logger)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -321,10 +321,10 @@ func getPublicChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetrie
 
 	out := make([]chatRoom, len(rooms))
 	for i, room := range rooms {
-		sessions := chatSessionRetriever.AllSessions(room.Cookie)
+		sessions := chatSessionRetriever.AllSessions(room.Cookie())
 		cr := chatRoom{
-			CreateTime:   room.CreateTime,
-			Name:         room.Name,
+			CreateTime:   room.CreateTime(),
+			Name:         room.Name(),
 			Participants: make([]userHandle, len(sessions)),
 			URL:          room.URL().String(),
 		}
@@ -345,7 +345,7 @@ func getPublicChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetrie
 }
 
 // postPublicChatHandler handles the POST /chat/room/public endpoint.
-func postPublicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomCreator ChatRoomCreator, newChatRoom func() state.ChatRoom, logger *slog.Logger) {
+func postPublicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomCreator ChatRoomCreator, logger *slog.Logger) {
 	input := chatRoomCreate{}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		http.Error(w, "invalid input", http.StatusBadRequest)
@@ -358,11 +358,9 @@ func postPublicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomCreat
 		return
 	}
 
-	cr := newChatRoom()
-	cr.Name = input.Name
-	cr.Exchange = state.PublicExchange
+	cr := state.NewChatRoom(input.Name, state.NewIdentScreenName("system"), state.PublicExchange)
 
-	err := chatRoomCreator.CreateChatRoom(cr)
+	err := chatRoomCreator.CreateChatRoom(&cr)
 	switch {
 	case errors.Is(err, state.ErrDupChatRoom):
 		http.Error(w, "Chat room already exists.", http.StatusConflict)
@@ -374,7 +372,7 @@ func postPublicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomCreat
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintln(w, "Chat room created successfully.")
+	_, _ = fmt.Fprintln(w, "Chat room created successfully.")
 }
 
 // getPrivateChatHandler handles the GET /chat/room/private endpoint.
@@ -389,11 +387,11 @@ func getPrivateChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetri
 
 	out := make([]chatRoom, len(rooms))
 	for i, room := range rooms {
-		sessions := chatSessionRetriever.AllSessions(room.Cookie)
+		sessions := chatSessionRetriever.AllSessions(room.Cookie())
 		cr := chatRoom{
-			CreateTime:   room.CreateTime,
-			CreatorID:    room.Creator.String(),
-			Name:         room.Name,
+			CreateTime:   room.CreateTime(),
+			CreatorID:    room.Creator().String(),
+			Name:         room.Name(),
 			Participants: make([]userHandle, len(sessions)),
 			URL:          room.URL().String(),
 		}
@@ -457,5 +455,5 @@ func postInstantMessageHandler(w http.ResponseWriter, r *http.Request, messageRe
 	messageRelayer.RelayToScreenName(context.Background(), state.NewIdentScreenName(input.To), msg)
 
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "Message sent successfully.")
+	_, _ = fmt.Fprintln(w, "Message sent successfully.")
 }

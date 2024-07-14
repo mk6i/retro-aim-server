@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -14,28 +13,12 @@ import (
 )
 
 func TestChatNavService_CreateRoom(t *testing.T) {
-	basicChatRoom := state.ChatRoom{
-		Cookie:         "dummy-cookie",
-		CreateTime:     time.UnixMilli(0),
-		Creator:        state.NewIdentScreenName("the-screen-name"),
-		DetailLevel:    3,
-		Exchange:       4,
-		InstanceNumber: 2,
-		Name:           "the-chat-room-name",
-	}
-	publicChatRoom := state.ChatRoom{
-		Cookie:         "dummy-cookie",
-		CreateTime:     time.UnixMilli(0),
-		Creator:        state.NewIdentScreenName("the-screen-name"),
-		DetailLevel:    3,
-		Exchange:       5,
-		InstanceNumber: 2,
-		Name:           "the-public-chat-room-name",
-	}
+	basicChatRoom := state.NewChatRoom("the-chat-room-name", state.NewIdentScreenName("the-screen-name"), state.PrivateExchange)
+	publicChatRoom := state.NewChatRoom("the-public-chat-room-name", state.NewIdentScreenName("the-screen-name"), state.PublicExchange)
 
 	tests := []struct {
 		name          string
-		chatRoom      state.ChatRoom
+		chatRoom      *state.ChatRoom
 		sess          *state.Session
 		inputSNAC     wire.SNACMessage
 		want          wire.SNACMessage
@@ -45,20 +28,20 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 	}{
 		{
 			name:     "create private room that already exists",
-			chatRoom: basicChatRoom,
+			chatRoom: &basicChatRoom,
 			sess:     newTestSession("the-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-					Exchange:       basicChatRoom.Exchange,
+					Exchange:       basicChatRoom.Exchange(),
 					Cookie:         "create", // actual canned value sent by AIM client
-					InstanceNumber: basicChatRoom.InstanceNumber,
-					DetailLevel:    basicChatRoom.DetailLevel,
+					InstanceNumber: basicChatRoom.InstanceNumber(),
+					DetailLevel:    basicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name),
+							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
 						},
 					},
 				},
@@ -75,10 +58,10 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 							wire.NewTLV(
 								wire.ChatNavRequestRoomInfo,
 								wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-									Exchange:       basicChatRoom.Exchange,
-									Cookie:         basicChatRoom.Cookie,
-									InstanceNumber: basicChatRoom.InstanceNumber,
-									DetailLevel:    basicChatRoom.DetailLevel,
+									Exchange:       basicChatRoom.Exchange(),
+									Cookie:         basicChatRoom.Cookie(),
+									InstanceNumber: basicChatRoom.InstanceNumber(),
+									DetailLevel:    basicChatRoom.DetailLevel(),
 									TLVBlock: wire.TLVBlock{
 										TLVList: basicChatRoom.TLVList(),
 									},
@@ -92,8 +75,8 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 				chatRoomRegistryParams: chatRoomRegistryParams{
 					chatRoomByNameParams: chatRoomByNameParams{
 						{
-							exchange: basicChatRoom.Exchange,
-							name:     basicChatRoom.Name,
+							exchange: basicChatRoom.Exchange(),
+							name:     basicChatRoom.Name(),
 							room:     basicChatRoom,
 						},
 					},
@@ -102,20 +85,20 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 		},
 		{
 			name:     "create private room that doesn't already exist",
-			chatRoom: basicChatRoom,
+			chatRoom: &basicChatRoom,
 			sess:     newTestSession("the-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-					Exchange:       basicChatRoom.Exchange,
+					Exchange:       basicChatRoom.Exchange(),
 					Cookie:         "create", // actual canned value sent by AIM client
-					InstanceNumber: basicChatRoom.InstanceNumber,
-					DetailLevel:    basicChatRoom.DetailLevel,
+					InstanceNumber: basicChatRoom.InstanceNumber(),
+					DetailLevel:    basicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name),
+							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
 						},
 					},
 				},
@@ -132,10 +115,10 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 							wire.NewTLV(
 								wire.ChatNavRequestRoomInfo,
 								wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-									Exchange:       basicChatRoom.Exchange,
-									Cookie:         basicChatRoom.Cookie,
-									InstanceNumber: basicChatRoom.InstanceNumber,
-									DetailLevel:    basicChatRoom.DetailLevel,
+									Exchange:       basicChatRoom.Exchange(),
+									Cookie:         basicChatRoom.Cookie(),
+									InstanceNumber: basicChatRoom.InstanceNumber(),
+									DetailLevel:    basicChatRoom.DetailLevel(),
 									TLVBlock: wire.TLVBlock{
 										TLVList: basicChatRoom.TLVList(),
 									},
@@ -149,14 +132,14 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 				chatRoomRegistryParams: chatRoomRegistryParams{
 					chatRoomByNameParams: chatRoomByNameParams{
 						{
-							exchange: basicChatRoom.Exchange,
-							name:     basicChatRoom.Name,
+							exchange: basicChatRoom.Exchange(),
+							name:     basicChatRoom.Name(),
 							err:      state.ErrChatRoomNotFound,
 						},
 					},
 					createChatRoomParams: createChatRoomParams{
 						{
-							room: basicChatRoom,
+							room: &basicChatRoom,
 						},
 					},
 				},
@@ -167,20 +150,20 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 		},
 		{
 			name:     "create public room that already exists",
-			chatRoom: publicChatRoom,
+			chatRoom: &publicChatRoom,
 			sess:     newTestSession("the-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-					Exchange:       publicChatRoom.Exchange,
+					Exchange:       publicChatRoom.Exchange(),
 					Cookie:         "create", // actual canned value sent by AIM client
-					InstanceNumber: publicChatRoom.InstanceNumber,
-					DetailLevel:    publicChatRoom.DetailLevel,
+					InstanceNumber: publicChatRoom.InstanceNumber(),
+					DetailLevel:    publicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, publicChatRoom.Name),
+							wire.NewTLV(wire.ChatRoomTLVRoomName, publicChatRoom.Name()),
 						},
 					},
 				},
@@ -197,10 +180,10 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 							wire.NewTLV(
 								wire.ChatNavRequestRoomInfo,
 								wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-									Exchange:       publicChatRoom.Exchange,
-									Cookie:         publicChatRoom.Cookie,
-									InstanceNumber: publicChatRoom.InstanceNumber,
-									DetailLevel:    publicChatRoom.DetailLevel,
+									Exchange:       publicChatRoom.Exchange(),
+									Cookie:         publicChatRoom.Cookie(),
+									InstanceNumber: publicChatRoom.InstanceNumber(),
+									DetailLevel:    publicChatRoom.DetailLevel(),
 									TLVBlock: wire.TLVBlock{
 										TLVList: publicChatRoom.TLVList(),
 									},
@@ -214,8 +197,8 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 				chatRoomRegistryParams: chatRoomRegistryParams{
 					chatRoomByNameParams: chatRoomByNameParams{
 						{
-							exchange: publicChatRoom.Exchange,
-							name:     publicChatRoom.Name,
+							exchange: publicChatRoom.Exchange(),
+							name:     publicChatRoom.Name(),
 							room:     publicChatRoom,
 						},
 					},
@@ -224,20 +207,20 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 		},
 		{
 			name:     "create public room that does not exist",
-			chatRoom: publicChatRoom,
+			chatRoom: &publicChatRoom,
 			sess:     newTestSession("the-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-					Exchange:       publicChatRoom.Exchange,
+					Exchange:       publicChatRoom.Exchange(),
 					Cookie:         "create", // actual canned value sent by AIM client
-					InstanceNumber: publicChatRoom.InstanceNumber,
-					DetailLevel:    publicChatRoom.DetailLevel,
+					InstanceNumber: publicChatRoom.InstanceNumber(),
+					DetailLevel:    publicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, publicChatRoom.Name),
+							wire.NewTLV(wire.ChatRoomTLVRoomName, publicChatRoom.Name()),
 						},
 					},
 				},
@@ -256,8 +239,8 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 				chatRoomRegistryParams: chatRoomRegistryParams{
 					chatRoomByNameParams: chatRoomByNameParams{
 						{
-							exchange: publicChatRoom.Exchange,
-							name:     publicChatRoom.Name,
+							exchange: publicChatRoom.Exchange(),
+							name:     publicChatRoom.Name(),
 							err:      state.ErrChatRoomNotFound,
 						},
 					},
@@ -269,7 +252,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 		},
 		{
 			name:     "create room invalid exchange number",
-			chatRoom: basicChatRoom,
+			chatRoom: &basicChatRoom,
 			sess:     newTestSession("the-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -278,11 +261,11 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 				Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 					Exchange:       1337,
 					Cookie:         "create", // actual canned value sent by AIM client
-					InstanceNumber: basicChatRoom.InstanceNumber,
-					DetailLevel:    basicChatRoom.DetailLevel,
+					InstanceNumber: basicChatRoom.InstanceNumber(),
+					DetailLevel:    basicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name),
+							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
 						},
 					},
 				},
@@ -300,17 +283,17 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 		},
 		{
 			name:     "incoming create room missing name tlv",
-			chatRoom: basicChatRoom,
+			chatRoom: &basicChatRoom,
 			sess:     newTestSession("the-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-					Exchange:       basicChatRoom.Exchange,
+					Exchange:       basicChatRoom.Exchange(),
 					Cookie:         "create", // actual canned value sent by AIM client
-					InstanceNumber: basicChatRoom.InstanceNumber,
-					DetailLevel:    basicChatRoom.DetailLevel,
+					InstanceNumber: basicChatRoom.InstanceNumber(),
+					DetailLevel:    basicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{}, // intentionally empty for test
 					},
@@ -321,20 +304,20 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 		},
 		{
 			name:     "create private room failed",
-			chatRoom: basicChatRoom,
+			chatRoom: &basicChatRoom,
 			sess:     newTestSession("the-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-					Exchange:       basicChatRoom.Exchange,
+					Exchange:       basicChatRoom.Exchange(),
 					Cookie:         "create", // actual canned value sent by AIM client
-					InstanceNumber: basicChatRoom.InstanceNumber,
-					DetailLevel:    basicChatRoom.DetailLevel,
+					InstanceNumber: basicChatRoom.InstanceNumber(),
+					DetailLevel:    basicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name),
+							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
 						},
 					},
 				},
@@ -345,14 +328,14 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 				chatRoomRegistryParams: chatRoomRegistryParams{
 					chatRoomByNameParams: chatRoomByNameParams{
 						{
-							exchange: basicChatRoom.Exchange,
-							name:     basicChatRoom.Name,
+							exchange: basicChatRoom.Exchange(),
+							name:     basicChatRoom.Name(),
 							err:      state.ErrChatRoomNotFound,
 						},
 					},
 					createChatRoomParams: createChatRoomParams{
 						{
-							room: basicChatRoom,
+							room: &basicChatRoom,
 							err:  errors.New("fake database error"),
 						},
 					},
@@ -364,20 +347,20 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 		},
 		{
 			name:     "create private room failed unknown error",
-			chatRoom: basicChatRoom,
+			chatRoom: &basicChatRoom,
 			sess:     newTestSession("the-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-					Exchange:       basicChatRoom.Exchange,
+					Exchange:       basicChatRoom.Exchange(),
 					Cookie:         "create", // actual canned value sent by AIM client
-					InstanceNumber: basicChatRoom.InstanceNumber,
-					DetailLevel:    basicChatRoom.DetailLevel,
+					InstanceNumber: basicChatRoom.InstanceNumber(),
+					DetailLevel:    basicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name),
+							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
 						},
 					},
 				},
@@ -388,8 +371,8 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 				chatRoomRegistryParams: chatRoomRegistryParams{
 					chatRoomByNameParams: chatRoomByNameParams{
 						{
-							exchange: basicChatRoom.Exchange,
-							name:     basicChatRoom.Name,
+							exchange: basicChatRoom.Exchange(),
+							name:     basicChatRoom.Name(),
 							err:      errors.New("fake database error"),
 						},
 					},
@@ -415,7 +398,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					Return(params.err)
 			}
 
-			svc := NewChatNavService(slog.Default(), chatRoomRegistry, tt.fnNewChatRoom)
+			svc := NewChatNavService(slog.Default(), chatRoomRegistry)
 			outputSNAC, err := svc.CreateRoom(context.Background(), tt.sess, tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate))
 			assert.ErrorIs(t, err, tt.wantErr)
 			assert.Equal(t, tt.want, outputSNAC)
@@ -424,6 +407,9 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 }
 
 func TestChatNavService_RequestRoomInfo(t *testing.T) {
+	privateChatRoom := state.NewChatRoom("the-chat-room", state.NewIdentScreenName("the-user"), state.PrivateExchange)
+	publicChatRoom := state.NewChatRoom("the-chat-room", state.NewIdentScreenName("the-user"), state.PublicExchange)
+
 	tests := []struct {
 		name       string
 		inputSNAC  wire.SNACMessage
@@ -439,7 +425,7 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 				},
 				Body: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
 					Exchange: state.PrivateExchange,
-					Cookie:   "the-chat-cookie",
+					Cookie:   privateChatRoom.Cookie(),
 				},
 			},
 			want: wire.SNACMessage{
@@ -452,12 +438,12 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(0x04, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-								Cookie:         "the-chat-cookie",
-								DetailLevel:    2,
-								Exchange:       state.PrivateExchange,
-								InstanceNumber: 8,
+								Cookie:         privateChatRoom.Cookie(),
+								DetailLevel:    privateChatRoom.DetailLevel(),
+								Exchange:       privateChatRoom.Exchange(),
+								InstanceNumber: privateChatRoom.InstanceNumber(),
 								TLVBlock: wire.TLVBlock{
-									TLVList: state.ChatRoom{Cookie: "the-chat-cookie"}.TLVList(),
+									TLVList: privateChatRoom.TLVList(),
 								},
 							}),
 						},
@@ -468,13 +454,8 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 				chatRoomRegistryParams: chatRoomRegistryParams{
 					chatRoomByCookieParams: chatRoomByCookieParams{
 						{
-							cookie: "the-chat-cookie",
-							room: state.ChatRoom{
-								Cookie:         "the-chat-cookie",
-								DetailLevel:    2,
-								Exchange:       state.PrivateExchange,
-								InstanceNumber: 8,
-							},
+							cookie: privateChatRoom.Cookie(),
+							room:   privateChatRoom,
 						},
 					},
 				},
@@ -487,8 +468,8 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
-					Exchange: state.PublicExchange,
-					Cookie:   "the-chat-cookie",
+					Exchange: publicChatRoom.Exchange(),
+					Cookie:   publicChatRoom.Cookie(),
 				},
 			},
 			want: wire.SNACMessage{
@@ -501,12 +482,12 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(0x04, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-								Cookie:         "the-chat-cookie",
-								DetailLevel:    2,
-								Exchange:       state.PublicExchange,
-								InstanceNumber: 8,
+								Cookie:         publicChatRoom.Cookie(),
+								DetailLevel:    publicChatRoom.DetailLevel(),
+								Exchange:       publicChatRoom.Exchange(),
+								InstanceNumber: publicChatRoom.InstanceNumber(),
 								TLVBlock: wire.TLVBlock{
-									TLVList: state.ChatRoom{Cookie: "the-chat-cookie"}.TLVList(),
+									TLVList: publicChatRoom.TLVList(),
 								},
 							}),
 						},
@@ -517,13 +498,8 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 				chatRoomRegistryParams: chatRoomRegistryParams{
 					chatRoomByCookieParams: chatRoomByCookieParams{
 						{
-							cookie: "the-chat-cookie",
-							room: state.ChatRoom{
-								Cookie:         "the-chat-cookie",
-								DetailLevel:    2,
-								Exchange:       state.PublicExchange,
-								InstanceNumber: 8,
-							},
+							cookie: publicChatRoom.Cookie(),
+							room:   publicChatRoom,
 						},
 					},
 				},
@@ -559,7 +535,7 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 				},
 				Body: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
 					Exchange: state.PrivateExchange,
-					Cookie:   "the-chat-cookie",
+					Cookie:   privateChatRoom.Cookie(),
 				},
 			},
 			want:    wire.SNACMessage{},
@@ -568,13 +544,8 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 				chatRoomRegistryParams: chatRoomRegistryParams{
 					chatRoomByCookieParams: chatRoomByCookieParams{
 						{
-							cookie: "the-chat-cookie",
-							room: state.ChatRoom{
-								Cookie:         "the-chat-cookie",
-								DetailLevel:    2,
-								Exchange:       state.PublicExchange,
-								InstanceNumber: 8,
-							},
+							cookie: privateChatRoom.Cookie(),
+							room:   publicChatRoom,
 						},
 					},
 				},
@@ -588,7 +559,7 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 				},
 				Body: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
 					Exchange: state.PrivateExchange,
-					Cookie:   "the-chat-cookie",
+					Cookie:   privateChatRoom.Cookie(),
 				},
 			},
 			want:    wire.SNACMessage{},
@@ -597,14 +568,8 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 				chatRoomRegistryParams: chatRoomRegistryParams{
 					chatRoomByCookieParams: chatRoomByCookieParams{
 						{
-							cookie: "the-chat-cookie",
-							room: state.ChatRoom{
-								Cookie:         "the-chat-cookie",
-								DetailLevel:    2,
-								Exchange:       state.PrivateExchange,
-								InstanceNumber: 8,
-							},
-							err: state.ErrChatRoomNotFound,
+							cookie: privateChatRoom.Cookie(),
+							err:    state.ErrChatRoomNotFound,
 						},
 					},
 				},
@@ -620,7 +585,7 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 					Return(params.room, params.err)
 			}
 
-			svc := NewChatNavService(slog.Default(), chatRoomRegistry, nil)
+			svc := NewChatNavService(slog.Default(), chatRoomRegistry)
 			got, err := svc.RequestRoomInfo(nil, tt.inputSNAC.Frame,
 				tt.inputSNAC.Body.(wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo))
 			assert.ErrorIs(t, err, tt.wantErr)
@@ -633,7 +598,7 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 }
 
 func TestChatNavService_RequestChatRights(t *testing.T) {
-	svc := NewChatNavService(nil, nil, nil)
+	svc := NewChatNavService(nil, nil)
 
 	have := svc.RequestChatRights(nil, wire.SNACFrame{RequestID: 1234})
 
@@ -802,7 +767,7 @@ func TestChatNavService_ExchangeInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := NewChatNavService(slog.Default(), nil, nil)
+			svc := NewChatNavService(slog.Default(), nil)
 			outputSNAC, err := svc.ExchangeInfo(context.Background(), tt.inputSNAC.Frame,
 				tt.inputSNAC.Body.(wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo))
 			assert.ErrorIs(t, err, tt.wantErr)

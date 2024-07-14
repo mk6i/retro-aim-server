@@ -17,6 +17,8 @@ import (
 )
 
 func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
+	chatRoom := state.NewChatRoom("the-chat-room", state.NewIdentScreenName(""), state.PrivateExchange)
+
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -200,9 +202,9 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
-								Exchange:       8,
-								Cookie:         "the-chat-cookie",
-								InstanceNumber: 16,
+								Exchange:       chatRoom.Exchange(),
+								Cookie:         chatRoom.Cookie(),
+								InstanceNumber: chatRoom.InstanceNumber(),
 							}),
 						},
 					},
@@ -226,32 +228,27 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					},
 				},
 			},
-			mockParams: mockParams{
-				chatRoomRegistryParams: chatRoomRegistryParams{
-					chatRoomByCookieParams: chatRoomByCookieParams{
-						{
-							cookie: "the-chat-cookie",
-							room: state.ChatRoom{
-								CreateTime:     time.UnixMilli(0),
-								DetailLevel:    4,
-								Exchange:       8,
-								Cookie:         "the-chat-cookie",
-								InstanceNumber: 16,
-								Name:           "my new chat",
+			mockParams: func() mockParams {
+				return mockParams{
+					chatRoomRegistryParams: chatRoomRegistryParams{
+						chatRoomByCookieParams: chatRoomByCookieParams{
+							{
+								cookie: chatRoom.Cookie(),
+								room:   chatRoom,
 							},
 						},
 					},
-				},
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data: []byte{
-							0x0F, 't', 'h', 'e', '-', 'c', 'h', 'a', 't', '-', 'c', 'o', 'o', 'k', 'i', 'e',
-							0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
+					cookieIssuerParams: cookieIssuerParams{
+						{
+							data: []byte{
+								0x11, '4', '-', '0', '-', 't', 'h', 'e', '-', 'c', 'h', 'a', 't', '-', 'r', 'o', 'o', 'm',
+								0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
+							},
+							cookie: []byte("the-auth-cookie"),
 						},
-						cookie: []byte("the-auth-cookie"),
 					},
-				},
-			},
+				}
+			}(),
 		},
 		{
 			name: "request info for connecting to non-existent chat room, return ErrChatRoomNotFound",
@@ -1702,15 +1699,9 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
-	chatter1 := newTestSession("chatter-1", sessOptChatRoomCookie("the-cookie"))
-	chatter2 := newTestSession("chatter-2", sessOptChatRoomCookie("the-cookie"))
-	chatRoom := state.ChatRoom{
-		Cookie:         "the-cookie",
-		DetailLevel:    1,
-		Exchange:       2,
-		InstanceNumber: 3,
-		Name:           "the-chat-room",
-	}
+	chatRoom := state.NewChatRoom("the-chat-room", state.NewIdentScreenName("creator"), state.PrivateExchange)
+	chatter1 := newTestSession("chatter-1", sessOptChatRoomCookie(chatRoom.Cookie()))
+	chatter2 := newTestSession("chatter-2", sessOptChatRoomCookie(chatRoom.Cookie()))
 
 	tests := []struct {
 		// name is the name of the test
@@ -1734,7 +1725,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 					chatRelayToAllExceptParams: chatRelayToAllExceptParams{
 						{
 							screenName: state.NewIdentScreenName("chatter-1"),
-							cookie:     "the-cookie",
+							cookie:     chatRoom.Cookie(),
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.Chat,
@@ -1750,7 +1741,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 					},
 					chatAllSessionsParams: chatAllSessionsParams{
 						{
-							cookie: "the-cookie",
+							cookie: chatRoom.Cookie(),
 							sessions: []*state.Session{
 								chatter1,
 								chatter2,
@@ -1759,7 +1750,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 					},
 					chatRelayToScreenNameParams: chatRelayToScreenNameParams{
 						{
-							cookie:     "the-cookie",
+							cookie:     chatRoom.Cookie(),
 							screenName: chatter1.IdentScreenName(),
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
@@ -1767,10 +1758,10 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 									SubGroup:  wire.ChatRoomInfoUpdate,
 								},
 								Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-									Exchange:       chatRoom.Exchange,
-									Cookie:         chatRoom.Cookie,
-									InstanceNumber: chatRoom.InstanceNumber,
-									DetailLevel:    chatRoom.DetailLevel,
+									Exchange:       chatRoom.Exchange(),
+									Cookie:         chatRoom.Cookie(),
+									InstanceNumber: chatRoom.InstanceNumber(),
+									DetailLevel:    chatRoom.DetailLevel(),
 									TLVBlock: wire.TLVBlock{
 										TLVList: chatRoom.TLVList(),
 									},
@@ -1778,7 +1769,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 							},
 						},
 						{
-							cookie:     "the-cookie",
+							cookie:     chatRoom.Cookie(),
 							screenName: chatter1.IdentScreenName(),
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
@@ -1798,14 +1789,8 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 				chatRoomRegistryParams: chatRoomRegistryParams{
 					chatRoomByCookieParams: chatRoomByCookieParams{
 						{
-							cookie: "the-cookie",
-							room: state.ChatRoom{
-								Cookie:         "the-cookie",
-								DetailLevel:    1,
-								Exchange:       2,
-								InstanceNumber: 3,
-								Name:           "the-chat-room",
-							},
+							cookie: chatRoom.Cookie(),
+							room:   chatRoom,
 						},
 					},
 				},

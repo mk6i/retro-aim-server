@@ -143,7 +143,7 @@ type ChatRoomRegistry interface {
 	ChatRoomByName(exchange uint16, name string) (state.ChatRoom, error)
 
 	// CreateChatRoom creates a new chat room.
-	CreateChatRoom(chatRoom state.ChatRoom) error
+	CreateChatRoom(chatRoom *state.ChatRoom) error
 }
 
 type BARTManager interface {

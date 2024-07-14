@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/mk6i/retro-aim-server/wire"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -26,29 +24,69 @@ var (
 	ErrDupChatRoom      = errors.New("chat room already exists")
 )
 
-// ChatRoom is the representation of a chat room's metadata.
+// NewChatRoom creates a new ChatRoom instance.
+func NewChatRoom(name string, creator IdentScreenName, exchange uint16) ChatRoom {
+	return ChatRoom{
+		name:     name,
+		creator:  creator,
+		exchange: exchange,
+	}
+}
+
+// ChatRoom represents of a chat room.
 type ChatRoom struct {
-	// Cookie is the unique chat room identifier.
-	Cookie string
-	// CreateTime indicates when the chat room was created.
-	CreateTime time.Time
-	// Creator is the screen name of the user who created the chat room.
-	Creator IdentScreenName
-	// DetailLevel is the detail level of the chat room.  Unclear what this value means.
-	DetailLevel uint8
-	// Exchange indicates which exchange the chatroom belongs to. Typically, a canned value.
-	Exchange uint16
-	// InstanceNumber indicates which instance chatroom exists in. Typically, a canned value.
-	InstanceNumber uint16
-	// Name is the name of the chat room.
-	Name string
+	createTime time.Time
+	creator    IdentScreenName
+	exchange   uint16
+	name       string
+}
+
+// Creator returns the screen name of the user who created the chat room.
+func (c ChatRoom) Creator() IdentScreenName {
+	return c.creator
+}
+
+// Exchange returns which exchange the chat room belongs to.
+func (c ChatRoom) Exchange() uint16 {
+	return c.exchange
+}
+
+// Name returns the chat room name.
+func (c ChatRoom) Name() string {
+	return c.name
+}
+
+// InstanceNumber returns which instance chatroom exists in. Overflow chat
+// rooms do not exist yet, so all chats happen in the same instance.
+func (c ChatRoom) InstanceNumber() uint16 {
+	return 0
+}
+
+// CreateTime returns when the chat room was inserted in the database.
+func (c ChatRoom) CreateTime() time.Time {
+	return c.createTime
+}
+
+// DetailLevel returns the detail level of the chat room (whatever that means).
+func (c ChatRoom) DetailLevel() uint8 {
+	return 0x02 // Pidgin 2.13.0 expects value 0x02
+}
+
+// Cookie returns the chat room unique identifier.
+func (c ChatRoom) Cookie() string {
+	// According to Pidgin, the chat cookie is a 3-part identifier. The third
+	// segment is the chat name, which is shown explicitly in the Pidgin code.
+	// We can assume that the first two parts were the exchange and instance
+	// number. As of now, Pidgin is the only client that cares about the cookie
+	// format, and it only cares about the chat name segment.
+	return fmt.Sprintf("%d-%d-%s", c.exchange, c.InstanceNumber(), c.name)
 }
 
 // URL creates a URL that can be used to join a chat room.
 func (c ChatRoom) URL() *url.URL {
 	v := url.Values{}
-	v.Set("roomname", c.Name)
-	v.Set("exchange", fmt.Sprintf("%d", c.Exchange))
+	v.Set("roomname", c.name)
+	v.Set("exchange", fmt.Sprintf("%d", c.exchange))
 
 	return &url.URL{
 		Scheme: "aim",
@@ -67,7 +105,7 @@ func (c ChatRoom) TLVList() []wire.TLV {
 		// - 8 Occupant Peek Allowed
 		// It's unclear what effect they actually have.
 		wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
-		wire.NewTLV(wire.ChatRoomTLVCreateTime, uint32(c.CreateTime.Unix())),
+		wire.NewTLV(wire.ChatRoomTLVCreateTime, uint32(c.createTime.Unix())),
 		wire.NewTLV(wire.ChatRoomTLVMaxMsgLen, uint16(1024)),
 		wire.NewTLV(wire.ChatRoomTLVMaxOccupancy, uint16(100)),
 		// From protocols/oscar/family_chatnav.c in lib purple, these are the
@@ -77,15 +115,8 @@ func (c ChatRoom) TLVList() []wire.TLV {
 		// - 2  exchange creation allowed
 		// It's unclear what effect they actually have.
 		wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
-		wire.NewTLV(wire.ChatRoomTLVFullyQualifiedName, c.Name),
-		wire.NewTLV(wire.ChatRoomTLVRoomName, c.Name),
-	}
-}
-
-// NewChatRoom creates new state.ChatRoom objects
-func NewChatRoom() ChatRoom {
-	return ChatRoom{
-		Cookie:     uuid.New().String(),
-		CreateTime: time.Now().UTC(),
+		wire.NewTLV(wire.ChatRoomTLVFullyQualifiedName, c.name),
+		wire.NewTLV(wire.ChatRoomTLVRoomName, c.name),
+		wire.NewTLV(wire.ChatRoomTLVMaxMsgVisLen, uint16(1024)),
 	}
 }

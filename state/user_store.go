@@ -479,9 +479,7 @@ func (f SQLiteUserStore) BARTRetrieve(hash []byte) ([]byte, error) {
 // ChatRoomByCookie looks up a chat room by cookie. Returns
 // ErrChatRoomNotFound if the room does not exist for cookie.
 func (f SQLiteUserStore) ChatRoomByCookie(cookie string) (ChatRoom, error) {
-	chatRoom := ChatRoom{
-		Cookie: cookie,
-	}
+	chatRoom := ChatRoom{}
 
 	q := `
 		SELECT exchange, name, created, creator
@@ -490,15 +488,15 @@ func (f SQLiteUserStore) ChatRoomByCookie(cookie string) (ChatRoom, error) {
 	`
 	var creator string
 	err := f.db.QueryRow(q, cookie).Scan(
-		&chatRoom.Exchange,
-		&chatRoom.Name,
-		&chatRoom.CreateTime,
+		&chatRoom.exchange,
+		&chatRoom.name,
+		&chatRoom.createTime,
 		&creator,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = ErrChatRoomNotFound
 	}
-	chatRoom.Creator = NewIdentScreenName(creator)
+	chatRoom.creator = NewIdentScreenName(creator)
 
 	return chatRoom, err
 }
@@ -507,42 +505,43 @@ func (f SQLiteUserStore) ChatRoomByCookie(cookie string) (ChatRoom, error) {
 // ErrChatRoomNotFound if the room does not exist for exchange and name.
 func (f SQLiteUserStore) ChatRoomByName(exchange uint16, name string) (ChatRoom, error) {
 	chatRoom := ChatRoom{
-		Exchange: exchange,
-		Name:     name,
+		exchange: exchange,
+		name:     name,
 	}
 
 	q := `
-		SELECT cookie, created, creator
+		SELECT created, creator
 		FROM chatRoom
 		WHERE exchange = ? AND name = ?
 	`
 	var creator string
 	err := f.db.QueryRow(q, exchange, name).Scan(
-		&chatRoom.Cookie,
-		&chatRoom.CreateTime,
+		&chatRoom.createTime,
 		&creator,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = ErrChatRoomNotFound
 	}
-	chatRoom.Creator = NewIdentScreenName(creator)
+	chatRoom.creator = NewIdentScreenName(creator)
 
 	return chatRoom, err
 }
 
-// CreateChatRoom creates a new chat room.
-func (f SQLiteUserStore) CreateChatRoom(chatRoom ChatRoom) error {
+// CreateChatRoom creates a new chat room. It sets createTime on chatRoom to
+// the current timestamp.
+func (f SQLiteUserStore) CreateChatRoom(chatRoom *ChatRoom) error {
+	chatRoom.createTime = time.Now().UTC()
 	q := `
 		INSERT INTO chatRoom (cookie, exchange, name, created, creator)
 		VALUES (?, ?, ?, ?, ?)
 	`
 	_, err := f.db.Exec(
 		q,
-		chatRoom.Cookie,
-		chatRoom.Exchange,
-		chatRoom.Name,
-		chatRoom.CreateTime,
-		chatRoom.Creator.String(),
+		chatRoom.Cookie(),
+		chatRoom.Exchange(),
+		chatRoom.Name(),
+		chatRoom.createTime,
+		chatRoom.Creator().String(),
 	)
 
 	if err != nil {
@@ -558,7 +557,7 @@ func (f SQLiteUserStore) CreateChatRoom(chatRoom ChatRoom) error {
 
 func (f SQLiteUserStore) AllChatRooms(exchange uint16) ([]ChatRoom, error) {
 	q := `
-		SELECT cookie, created, creator, name
+		SELECT created, creator, name
 		FROM chatRoom
 		WHERE exchange = ?
 		ORDER BY created ASC
@@ -572,13 +571,13 @@ func (f SQLiteUserStore) AllChatRooms(exchange uint16) ([]ChatRoom, error) {
 	var users []ChatRoom
 	for rows.Next() {
 		cr := ChatRoom{
-			Exchange: exchange,
+			exchange: exchange,
 		}
 		var creator string
-		if err := rows.Scan(&cr.Cookie, &cr.CreateTime, &creator, &cr.Name); err != nil {
+		if err := rows.Scan(&cr.createTime, &creator, &cr.name); err != nil {
 			return nil, err
 		}
-		cr.Creator = NewIdentScreenName(creator)
+		cr.creator = NewIdentScreenName(creator)
 		users = append(users, cr)
 	}
 

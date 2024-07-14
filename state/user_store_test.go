@@ -691,15 +691,12 @@ func TestSQLiteUserStore_ChatRoomByCookie_RoomFound(t *testing.T) {
 	userStore, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	chatRoom := NewChatRoom()
-	chatRoom.Exchange = 4
-	chatRoom.Name = "my new chat room!"
-	chatRoom.Creator = NewIdentScreenName("the-screen-name")
+	chatRoom := NewChatRoom("my new chat room!", NewIdentScreenName("the-screen-name"), PrivateExchange)
 
-	err = userStore.CreateChatRoom(chatRoom)
+	err = userStore.CreateChatRoom(&chatRoom)
 	assert.NoError(t, err)
 
-	gotRoom, err := userStore.ChatRoomByCookie(chatRoom.Cookie)
+	gotRoom, err := userStore.ChatRoomByCookie(chatRoom.Cookie())
 	assert.NoError(t, err)
 	assert.Equal(t, chatRoom, gotRoom)
 }
@@ -724,15 +721,12 @@ func TestSQLiteUserStore_ChatRoomByName_RoomFound(t *testing.T) {
 	userStore, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	chatRoom := NewChatRoom()
-	chatRoom.Exchange = 4
-	chatRoom.Name = "my new chat room!"
-	chatRoom.Creator = NewIdentScreenName("the-screen-name")
+	chatRoom := NewChatRoom("my new chat room!", NewIdentScreenName("the-screen-name"), PrivateExchange)
 
-	err = userStore.CreateChatRoom(chatRoom)
+	err = userStore.CreateChatRoom(&chatRoom)
 	assert.NoError(t, err)
 
-	gotRoom, err := userStore.ChatRoomByName(chatRoom.Exchange, chatRoom.Name)
+	gotRoom, err := userStore.ChatRoomByName(chatRoom.Exchange(), chatRoom.Name())
 	assert.NoError(t, err)
 	assert.Equal(t, chatRoom, gotRoom)
 }
@@ -758,26 +752,16 @@ func TestSQLiteUserStore_AllChatRooms(t *testing.T) {
 	assert.NoError(t, err)
 
 	chatRooms := []ChatRoom{
-		{
-			Cookie:   "chat-room-1",
-			Exchange: 4,
-			Name:     "chat room 1",
-		},
-		{
-			Cookie:   "chat-room-2",
-			Exchange: 4,
-			Name:     "chat room 2",
-		},
-		{
-			Cookie:   "chat-room-3",
-			Exchange: 5,
-			Name:     "chat room 3",
-		},
+		NewChatRoom("chat room 1", NewIdentScreenName("creator"), PrivateExchange),
+		NewChatRoom("chat room 2", NewIdentScreenName("creator"), PrivateExchange),
+		NewChatRoom("chat room 3", NewIdentScreenName("creator"), PublicExchange),
 	}
 
-	for _, room := range chatRooms {
-		err = userStore.CreateChatRoom(room)
+	for i := range chatRooms {
+		tBefore := (&chatRooms[i]).CreateTime()
+		err = userStore.CreateChatRoom(&chatRooms[i])
 		assert.NoError(t, err)
+		assert.True(t, chatRooms[i].CreateTime().After(tBefore))
 	}
 
 	// public exchange
@@ -802,46 +786,10 @@ func TestSQLiteUserStore_CreateChatRoom_ErrChatRoomExists(t *testing.T) {
 		wantErr      error
 	}{
 		{
-			name: "create two rooms with same exchange/name, different cookie",
-			firstInsert: ChatRoom{
-				Cookie:   "chat-room-1",
-				Exchange: 4,
-				Name:     "chat room 1",
-			},
-			secondInsert: ChatRoom{
-				Cookie:   "chat-room-1-new",
-				Exchange: 4,
-				Name:     "chat room 1",
-			},
-			wantErr: ErrDupChatRoom,
-		},
-		{
-			name: "create two rooms with different exchange/name, same cookie",
-			firstInsert: ChatRoom{
-				Cookie:   "chat-room",
-				Exchange: 5,
-				Name:     "chat room 1",
-			},
-			secondInsert: ChatRoom{
-				Cookie:   "chat-room",
-				Exchange: 4,
-				Name:     "chat room 2",
-			},
-			wantErr: ErrDupChatRoom,
-		},
-		{
-			name: "create two rooms with different cookie/exchange, same name",
-			firstInsert: ChatRoom{
-				Cookie:   "chat-room-1",
-				Exchange: 5,
-				Name:     "chat room",
-			},
-			secondInsert: ChatRoom{
-				Cookie:   "chat-room-2",
-				Exchange: 4,
-				Name:     "chat room",
-			},
-			wantErr: nil,
+			name:         "create two rooms with different cookie/exchange, same name",
+			firstInsert:  NewChatRoom("chat room", NewIdentScreenName("creator"), PublicExchange),
+			secondInsert: NewChatRoom("chat room", NewIdentScreenName("creator"), PrivateExchange),
+			wantErr:      nil,
 		},
 	}
 
@@ -854,10 +802,10 @@ func TestSQLiteUserStore_CreateChatRoom_ErrChatRoomExists(t *testing.T) {
 			userStore, err := NewSQLiteUserStore(testFile)
 			assert.NoError(t, err)
 
-			err = userStore.CreateChatRoom(tc.firstInsert)
+			err = userStore.CreateChatRoom(&tc.firstInsert)
 			assert.NoError(t, err)
 
-			err = userStore.CreateChatRoom(tc.secondInsert)
+			err = userStore.CreateChatRoom(&tc.secondInsert)
 			assert.ErrorIs(t, err, tc.wantErr)
 		})
 	}

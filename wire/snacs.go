@@ -890,6 +890,7 @@ const (
 	ChatRoomTLVLang1              uint16 = 0xD7
 	ChatRoomTLVCharSet2           uint16 = 0xD8
 	ChatRoomTLVLang2              uint16 = 0xD9
+	ChatRoomTLVMaxMsgVisLen       uint16 = 0xDA
 )
 
 type SNAC_0x0E_0x02_ChatRoomInfoUpdate struct {

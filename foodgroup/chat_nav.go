@@ -32,11 +32,10 @@ var (
 )
 
 // NewChatNavService creates a new instance of NewChatNavService.
-func NewChatNavService(logger *slog.Logger, chatRoomManager ChatRoomRegistry, fnNewChatRoom func() state.ChatRoom) *ChatNavService {
+func NewChatNavService(logger *slog.Logger, chatRoomManager ChatRoomRegistry) *ChatNavService {
 	return &ChatNavService{
 		logger:          logger,
 		chatRoomManager: chatRoomManager,
-		fnNewChatRoom:   fnNewChatRoom,
 	}
 }
 
@@ -45,7 +44,6 @@ func NewChatNavService(logger *slog.Logger, chatRoomManager ChatRoomRegistry, fn
 type ChatNavService struct {
 	logger          *slog.Logger
 	chatRoomManager ChatRoomRegistry
-	fnNewChatRoom   func() state.ChatRoom
 }
 
 // RequestChatRights returns SNAC wire.ChatNavNavInfo, which contains chat
@@ -102,14 +100,9 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 			return sendChatNavErrorSNAC(inFrame, wire.ErrorCodeNoMatch)
 		}
 
-		room = s.fnNewChatRoom()
-		room.Creator = sess.IdentScreenName()
-		room.DetailLevel = inBody.DetailLevel
-		room.Exchange = inBody.Exchange
-		room.InstanceNumber = inBody.InstanceNumber
-		room.Name = name
+		room = state.NewChatRoom(name, sess.IdentScreenName(), inBody.Exchange)
 
-		if err := s.chatRoomManager.CreateChatRoom(room); err != nil {
+		if err := s.chatRoomManager.CreateChatRoom(&room); err != nil {
 			return wire.SNACMessage{}, fmt.Errorf("%w: %w", errChatNavRoomCreateFailed, err)
 		}
 		break
@@ -126,10 +119,10 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
 					wire.NewTLV(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-						Exchange:       room.Exchange,
-						Cookie:         room.Cookie,
-						InstanceNumber: room.InstanceNumber,
-						DetailLevel:    room.DetailLevel,
+						Cookie:         room.Cookie(),
+						Exchange:       room.Exchange(),
+						DetailLevel:    room.DetailLevel(),
+						InstanceNumber: room.InstanceNumber(),
 						TLVBlock: wire.TLVBlock{
 							TLVList: room.TLVList(),
 						},
@@ -153,7 +146,7 @@ func (s ChatNavService) RequestRoomInfo(_ context.Context, inFrame wire.SNACFram
 		return wire.SNACMessage{}, fmt.Errorf("%w: %w", state.ErrChatRoomNotFound, err)
 	}
 
-	if room.Exchange != inBody.Exchange {
+	if room.Exchange() != inBody.Exchange {
 		return wire.SNACMessage{}, errChatNavMismatchedExchange
 	}
 
@@ -167,10 +160,10 @@ func (s ChatNavService) RequestRoomInfo(_ context.Context, inFrame wire.SNACFram
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
 					wire.NewTLV(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-						Exchange:       room.Exchange,
-						Cookie:         room.Cookie,
-						InstanceNumber: room.InstanceNumber,
-						DetailLevel:    room.DetailLevel,
+						Cookie:         room.Cookie(),
+						Exchange:       room.Exchange(),
+						DetailLevel:    room.DetailLevel(),
+						InstanceNumber: room.InstanceNumber(),
 						TLVBlock: wire.TLVBlock{
 							TLVList: room.TLVList(),
 						},

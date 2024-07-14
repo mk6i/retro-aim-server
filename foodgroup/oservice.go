@@ -670,7 +670,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 		}
 
 		loginCookie := chatLoginCookie{
-			ChatCookie: room.Cookie,
+			ChatCookie: room.Cookie(),
 			ScreenName: sess.DisplayScreenName(),
 		}
 		buf := &bytes.Buffer{}

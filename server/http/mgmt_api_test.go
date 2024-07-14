@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -442,6 +441,9 @@ func TestPublicChatHandler_GET(t *testing.T) {
 		result []*state.Session
 	}
 
+	chatRoom1 := state.NewChatRoom("chat-room-1-name", state.NewIdentScreenName("chat-room-1-creator"), state.PublicExchange)
+	chatRoom2 := state.NewChatRoom("chat-room-2-name", state.NewIdentScreenName("chat-room-1-creator"), state.PublicExchange)
+
 	tt := []struct {
 		name               string
 		allChatRoomsParams allChatRoomsParams
@@ -455,37 +457,27 @@ func TestPublicChatHandler_GET(t *testing.T) {
 			allChatRoomsParams: allChatRoomsParams{
 				exchange: state.PublicExchange,
 				result: []state.ChatRoom{
-					{
-						Cookie:     "chat-room-1-cookie",
-						Creator:    state.NewIdentScreenName("chat-room-1-creator"),
-						Name:       "chat-room-1-name",
-						CreateTime: time.Date(2024, 06, 01, 1, 2, 3, 4, time.UTC),
-					},
-					{
-						Cookie:     "chat-room-2-cookie",
-						Creator:    state.NewIdentScreenName("chat-room-2-creator"),
-						Name:       "chat-room-2-name",
-						CreateTime: time.Date(2022, 01, 04, 6, 8, 1, 2, time.UTC),
-					},
+					chatRoom1,
+					chatRoom2,
 				},
 			},
 			allSessionsParams: []allSessionsParams{
 				{
-					cookie: "chat-room-1-cookie",
+					cookie: chatRoom1.Cookie(),
 					result: []*state.Session{
 						fnNewSess("userA"),
 						fnNewSess("userB"),
 					},
 				},
 				{
-					cookie: "chat-room-2-cookie",
+					cookie: chatRoom2.Cookie(),
 					result: []*state.Session{
 						fnNewSess("userC"),
 						fnNewSess("userD"),
 					},
 				},
 			},
-			want:       `[{"name":"chat-room-1-name","create_time":"2024-06-01T01:02:03.000000004Z","url":"aim:gochat?exchange=0\u0026roomname=chat-room-1-name","participants":[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]},{"name":"chat-room-2-name","create_time":"2022-01-04T06:08:01.000000002Z","url":"aim:gochat?exchange=0\u0026roomname=chat-room-2-name","participants":[{"id":"userc","screen_name":"userC"},{"id":"userd","screen_name":"userD"}]}]`,
+			want:       `[{"name":"chat-room-1-name","create_time":"0001-01-01T00:00:00Z","url":"aim:gochat?exchange=5\u0026roomname=chat-room-1-name","participants":[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]},{"name":"chat-room-2-name","create_time":"0001-01-01T00:00:00Z","url":"aim:gochat?exchange=5\u0026roomname=chat-room-2-name","participants":[{"id":"userc","screen_name":"userC"},{"id":"userd","screen_name":"userD"}]}]`,
 			statusCode: http.StatusOK,
 		},
 		{
@@ -493,21 +485,16 @@ func TestPublicChatHandler_GET(t *testing.T) {
 			allChatRoomsParams: allChatRoomsParams{
 				exchange: state.PublicExchange,
 				result: []state.ChatRoom{
-					{
-						Cookie:     "chat-room-1-cookie",
-						Creator:    state.NewIdentScreenName("chat-room-1-creator"),
-						Name:       "chat-room-1-name",
-						CreateTime: time.Date(2024, 06, 01, 1, 2, 3, 4, time.UTC),
-					},
+					chatRoom1,
 				},
 			},
 			allSessionsParams: []allSessionsParams{
 				{
-					cookie: "chat-room-1-cookie",
+					cookie: chatRoom1.Cookie(),
 					result: []*state.Session{},
 				},
 			},
-			want:       `[{"name":"chat-room-1-name","create_time":"2024-06-01T01:02:03.000000004Z","url":"aim:gochat?exchange=0\u0026roomname=chat-room-1-name","participants":[]}]`,
+			want:       `[{"name":"chat-room-1-name","create_time":"0001-01-01T00:00:00Z","url":"aim:gochat?exchange=5\u0026roomname=chat-room-1-name","participants":[]}]`,
 			statusCode: http.StatusOK,
 		},
 		{
@@ -569,6 +556,9 @@ func TestPrivateChatHandler_GET(t *testing.T) {
 		result []*state.Session
 	}
 
+	chatRoom1 := state.NewChatRoom("chat-room-1-name", state.NewIdentScreenName("chat-room-1-creator"), state.PrivateExchange)
+	chatRoom2 := state.NewChatRoom("chat-room-2-name", state.NewIdentScreenName("chat-room-2-creator"), state.PrivateExchange)
+
 	tt := []struct {
 		name               string
 		allChatRoomsParams allChatRoomsParams
@@ -582,37 +572,27 @@ func TestPrivateChatHandler_GET(t *testing.T) {
 			allChatRoomsParams: allChatRoomsParams{
 				exchange: state.PrivateExchange,
 				result: []state.ChatRoom{
-					{
-						Cookie:     "chat-room-1-cookie",
-						Creator:    state.NewIdentScreenName("chat-room-1-creator"),
-						Name:       "chat-room-1-name",
-						CreateTime: time.Date(2024, 06, 01, 1, 2, 3, 4, time.UTC),
-					},
-					{
-						Cookie:     "chat-room-2-cookie",
-						Creator:    state.NewIdentScreenName("chat-room-2-creator"),
-						Name:       "chat-room-2-name",
-						CreateTime: time.Date(2022, 01, 04, 6, 8, 1, 2, time.UTC),
-					},
+					chatRoom1,
+					chatRoom2,
 				},
 			},
 			allSessionsParams: []allSessionsParams{
 				{
-					cookie: "chat-room-1-cookie",
+					cookie: chatRoom1.Cookie(),
 					result: []*state.Session{
 						fnNewSess("userA"),
 						fnNewSess("userB"),
 					},
 				},
 				{
-					cookie: "chat-room-2-cookie",
+					cookie: chatRoom2.Cookie(),
 					result: []*state.Session{
 						fnNewSess("userC"),
 						fnNewSess("userD"),
 					},
 				},
 			},
-			want:       `[{"name":"chat-room-1-name","create_time":"2024-06-01T01:02:03.000000004Z","creator_id":"chat-room-1-creator","url":"aim:gochat?exchange=0\u0026roomname=chat-room-1-name","participants":[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]},{"name":"chat-room-2-name","create_time":"2022-01-04T06:08:01.000000002Z","creator_id":"chat-room-2-creator","url":"aim:gochat?exchange=0\u0026roomname=chat-room-2-name","participants":[{"id":"userc","screen_name":"userC"},{"id":"userd","screen_name":"userD"}]}]`,
+			want:       `[{"name":"chat-room-1-name","create_time":"0001-01-01T00:00:00Z","creator_id":"chat-room-1-creator","url":"aim:gochat?exchange=4\u0026roomname=chat-room-1-name","participants":[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]},{"name":"chat-room-2-name","create_time":"0001-01-01T00:00:00Z","creator_id":"chat-room-2-creator","url":"aim:gochat?exchange=4\u0026roomname=chat-room-2-name","participants":[{"id":"userc","screen_name":"userC"},{"id":"userd","screen_name":"userD"}]}]`,
 			statusCode: http.StatusOK,
 		},
 		{
@@ -620,21 +600,16 @@ func TestPrivateChatHandler_GET(t *testing.T) {
 			allChatRoomsParams: allChatRoomsParams{
 				exchange: state.PrivateExchange,
 				result: []state.ChatRoom{
-					{
-						Cookie:     "chat-room-1-cookie",
-						Creator:    state.NewIdentScreenName("chat-room-1-creator"),
-						Name:       "chat-room-1-name",
-						CreateTime: time.Date(2024, 06, 01, 1, 2, 3, 4, time.UTC),
-					},
+					chatRoom1,
 				},
 			},
 			allSessionsParams: []allSessionsParams{
 				{
-					cookie: "chat-room-1-cookie",
+					cookie: chatRoom1.Cookie(),
 					result: []*state.Session{},
 				},
 			},
-			want:       `[{"name":"chat-room-1-name","create_time":"2024-06-01T01:02:03.000000004Z","creator_id":"chat-room-1-creator","url":"aim:gochat?exchange=0\u0026roomname=chat-room-1-name","participants":[]}]`,
+			want:       `[{"name":"chat-room-1-name","create_time":"0001-01-01T00:00:00Z","creator_id":"chat-room-1-creator","url":"aim:gochat?exchange=4\u0026roomname=chat-room-1-name","participants":[]}]`,
 			statusCode: http.StatusOK,
 		},
 		{

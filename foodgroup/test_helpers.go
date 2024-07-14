@@ -433,7 +433,7 @@ type chatRoomByNameParams []struct {
 // createChatRoomParams is the list of parameters passed at the mock
 // ChatRoomRegistry.CreateChatRoom call site
 type createChatRoomParams []struct {
-	room state.ChatRoom
+	room *state.ChatRoom
 	err  error
 }
 

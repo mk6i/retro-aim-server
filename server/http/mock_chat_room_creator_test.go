@@ -21,7 +21,7 @@ func (_m *mockChatRoomCreator) EXPECT() *mockChatRoomCreator_Expecter {
 }
 
 // CreateChatRoom provides a mock function with given fields: chatRoom
-func (_m *mockChatRoomCreator) CreateChatRoom(chatRoom state.ChatRoom) error {
+func (_m *mockChatRoomCreator) CreateChatRoom(chatRoom *state.ChatRoom) error {
 	ret := _m.Called(chatRoom)
 
 	if len(ret) == 0 {
@@ -29,7 +29,7 @@ func (_m *mockChatRoomCreator) CreateChatRoom(chatRoom state.ChatRoom) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.ChatRoom) error); ok {
+	if rf, ok := ret.Get(0).(func(*state.ChatRoom) error); ok {
 		r0 = rf(chatRoom)
 	} else {
 		r0 = ret.Error(0)
@@ -44,14 +44,14 @@ type mockChatRoomCreator_CreateChatRoom_Call struct {
 }
 
 // CreateChatRoom is a helper method to define mock.On call
-//   - chatRoom state.ChatRoom
+//   - chatRoom *state.ChatRoom
 func (_e *mockChatRoomCreator_Expecter) CreateChatRoom(chatRoom interface{}) *mockChatRoomCreator_CreateChatRoom_Call {
 	return &mockChatRoomCreator_CreateChatRoom_Call{Call: _e.mock.On("CreateChatRoom", chatRoom)}
 }
 
-func (_c *mockChatRoomCreator_CreateChatRoom_Call) Run(run func(chatRoom state.ChatRoom)) *mockChatRoomCreator_CreateChatRoom_Call {
+func (_c *mockChatRoomCreator_CreateChatRoom_Call) Run(run func(chatRoom *state.ChatRoom)) *mockChatRoomCreator_CreateChatRoom_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.ChatRoom))
+		run(args[0].(*state.ChatRoom))
 	})
 	return _c
 }
@@ -61,7 +61,7 @@ func (_c *mockChatRoomCreator_CreateChatRoom_Call) Return(_a0 error) *mockChatRo
 	return _c
 }
 
-func (_c *mockChatRoomCreator_CreateChatRoom_Call) RunAndReturn(run func(state.ChatRoom) error) *mockChatRoomCreator_CreateChatRoom_Call {
+func (_c *mockChatRoomCreator_CreateChatRoom_Call) RunAndReturn(run func(*state.ChatRoom) error) *mockChatRoomCreator_CreateChatRoom_Call {
 	_c.Call.Return(run)
 	return _c
 }

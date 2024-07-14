@@ -1056,8 +1056,6 @@ func TestAuthService_SignoutChat(t *testing.T) {
 		name string
 		// userSession is the session of the user signing out
 		userSession *state.Session
-		// chatRoom is the chat room user is exiting
-		chatRoom state.ChatRoom
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1065,9 +1063,6 @@ func TestAuthService_SignoutChat(t *testing.T) {
 		{
 			name:        "user signs out of chat room, room is empty after user leaves",
 			userSession: newTestSession("the-screen-name", sessOptCannedSignonTime, sessOptChatRoomCookie("the-chat-cookie")),
-			chatRoom: state.ChatRoom{
-				Cookie: "the-chat-cookie",
-			},
 			mockParams: mockParams{
 				chatMessageRelayerParams: chatMessageRelayerParams{
 					chatRelayToAllExceptParams: chatRelayToAllExceptParams{
@@ -1104,9 +1099,6 @@ func TestAuthService_SignoutChat(t *testing.T) {
 		{
 			name:        "user signs out of chat room, room is not empty after user leaves",
 			userSession: newTestSession("the-screen-name", sessOptCannedSignonTime, sessOptChatRoomCookie("the-chat-cookie")),
-			chatRoom: state.ChatRoom{
-				Cookie: "the-chat-cookie",
-			},
 			mockParams: mockParams{
 				chatMessageRelayerParams: chatMessageRelayerParams{
 					chatRelayToAllExceptParams: chatRelayToAllExceptParams{
@@ -1146,7 +1138,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 			chatMessageRelayer := newMockChatMessageRelayer(t)
 			for _, params := range tt.mockParams.chatRelayToAllExceptParams {
 				chatMessageRelayer.EXPECT().
-					RelayToAllExcept(nil, tt.chatRoom.Cookie, params.screenName, params.message)
+					RelayToAllExcept(nil, tt.userSession.ChatRoomCookie(), params.screenName, params.message)
 			}
 			sessionManager := newMockChatSessionRegistry(t)
 			for _, params := range tt.mockParams.removeSessionParams {

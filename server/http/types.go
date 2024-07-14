@@ -13,7 +13,7 @@ type ChatRoomRetriever interface {
 }
 
 type ChatRoomCreator interface {
-	CreateChatRoom(chatRoom state.ChatRoom) error
+	CreateChatRoom(chatRoom *state.ChatRoom) error
 }
 
 type ChatSessionRetriever interface {
