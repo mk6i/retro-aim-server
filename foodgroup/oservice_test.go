@@ -1375,6 +1375,50 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 							FoodGroup: wire.Alert,
 							SubGroup:  wire.AlertUserOnline,
 						},
+						{
+							FoodGroup: wire.PermitDeny,
+							SubGroup:  wire.PermitDenyErr,
+						},
+						{
+							FoodGroup: wire.PermitDeny,
+							SubGroup:  wire.PermitDenyRightsQuery,
+						},
+						{
+							FoodGroup: wire.PermitDeny,
+							SubGroup:  wire.PermitDenyRightsReply,
+						},
+						{
+							FoodGroup: wire.PermitDeny,
+							SubGroup:  wire.PermitDenySetGroupPermitMask,
+						},
+						{
+							FoodGroup: wire.PermitDeny,
+							SubGroup:  wire.PermitDenyAddPermListEntries,
+						},
+						{
+							FoodGroup: wire.PermitDeny,
+							SubGroup:  wire.PermitDenyDelPermListEntries,
+						},
+						{
+							FoodGroup: wire.PermitDeny,
+							SubGroup:  wire.PermitDenyAddDenyListEntries,
+						},
+						{
+							FoodGroup: wire.PermitDeny,
+							SubGroup:  wire.PermitDenyDelDenyListEntries,
+						},
+						{
+							FoodGroup: wire.PermitDeny,
+							SubGroup:  wire.PermitDenyBosErr,
+						},
+						{
+							FoodGroup: wire.PermitDeny,
+							SubGroup:  wire.PermitDenyAddTempPermitListEntries,
+						},
+						{
+							FoodGroup: wire.PermitDeny,
+							SubGroup:  wire.PermitDenyDelTempPermitListEntries,
+						},
 					},
 				},
 			},

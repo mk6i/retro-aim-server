@@ -69,6 +69,8 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.Locate, wire.LocateUserInfoQuery2, h.LocateHandler.UserInfoQuery2)
 
 	router.Register(wire.PermitDeny, wire.PermitDenyRightsQuery, h.PermitDenyHandler.RightsQuery)
+	router.Register(wire.PermitDeny, wire.PermitDenyAddPermListEntries, h.PermitDenyHandler.AddPermListEntries)
+	router.Register(wire.PermitDeny, wire.PermitDenySetGroupPermitMask, h.PermitDenyHandler.SetGroupPermitMask)
 
 	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceHandler.ClientOnline)
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)

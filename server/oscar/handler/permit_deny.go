@@ -34,3 +34,12 @@ func (rt PermitDenyHandler) RightsQuery(ctx context.Context, _ *state.Session, i
 	rt.LogRequestAndResponse(ctx, inFrame, nil, outSNAC.Frame, outSNAC.Body)
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
+
+func (rt PermitDenyHandler) AddPermListEntries(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
+	rt.Logger.Debug("got a request for AddPermListEntries, but not doing anything about it right now")
+	return nil
+}
+func (rt PermitDenyHandler) SetGroupPermitMask(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
+	rt.Logger.Debug("got a request for SetGroupPermitMask, but not doing anything about it right now")
+	return nil
+}

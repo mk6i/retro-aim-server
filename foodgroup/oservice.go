@@ -326,6 +326,19 @@ func init() {
 			wire.AlertNotifyDisplayCapabilities,
 			wire.AlertUserOnline,
 		},
+		wire.PermitDeny: {
+			wire.PermitDenyErr,
+			wire.PermitDenyRightsQuery,
+			wire.PermitDenyRightsReply,
+			wire.PermitDenySetGroupPermitMask,
+			wire.PermitDenyAddPermListEntries,
+			wire.PermitDenyDelPermListEntries,
+			wire.PermitDenyAddDenyListEntries,
+			wire.PermitDenyDelDenyListEntries,
+			wire.PermitDenyBosErr,
+			wire.PermitDenyAddTempPermitListEntries,
+			wire.PermitDenyDelTempPermitListEntries,
+		},
 	}
 
 	for _, foodGroup := range []uint16{
@@ -339,6 +352,7 @@ func init() {
 		wire.Feedbag,
 		wire.BUCP,
 		wire.Alert,
+		wire.PermitDeny,
 	} {
 		subGroups := foodGroupToSubgroup[foodGroup]
 		for _, subGroup := range subGroups {
