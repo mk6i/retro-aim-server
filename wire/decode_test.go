@@ -133,6 +133,30 @@ func TestUnmarshal(t *testing.T) {
 				[]byte{0x74, 0x65, 0x73, 0x74, 0x2d, 0x76, 0x61, 0x6c, 0x75, 0x65}...), /* str val */
 		},
 		{
+			name: "null-terminated string16",
+			prototype: &struct {
+				Val string `oscar:"len_prefix=uint16,nullterm"`
+			}{},
+			want: &struct {
+				Val string `oscar:"len_prefix=uint16,nullterm"`
+			}{
+				Val: "test-value",
+			},
+			given: append(
+				[]byte{0x0, 0xb}, /* len prefix */
+				[]byte{0x74, 0x65, 0x73, 0x74, 0x2d, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x00}...), /* str val */
+		},
+		{
+			name: "null-terminated string16 without null terminator",
+			prototype: &struct {
+				Val string `oscar:"len_prefix=uint16,nullterm"`
+			}{},
+			wantErr: errNotNullTerminated,
+			given: append(
+				[]byte{0x0, 0xa}, /* len prefix */
+				[]byte{0x74, 0x65, 0x73, 0x74, 0x2d, 0x76, 0x61, 0x6c, 0x75, 0x65}...), /* str val */
+		},
+		{
 			name: "string16 read error",
 			prototype: &struct {
 				Val string `oscar:"len_prefix=uint16"`

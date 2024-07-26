@@ -9,7 +9,10 @@ import (
 	"reflect"
 )
 
-var ErrUnmarshalFailure = errors.New("failed to unmarshal")
+var (
+	ErrUnmarshalFailure  = errors.New("failed to unmarshal")
+	errNotNullTerminated = errors.New("nullterm tag is set, but string is not null-terminated")
+)
 
 // UnmarshalBE unmarshalls OSCAR protocol messages in big-endian format.
 func UnmarshalBE(v any, r io.Reader) error {
@@ -153,6 +156,14 @@ func unmarshalString(v reflect.Value, oscTag oscarTag, r io.Reader, order binary
 			return err
 		}
 	}
+
+	if oscTag.nullTerminated {
+		if buf[len(buf)-1] != 0x00 {
+			return errNotNullTerminated
+		}
+		buf = buf[0 : len(buf)-1] // remove null terminator
+	}
+
 	// todo is there a more efficient way?
 	v.SetString(string(buf))
 	return nil

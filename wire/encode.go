@@ -103,12 +103,16 @@ func marshalSlice(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer,
 }
 
 func marshalString(oscTag oscarTag, v reflect.Value, w io.Writer, order binary.ByteOrder) error {
+	str := v.String()
+	if oscTag.nullTerminated {
+		str = str + "\x00"
+	}
 	if oscTag.hasLenPrefix {
-		if err := marshalUnsignedInt(oscTag.lenPrefix, len(v.String()), w, order); err != nil {
+		if err := marshalUnsignedInt(oscTag.lenPrefix, len(str), w, order); err != nil {
 			return err
 		}
 	}
-	return binary.Write(w, order, []byte(v.String()))
+	return binary.Write(w, order, []byte(str))
 }
 
 func marshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer, order binary.ByteOrder) error {
@@ -172,6 +176,7 @@ type oscarTag struct {
 	hasLenPrefix   bool
 	lenPrefix      reflect.Kind
 	optional       bool
+	nullTerminated bool
 }
 
 func parseOSCARTag(tag reflect.StructTag) (oscarTag, error) {
@@ -210,7 +215,15 @@ func parseOSCARTag(tag reflect.StructTag) (oscarTag, error) {
 				}
 			}
 		} else {
-			oscTag.optional = kvSplit[0] == "optional"
+			switch kvSplit[0] {
+			case "optional":
+				oscTag.optional = true
+			case "nullterm":
+				oscTag.nullTerminated = true
+			default:
+				return oscTag, fmt.Errorf("%w: unsupported struct tag %s",
+					errInvalidStructTag, kvSplit[0])
+			}
 		}
 	}
 
