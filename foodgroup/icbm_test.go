@@ -57,10 +57,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					SubGroup:  wire.ICBMChannelMsgToClient,
 				},
 				Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
-					TLVUserInfo: wire.TLVUserInfo{
-						ScreenName:   "sender-screen-name",
-						WarningLevel: 10,
-					},
+					TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							{
@@ -108,10 +105,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					SubGroup:  wire.ICBMChannelMsgToClient,
 				},
 				Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
-					TLVUserInfo: wire.TLVUserInfo{
-						ScreenName:   "sender-screen-name",
-						WarningLevel: 10,
-					},
+					TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							{

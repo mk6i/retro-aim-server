@@ -95,12 +95,9 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 	}
 
 	clientIM := wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
-		Cookie:    inBody.Cookie,
-		ChannelID: inBody.ChannelID,
-		TLVUserInfo: wire.TLVUserInfo{
-			ScreenName:   string(sess.DisplayScreenName()),
-			WarningLevel: sess.Warning(),
-		},
+		Cookie:      inBody.Cookie,
+		ChannelID:   inBody.ChannelID,
+		TLVUserInfo: sess.TLVUserInfo(),
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
 				{
