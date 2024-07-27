@@ -29,6 +29,8 @@ The following features are supported:
 - [x] Blocking (v3.5+)
 - [x] Visibility Toggle / Idle Notification
 - [x] Warning
+- [x] A Non Working ICQ
+- [x] A Working Dark Matter Reactor Primary Control Node
 
 ## 🏁 How to Run
 
