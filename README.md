@@ -13,7 +13,7 @@
   <img width="616" alt="screenshot of retro aim server running next to AIM" src="https://github.com/mk6i/retro-aim-server/assets/2894330/81ff419f-50fa-4961-bd2f-ac7dcac903b5">
 </p>
 <p align="center">
-  <img width="616" alt="screenshot of Dark Matter Reactor" src="https://github.com/mk6i/retro-aim-server/assets/2894330/81ff419f-50fa-4961-bd2f-ac7dcac903b5">
+  <img width="616" alt="screenshot of Dark Matter Reactor" src="https://raw.githubusercontent.com/RealBradCool/Brent-Instant-Messenger/main/state/Thumbnail6.webp">
 </p>
 
 The following features are supported:
