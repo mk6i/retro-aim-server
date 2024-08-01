@@ -83,6 +83,7 @@ const (
 const (
 	LoginTLVTagsScreenName          uint16 = 0x01
 	LoginTLVTagsRoastedPassword     uint16 = 0x02
+	LoginTLVTagsClientIdentity      uint16 = 0x03
 	LoginTLVTagsReconnectHere       uint16 = 0x05
 	LoginTLVTagsAuthorizationCookie uint16 = 0x06
 	LoginTLVTagsErrorSubcode        uint16 = 0x08
@@ -90,7 +91,9 @@ const (
 )
 
 const (
-	LoginErrInvalidUsernameOrPassword uint16 = 0x01
+	LoginErrInvalidUsernameOrPassword uint16 = 0x0001
+	LoginErrInvalidPassword           uint16 = 0x0005 // invalid password
+	LoginErrICQUserErr                uint16 = 0x0008 // ICQ user doesn't exist
 )
 
 //

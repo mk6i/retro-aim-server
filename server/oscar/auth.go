@@ -101,6 +101,12 @@ func (rt AuthServer) processBUCPAuth(flapc *wire.FlapClient, err error) error {
 		return err
 	}
 
+	if outSNAC.Frame.SubGroup == wire.BUCPLoginResponse {
+		screenName, _ := challengeRequest.String(wire.LoginTLVTagsScreenName)
+		rt.Logger.Debug("failed BUCP challenge: user does not exist", "screen_name", screenName)
+		return nil // account does not exist
+	}
+
 	loginRequest := wire.SNAC_0x17_0x02_BUCPLoginRequest{}
 	if err := flapc.ReceiveSNAC(&wire.SNACFrame{}, &loginRequest); err != nil {
 		return err

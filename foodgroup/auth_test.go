@@ -16,8 +16,9 @@ import (
 
 func TestAuthService_BUCPLoginRequest(t *testing.T) {
 	user := state.User{
-		IdentScreenName: state.NewIdentScreenName("screen_name"),
-		AuthKey:         "auth_key",
+		IdentScreenName:   state.NewIdentScreenName("screen_name"),
+		DisplayScreenName: "screen_name",
+		AuthKey:           "auth_key",
 	}
 	assert.NoError(t, user.HashPassword("the_password"))
 
@@ -39,7 +40,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "user provides valid credentials and logs in successfully",
+			name: "AIM account exists, correct password, login OK",
 			cfg: config.Config{
 				OSCARHost: "127.0.0.1",
 				BOSPort:   "1234",
@@ -63,7 +64,14 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 				},
 				cookieIssuerParams: cookieIssuerParams{
 					{
-						data:   []byte(user.IdentScreenName.String()),
+						data: func() []byte {
+							loginCookie := bosCookie{
+								ScreenName: user.DisplayScreenName,
+							}
+							buf := &bytes.Buffer{}
+							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+							return buf.Bytes()
+						}(),
 						cookie: []byte("the-cookie"),
 					},
 				},
@@ -85,15 +93,15 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "user logs in with non-existent screen name--account is created and logged in successfully",
+			name: "ICQ account exists, correct password, login OK",
 			cfg: config.Config{
-				OSCARHost:   "127.0.0.1",
-				BOSPort:     "1234",
-				DisableAuth: true,
+				OSCARHost: "127.0.0.1",
+				BOSPort:   "1234",
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsClientIdentity, "ICQ 2000b"),
 						wire.NewTLV(wire.LoginTLVTagsPasswordHash, user.StrongMD5Pass),
 						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
 					},
@@ -104,24 +112,24 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 					getUserParams: getUserParams{
 						{
 							screenName: user.IdentScreenName,
-							result:     nil,
-						},
-					},
-					insertUserParams: insertUserParams{
-						{
-							user: user,
+							result:     &user,
 						},
 					},
 				},
 				cookieIssuerParams: cookieIssuerParams{
 					{
-						data:   []byte(user.IdentScreenName.String()),
+						data: func() []byte {
+							loginCookie := bosCookie{
+								ScreenName: user.DisplayScreenName,
+								ICQ:        1,
+							}
+							buf := &bytes.Buffer{}
+							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+							return buf.Bytes()
+						}(),
 						cookie: []byte("the-cookie"),
 					},
 				},
-			},
-			newUserFn: func(screenName state.DisplayScreenName) (state.User, error) {
-				return user, nil
 			},
 			expectOutput: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -140,180 +148,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "user logs in with invalid password--account is created and logged in successfully",
-			cfg: config.Config{
-				OSCARHost:   "127.0.0.1",
-				BOSPort:     "1234",
-				DisableAuth: true,
-			},
-			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
-				TLVRestBlock: wire.TLVRestBlock{
-					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("bad-password-hash")),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-					},
-				},
-			},
-			mockParams: mockParams{
-				userManagerParams: userManagerParams{
-					getUserParams: getUserParams{
-						{
-							screenName: user.IdentScreenName,
-							result:     &user,
-						},
-					},
-					insertUserParams: insertUserParams{
-						{
-							user: user,
-						},
-					},
-				},
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data:   []byte(user.IdentScreenName.String()),
-						cookie: []byte("the-cookie"),
-					},
-				},
-			},
-			newUserFn: func(screenName state.DisplayScreenName) (state.User, error) {
-				return user, nil
-			},
-			expectOutput: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.BUCP,
-					SubGroup:  wire.BUCPLoginResponse,
-				},
-				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "user logs in with invalid password--account already exists and logged in successfully",
-			cfg: config.Config{
-				OSCARHost:   "127.0.0.1",
-				BOSPort:     "1234",
-				DisableAuth: true,
-			},
-			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
-				TLVRestBlock: wire.TLVRestBlock{
-					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("bad-password-hash")),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-					},
-				},
-			},
-			mockParams: mockParams{
-				userManagerParams: userManagerParams{
-					getUserParams: getUserParams{
-						{
-							screenName: user.IdentScreenName,
-							result:     &user,
-						},
-					},
-					insertUserParams: insertUserParams{
-						{
-							user: user,
-							err:  state.ErrDupUser,
-						},
-					},
-				},
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data:   []byte(user.IdentScreenName.String()),
-						cookie: []byte("the-cookie"),
-					},
-				},
-			},
-			newUserFn: func(screenName state.DisplayScreenName) (state.User, error) {
-				return user, nil
-			},
-			expectOutput: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.BUCP,
-					SubGroup:  wire.BUCPLoginResponse,
-				},
-				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "user provides invalid password--account creation fails due to user creation runtime error",
-			cfg: config.Config{
-				DisableAuth: true,
-			},
-			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
-				TLVRestBlock: wire.TLVRestBlock{
-					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("bad-password-hash")),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-					},
-				},
-			},
-			mockParams: mockParams{
-				userManagerParams: userManagerParams{
-					getUserParams: getUserParams{
-						{
-							screenName: user.IdentScreenName,
-							result:     &user,
-						},
-					},
-				},
-			},
-			newUserFn: func(screenName state.DisplayScreenName) (state.User, error) {
-				return user, io.EOF
-			},
-			wantErr: io.EOF,
-		},
-		{
-			name: "user provides invalid password--account creation fails due to user upsert runtime error",
-			cfg: config.Config{
-				DisableAuth: true,
-			},
-			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
-				TLVRestBlock: wire.TLVRestBlock{
-					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("bad-password-hash")),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-					},
-				},
-			},
-			mockParams: mockParams{
-				userManagerParams: userManagerParams{
-					getUserParams: getUserParams{
-						{
-							screenName: user.IdentScreenName,
-							result:     &user,
-						},
-					},
-					insertUserParams: insertUserParams{
-						{
-							user: user,
-							err:  io.EOF,
-						},
-					},
-				},
-			},
-			newUserFn: func(screenName state.DisplayScreenName) (state.User, error) {
-				return user, nil
-			},
-			wantErr: io.EOF,
-		},
-		{
-			name: "user provides invalid password and receives invalid login response",
+			name: "AIM account exists, incorrect password, login fails",
 			cfg: config.Config{
 				OSCARHost: "127.0.0.1",
 				BOSPort:   "1234",
@@ -331,6 +166,45 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 					getUserParams: getUserParams{
 						{
 							screenName: user.IdentScreenName,
+							result:     &user,
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BUCP,
+					SubGroup:  wire.BUCPLoginResponse,
+				},
+				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: []wire.TLV{
+							wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+							wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidPassword),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "AIM account doesn't exist, login fails",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				BOSPort:   "1234",
+			},
+			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("password")),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, []byte("non_existent_screen_name")),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("non_existent_screen_name"),
 							result:     nil,
 						},
 					},
@@ -343,9 +217,168 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 				},
 				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
 					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: []wire.TLV{
+							wire.NewTLV(wire.LoginTLVTagsScreenName, state.NewIdentScreenName("non_existent_screen_name")),
+							wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidUsernameOrPassword),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "ICQ account doesn't exist, login fails",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				BOSPort:   "1234",
+			},
+			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsClientIdentity, "ICQ 2000b"),
+						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("password")),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, []byte("non_existent_uin")),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("non_existent_uin"),
+							result:     nil,
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BUCP,
+					SubGroup:  wire.BUCPLoginResponse,
+				},
+				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: []wire.TLV{
+							wire.NewTLV(wire.LoginTLVTagsScreenName, state.NewIdentScreenName("non_existent_uin")),
+							wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrICQUserErr),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "account doesn't exist, authentication is disabled, account is created, login succeeds",
+			cfg: config.Config{
+				OSCARHost:   "127.0.0.1",
+				BOSPort:     "1234",
+				DisableAuth: true,
+			},
+			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsPasswordHash, user.StrongMD5Pass),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: user.IdentScreenName,
+							result:     nil,
+						},
+					},
+					insertUserParams: insertUserParams{
+						{
+							user: user,
+						},
+					},
+				},
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data: func() []byte {
+							loginCookie := bosCookie{
+								ScreenName: user.DisplayScreenName,
+							}
+							buf := &bytes.Buffer{}
+							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+							return buf.Bytes()
+						}(),
+						cookie: []byte("the-cookie"),
+					},
+				},
+			},
+			newUserFn: func(screenName state.DisplayScreenName) (state.User, error) {
+				return user, nil
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BUCP,
+					SubGroup:  wire.BUCPLoginResponse,
+				},
+				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
+					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-							wire.NewTLV(wire.LoginTLVTagsErrorSubcode, uint16(0x01)),
+							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "account exists, password is invalid, authentication is disabled, login succeeds",
+			cfg: config.Config{
+				OSCARHost:   "127.0.0.1",
+				BOSPort:     "1234",
+				DisableAuth: true,
+			},
+			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("bad-password-hash")),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: user.IdentScreenName,
+							result:     &user,
+						},
+					},
+				},
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data: func() []byte {
+							loginCookie := bosCookie{
+								ScreenName: user.DisplayScreenName,
+							}
+							buf := &bytes.Buffer{}
+							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+							return buf.Bytes()
+						}(),
+						cookie: []byte("the-cookie"),
+					},
+				},
+			},
+			newUserFn: func(screenName state.DisplayScreenName) (state.User, error) {
+				return user, nil
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BUCP,
+					SubGroup:  wire.BUCPLoginResponse,
+				},
+				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 						},
 					},
 				},
@@ -411,12 +444,13 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 
 func TestAuthService_FLAPLoginResponse(t *testing.T) {
 	user := state.User{
-		IdentScreenName: state.NewIdentScreenName("screen_name"),
-		AuthKey:         "auth_key",
+		AuthKey:           "auth_key",
+		DisplayScreenName: "screen_name",
+		IdentScreenName:   state.NewIdentScreenName("screen_name"),
 	}
 	assert.NoError(t, user.HashPassword("the_password"))
 
-	// obfuscated password value: "the_password"
+	// roastedPassword the roasted form of "the_password"
 	roastedPassword := []byte{0x87, 0x4E, 0xE4, 0x9B, 0x49, 0xE7, 0xA8, 0xE1, 0x06, 0xCC, 0xCB, 0x82}
 
 	cases := []struct {
@@ -437,7 +471,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "user provides valid credentials and logs in successfully",
+			name: "AIM account exists, correct password, login OK",
 			cfg: config.Config{
 				OSCARHost: "127.0.0.1",
 				BOSPort:   "1234",
@@ -461,7 +495,14 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				},
 				cookieIssuerParams: cookieIssuerParams{
 					{
-						data:   []byte(user.IdentScreenName.String()),
+						data: func() []byte {
+							loginCookie := bosCookie{
+								ScreenName: user.DisplayScreenName,
+							}
+							buf := &bytes.Buffer{}
+							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+							return buf.Bytes()
+						}(),
 						cookie: []byte("the-cookie"),
 					},
 				},
@@ -475,7 +516,148 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			},
 		},
 		{
-			name: "user logs in with non-existent screen name--account is created and logged in successfully",
+			name: "ICQ account exists, correct password, login OK",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				BOSPort:   "1234",
+			},
+			inputSNAC: wire.FLAPSignonFrame{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsClientIdentity, "ICQ 2000b"),
+						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, roastedPassword),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: user.IdentScreenName,
+							result:     &user,
+						},
+					},
+				},
+				cookieIssuerParams: cookieIssuerParams{
+					{
+						data: func() []byte {
+							loginCookie := bosCookie{
+								ScreenName: user.DisplayScreenName,
+								ICQ:        1,
+							}
+							buf := &bytes.Buffer{}
+							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+							return buf.Bytes()
+						}(),
+						cookie: []byte("the-cookie"),
+					},
+				},
+			},
+			expectOutput: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
+					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
+				},
+			},
+		},
+		{
+			name: "AIM account exists, incorrect password, login fails",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				BOSPort:   "1234",
+			},
+			inputSNAC: wire.FLAPSignonFrame{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, []byte("bad_roasted_password")),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: user.IdentScreenName,
+							result:     &user,
+						},
+					},
+				},
+			},
+			expectOutput: wire.TLVRestBlock{
+				TLVList: []wire.TLV{
+					wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+					wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidPassword),
+				},
+			},
+		},
+		{
+			name: "AIM account doesn't exist, login fails",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				BOSPort:   "1234",
+			},
+			inputSNAC: wire.FLAPSignonFrame{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, roastedPassword),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, []byte("non_existent_screen_name")),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("non_existent_screen_name"),
+							result:     nil,
+						},
+					},
+				},
+			},
+			expectOutput: wire.TLVRestBlock{
+				TLVList: []wire.TLV{
+					wire.NewTLV(wire.LoginTLVTagsScreenName, state.NewIdentScreenName("non_existent_screen_name")),
+					wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidUsernameOrPassword),
+				},
+			},
+		},
+		{
+			name: "ICQ account doesn't exist, login fails",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				BOSPort:   "1234",
+			},
+			inputSNAC: wire.FLAPSignonFrame{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsClientIdentity, "ICQ 2000b"),
+						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, roastedPassword),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, []byte("non_existent_uin")),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("non_existent_uin"),
+							result:     nil,
+						},
+					},
+				},
+			},
+			expectOutput: wire.TLVRestBlock{
+				TLVList: []wire.TLV{
+					wire.NewTLV(wire.LoginTLVTagsScreenName, state.NewIdentScreenName("non_existent_uin")),
+					wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrICQUserErr),
+				},
+			},
+		},
+		{
+			name: "account doesn't exist, authentication is disabled, account is created, login succeeds",
 			cfg: config.Config{
 				OSCARHost:   "127.0.0.1",
 				BOSPort:     "1234",
@@ -505,7 +687,14 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				},
 				cookieIssuerParams: cookieIssuerParams{
 					{
-						data:   []byte(user.IdentScreenName.String()),
+						data: func() []byte {
+							loginCookie := bosCookie{
+								ScreenName: user.DisplayScreenName,
+							}
+							buf := &bytes.Buffer{}
+							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+							return buf.Bytes()
+						}(),
 						cookie: []byte("the-cookie"),
 					},
 				},
@@ -522,7 +711,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			},
 		},
 		{
-			name: "user logs in with invalid password--account is created and logged in successfully",
+			name: "account exists, password is invalid, authentication is disabled, login succeeds",
 			cfg: config.Config{
 				OSCARHost:   "127.0.0.1",
 				BOSPort:     "1234",
@@ -531,7 +720,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("bad-roasted-password")),
+						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, "bad-roasted-password"),
 						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
 					},
 				},
@@ -544,15 +733,17 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 							result:     &user,
 						},
 					},
-					insertUserParams: insertUserParams{
-						{
-							user: user,
-						},
-					},
 				},
 				cookieIssuerParams: cookieIssuerParams{
 					{
-						data:   []byte(user.IdentScreenName.String()),
+						data: func() []byte {
+							loginCookie := bosCookie{
+								ScreenName: user.DisplayScreenName,
+							}
+							buf := &bytes.Buffer{}
+							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+							return buf.Bytes()
+						}(),
 						cookie: []byte("the-cookie"),
 					},
 				},
@@ -565,147 +756,6 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 					wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
 					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
-				},
-			},
-		},
-		{
-			name: "user logs in with invalid password--account already exists and logged in successfully",
-			cfg: config.Config{
-				OSCARHost:   "127.0.0.1",
-				BOSPort:     "1234",
-				DisableAuth: true,
-			},
-			inputSNAC: wire.FLAPSignonFrame{
-				TLVRestBlock: wire.TLVRestBlock{
-					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("bad-roasted-password")),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-					},
-				},
-			},
-			mockParams: mockParams{
-				userManagerParams: userManagerParams{
-					getUserParams: getUserParams{
-						{
-							screenName: user.IdentScreenName,
-							result:     &user,
-						},
-					},
-					insertUserParams: insertUserParams{
-						{
-							user: user,
-							err:  state.ErrDupUser,
-						},
-					},
-				},
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data:   []byte(user.IdentScreenName.String()),
-						cookie: []byte("the-cookie"),
-					},
-				},
-			},
-			newUserFn: func(screenName state.DisplayScreenName) (state.User, error) {
-				return user, nil
-			},
-			expectOutput: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
-					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
-				},
-			},
-		},
-		{
-			name: "user provides invalid password--account creation fails due to user creation runtime error",
-			cfg: config.Config{
-				DisableAuth: true,
-			},
-			inputSNAC: wire.FLAPSignonFrame{
-				TLVRestBlock: wire.TLVRestBlock{
-					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("bad-roasted-password")),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-					},
-				},
-			},
-			mockParams: mockParams{
-				userManagerParams: userManagerParams{
-					getUserParams: getUserParams{
-						{
-							screenName: user.IdentScreenName,
-							result:     &user,
-						},
-					},
-				},
-			},
-			newUserFn: func(screenName state.DisplayScreenName) (state.User, error) {
-				return user, io.EOF
-			},
-			wantErr: io.EOF,
-		},
-		{
-			name: "user provides invalid password--account creation fails due to user upsert runtime error",
-			cfg: config.Config{
-				DisableAuth: true,
-			},
-			inputSNAC: wire.FLAPSignonFrame{
-				TLVRestBlock: wire.TLVRestBlock{
-					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("bad-roasted-password")),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-					},
-				},
-			},
-			mockParams: mockParams{
-				userManagerParams: userManagerParams{
-					getUserParams: getUserParams{
-						{
-							screenName: user.IdentScreenName,
-							result:     &user,
-						},
-					},
-					insertUserParams: insertUserParams{
-						{
-							user: user,
-							err:  io.EOF,
-						},
-					},
-				},
-			},
-			newUserFn: func(screenName state.DisplayScreenName) (state.User, error) {
-				return user, nil
-			},
-			wantErr: io.EOF,
-		},
-		{
-			name: "user provides invalid password and receives invalid login response",
-			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
-			},
-			inputSNAC: wire.FLAPSignonFrame{
-				TLVRestBlock: wire.TLVRestBlock{
-					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("bad-roasted-password")),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-					},
-				},
-			},
-			mockParams: mockParams{
-				userManagerParams: userManagerParams{
-					getUserParams: getUserParams{
-						{
-							screenName: user.IdentScreenName,
-							result:     nil,
-						},
-					},
-				},
-			},
-			expectOutput: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
-					wire.NewTLV(wire.LoginTLVTagsErrorSubcode, uint16(0x01)),
 				},
 			},
 		},
@@ -714,7 +764,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LoginTLVTagsPasswordHash, user.StrongMD5Pass),
+						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, roastedPassword),
 						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
 					},
 				},
@@ -972,12 +1022,16 @@ func TestAuthService_RegisterBOSSession_HappyPath(t *testing.T) {
 		AddSession(sess.DisplayScreenName()).
 		Return(sess)
 
-	authCookie := []byte(`the-auth-cookie`)
+	authCookie := bosCookie{
+		ScreenName: sess.DisplayScreenName(),
+	}
+	cookieBuf := &bytes.Buffer{}
+	assert.NoError(t, wire.MarshalBE(authCookie, cookieBuf))
 
 	cookieBaker := newMockCookieBaker(t)
 	cookieBaker.EXPECT().
-		Crack(authCookie).
-		Return([]byte("screen-name"), nil)
+		Crack(cookieBuf.Bytes()).
+		Return(cookieBuf.Bytes(), nil)
 
 	userManager := newMockUserManager(t)
 	userManager.EXPECT().
@@ -991,7 +1045,7 @@ func TestAuthService_RegisterBOSSession_HappyPath(t *testing.T) {
 
 	svc := NewAuthService(config.Config{}, sessionManager, nil, userManager, nil, cookieBaker, nil, nil, nil, accountManager)
 
-	have, err := svc.RegisterBOSSession(authCookie)
+	have, err := svc.RegisterBOSSession(cookieBuf.Bytes())
 	assert.NoError(t, err)
 	assert.Equal(t, sess, have)
 }

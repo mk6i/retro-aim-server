@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
@@ -75,14 +76,24 @@ func (s AuthService) RegisterChatSession(authCookie []byte) (*state.Session, err
 	return s.chatSessionRegistry.AddSession(c.ChatCookie, c.ScreenName), nil
 }
 
+type bosCookie struct {
+	ICQ        uint8                   `oscar:"len_prefix=uint8"`
+	ScreenName state.DisplayScreenName `oscar:"len_prefix=uint8"`
+}
+
 // RegisterBOSSession creates and returns a user's session.
 func (s AuthService) RegisterBOSSession(authCookie []byte) (*state.Session, error) {
-	screenName, err := s.cookieBaker.Crack(authCookie)
+	buf, err := s.cookieBaker.Crack(authCookie)
 	if err != nil {
 		return nil, err
 	}
 
-	u, err := s.userManager.User(state.NewIdentScreenName(string(screenName)))
+	c := bosCookie{}
+	if err := wire.UnmarshalBE(&c, bytes.NewBuffer(buf)); err != nil {
+		return nil, err
+	}
+
+	u, err := s.userManager.User(c.ScreenName.IdentScreenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
 	}
@@ -140,10 +151,8 @@ func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session) {
 // BUCPChallenge processes a BUCP authentication challenge request. It
 // retrieves the user's auth key based on the screen name provided in the
 // request. The client uses the auth key to salt the MD5 password hash provided
-// in the subsequent login request. If the account is invalid, an error code is
-// set in TLV wire.LoginTLVTagsErrorSubcode. If login credentials are invalid and app
-// config DisableAuth is true, a stub auth key is generated and a successful
-// challenge response is returned.
+// in the subsequent login request. If the account is valid, return
+// SNAC(0x17,0x07), otherwise return SNAC(0x17,0x03).
 func (s AuthService) BUCPChallenge(
 	bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest,
 	newUUIDFn func() uuid.UUID,
@@ -250,56 +259,86 @@ func (s AuthService) login(
 		return wire.TLVRestBlock{}, errors.New("screen name doesn't exist in tlv")
 	}
 
+	isICQ := false
+	if clientName, hasclientName := TLVList.String(wire.LoginTLVTagsClientIdentity); hasclientName {
+		isICQ = strings.HasPrefix(clientName, "ICQ ")
+	}
+
 	user, err := s.userManager.User(state.NewIdentScreenName(screenName))
 	if err != nil {
 		return wire.TLVRestBlock{}, err
 	}
 
-	var loginOK bool
-	if user != nil {
-		if md5Hash, hasMD5 := TLVList.Slice(wire.LoginTLVTagsPasswordHash); hasMD5 {
-			loginOK = user.ValidateHash(md5Hash)
-		} else if roastedPass, hasRoasted := TLVList.Slice(wire.LoginTLVTagsRoastedPassword); hasRoasted {
-			loginOK = user.ValidateRoastedPass(roastedPass)
-		} else {
-			return wire.TLVRestBlock{}, errors.New("password hash doesn't exist in tlv")
-		}
-	}
-
-	if loginOK || s.config.DisableAuth {
-		if !loginOK {
-			// make login succeed anyway. create new user if the account
-			// doesn't already exist.
+	if user == nil {
+		if s.config.DisableAuth {
 			newUser, err := newUserFn(state.DisplayScreenName(screenName))
 			if err != nil {
 				return wire.TLVRestBlock{}, err
 			}
 			if err := s.userManager.InsertUser(newUser); err != nil {
-				if !errors.Is(err, state.ErrDupUser) {
-					return wire.TLVRestBlock{}, err
-				}
+				return wire.TLVRestBlock{}, err
 			}
+			return s.loginSuccessResponse(screenName, isICQ, err)
 		}
 
-		cookie, err := s.cookieBaker.Issue([]byte(screenName))
-		if err != nil {
-			return wire.TLVRestBlock{}, fmt.Errorf("failed to make auth cookie: %w", err)
+		loginErr := wire.LoginErrInvalidUsernameOrPassword
+		if isICQ {
+			loginErr = wire.LoginErrICQUserErr
 		}
-		// auth success
-		return wire.TLVRestBlock{
-			TLVList: []wire.TLV{
-				wire.NewTLV(wire.LoginTLVTagsScreenName, screenName),
-				wire.NewTLV(wire.LoginTLVTagsReconnectHere, net.JoinHostPort(s.config.OSCARHost, s.config.BOSPort)),
-				wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, cookie),
-			},
-		}, nil
+		return loginFailureResponse(screenName, loginErr), nil
 	}
 
-	// auth failure
+	if s.config.DisableAuth {
+		return s.loginSuccessResponse(screenName, isICQ, err)
+	}
+
+	var loginOK bool
+	// get the password from the appropriate TLV. older clients have a
+	// roasted password, newer clients have a hashed password. ICQ may omit
+	// the password TLV when logging in without saved password.
+	if md5Hash, hasMD5 := TLVList.Slice(wire.LoginTLVTagsPasswordHash); hasMD5 {
+		loginOK = user.ValidateHash(md5Hash)
+	} else if roastedPass, hasRoasted := TLVList.Slice(wire.LoginTLVTagsRoastedPassword); hasRoasted {
+		loginOK = user.ValidateRoastedPass(roastedPass)
+	}
+	if !loginOK {
+		return loginFailureResponse(screenName, wire.LoginErrInvalidPassword), nil
+	}
+
+	return s.loginSuccessResponse(screenName, isICQ, err)
+}
+
+func (s AuthService) loginSuccessResponse(screenName string, isICQ bool, err error) (wire.TLVRestBlock, error) {
+	loginCookie := bosCookie{
+		ScreenName: state.DisplayScreenName(screenName),
+	}
+	if isICQ {
+		loginCookie.ICQ = 1
+	}
+
+	buf := &bytes.Buffer{}
+	if err := wire.MarshalBE(loginCookie, buf); err != nil {
+		return wire.TLVRestBlock{}, err
+	}
+	cookie, err := s.cookieBaker.Issue(buf.Bytes())
+	if err != nil {
+		return wire.TLVRestBlock{}, fmt.Errorf("failed to make auth cookie: %w", err)
+	}
+
 	return wire.TLVRestBlock{
 		TLVList: []wire.TLV{
 			wire.NewTLV(wire.LoginTLVTagsScreenName, screenName),
-			wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidUsernameOrPassword),
+			wire.NewTLV(wire.LoginTLVTagsReconnectHere, net.JoinHostPort(s.config.OSCARHost, s.config.BOSPort)),
+			wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, cookie),
 		},
 	}, nil
+}
+
+func loginFailureResponse(screenName string, code uint16) wire.TLVRestBlock {
+	return wire.TLVRestBlock{
+		TLVList: []wire.TLV{
+			wire.NewTLV(wire.LoginTLVTagsScreenName, screenName),
+			wire.NewTLV(wire.LoginTLVTagsErrorSubcode, code),
+		},
+	}
 }
