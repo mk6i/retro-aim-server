@@ -155,13 +155,12 @@ func unmarshalString(v reflect.Value, oscTag oscarTag, r io.Reader, order binary
 		if _, err := io.ReadFull(r, buf); err != nil {
 			return err
 		}
-	}
-
-	if oscTag.nullTerminated {
-		if buf[len(buf)-1] != 0x00 {
-			return errNotNullTerminated
+		if oscTag.nullTerminated {
+			if buf[len(buf)-1] != 0x00 {
+				return errNotNullTerminated
+			}
+			buf = buf[0 : len(buf)-1] // remove null terminator
 		}
-		buf = buf[0 : len(buf)-1] // remove null terminator
 	}
 
 	// todo is there a more efficient way?

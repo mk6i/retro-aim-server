@@ -72,7 +72,12 @@ func (rt AuthServer) handleNewConnection(rwc io.ReadWriteCloser) error {
 		return err
 	}
 
-	if _, hasRoastedPassword := signonFrame.Uint16(wire.LoginTLVTagsRoastedPassword); hasRoastedPassword {
+	// decide whether the client is using BUCP or FLAP authentication based on
+	// the presence of the screen name TLV. this block used to check for the
+	// presence of the roasted password TLV, however that proved an unreliable
+	// indicator of FLAP-auth because older ICQ clients appear to omit the
+	// roasted password TLV when the password is not stored client-side.
+	if _, hasScreenName := signonFrame.Uint16(wire.LoginTLVTagsScreenName); hasScreenName {
 		return rt.processFLAPAuth(signonFrame, flapc)
 	}
 

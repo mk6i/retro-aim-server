@@ -147,6 +147,20 @@ func TestUnmarshal(t *testing.T) {
 				[]byte{0x74, 0x65, 0x73, 0x74, 0x2d, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x00}...), /* str val */
 		},
 		{
+			name: "null-terminated string16 with len 0",
+			prototype: &struct {
+				Val string `oscar:"len_prefix=uint16,nullterm"`
+			}{},
+			want: &struct {
+				Val string `oscar:"len_prefix=uint16,nullterm"`
+			}{
+				Val: "",
+			},
+			given: append(
+				[]byte{0x0, 0x00}, /* len prefix */
+			),
+		},
+		{
 			name: "null-terminated string16 without null terminator",
 			prototype: &struct {
 				Val string `oscar:"len_prefix=uint16,nullterm"`
