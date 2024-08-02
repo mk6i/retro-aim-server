@@ -215,8 +215,15 @@ func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Se
 			TLVUserInfo: wire.TLVUserInfo{
 				// don't include the TLV block, otherwise the AIM client fails
 				// to process the block event
-				ScreenName:   string(sess.DisplayScreenName()),
+				ScreenName:   sess.IdentScreenName().String(),
 				WarningLevel: sess.Warning(),
+				TLVBlock: wire.TLVBlock{
+					TLVList: wire.TLVList{
+						// this TLV needs to be set in order for departure
+						// events to work in ICQ
+						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint8(0)),
+					},
+				},
 			},
 		},
 	})
@@ -234,7 +241,7 @@ func (s BuddyService) UnicastBuddyDeparted(ctx context.Context, from *state.Sess
 			TLVUserInfo: wire.TLVUserInfo{
 				// don't include the TLV block, otherwise the AIM client fails
 				// to process the block event
-				ScreenName:   string(from.DisplayScreenName()),
+				ScreenName:   from.IdentScreenName().String(),
 				WarningLevel: from.Warning(),
 			},
 		},

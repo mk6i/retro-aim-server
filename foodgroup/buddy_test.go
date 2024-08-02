@@ -442,6 +442,11 @@ func TestBuddyService_BroadcastDeparture(t *testing.T) {
 									TLVUserInfo: wire.TLVUserInfo{
 										ScreenName:   "user_screen_name",
 										WarningLevel: 0,
+										TLVBlock: wire.TLVBlock{
+											TLVList: wire.TLVList{
+												wire.NewTLV(wire.OServiceUserInfoUserFlags, uint8(0)),
+											},
+										},
 									},
 								},
 							},
