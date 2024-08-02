@@ -52,6 +52,14 @@ func TestSession_SetAndGetChatRoomCookie(t *testing.T) {
 	assert.Equal(t, sn, s.ChatRoomCookie())
 }
 
+func TestSession_SetAndGetUIN(t *testing.T) {
+	s := NewSession()
+	assert.Empty(t, s.UIN())
+	uin := uint32(100003)
+	s.SetUIN(uin)
+	assert.Equal(t, uin, s.UIN())
+}
+
 func TestSession_TLVUserInfo(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -66,6 +74,7 @@ func TestSession_TLVUserInfo(t *testing.T) {
 				s.SetIdentScreenName(NewIdentScreenName("xXAIMUSERXx"))
 				s.SetDisplayScreenName("xXAIMUSERXx")
 				s.IncrementWarning(10)
+				s.SetUserInfoFlag(wire.OServiceUserFlagOSCARFree)
 				return s
 			},
 			want: wire.TLVUserInfo{
@@ -76,6 +85,29 @@ func TestSession_TLVUserInfo(t *testing.T) {
 						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
 						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
 						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
+					},
+				},
+			},
+		},
+		{
+			name: "user is on ICQ",
+			givenSessionFn: func() *Session {
+				s := NewSession()
+				s.SetSignonTime(time.Unix(1, 0))
+				s.SetIdentScreenName(NewIdentScreenName("1000003"))
+				s.SetDisplayScreenName("1000003")
+				s.SetUserInfoFlag(wire.OServiceUserFlagICQ)
+
+				return s
+			},
+			want: wire.TLVUserInfo{
+				ScreenName: "1000003",
+				TLVBlock: wire.TLVBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLV(wire.OServiceUserInfoUserFlags, wire.OServiceUserFlagOSCARFree|wire.OServiceUserFlagICQ),
+						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
+						wire.NewTLV(wire.OServiceUserInfoICQDC, wire.ICQDCInfo{}),
 					},
 				},
 			},

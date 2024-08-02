@@ -38,6 +38,7 @@ type Session struct {
 	signonComplete    bool
 	signonTime        time.Time
 	stopCh            chan struct{}
+	uin               uint32
 	warning           uint16
 	userInfoFlags     uint16
 }
@@ -200,6 +201,20 @@ func (s *Session) SetSignonComplete() {
 	s.signonComplete = true
 }
 
+// UIN returns the user's ICQ number.
+func (s *Session) UIN() uint32 {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.uin
+}
+
+// SetUIN sets the user's ICQ number.
+func (s *Session) SetUIN(uin uint32) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.uin = uin
+}
+
 // TLVUserInfo returns a TLV list containing session information required by
 // multiple SNAC message types that convey user information.
 func (s *Session) TLVUserInfo() wire.TLVUserInfo {
@@ -233,6 +248,12 @@ func (s *Session) userInfo() wire.TLVList {
 	// idle status
 	if s.idle {
 		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(s.nowFn().Sub(s.idleTime).Minutes())))
+	}
+
+	// ICQ direct-connect info. The TLV is required for buddy arrival events to
+	// work in ICQ, even if the values are set to default.
+	if s.userInfoFlags&wire.OServiceUserFlagICQ == wire.OServiceUserFlagICQ {
+		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoICQDC, wire.ICQDCInfo{}))
 	}
 
 	// capabilities (buddy icon, chat, etc...)

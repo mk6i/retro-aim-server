@@ -2,6 +2,7 @@ package foodgroup
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"testing"
 
@@ -62,17 +63,19 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						},
 					},
 				},
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data: func() []byte {
-							loginCookie := bosCookie{
-								ScreenName: user.DisplayScreenName,
-							}
-							buf := &bytes.Buffer{}
-							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
-							return buf.Bytes()
-						}(),
-						cookie: []byte("the-cookie"),
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: func() []byte {
+								loginCookie := bosCookie{
+									ScreenName: user.DisplayScreenName,
+								}
+								buf := &bytes.Buffer{}
+								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+								return buf.Bytes()
+							}(),
+							cookieOut: []byte("the-cookie"),
+						},
 					},
 				},
 			},
@@ -116,18 +119,20 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						},
 					},
 				},
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data: func() []byte {
-							loginCookie := bosCookie{
-								ScreenName: user.DisplayScreenName,
-								ICQ:        1,
-							}
-							buf := &bytes.Buffer{}
-							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
-							return buf.Bytes()
-						}(),
-						cookie: []byte("the-cookie"),
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: func() []byte {
+								loginCookie := bosCookie{
+									ScreenName: user.DisplayScreenName,
+									ICQ:        1,
+								}
+								buf := &bytes.Buffer{}
+								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+								return buf.Bytes()
+							}(),
+							cookieOut: []byte("the-cookie"),
+						},
 					},
 				},
 			},
@@ -294,17 +299,19 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						},
 					},
 				},
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data: func() []byte {
-							loginCookie := bosCookie{
-								ScreenName: user.DisplayScreenName,
-							}
-							buf := &bytes.Buffer{}
-							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
-							return buf.Bytes()
-						}(),
-						cookie: []byte("the-cookie"),
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: func() []byte {
+								loginCookie := bosCookie{
+									ScreenName: user.DisplayScreenName,
+								}
+								buf := &bytes.Buffer{}
+								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+								return buf.Bytes()
+							}(),
+							cookieOut: []byte("the-cookie"),
+						},
 					},
 				},
 			},
@@ -351,17 +358,19 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						},
 					},
 				},
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data: func() []byte {
-							loginCookie := bosCookie{
-								ScreenName: user.DisplayScreenName,
-							}
-							buf := &bytes.Buffer{}
-							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
-							return buf.Bytes()
-						}(),
-						cookie: []byte("the-cookie"),
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: func() []byte {
+								loginCookie := bosCookie{
+									ScreenName: user.DisplayScreenName,
+								}
+								buf := &bytes.Buffer{}
+								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+								return buf.Bytes()
+							}(),
+							cookieOut: []byte("the-cookie"),
+						},
 					},
 				},
 			},
@@ -423,10 +432,10 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			}
 			sessionManager := newMockSessionManager(t)
 			cookieBaker := newMockCookieBaker(t)
-			for _, params := range tc.mockParams.cookieIssuerParams {
+			for _, params := range tc.mockParams.cookieIssueParams {
 				cookieBaker.EXPECT().
-					Issue(params.data).
-					Return(params.cookie, params.err)
+					Issue(params.dataIn).
+					Return(params.cookieOut, params.err)
 			}
 
 			svc := AuthService{
@@ -493,17 +502,19 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 						},
 					},
 				},
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data: func() []byte {
-							loginCookie := bosCookie{
-								ScreenName: user.DisplayScreenName,
-							}
-							buf := &bytes.Buffer{}
-							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
-							return buf.Bytes()
-						}(),
-						cookie: []byte("the-cookie"),
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: func() []byte {
+								loginCookie := bosCookie{
+									ScreenName: user.DisplayScreenName,
+								}
+								buf := &bytes.Buffer{}
+								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+								return buf.Bytes()
+							}(),
+							cookieOut: []byte("the-cookie"),
+						},
 					},
 				},
 			},
@@ -539,18 +550,20 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 						},
 					},
 				},
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data: func() []byte {
-							loginCookie := bosCookie{
-								ScreenName: user.DisplayScreenName,
-								ICQ:        1,
-							}
-							buf := &bytes.Buffer{}
-							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
-							return buf.Bytes()
-						}(),
-						cookie: []byte("the-cookie"),
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: func() []byte {
+								loginCookie := bosCookie{
+									ScreenName: user.DisplayScreenName,
+									ICQ:        1,
+								}
+								buf := &bytes.Buffer{}
+								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+								return buf.Bytes()
+							}(),
+							cookieOut: []byte("the-cookie"),
+						},
 					},
 				},
 			},
@@ -685,17 +698,19 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 						},
 					},
 				},
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data: func() []byte {
-							loginCookie := bosCookie{
-								ScreenName: user.DisplayScreenName,
-							}
-							buf := &bytes.Buffer{}
-							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
-							return buf.Bytes()
-						}(),
-						cookie: []byte("the-cookie"),
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: func() []byte {
+								loginCookie := bosCookie{
+									ScreenName: user.DisplayScreenName,
+								}
+								buf := &bytes.Buffer{}
+								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+								return buf.Bytes()
+							}(),
+							cookieOut: []byte("the-cookie"),
+						},
 					},
 				},
 			},
@@ -734,17 +749,19 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 						},
 					},
 				},
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data: func() []byte {
-							loginCookie := bosCookie{
-								ScreenName: user.DisplayScreenName,
-							}
-							buf := &bytes.Buffer{}
-							assert.NoError(t, wire.MarshalBE(loginCookie, buf))
-							return buf.Bytes()
-						}(),
-						cookie: []byte("the-cookie"),
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: func() []byte {
+								loginCookie := bosCookie{
+									ScreenName: user.DisplayScreenName,
+								}
+								buf := &bytes.Buffer{}
+								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+								return buf.Bytes()
+							}(),
+							cookieOut: []byte("the-cookie"),
+						},
 					},
 				},
 			},
@@ -798,10 +815,10 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			}
 			sessionManager := newMockSessionManager(t)
 			cookieBaker := newMockCookieBaker(t)
-			for _, params := range tc.mockParams.cookieIssuerParams {
+			for _, params := range tc.mockParams.cookieIssueParams {
 				cookieBaker.EXPECT().
-					Issue(params.data).
-					Return(params.cookie, params.err)
+					Issue(params.dataIn).
+					Return(params.cookieOut, params.err)
 			}
 			svc := AuthService{
 				config:         tc.cfg,
@@ -1014,40 +1031,167 @@ func TestAuthService_RegisterChatSession_HappyPath(t *testing.T) {
 	assert.Equal(t, sess, have)
 }
 
-func TestAuthService_RegisterBOSSession_HappyPath(t *testing.T) {
-	sess := newTestSession("screen-name")
-
-	sessionManager := newMockSessionManager(t)
-	sessionManager.EXPECT().
-		AddSession(sess.DisplayScreenName()).
-		Return(sess)
-
-	authCookie := bosCookie{
-		ScreenName: sess.DisplayScreenName(),
+func TestAuthService_RegisterBOSSession(t *testing.T) {
+	screenName := state.DisplayScreenName("UserScreenName")
+	aimAuthCookie := bosCookie{
+		ScreenName: screenName,
 	}
-	cookieBuf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(authCookie, cookieBuf))
+	buf := &bytes.Buffer{}
+	assert.NoError(t, wire.MarshalBE(aimAuthCookie, buf))
+	aimCookie := buf.Bytes()
 
-	cookieBaker := newMockCookieBaker(t)
-	cookieBaker.EXPECT().
-		Crack(cookieBuf.Bytes()).
-		Return(cookieBuf.Bytes(), nil)
+	uin := state.DisplayScreenName("100003")
+	icqAuthCookie := bosCookie{
+		ICQ:        1,
+		ScreenName: uin,
+	}
+	buf = &bytes.Buffer{}
+	assert.NoError(t, wire.MarshalBE(icqAuthCookie, buf))
+	icqCookie := buf.Bytes()
 
-	userManager := newMockUserManager(t)
-	userManager.EXPECT().
-		User(sess.IdentScreenName()).
-		Return(&state.User{DisplayScreenName: sess.DisplayScreenName()}, nil)
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// cookieOut is the auth cookieOut that contains session information
+		cookie []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// wantSess asserts the values of one or more session properties
+		wantSess func(*state.Session) bool
+		// wantErr is the error we expect from the method
+		wantErr error
+	}{
+		{
+			name:   "successfully register an AIM session",
+			cookie: aimCookie,
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					cookieCrackParams: cookieCrackParams{
+						{
+							dataOut:  aimCookie,
+							cookieIn: aimCookie,
+						},
+					},
+				},
+				sessionManagerParams: sessionManagerParams{
+					addSessionParams: addSessionParams{
+						{
+							screenName: screenName,
+							result:     newTestSession(screenName),
+						},
+					},
+				},
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: screenName.IdentScreenName(),
+							result: &state.User{
+								IdentScreenName:   screenName.IdentScreenName(),
+								DisplayScreenName: screenName,
+							},
+						},
+					},
+				},
+				accountManagerParams: accountManagerParams{
+					accountManagerConfirmStatusByNameParams: accountManagerConfirmStatusByNameParams{
+						{
+							screenName:    screenName.IdentScreenName(),
+							confirmStatus: true,
+						},
+					},
+				},
+			},
+			wantSess: func(session *state.Session) bool {
+				return true
+			},
+		},
+		{
+			name:   "successfully register an ICQ session",
+			cookie: icqCookie,
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					cookieCrackParams: cookieCrackParams{
+						{
+							dataOut:  icqCookie,
+							cookieIn: icqCookie,
+						},
+					},
+				},
+				sessionManagerParams: sessionManagerParams{
+					addSessionParams: addSessionParams{
+						{
+							screenName: uin,
+							result:     newTestSession(uin),
+						},
+					},
+				},
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: uin.IdentScreenName(),
+							result: &state.User{
+								IdentScreenName:   uin.IdentScreenName(),
+								DisplayScreenName: uin,
+							},
+						},
+					},
+				},
+				accountManagerParams: accountManagerParams{
+					accountManagerConfirmStatusByNameParams: accountManagerConfirmStatusByNameParams{
+						{
+							screenName:    uin.IdentScreenName(),
+							confirmStatus: true,
+						},
+					},
+				},
+			},
+			wantSess: func(sess *state.Session) bool {
+				uinMatches := fmt.Sprintf("%d", sess.UIN()) == uin.String()
+				flagsMatch := sess.UserInfoFlags()&wire.OServiceUserFlagICQ == wire.OServiceUserFlagICQ
+				return uinMatches && flagsMatch
+			},
+		},
+	}
 
-	accountManager := newMockAccountManager(t)
-	accountManager.EXPECT().
-		ConfirmStatusByName(sess.IdentScreenName()).
-		Return(true, nil)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sessionManager := newMockSessionManager(t)
+			for _, params := range tc.mockParams.addSessionParams {
+				sessionManager.EXPECT().
+					AddSession(params.screenName).
+					Return(params.result)
+			}
+			cookieBaker := newMockCookieBaker(t)
+			for _, params := range tc.mockParams.cookieCrackParams {
+				cookieBaker.EXPECT().
+					Crack(params.cookieIn).
+					Return(params.dataOut, nil)
+			}
+			userManager := newMockUserManager(t)
+			for _, params := range tc.mockParams.getUserParams {
+				userManager.EXPECT().
+					User(params.screenName).
+					Return(params.result, nil)
+			}
+			accountManager := newMockAccountManager(t)
+			for _, params := range tc.mockParams.accountManagerConfirmStatusByNameParams {
+				accountManager.EXPECT().
+					ConfirmStatusByName(params.screenName).
+					Return(params.confirmStatus, nil)
+			}
 
-	svc := NewAuthService(config.Config{}, sessionManager, nil, userManager, nil, cookieBaker, nil, nil, nil, accountManager)
+			svc := NewAuthService(config.Config{}, sessionManager, nil, userManager, nil, cookieBaker, nil, nil, nil, accountManager)
 
-	have, err := svc.RegisterBOSSession(cookieBuf.Bytes())
-	assert.NoError(t, err)
-	assert.Equal(t, sess, have)
+			have, err := svc.RegisterBOSSession(tc.cookie)
+			assert.NoError(t, err)
+
+			if tc.wantSess != nil {
+				assert.True(t, tc.wantSess(have))
+			}
+		})
+	}
+
 }
 
 func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {

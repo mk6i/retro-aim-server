@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -81,7 +82,7 @@ type bosCookie struct {
 	ScreenName state.DisplayScreenName `oscar:"len_prefix=uint8"`
 }
 
-// RegisterBOSSession creates and returns a user's session.
+// RegisterBOSSession adds a new session to the session registry.
 func (s AuthService) RegisterBOSSession(authCookie []byte) (*state.Session, error) {
 	buf, err := s.cookieBaker.Crack(authCookie)
 	if err != nil {
@@ -107,6 +108,16 @@ func (s AuthService) RegisterBOSSession(authCookie []byte) (*state.Session, erro
 		return nil, fmt.Errorf("error setting unconfirmed user flag: %w", err)
 	} else if !confirmed {
 		sess.SetUserInfoFlag(wire.OServiceUserFlagUnconfirmed)
+	}
+
+	if c.ICQ == 1 {
+		sess.SetUserInfoFlag(wire.OServiceUserFlagICQ)
+
+		uin, err := strconv.Atoi(u.IdentScreenName.String())
+		if err != nil {
+			return nil, fmt.Errorf("error converting username to UIN: %w", err)
+		}
+		sess.SetUIN(uint32(uin))
 	}
 
 	return sess, nil
@@ -322,7 +333,7 @@ func (s AuthService) loginSuccessResponse(screenName string, isICQ bool, err err
 	}
 	cookie, err := s.cookieBaker.Issue(buf.Bytes())
 	if err != nil {
-		return wire.TLVRestBlock{}, fmt.Errorf("failed to make auth cookie: %w", err)
+		return wire.TLVRestBlock{}, fmt.Errorf("failed to issue auth cookie: %w", err)
 	}
 
 	return wire.TLVRestBlock{

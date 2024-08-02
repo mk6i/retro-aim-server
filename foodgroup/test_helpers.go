@@ -13,18 +13,18 @@ import (
 // mockParams is a helper struct that centralizes mock function call parameters
 // in one place for a table test
 type mockParams struct {
+	accountManagerParams
 	bartManagerParams
+	buddyBroadcasterParams
 	chatMessageRelayerParams
+	chatRoomRegistryParams
+	cookieBakerParams
 	feedbagManagerParams
 	legacyBuddyListManagerParams
 	messageRelayerParams
 	profileManagerParams
 	sessionManagerParams
 	userManagerParams
-	cookieIssuerParams
-	buddyBroadcasterParams
-	chatRoomRegistryParams
-	accountManagerParams
 }
 
 // bartManagerParams is a helper struct that contains mock parameters for
@@ -291,12 +291,27 @@ type whoAddedUserParams []struct {
 	result         []state.IdentScreenName
 }
 
-// cookieIssuerParams is the list of parameters passed at the mock
+// cookieBakerParams is a helper struct that contains mock parameters for
+// CookieBaker methods
+type cookieBakerParams struct {
+	cookieCrackParams
+	cookieIssueParams
+}
+
+// cookieCrackParams is the list of parameters passed at the mock
+// CookieBaker.Crack call site
+type cookieCrackParams []struct {
+	cookieIn []byte
+	dataOut  []byte
+	err      error
+}
+
+// cookieIssueParams is the list of parameters passed at the mock
 // CookieBaker.Issue call site
-type cookieIssuerParams []struct {
-	data   []byte
-	cookie []byte
-	err    error
+type cookieIssueParams []struct {
+	dataIn    []byte
+	cookieOut []byte
+	err       error
 }
 
 // accountManagerParams is a helper struct that contains mock parameters for

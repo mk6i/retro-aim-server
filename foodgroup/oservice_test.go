@@ -94,10 +94,12 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data:   []byte("user_screen_name"),
-						cookie: []byte("the-cookie"),
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn:    []byte("user_screen_name"),
+							cookieOut: []byte("the-cookie"),
+						},
 					},
 				},
 			},
@@ -136,10 +138,12 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data:   []byte("user_screen_name"),
-						cookie: []byte("the-cookie"),
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn:    []byte("user_screen_name"),
+							cookieOut: []byte("the-cookie"),
+						},
 					},
 				},
 			},
@@ -178,10 +182,12 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				cookieIssuerParams: cookieIssuerParams{
-					{
-						data:   []byte("user_screen_name"),
-						cookie: []byte("the-cookie"),
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn:    []byte("user_screen_name"),
+							cookieOut: []byte("the-cookie"),
+						},
 					},
 				},
 			},
@@ -238,13 +244,15 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 							},
 						},
 					},
-					cookieIssuerParams: cookieIssuerParams{
-						{
-							data: []byte{
-								0x11, '4', '-', '0', '-', 't', 'h', 'e', '-', 'c', 'h', 'a', 't', '-', 'r', 'o', 'o', 'm',
-								0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
+					cookieBakerParams: cookieBakerParams{
+						cookieIssueParams: cookieIssueParams{
+							{
+								dataIn: []byte{
+									0x11, '4', '-', '0', '-', 't', 'h', 'e', '-', 'c', 'h', 'a', 't', '-', 'r', 'o', 'o', 'm',
+									0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
+								},
+								cookieOut: []byte("the-auth-cookie"),
 							},
-							cookie: []byte("the-auth-cookie"),
 						},
 					},
 				}
@@ -300,10 +308,10 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					Return(params.room, params.err)
 			}
 			cookieIssuer := newMockCookieBaker(t)
-			for _, params := range tc.mockParams.cookieIssuerParams {
+			for _, params := range tc.mockParams.cookieIssueParams {
 				cookieIssuer.EXPECT().
-					Issue(params.data).
-					Return(params.cookie, params.err)
+					Issue(params.dataIn).
+					Return(params.cookieOut, params.err)
 			}
 			//
 			// send input SNAC

@@ -141,6 +141,7 @@ const (
 	OServiceUserInfoSignonTOD  uint16 = 0x03
 	OServiceUserInfoIdleTime   uint16 = 0x04
 	OServiceUserInfoStatus     uint16 = 0x06
+	OServiceUserInfoICQDC      uint16 = 0x0C
 	OServiceUserInfoOscarCaps  uint16 = 0x0D
 	OServiceUserInfoBARTInfo   uint16 = 0x1D
 	OServiceUserInfoUserFlags2 uint16 = 0x1F
@@ -1303,4 +1304,19 @@ type FeedbagItem struct {
 	ItemID  uint16
 	ClassID uint16
 	TLVLBlock
+}
+
+// ICQDCInfo represents ICQ direct connect settings.
+type ICQDCInfo struct {
+	IP                      uint32
+	Port                    uint32
+	DCType                  uint8
+	ProtoVersion            uint16
+	AuthCookie              uint32
+	WebPort                 uint32
+	ClientFutures           uint32
+	LastUpdateTime          uint32
+	LastExtInfoUpdateTime   uint32
+	LastExtStatusUpdateTime uint32
+	Unknown                 uint16
 }
