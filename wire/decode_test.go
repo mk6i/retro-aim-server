@@ -156,9 +156,7 @@ func TestUnmarshal(t *testing.T) {
 			}{
 				Val: "",
 			},
-			given: append(
-				[]byte{0x0, 0x00}, /* len prefix */
-			),
+			given: []byte{0x0, 0x00}, /* len prefix */
 		},
 		{
 			name: "null-terminated string16 without null terminator",

@@ -127,9 +127,7 @@ func TestMarshal(t *testing.T) {
 			}{
 				Val: "",
 			},
-			want: append(
-				[]byte{0x0, 0x0}, /* len prefix */
-			),
+			want: []byte{0x0, 0x0}, /* len prefix */
 		},
 		{
 			name: "string16 write error",
