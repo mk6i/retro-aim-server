@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/google/uuid"
@@ -155,6 +156,119 @@ type User struct {
 	// WeakMD5Pass is the MD5 password hash format used by AIM v3.5-v4.7. This
 	// hash is used to authenticate roasted passwords for AIM v1.0-v3.0.
 	WeakMD5Pass []byte
+	// ConfirmStatus indicates whether the user has confirmed their AIM account.
+	ConfirmStatus bool
+	// RegStatus is the AIM registration status.
+	//  1: no disclosure
+	//  2: limit disclosure
+	//  3: full disclosure
+	RegStatus int
+	// Nickname is the ICQ nickname.
+	Nickname string
+	// FirstName is the user's first name as set in ICQ.
+	FirstName string
+	// LastName is the user's first name as set in ICQ.
+	LastName string
+	// LastName is the user's email address set in ICQ and/or AIM.
+	EmailAddress string
+	// AuthReq indicates whether authorization is required to add user in ICQ.
+	AuthReq bool
+	// LastName is the user's gender as set in ICQ.
+	Gender uint16
+	// HomeCity is the ICQ user's home city.
+	HomeCity string
+	// HomeState is the ICQ user's home state.
+	HomeState string
+	// HomePhone is the ICQ user's home phone number.
+	HomePhone string
+	// HomeFax is the ICQ user's home fax number.
+	HomeFax string
+	// HomeAddress is the ICQ user's home address.
+	HomeAddress string
+	// CellPhone is the ICQ user's cell phone number.
+	CellPhone string
+	// ZipCode is the ICQ user's zip code.
+	ZipCode string
+	// CountryCode is the ICQ user's country code.
+	CountryCode uint16
+	// CountryCode is the ICQ user's GMT offset.
+	GMTOffset uint8
+	// PublishEmail indicates whether an ICQ user's email should be displayed.
+	PublishEmail             bool
+	WorkCity                 string
+	WorkState                string
+	WorkPhone                string
+	WorkFax                  string
+	WorkAddress              string
+	WorkZIP                  string
+	WorkCountryCode          uint16
+	Company                  string
+	Department               string
+	Position                 string
+	OccupationCode           uint16
+	WorkWebPage              string
+	HomePageAddr             string
+	BirthYear                uint16
+	BirthMonth               uint8
+	BirthDay                 uint8
+	Lang1                    uint8
+	Lang2                    uint8
+	Lang3                    uint8
+	Notes                    string
+	Interest1Code            uint16
+	Interest1Keyword         string
+	Interest2Code            uint16
+	Interest2Keyword         string
+	Interest3Code            uint16
+	Interest3Keyword         string
+	Interest4Code            uint16
+	Interest4Keyword         string
+	PastAffiliations1Code    uint16
+	PastAffiliations1Keyword string
+	PastAffiliations2Code    uint16
+	PastAffiliations2Keyword string
+	PastAffiliations3Code    uint16
+	PastAffiliations3Keyword string
+	Affiliations1Code        uint16
+	Affiliations1Keyword     string
+	Affiliations2Code        uint16
+	Affiliations2Keyword     string
+	Affiliations3Code        uint16
+	Affiliations3Keyword     string
+}
+
+func (u *User) Age() uint16 {
+	if u.BirthYear == 0 || u.BirthDay == 0 || u.BirthMonth == 0 {
+		return 0
+	}
+	yearsSince := func(birthday, now time.Time) uint16 {
+		years := now.Year() - birthday.Year()
+		if now.YearDay() < birthday.YearDay() {
+			years--
+		}
+		return uint16(years)
+	}
+	bday := time.Date(int(u.BirthYear), time.Month(u.BirthMonth), int(u.BirthDay), 0, 0, 0, 0, time.UTC) // todo use user's actual time
+	return yearsSince(bday, time.Now())
+}
+
+// ICQUserSearchRecord creates a ICQUserSearchRecord instance from User
+func (u *User) ICQUserSearchRecord(now time.Time) wire.ICQUserSearchRecord {
+	uin, _ := strconv.Atoi(u.IdentScreenName.String())
+
+	rec := wire.ICQUserSearchRecord{
+		UIN:       uint32(uin),
+		Nickname:  u.Nickname,
+		FirstName: u.FirstName,
+		LastName:  u.LastName,
+		Email:     u.EmailAddress,
+		Gender:    uint8(u.Gender),
+		Age:       u.Age(),
+	}
+	if u.AuthReq {
+		rec.Authorization = 1
+	}
+	return rec
 }
 
 // ValidateHash checks if md5Hash is identical to one of the password hashes.

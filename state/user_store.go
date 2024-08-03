@@ -9,6 +9,8 @@ import (
 	"io/fs"
 	"net/http"
 	"net/mail"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/wire"
@@ -97,6 +99,87 @@ func (f SQLiteUserStore) AllUsers() ([]User, error) {
 	return users, nil
 }
 
+// FindByUIN returns a user where the UIN matches the ident screen name.
+func (f SQLiteUserStore) FindByUIN(UIN uint32) (User, error) {
+	users, err := getUsers(func() (string, []any) {
+		return `identScreenName = ?`, []any{strconv.Itoa(int(UIN))}
+	}, f.db)
+	if err != nil {
+		return User{}, fmt.Errorf("FindByUIN: %w", err)
+	}
+
+	if len(users) == 0 {
+		return User{}, ErrNoUser
+	}
+
+	return users[0], nil
+}
+
+// FindByEmail returns a user with a matching email address.
+func (f SQLiteUserStore) FindByEmail(email string) (User, error) {
+	users, err := getUsers(func() (string, []any) {
+		return `emailAddress = ?`, []any{email}
+	}, f.db)
+	if err != nil {
+		return User{}, fmt.Errorf("FindByEmail: %w", err)
+	}
+
+	if len(users) == 0 {
+		return User{}, ErrNoUser
+	}
+
+	return users[0], nil
+}
+
+// FindByDetails returns a user with either a matching first name, last name, or nickname.
+func (f SQLiteUserStore) FindByDetails(firstName, lastName, nickName string) ([]User, error) {
+	users, err := getUsers(func() (string, []any) {
+		var conds []string
+		var vals []any
+		if firstName != "" {
+			conds = append(conds, `LOWER(firstName) = LOWER(?)`)
+			vals = append(vals, firstName)
+		}
+		if lastName != "" {
+			conds = append(conds, `LOWER(lastName) = LOWER(?)`)
+			vals = append(vals, lastName)
+		}
+		if nickName != "" {
+			conds = append(conds, `LOWER(nickName) = LOWER(?)`)
+			vals = append(vals, nickName)
+		}
+		return strings.Join(conds, " OR "), vals
+	}, f.db)
+	if err != nil {
+		err = fmt.Errorf("FindByDetails: %w", err)
+	}
+	return users, nil
+}
+
+// FindByInterests returns a user who has at least one matching interest.
+func (f SQLiteUserStore) FindByInterests(code uint16, keywords []string) ([]User, error) {
+	users, err := getUsers(func() (string, []any) {
+		var conds []string
+		var vals []any
+
+		for i := 1; i <= 4; i++ {
+			var subConds []string
+			vals = append(vals, code)
+			for _, key := range keywords {
+				subConds = append(subConds, fmt.Sprintf("interest%dKeyword LIKE ?", i))
+				vals = append(vals, "%"+key+"%")
+			}
+			conds = append(conds, fmt.Sprintf("(interest%dCode = ? AND (%s))", i, strings.Join(subConds, " OR ")))
+		}
+
+		return strings.Join(conds, " OR "), vals
+	}, f.db)
+	if err != nil {
+		err = fmt.Errorf("FindByInterests: %w", err)
+	}
+	return users, nil
+}
+
 // User looks up a user by screen name. It populates the User record with
 // credentials that can be used to validate the user's password.
 func (f SQLiteUserStore) User(screenName IdentScreenName) (*User, error) {
@@ -105,20 +188,375 @@ func (f SQLiteUserStore) User(screenName IdentScreenName) (*User, error) {
 			displayScreenName,
 			authKey,
 			weakMD5Pass,
-			strongMD5Pass
+			strongMD5Pass,
+			confirmStatus,
+			emailAddress,
+			regStatus,
+			firstName,
+			lastName,
+			authReq,
+			gender
 		FROM users
 		WHERE identScreenName = ?
 	`
 	u := &User{
 		IdentScreenName: screenName,
 	}
-	err := f.db.QueryRow(q, screenName.String()).
-		Scan(&u.DisplayScreenName, &u.AuthKey, &u.WeakMD5Pass, &u.StrongMD5Pass)
+	err := f.db.QueryRow(q, screenName.String()).Scan(
+		&u.DisplayScreenName,
+		&u.AuthKey,
+		&u.WeakMD5Pass,
+		&u.StrongMD5Pass,
+		&u.ConfirmStatus,
+		&u.EmailAddress,
+		&u.RegStatus,
+		&u.FirstName,
+		&u.LastName,
+		&u.AuthReq,
+		&u.Gender,
+	)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return u, err
+}
+
+func (f SQLiteUserStore) UpdateUser(id IdentScreenName, updateFn func(u *User)) error {
+	tx, err := f.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, tx.Rollback())
+		}
+	}()
+
+	users, err := getUsers(filterByID(id), tx)
+
+	if err != nil {
+		return fmt.Errorf("failed to get users: %v", err)
+	}
+	if len(users) == 0 {
+		return ErrNoUser
+	}
+
+	u := users[0]
+	updateFn(&u)
+
+	q := `
+		UPDATE users SET 
+			affiliations1Code = ?,
+			affiliations1Keyword = ?,
+			affiliations2Code = ?,
+			affiliations2Keyword = ?,
+			affiliations3Code = ?,
+			affiliations3Keyword = ?,
+			authKey = ?, 
+			authReq = ?,
+			birthDay = ?,
+			birthMonth = ?,
+			birthYear = ?,
+			cellPhone = ?,
+			company = ?,
+			confirmStatus = ?,
+			countryCode = ?,
+			department = ?,
+			displayScreenName = ?,
+			emailAddress = ?,
+			firstName = ?,
+			gmtOffset = ?,
+			gender = ?,
+			gender = ?,
+			homeAddress = ?,
+			homeCity = ?,
+			homeFax = ?,
+			homePageAddr = ?,
+			homePhone = ?,
+			homeState = ?,
+			interest1Code = ?,
+			interest1Keyword = ?,
+			interest2Code = ?,
+			interest2Keyword = ?,
+			interest3Code = ?,
+			interest3Keyword = ?,
+			interest4Code = ?,
+			interest4Keyword = ?,
+			lang1 = ?,
+			lang2 = ?,
+			lang3 = ?,
+			lastName = ?,
+			nickName = ?,
+			notes = ?,
+			occupationCode = ?,
+			pastAffiliations1Code = ?,
+			pastAffiliations1Keyword = ?,
+			pastAffiliations2Code = ?,
+			pastAffiliations2Keyword = ?,
+			pastAffiliations3Code = ?,
+			pastAffiliations3Keyword = ?,
+			position = ?,
+			publishEmail = ?,
+			regStatus = ?,
+			strongMD5Pass = ?,
+			weakMD5Pass = ?,
+			workAddress = ?,
+			workCity = ?,
+			workCountryCode = ?,
+			workFax = ?,
+			workPhone = ?,
+			workState = ?,
+			workWebPage = ?,
+			workZIP = ?,
+			zipCode = ?
+		WHERE identScreenName = ?
+	`
+	_, err = tx.Exec(q,
+		u.Affiliations1Code,
+		u.Affiliations1Keyword,
+		u.Affiliations2Code,
+		u.Affiliations2Keyword,
+		u.Affiliations3Code,
+		u.Affiliations3Keyword,
+		u.AuthKey,
+		u.AuthReq,
+		u.BirthDay,
+		u.BirthMonth,
+		u.BirthYear,
+		u.CellPhone,
+		u.Company,
+		u.ConfirmStatus,
+		u.CountryCode,
+		u.Department,
+		u.DisplayScreenName,
+		u.EmailAddress,
+		u.FirstName,
+		u.GMTOffset,
+		u.Gender,
+		u.Gender,
+		u.HomeAddress,
+		u.HomeCity,
+		u.HomeFax,
+		u.HomePageAddr,
+		u.HomePhone,
+		u.HomeState,
+		u.Interest1Code,
+		u.Interest1Keyword,
+		u.Interest2Code,
+		u.Interest2Keyword,
+		u.Interest3Code,
+		u.Interest3Keyword,
+		u.Interest4Code,
+		u.Interest4Keyword,
+		u.Lang1,
+		u.Lang2,
+		u.Lang3,
+		u.LastName,
+		u.Nickname,
+		u.Notes,
+		u.OccupationCode,
+		u.PastAffiliations1Code,
+		u.PastAffiliations1Keyword,
+		u.PastAffiliations2Code,
+		u.PastAffiliations2Keyword,
+		u.PastAffiliations3Code,
+		u.PastAffiliations3Keyword,
+		u.Position,
+		u.PublishEmail,
+		u.RegStatus,
+		u.StrongMD5Pass,
+		u.WeakMD5Pass,
+		u.WorkAddress,
+		u.WorkCity,
+		u.WorkCountryCode,
+		u.WorkFax,
+		u.WorkPhone,
+		u.WorkState,
+		u.WorkWebPage,
+		u.WorkZIP,
+		u.ZipCode,
+		u.IdentScreenName.String(),
+	)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+type filterFN func() (string, []any)
+
+func filterByID(id IdentScreenName) filterFN {
+	return func() (string, []any) {
+		return `identScreenName = ?`, []any{id.String()}
+	}
+}
+
+type queryer interface {
+	Query(query string, args ...any) (*sql.Rows, error)
+}
+
+// getUsers fetches users from the database by their screen name.
+func getUsers(filterFN filterFN, tx queryer) ([]User, error) {
+
+	cond, parms := filterFN()
+
+	q := `
+		SELECT
+			identScreenName,
+			affiliations1Code,
+			affiliations1Keyword,
+			affiliations2Code,
+			affiliations2Keyword,
+			affiliations3Code,
+			affiliations3Keyword,
+			authKey,
+			authReq,
+			birthDay,
+			birthMonth,
+			birthYear,
+			cellPhone,
+			company,
+			confirmStatus,
+			countryCode,
+			department,
+			displayScreenName,
+			emailAddress,
+			firstName,
+			gmtOffset,
+			gender,
+			homeAddress,
+			homeCity,
+			homeFax,
+			homePageAddr,
+			homePhone,
+			homeState,
+			interest1Code,
+			interest1Keyword,
+			interest2Code,
+			interest2Keyword,
+			interest3Code,
+			interest3Keyword,
+			interest4Code,
+			interest4Keyword,
+			lang1,
+			lang2,
+			lang3,
+			lastName,
+			nickname,
+			notes,
+			occupationCode,
+			pastAffiliations1Code,
+			pastAffiliations1Keyword,
+			pastAffiliations2Code,
+			pastAffiliations2Keyword,
+			pastAffiliations3Code,
+			pastAffiliations3Keyword,
+			position,
+			publishEmail,
+			regStatus,
+			strongMD5Pass,
+			weakMD5Pass,
+			workAddress,
+			workCity,
+			workCountryCode,
+			workFax,
+			workPhone,
+			workState,
+			workWebPage,
+			workZIP,
+			zipCode
+		FROM users
+		WHERE %s
+	`
+	q = fmt.Sprintf(q, cond)
+	rows, err := tx.Query(q, parms...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		var sn string
+		err := rows.Scan(
+			&sn,
+			&u.Affiliations1Code,
+			&u.Affiliations1Keyword,
+			&u.Affiliations2Code,
+			&u.Affiliations2Keyword,
+			&u.Affiliations3Code,
+			&u.Affiliations3Keyword,
+			&u.AuthKey,
+			&u.AuthReq,
+			&u.BirthDay,
+			&u.BirthMonth,
+			&u.BirthYear,
+			&u.CellPhone,
+			&u.Company,
+			&u.ConfirmStatus,
+			&u.CountryCode,
+			&u.Department,
+			&u.DisplayScreenName,
+			&u.EmailAddress,
+			&u.FirstName,
+			&u.GMTOffset,
+			&u.Gender,
+			&u.HomeAddress,
+			&u.HomeCity,
+			&u.HomeFax,
+			&u.HomePageAddr,
+			&u.HomePhone,
+			&u.HomeState,
+			&u.Interest1Code,
+			&u.Interest1Keyword,
+			&u.Interest2Code,
+			&u.Interest2Keyword,
+			&u.Interest3Code,
+			&u.Interest3Keyword,
+			&u.Interest4Code,
+			&u.Interest4Keyword,
+			&u.Lang1,
+			&u.Lang2,
+			&u.Lang3,
+			&u.LastName,
+			&u.Nickname,
+			&u.Notes,
+			&u.OccupationCode,
+			&u.PastAffiliations1Code,
+			&u.PastAffiliations1Keyword,
+			&u.PastAffiliations2Code,
+			&u.PastAffiliations2Keyword,
+			&u.PastAffiliations3Code,
+			&u.PastAffiliations3Keyword,
+			&u.Position,
+			&u.PublishEmail,
+			&u.RegStatus,
+			&u.StrongMD5Pass,
+			&u.WeakMD5Pass,
+			&u.WorkAddress,
+			&u.WorkCity,
+			&u.WorkCountryCode,
+			&u.WorkFax,
+			&u.WorkPhone,
+			&u.WorkState,
+			&u.WorkWebPage,
+			&u.WorkZIP,
+			&u.ZipCode,
+		)
+		if err != nil {
+			return nil, err
+		}
+		u.IdentScreenName = NewIdentScreenName(sn)
+		users = append(users, u)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }
 
 // InsertUser inserts a user to the store. Return ErrDupUser if a user with the

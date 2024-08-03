@@ -287,6 +287,11 @@ var subGroupName = map[uint16]map[uint16]string{
 		AdminAcctDeleteRequest:  "AdminAcctDeleteRequest",
 		AdminAcctDeleteReply:    "AdminAcctDeleteReply",
 	},
+	ICQ: {
+		ICQErr:     "ICQErr",
+		ICQDBQuery: "ICQDBQuery",
+		ICQDBReply: "ICQDBReply",
+	},
 }
 
 // SubGroupName gets the string name of a subgroup within a food group. It

@@ -172,3 +172,22 @@ type AccountManager interface {
 	UpdateConfirmStatus(confirmStatus bool, screenName state.IdentScreenName) error
 	ConfirmStatusByName(screnName state.IdentScreenName) (bool, error)
 }
+
+type ICQFinder interface {
+	// FindByUIN returns a user where the UIN matches the ident screen name.
+	FindByUIN(UIN uint32) (state.User, error)
+	// FindByEmail returns a user with a matching email address.
+	FindByEmail(email string) (state.User, error)
+	// FindByDetails returns a user with either a matching first name, last name, or nickname.
+	FindByDetails(firstName, lastName, nickName string) ([]state.User, error)
+	// FindByInterests returns a user who has at least one matching interest.
+	FindByInterests(code uint16, keywords []string) ([]state.User, error)
+}
+
+type UserUpdater interface {
+	UpdateUser(id state.IdentScreenName, updateFn func(u *state.User)) error
+}
+
+type SessionRetriever interface {
+	RetrieveSession(screenName state.IdentScreenName) *state.Session
+}

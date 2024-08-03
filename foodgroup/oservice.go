@@ -326,6 +326,11 @@ func init() {
 			wire.AlertNotifyDisplayCapabilities,
 			wire.AlertUserOnline,
 		},
+		wire.ICQ: {
+			wire.ICQErr,
+			wire.ICQDBQuery,
+			wire.ICQDBReply,
+		},
 		wire.PermitDeny: {
 			wire.PermitDenyErr,
 			wire.PermitDenyRightsQuery,
@@ -352,6 +357,7 @@ func init() {
 		wire.Feedbag,
 		wire.BUCP,
 		wire.Alert,
+		wire.ICQ,
 		wire.PermitDeny,
 	} {
 		subGroups := foodGroupToSubgroup[foodGroup]
@@ -542,6 +548,7 @@ func NewOServiceServiceForBOS(
 				wire.OService,
 				wire.BART,
 				wire.PermitDeny,
+				wire.ICQ,
 			},
 		},
 	}

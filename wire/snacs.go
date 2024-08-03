@@ -94,6 +94,23 @@ const (
 	LoginErrInvalidUsernameOrPassword uint16 = 0x0001
 	LoginErrInvalidPassword           uint16 = 0x0005 // invalid password
 	LoginErrICQUserErr                uint16 = 0x0008 // ICQ user doesn't exist
+
+	//#define AUTH_ERR_PASS		0x0004	/* err: password incorrect    	  */
+	//#define AUTH_ERR_PASS2		0x0005  /* err: password incorrect    	  */
+	//#define AUTH_INVALID_PACKET	0x0006  /* err: invalid pack from client  */
+	//#define AUTH_ERR_UIN		0x0007  /* err: ICQ# doesn't exist    	  */
+	//#define AUTH_ERR_UIN2		0x0008  /* err: ICQ# doesn't exist    	  */
+	//#define AUTH_ACCOUNT_SUSPENDED	0x0011	/* err: your account suspended    */
+	//#define AUTH_TEMP_DOWN		0x0014	/* err: temporarily unavailable   */
+	//#define AUTH_UIN_MAX		0x0016	/* err: max logins from same IP	  */
+	//#define AUTH_UIN_MAX2		0x0017	/* err: max logins from same IP   */
+	//#define AUTH_RATE_LIM		0x0018  /* err: rate limit excedeed   	  */
+	//#define AUTH_RATE_LIM2		0x001D  /* err: rate limit excedeed   	  */
+	//#define AUTH_OLD_VERS 		0x001B	/* err: you are using old ver     */
+	//#define AUTH_OLD_VERS2		0x001C	/* err: you are using old ver 	  */
+	//#define AUTH_SERV_FAIL		0x001E	/* err: login failed	      	  */
+	//#define AUTH_INVALID_SECUREID	0x0020  /* err: invalid SecurID value     */
+
 )
 
 //
@@ -922,6 +939,345 @@ type SNAC_0x0E_0x05_ChatChannelMsgToHost struct {
 type SNAC_0x0E_0x06_ChatChannelMsgToClient struct {
 	Cookie  uint64
 	Channel uint16
+	TLVRestBlock
+}
+
+//
+// 0x0F: ICQ
+//
+
+const (
+	ICQErr     uint16 = 0x0001
+	ICQDBQuery uint16 = 0x0002
+	ICQDBReply uint16 = 0x0003
+)
+
+const (
+	ICQReqTypeOfflineMsg uint16 = 0x003C
+	ICQReqTypeDeleteMsg  uint16 = 0x003E
+	ICQReqTypeInfo       uint16 = 0x07D0
+)
+
+const (
+	ICQReqSubTypeBasicInfo                uint16 = 0x03EA // Set user basic info request
+	ICQReqSubTypeWorkInfo                 uint16 = 0x03F3 // Set user work info request
+	ICQReqSubTypeMoreInfo                 uint16 = 0x03FD // Set user more info request
+	ICQReqSubTypeUserNotes                uint16 = 0x0406 // Set user notes info request
+	ICQReqSubTypeExtEmail                 uint16 = 0x040B // Set user extended email info request
+	ICQReqSubTypeInterests                uint16 = 0x0410 // Set user interests info request
+	ICQReqSubTypeAffiliations             uint16 = 0x041A // Set user affilations info request
+	ICQReqSubTypePermissions              uint16 = 0x0424 // Set user permissions info request
+	ICQReqSubTypeChangePass               uint16 = 0x042E // Change user password request
+	ICQReqSubTypeHomepageCat              uint16 = 0x0442 // Set user homepage category info request
+	ICQReqSubTypeFullInfo                 uint16 = 0x04B2 // Request full user info
+	ICQReqSubTypeShortInfo                uint16 = 0x04BA // Request short user info
+	ICQReqSubTypeUnregister               uint16 = 0x04C4 // Unregister user request
+	ICQReqSubTypeFullInfo2                uint16 = 0x04D0 // Request full user info #2
+	ICQReqSubTypeSearchByDetails          uint16 = 0x0515 // Search by details request (plain)
+	ICQReqSubTypeSearchByUIN              uint16 = 0x051F // Search by uin request (plain)
+	ICQReqSubTypeSearchByEmail            uint16 = 0x0529 // Search by email request (plain)
+	ICQReqSubTypeSearchWhitePages         uint16 = 0x0533 // White pages search request (plain, simple)
+	ICQReqSubTypeSearchByDetailsWildcard  uint16 = 0x053D // Search by details request (plain, wildcard)
+	ICQReqSubTypeSearchByEmailWildcard    uint16 = 0x0547 // Search by email request (plain, wildcard)
+	ICQReqSubTypeSearchWhitePagesWildcard uint16 = 0x0551 // White pages search request (plain, wildcard)
+	ICQReqSubTypeSearchByUINTLV           uint16 = 0x0569 // Search by uin request (tlv)
+	ICQReqSubTypeSearchWhitePagesTLV      uint16 = 0x055F // Whitepages search request (tlv)
+	ICQReqSubTypeSearchByEmailTLV         uint16 = 0x0573 // Search by email request (tlv)
+	ICQReqSubTypeSearchChatUser           uint16 = 0x074E // Random chat user search request
+	ICQReqSubTypeXMLReq                   uint16 = 0x0898 // Request server variable via xml
+	ICQReqSubTypeSendRegiStats            uint16 = 0x0AA5 // Send registration stats report
+	ICQReqSubTypeSendShortcutBarStats     uint16 = 0x0AAF // Send shortcut bar stats report
+	ICQReqSubTypeSaveInfoTLV              uint16 = 0x0C3A // Save info tlv-based request
+	ICQReqSubTypeSendSMS                  uint16 = 0x1482 // Client send SMS request
+	ICQReqSubTypeSpamReport               uint16 = 0x2008 // Client spam report request
+	ICQReqSubTypeMetaStat0a8c             uint16 = 0x0A8C
+	ICQReqSubTypeMetaStat0a96             uint16 = 0x0A96
+	ICQReqSubTypeMetaStat0aaa             uint16 = 0x0AAA
+	ICQReqSubTypeMetaStat0ab4             uint16 = 0x0AB4
+	ICQReqSubTypeMetaStat0ab9             uint16 = 0x0AB9
+	ICQReqSubTypeMetaStat0abe             uint16 = 0x0ABE
+	ICQReqSubTypeMetaStat0ac8             uint16 = 0x0AC8
+	ICQReqSubTypeMetaStat0acd             uint16 = 0x0ACD
+	ICQReqSubTypeMetaStat0ad2             uint16 = 0x0AD2
+	ICQReqSubTypeMetaStat0ad7             uint16 = 0x0AD7
+	ICQReqSubTypeMetaStat0758             uint16 = 0x0758 // Request full user info
+)
+
+type ICQChunk struct {
+	Body []byte `oscar:"len_prefix=uint16"`
+}
+
+type ICQMetadata struct {
+	UIN     uint32
+	ReqType uint16
+	Seq     uint16
+}
+
+type ICQMetadataWithSubType struct {
+	ICQMetadata
+	Optional *struct {
+		ReqSubType uint16
+	} `oscar:"optional"`
+}
+
+type ICQMessagesEOF struct {
+	ICQMetadata
+	DroppedMessages uint8
+}
+
+type ICQXMLReqData struct {
+	XMLRequest string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQInfoSetPerms struct {
+	Authorization uint8 // (1-required, 0-not required)
+	WebAware      uint8 // webaware (0-no, 1-yes)
+	DCPerms       uint8 // dc_perms (0-any, 1-contact, 2-authorization)
+	Unknown       uint8
+}
+
+type ICQFindByUIN struct {
+	UIN uint32
+}
+
+type ICQFindByEmail struct {
+	Email string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQFindByDetails struct {
+	FirstName string `oscar:"len_prefix=uint16,nullterm"`
+	LastName  string `oscar:"len_prefix=uint16,nullterm"`
+	NickName  string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQFindByWhitePages struct {
+	FirstName           string `oscar:"len_prefix=uint16,nullterm"`
+	LastName            string `oscar:"len_prefix=uint16,nullterm"`
+	Nickname            string `oscar:"len_prefix=uint16,nullterm"`
+	Email               string `oscar:"len_prefix=uint16,nullterm"`
+	MinAge              uint16
+	MaxAge              uint16
+	Gender              uint8
+	SpeakingLang        uint8
+	City                string `oscar:"len_prefix=uint16,nullterm"`
+	State               string `oscar:"len_prefix=uint16,nullterm"`
+	CountryCode         uint16
+	Company             string `oscar:"len_prefix=uint16,nullterm"`
+	Department          string `oscar:"len_prefix=uint16,nullterm"`
+	Position            string `oscar:"len_prefix=uint16,nullterm"`
+	OccupationCode      uint16
+	PastCode            uint16
+	PastKeywords        string `oscar:"len_prefix=uint16,nullterm"`
+	InterestsCode       uint16
+	InterestsKeyword    string `oscar:"len_prefix=uint16,nullterm"`
+	AffiliationsCode    uint16
+	AffiliationsKeyword string `oscar:"len_prefix=uint16,nullterm"`
+	HomePageCode        uint16
+	HomePageKeywords    string `oscar:"len_prefix=uint16,nullterm"`
+	SearchScope         uint8
+}
+
+type ICQMoreUserInfo struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	SomeMoreUserInfo
+	Unknown     uint16
+	City        string `oscar:"len_prefix=uint16,nullterm"`
+	State       string `oscar:"len_prefix=uint16,nullterm"`
+	CountryCode uint16
+	TimeZone    uint8
+}
+
+type SomeMoreUserInfo struct {
+	Age          uint8
+	Gender       uint16
+	HomePageAddr string `oscar:"len_prefix=uint16,nullterm"`
+	BirthYear    uint16
+	BirthMonth   uint8
+	BirthDay     uint8
+	Lang1        uint8
+	Lang2        uint8
+	Lang3        uint8
+}
+
+type ICQInfoEmailMore struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	Emails     []struct {
+		Flag  uint8  // (0-publish, 1-don't)
+		Email string `oscar:"len_prefix=uint16,nullterm"`
+	} `oscar:"count_prefix=uint8"`
+}
+
+type ICQHomepageCat struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	Enabled    uint8
+	CatCode    uint16
+	Keywords   string `oscar:"len_prefix=uint16,nullterm"`
+	Unknown    uint8
+}
+
+type ICQMetaWorkUserInfo struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	ICQWorkInfo
+}
+
+type ICQWorkInfo struct {
+	WorkCity        string `oscar:"len_prefix=uint16,nullterm"`
+	WorkState       string `oscar:"len_prefix=uint16,nullterm"`
+	WorkPhone       string `oscar:"len_prefix=uint16,nullterm"`
+	WorkFax         string `oscar:"len_prefix=uint16,nullterm"`
+	WorkAddress     string `oscar:"len_prefix=uint16,nullterm"`
+	WorkZIP         string `oscar:"len_prefix=uint16,nullterm"`
+	WorkCountryCode uint16
+	Company         string `oscar:"len_prefix=uint16,nullterm"`
+	Department      string `oscar:"len_prefix=uint16,nullterm"`
+	Position        string `oscar:"len_prefix=uint16,nullterm"`
+	OccupationCode  uint16
+	WorkWebPage     string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQEmailUserInfo struct {
+	Emails []struct {
+		Publish uint8
+		Email   string `oscar:"len_prefix=uint16,nullterm"`
+	} `oscar:"count_prefix=uint8"`
+}
+
+type ICQUserNotes struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	ICQNotes
+}
+
+type ICQNotes struct {
+	Notes string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQUserInterests struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	Interests  []struct {
+		Code    uint16
+		Keyword string `oscar:"len_prefix=uint16,nullterm"`
+	} `oscar:"count_prefix=uint8"`
+}
+
+type ICQInterests struct {
+	Interests []struct {
+		Code    uint16
+		Keyword string `oscar:"len_prefix=uint16,nullterm"`
+	} `oscar:"count_prefix=uint8"`
+}
+
+type ICQMetaAffiliationsUserInfo struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	ICQAffiliations
+}
+
+type ICQAffiliations struct {
+	PastAffiliations []struct {
+		Code    uint16
+		Keyword string `oscar:"len_prefix=uint16,nullterm"`
+	} `oscar:"count_prefix=uint8"`
+	Affiliations []struct {
+		Code    uint16
+		Keyword string `oscar:"len_prefix=uint16,nullterm"`
+	} `oscar:"count_prefix=uint8"`
+}
+
+type ICQMessage struct {
+	Message any `oscar:"len_prefix=uint16"`
+}
+
+type ICQUserInfo struct {
+	ICQMetadata
+	ReqSubType   uint16
+	Success      uint8
+	Nickname     string `oscar:"len_prefix=uint16,nullterm"`
+	FirstName    string `oscar:"len_prefix=uint16,nullterm"`
+	LastName     string `oscar:"len_prefix=uint16,nullterm"`
+	Email        string `oscar:"len_prefix=uint16,nullterm"`
+	HomeCity     string `oscar:"len_prefix=uint16,nullterm"`
+	HomeState    string `oscar:"len_prefix=uint16,nullterm"`
+	HomePhone    string `oscar:"len_prefix=uint16,nullterm"`
+	HomeFax      string `oscar:"len_prefix=uint16,nullterm"`
+	HomeAddress  string `oscar:"len_prefix=uint16,nullterm"`
+	CellPhone    string `oscar:"len_prefix=uint16,nullterm"`
+	ZipCode      string `oscar:"len_prefix=uint16,nullterm"`
+	CountryCode  uint16
+	GMTOffset    uint8
+	AuthFlag     uint8
+	WebAware     uint8
+	DCPerms      uint8
+	PublishEmail uint8
+}
+
+type ICQUserInfoBasic struct {
+	Nickname     string `oscar:"len_prefix=uint16,nullterm"`
+	FirstName    string `oscar:"len_prefix=uint16,nullterm"`
+	LastName     string `oscar:"len_prefix=uint16,nullterm"`
+	Email        string `oscar:"len_prefix=uint16,nullterm"`
+	HomeCity     string `oscar:"len_prefix=uint16,nullterm"`
+	HomeState    string `oscar:"len_prefix=uint16,nullterm"`
+	HomePhone    string `oscar:"len_prefix=uint16,nullterm"`
+	HomeFax      string `oscar:"len_prefix=uint16,nullterm"`
+	HomeAddress  string `oscar:"len_prefix=uint16,nullterm"`
+	CellPhone    string `oscar:"len_prefix=uint16,nullterm"`
+	ZipCode      string `oscar:"len_prefix=uint16,nullterm"`
+	CountryCode  uint16
+	GMTOffset    uint8
+	PublishEmail uint8
+}
+
+type ICQUserSearchRecord struct {
+	UIN           uint32
+	Nickname      string `oscar:"len_prefix=uint16,nullterm"`
+	FirstName     string `oscar:"len_prefix=uint16,nullterm"`
+	LastName      string `oscar:"len_prefix=uint16,nullterm"`
+	Email         string `oscar:"len_prefix=uint16,nullterm"`
+	Authorization uint8
+	OnlineStatus  uint16
+	Gender        uint8
+	Age           uint16
+}
+
+type ICQUserSearchResult struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	Details    ICQUserSearchRecord `oscar:"len_prefix=uint16"`
+	// LastMessageFooter is set only on the last message in the batch
+	LastMessageFooter *struct {
+		FoundUsersLeft uint32
+	} `oscar:"optional"`
+}
+
+// LastResult flags the message as the last message in the search results.
+func (s *ICQUserSearchResult) LastResult() {
+	s.ReqSubType = 0x01AE
+	s.LastMessageFooter = &struct {
+		FoundUsersLeft uint32
+	}{
+		FoundUsersLeft: 0,
+	}
+}
+
+type SNAC_0x0F_0x02_ICQDBQuery struct {
+	TLVRestBlock
+}
+
+type SNAC_0x0F_0x02_ICQDBReply struct {
 	TLVRestBlock
 }
 
