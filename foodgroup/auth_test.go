@@ -1148,7 +1148,7 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 			},
 			wantSess: func(sess *state.Session) bool {
 				uinMatches := fmt.Sprintf("%d", sess.UIN()) == uin.String()
-				flagsMatch := sess.UserInfoFlags()&wire.OServiceUserFlagICQ == wire.OServiceUserFlagICQ
+				flagsMatch := sess.UserInfoBitmask()&wire.OServiceUserFlagICQ == wire.OServiceUserFlagICQ
 				return uinMatches && flagsMatch
 			},
 		},

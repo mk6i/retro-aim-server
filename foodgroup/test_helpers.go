@@ -488,7 +488,7 @@ func sessOptChatRoomCookie(cookie string) func(session *state.Session) {
 // sessOptInvisible sets the invisible flag to true on the session
 // object
 func sessOptInvisible(session *state.Session) {
-	session.SetInvisible(true)
+	session.SetUserStatusBitmask(wire.OServiceUserStatusInvisible)
 }
 
 // sessOptIdle sets the idle flag to dur on the session object

@@ -419,23 +419,16 @@ func (s OServiceService) UserInfoQuery(_ context.Context, sess *state.Session, i
 // It returns SNAC wire.OServiceUserInfoUpdate containing the user's info.
 func (s OServiceService) SetUserInfoFields(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (wire.SNACMessage, error) {
 	if status, hasStatus := inBody.Uint32(wire.OServiceUserInfoStatus); hasStatus {
-		if status == wire.OServiceUserStatusAvailable {
-			sess.SetInvisible(false)
-			if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
-				return wire.SNACMessage{}, err
-			}
-		}
-		if status&wire.OServiceUserStatusInvisible == wire.OServiceUserStatusInvisible {
-			sess.SetInvisible(true)
+		sess.SetUserStatusBitmask(status)
+		if sess.Invisible() {
 			if err := s.buddyUpdateBroadcaster.BroadcastBuddyDeparted(ctx, sess); err != nil {
 				return wire.SNACMessage{}, err
 			}
-		}
-		if status&wire.OServiceUserStatusDirectRequireAuth == wire.OServiceUserStatusDirectRequireAuth {
-			s.logger.DebugContext(ctx, "got unsupported status", "status", status)
-		}
-		if status&wire.OServiceUserStatusHideIP == wire.OServiceUserStatusHideIP {
-			s.logger.DebugContext(ctx, "got unsupported status", "status", status)
+		} else {
+			if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+				return wire.SNACMessage{}, err
+			}
+
 		}
 	}
 	return wire.SNACMessage{

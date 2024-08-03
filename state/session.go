@@ -40,43 +40,52 @@ type Session struct {
 	stopCh            chan struct{}
 	uin               uint32
 	warning           uint16
-	userInfoFlags     uint16
+	userInfoBitmask   uint16
+	userStatusBitmask uint32
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
 // up to 1000 pending messages before blocking.
 func NewSession() *Session {
 	return &Session{
-		msgCh:         make(chan wire.SNACMessage, 1000),
-		nowFn:         time.Now,
-		stopCh:        make(chan struct{}),
-		signonTime:    time.Now(),
-		caps:          make([][16]byte, 0),
-		userInfoFlags: wire.OServiceUserFlagOSCARFree,
+		msgCh:             make(chan wire.SNACMessage, 1000),
+		nowFn:             time.Now,
+		stopCh:            make(chan struct{}),
+		signonTime:        time.Now(),
+		caps:              make([][16]byte, 0),
+		userInfoBitmask:   wire.OServiceUserFlagOSCARFree,
+		userStatusBitmask: wire.OServiceUserStatusAvailable,
 	}
 }
 
-// SetUserInfoFlag sets a flag to and returns UserInfoFlags
+// SetUserInfoFlag sets a flag to and returns UserInfoBitmask
 func (s *Session) SetUserInfoFlag(flag uint16) (flags uint16) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.userInfoFlags |= flag
-	return s.userInfoFlags
+	s.userInfoBitmask |= flag
+	return s.userInfoBitmask
 }
 
-// ClearUserInfoFlag clear a flag from and returns UserInfoFlags
+// ClearUserInfoFlag clear a flag from and returns UserInfoBitmask
 func (s *Session) ClearUserInfoFlag(flag uint16) (flags uint16) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.userInfoFlags &^= flag
-	return s.userInfoFlags
+	s.userInfoBitmask &^= flag
+	return s.userInfoBitmask
 }
 
-// UserInfoFlags returns UserInfoFlags
-func (s *Session) UserInfoFlags() (flags uint16) {
+// UserInfoBitmask returns UserInfoBitmask
+func (s *Session) UserInfoBitmask() (flags uint16) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	return s.userInfoFlags
+	return s.userInfoBitmask
+}
+
+// SetUserStatusBitmask sets the user status bitmask from the client.
+func (s *Session) SetUserStatusBitmask(bitmask uint32) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.userStatusBitmask = bitmask
 }
 
 // IncrementWarning increments the user's warning level. To decrease, pass a
@@ -87,18 +96,11 @@ func (s *Session) IncrementWarning(incr uint16) {
 	s.warning += incr
 }
 
-// SetInvisible toggles the user's invisibility status.
-func (s *Session) SetInvisible(invisible bool) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	s.invisible = invisible
-}
-
 // Invisible returns true if the user is idle.
 func (s *Session) Invisible() bool {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	return s.invisible
+	return s.userStatusBitmask&wire.OServiceUserStatusInvisible == wire.OServiceUserStatusInvisible
 }
 
 // SetIdentScreenName sets the user's screen name.
@@ -152,17 +154,10 @@ func (s *Session) UnsetIdle() {
 	s.idle = false
 }
 
-// SetAwayMessage sets the user's away message, and
-// sets or clears the OServiceUserFlagUnavailable flag
+// SetAwayMessage sets the user's away message.
 func (s *Session) SetAwayMessage(awayMessage string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	if awayMessage != "" {
-		s.userInfoFlags |= wire.OServiceUserFlagUnavailable
-	} else {
-		s.userInfoFlags &^= wire.OServiceUserFlagUnavailable
-	}
-
 	s.awayMessage = awayMessage
 }
 
@@ -236,14 +231,14 @@ func (s *Session) userInfo() wire.TLVList {
 	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(s.signonTime.Unix())))
 
 	// user info flags
-	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoUserFlags, s.UserInfoFlags()))
-
-	// reflects invisibility toggle status back to toggling client
-	if s.invisible {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoStatus, wire.OServiceUserStatusInvisible))
-	} else {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0)))
+	uFlags := s.userInfoBitmask
+	if s.awayMessage != "" {
+		uFlags |= wire.OServiceUserFlagUnavailable
 	}
+	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoUserFlags, uFlags))
+
+	// user status flags
+	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoStatus, s.userStatusBitmask))
 
 	// idle status
 	if s.idle {
@@ -252,7 +247,7 @@ func (s *Session) userInfo() wire.TLVList {
 
 	// ICQ direct-connect info. The TLV is required for buddy arrival events to
 	// work in ICQ, even if the values are set to default.
-	if s.userInfoFlags&wire.OServiceUserFlagICQ == wire.OServiceUserFlagICQ {
+	if s.userInfoBitmask&wire.OServiceUserFlagICQ == wire.OServiceUserFlagICQ {
 		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoICQDC, wire.ICQDCInfo{}))
 	}
 

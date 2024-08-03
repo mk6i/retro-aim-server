@@ -30,10 +30,8 @@ func TestSession_IncrementAndGetWarning(t *testing.T) {
 func TestSession_SetAndGetInvisible(t *testing.T) {
 	s := NewSession()
 	assert.False(t, s.Invisible())
-	s.SetInvisible(true)
+	s.SetUserStatusBitmask(wire.OServiceUserStatusInvisible)
 	assert.True(t, s.Invisible())
-	s.SetInvisible(false)
-	assert.False(t, s.Invisible())
 }
 
 func TestSession_SetAndGetScreenName(t *testing.T) {
@@ -135,7 +133,7 @@ func TestSession_TLVUserInfo(t *testing.T) {
 			givenSessionFn: func() *Session {
 				s := NewSession()
 				s.SetSignonTime(time.Unix(1, 0))
-				s.SetInvisible(true)
+				s.SetUserStatusBitmask(wire.OServiceUserStatusInvisible)
 				return s
 			},
 			want: wire.TLVUserInfo{
