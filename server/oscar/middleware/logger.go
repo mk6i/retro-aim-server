@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -59,7 +60,7 @@ type handler struct {
 
 func (h handler) Handle(ctx context.Context, r slog.Record) error {
 	if sn := ctx.Value("screenName"); sn != nil {
-		//r.AddAttrs(slog.Attr{Key: "screenName", Value: slog.StringValue(sn.(string))})
+		r.AddAttrs(slog.Attr{Key: "screenName", Value: slog.StringValue(sn.(fmt.Stringer).String())})
 	}
 	if ip := ctx.Value("ip"); ip != nil {
 		r.AddAttrs(slog.Attr{Key: "ip", Value: slog.StringValue(ip.(string))})

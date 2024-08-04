@@ -950,57 +950,72 @@ const (
 	ICQErr     uint16 = 0x0001
 	ICQDBQuery uint16 = 0x0002
 	ICQDBReply uint16 = 0x0003
+
+	ICQTLVTagsMetadata uint16 = 0x01
+
+	ICQStatusCodeOK   uint8 = 0x0A
+	ICQStatusCodeFail uint8 = 0x32
+	ICQStatusCodeErr  uint8 = 0x14
+
+	ICQDBQueryOfflineMsgReq       uint16 = 0x003C
+	ICQDBQueryOfflineMsgReply     uint16 = 0x0041
+	ICQDBQueryOfflineMsgReplyLast uint16 = 0x0042
+	ICQDBQueryDeleteMsgReq        uint16 = 0x003E
+	ICQDBQueryMetaReq             uint16 = 0x07D0
+	ICQDBQueryMetaReply           uint16 = 0x07DA
 )
 
 const (
-	ICQReqTypeOfflineMsg uint16 = 0x003C
-	ICQReqTypeDeleteMsg  uint16 = 0x003E
-	ICQReqTypeInfo       uint16 = 0x07D0
+	ICQUserFlagPublishEmailYes uint8 = 0
+	ICQUserFlagPublishEmailNo  uint8 = 1
 )
 
 const (
-	ICQReqSubTypeBasicInfo                uint16 = 0x03EA // Set user basic info request
-	ICQReqSubTypeWorkInfo                 uint16 = 0x03F3 // Set user work info request
-	ICQReqSubTypeMoreInfo                 uint16 = 0x03FD // Set user more info request
-	ICQReqSubTypeUserNotes                uint16 = 0x0406 // Set user notes info request
-	ICQReqSubTypeExtEmail                 uint16 = 0x040B // Set user extended email info request
-	ICQReqSubTypeInterests                uint16 = 0x0410 // Set user interests info request
-	ICQReqSubTypeAffiliations             uint16 = 0x041A // Set user affilations info request
-	ICQReqSubTypePermissions              uint16 = 0x0424 // Set user permissions info request
-	ICQReqSubTypeChangePass               uint16 = 0x042E // Change user password request
-	ICQReqSubTypeHomepageCat              uint16 = 0x0442 // Set user homepage category info request
-	ICQReqSubTypeFullInfo                 uint16 = 0x04B2 // Request full user info
-	ICQReqSubTypeShortInfo                uint16 = 0x04BA // Request short user info
-	ICQReqSubTypeUnregister               uint16 = 0x04C4 // Unregister user request
-	ICQReqSubTypeFullInfo2                uint16 = 0x04D0 // Request full user info #2
-	ICQReqSubTypeSearchByDetails          uint16 = 0x0515 // Search by details request (plain)
-	ICQReqSubTypeSearchByUIN              uint16 = 0x051F // Search by uin request (plain)
-	ICQReqSubTypeSearchByEmail            uint16 = 0x0529 // Search by email request (plain)
-	ICQReqSubTypeSearchWhitePages         uint16 = 0x0533 // White pages search request (plain, simple)
-	ICQReqSubTypeSearchByDetailsWildcard  uint16 = 0x053D // Search by details request (plain, wildcard)
-	ICQReqSubTypeSearchByEmailWildcard    uint16 = 0x0547 // Search by email request (plain, wildcard)
-	ICQReqSubTypeSearchWhitePagesWildcard uint16 = 0x0551 // White pages search request (plain, wildcard)
-	ICQReqSubTypeSearchByUINTLV           uint16 = 0x0569 // Search by uin request (tlv)
-	ICQReqSubTypeSearchWhitePagesTLV      uint16 = 0x055F // Whitepages search request (tlv)
-	ICQReqSubTypeSearchByEmailTLV         uint16 = 0x0573 // Search by email request (tlv)
-	ICQReqSubTypeSearchChatUser           uint16 = 0x074E // Random chat user search request
-	ICQReqSubTypeXMLReq                   uint16 = 0x0898 // Request server variable via xml
-	ICQReqSubTypeSendRegiStats            uint16 = 0x0AA5 // Send registration stats report
-	ICQReqSubTypeSendShortcutBarStats     uint16 = 0x0AAF // Send shortcut bar stats report
-	ICQReqSubTypeSaveInfoTLV              uint16 = 0x0C3A // Save info tlv-based request
-	ICQReqSubTypeSendSMS                  uint16 = 0x1482 // Client send SMS request
-	ICQReqSubTypeSpamReport               uint16 = 0x2008 // Client spam report request
-	ICQReqSubTypeMetaStat0a8c             uint16 = 0x0A8C
-	ICQReqSubTypeMetaStat0a96             uint16 = 0x0A96
-	ICQReqSubTypeMetaStat0aaa             uint16 = 0x0AAA
-	ICQReqSubTypeMetaStat0ab4             uint16 = 0x0AB4
-	ICQReqSubTypeMetaStat0ab9             uint16 = 0x0AB9
-	ICQReqSubTypeMetaStat0abe             uint16 = 0x0ABE
-	ICQReqSubTypeMetaStat0ac8             uint16 = 0x0AC8
-	ICQReqSubTypeMetaStat0acd             uint16 = 0x0ACD
-	ICQReqSubTypeMetaStat0ad2             uint16 = 0x0AD2
-	ICQReqSubTypeMetaStat0ad7             uint16 = 0x0AD7
-	ICQReqSubTypeMetaStat0758             uint16 = 0x0758 // Request full user info
+	ICQDBQueryMetaReqSetBasicInfo     uint16 = 0x03EA
+	ICQDBQueryMetaReqSetWorkInfo      uint16 = 0x03F3
+	ICQDBQueryMetaReqSetMoreInfo      uint16 = 0x03FD
+	ICQDBQueryMetaReqSetNotes         uint16 = 0x0406
+	ICQDBQueryMetaReqSetEmails        uint16 = 0x040B
+	ICQDBQueryMetaReqSetInterests     uint16 = 0x0410
+	ICQDBQueryMetaReqSetAffiliations  uint16 = 0x041A
+	ICQDBQueryMetaReqSetPermissions   uint16 = 0x0424
+	ICQDBQueryMetaReqFullInfo         uint16 = 0x04B2
+	ICQDBQueryMetaReqFullInfo2        uint16 = 0x04D0
+	ICQDBQueryMetaReqSearchByDetails  uint16 = 0x0515
+	ICQDBQueryMetaReqSearchByUIN      uint16 = 0x051F
+	ICQDBQueryMetaReqSearchByEmail    uint16 = 0x0529
+	ICQDBQueryMetaReqSearchWhitePages uint16 = 0x0533
+	ICQDBQueryMetaReqXMLReq           uint16 = 0x0898
+	ICQDBQueryMetaReqStat0a8c         uint16 = 0x0A8C
+	ICQDBQueryMetaReqStat0a96         uint16 = 0x0A96
+	ICQDBQueryMetaReqStat0aaa         uint16 = 0x0AAA
+	ICQDBQueryMetaReqStat0ab4         uint16 = 0x0AB4
+	ICQDBQueryMetaReqStat0ab9         uint16 = 0x0AB9
+	ICQDBQueryMetaReqStat0abe         uint16 = 0x0ABE
+	ICQDBQueryMetaReqStat0ac8         uint16 = 0x0AC8
+	ICQDBQueryMetaReqStat0acd         uint16 = 0x0ACD
+	ICQDBQueryMetaReqStat0ad2         uint16 = 0x0AD2
+	ICQDBQueryMetaReqStat0ad7         uint16 = 0x0AD7
+	ICQDBQueryMetaReqStat0758         uint16 = 0x0758
+
+	ICQDBQueryMetaReplySetBasicInfo    uint16 = 0x0064
+	ICQDBQueryMetaReplySetWorkInfo     uint16 = 0x006E
+	ICQDBQueryMetaReplySetMoreInfo     uint16 = 0x0078
+	ICQDBQueryMetaReplySetNotes        uint16 = 0x0082
+	ICQDBQueryMetaReplySetEmails       uint16 = 0x0087
+	ICQDBQueryMetaReplySetInterests    uint16 = 0x008C
+	ICQDBQueryMetaReplySetAffiliations uint16 = 0x0096
+	ICQDBQueryMetaReplySetPermissions  uint16 = 0x00A0
+	ICQDBQueryMetaReplyBasicInfo       uint16 = 0x00C8
+	ICQDBQueryMetaReplyWorkInfo        uint16 = 0x00D2
+	ICQDBQueryMetaReplyMoreInfo        uint16 = 0x00DC
+	ICQDBQueryMetaReplyNotes           uint16 = 0x00E6
+	ICQDBQueryMetaReplyExtEmailInfo    uint16 = 0x00EB
+	ICQDBQueryMetaReplyInterests       uint16 = 0x00F0
+	ICQDBQueryMetaReplyAffiliations    uint16 = 0x00FA
+	ICQDBQueryMetaReplyHomePageCat     uint16 = 0x010E
+	ICQDBQueryMetaReplyUserFound       uint16 = 0x01A4
+	ICQDBQueryMetaReplyLastUserFound   uint16 = 0x01AE
 )
 
 type ICQChunk struct {
