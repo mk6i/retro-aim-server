@@ -23,30 +23,39 @@ paths:
                       description: User's unique identifier.
                     screen_name:
                       type: string
-                      description: User's screen name.
+                      description: User's AIM screen name or ICQ UIN.
+                    is_icq:
+                      type: boolean
+                      description: If true, indicates an ICQ user instead of an AIM user.
     post:
       summary: Create a new user
-      description: Create a new user account with a screen name and password.
+      description: Create a new AIM or ICQ user account.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - screen_name
+                - password
               properties:
                 screen_name:
                   type: string
-                  description: The user's screen name.
+                  description: The user's AIM screen name or ICQ UIN.
                 password:
                   type: string
                   description: The user's password for account creation.
+                is_icq:
+                  type: boolean
+                  description: If true, indicates an ICQ user instead of an AIM user.
       responses:
         '201':
           description: User account created successfully.
         '400':
           description: Bad request. Invalid input data.
         '409':
-          description: Conflict. A user with the specified screen name already exists.
+          description: Conflict. A user with the specified screen name or ICQ UIN already exists.
     delete:
       summary: Delete a user
       description: Delete a user account specified by their screen name.
@@ -91,22 +100,28 @@ paths:
                           description: User's unique identifier.
                         screen_name:
                           type: string
-                          description: User's screen name.
+                          description: User's AIM screen name or ICQ UIN.
+                        is_icq:
+                          type: boolean
+                          description: If true, indicates an ICQ user instead of an AIM user.
 
   /user/password:
     put:
       summary: Set a user's password
-      description: Update the password for a user specified by their screen name.
+      description: Update the password for a user specified by their screen name or ICQ UIN.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - screen_name
+                - password
               properties:
                 screen_name:
                   type: string
-                  description: The screen name of the user whose password is to be updated.
+                  description: The AIM screen name or ICQ UIN of the user whose password is to be updated.
                 password:
                   type: string
                   description: The new password for the user.
@@ -120,8 +135,8 @@ paths:
 
   /chat/room/public:
     get:
-      summary: List all public chat rooms
-      description: Retrieve a list of all public chat rooms in exchange 5.
+      summary: List all public AIM chat rooms
+      description: Retrieve a list of all public AIM chat rooms in exchange 5.
       responses:
         '200':
           description: Successful response containing a list of chat rooms.
@@ -150,7 +165,7 @@ paths:
                             description: User's unique identifier.
                           screen_name:
                             type: string
-                            description: User's screen name.
+                            description: User's AIM screen name.
 
     post:
       summary: Create a new public chat room
@@ -175,8 +190,8 @@ paths:
 
   /chat/room/private:
     get:
-      summary: List all private chat rooms
-      description: Retrieve a list of all private chat rooms in exchange 4.
+      summary: List all private AIM chat rooms
+      description: Retrieve a list of all private AIM chat rooms in exchange 4.
       responses:
         '200':
           description: Successful response containing a list of chat rooms.
@@ -208,7 +223,7 @@ paths:
                             description: User's unique identifier.
                           screen_name:
                             type: string
-                            description: User's screen name.
+                            description: User's AIM screen name.
 
   /instant-message:
     post:
@@ -223,10 +238,10 @@ paths:
               properties:
                 from:
                   type: string
-                  description: The screen name of the sender.
+                  description: The AIM screen name or ICQ UIN of the sender.
                 to:
                   type: string
-                  description: The screen name of the recipient.
+                  description: The AIM screen name or ICQ UIN of the recipient.
                 text:
                   type: string
                   description: The text content of the message.

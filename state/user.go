@@ -156,6 +156,9 @@ type User struct {
 	// WeakMD5Pass is the MD5 password hash format used by AIM v3.5-v4.7. This
 	// hash is used to authenticate roasted passwords for AIM v1.0-v3.0.
 	WeakMD5Pass []byte
+	// IsICQ indicates whether the user is an ICQ account (true) or an AIM
+	// account (false).
+	IsICQ bool
 	// ConfirmStatus indicates whether the user has confirmed their AIM account.
 	ConfirmStatus bool
 	// RegStatus is the AIM registration status.
@@ -288,8 +291,14 @@ func (u *User) ValidateRoastedPass(roastedPass []byte) bool {
 // HashPassword computes MD5 hashes of the user's password. It computes both
 // weak and strong variants and stores them in the struct.
 func (u *User) HashPassword(passwd string) error {
-	if err := validateAIMPassword(passwd); err != nil {
-		return err
+	if u.IsICQ {
+		if err := validateICQPassword(passwd); err != nil {
+			return err
+		}
+	} else {
+		if err := validateAIMPassword(passwd); err != nil {
+			return err
+		}
 	}
 	u.WeakMD5Pass = wire.WeakMD5PasswordHash(passwd, u.AuthKey)
 	u.StrongMD5Pass = wire.StrongMD5PasswordHash(passwd, u.AuthKey)

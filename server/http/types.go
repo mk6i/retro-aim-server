@@ -39,6 +39,7 @@ type MessageRelayer interface {
 type userWithPassword struct {
 	ScreenName string `json:"screen_name"`
 	Password   string `json:"password,omitempty"`
+	IsICQ      bool   `json:"is_icq"`
 }
 
 type onlineUsers struct {
@@ -49,6 +50,7 @@ type onlineUsers struct {
 type userHandle struct {
 	ID         string `json:"id"`
 	ScreenName string `json:"screen_name"`
+	IsICQ      bool   `json:"is_icq"`
 }
 
 type chatRoomCreate struct {

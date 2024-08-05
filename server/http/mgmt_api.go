@@ -113,6 +113,7 @@ func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager 
 		return
 	}
 
+	// todo hahaha
 	user := state.User{
 		AuthKey:         newUUID().String(),
 		IdentScreenName: state.NewIdentScreenName(input.ScreenName),
@@ -158,6 +159,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever Ses
 		ou.Sessions[i] = userHandle{
 			ID:         s.IdentScreenName().String(),
 			ScreenName: s.DisplayScreenName().String(),
+			IsICQ:      s.UIN() > 0,
 		}
 	}
 
@@ -183,6 +185,7 @@ func getUserHandler(w http.ResponseWriter, _ *http.Request, userManager UserMana
 		out[i] = userHandle{
 			ID:         u.IdentScreenName.String(),
 			ScreenName: u.DisplayScreenName.String(),
+			IsICQ:      u.IsICQ,
 		}
 	}
 
@@ -202,15 +205,23 @@ func postUserHandler(w http.ResponseWriter, r *http.Request, userManager UserMan
 
 	sn := state.DisplayScreenName(input.ScreenName)
 
-	if err := sn.ValidateAIMHandle(); err != nil {
-		http.Error(w, fmt.Sprintf("invalid screen name: %s", err), http.StatusBadRequest)
-		return
+	if input.IsICQ {
+		if err := sn.ValidateICQHandle(); err != nil {
+			http.Error(w, fmt.Sprintf("invalid screen name: %s", err), http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := sn.ValidateAIMHandle(); err != nil {
+			http.Error(w, fmt.Sprintf("invalid screen name: %s", err), http.StatusBadRequest)
+			return
+		}
 	}
 
 	user := state.User{
 		AuthKey:           newUUID().String(),
 		DisplayScreenName: sn,
 		IdentScreenName:   sn.IdentScreenName(),
+		IsICQ:             input.IsICQ,
 	}
 
 	if err := user.HashPassword(input.Password); err != nil {
