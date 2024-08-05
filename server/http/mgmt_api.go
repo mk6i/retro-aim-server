@@ -100,7 +100,6 @@ func userPasswordHandler(w http.ResponseWriter, r *http.Request, userManager Use
 	switch r.Method {
 	case http.MethodPut:
 		putUserPasswordHandler(w, r, userManager, logger)
-		_, _ = fmt.Fprintln(w, "Password successfully reset.")
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -134,6 +133,7 @@ func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager 
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+	_, _ = fmt.Fprintln(w, "Password successfully reset.")
 }
 
 // sessionHandler handles GET /session

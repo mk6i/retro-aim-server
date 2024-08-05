@@ -230,16 +230,19 @@ func (f SQLiteUserStore) UpdateUser(id IdentScreenName, updateFn func(u *User) e
 
 	defer func() {
 		if err != nil {
+			// todo how to make this less brittle, in case I forget to set the error
 			err = errors.Join(err, tx.Rollback())
 		}
 	}()
 
 	users, err := getUsers(filterByID(id), tx)
 	if err != nil {
-		return fmt.Errorf("failed to get users: %v", err)
+		err = fmt.Errorf("failed to get users: %v", err)
+		return err
 	}
 	if len(users) == 0 {
-		return ErrNoUser
+		err = ErrNoUser
+		return err
 	}
 
 	u := users[0]
@@ -384,7 +387,8 @@ func (f SQLiteUserStore) UpdateUser(id IdentScreenName, updateFn func(u *User) e
 	if err != nil {
 		return err
 	}
-	return tx.Commit()
+	err = tx.Commit()
+	return err
 }
 
 type filterFN func() (string, []any)
