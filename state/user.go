@@ -3,7 +3,9 @@ package state
 import (
 	"bytes"
 	"errors"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/google/uuid"
 
@@ -57,6 +59,50 @@ func NewIdentScreenName(screenName string) IdentScreenName {
 // DisplayScreenName type represents the screen name in the user-defined format.
 // This includes the original casing and spacing as defined by the user.
 type DisplayScreenName string
+
+var (
+	ErrAIMHandleLength        = errors.New("screen name must be between 3 and 16 characters")
+	ErrAIMHandleInvalidFormat = errors.New("screen name must start with a letter, cannot end with a space, and must contain only letters, numbers, and spaces")
+	ErrICQUINInvalidFormat    = errors.New("uin must be a number in the range 10000-2147483646")
+)
+
+// ValidateAIMHandle returns an error if the instance is not a valid AIM screen name.
+// Possible errors:
+//   - ErrAIMHandleLength: if the screen name is not between 3 and 16
+//     characters
+//   - ErrAIMHandleInvalidFormat: if the screen name does not start with a
+//     letter, ends with a space, or contains invalid characters
+func (s DisplayScreenName) ValidateAIMHandle() error {
+	if len(s) < 3 || len(s) > 16 {
+		return ErrAIMHandleLength
+	}
+
+	// Must start with a letter, cannot end with a space,
+	// and must contain only letters, numbers, and spaces
+	if !unicode.IsLetter(rune(s[0])) || s[len(s)-1] == ' ' {
+		return ErrAIMHandleInvalidFormat
+	}
+
+	for _, ch := range s {
+		if !unicode.IsLetter(ch) && !unicode.IsDigit(ch) && ch != ' ' {
+			return ErrAIMHandleInvalidFormat
+		}
+	}
+
+	return nil
+}
+
+// ValidateICQHandle returns an error if the instance is not a valid ICQ UIN.
+// Possible errors:
+//   - ErrICQUINInvalidFormat: if the UIN is not a number or is not in the valid
+//     range
+func (s DisplayScreenName) ValidateICQHandle() error {
+	uin, err := strconv.Atoi(string(s))
+	if err != nil || uin < 10000 || uin > 2147483646 {
+		return ErrICQUINInvalidFormat
+	}
+	return nil
+}
 
 // IdentScreenName converts the DisplayScreenName to an IdentScreenName by applying
 // the normalization process defined in NewIdentScreenName.
@@ -118,7 +164,32 @@ func (u *User) ValidateRoastedPass(roastedPass []byte) bool {
 // HashPassword computes MD5 hashes of the user's password. It computes both
 // weak and strong variants and stores them in the struct.
 func (u *User) HashPassword(passwd string) error {
+	if err := validateAIMPassword(passwd); err != nil {
+		return err
+	}
 	u.WeakMD5Pass = wire.WeakMD5PasswordHash(passwd, u.AuthKey)
 	u.StrongMD5Pass = wire.StrongMD5PasswordHash(passwd, u.AuthKey)
+	return nil
+}
+
+// validateAIMPassword returns an error if the AIM password is invalid.
+// A valid password is 4-16 characters long. The minimum password length is
+// set here for software preservation purposes; operators should set more
+// stringent password requirements.
+func validateAIMPassword(pass string) error {
+	if len(pass) < 4 || len(pass) > 16 {
+		return errors.New("password length must be between 4-16 characters")
+	}
+	return nil
+}
+
+// validateICQPassword returns an error if the ICQ password is invalid.
+// A valid password is 1-8 characters long. The minimum password length is set
+// here for software preservation purposes; operators should set more stringent
+// password requirements.
+func validateICQPassword(pass string) error {
+	if len(pass) < 1 || len(pass) > 8 {
+		return errors.New("password must be between 1 and 8 characters")
+	}
 	return nil
 }

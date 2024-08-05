@@ -154,18 +154,21 @@ func (s AdminService) InfoChangeRequest(ctx context.Context, sess *state.Session
 
 	// validateProposedName ensures that the name is valid
 	var validateProposedName = func(name state.DisplayScreenName) (ok bool, errorCode uint16) {
-		// proposed name is too long
-		if len(name) > 16 {
+		err := name.ValidateAIMHandle()
+		switch {
+		case errors.Is(err, state.ErrAIMHandleLength):
+			// proposed name is too long
 			return false, wire.AdminInfoErrorInvalidNickNameLength
+		case errors.Is(err, state.ErrAIMHandleInvalidFormat):
+			// character or spacing issues
+			return false, wire.AdminInfoErrorInvalidNickName
 		}
+
 		// proposed name does not match session name (e.g. malicious client)
 		if name.IdentScreenName() != sess.IdentScreenName() {
 			return false, wire.AdminInfoErrorValidateNickName
 		}
-		// proposed name ends in a space
-		if name[len(name)-1] == 32 {
-			return false, wire.AdminInfoErrorInvalidNickName
-		}
+
 		return true, 0
 	}
 

@@ -149,35 +149,41 @@ func TestUserHandler_GET(t *testing.T) {
 }
 
 func TestUserHandler_POST(t *testing.T) {
+	type insertUserParams struct {
+		user state.User
+		err  error
+	}
 	tt := []struct {
-		name           string
-		body           string
-		UUID           uuid.UUID
-		user           state.User
-		userHandlerErr error
-		want           string
-		statusCode     int
+		name             string
+		body             string
+		UUID             uuid.UUID
+		insertUserParams []insertUserParams
+		want             string
+		statusCode       int
 	}{
 		{
 			name: "with valid user",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
 			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
-			user: func() state.User {
-				user := state.User{
-					AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-					DisplayScreenName: "userA",
-					IdentScreenName:   state.NewIdentScreenName("userA"),
-				}
-				assert.NoError(t, user.HashPassword("thepassword"))
-				return user
-			}(),
+			insertUserParams: []insertUserParams{
+				{
+					user: func() state.User {
+						user := state.User{
+							AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+							DisplayScreenName: "userA",
+							IdentScreenName:   state.NewIdentScreenName("userA"),
+						}
+						assert.NoError(t, user.HashPassword("thepassword"))
+						return user
+					}(),
+				},
+			},
 			want:       `User account created successfully.`,
 			statusCode: http.StatusCreated,
 		},
 		{
 			name:       "with malformed body",
 			body:       `{"screen_name":"userA", "password":"thepassword"`,
-			user:       state.User{},
 			want:       `malformed input`,
 			statusCode: http.StatusBadRequest,
 		},
@@ -185,35 +191,57 @@ func TestUserHandler_POST(t *testing.T) {
 			name: "user handler error",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
 			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
-			user: func() state.User {
-				user := state.User{
-					AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-					DisplayScreenName: "userA",
-					IdentScreenName:   state.NewIdentScreenName("userA"),
-				}
-				assert.NoError(t, user.HashPassword("thepassword"))
-				return user
-			}(),
-			userHandlerErr: io.EOF,
-			want:           `internal server error`,
-			statusCode:     http.StatusInternalServerError,
+			insertUserParams: []insertUserParams{
+				{
+					user: func() state.User {
+						user := state.User{
+							AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+							DisplayScreenName: "userA",
+							IdentScreenName:   state.NewIdentScreenName("userA"),
+						}
+						assert.NoError(t, user.HashPassword("thepassword"))
+						return user
+					}(),
+					err: io.EOF,
+				},
+			},
+			want:       `internal server error`,
+			statusCode: http.StatusInternalServerError,
 		},
 		{
 			name: "duplicate user",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
 			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
-			user: func() state.User {
-				user := state.User{
-					AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-					DisplayScreenName: "userA",
-					IdentScreenName:   state.NewIdentScreenName("userA"),
-				}
-				assert.NoError(t, user.HashPassword("thepassword"))
-				return user
-			}(),
-			userHandlerErr: state.ErrDupUser,
-			want:           `user already exists`,
-			statusCode:     http.StatusConflict,
+			insertUserParams: []insertUserParams{
+				{
+					user: func() state.User {
+						user := state.User{
+							AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+							DisplayScreenName: "userA",
+							IdentScreenName:   state.NewIdentScreenName("userA"),
+						}
+						assert.NoError(t, user.HashPassword("thepassword"))
+						return user
+					}(),
+					err: state.ErrDupUser,
+				},
+			},
+			want:       `user already exists`,
+			statusCode: http.StatusConflict,
+		},
+		{
+			name:       "invalid AIM screen name",
+			body:       `{"screen_name":"a", "password":"thepassword"}`,
+			UUID:       uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
+			want:       `invalid screen name: screen name must be between 3 and 16 characters`,
+			statusCode: http.StatusBadRequest,
+		},
+		{
+			name:       "invalid AIM password",
+			body:       `{"screen_name":"userA", "password":"1"}`,
+			UUID:       uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
+			want:       `invalid password: password length must be between 4-16 characters`,
+			statusCode: http.StatusBadRequest,
 		},
 	}
 
@@ -223,10 +251,10 @@ func TestUserHandler_POST(t *testing.T) {
 			responseRecorder := httptest.NewRecorder()
 
 			userManager := newMockUserManager(t)
-			if tc.user.IdentScreenName.String() != "" {
+			for _, params := range tc.insertUserParams {
 				userManager.EXPECT().
-					InsertUser(tc.user).
-					Return(tc.userHandlerErr)
+					InsertUser(params.user).
+					Return(params.err)
 			}
 
 			newUUID := func() uuid.UUID { return tc.UUID }

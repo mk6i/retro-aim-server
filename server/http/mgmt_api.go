@@ -201,6 +201,12 @@ func postUserHandler(w http.ResponseWriter, r *http.Request, userManager UserMan
 	}
 
 	sn := state.DisplayScreenName(input.ScreenName)
+
+	if err := sn.ValidateAIMHandle(); err != nil {
+		http.Error(w, fmt.Sprintf("invalid screen name: %s", err), http.StatusBadRequest)
+		return
+	}
+
 	user := state.User{
 		AuthKey:           newUUID().String(),
 		DisplayScreenName: sn,
@@ -208,8 +214,7 @@ func postUserHandler(w http.ResponseWriter, r *http.Request, userManager UserMan
 	}
 
 	if err := user.HashPassword(input.Password); err != nil {
-		logger.Error("error hashing user password in POST /user", "err", err.Error())
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("invalid password: %s", err), http.StatusBadRequest)
 		return
 	}
 
