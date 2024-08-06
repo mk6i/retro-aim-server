@@ -222,7 +222,7 @@ func (f SQLiteUserStore) User(screenName IdentScreenName) (*User, error) {
 	return u, err
 }
 
-func (f SQLiteUserStore) UpdateUser(id IdentScreenName, updateFn func(u *User)) error {
+func (f SQLiteUserStore) UpdateUser(id IdentScreenName, updateFn func(u *User) error) error {
 	tx, err := f.db.Begin()
 	if err != nil {
 		return err
@@ -235,7 +235,6 @@ func (f SQLiteUserStore) UpdateUser(id IdentScreenName, updateFn func(u *User)) 
 	}()
 
 	users, err := getUsers(filterByID(id), tx)
-
 	if err != nil {
 		return fmt.Errorf("failed to get users: %v", err)
 	}
@@ -244,7 +243,10 @@ func (f SQLiteUserStore) UpdateUser(id IdentScreenName, updateFn func(u *User)) 
 	}
 
 	u := users[0]
-	updateFn(&u)
+	err = updateFn(&u)
+	if err != nil {
+		return err
+	}
 
 	q := `
 		UPDATE users SET 
@@ -440,6 +442,7 @@ func getUsers(filterFN filterFN, tx queryer) ([]User, error) {
 			interest3Keyword,
 			interest4Code,
 			interest4Keyword,
+			isICQ,
 			lang1,
 			lang2,
 			lang3,
@@ -518,6 +521,7 @@ func getUsers(filterFN filterFN, tx queryer) ([]User, error) {
 			&u.Interest3Keyword,
 			&u.Interest4Code,
 			&u.Interest4Keyword,
+			&u.IsICQ,
 			&u.Lang1,
 			&u.Lang2,
 			&u.Lang3,
@@ -563,11 +567,18 @@ func getUsers(filterFN filterFN, tx queryer) ([]User, error) {
 // same screen name already exists.
 func (f SQLiteUserStore) InsertUser(u User) error {
 	q := `
-		INSERT INTO users (identScreenName, displayScreenName, authKey, weakMD5Pass, strongMD5Pass)
-		VALUES (?, ?, ?, ?, ?)
+		INSERT INTO users (identScreenName, displayScreenName, authKey, weakMD5Pass, strongMD5Pass, isICQ)
+		VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT (identScreenName) DO NOTHING
 	`
-	result, err := f.db.Exec(q, u.IdentScreenName.String(), u.DisplayScreenName, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass)
+	result, err := f.db.Exec(q,
+		u.IdentScreenName.String(),
+		u.DisplayScreenName,
+		u.AuthKey,
+		u.WeakMD5Pass,
+		u.StrongMD5Pass,
+		u.IsICQ,
+	)
 	if err != nil {
 		return err
 	}

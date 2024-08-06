@@ -422,7 +422,7 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 			}
 
 			newUUID := func() uuid.UUID { return tc.UUID }
-			userPasswordHandler(responseRecorder, request, userManager, newUUID, slog.Default())
+			userPasswordHandler(responseRecorder, request, userManager, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)

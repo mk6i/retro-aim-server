@@ -534,7 +534,7 @@ func (s ICQService) reply(ctx context.Context, sess *state.Session, message wire
 }
 
 func (s ICQService) UpdateBasicInfo(ctx context.Context, sess *state.Session, req wire.ICQUserInfoBasic, seq uint16) error {
-	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) {
+	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) error {
 		u.Nickname = req.Nickname
 		u.FirstName = req.FirstName
 		u.LastName = req.LastName
@@ -549,6 +549,7 @@ func (s ICQService) UpdateBasicInfo(ctx context.Context, sess *state.Session, re
 		u.CountryCode = req.CountryCode
 		u.GMTOffset = req.GMTOffset
 		u.PublishEmail = req.PublishEmail == wire.ICQUserFlagPublishEmailYes
+		return nil
 	})
 
 	if err != nil {
@@ -558,7 +559,7 @@ func (s ICQService) UpdateBasicInfo(ctx context.Context, sess *state.Session, re
 }
 
 func (s ICQService) UpdateWorkInfo(ctx context.Context, sess *state.Session, req wire.ICQWorkInfo, seq uint16) error {
-	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) {
+	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) error {
 		u.Company = req.Company
 		u.Department = req.Department
 		u.OccupationCode = req.OccupationCode
@@ -571,6 +572,7 @@ func (s ICQService) UpdateWorkInfo(ctx context.Context, sess *state.Session, req
 		u.WorkState = req.WorkState
 		u.WorkWebPage = req.WorkWebPage
 		u.WorkZIP = req.WorkZIP
+		return nil
 	})
 
 	if err != nil {
@@ -580,7 +582,7 @@ func (s ICQService) UpdateWorkInfo(ctx context.Context, sess *state.Session, req
 }
 
 func (s ICQService) UpdateMoreInfo(ctx context.Context, sess *state.Session, req wire.SomeMoreUserInfo, seq uint16) error {
-	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) {
+	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) error {
 		u.Gender = req.Gender
 		u.HomePageAddr = req.HomePageAddr
 		u.BirthYear = req.BirthYear
@@ -589,6 +591,7 @@ func (s ICQService) UpdateMoreInfo(ctx context.Context, sess *state.Session, req
 		u.Lang1 = req.Lang1
 		u.Lang2 = req.Lang2
 		u.Lang3 = req.Lang3
+		return nil
 	})
 
 	if err != nil {
@@ -598,8 +601,9 @@ func (s ICQService) UpdateMoreInfo(ctx context.Context, sess *state.Session, req
 }
 
 func (s ICQService) UpdateUserNotes(ctx context.Context, sess *state.Session, req wire.ICQNotes, seq uint16) error {
-	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) {
+	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) error {
 		u.Notes = req.Notes
+		return nil
 	})
 
 	if err != nil {
@@ -609,7 +613,7 @@ func (s ICQService) UpdateUserNotes(ctx context.Context, sess *state.Session, re
 }
 
 func (s ICQService) UpdateInterests(ctx context.Context, sess *state.Session, req wire.ICQInterests, seq uint16) error {
-	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) {
+	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) error {
 		u.Interest1Code = req.Interests[0].Code
 		u.Interest1Keyword = req.Interests[0].Keyword
 		u.Interest2Code = req.Interests[1].Code
@@ -618,6 +622,7 @@ func (s ICQService) UpdateInterests(ctx context.Context, sess *state.Session, re
 		u.Interest3Keyword = req.Interests[2].Keyword
 		u.Interest4Code = req.Interests[3].Code
 		u.Interest4Keyword = req.Interests[3].Keyword
+		return nil
 	})
 
 	if err != nil {
@@ -627,7 +632,7 @@ func (s ICQService) UpdateInterests(ctx context.Context, sess *state.Session, re
 }
 
 func (s ICQService) UpdateAffiliations(ctx context.Context, sess *state.Session, req wire.ICQAffiliations, seq uint16) error {
-	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) {
+	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) error {
 		u.PastAffiliations1Code = req.PastAffiliations[0].Code
 		u.PastAffiliations1Keyword = req.PastAffiliations[0].Keyword
 		u.PastAffiliations2Code = req.PastAffiliations[1].Code
@@ -640,6 +645,7 @@ func (s ICQService) UpdateAffiliations(ctx context.Context, sess *state.Session,
 		u.Affiliations2Keyword = req.Affiliations[1].Keyword
 		u.Affiliations3Code = req.Affiliations[2].Code
 		u.Affiliations3Keyword = req.Affiliations[2].Keyword
+		return nil
 	})
 
 	if err != nil {

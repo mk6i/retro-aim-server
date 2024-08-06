@@ -29,6 +29,7 @@ type UserManager interface {
 	DeleteUser(screenName state.IdentScreenName) error
 	InsertUser(u state.User) error
 	SetUserPassword(u state.User) error
+	UpdateUser(id state.IdentScreenName, updateFn func(u *state.User) error) error
 	User(screenName state.IdentScreenName) (*state.User, error)
 }
 

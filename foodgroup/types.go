@@ -185,7 +185,7 @@ type ICQFinder interface {
 }
 
 type UserUpdater interface {
-	UpdateUser(id state.IdentScreenName, updateFn func(u *state.User)) error
+	UpdateUser(id state.IdentScreenName, updateFn func(u *state.User) error) error
 }
 
 type SessionRetriever interface {

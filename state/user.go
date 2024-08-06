@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -62,8 +63,9 @@ func NewIdentScreenName(screenName string) IdentScreenName {
 type DisplayScreenName string
 
 var (
-	ErrAIMHandleLength        = errors.New("screen name must be between 3 and 16 characters")
 	ErrAIMHandleInvalidFormat = errors.New("screen name must start with a letter, cannot end with a space, and must contain only letters, numbers, and spaces")
+	ErrAIMHandleLength        = errors.New("screen name must be between 3 and 16 characters")
+	ErrPasswordInvalid        = errors.New("invalid password length")
 	ErrICQUINInvalidFormat    = errors.New("uin must be a number in the range 10000-2147483646")
 )
 
@@ -310,7 +312,7 @@ func (u *User) HashPassword(passwd string) error {
 // values reflect AOL's password validation rules circa 2000.
 func validateAIMPassword(pass string) error {
 	if len(pass) < 4 || len(pass) > 16 {
-		return errors.New("password length must be between 4-16 characters")
+		return fmt.Errorf("%w: password length must be between 4-16 characters", ErrPasswordInvalid)
 	}
 	return nil
 }
@@ -321,7 +323,7 @@ func validateAIMPassword(pass string) error {
 // reflects the password limitation imposed by old ICQ clients.
 func validateICQPassword(pass string) error {
 	if len(pass) < 6 || len(pass) > 8 {
-		return errors.New("password must be between 6 and 8 characters")
+		return fmt.Errorf("%w: password must be between 6-8 characters", ErrPasswordInvalid)
 	}
 	return nil
 }

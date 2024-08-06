@@ -35,7 +35,7 @@ func StartManagementAPI(
 		userHandler(w, r, userManager, uuid.New, logger)
 	})
 	mux.HandleFunc("/user/password", func(w http.ResponseWriter, r *http.Request) {
-		userPasswordHandler(w, r, userManager, uuid.New, logger)
+		userPasswordHandler(w, r, userManager, logger)
 	})
 	mux.HandleFunc("/user/login", func(w http.ResponseWriter, r *http.Request) {
 		loginHandler(w, r, userManager, logger)
@@ -96,39 +96,35 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request, manager UserManag
 	_, _ = fmt.Fprintln(w, "User account successfully deleted.")
 }
 
-func userPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, newUUID func() uuid.UUID, logger *slog.Logger) {
+func userPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, logger *slog.Logger) {
 	switch r.Method {
 	case http.MethodPut:
-		putUserPasswordHandler(w, r, userManager, newUUID, logger)
+		putUserPasswordHandler(w, r, userManager, logger)
+		_, _ = fmt.Fprintln(w, "Password successfully reset.")
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
 // putUserPasswordHandler handles the PUT /user/password endpoint.
-func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, newUUID func() uuid.UUID, logger *slog.Logger) {
+func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, logger *slog.Logger) {
 	input, err := userFromBody(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// todo hahaha
-	user := state.User{
-		AuthKey:         newUUID().String(),
-		IdentScreenName: state.NewIdentScreenName(input.ScreenName),
-	}
+	err = userManager.UpdateUser(state.NewIdentScreenName(input.ScreenName), func(u *state.User) error {
+		return u.HashPassword(input.Password)
+	})
 
-	if err := user.HashPassword(input.Password); err != nil {
-		logger.Error("error hashing user password in PUT /user/password", "err", err.Error())
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	if err := userManager.SetUserPassword(user); err != nil {
+	if err != nil {
 		switch {
 		case errors.Is(err, state.ErrNoUser):
 			http.Error(w, "user does not exist", http.StatusNotFound)
+			return
+		case errors.Is(err, state.ErrPasswordInvalid):
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		case err != nil:
 			logger.Error("error updating user password PUT /user/password", "err", err.Error())
