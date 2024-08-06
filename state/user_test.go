@@ -73,8 +73,12 @@ func TestDisplayScreenName_ValidateAIMHandle(t *testing.T) {
 		input   DisplayScreenName
 		wantErr error
 	}{
-		{"Valid handle", "User123", nil},
+		{"Valid handle no spaces", "User123", nil},
+		{"Valid handle with min character count and space", "U SR", nil},
+		{"Valid handle with max character count", "JustTheRightSize", nil},
+		{"Valid handle with max character count and spaces", "Just   RightSize", nil},
 		{"Too short", "Us", ErrAIMHandleLength},
+		{"Too short due to spaces", "U S", ErrAIMHandleLength},
 		{"Too long", "ThisIsAReallyLongScreenName", ErrAIMHandleLength},
 		{"Starts with number", "1User", ErrAIMHandleInvalidFormat},
 		{"Ends with space", "User123 ", ErrAIMHandleInvalidFormat},

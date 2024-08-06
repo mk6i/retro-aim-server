@@ -68,17 +68,31 @@ var (
 
 // ValidateAIMHandle returns an error if the instance is not a valid AIM screen name.
 // Possible errors:
-//   - ErrAIMHandleLength: if the screen name is not between 3 and 16
-//     characters
+//   - ErrAIMHandleLength: if the screen name has less than 3 non-space
+//     characters or more than 16 characters (including spaces).
 //   - ErrAIMHandleInvalidFormat: if the screen name does not start with a
 //     letter, ends with a space, or contains invalid characters
 func (s DisplayScreenName) ValidateAIMHandle() error {
-	if len(s) < 3 || len(s) > 16 {
+	if len(s) > 16 {
 		return ErrAIMHandleLength
 	}
 
-	// Must start with a letter, cannot end with a space,
-	// and must contain only letters, numbers, and spaces
+	// Must contain at least 3 letters.
+	c := 0
+	for _, r := range s {
+		if unicode.IsLetter(r) {
+			c++
+		}
+		if c == 3 {
+			break
+		}
+	}
+	if c < 3 {
+		return ErrAIMHandleLength
+	}
+
+	// Must start with a letter, cannot end with a space, and must contain only
+	// letters, numbers, and spaces.
 	if !unicode.IsLetter(rune(s[0])) || s[len(s)-1] == ' ' {
 		return ErrAIMHandleInvalidFormat
 	}
@@ -173,9 +187,8 @@ func (u *User) HashPassword(passwd string) error {
 }
 
 // validateAIMPassword returns an error if the AIM password is invalid.
-// A valid password is 4-16 characters long. The minimum password length is
-// set here for software preservation purposes; operators should set more
-// stringent password requirements.
+// A valid password is 4-16 characters long. The min and max password length
+// values reflect AOL's password validation rules circa 2000.
 func validateAIMPassword(pass string) error {
 	if len(pass) < 4 || len(pass) > 16 {
 		return errors.New("password length must be between 4-16 characters")
@@ -184,12 +197,12 @@ func validateAIMPassword(pass string) error {
 }
 
 // validateICQPassword returns an error if the ICQ password is invalid.
-// A valid password is 1-8 characters long. The minimum password length is set
-// here for software preservation purposes; operators should set more stringent
-// password requirements.
+// A valid password is 6-8 characters long. It's unclear what min length the
+// ICQ service required, so a plausible minimum value is set. The max length
+// reflects the password limitation imposed by old ICQ clients.
 func validateICQPassword(pass string) error {
-	if len(pass) < 1 || len(pass) > 8 {
-		return errors.New("password must be between 1 and 8 characters")
+	if len(pass) < 6 || len(pass) > 8 {
+		return errors.New("password must be between 6 and 8 characters")
 	}
 	return nil
 }
