@@ -17,10 +17,11 @@ import (
 )
 
 func TestSessionHandler_GET(t *testing.T) {
-	fnNewSess := func(screenName string) *state.Session {
+	fnNewSess := func(screenName string, uin uint32) *state.Session {
 		sess := state.NewSession()
 		sess.SetIdentScreenName(state.NewIdentScreenName(screenName))
 		sess.SetDisplayScreenName(state.DisplayScreenName(screenName))
+		sess.SetUIN(uin)
 		return sess
 	}
 	tt := []struct {
@@ -39,10 +40,11 @@ func TestSessionHandler_GET(t *testing.T) {
 		{
 			name: "with sessions",
 			sessions: []*state.Session{
-				fnNewSess("userA"),
-				fnNewSess("userB"),
+				fnNewSess("userA", 0),
+				fnNewSess("userB", 0),
+				fnNewSess("100003", 100003),
 			},
-			want:       `{"count":2,"sessions":[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]}`,
+			want:       `{"count":3,"sessions":[{"id":"usera","screen_name":"userA","is_icq":false},{"id":"userb","screen_name":"userB","is_icq":false},{"id":"100003","screen_name":"100003","is_icq":true}]}`,
 			statusCode: http.StatusOK,
 		},
 	}
@@ -112,8 +114,13 @@ func TestUserHandler_GET(t *testing.T) {
 					DisplayScreenName: "userB",
 					IdentScreenName:   state.NewIdentScreenName("userB"),
 				},
+				{
+					DisplayScreenName: "100003",
+					IdentScreenName:   state.NewIdentScreenName("100003"),
+					IsICQ:             true,
+				},
 			},
-			want:       `[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]`,
+			want:       `[{"id":"usera","screen_name":"userA","is_icq":false},{"id":"userb","screen_name":"userB","is_icq":false},{"id":"100003","screen_name":"100003","is_icq":true}]`,
 			statusCode: http.StatusOK,
 		},
 		{
@@ -240,7 +247,21 @@ func TestUserHandler_POST(t *testing.T) {
 			name:       "invalid AIM password",
 			body:       `{"screen_name":"userA", "password":"1"}`,
 			UUID:       uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
-			want:       `invalid password: password length must be between 4-16 characters`,
+			want:       `invalid password: invalid password length: password length must be between 4-16 characters`,
+			statusCode: http.StatusBadRequest,
+		},
+		{
+			name:       "invalid ICQ UIN",
+			body:       `{"screen_name":"1000", "password":"thepass", "is_icq":true}`,
+			UUID:       uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
+			want:       `invalid uin: uin must be a number in the range 10000-2147483646`,
+			statusCode: http.StatusBadRequest,
+		},
+		{
+			name:       "invalid ICQ password",
+			body:       `{"screen_name":"100003", "password":"thelongpassword", "is_icq":true}`,
+			UUID:       uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
+			want:       `invalid password: invalid password length: password must be between 6-8 characters`,
 			statusCode: http.StatusBadRequest,
 		},
 	}
@@ -344,68 +365,137 @@ func TestUserHandler_DELETE(t *testing.T) {
 }
 
 func TestUserPasswordHandler_PUT(t *testing.T) {
+	type updateUserParams struct {
+		id             state.IdentScreenName
+		given          state.User
+		want           state.User
+		wantErr        error
+		wantMutatorErr error
+	}
 	tt := []struct {
-		name           string
-		body           string
-		user           state.User
-		UUID           uuid.UUID
-		userHandlerErr error
-		want           string
-		statusCode     int
+		name             string
+		body             string
+		updateUserParams []updateUserParams
+		want             string
+		statusCode       int
 	}{
 		{
-			name: "with valid password",
-			body: `{"screen_name":"userA", "password":"thepassword"}`,
-			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
-			user: func() state.User {
-				user := state.User{
-					AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-					IdentScreenName: state.NewIdentScreenName("userA"),
-				}
-				assert.NoError(t, user.HashPassword("thepassword"))
-				return user
-			}(),
-			want:       ``,
+			name: "AIM user with valid password",
+			body: `{"screen_name":"userA", "password":"thenewpassword"}`,
+			updateUserParams: []updateUserParams{
+				{
+					id: state.NewIdentScreenName("userA"),
+					given: func() state.User {
+						user := state.User{
+							AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+							IdentScreenName: state.NewIdentScreenName("userA"),
+						}
+						assert.NoError(t, user.HashPassword("theoldpassword"))
+						return user
+					}(),
+					want: func() state.User {
+						user := state.User{
+							AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+							IdentScreenName: state.NewIdentScreenName("userA"),
+						}
+						assert.NoError(t, user.HashPassword("thenewpassword"))
+						return user
+					}(),
+				},
+			},
+			want:       `Password successfully reset.`,
 			statusCode: http.StatusNoContent,
+		},
+		{
+			name: "AIM user with invalid password",
+			body: `{"screen_name":"userA", "password":"a"}`,
+			updateUserParams: []updateUserParams{
+				{
+					given: state.User{
+						IsICQ: false,
+					},
+					id:             state.NewIdentScreenName("userA"),
+					wantErr:        state.ErrPasswordInvalid,
+					wantMutatorErr: state.ErrPasswordInvalid,
+				},
+			},
+			want:       `invalid password length`,
+			statusCode: http.StatusBadRequest,
+		},
+		{
+			name: "ICQ user with valid password",
+			body: `{"screen_name":"100003", "password":"8charnew"}`,
+			updateUserParams: []updateUserParams{
+				{
+					id: state.NewIdentScreenName("100003"),
+					given: func() state.User {
+						user := state.User{
+							AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+							IdentScreenName: state.NewIdentScreenName("100003"),
+							IsICQ:           true,
+						}
+						assert.NoError(t, user.HashPassword("8charold"))
+						return user
+					}(),
+					want: func() state.User {
+						user := state.User{
+							AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+							IdentScreenName: state.NewIdentScreenName("100003"),
+							IsICQ:           true,
+						}
+						assert.NoError(t, user.HashPassword("8charnew"))
+						return user
+					}(),
+				},
+			},
+			want:       `Password successfully reset.`,
+			statusCode: http.StatusNoContent,
+		},
+		{
+			name: "ICQ user with invalid password",
+			body: `{"screen_name":"100003", "password":"toolongpassword"}`,
+			updateUserParams: []updateUserParams{
+				{
+					id: state.NewIdentScreenName("100003"),
+					given: state.User{
+						IsICQ: true,
+					},
+					wantErr:        state.ErrPasswordInvalid,
+					wantMutatorErr: state.ErrPasswordInvalid,
+				},
+			},
+			want:       `invalid password length`,
+			statusCode: http.StatusBadRequest,
 		},
 		{
 			name:       "with malformed body",
 			body:       `{"screen_name":"userA", "password":"thepassword"`,
-			user:       state.User{},
 			want:       `malformed input`,
 			statusCode: http.StatusBadRequest,
 		},
 		{
 			name: "user password handler error",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
-			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
-			user: func() state.User {
-				user := state.User{
-					AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-					IdentScreenName: state.NewIdentScreenName("userA"),
-				}
-				assert.NoError(t, user.HashPassword("thepassword"))
-				return user
-			}(),
-			userHandlerErr: io.EOF,
-			want:           `internal server error`,
-			statusCode:     http.StatusInternalServerError,
+			updateUserParams: []updateUserParams{
+				{
+					id:      state.NewIdentScreenName("userA"),
+					wantErr: io.EOF,
+				},
+			},
+			want:       `internal server error`,
+			statusCode: http.StatusInternalServerError,
 		},
 		{
 			name: "user doesn't exist",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
-			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
-			user: func() state.User {
-				user := state.User{
-					AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-					IdentScreenName: state.NewIdentScreenName("userA"),
-				}
-				assert.NoError(t, user.HashPassword("thepassword"))
-				return user
-			}(),
-			userHandlerErr: state.ErrNoUser,
-			want:           `user does not exist`,
-			statusCode:     http.StatusNotFound,
+			updateUserParams: []updateUserParams{
+				{
+					id:      state.NewIdentScreenName("userA"),
+					wantErr: state.ErrNoUser,
+				},
+			},
+			want:       `user does not exist`,
+			statusCode: http.StatusNotFound,
 		},
 	}
 
@@ -415,13 +505,20 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 			responseRecorder := httptest.NewRecorder()
 
 			userManager := newMockUserManager(t)
-			if tc.user.IdentScreenName.String() != "" {
+			for _, params := range tc.updateUserParams {
 				userManager.EXPECT().
-					SetUserPassword(tc.user).
-					Return(tc.userHandlerErr)
+					UpdateUser(params.id, mock.MatchedBy(func(mutatorFn func(u *state.User) error) bool {
+						if params.wantErr != nil {
+							err := mutatorFn(&params.given)
+							if !assert.ErrorIs(t, err, params.wantMutatorErr) {
+								return assert.Equal(t, params.want, params.given)
+							}
+						}
+						return true
+					})).
+					Return(params.wantErr)
 			}
 
-			newUUID := func() uuid.UUID { return tc.UUID }
 			userPasswordHandler(responseRecorder, request, userManager, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {

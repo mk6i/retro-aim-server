@@ -203,7 +203,7 @@ func postUserHandler(w http.ResponseWriter, r *http.Request, userManager UserMan
 
 	if input.IsICQ {
 		if err := sn.ValidateICQHandle(); err != nil {
-			http.Error(w, fmt.Sprintf("invalid screen name: %s", err), http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf("invalid uin: %s", err), http.StatusBadRequest)
 			return
 		}
 	} else {
@@ -337,11 +337,11 @@ func getPublicChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetrie
 		cr := chatRoom{
 			CreateTime:   room.CreateTime(),
 			Name:         room.Name(),
-			Participants: make([]userHandle, len(sessions)),
+			Participants: make([]aimChatUserHandle, len(sessions)),
 			URL:          room.URL().String(),
 		}
 		for j, sess := range sessions {
-			cr.Participants[j] = userHandle{
+			cr.Participants[j] = aimChatUserHandle{
 				ID:         sess.IdentScreenName().String(),
 				ScreenName: sess.DisplayScreenName().String(),
 			}
@@ -404,11 +404,11 @@ func getPrivateChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetri
 			CreateTime:   room.CreateTime(),
 			CreatorID:    room.Creator().String(),
 			Name:         room.Name(),
-			Participants: make([]userHandle, len(sessions)),
+			Participants: make([]aimChatUserHandle, len(sessions)),
 			URL:          room.URL().String(),
 		}
 		for j, sess := range sessions {
-			cr.Participants[j] = userHandle{
+			cr.Participants[j] = aimChatUserHandle{
 				ID:         sess.IdentScreenName().String(),
 				ScreenName: sess.DisplayScreenName().String(),
 			}

@@ -29,7 +29,7 @@ type UserManager interface {
 	DeleteUser(screenName state.IdentScreenName) error
 	InsertUser(u state.User) error
 	SetUserPassword(u state.User) error
-	UpdateUser(id state.IdentScreenName, updateFn func(u *state.User) error) error
+	UpdateUser(id state.IdentScreenName, mutatorFn func(u *state.User) error) error
 	User(screenName state.IdentScreenName) (*state.User, error)
 }
 
@@ -54,16 +54,21 @@ type userHandle struct {
 	IsICQ      bool   `json:"is_icq"`
 }
 
+type aimChatUserHandle struct {
+	ID         string `json:"id"`
+	ScreenName string `json:"screen_name"`
+}
+
 type chatRoomCreate struct {
 	Name string `json:"name"`
 }
 
 type chatRoom struct {
-	Name         string       `json:"name"`
-	CreateTime   time.Time    `json:"create_time"`
-	CreatorID    string       `json:"creator_id,omitempty"`
-	URL          string       `json:"url"`
-	Participants []userHandle `json:"participants"`
+	Name         string              `json:"name"`
+	CreateTime   time.Time           `json:"create_time"`
+	CreatorID    string              `json:"creator_id,omitempty"`
+	URL          string              `json:"url"`
+	Participants []aimChatUserHandle `json:"participants"`
 }
 
 type instantMessage struct {
