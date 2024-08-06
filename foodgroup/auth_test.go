@@ -17,8 +17,8 @@ import (
 
 func TestAuthService_BUCPLoginRequest(t *testing.T) {
 	user := state.User{
-		IdentScreenName:   state.NewIdentScreenName("screen_name"),
-		DisplayScreenName: "screen_name",
+		IdentScreenName:   state.NewIdentScreenName("screenName"),
+		DisplayScreenName: "screenName",
 		AuthKey:           "auth_key",
 	}
 	assert.NoError(t, user.HashPassword("the_password"))
@@ -49,8 +49,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 						wire.NewTLV(wire.LoginTLVTagsPasswordHash, user.StrongMD5Pass),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
 					},
 				},
 			},
@@ -87,7 +87,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+							wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
 							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 						},
@@ -104,9 +104,9 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 						wire.NewTLV(wire.LoginTLVTagsClientIdentity, "ICQ 2000b"),
 						wire.NewTLV(wire.LoginTLVTagsPasswordHash, user.StrongMD5Pass),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
 					},
 				},
 			},
@@ -144,7 +144,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+							wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
 							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 						},
@@ -161,8 +161,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("bad_password")),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
 					},
 				},
 			},
@@ -184,7 +184,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: []wire.TLV{
-							wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+							wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 							wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidPassword),
 						},
 					},
@@ -280,8 +280,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 						wire.NewTLV(wire.LoginTLVTagsPasswordHash, user.StrongMD5Pass),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
 					},
 				},
 			},
@@ -326,7 +326,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+							wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
 							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 						},
@@ -344,8 +344,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("bad-password-hash")),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
 					},
 				},
 			},
@@ -385,7 +385,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+							wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 							wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
 							wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 						},
@@ -399,7 +399,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
 						wire.NewTLV(wire.LoginTLVTagsPasswordHash, user.StrongMD5Pass),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					},
 				},
 			},
@@ -454,8 +454,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 func TestAuthService_FLAPLoginResponse(t *testing.T) {
 	user := state.User{
 		AuthKey:           "auth_key",
-		DisplayScreenName: "screen_name",
-		IdentScreenName:   state.NewIdentScreenName("screen_name"),
+		DisplayScreenName: "screenName",
+		IdentScreenName:   state.NewIdentScreenName("screenName"),
 	}
 	assert.NoError(t, user.HashPassword("the_password"))
 
@@ -489,7 +489,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
 						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, roastedPassword),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					},
 				},
 			},
@@ -520,7 +520,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			},
 			expectOutput: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+					wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
 					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 				},
@@ -537,7 +537,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 					TLVList: wire.TLVList{
 						wire.NewTLV(wire.LoginTLVTagsClientIdentity, "ICQ 2000b"),
 						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, roastedPassword),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					},
 				},
 			},
@@ -569,7 +569,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			},
 			expectOutput: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+					wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
 					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 				},
@@ -585,7 +585,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
 						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, []byte("bad_roasted_password")),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					},
 				},
 			},
@@ -601,7 +601,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			},
 			expectOutput: wire.TLVRestBlock{
 				TLVList: []wire.TLV{
-					wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+					wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidPassword),
 				},
 			},
@@ -680,7 +680,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
 						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, roastedPassword),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					},
 				},
 			},
@@ -719,7 +719,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			},
 			expectOutput: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+					wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
 					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 				},
@@ -736,7 +736,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
 						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, "bad-roasted-password"),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					},
 				},
 			},
@@ -770,7 +770,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			},
 			expectOutput: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+					wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					wire.NewTLV(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
 					wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
 				},
@@ -782,7 +782,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
 						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, roastedPassword),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, user.IdentScreenName),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					},
 				},
 			},

@@ -282,13 +282,22 @@ func (s AuthService) login(
 
 	if user == nil {
 		if s.config.DisableAuth {
-			newUser, err := newUserFn(state.DisplayScreenName(screenName))
+			sn := state.DisplayScreenName(screenName)
+
+			handleValid := (isICQ && sn.ValidateICQHandle() == nil) ||
+				(!isICQ && sn.ValidateAIMHandle() == nil)
+			if !handleValid {
+				return loginFailureResponse(screenName, wire.LoginErrInvalidUsernameOrPassword), nil
+			}
+
+			newUser, err := newUserFn(sn)
 			if err != nil {
 				return wire.TLVRestBlock{}, err
 			}
 			if err := s.userManager.InsertUser(newUser); err != nil {
 				return wire.TLVRestBlock{}, err
 			}
+
 			return s.loginSuccessResponse(screenName, isICQ, err)
 		}
 
