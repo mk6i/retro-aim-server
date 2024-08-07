@@ -607,6 +607,7 @@ func (s ICQService) UpdateUserNotes(ctx context.Context, sess *state.Session, re
 }
 
 func (s ICQService) UpdateInterests(ctx context.Context, sess *state.Session, req wire.ICQInterests, seq uint16) error {
+	// code defensively, check that there are 4 interests
 	u := state.ICQInterests{
 		Interest1Code:    req.Interests[0].Code,
 		Interest1Keyword: req.Interests[0].Keyword,

@@ -30,11 +30,25 @@ type mockParams struct {
 
 type icqUserUpdaterParams struct {
 	setAffiliationsParams
+	setInterestsParams
+	setUserNotesParams
 }
 
 type setAffiliationsParams []struct {
 	name state.IdentScreenName
 	data state.ICQAffiliations
+	err  error
+}
+
+type setInterestsParams []struct {
+	name state.IdentScreenName
+	data state.ICQInterests
+	err  error
+}
+
+type setUserNotesParams []struct {
+	name state.IdentScreenName
+	data state.ICQUserNotes
 	err  error
 }
 
