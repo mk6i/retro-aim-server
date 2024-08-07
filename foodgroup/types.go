@@ -173,7 +173,7 @@ type AccountManager interface {
 	ConfirmStatusByName(screnName state.IdentScreenName) (bool, error)
 }
 
-type ICQFinder interface {
+type ICQUserFinder interface {
 	// FindByUIN returns a user where the UIN matches the ident screen name.
 	FindByUIN(UIN uint32) (state.User, error)
 	// FindByEmail returns a user with a matching email address.
@@ -184,7 +184,7 @@ type ICQFinder interface {
 	FindByInterests(code uint16, keywords []string) ([]state.User, error)
 }
 
-type ICQUpdater interface {
+type ICQUserUpdater interface {
 	SetAffiliations(name state.IdentScreenName, data state.ICQAffiliations) error
 	SetBasicInfo(name state.IdentScreenName, data state.ICQUserInfoBasic) error
 	SetInterests(name state.IdentScreenName, data state.ICQInterests) error

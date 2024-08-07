@@ -137,6 +137,11 @@ func marshalString(oscTag oscarTag, v reflect.Value, w io.Writer, order binary.B
 }
 
 func marshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer, order binary.ByteOrder) error {
+	// Check if the struct type is ICQMessage and set the order to LittleEndian
+	if t.Name() == "ICQMessage" {
+		order = binary.LittleEndian
+	}
+
 	marshalEachField := func(w io.Writer) error {
 		for i := 0; i < t.NumField(); i++ {
 			field := t.Field(i)

@@ -1,7 +1,6 @@
 package foodgroup
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"log/slog"
@@ -15,14 +14,14 @@ import (
 // NewICQService creates an instance of ICQService.
 func NewICQService(
 	messageRelayer MessageRelayer,
-	icqFinder ICQFinder,
-	userUpdater ICQUpdater,
+	finder ICQUserFinder,
+	userUpdater ICQUserUpdater,
 	logger *slog.Logger,
 	sessionRetriever SessionRetriever,
 ) ICQService {
 	return ICQService{
 		messageRelayer:   messageRelayer,
-		icqFinder:        icqFinder,
+		icqFinder:        finder,
 		userUpdater:      userUpdater,
 		logger:           logger,
 		sessionRetriever: sessionRetriever,
@@ -31,11 +30,11 @@ func NewICQService(
 
 // ICQService provides functionality for the ICQ food group.
 type ICQService struct {
-	icqFinder        ICQFinder
+	icqFinder        ICQUserFinder
 	logger           *slog.Logger
 	messageRelayer   MessageRelayer
 	sessionRetriever SessionRetriever
-	userUpdater      ICQUpdater
+	userUpdater      ICQUserUpdater
 }
 
 type ReqUserInfo struct {
@@ -510,11 +509,6 @@ func (s ICQService) reqAck(ctx context.Context, sess *state.Session, seq uint16,
 }
 
 func (s ICQService) reply(ctx context.Context, sess *state.Session, message wire.ICQMessage) error {
-	buf := &bytes.Buffer{}
-	if err := wire.MarshalLE(message, buf); err != nil {
-		return err
-	}
-
 	msg := wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.ICQ,
@@ -523,7 +517,7 @@ func (s ICQService) reply(ctx context.Context, sess *state.Session, message wire
 		Body: wire.SNAC_0x0F_0x02_ICQDBReply{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.ICQTLVTagsMetadata, buf.Bytes()),
+					wire.NewTLV(wire.ICQTLVTagsMetadata, message),
 				},
 			},
 		},

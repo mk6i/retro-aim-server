@@ -20,11 +20,22 @@ type mockParams struct {
 	chatRoomRegistryParams
 	cookieBakerParams
 	feedbagManagerParams
+	icqUserUpdaterParams
 	legacyBuddyListManagerParams
 	messageRelayerParams
 	profileManagerParams
 	sessionManagerParams
 	userManagerParams
+}
+
+type icqUserUpdaterParams struct {
+	setAffiliationsParams
+}
+
+type setAffiliationsParams []struct {
+	name state.IdentScreenName
+	data state.ICQAffiliations
+	err  error
 }
 
 // bartManagerParams is a helper struct that contains mock parameters for
@@ -507,6 +518,13 @@ func sessOptSignonComplete(session *state.Session) {
 func sessOptCaps(caps [][16]byte) func(session *state.Session) {
 	return func(session *state.Session) {
 		session.SetCaps(caps)
+	}
+}
+
+// sessOptCaps sets caps
+func sessOptUIN(UIN uint32) func(session *state.Session) {
+	return func(session *state.Session) {
+		session.SetUIN(UIN)
 	}
 }
 

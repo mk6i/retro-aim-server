@@ -113,3 +113,9 @@ packages:
       AccountManager:
         config:
           filename: "mock_account_manager_test.go"
+      ICQUserFinder:
+        config:
+          filename: "mock_icq_user_finder_test.go"
+      ICQUserUpdater:
+        config:
+          filename: "mock_icq_user_updater_test.go"

@@ -169,6 +169,11 @@ func unmarshalString(v reflect.Value, oscTag oscarTag, r io.Reader, order binary
 }
 
 func unmarshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, r io.Reader, order binary.ByteOrder) error {
+	// Check if the struct type is ICQMessage and set the order to LittleEndian
+	if t.Name() == "ICQMessage" {
+		order = binary.LittleEndian
+	}
+
 	if oscTag.hasLenPrefix {
 		bufLen, err := unmarshalUnsignedInt(oscTag.lenPrefix, r, order)
 		if err != nil {
