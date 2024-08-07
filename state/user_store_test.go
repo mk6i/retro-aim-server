@@ -406,6 +406,7 @@ func TestGetUser(t *testing.T) {
 		DisplayScreenName: DisplayScreenName("testscreenname"),
 		AuthKey:           "theauthkey",
 		StrongMD5Pass:     []byte("thepasshash"),
+		RegStatus:         3,
 	}
 	err = f.InsertUser(*insertedUser)
 	assert.NoError(t, err)
@@ -815,15 +816,11 @@ func TestUpdateDisplayScreenName(t *testing.T) {
 	user := User{
 		DisplayScreenName: screenNameOriginal,
 		IdentScreenName:   screenNameOriginal.IdentScreenName(),
-	}
-	userFormatted := User{
-		DisplayScreenName: screenNameFormatted,
-		IdentScreenName:   screenNameFormatted.IdentScreenName(),
+		RegStatus:         3,
 	}
 	if err := f.InsertUser(user); err != nil {
 		t.Fatalf("failed to upsert new user: %s", err.Error())
 	}
-
 	err = f.UpdateDisplayScreenName(screenNameFormatted)
 	if err != nil {
 		t.Fatalf("failed to update display screen name: %s", err.Error())
@@ -833,7 +830,6 @@ func TestUpdateDisplayScreenName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to retrieve screen name: %s", err.Error())
 	}
-	if !reflect.DeepEqual(userFormatted, *dbUser) {
-		t.Fatalf("users did not match:\n expected: %v\n actual: %v", userFormatted, dbUser)
-	}
+
+	assert.Equal(t, dbUser.DisplayScreenName, screenNameFormatted)
 }

@@ -540,15 +540,15 @@ func NewOServiceServiceForBOS(
 			logger:                 logger,
 			foodGroups: []uint16{
 				wire.Alert,
+				wire.BART,
 				wire.Buddy,
 				wire.ChatNav,
 				wire.Feedbag,
 				wire.ICBM,
+				wire.ICQ,
 				wire.Locate,
 				wire.OService,
-				wire.BART,
 				wire.PermitDeny,
-				wire.ICQ,
 			},
 		},
 	}
