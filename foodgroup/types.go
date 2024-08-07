@@ -184,8 +184,13 @@ type ICQFinder interface {
 	FindByInterests(code uint16, keywords []string) ([]state.User, error)
 }
 
-type UserUpdater interface {
-	UpdateUser(id state.IdentScreenName, updateFn func(u *state.User) error) error
+type ICQUpdater interface {
+	SetAffiliations(name state.IdentScreenName, data state.ICQAffiliations) error
+	SetBasicInfo(name state.IdentScreenName, data state.ICQUserInfoBasic) error
+	SetInterests(name state.IdentScreenName, data state.ICQInterests) error
+	SetMoreInfo(name state.IdentScreenName, data state.ICQMoreInfo) error
+	SetUserNotes(name state.IdentScreenName, data state.ICQUserNotes) error
+	SetWorkInfo(name state.IdentScreenName, data state.ICQWorkInfo) error
 }
 
 type SessionRetriever interface {

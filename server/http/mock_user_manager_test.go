@@ -169,17 +169,17 @@ func (_c *mockUserManager_InsertUser_Call) RunAndReturn(run func(state.User) err
 	return _c
 }
 
-// SetUserPassword provides a mock function with given fields: u
-func (_m *mockUserManager) SetUserPassword(u state.User) error {
-	ret := _m.Called(u)
+// SetUserPassword provides a mock function with given fields: screenName, newPassword
+func (_m *mockUserManager) SetUserPassword(screenName state.IdentScreenName, newPassword string) error {
+	ret := _m.Called(screenName, newPassword)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetUserPassword")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.User) error); ok {
-		r0 = rf(u)
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName, string) error); ok {
+		r0 = rf(screenName, newPassword)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -193,14 +193,15 @@ type mockUserManager_SetUserPassword_Call struct {
 }
 
 // SetUserPassword is a helper method to define mock.On call
-//   - u state.User
-func (_e *mockUserManager_Expecter) SetUserPassword(u interface{}) *mockUserManager_SetUserPassword_Call {
-	return &mockUserManager_SetUserPassword_Call{Call: _e.mock.On("SetUserPassword", u)}
+//   - screenName state.IdentScreenName
+//   - newPassword string
+func (_e *mockUserManager_Expecter) SetUserPassword(screenName interface{}, newPassword interface{}) *mockUserManager_SetUserPassword_Call {
+	return &mockUserManager_SetUserPassword_Call{Call: _e.mock.On("SetUserPassword", screenName, newPassword)}
 }
 
-func (_c *mockUserManager_SetUserPassword_Call) Run(run func(u state.User)) *mockUserManager_SetUserPassword_Call {
+func (_c *mockUserManager_SetUserPassword_Call) Run(run func(screenName state.IdentScreenName, newPassword string)) *mockUserManager_SetUserPassword_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.User))
+		run(args[0].(state.IdentScreenName), args[1].(string))
 	})
 	return _c
 }
@@ -210,54 +211,7 @@ func (_c *mockUserManager_SetUserPassword_Call) Return(_a0 error) *mockUserManag
 	return _c
 }
 
-func (_c *mockUserManager_SetUserPassword_Call) RunAndReturn(run func(state.User) error) *mockUserManager_SetUserPassword_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpdateUser provides a mock function with given fields: id, updateFn
-func (_m *mockUserManager) UpdateUser(id state.IdentScreenName, updateFn func(*state.User) error) error {
-	ret := _m.Called(id, updateFn)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdateUser")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName, func(*state.User) error) error); ok {
-		r0 = rf(id, updateFn)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// mockUserManager_UpdateUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateUser'
-type mockUserManager_UpdateUser_Call struct {
-	*mock.Call
-}
-
-// UpdateUser is a helper method to define mock.On call
-//   - id state.IdentScreenName
-//   - updateFn func(*state.User) error
-func (_e *mockUserManager_Expecter) UpdateUser(id interface{}, updateFn interface{}) *mockUserManager_UpdateUser_Call {
-	return &mockUserManager_UpdateUser_Call{Call: _e.mock.On("UpdateUser", id, updateFn)}
-}
-
-func (_c *mockUserManager_UpdateUser_Call) Run(run func(id state.IdentScreenName, updateFn func(*state.User) error)) *mockUserManager_UpdateUser_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName), args[1].(func(*state.User) error))
-	})
-	return _c
-}
-
-func (_c *mockUserManager_UpdateUser_Call) Return(_a0 error) *mockUserManager_UpdateUser_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockUserManager_UpdateUser_Call) RunAndReturn(run func(state.IdentScreenName, func(*state.User) error) error) *mockUserManager_UpdateUser_Call {
+func (_c *mockUserManager_SetUserPassword_Call) RunAndReturn(run func(state.IdentScreenName, string) error) *mockUserManager_SetUserPassword_Call {
 	_c.Call.Return(run)
 	return _c
 }

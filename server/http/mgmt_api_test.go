@@ -365,103 +365,38 @@ func TestUserHandler_DELETE(t *testing.T) {
 }
 
 func TestUserPasswordHandler_PUT(t *testing.T) {
-	type updateUserParams struct {
-		id             state.IdentScreenName
-		given          state.User
-		want           state.User
-		wantErr        error
-		wantMutatorErr error
+	type setUserPasswordParams struct {
+		screenName  state.IdentScreenName
+		newPassword string
+		wantErr     error
 	}
 	tt := []struct {
 		name             string
 		body             string
-		updateUserParams []updateUserParams
+		updateUserParams []setUserPasswordParams
 		want             string
 		statusCode       int
 	}{
 		{
-			name: "AIM user with valid password",
+			name: "user with valid password",
 			body: `{"screen_name":"userA", "password":"thenewpassword"}`,
-			updateUserParams: []updateUserParams{
+			updateUserParams: []setUserPasswordParams{
 				{
-					id: state.NewIdentScreenName("userA"),
-					given: func() state.User {
-						user := state.User{
-							AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-							IdentScreenName: state.NewIdentScreenName("userA"),
-						}
-						assert.NoError(t, user.HashPassword("theoldpassword"))
-						return user
-					}(),
-					want: func() state.User {
-						user := state.User{
-							AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-							IdentScreenName: state.NewIdentScreenName("userA"),
-						}
-						assert.NoError(t, user.HashPassword("thenewpassword"))
-						return user
-					}(),
+					screenName:  state.NewIdentScreenName("userA"),
+					newPassword: "thenewpassword",
 				},
 			},
 			want:       `Password successfully reset.`,
 			statusCode: http.StatusNoContent,
 		},
 		{
-			name: "AIM user with invalid password",
+			name: "user with invalid password",
 			body: `{"screen_name":"userA", "password":"a"}`,
-			updateUserParams: []updateUserParams{
+			updateUserParams: []setUserPasswordParams{
 				{
-					given: state.User{
-						IsICQ: false,
-					},
-					id:             state.NewIdentScreenName("userA"),
-					wantErr:        state.ErrPasswordInvalid,
-					wantMutatorErr: state.ErrPasswordInvalid,
-				},
-			},
-			want:       `invalid password length`,
-			statusCode: http.StatusBadRequest,
-		},
-		{
-			name: "ICQ user with valid password",
-			body: `{"screen_name":"100003", "password":"8charnew"}`,
-			updateUserParams: []updateUserParams{
-				{
-					id: state.NewIdentScreenName("100003"),
-					given: func() state.User {
-						user := state.User{
-							AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-							IdentScreenName: state.NewIdentScreenName("100003"),
-							IsICQ:           true,
-						}
-						assert.NoError(t, user.HashPassword("8charold"))
-						return user
-					}(),
-					want: func() state.User {
-						user := state.User{
-							AuthKey:         uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
-							IdentScreenName: state.NewIdentScreenName("100003"),
-							IsICQ:           true,
-						}
-						assert.NoError(t, user.HashPassword("8charnew"))
-						return user
-					}(),
-				},
-			},
-			want:       `Password successfully reset.`,
-			statusCode: http.StatusNoContent,
-		},
-		{
-			name: "ICQ user with invalid password",
-			body: `{"screen_name":"100003", "password":"toolongpassword"}`,
-			updateUserParams: []updateUserParams{
-				{
-					id: state.NewIdentScreenName("100003"),
-					given: state.User{
-						IsICQ: true,
-					},
-					wantErr:        state.ErrPasswordInvalid,
-					wantMutatorErr: state.ErrPasswordInvalid,
+					screenName:  state.NewIdentScreenName("userA"),
+					newPassword: "a",
+					wantErr:     state.ErrPasswordInvalid,
 				},
 			},
 			want:       `invalid password length`,
@@ -474,12 +409,13 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 			statusCode: http.StatusBadRequest,
 		},
 		{
-			name: "user password handler error",
+			name: "password updater returns runtime error",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
-			updateUserParams: []updateUserParams{
+			updateUserParams: []setUserPasswordParams{
 				{
-					id:      state.NewIdentScreenName("userA"),
-					wantErr: io.EOF,
+					screenName:  state.NewIdentScreenName("userA"),
+					newPassword: "thepassword",
+					wantErr:     io.EOF,
 				},
 			},
 			want:       `internal server error`,
@@ -488,10 +424,11 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 		{
 			name: "user doesn't exist",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
-			updateUserParams: []updateUserParams{
+			updateUserParams: []setUserPasswordParams{
 				{
-					id:      state.NewIdentScreenName("userA"),
-					wantErr: state.ErrNoUser,
+					screenName:  state.NewIdentScreenName("userA"),
+					newPassword: "thepassword",
+					wantErr:     state.ErrNoUser,
 				},
 			},
 			want:       `user does not exist`,
@@ -507,15 +444,7 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 			userManager := newMockUserManager(t)
 			for _, params := range tc.updateUserParams {
 				userManager.EXPECT().
-					UpdateUser(params.id, mock.MatchedBy(func(mutatorFn func(u *state.User) error) bool {
-						if params.wantErr != nil {
-							err := mutatorFn(&params.given)
-							if !assert.ErrorIs(t, err, params.wantMutatorErr) {
-								return assert.Equal(t, params.want, params.given)
-							}
-						}
-						return true
-					})).
+					SetUserPassword(params.screenName, params.newPassword).
 					Return(params.wantErr)
 			}
 

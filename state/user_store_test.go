@@ -647,16 +647,16 @@ func TestSQLiteUserStore_SetUserPassword_UserExists(t *testing.T) {
 	err = feedbagStore.InsertUser(u)
 	assert.NoError(t, err)
 
-	err = u.HashPassword("thenewpassword")
-	assert.NoError(t, err)
-
-	err = feedbagStore.SetUserPassword(u)
+	err = feedbagStore.SetUserPassword(u.IdentScreenName, "theNEWpassword")
 	assert.NoError(t, err)
 
 	gotUser, err := feedbagStore.User(u.IdentScreenName)
 	assert.NoError(t, err)
 
-	valid := gotUser.ValidateHash(u.StrongMD5Pass)
+	wantUser := User{}
+	wantUser.HashPassword("theNEWpassword")
+
+	valid := gotUser.ValidateHash(wantUser.StrongMD5Pass)
 	assert.True(t, valid)
 }
 
@@ -668,18 +668,7 @@ func TestSQLiteUserStore_SetUserPassword_ErrNoUser(t *testing.T) {
 	feedbagStore, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	u := User{
-		IdentScreenName:   NewIdentScreenName("theuser"),
-		DisplayScreenName: "theUser",
-	}
-	err = u.HashPassword("thepassword")
-	assert.NoError(t, err)
-
-	err = feedbagStore.SetUserPassword(u)
-	assert.ErrorIs(t, err, ErrNoUser)
-
-	// make sure previous transaction previously closed
-	err = feedbagStore.SetUserPassword(u)
+	err = feedbagStore.SetUserPassword(NewIdentScreenName("some_user"), "thepassword")
 	assert.ErrorIs(t, err, ErrNoUser)
 }
 

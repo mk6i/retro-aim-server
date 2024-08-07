@@ -113,11 +113,9 @@ func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager 
 		return
 	}
 
-	err = userManager.UpdateUser(state.NewIdentScreenName(input.ScreenName), func(u *state.User) error {
-		return u.HashPassword(input.Password)
-	})
+	sn := state.NewIdentScreenName(input.ScreenName)
 
-	if err != nil {
+	if err := userManager.SetUserPassword(sn, input.Password); err != nil {
 		switch {
 		case errors.Is(err, state.ErrNoUser):
 			http.Error(w, "user does not exist", http.StatusNotFound)

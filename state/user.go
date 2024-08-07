@@ -327,3 +327,76 @@ func validateICQPassword(pass string) error {
 	}
 	return nil
 }
+
+type ICQUserInfoBasic struct {
+	CellPhone    string
+	CountryCode  uint16
+	EmailAddress string
+	FirstName    string
+	GMTOffset    uint8
+	HomeAddress  string
+	HomeCity     string
+	HomeFax      string
+	HomePhone    string
+	HomeState    string
+	LastName     string
+	Nickname     string
+	PublishEmail bool
+	ZipCode      string
+}
+
+type ICQAffiliations struct {
+	PastAffiliations1Code    uint16
+	PastAffiliations1Keyword string
+	PastAffiliations2Code    uint16
+	PastAffiliations2Keyword string
+	PastAffiliations3Code    uint16
+	PastAffiliations3Keyword string
+	Affiliations1Code        uint16
+	Affiliations1Keyword     string
+	Affiliations2Code        uint16
+	Affiliations2Keyword     string
+	Affiliations3Code        uint16
+	Affiliations3Keyword     string
+}
+
+type ICQInterests struct {
+	Interest1Code    uint16
+	Interest1Keyword string
+	Interest2Code    uint16
+	Interest2Keyword string
+	Interest3Code    uint16
+	Interest3Keyword string
+	Interest4Code    uint16
+	Interest4Keyword string
+}
+
+type ICQUserNotes struct {
+	Notes string
+}
+
+type ICQMoreInfo struct {
+	Gender       uint16
+	HomePageAddr string
+	BirthYear    uint16
+	BirthMonth   uint8
+	BirthDay     uint8
+	Lang1        uint8
+	Lang2        uint8
+	Lang3        uint8
+}
+
+type ICQWorkInfo struct {
+	Company         string
+	Department      string
+	OccupationCode  uint16
+	Position        string
+	WorkAddress     string
+	WorkCity        string
+	WorkCountryCode uint16
+	WorkFax         string
+	WorkPhone       string
+	WorkState       string
+	WorkWebPage     string
+	WorkZIP         string
+}

@@ -16,7 +16,7 @@ import (
 func NewICQService(
 	messageRelayer MessageRelayer,
 	icqFinder ICQFinder,
-	userUpdater UserUpdater,
+	userUpdater ICQUpdater,
 	logger *slog.Logger,
 	sessionRetriever SessionRetriever,
 ) ICQService {
@@ -35,7 +35,7 @@ type ICQService struct {
 	logger           *slog.Logger
 	messageRelayer   MessageRelayer
 	sessionRetriever SessionRetriever
-	userUpdater      UserUpdater
+	userUpdater      ICQUpdater
 }
 
 type ReqUserInfo struct {
@@ -534,123 +534,123 @@ func (s ICQService) reply(ctx context.Context, sess *state.Session, message wire
 }
 
 func (s ICQService) UpdateBasicInfo(ctx context.Context, sess *state.Session, req wire.ICQUserInfoBasic, seq uint16) error {
-	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) error {
-		u.Nickname = req.Nickname
-		u.FirstName = req.FirstName
-		u.LastName = req.LastName
-		u.EmailAddress = req.Email
-		u.HomeCity = req.HomeCity
-		u.HomeState = req.HomeState
-		u.HomePhone = req.HomePhone
-		u.HomeFax = req.HomeFax
-		u.HomeAddress = req.HomeAddress
-		u.CellPhone = req.CellPhone
-		u.ZipCode = req.ZipCode
-		u.CountryCode = req.CountryCode
-		u.GMTOffset = req.GMTOffset
-		u.PublishEmail = req.PublishEmail == wire.ICQUserFlagPublishEmailYes
-		return nil
-	})
+	u := state.ICQUserInfoBasic{
+		CellPhone:    req.CellPhone,
+		CountryCode:  req.CountryCode,
+		EmailAddress: req.Email,
+		FirstName:    req.FirstName,
+		GMTOffset:    req.GMTOffset,
+		HomeAddress:  req.HomeAddress,
+		HomeCity:     req.HomeCity,
+		HomeFax:      req.HomeFax,
+		HomePhone:    req.HomePhone,
+		HomeState:    req.HomeState,
+		LastName:     req.LastName,
+		Nickname:     req.Nickname,
+		PublishEmail: req.PublishEmail == wire.ICQUserFlagPublishEmailYes,
+		ZipCode:      req.ZipCode,
+	}
 
-	if err != nil {
+	if err := s.userUpdater.SetBasicInfo(sess.IdentScreenName(), u); err != nil {
 		return err
 	}
+
 	return s.reqAck(ctx, sess, seq, wire.ICQDBQueryMetaReplySetBasicInfo)
 }
 
 func (s ICQService) UpdateWorkInfo(ctx context.Context, sess *state.Session, req wire.ICQWorkInfo, seq uint16) error {
-	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) error {
-		u.Company = req.Company
-		u.Department = req.Department
-		u.OccupationCode = req.OccupationCode
-		u.Position = req.Position
-		u.WorkAddress = req.WorkAddress
-		u.WorkCity = req.WorkCity
-		u.WorkCountryCode = req.WorkCountryCode
-		u.WorkFax = req.WorkFax
-		u.WorkPhone = req.WorkPhone
-		u.WorkState = req.WorkState
-		u.WorkWebPage = req.WorkWebPage
-		u.WorkZIP = req.WorkZIP
-		return nil
-	})
+	icqWorkInfo := state.ICQWorkInfo{
+		Company:         req.Company,
+		Department:      req.Department,
+		OccupationCode:  req.OccupationCode,
+		Position:        req.Position,
+		WorkAddress:     req.WorkAddress,
+		WorkCity:        req.WorkCity,
+		WorkCountryCode: req.WorkCountryCode,
+		WorkFax:         req.WorkFax,
+		WorkPhone:       req.WorkPhone,
+		WorkState:       req.WorkState,
+		WorkWebPage:     req.WorkWebPage,
+		WorkZIP:         req.WorkZIP,
+	}
 
-	if err != nil {
+	if err := s.userUpdater.SetWorkInfo(sess.IdentScreenName(), icqWorkInfo); err != nil {
 		return err
 	}
+
 	return s.reqAck(ctx, sess, seq, wire.ICQDBQueryMetaReplySetWorkInfo)
 }
 
 func (s ICQService) UpdateMoreInfo(ctx context.Context, sess *state.Session, req wire.SomeMoreUserInfo, seq uint16) error {
-	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) error {
-		u.Gender = req.Gender
-		u.HomePageAddr = req.HomePageAddr
-		u.BirthYear = req.BirthYear
-		u.BirthMonth = req.BirthMonth
-		u.BirthDay = req.BirthDay
-		u.Lang1 = req.Lang1
-		u.Lang2 = req.Lang2
-		u.Lang3 = req.Lang3
-		return nil
-	})
+	u := state.ICQMoreInfo{
+		Gender:       req.Gender,
+		HomePageAddr: req.HomePageAddr,
+		BirthYear:    req.BirthYear,
+		BirthMonth:   req.BirthMonth,
+		BirthDay:     req.BirthDay,
+		Lang1:        req.Lang1,
+		Lang2:        req.Lang2,
+		Lang3:        req.Lang3,
+	}
 
-	if err != nil {
+	if err := s.userUpdater.SetMoreInfo(sess.IdentScreenName(), u); err != nil {
 		return err
 	}
+
 	return s.reqAck(ctx, sess, seq, wire.ICQDBQueryMetaReplySetMoreInfo)
 }
 
 func (s ICQService) UpdateUserNotes(ctx context.Context, sess *state.Session, req wire.ICQNotes, seq uint16) error {
-	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) error {
-		u.Notes = req.Notes
-		return nil
-	})
+	u := state.ICQUserNotes{
+		Notes: req.Notes,
+	}
 
-	if err != nil {
+	if err := s.userUpdater.SetUserNotes(sess.IdentScreenName(), u); err != nil {
 		return err
 	}
+
 	return s.reqAck(ctx, sess, seq, wire.ICQDBQueryMetaReplySetNotes)
 }
 
 func (s ICQService) UpdateInterests(ctx context.Context, sess *state.Session, req wire.ICQInterests, seq uint16) error {
-	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) error {
-		u.Interest1Code = req.Interests[0].Code
-		u.Interest1Keyword = req.Interests[0].Keyword
-		u.Interest2Code = req.Interests[1].Code
-		u.Interest2Keyword = req.Interests[1].Keyword
-		u.Interest3Code = req.Interests[2].Code
-		u.Interest3Keyword = req.Interests[2].Keyword
-		u.Interest4Code = req.Interests[3].Code
-		u.Interest4Keyword = req.Interests[3].Keyword
-		return nil
-	})
+	u := state.ICQInterests{
+		Interest1Code:    req.Interests[0].Code,
+		Interest1Keyword: req.Interests[0].Keyword,
+		Interest2Code:    req.Interests[1].Code,
+		Interest2Keyword: req.Interests[1].Keyword,
+		Interest3Code:    req.Interests[2].Code,
+		Interest3Keyword: req.Interests[2].Keyword,
+		Interest4Code:    req.Interests[3].Code,
+		Interest4Keyword: req.Interests[3].Keyword,
+	}
 
-	if err != nil {
+	if err := s.userUpdater.SetInterests(sess.IdentScreenName(), u); err != nil {
 		return err
 	}
+
 	return s.reqAck(ctx, sess, seq, wire.ICQDBQueryMetaReplySetInterests)
 }
 
 func (s ICQService) UpdateAffiliations(ctx context.Context, sess *state.Session, req wire.ICQAffiliations, seq uint16) error {
-	err := s.userUpdater.UpdateUser(sess.IdentScreenName(), func(u *state.User) error {
-		u.PastAffiliations1Code = req.PastAffiliations[0].Code
-		u.PastAffiliations1Keyword = req.PastAffiliations[0].Keyword
-		u.PastAffiliations2Code = req.PastAffiliations[1].Code
-		u.PastAffiliations2Keyword = req.PastAffiliations[1].Keyword
-		u.PastAffiliations3Code = req.PastAffiliations[2].Code
-		u.PastAffiliations3Keyword = req.PastAffiliations[2].Keyword
-		u.Affiliations1Code = req.Affiliations[0].Code
-		u.Affiliations1Keyword = req.Affiliations[0].Keyword
-		u.Affiliations2Code = req.Affiliations[1].Code
-		u.Affiliations2Keyword = req.Affiliations[1].Keyword
-		u.Affiliations3Code = req.Affiliations[2].Code
-		u.Affiliations3Keyword = req.Affiliations[2].Keyword
-		return nil
-	})
+	u := state.ICQAffiliations{
+		PastAffiliations1Code:    req.PastAffiliations[0].Code,
+		PastAffiliations1Keyword: req.PastAffiliations[0].Keyword,
+		PastAffiliations2Code:    req.PastAffiliations[1].Code,
+		PastAffiliations2Keyword: req.PastAffiliations[1].Keyword,
+		PastAffiliations3Code:    req.PastAffiliations[2].Code,
+		PastAffiliations3Keyword: req.PastAffiliations[2].Keyword,
+		Affiliations1Code:        req.Affiliations[0].Code,
+		Affiliations1Keyword:     req.Affiliations[0].Keyword,
+		Affiliations2Code:        req.Affiliations[1].Code,
+		Affiliations2Keyword:     req.Affiliations[1].Keyword,
+		Affiliations3Code:        req.Affiliations[2].Code,
+		Affiliations3Keyword:     req.Affiliations[2].Keyword,
+	}
 
-	if err != nil {
+	if err := s.userUpdater.SetAffiliations(sess.IdentScreenName(), u); err != nil {
 		return err
 	}
+
 	return s.reqAck(ctx, sess, seq, wire.ICQDBQueryMetaReplySetAffiliations)
 }
 
