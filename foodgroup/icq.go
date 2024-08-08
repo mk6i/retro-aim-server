@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,20 +22,22 @@ func NewICQService(
 ) ICQService {
 	return ICQService{
 		messageRelayer:   messageRelayer,
-		icqFinder:        finder,
+		userFinder:       finder,
 		userUpdater:      userUpdater,
 		logger:           logger,
 		sessionRetriever: sessionRetriever,
+		timeNow:          time.Now,
 	}
 }
 
 // ICQService provides functionality for the ICQ food group.
 type ICQService struct {
-	icqFinder        ICQUserFinder
+	userFinder       ICQUserFinder
 	logger           *slog.Logger
 	messageRelayer   MessageRelayer
 	sessionRetriever SessionRetriever
 	userUpdater      ICQUserUpdater
+	timeNow          func() time.Time
 }
 
 type ReqUserInfo struct {
@@ -43,7 +46,7 @@ type ReqUserInfo struct {
 
 func (s ICQService) GetICQFullUserInfo(ctx context.Context, sess *state.Session, userInfo ReqUserInfo, seq uint16) error {
 
-	user, err := s.icqFinder.FindByUIN(userInfo.SearchUIN)
+	user, err := s.userFinder.FindByUIN(userInfo.SearchUIN)
 	if err != nil {
 		return err
 	}
@@ -133,7 +136,7 @@ func (s ICQService) getICQMoreUserInfo(ctx context.Context, sess *state.Session,
 			ReqSubType: wire.ICQDBQueryMetaReplyMoreInfo,
 			Success:    wire.ICQStatusCodeOK,
 			SomeMoreUserInfo: wire.SomeMoreUserInfo{
-				Age:          uint8(user.Age()),
+				Age:          uint8(user.Age(s.timeNow)),
 				Gender:       user.Gender,
 				HomePageAddr: user.HomePageAddr,
 				BirthYear:    user.BirthYear,
@@ -346,7 +349,7 @@ func (s ICQService) FindByUIN(ctx context.Context, sess *state.Session, req wire
 	}
 	resp.LastResult()
 
-	res, err := s.icqFinder.FindByUIN(req.UIN)
+	res, err := s.userFinder.FindByUIN(req.UIN)
 
 	switch {
 	case errors.Is(err, state.ErrNoUser):
@@ -376,7 +379,7 @@ func (s ICQService) FindByEmail(ctx context.Context, sess *state.Session, req wi
 	}
 	resp.LastResult()
 
-	res, err := s.icqFinder.FindByEmail(req.Email)
+	res, err := s.userFinder.FindByEmail(req.Email)
 
 	switch {
 	case errors.Is(err, state.ErrNoUser):
@@ -405,7 +408,7 @@ func (s ICQService) FindByDetails(ctx context.Context, sess *state.Session, req 
 		ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
 	}
 
-	res, err := s.icqFinder.FindByDetails(req.FirstName, req.LastName, req.NickName)
+	res, err := s.userFinder.FindByDetails(req.FirstName, req.LastName, req.NickName)
 
 	if err != nil {
 		s.logger.Error("FindByDetails failed", "err", err.Error())
@@ -450,7 +453,7 @@ func (s ICQService) FindByWhitePages(ctx context.Context, sess *state.Session, r
 	}
 
 	interests := strings.Split(req.InterestsKeyword, ",")
-	res, err := s.icqFinder.FindByInterests(req.InterestsCode, interests)
+	res, err := s.userFinder.FindByInterests(req.InterestsCode, interests)
 
 	if err != nil {
 		s.logger.Error("FindByWhitePages failed", "err", err.Error())
@@ -484,7 +487,21 @@ func (s ICQService) FindByWhitePages(ctx context.Context, sess *state.Session, r
 }
 
 func (s ICQService) createResult(res state.User) wire.ICQUserSearchRecord {
-	searchRecord := res.ICQUserSearchRecord(time.Now())
+	uin, _ := strconv.Atoi(res.IdentScreenName.String())
+
+	searchRecord := wire.ICQUserSearchRecord{
+		UIN:       uint32(uin),
+		Nickname:  res.Nickname,
+		FirstName: res.FirstName,
+		LastName:  res.LastName,
+		Email:     res.EmailAddress,
+		Gender:    uint8(res.Gender),
+		Age:       res.Age(s.timeNow),
+	}
+	if res.AuthReq {
+		searchRecord.Authorization = 1
+	}
+
 	userSess := s.sessionRetriever.RetrieveSession(res.IdentScreenName)
 	if userSess != nil {
 		searchRecord.OnlineStatus = 1

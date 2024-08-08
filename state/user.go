@@ -242,7 +242,7 @@ type User struct {
 	Affiliations3Keyword     string
 }
 
-func (u *User) Age() uint16 {
+func (u *User) Age(timeNow func() time.Time) uint16 {
 	if u.BirthYear == 0 || u.BirthDay == 0 || u.BirthMonth == 0 {
 		return 0
 	}
@@ -254,26 +254,7 @@ func (u *User) Age() uint16 {
 		return uint16(years)
 	}
 	bday := time.Date(int(u.BirthYear), time.Month(u.BirthMonth), int(u.BirthDay), 0, 0, 0, 0, time.UTC) // todo use user's actual time
-	return yearsSince(bday, time.Now())
-}
-
-// ICQUserSearchRecord creates a ICQUserSearchRecord instance from User
-func (u *User) ICQUserSearchRecord(now time.Time) wire.ICQUserSearchRecord {
-	uin, _ := strconv.Atoi(u.IdentScreenName.String())
-
-	rec := wire.ICQUserSearchRecord{
-		UIN:       uint32(uin),
-		Nickname:  u.Nickname,
-		FirstName: u.FirstName,
-		LastName:  u.LastName,
-		Email:     u.EmailAddress,
-		Gender:    uint8(u.Gender),
-		Age:       u.Age(),
-	}
-	if u.AuthReq {
-		rec.Authorization = 1
-	}
-	return rec
+	return yearsSince(bday, timeNow())
 }
 
 // ValidateHash checks if md5Hash is identical to one of the password hashes.

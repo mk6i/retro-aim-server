@@ -1280,7 +1280,7 @@ type ICQUserSearchResult struct {
 
 // LastResult flags the message as the last message in the search results.
 func (s *ICQUserSearchResult) LastResult() {
-	s.ReqSubType = 0x01AE
+	s.ReqSubType = ICQDBQueryMetaReplyLastUserFound
 	s.LastMessageFooter = &struct {
 		FoundUsersLeft uint32
 	}{

@@ -20,12 +20,57 @@ type mockParams struct {
 	chatRoomRegistryParams
 	cookieBakerParams
 	feedbagManagerParams
+	icqUserFinderParams
 	icqUserUpdaterParams
 	legacyBuddyListManagerParams
 	messageRelayerParams
 	profileManagerParams
 	sessionManagerParams
+	sessionRetrieverParams
 	userManagerParams
+}
+
+type sessionRetrieverParams struct {
+	retrieveSessionParams
+}
+
+type retrieveSessionParams []struct {
+	screenName state.IdentScreenName
+	result     *state.Session
+}
+
+type icqUserFinderParams struct {
+	findByUINParams
+	findByEmailParams
+	findByDetailsParams
+	findByInterestsParams
+}
+
+type findByUINParams []struct {
+	UIN    uint32
+	result state.User
+	err    error
+}
+
+type findByEmailParams []struct {
+	email  string
+	result state.User
+	err    error
+}
+
+type findByDetailsParams []struct {
+	firstName string
+	lastName  string
+	nickName  string
+	result    []state.User
+	err       error
+}
+
+type findByInterestsParams []struct {
+	code     uint16
+	keywords []string
+	result   []state.User
+	err      error
 }
 
 type icqUserUpdaterParams struct {
