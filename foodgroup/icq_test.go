@@ -331,3 +331,318 @@ func TestICQService_UpdateUserNotes(t *testing.T) {
 		})
 	}
 }
+
+func TestICQService_UpdateBasicInfo(t *testing.T) {
+	tests := []struct {
+		name       string
+		seq        uint16
+		sess       *state.Session
+		req        wire.ICQUserInfoBasic
+		mockParams mockParams
+		wantErr    assert.ErrorAssertionFunc
+	}{
+		{
+			name: "update basic info - happy path",
+			seq:  1,
+			sess: newTestSession("100003", sessOptUIN(100003)),
+			req: wire.ICQUserInfoBasic{
+				CellPhone:    "123-456-7890",
+				CountryCode:  1,
+				EmailAddress: "test@example.com",
+				FirstName:    "John",
+				GMTOffset:    5,
+				HomeAddress:  "123 Main St",
+				HomeCity:     "Anytown",
+				HomeFax:      "098-765-4321",
+				HomePhone:    "111-222-3333",
+				HomeState:    "CA",
+				LastName:     "Doe",
+				Nickname:     "Johnny",
+				PublishEmail: wire.ICQUserFlagPublishEmailYes,
+				ZipCode:      "12345",
+			},
+			mockParams: mockParams{
+				icqUserUpdaterParams: icqUserUpdaterParams{
+					setBasicInfoParams: setBasicInfoParams{
+						{
+							name: state.NewIdentScreenName("100003"),
+							data: state.ICQUserInfoBasic{
+								CellPhone:    "123-456-7890",
+								CountryCode:  1,
+								EmailAddress: "test@example.com",
+								FirstName:    "John",
+								GMTOffset:    5,
+								HomeAddress:  "123 Main St",
+								HomeCity:     "Anytown",
+								HomeFax:      "098-765-4321",
+								HomePhone:    "111-222-3333",
+								HomeState:    "CA",
+								LastName:     "Doe",
+								Nickname:     "Johnny",
+								PublishEmail: true,
+								ZipCode:      "12345",
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("100003"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQMoreUserInfo{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     100003,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													ReqSubType: wire.ICQDBQueryMetaReplySetBasicInfo,
+													Success:    wire.ICQStatusCodeOK,
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userUpdater := newMockICQUserUpdater(t)
+			for _, params := range tt.mockParams.setBasicInfoParams {
+				userUpdater.EXPECT().
+					SetBasicInfo(params.name, params.data).
+					Return(params.err)
+			}
+
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+
+			s := ICQService{
+				userUpdater:    userUpdater,
+				messageRelayer: messageRelayer,
+			}
+			err := s.UpdateBasicInfo(nil, tt.sess, tt.req, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestICQService_UpdateWorkInfo(t *testing.T) {
+	tests := []struct {
+		name       string
+		seq        uint16
+		sess       *state.Session
+		req        wire.ICQWorkInfo
+		mockParams mockParams
+		wantErr    assert.ErrorAssertionFunc
+	}{
+		{
+			name: "update work info - happy path",
+			seq:  1,
+			sess: newTestSession("100003", sessOptUIN(100003)),
+			req: wire.ICQWorkInfo{
+				Company:         "TechCorp Inc.",
+				Department:      "Engineering",
+				OccupationCode:  1023,
+				Position:        "Staff Software Engineer",
+				WorkAddress:     "456 Technology Blvd",
+				WorkCity:        "Innovate City",
+				WorkCountryCode: 1,
+				WorkFax:         "987-654-3210",
+				WorkPhone:       "222-333-4444",
+				WorkState:       "CA",
+				WorkWebPage:     "http://www.techcorp.com",
+				WorkZIP:         "67890",
+			},
+			mockParams: mockParams{
+				icqUserUpdaterParams: icqUserUpdaterParams{
+					setWorkInfoParams: setWorkInfoParams{
+						{
+							name: state.NewIdentScreenName("100003"),
+							data: state.ICQWorkInfo{
+								Company:         "TechCorp Inc.",
+								Department:      "Engineering",
+								OccupationCode:  1023,
+								Position:        "Staff Software Engineer",
+								WorkAddress:     "456 Technology Blvd",
+								WorkCity:        "Innovate City",
+								WorkCountryCode: 1,
+								WorkFax:         "987-654-3210",
+								WorkPhone:       "222-333-4444",
+								WorkState:       "CA",
+								WorkWebPage:     "http://www.techcorp.com",
+								WorkZIP:         "67890",
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("100003"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQMoreUserInfo{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     100003,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													ReqSubType: wire.ICQDBQueryMetaReplySetWorkInfo,
+													Success:    wire.ICQStatusCodeOK,
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userUpdater := newMockICQUserUpdater(t)
+			for _, params := range tt.mockParams.setWorkInfoParams {
+				userUpdater.EXPECT().
+					SetWorkInfo(params.name, params.data).
+					Return(params.err)
+			}
+
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+
+			s := ICQService{
+				userUpdater:    userUpdater,
+				messageRelayer: messageRelayer,
+			}
+			err := s.UpdateWorkInfo(nil, tt.sess, tt.req, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestICQService_UpdateMoreInfo(t *testing.T) {
+	tests := []struct {
+		name       string
+		seq        uint16
+		sess       *state.Session
+		req        wire.SomeMoreUserInfo
+		mockParams mockParams
+		wantErr    assert.ErrorAssertionFunc
+	}{
+		{
+			name: "update more info - happy path",
+			seq:  1,
+			sess: newTestSession("100003", sessOptUIN(100003)),
+			req: wire.SomeMoreUserInfo{
+				Age:          0,
+				BirthDay:     7,
+				BirthMonth:   8,
+				BirthYear:    1994,
+				Gender:       1,
+				HomePageAddr: "http://www.johndoe.com",
+				Lang1:        1,
+				Lang2:        2,
+				Lang3:        3,
+			},
+			mockParams: mockParams{
+				icqUserUpdaterParams: icqUserUpdaterParams{
+					setMoreInfoParams: setMoreInfoParams{
+						{
+							name: state.NewIdentScreenName("100003"),
+							data: state.ICQMoreInfo{
+								BirthDay:     7,
+								BirthMonth:   8,
+								BirthYear:    1994,
+								Gender:       1,
+								HomePageAddr: "http://www.johndoe.com",
+								Lang1:        1,
+								Lang2:        2,
+								Lang3:        3,
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("100003"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQMoreUserInfo{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     100003,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													ReqSubType: wire.ICQDBQueryMetaReplySetMoreInfo,
+													Success:    wire.ICQStatusCodeOK,
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userUpdater := newMockICQUserUpdater(t)
+			for _, params := range tt.mockParams.setMoreInfoParams {
+				userUpdater.EXPECT().
+					SetMoreInfo(params.name, params.data).
+					Return(params.err)
+			}
+
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+
+			s := ICQService{
+				userUpdater:    userUpdater,
+				messageRelayer: messageRelayer,
+			}
+			err := s.UpdateMoreInfo(nil, tt.sess, tt.req, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}

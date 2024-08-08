@@ -1105,7 +1105,7 @@ type ICQMoreUserInfo struct {
 }
 
 type SomeMoreUserInfo struct {
-	Age          uint8
+	Age          uint8 // not used because age is calculated from birthdate
 	Gender       uint16
 	HomePageAddr string `oscar:"len_prefix=uint16,nullterm"`
 	BirthYear    uint16
@@ -1242,7 +1242,7 @@ type ICQUserInfoBasic struct {
 	Nickname     string `oscar:"len_prefix=uint16,nullterm"`
 	FirstName    string `oscar:"len_prefix=uint16,nullterm"`
 	LastName     string `oscar:"len_prefix=uint16,nullterm"`
-	Email        string `oscar:"len_prefix=uint16,nullterm"`
+	EmailAddress string `oscar:"len_prefix=uint16,nullterm"`
 	HomeCity     string `oscar:"len_prefix=uint16,nullterm"`
 	HomeState    string `oscar:"len_prefix=uint16,nullterm"`
 	HomePhone    string `oscar:"len_prefix=uint16,nullterm"`

@@ -531,7 +531,7 @@ func (s ICQService) UpdateBasicInfo(ctx context.Context, sess *state.Session, re
 	u := state.ICQUserInfoBasic{
 		CellPhone:    req.CellPhone,
 		CountryCode:  req.CountryCode,
-		EmailAddress: req.Email,
+		EmailAddress: req.EmailAddress,
 		FirstName:    req.FirstName,
 		GMTOffset:    req.GMTOffset,
 		HomeAddress:  req.HomeAddress,

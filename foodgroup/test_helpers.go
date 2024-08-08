@@ -30,8 +30,11 @@ type mockParams struct {
 
 type icqUserUpdaterParams struct {
 	setAffiliationsParams
+	setBasicInfoParams
 	setInterestsParams
+	setMoreInfoParams
 	setUserNotesParams
+	setWorkInfoParams
 }
 
 type setAffiliationsParams []struct {
@@ -49,6 +52,24 @@ type setInterestsParams []struct {
 type setUserNotesParams []struct {
 	name state.IdentScreenName
 	data state.ICQUserNotes
+	err  error
+}
+
+type setBasicInfoParams []struct {
+	name state.IdentScreenName
+	data state.ICQUserInfoBasic
+	err  error
+}
+
+type setWorkInfoParams []struct {
+	name state.IdentScreenName
+	data state.ICQWorkInfo
+	err  error
+}
+
+type setMoreInfoParams []struct {
+	name state.IdentScreenName
+	data state.ICQMoreInfo
 	err  error
 }
 
