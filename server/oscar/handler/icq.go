@@ -9,7 +9,6 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/mk6i/retro-aim-server/foodgroup"
 	"github.com/mk6i/retro-aim-server/server/oscar"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
@@ -21,7 +20,7 @@ type ICQService interface {
 	FindByEmail(ctx context.Context, sess *state.Session, req wire.ICQFindByEmail, seq uint16) error
 	FindByUIN(ctx context.Context, sess *state.Session, req wire.ICQFindByUIN, seq uint16) error
 	FindByWhitePages(ctx context.Context, sess *state.Session, req wire.ICQFindByWhitePages, seq uint16) error
-	GetICQFullUserInfo(ctx context.Context, sess *state.Session, userInfo foodgroup.ReqUserInfo, seq uint16) error
+	GetICQFullUserInfo(ctx context.Context, sess *state.Session, req wire.ICQFindByUIN, seq uint16) error
 	GetICQMessagesEOF(ctx context.Context, sess *state.Session, seq uint16) error
 	UpdateBasicInfo(ctx context.Context, sess *state.Session, req wire.ICQUserInfoBasic, seq uint16) error
 	UpdateWorkInfo(ctx context.Context, sess *state.Session, req wire.ICQWorkInfo, seq uint16) error
@@ -84,7 +83,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 
 		switch icqMD.Optional.ReqSubType {
 		case wire.ICQDBQueryMetaReqFullInfo, wire.ICQDBQueryMetaReqFullInfo2:
-			userInfo := foodgroup.ReqUserInfo{}
+			userInfo := wire.ICQFindByUIN{}
 			if err := binary.Read(buf, binary.LittleEndian, &userInfo); err != nil {
 				return nil
 			}

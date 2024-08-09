@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 
@@ -1280,6 +1281,507 @@ func TestICQService_FindByUIN(t *testing.T) {
 				userFinder:       userFinder,
 			}
 			err := s.FindByUIN(nil, tt.sess, tt.req, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestICQService_GetICQFullUserInfo(t *testing.T) {
+	tests := []struct {
+		name       string
+		timeNow    func() time.Time
+		seq        uint16
+		sess       *state.Session
+		req        wire.ICQFindByUIN
+		mockParams mockParams
+		wantErr    assert.ErrorAssertionFunc
+	}{
+		{
+			name: "get full user info - happy path",
+			timeNow: func() time.Time {
+				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
+			},
+			seq:  1,
+			sess: newTestSession("11111111", sessOptUIN(11111111)),
+			req: wire.ICQFindByUIN{
+				UIN: 123456789,
+			},
+			mockParams: mockParams{
+				icqUserFinderParams: icqUserFinderParams{
+					findByUINParams: findByUINParams{
+						{
+							UIN: 123456789,
+							result: state.User{
+								IdentScreenName:          state.NewIdentScreenName("123456789"),
+								Nickname:                 "CoolUser123",
+								FirstName:                "John",
+								LastName:                 "Doe",
+								EmailAddress:             "john.doe@example.com",
+								AuthReq:                  true,
+								Gender:                   1,
+								HomeCity:                 "New York",
+								HomeState:                "NY",
+								HomePhone:                "123-456-7890",
+								HomeFax:                  "123-456-7891",
+								HomeAddress:              "123 Main St, New York, NY 10001",
+								CellPhone:                "987-654-3210",
+								ZipCode:                  "10001",
+								CountryCode:              1,
+								GMTOffset:                5,
+								PublishEmail:             true,
+								WorkCity:                 "Los Angeles",
+								WorkState:                "CA",
+								WorkPhone:                "234-567-8901",
+								WorkFax:                  "234-567-8902",
+								WorkAddress:              "456 Work St, Los Angeles, CA 90001",
+								WorkZIP:                  "90001",
+								WorkCountryCode:          1,
+								Company:                  "TechCorp",
+								Department:               "Engineering",
+								Position:                 "Staff Software Engineer",
+								OccupationCode:           1234,
+								WorkWebPage:              "https://techcorp.com",
+								HomePageAddr:             "https://johnsdomain.com",
+								BirthYear:                1990,
+								BirthMonth:               6,
+								BirthDay:                 15,
+								Lang1:                    1,
+								Lang2:                    2,
+								Lang3:                    3,
+								Notes:                    "This is a test user.",
+								Interest1Code:            5678,
+								Interest1Keyword:         "Programming",
+								Interest2Code:            6789,
+								Interest2Keyword:         "Gaming",
+								Interest3Code:            7890,
+								Interest3Keyword:         "Music",
+								Interest4Code:            8901,
+								Interest4Keyword:         "Traveling",
+								PastAffiliations1Code:    9012,
+								PastAffiliations1Keyword: "College",
+								PastAffiliations2Code:    1233,
+								PastAffiliations2Keyword: "High School",
+								PastAffiliations3Code:    3456,
+								PastAffiliations3Keyword: "Previous Job",
+								Affiliations1Code:        4567,
+								Affiliations1Keyword:     "Professional Org",
+								Affiliations2Code:        5678,
+								Affiliations2Keyword:     "Alumni Group",
+								Affiliations3Code:        6789,
+								Affiliations3Keyword:     "Community Group",
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQUserInfo{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyBasicInfo,
+
+													Nickname:     "CoolUser123",
+													FirstName:    "John",
+													LastName:     "Doe",
+													Email:        "john.doe@example.com",
+													HomeCity:     "New York",
+													HomeState:    "NY",
+													HomePhone:    "123-456-7890",
+													HomeFax:      "123-456-7891",
+													HomeAddress:  "123 Main St, New York, NY 10001",
+													CellPhone:    "987-654-3210",
+													ZipCode:      "10001",
+													CountryCode:  1,
+													GMTOffset:    5,
+													AuthFlag:     0, // todo figure these out
+													WebAware:     1, // todo figure these out
+													DCPerms:      0, // todo figure these out
+													PublishEmail: wire.ICQUserFlagPublishEmailYes,
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQMoreUserInfo{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyMoreInfo,
+													SomeMoreUserInfo: wire.SomeMoreUserInfo{
+														Age:          30,
+														Gender:       1,
+														HomePageAddr: "https://johnsdomain.com",
+														BirthYear:    1990,
+														BirthMonth:   6,
+														BirthDay:     15,
+														Lang1:        1,
+														Lang2:        2,
+														Lang3:        3,
+													},
+													City:        "New York",
+													State:       "NY",
+													CountryCode: 1,
+													TimeZone:    5,
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQInfoEmailMore{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyExtEmailInfo,
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQHomepageCat{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyHomePageCat,
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQMetaWorkUserInfo{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyWorkInfo,
+													ICQWorkInfo: wire.ICQWorkInfo{
+														WorkCity:        "Los Angeles",
+														WorkState:       "CA",
+														WorkPhone:       "234-567-8901",
+														WorkFax:         "234-567-8902",
+														WorkAddress:     "456 Work St, Los Angeles, CA 90001",
+														WorkZIP:         "90001",
+														WorkCountryCode: 1,
+														Company:         "TechCorp",
+														Department:      "Engineering",
+														Position:        "Staff Software Engineer",
+														OccupationCode:  1234,
+														WorkWebPage:     "https://techcorp.com",
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQUserNotes{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyNotes,
+													ICQNotes: wire.ICQNotes{
+														Notes: "This is a test user.",
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQUserInterests{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyInterests,
+													Interests: []struct {
+														Code    uint16
+														Keyword string `oscar:"len_prefix=uint16,nullterm"`
+													}{
+														{
+															Code:    5678,
+															Keyword: "Programming",
+														},
+														{
+															Code:    6789,
+															Keyword: "Gaming",
+														},
+														{
+															Code:    7890,
+															Keyword: "Music",
+														},
+														{
+															Code:    8901,
+															Keyword: "Traveling",
+														},
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQMetaAffiliationsUserInfo{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyAffiliations,
+													ICQAffiliations: wire.ICQAffiliations{
+														PastAffiliations: []struct {
+															Code    uint16
+															Keyword string `oscar:"len_prefix=uint16,nullterm"`
+														}{
+															{
+																Code:    9012,
+																Keyword: "College",
+															},
+															{
+																Code:    1233,
+																Keyword: "High School",
+															},
+															{
+																Code:    3456,
+																Keyword: "Previous Job",
+															},
+														},
+														Affiliations: []struct {
+															Code    uint16
+															Keyword string `oscar:"len_prefix=uint16,nullterm"`
+														}{
+															{
+																Code:    4567,
+																Keyword: "Professional Org",
+															},
+															{
+																Code:    5678,
+																Keyword: "Alumni Group",
+															},
+															{
+																Code:    6789,
+																Keyword: "Community Group",
+															},
+														},
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("123456789"),
+							result:     &state.Session{},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userFinder := newMockICQUserFinder(t)
+			for _, params := range tt.mockParams.findByUINParams {
+				userFinder.EXPECT().
+					FindByUIN(params.UIN).
+					Return(params.result, params.err)
+			}
+
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+
+			s := ICQService{
+				messageRelayer: messageRelayer,
+				timeNow:        tt.timeNow,
+				userFinder:     userFinder,
+			}
+			err := s.GetICQFullUserInfo(nil, tt.sess, tt.req, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestICQService_GetICQMessagesEOF(t *testing.T) {
+	tests := []struct {
+		name       string
+		seq        uint16
+		sess       *state.Session
+		mockParams mockParams
+		wantErr    assert.ErrorAssertionFunc
+	}{
+		{
+			name: "happy path",
+			seq:  1,
+			sess: newTestSession("11111111", sessOptUIN(11111111)),
+			mockParams: mockParams{
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQMessagesEOF{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryOfflineMsgReplyLast,
+														Seq:     1,
+													},
+													DroppedMessages: 0,
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+
+			s := NewICQService(messageRelayer, nil, nil, slog.Default(), nil)
+			err := s.GetICQMessagesEOF(nil, tt.sess, tt.seq)
 			assert.NoError(t, err)
 		})
 	}

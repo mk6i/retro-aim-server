@@ -40,13 +40,9 @@ type ICQService struct {
 	timeNow          func() time.Time
 }
 
-type ReqUserInfo struct {
-	SearchUIN uint32
-}
+func (s ICQService) GetICQFullUserInfo(ctx context.Context, sess *state.Session, req wire.ICQFindByUIN, seq uint16) error {
 
-func (s ICQService) GetICQFullUserInfo(ctx context.Context, sess *state.Session, userInfo ReqUserInfo, seq uint16) error {
-
-	user, err := s.userFinder.FindByUIN(userInfo.SearchUIN)
+	user, err := s.userFinder.FindByUIN(req.UIN)
 	if err != nil {
 		return err
 	}
@@ -146,6 +142,10 @@ func (s ICQService) getICQMoreUserInfo(ctx context.Context, sess *state.Session,
 				Lang2:        user.Lang2,
 				Lang3:        user.Lang3,
 			},
+			City:        user.HomeCity,
+			State:       user.HomeState,
+			CountryCode: user.CountryCode,
+			TimeZone:    user.GMTOffset,
 		},
 	}
 
