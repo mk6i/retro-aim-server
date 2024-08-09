@@ -4,10 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mk6i/retro-aim-server/state"
-	"github.com/mk6i/retro-aim-server/wire"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/mk6i/retro-aim-server/state"
+	"github.com/mk6i/retro-aim-server/wire"
 )
 
 func TestICQService_UpdateBasicInfo(t *testing.T) {
@@ -664,7 +665,7 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
 			},
 			seq:  1,
-			sess: newTestSession("123456789", sessOptUIN(123456789)),
+			sess: newTestSession("11111111", sessOptUIN(11111111)),
 			req: wire.ICQFindByWhitePages{
 				InterestsCode:    10,
 				InterestsKeyword: "knitting,crocheting,sewing",
@@ -676,6 +677,18 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 							code:     10,
 							keywords: []string{"knitting", "crocheting", "sewing"},
 							result: []state.User{
+								{
+									AuthReq:         false,
+									EmailAddress:    "janey@example.com",
+									FirstName:       "Jane",
+									Gender:          2,
+									IdentScreenName: state.NewIdentScreenName("987654321"),
+									LastName:        "Doe",
+									Nickname:        "Janey",
+									BirthDay:        31,
+									BirthMonth:      7,
+									BirthYear:       1995,
+								},
 								{
 									AuthReq:         true,
 									EmailAddress:    "alice@example.com",
@@ -695,7 +708,7 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNameParams: relayToScreenNameParams{
 						{
-							screenName: state.NewIdentScreenName("123456789"),
+							screenName: state.NewIdentScreenName("11111111"),
 							message: wire.SNACMessage{
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.ICQ,
@@ -707,7 +720,44 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
 												Message: wire.ICQUserSearchResult{
 													ICQMetadata: wire.ICQMetadata{
-														UIN:     123456789,
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyUserFound,
+													Details: wire.ICQUserSearchRecord{
+														UIN:           987654321,
+														Nickname:      "Janey",
+														FirstName:     "Jane",
+														LastName:      "Doe",
+														Email:         "janey@example.com",
+														Authorization: 0,
+														OnlineStatus:  0,
+														Gender:        2,
+														Age:           25,
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQUserSearchResult{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
 														ReqType: wire.ICQDBQueryMetaReply,
 														Seq:     1,
 													},
@@ -740,6 +790,10 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 				},
 				sessionRetrieverParams: sessionRetrieverParams{
 					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("987654321"),
+							result:     nil,
+						},
 						{
 							screenName: state.NewIdentScreenName("123456789"),
 							result:     &state.Session{},
@@ -777,6 +831,455 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 				userFinder:       userFinder,
 			}
 			err := s.FindByWhitePages(nil, tt.sess, tt.req, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestICQService_FindByDetails(t *testing.T) {
+	tests := []struct {
+		name       string
+		timeNow    func() time.Time
+		seq        uint16
+		sess       *state.Session
+		req        wire.ICQFindByDetails
+		mockParams mockParams
+		wantErr    assert.ErrorAssertionFunc
+	}{
+		{
+			name: "find by details - happy path",
+			timeNow: func() time.Time {
+				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
+			},
+			seq:  1,
+			sess: newTestSession("11111111", sessOptUIN(11111111)),
+			req: wire.ICQFindByDetails{
+				FirstName: "John",
+				LastName:  "Doe",
+				NickName:  "Johnny",
+			},
+			mockParams: mockParams{
+				icqUserFinderParams: icqUserFinderParams{
+					findByDetailsParams: findByDetailsParams{
+						{
+							firstName: "John",
+							lastName:  "Doe",
+							nickName:  "Johnny",
+							result: []state.User{
+								{
+									AuthReq:         false,
+									EmailAddress:    "janey@example.com",
+									FirstName:       "Jane",
+									Gender:          2,
+									IdentScreenName: state.NewIdentScreenName("987654321"),
+									LastName:        "Doe",
+									Nickname:        "Janey",
+									BirthDay:        31,
+									BirthMonth:      7,
+									BirthYear:       1995,
+								},
+								{
+									AuthReq:         true,
+									EmailAddress:    "john@example.com",
+									FirstName:       "John",
+									Gender:          1,
+									IdentScreenName: state.NewIdentScreenName("123456789"),
+									LastName:        "Doe",
+									Nickname:        "Johnny",
+									BirthDay:        31,
+									BirthMonth:      7,
+									BirthYear:       1999,
+								},
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQUserSearchResult{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyUserFound,
+													Details: wire.ICQUserSearchRecord{
+														UIN:           987654321,
+														Nickname:      "Janey",
+														FirstName:     "Jane",
+														LastName:      "Doe",
+														Email:         "janey@example.com",
+														Authorization: 0,
+														OnlineStatus:  0,
+														Gender:        2,
+														Age:           25,
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQUserSearchResult{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
+													Details: wire.ICQUserSearchRecord{
+														UIN:           123456789,
+														Nickname:      "Johnny",
+														FirstName:     "John",
+														LastName:      "Doe",
+														Email:         "john@example.com",
+														Authorization: 1,
+														OnlineStatus:  1,
+														Gender:        1,
+														Age:           21,
+													},
+													LastMessageFooter: &struct {
+														FoundUsersLeft uint32
+													}{
+														FoundUsersLeft: 0,
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("987654321"),
+							result:     nil,
+						},
+						{
+							screenName: state.NewIdentScreenName("123456789"),
+							result:     &state.Session{},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userFinder := newMockICQUserFinder(t)
+			for _, params := range tt.mockParams.findByDetailsParams {
+				userFinder.EXPECT().
+					FindByDetails(params.firstName, params.lastName, params.nickName).
+					Return(params.result, params.err)
+			}
+
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+
+			sessionRetriever := newMockSessionRetriever(t)
+			for _, params := range tt.mockParams.retrieveSessionParams {
+				sessionRetriever.EXPECT().
+					RetrieveSession(params.screenName).
+					Return(params.result)
+			}
+
+			s := ICQService{
+				messageRelayer:   messageRelayer,
+				sessionRetriever: sessionRetriever,
+				timeNow:          tt.timeNow,
+				userFinder:       userFinder,
+			}
+			err := s.FindByDetails(nil, tt.sess, tt.req, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestICQService_FindByEmail(t *testing.T) {
+	tests := []struct {
+		name       string
+		timeNow    func() time.Time
+		seq        uint16
+		sess       *state.Session
+		req        wire.ICQFindByEmail
+		mockParams mockParams
+		wantErr    assert.ErrorAssertionFunc
+	}{
+		{
+			name: "find by details - happy path",
+			timeNow: func() time.Time {
+				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
+			},
+			seq:  1,
+			sess: newTestSession("11111111", sessOptUIN(11111111)),
+			req: wire.ICQFindByEmail{
+				Email: "john@example.com",
+			},
+			mockParams: mockParams{
+				icqUserFinderParams: icqUserFinderParams{
+					findByEmailParams: findByEmailParams{
+						{
+							email: "john@example.com",
+							result: state.User{
+								AuthReq:         true,
+								EmailAddress:    "john@example.com",
+								FirstName:       "John",
+								Gender:          1,
+								IdentScreenName: state.NewIdentScreenName("123456789"),
+								LastName:        "Doe",
+								Nickname:        "Johnny",
+								BirthDay:        31,
+								BirthMonth:      7,
+								BirthYear:       1999,
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQUserSearchResult{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
+													Details: wire.ICQUserSearchRecord{
+														UIN:           123456789,
+														Nickname:      "Johnny",
+														FirstName:     "John",
+														LastName:      "Doe",
+														Email:         "john@example.com",
+														Authorization: 1,
+														OnlineStatus:  1,
+														Gender:        1,
+														Age:           21,
+													},
+													LastMessageFooter: &struct {
+														FoundUsersLeft uint32
+													}{
+														FoundUsersLeft: 0,
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("123456789"),
+							result:     &state.Session{},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userFinder := newMockICQUserFinder(t)
+			for _, params := range tt.mockParams.findByEmailParams {
+				userFinder.EXPECT().
+					FindByEmail(params.email).
+					Return(params.result, params.err)
+			}
+
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+
+			sessionRetriever := newMockSessionRetriever(t)
+			for _, params := range tt.mockParams.retrieveSessionParams {
+				sessionRetriever.EXPECT().
+					RetrieveSession(params.screenName).
+					Return(params.result)
+			}
+
+			s := ICQService{
+				messageRelayer:   messageRelayer,
+				sessionRetriever: sessionRetriever,
+				timeNow:          tt.timeNow,
+				userFinder:       userFinder,
+			}
+			err := s.FindByEmail(nil, tt.sess, tt.req, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestICQService_FindByUIN(t *testing.T) {
+	tests := []struct {
+		name       string
+		timeNow    func() time.Time
+		seq        uint16
+		sess       *state.Session
+		req        wire.ICQFindByUIN
+		mockParams mockParams
+		wantErr    assert.ErrorAssertionFunc
+	}{
+		{
+			name: "find by details - happy path",
+			timeNow: func() time.Time {
+				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
+			},
+			seq:  1,
+			sess: newTestSession("11111111", sessOptUIN(11111111)),
+			req: wire.ICQFindByUIN{
+				UIN: 123456789,
+			},
+			mockParams: mockParams{
+				icqUserFinderParams: icqUserFinderParams{
+					findByUINParams: findByUINParams{
+						{
+							UIN: 123456789,
+							result: state.User{
+								AuthReq:         true,
+								EmailAddress:    "john@example.com",
+								FirstName:       "John",
+								Gender:          1,
+								IdentScreenName: state.NewIdentScreenName("123456789"),
+								LastName:        "Doe",
+								Nickname:        "Johnny",
+								BirthDay:        31,
+								BirthMonth:      7,
+								BirthYear:       1999,
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessage{
+												Message: wire.ICQUserSearchResult{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
+													Details: wire.ICQUserSearchRecord{
+														UIN:           123456789,
+														Nickname:      "Johnny",
+														FirstName:     "John",
+														LastName:      "Doe",
+														Email:         "john@example.com",
+														Authorization: 1,
+														OnlineStatus:  1,
+														Gender:        1,
+														Age:           21,
+													},
+													LastMessageFooter: &struct {
+														FoundUsersLeft uint32
+													}{
+														FoundUsersLeft: 0,
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("123456789"),
+							result:     &state.Session{},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userFinder := newMockICQUserFinder(t)
+			for _, params := range tt.mockParams.findByUINParams {
+				userFinder.EXPECT().
+					FindByUIN(params.UIN).
+					Return(params.result, params.err)
+			}
+
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+
+			sessionRetriever := newMockSessionRetriever(t)
+			for _, params := range tt.mockParams.retrieveSessionParams {
+				sessionRetriever.EXPECT().
+					RetrieveSession(params.screenName).
+					Return(params.result)
+			}
+
+			s := ICQService{
+				messageRelayer:   messageRelayer,
+				sessionRetriever: sessionRetriever,
+				timeNow:          tt.timeNow,
+				userFinder:       userFinder,
+			}
+			err := s.FindByUIN(nil, tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
