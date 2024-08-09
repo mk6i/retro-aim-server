@@ -18,18 +18,18 @@ import (
 type ICQService interface {
 	FindByDetails(ctx context.Context, sess *state.Session, req wire.ICQFindByDetails, seq uint16) error
 	FindByEmail(ctx context.Context, sess *state.Session, req wire.ICQFindByEmail, seq uint16) error
+	FindByInterests(ctx context.Context, sess *state.Session, req wire.ICQFindByWhitePages, seq uint16) error
 	FindByUIN(ctx context.Context, sess *state.Session, req wire.ICQFindByUIN, seq uint16) error
-	FindByWhitePages(ctx context.Context, sess *state.Session, req wire.ICQFindByWhitePages, seq uint16) error
-	GetICQFullUserInfo(ctx context.Context, sess *state.Session, req wire.ICQFindByUIN, seq uint16) error
-	GetICQMessagesEOF(ctx context.Context, sess *state.Session, seq uint16) error
-	UpdateBasicInfo(ctx context.Context, sess *state.Session, req wire.ICQUserInfoBasic, seq uint16) error
-	UpdateWorkInfo(ctx context.Context, sess *state.Session, req wire.ICQWorkInfo, seq uint16) error
-	UpdateMoreInfo(ctx context.Context, sess *state.Session, req wire.SomeMoreUserInfo, seq uint16) error
-	UpdateUserNotes(ctx context.Context, sess *state.Session, req wire.ICQNotes, seq uint16) error
-	UpdateInterests(ctx context.Context, sess *state.Session, req wire.ICQInterests, seq uint16) error
-	UpdateAffiliations(ctx context.Context, sess *state.Session, req wire.ICQAffiliations, seq uint16) error
-	UpdateEmails(ctx context.Context, sess *state.Session, req wire.ICQEmailUserInfo, seq uint16) error
-	UpdatePermissions(ctx context.Context, sess *state.Session, req wire.ICQInfoSetPerms, seq uint16) error
+	FullUserInfo(ctx context.Context, sess *state.Session, req wire.ICQFindByUIN, seq uint16) error
+	MessagesEOF(ctx context.Context, sess *state.Session, seq uint16) error
+	SetAffiliations(ctx context.Context, sess *state.Session, req wire.ICQAffiliations, seq uint16) error
+	SetBasicInfo(ctx context.Context, sess *state.Session, req wire.ICQUserInfoBasic, seq uint16) error
+	SetEmails(ctx context.Context, sess *state.Session, req wire.ICQEmailUserInfo, seq uint16) error
+	SetInterests(ctx context.Context, sess *state.Session, req wire.ICQInterests, seq uint16) error
+	SetMoreInfo(ctx context.Context, sess *state.Session, req wire.SomeMoreUserInfo, seq uint16) error
+	SetPermissions(ctx context.Context, sess *state.Session, req wire.ICQInfoSetPerms, seq uint16) error
+	SetUserNotes(ctx context.Context, sess *state.Session, req wire.ICQNotes, seq uint16) error
+	SetWorkInfo(ctx context.Context, sess *state.Session, req wire.ICQWorkInfo, seq uint16) error
 }
 
 func NewICQHandler(logger *slog.Logger, ICQService ICQService) ICQHandler {
@@ -69,7 +69,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 
 	switch icqMD.ReqType {
 	case wire.ICQDBQueryOfflineMsgReq:
-		return rt.ICQService.GetICQMessagesEOF(ctx, sess, icqMD.Seq)
+		return rt.ICQService.MessagesEOF(ctx, sess, icqMD.Seq)
 	case wire.ICQDBQueryDeleteMsgReq:
 		fmt.Println("hello")
 	case wire.ICQDBQueryMetaReq:
@@ -87,7 +87,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := binary.Read(buf, binary.LittleEndian, &userInfo); err != nil {
 				return nil
 			}
-			return rt.ICQService.GetICQFullUserInfo(ctx, sess, userInfo, icqMD.Seq)
+			return rt.ICQService.FullUserInfo(ctx, sess, userInfo, icqMD.Seq)
 		case wire.ICQDBQueryMetaReqXMLReq:
 			req := wire.ICQXMLReqData{}
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
@@ -98,7 +98,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
-			if err := rt.ICQService.UpdatePermissions(ctx, sess, req, icqMD.Seq); err != nil {
+			if err := rt.ICQService.SetPermissions(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSearchByUIN:
@@ -130,7 +130,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
-			if err := rt.ICQService.FindByWhitePages(ctx, sess, req, icqMD.Seq); err != nil {
+			if err := rt.ICQService.FindByInterests(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSetBasicInfo:
@@ -138,7 +138,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
-			if err := rt.ICQService.UpdateBasicInfo(ctx, sess, req, icqMD.Seq); err != nil {
+			if err := rt.ICQService.SetBasicInfo(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSetWorkInfo:
@@ -146,7 +146,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
-			if err := rt.ICQService.UpdateWorkInfo(ctx, sess, req, icqMD.Seq); err != nil {
+			if err := rt.ICQService.SetWorkInfo(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSetMoreInfo:
@@ -154,7 +154,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
-			if err := rt.ICQService.UpdateMoreInfo(ctx, sess, req, icqMD.Seq); err != nil {
+			if err := rt.ICQService.SetMoreInfo(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSetNotes:
@@ -162,7 +162,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
-			if err := rt.ICQService.UpdateUserNotes(ctx, sess, req, icqMD.Seq); err != nil {
+			if err := rt.ICQService.SetUserNotes(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSetEmails:
@@ -170,7 +170,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
-			if err := rt.ICQService.UpdateEmails(ctx, sess, req, icqMD.Seq); err != nil {
+			if err := rt.ICQService.SetEmails(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSetInterests:
@@ -178,7 +178,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
-			if err := rt.ICQService.UpdateInterests(ctx, sess, req, icqMD.Seq); err != nil {
+			if err := rt.ICQService.SetInterests(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSetAffiliations:
@@ -186,7 +186,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
-			if err := rt.ICQService.UpdateAffiliations(ctx, sess, req, icqMD.Seq); err != nil {
+			if err := rt.ICQService.SetAffiliations(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqStat0a8c,
