@@ -287,6 +287,11 @@ var subGroupName = map[uint16]map[uint16]string{
 		AdminAcctDeleteRequest:  "AdminAcctDeleteRequest",
 		AdminAcctDeleteReply:    "AdminAcctDeleteReply",
 	},
+	ICQ: {
+		ICQErr:     "ICQErr",
+		ICQDBQuery: "ICQDBQuery",
+		ICQDBReply: "ICQDBReply",
+	},
 }
 
 // SubGroupName gets the string name of a subgroup within a food group. It
@@ -297,4 +302,78 @@ func SubGroupName(foodGroup uint16, subGroup uint16) string {
 		name = "unknown"
 	}
 	return name
+}
+
+// ICQDBQueryName gets the string representation of a ICQ DB query const.
+func ICQDBQueryName(query uint16) string {
+	name := icqDBQuery[query]
+	if name == "" {
+		name = "unknown"
+	}
+	return name
+}
+
+var icqDBQuery = map[uint16]string{
+	ICQDBQueryOfflineMsgReq: "ICQDBQueryOfflineMsgReq",
+	ICQDBQueryDeleteMsgReq:  "ICQDBQueryDeleteMsgReq",
+	ICQDBQueryMetaReq:       "ICQDBQueryMetaReq",
+	ICQDBQueryMetaReply:     "ICQDBQueryMetaReply",
+}
+
+// ICQDBQueryMetaName gets the string representation of a ICQ DB meta query
+// const.
+func ICQDBQueryMetaName(query uint16) string {
+	name := icqDBQueryMeta[query]
+	if name == "" {
+		name = "unknown"
+	}
+	return name
+}
+
+var icqDBQueryMeta = map[uint16]string{
+	ICQDBQueryMetaReqSetBasicInfo:      "ICQDBQueryMetaReqSetBasicInfo",
+	ICQDBQueryMetaReqSetWorkInfo:       "ICQDBQueryMetaReqSetWorkInfo",
+	ICQDBQueryMetaReqSetMoreInfo:       "ICQDBQueryMetaReqSetMoreInfo",
+	ICQDBQueryMetaReqSetNotes:          "ICQDBQueryMetaReqSetNotes",
+	ICQDBQueryMetaReqSetEmails:         "ICQDBQueryMetaReqSetEmails",
+	ICQDBQueryMetaReqSetInterests:      "ICQDBQueryMetaReqSetInterests",
+	ICQDBQueryMetaReqSetAffiliations:   "ICQDBQueryMetaReqSetAffiliations",
+	ICQDBQueryMetaReqSetPermissions:    "ICQDBQueryMetaReqSetPermissions",
+	ICQDBQueryMetaReqFullInfo:          "ICQDBQueryMetaReqFullInfo",
+	ICQDBQueryMetaReqFullInfo2:         "ICQDBQueryMetaReqFullInfo2",
+	ICQDBQueryMetaReqSearchByDetails:   "ICQDBQueryMetaReqSearchByDetails",
+	ICQDBQueryMetaReqSearchByUIN:       "ICQDBQueryMetaReqSearchByUIN",
+	ICQDBQueryMetaReqSearchByEmail:     "ICQDBQueryMetaReqSearchByEmail",
+	ICQDBQueryMetaReqSearchWhitePages:  "ICQDBQueryMetaReqSearchWhitePages",
+	ICQDBQueryMetaReqXMLReq:            "ICQDBQueryMetaReqXMLReq",
+	ICQDBQueryMetaReqStat0a8c:          "ICQDBQueryMetaReqStat0a8c",
+	ICQDBQueryMetaReqStat0a96:          "ICQDBQueryMetaReqStat0a96",
+	ICQDBQueryMetaReqStat0aaa:          "ICQDBQueryMetaReqStat0aaa",
+	ICQDBQueryMetaReqStat0ab4:          "ICQDBQueryMetaReqStat0ab4",
+	ICQDBQueryMetaReqStat0ab9:          "ICQDBQueryMetaReqStat0ab9",
+	ICQDBQueryMetaReqStat0abe:          "ICQDBQueryMetaReqStat0abe",
+	ICQDBQueryMetaReqStat0ac8:          "ICQDBQueryMetaReqStat0ac8",
+	ICQDBQueryMetaReqStat0acd:          "ICQDBQueryMetaReqStat0acd",
+	ICQDBQueryMetaReqStat0ad2:          "ICQDBQueryMetaReqStat0ad2",
+	ICQDBQueryMetaReqStat0ad7:          "ICQDBQueryMetaReqStat0ad7",
+	ICQDBQueryMetaReqStat0758:          "ICQDBQueryMetaReqStat0758",
+	ICQDBQueryMetaReplySetBasicInfo:    "ICQDBQueryMetaReplySetBasicInfo",
+	ICQDBQueryMetaReplySetWorkInfo:     "ICQDBQueryMetaReplySetWorkInfo",
+	ICQDBQueryMetaReplySetMoreInfo:     "ICQDBQueryMetaReplySetMoreInfo",
+	ICQDBQueryMetaReplySetNotes:        "ICQDBQueryMetaReplySetNotes",
+	ICQDBQueryMetaReplySetEmails:       "ICQDBQueryMetaReplySetEmails",
+	ICQDBQueryMetaReplySetInterests:    "ICQDBQueryMetaReplySetInterests",
+	ICQDBQueryMetaReplySetAffiliations: "ICQDBQueryMetaReplySetAffiliations",
+	ICQDBQueryMetaReplySetPermissions:  "ICQDBQueryMetaReplySetPermissions",
+	ICQDBQueryMetaReplyBasicInfo:       "ICQDBQueryMetaReplyBasicInfo",
+	ICQDBQueryMetaReplyWorkInfo:        "ICQDBQueryMetaReplyWorkInfo",
+	ICQDBQueryMetaReplyMoreInfo:        "ICQDBQueryMetaReplyMoreInfo",
+	ICQDBQueryMetaReplyNotes:           "ICQDBQueryMetaReplyNotes",
+	ICQDBQueryMetaReplyExtEmailInfo:    "ICQDBQueryMetaReplyExtEmailInfo",
+	ICQDBQueryMetaReplyInterests:       "ICQDBQueryMetaReplyInterests",
+	ICQDBQueryMetaReplyAffiliations:    "ICQDBQueryMetaReplyAffiliations",
+	ICQDBQueryMetaReplyHomePageCat:     "ICQDBQueryMetaReplyHomePageCat",
+	ICQDBQueryMetaReplyUserFound:       "ICQDBQueryMetaReplyUserFound",
+	ICQDBQueryMetaReplyLastUserFound:   "ICQDBQueryMetaReplyLastUserFound",
+	ICQDBQueryMetaReplyXMLData:         "ICQDBQueryMetaReplyXMLData",
 }

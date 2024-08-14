@@ -1384,6 +1384,18 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 							SubGroup:  wire.AlertUserOnline,
 						},
 						{
+							FoodGroup: wire.ICQ,
+							SubGroup:  wire.ICQErr,
+						},
+						{
+							FoodGroup: wire.ICQ,
+							SubGroup:  wire.ICQDBQuery,
+						},
+						{
+							FoodGroup: wire.ICQ,
+							SubGroup:  wire.ICQDBReply,
+						},
+						{
 							FoodGroup: wire.PermitDeny,
 							SubGroup:  wire.PermitDenyErr,
 						},
@@ -1448,13 +1460,14 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
 			FoodGroups: []uint16{
 				wire.Alert,
+				wire.BART,
 				wire.Buddy,
 				wire.ChatNav,
 				wire.Feedbag,
 				wire.ICBM,
+				wire.ICQ,
 				wire.Locate,
 				wire.OService,
-				wire.BART,
 				wire.PermitDeny,
 			},
 		},

@@ -3,8 +3,10 @@ package state
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/google/uuid"
@@ -61,8 +63,9 @@ func NewIdentScreenName(screenName string) IdentScreenName {
 type DisplayScreenName string
 
 var (
-	ErrAIMHandleLength        = errors.New("screen name must be between 3 and 16 characters")
 	ErrAIMHandleInvalidFormat = errors.New("screen name must start with a letter, cannot end with a space, and must contain only letters, numbers, and spaces")
+	ErrAIMHandleLength        = errors.New("screen name must be between 3 and 16 characters")
+	ErrPasswordInvalid        = errors.New("invalid password length")
 	ErrICQUINInvalidFormat    = errors.New("uin must be a number in the range 10000-2147483646")
 )
 
@@ -155,6 +158,202 @@ type User struct {
 	// WeakMD5Pass is the MD5 password hash format used by AIM v3.5-v4.7. This
 	// hash is used to authenticate roasted passwords for AIM v1.0-v3.0.
 	WeakMD5Pass []byte
+	// IsICQ indicates whether the user is an ICQ account (true) or an AIM
+	// account (false).
+	IsICQ bool
+	// ConfirmStatus indicates whether the user has confirmed their AIM account.
+	ConfirmStatus bool
+	// RegStatus is the AIM registration status.
+	//  1: no disclosure
+	//  2: limit disclosure
+	//  3: full disclosure
+	RegStatus int
+	// EmailAddress is the email address set by the AIM client.
+	EmailAddress string
+	// ICQAffiliations holds information about the user's affiliations,
+	// including past and current affiliations.
+	ICQAffiliations ICQAffiliations
+	// ICQInterests holds information about the user's interests, categorized
+	// by code and associated keywords.
+	ICQInterests ICQInterests
+	// ICQMoreInfo contains additional information about the user.
+	ICQMoreInfo ICQMoreInfo
+	// ICQPermissions specifies the user's privacy settings.
+	ICQPermissions ICQPermissions
+	// ICQBasicInfo contains the user's basic profile information, including
+	// contact details and personal identifiers.
+	ICQBasicInfo ICQBasicInfo
+	// ICQNotes allows the user to store personal notes or additional
+	// information within their profile.
+	ICQNotes ICQUserNotes
+	// ICQWorkInfo contains the user's professional information, including
+	// their workplace address and job-related details.
+	ICQWorkInfo ICQWorkInfo
+}
+
+// ICQBasicInfo holds basic information about an ICQ user, including their name, contact details, and location.
+type ICQBasicInfo struct {
+	// Address is the user's residential address.
+	Address string
+	// CellPhone is the user's mobile phone number.
+	CellPhone string
+	// City is the city where the user resides.
+	City string
+	// CountryCode is the code representing the user's country of residence.
+	CountryCode uint16
+	// EmailAddress is the user's primary email address.
+	EmailAddress string
+	// Fax is the user's fax number.
+	Fax string
+	// FirstName is the user's first name.
+	FirstName string
+	// GMTOffset is the user's time zone offset from GMT.
+	GMTOffset uint8
+	// LastName is the user's last name.
+	LastName string
+	// Nickname is the user's nickname or preferred name.
+	Nickname string
+	// Phone is the user's landline phone number.
+	Phone string
+	// PublishEmail indicates whether the user's email address is public.
+	PublishEmail bool
+	// State is the state or region where the user resides.
+	State string
+	// ZIPCode is the user's postal code.
+	ZIPCode string
+}
+
+// ICQAffiliations contains information about the user's affiliations, both past and present.
+type ICQAffiliations struct {
+	// PastCode1 is the code representing the user's first past affiliation.
+	PastCode1 uint16
+	// PastKeyword1 is the keyword associated with the user's first past affiliation.
+	PastKeyword1 string
+	// PastCode2 is the code representing the user's second past affiliation.
+	PastCode2 uint16
+	// PastKeyword2 is the keyword associated with the user's second past affiliation.
+	PastKeyword2 string
+	// PastCode3 is the code representing the user's third past affiliation.
+	PastCode3 uint16
+	// PastKeyword3 is the keyword associated with the user's third past affiliation.
+	PastKeyword3 string
+	// CurrentCode1 is the code representing the user's current first affiliation.
+	CurrentCode1 uint16
+	// CurrentKeyword1 is the keyword associated with the user's current first affiliation.
+	CurrentKeyword1 string
+	// CurrentCode2 is the code representing the user's current second affiliation.
+	CurrentCode2 uint16
+	// CurrentKeyword2 is the keyword associated with the user's current second affiliation.
+	CurrentKeyword2 string
+	// CurrentCode3 is the code representing the user's current third affiliation.
+	CurrentCode3 uint16
+	// CurrentKeyword3 is the keyword associated with the user's current third affiliation.
+	CurrentKeyword3 string
+}
+
+// ICQInterests holds information about the user's interests, categorized by
+// interest code and associated keyword.
+type ICQInterests struct {
+	// Code1 is the code representing the user's first interest.
+	Code1 uint16
+	// Keyword1 is the keyword associated with the user's first interest.
+	Keyword1 string
+	// Code2 is the code representing the user's second interest.
+	Code2 uint16
+	// Keyword2 is the keyword associated with the user's second interest.
+	Keyword2 string
+	// Code3 is the code representing the user's third interest.
+	Code3 uint16
+	// Keyword3 is the keyword associated with the user's third interest.
+	Keyword3 string
+	// Code4 is the code representing the user's fourth interest.
+	Code4 uint16
+	// Keyword4 is the keyword associated with the user's fourth interest.
+	Keyword4 string
+}
+
+// ICQUserNotes contains personal notes or additional information added by the user.
+type ICQUserNotes struct {
+	// Notes are the personal notes or additional information the user has
+	// entered in their profile.
+	Notes string
+}
+
+// ICQMoreInfo contains additional information about the user, such as
+// demographic and language preferences.
+type ICQMoreInfo struct {
+	// Gender is the user's gender, represented by a code.
+	Gender uint16
+	// HomePageAddr is the URL of the user's personal homepage.
+	HomePageAddr string
+	// BirthYear is the user's birth year.
+	BirthYear uint16
+	// BirthMonth is the user's birth month.
+	BirthMonth uint8
+	// BirthDay is the user's birth day.
+	BirthDay uint8
+	// Lang1 is the code for the user's primary language.
+	Lang1 uint8
+	// Lang2 is the code for the user's secondary language.
+	Lang2 uint8
+	// Lang3 is the code for the user's tertiary language.
+	Lang3 uint8
+}
+
+// ICQWorkInfo contains information about the user's professional life,
+// including their workplace and job title.
+type ICQWorkInfo struct {
+	// Address is the address of the user's workplace.
+	Address string
+	// City is the city where the user's workplace is located.
+	City string
+	// Company is the name of the user's employer or company.
+	Company string
+	// CountryCode is the code representing the country where the user's
+	// workplace is located.
+	CountryCode uint16
+	// Department is the name of the department within the user's company.
+	Department string
+	// Fax is the fax number for the user's workplace.
+	Fax string
+	// OccupationCode is the code representing the user's occupation.
+	OccupationCode uint16
+	// Phone is the phone number for the user's workplace.
+	Phone string
+	// Position is the user's job title or position within the company.
+	Position string
+	// State is the state or region where the user's workplace is located.
+	State string
+	// WebPage is the URL of the user's company's website.
+	WebPage string
+	// ZIPCode is the postal code for the user's workplace.
+	ZIPCode string
+}
+
+// ICQPermissions specifies the privacy settings of an ICQ user.
+type ICQPermissions struct {
+	// AuthRequired indicates where users must ask this permission to add them
+	// to their contact list.
+	AuthRequired bool
+}
+
+// Age returns the user's age relative to their birthday and timeNow.
+func (u *User) Age(timeNow func() time.Time) uint16 {
+	now := timeNow().UTC()
+	switch {
+	case u.ICQMoreInfo.BirthYear > 0 && u.ICQMoreInfo.BirthDay == 0 && u.ICQMoreInfo.BirthMonth == 0:
+		bday := time.Date(int(u.ICQMoreInfo.BirthYear), time.January, 1, 0, 0, 0, 0, time.UTC)
+		return uint16(now.Year() - bday.Year())
+	case u.ICQMoreInfo.BirthYear > 0 && u.ICQMoreInfo.BirthDay > 0 && u.ICQMoreInfo.BirthMonth > 0:
+		bday := time.Date(int(u.ICQMoreInfo.BirthYear), time.Month(u.ICQMoreInfo.BirthMonth), int(u.ICQMoreInfo.BirthDay), 0, 0, 0, 0, time.UTC)
+		years := now.Year() - bday.Year()
+		if now.YearDay() < bday.YearDay() {
+			years--
+		}
+		return uint16(years)
+	default: // invalid date
+		return 0
+	}
 }
 
 // ValidateHash checks if md5Hash is identical to one of the password hashes.
@@ -174,8 +373,14 @@ func (u *User) ValidateRoastedPass(roastedPass []byte) bool {
 // HashPassword computes MD5 hashes of the user's password. It computes both
 // weak and strong variants and stores them in the struct.
 func (u *User) HashPassword(passwd string) error {
-	if err := validateAIMPassword(passwd); err != nil {
-		return err
+	if u.IsICQ {
+		if err := validateICQPassword(passwd); err != nil {
+			return err
+		}
+	} else {
+		if err := validateAIMPassword(passwd); err != nil {
+			return err
+		}
 	}
 	u.WeakMD5Pass = wire.WeakMD5PasswordHash(passwd, u.AuthKey)
 	u.StrongMD5Pass = wire.StrongMD5PasswordHash(passwd, u.AuthKey)
@@ -187,7 +392,7 @@ func (u *User) HashPassword(passwd string) error {
 // values reflect AOL's password validation rules circa 2000.
 func validateAIMPassword(pass string) error {
 	if len(pass) < 4 || len(pass) > 16 {
-		return errors.New("password length must be between 4-16 characters")
+		return fmt.Errorf("%w: password length must be between 4-16 characters", ErrPasswordInvalid)
 	}
 	return nil
 }
@@ -198,7 +403,7 @@ func validateAIMPassword(pass string) error {
 // reflects the password limitation imposed by old ICQ clients.
 func validateICQPassword(pass string) error {
 	if len(pass) < 6 || len(pass) > 8 {
-		return errors.New("password must be between 6 and 8 characters")
+		return fmt.Errorf("%w: password must be between 6-8 characters", ErrPasswordInvalid)
 	}
 	return nil
 }

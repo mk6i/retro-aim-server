@@ -66,9 +66,20 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 		return marshalStruct(t, v, oscTag, w, order)
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return binary.Write(w, order, v.Interface())
+	case reflect.Interface:
+		return marshalInterface(v, w, oscTag, order)
 	default:
 		return fmt.Errorf("unsupported type %v", t.Kind())
 	}
+}
+
+func marshalInterface(v reflect.Value, w io.Writer, tag oscarTag, order binary.ByteOrder) error {
+	elem := v.Elem()
+	if elem.Kind() != reflect.Struct {
+		return fmt.Errorf("interface underlying type must be a struct, got %v instead", elem.Kind())
+	}
+
+	return marshalStruct(elem.Type(), elem, tag, w, order)
 }
 
 func marshalSlice(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer, order binary.ByteOrder) error {
@@ -119,6 +130,11 @@ func marshalString(oscTag oscarTag, v reflect.Value, w io.Writer, order binary.B
 }
 
 func marshalStruct(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer, order binary.ByteOrder) error {
+	// marshal ICQ messages in little endian order
+	if t.Name() == "ICQMessageReplyEnvelope" {
+		order = binary.LittleEndian
+	}
+
 	marshalEachField := func(w io.Writer) error {
 		for i := 0; i < t.NumField(); i++ {
 			field := t.Field(i)

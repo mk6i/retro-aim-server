@@ -35,7 +35,7 @@ func StartManagementAPI(
 		userHandler(w, r, userManager, uuid.New, logger)
 	})
 	mux.HandleFunc("/user/password", func(w http.ResponseWriter, r *http.Request) {
-		userPasswordHandler(w, r, userManager, uuid.New, logger)
+		userPasswordHandler(w, r, userManager, logger)
 	})
 	mux.HandleFunc("/user/login", func(w http.ResponseWriter, r *http.Request) {
 		loginHandler(w, r, userManager, logger)
@@ -96,38 +96,32 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request, manager UserManag
 	_, _ = fmt.Fprintln(w, "User account successfully deleted.")
 }
 
-func userPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, newUUID func() uuid.UUID, logger *slog.Logger) {
+func userPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, logger *slog.Logger) {
 	switch r.Method {
 	case http.MethodPut:
-		putUserPasswordHandler(w, r, userManager, newUUID, logger)
+		putUserPasswordHandler(w, r, userManager, logger)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
 // putUserPasswordHandler handles the PUT /user/password endpoint.
-func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, newUUID func() uuid.UUID, logger *slog.Logger) {
+func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, logger *slog.Logger) {
 	input, err := userFromBody(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	user := state.User{
-		AuthKey:         newUUID().String(),
-		IdentScreenName: state.NewIdentScreenName(input.ScreenName),
-	}
+	sn := state.NewIdentScreenName(input.ScreenName)
 
-	if err := user.HashPassword(input.Password); err != nil {
-		logger.Error("error hashing user password in PUT /user/password", "err", err.Error())
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	if err := userManager.SetUserPassword(user); err != nil {
+	if err := userManager.SetUserPassword(sn, input.Password); err != nil {
 		switch {
 		case errors.Is(err, state.ErrNoUser):
 			http.Error(w, "user does not exist", http.StatusNotFound)
+			return
+		case errors.Is(err, state.ErrPasswordInvalid):
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		case err != nil:
 			logger.Error("error updating user password PUT /user/password", "err", err.Error())
@@ -137,6 +131,7 @@ func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager 
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+	_, _ = fmt.Fprintln(w, "Password successfully reset.")
 }
 
 // sessionHandler handles GET /session
@@ -158,6 +153,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever Ses
 		ou.Sessions[i] = userHandle{
 			ID:         s.IdentScreenName().String(),
 			ScreenName: s.DisplayScreenName().String(),
+			IsICQ:      s.UIN() > 0,
 		}
 	}
 
@@ -183,6 +179,7 @@ func getUserHandler(w http.ResponseWriter, _ *http.Request, userManager UserMana
 		out[i] = userHandle{
 			ID:         u.IdentScreenName.String(),
 			ScreenName: u.DisplayScreenName.String(),
+			IsICQ:      u.IsICQ,
 		}
 	}
 
@@ -202,15 +199,23 @@ func postUserHandler(w http.ResponseWriter, r *http.Request, userManager UserMan
 
 	sn := state.DisplayScreenName(input.ScreenName)
 
-	if err := sn.ValidateAIMHandle(); err != nil {
-		http.Error(w, fmt.Sprintf("invalid screen name: %s", err), http.StatusBadRequest)
-		return
+	if input.IsICQ {
+		if err := sn.ValidateICQHandle(); err != nil {
+			http.Error(w, fmt.Sprintf("invalid uin: %s", err), http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := sn.ValidateAIMHandle(); err != nil {
+			http.Error(w, fmt.Sprintf("invalid screen name: %s", err), http.StatusBadRequest)
+			return
+		}
 	}
 
 	user := state.User{
 		AuthKey:           newUUID().String(),
 		DisplayScreenName: sn,
 		IdentScreenName:   sn.IdentScreenName(),
+		IsICQ:             input.IsICQ,
 	}
 
 	if err := user.HashPassword(input.Password); err != nil {
@@ -330,11 +335,11 @@ func getPublicChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetrie
 		cr := chatRoom{
 			CreateTime:   room.CreateTime(),
 			Name:         room.Name(),
-			Participants: make([]userHandle, len(sessions)),
+			Participants: make([]aimChatUserHandle, len(sessions)),
 			URL:          room.URL().String(),
 		}
 		for j, sess := range sessions {
-			cr.Participants[j] = userHandle{
+			cr.Participants[j] = aimChatUserHandle{
 				ID:         sess.IdentScreenName().String(),
 				ScreenName: sess.DisplayScreenName().String(),
 			}
@@ -397,11 +402,11 @@ func getPrivateChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetri
 			CreateTime:   room.CreateTime(),
 			CreatorID:    room.Creator().String(),
 			Name:         room.Name(),
-			Participants: make([]userHandle, len(sessions)),
+			Participants: make([]aimChatUserHandle, len(sessions)),
 			URL:          room.URL().String(),
 		}
 		for j, sess := range sessions {
-			cr.Participants[j] = userHandle{
+			cr.Participants[j] = aimChatUserHandle{
 				ID:         sess.IdentScreenName().String(),
 				ScreenName: sess.DisplayScreenName().String(),
 			}

@@ -72,6 +72,9 @@ packages:
       AdminService:
         config:
           filename: "mock_admin_test.go"
+      ICQService:
+        config:
+          filename: "mock_icq_service_test.go"
   github.com/mk6i/retro-aim-server/foodgroup:
     interfaces:
       FeedbagManager:
@@ -113,3 +116,12 @@ packages:
       AccountManager:
         config:
           filename: "mock_account_manager_test.go"
+      ICQUserFinder:
+        config:
+          filename: "mock_icq_user_finder_test.go"
+      ICQUserUpdater:
+        config:
+          filename: "mock_icq_user_updater_test.go"
+      SessionRetriever:
+        config:
+          filename: "mock_session_retriever_test.go"

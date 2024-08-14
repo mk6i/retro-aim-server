@@ -615,6 +615,78 @@ func TestMarshal(t *testing.T) {
 			},
 			wantErr: ErrMarshalFailure,
 		},
+		{
+			name: "struct with any type field containing a struct",
+			w:    &bytes.Buffer{},
+			given: struct {
+				Val1 uint8
+				Val2 any
+			}{
+				Val1: 0x12,
+				Val2: struct {
+					Field1 uint16
+					Field2 uint8
+				}{
+					Field1: 0x1234,
+					Field2: 0x56,
+				},
+			},
+			want: []byte{
+				0x12,       // Val1
+				0x12, 0x34, // Val2.Field1 (uint16)
+				0x56, // Val2.Field2 (uint8)
+			},
+		},
+		{
+			name: "struct with any type field containing an empty struct",
+			w:    &bytes.Buffer{},
+			given: struct {
+				Val1 uint8
+				Val2 any
+			}{
+				Val1: 0x12,
+				Val2: struct{}{}, // empty struct
+			},
+			want: []byte{
+				0x12, // Val1
+			},
+		},
+		{
+			name: "struct with any type field containing a non-struct value",
+			w:    &bytes.Buffer{},
+			given: struct {
+				Val1 uint8
+				Val2 any
+			}{
+				Val1: 0x12,
+				Val2: "non-struct value", // non-struct value
+			},
+			wantErr: ErrMarshalFailure, // expecting an error because Val2 is not a struct
+		},
+		{
+			name: "struct with ICQMessageReplyEnvelope field",
+			w:    &bytes.Buffer{},
+			given: struct {
+				Val1 uint16
+				Val2 ICQMessageReplyEnvelope
+			}{
+				Val1: 0x1234,
+				Val2: ICQMessageReplyEnvelope{
+					Message: struct {
+						Val3 uint16
+					}{
+						Val3: 0x1234,
+					},
+				},
+			},
+			want: []byte{
+				// Big-endian encoding for Val1
+				0x12, 0x34, // Val1
+				// Little-endian encoding for Val2.Message.Val3
+				0x2, 0x0, // Val2 len
+				0x34, 0x12, // Val2.Message.Val3
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

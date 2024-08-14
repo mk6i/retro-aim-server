@@ -9,6 +9,8 @@ import (
 	"io/fs"
 	"net/http"
 	"net/mail"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/wire"
@@ -97,39 +99,292 @@ func (f SQLiteUserStore) AllUsers() ([]User, error) {
 	return users, nil
 }
 
+// FindByUIN returns a user where the UIN matches the ident screen name.
+func (f SQLiteUserStore) FindByUIN(UIN uint32) (User, error) {
+	users, err := getUsers(func() (string, []any) {
+		return `identScreenName = ?`, []any{strconv.Itoa(int(UIN))}
+	}, f.db)
+	if err != nil {
+		return User{}, fmt.Errorf("FindByUIN: %w", err)
+	}
+
+	if len(users) == 0 {
+		return User{}, ErrNoUser
+	}
+
+	return users[0], nil
+}
+
+// FindByEmail returns a user with a matching email address.
+func (f SQLiteUserStore) FindByEmail(email string) (User, error) {
+	users, err := getUsers(func() (string, []any) {
+		return `icq_basicInfo_emailAddress = ?`, []any{email}
+	}, f.db)
+	if err != nil {
+		return User{}, fmt.Errorf("FindByEmail: %w", err)
+	}
+
+	if len(users) == 0 {
+		return User{}, ErrNoUser
+	}
+
+	return users[0], nil
+}
+
+// FindByDetails returns a user with either a matching first name, last name, or nickname.
+func (f SQLiteUserStore) FindByDetails(firstName, lastName, nickName string) ([]User, error) {
+	users, err := getUsers(func() (string, []any) {
+		var conds []string
+		var vals []any
+		if firstName != "" {
+			conds = append(conds, `LOWER(icq_basicInfo_firstName) = LOWER(?)`)
+			vals = append(vals, firstName)
+		}
+		if lastName != "" {
+			conds = append(conds, `LOWER(icq_basicInfo_lastName) = LOWER(?)`)
+			vals = append(vals, lastName)
+		}
+		if nickName != "" {
+			conds = append(conds, `LOWER(icq_basicInfo_nickName) = LOWER(?)`)
+			vals = append(vals, nickName)
+		}
+		return strings.Join(conds, " AND "), vals
+	}, f.db)
+	if err != nil {
+		err = fmt.Errorf("FindByDetails: %w", err)
+	}
+	return users, nil
+}
+
+// FindByInterests returns a user who has at least one matching interest.
+func (f SQLiteUserStore) FindByInterests(code uint16, keywords []string) ([]User, error) {
+	users, err := getUsers(func() (string, []any) {
+		var conds []string
+		var vals []any
+
+		for i := 1; i <= 4; i++ {
+			var subConds []string
+			vals = append(vals, code)
+			for _, key := range keywords {
+				subConds = append(subConds, fmt.Sprintf("icq_interests_keyword%d LIKE ?", i))
+				vals = append(vals, "%"+key+"%")
+			}
+			conds = append(conds, fmt.Sprintf("(icq_interests_code%d = ? AND (%s))", i, strings.Join(subConds, " OR ")))
+		}
+
+		return strings.Join(conds, " OR "), vals
+	}, f.db)
+	if err != nil {
+		err = fmt.Errorf("FindByInterests: %w", err)
+	}
+	return users, nil
+}
+
 // User looks up a user by screen name. It populates the User record with
 // credentials that can be used to validate the user's password.
 func (f SQLiteUserStore) User(screenName IdentScreenName) (*User, error) {
-	q := `
-		SELECT
-			displayScreenName,
-			authKey,
-			weakMD5Pass,
-			strongMD5Pass
-		FROM users
-		WHERE identScreenName = ?
-	`
-	u := &User{
-		IdentScreenName: screenName,
+	users, err := getUsers(func() (string, []any) {
+		return `identScreenName = ?`, []any{screenName.String()}
+	}, f.db)
+	if err != nil {
+		return nil, fmt.Errorf("user: %w", err)
 	}
-	err := f.db.QueryRow(q, screenName.String()).
-		Scan(&u.DisplayScreenName, &u.AuthKey, &u.WeakMD5Pass, &u.StrongMD5Pass)
 
-	if errors.Is(err, sql.ErrNoRows) {
+	if len(users) == 0 {
 		return nil, nil
 	}
-	return u, err
+
+	return &users[0], nil
+}
+
+type filterFN func() (string, []any)
+
+type queryer interface {
+	Query(query string, args ...any) (*sql.Rows, error)
+}
+
+// getUsers fetches users from the database by their screen name.
+func getUsers(filterFN filterFN, tx queryer) ([]User, error) {
+
+	cond, parms := filterFN()
+
+	q := `
+		SELECT
+			identScreenName,
+			displayScreenName,
+			emailAddress,
+			authKey,
+			strongMD5Pass,
+			weakMD5Pass,
+			confirmStatus,
+			regStatus,
+			isICQ,
+			icq_affiliations_currentCode1,
+			icq_affiliations_currentCode2,
+			icq_affiliations_currentCode3,
+			icq_affiliations_currentKeyword1,
+			icq_affiliations_currentKeyword2,
+			icq_affiliations_currentKeyword3,
+			icq_affiliations_pastCode1,
+			icq_affiliations_pastCode2,
+			icq_affiliations_pastCode3,
+			icq_affiliations_pastKeyword1,
+			icq_affiliations_pastKeyword2,
+			icq_affiliations_pastKeyword3,
+			icq_basicInfo_address,
+			icq_basicInfo_cellPhone,
+			icq_basicInfo_city,
+			icq_basicInfo_countryCode,
+			icq_basicInfo_emailAddress,
+			icq_basicInfo_fax,
+			icq_basicInfo_firstName,
+			icq_basicInfo_gmtOffset,
+			icq_basicInfo_lastName,
+			icq_basicInfo_nickName,
+			icq_basicInfo_phone,
+			icq_basicInfo_publishEmail,
+			icq_basicInfo_state,
+			icq_basicInfo_zipCode,
+			icq_interests_code1,
+			icq_interests_code2,
+			icq_interests_code3,
+			icq_interests_code4,
+			icq_interests_keyword1,
+			icq_interests_keyword2,
+			icq_interests_keyword3,
+			icq_interests_keyword4,
+			icq_moreInfo_birthDay,
+			icq_moreInfo_birthMonth,
+			icq_moreInfo_birthYear,
+			icq_moreInfo_gender,
+			icq_moreInfo_homePageAddr,
+			icq_moreInfo_lang1,
+			icq_moreInfo_lang2,
+			icq_moreInfo_lang3,
+			icq_notes,
+			icq_permissions_authRequired,
+			icq_workInfo_address,
+			icq_workInfo_city,
+			icq_workInfo_company,
+			icq_workInfo_countryCode,
+			icq_workInfo_department,
+			icq_workInfo_fax,
+			icq_workInfo_occupationCode,
+			icq_workInfo_phone,
+			icq_workInfo_position,
+			icq_workInfo_state,
+			icq_workInfo_webPage,
+			icq_workInfo_zipCode
+		FROM users
+		WHERE %s
+	`
+	q = fmt.Sprintf(q, cond)
+	rows, err := tx.Query(q, parms...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		var sn string
+		err := rows.Scan(
+			&sn,
+			&u.DisplayScreenName,
+			&u.EmailAddress,
+			&u.AuthKey,
+			&u.StrongMD5Pass,
+			&u.WeakMD5Pass,
+			&u.ConfirmStatus,
+			&u.RegStatus,
+			&u.IsICQ,
+			&u.ICQAffiliations.CurrentCode1,
+			&u.ICQAffiliations.CurrentCode2,
+			&u.ICQAffiliations.CurrentCode3,
+			&u.ICQAffiliations.CurrentKeyword1,
+			&u.ICQAffiliations.CurrentKeyword2,
+			&u.ICQAffiliations.CurrentKeyword3,
+			&u.ICQAffiliations.PastCode1,
+			&u.ICQAffiliations.PastCode2,
+			&u.ICQAffiliations.PastCode3,
+			&u.ICQAffiliations.PastKeyword1,
+			&u.ICQAffiliations.PastKeyword2,
+			&u.ICQAffiliations.PastKeyword3,
+			&u.ICQBasicInfo.Address,
+			&u.ICQBasicInfo.CellPhone,
+			&u.ICQBasicInfo.City,
+			&u.ICQBasicInfo.CountryCode,
+			&u.ICQBasicInfo.EmailAddress,
+			&u.ICQBasicInfo.Fax,
+			&u.ICQBasicInfo.FirstName,
+			&u.ICQBasicInfo.GMTOffset,
+			&u.ICQBasicInfo.LastName,
+			&u.ICQBasicInfo.Nickname,
+			&u.ICQBasicInfo.Phone,
+			&u.ICQBasicInfo.PublishEmail,
+			&u.ICQBasicInfo.State,
+			&u.ICQBasicInfo.ZIPCode,
+			&u.ICQInterests.Code1,
+			&u.ICQInterests.Code2,
+			&u.ICQInterests.Code3,
+			&u.ICQInterests.Code4,
+			&u.ICQInterests.Keyword1,
+			&u.ICQInterests.Keyword2,
+			&u.ICQInterests.Keyword3,
+			&u.ICQInterests.Keyword4,
+			&u.ICQMoreInfo.BirthDay,
+			&u.ICQMoreInfo.BirthMonth,
+			&u.ICQMoreInfo.BirthYear,
+			&u.ICQMoreInfo.Gender,
+			&u.ICQMoreInfo.HomePageAddr,
+			&u.ICQMoreInfo.Lang1,
+			&u.ICQMoreInfo.Lang2,
+			&u.ICQMoreInfo.Lang3,
+			&u.ICQNotes.Notes,
+			&u.ICQPermissions.AuthRequired,
+			&u.ICQWorkInfo.Address,
+			&u.ICQWorkInfo.City,
+			&u.ICQWorkInfo.Company,
+			&u.ICQWorkInfo.CountryCode,
+			&u.ICQWorkInfo.Department,
+			&u.ICQWorkInfo.Fax,
+			&u.ICQWorkInfo.OccupationCode,
+			&u.ICQWorkInfo.Phone,
+			&u.ICQWorkInfo.Position,
+			&u.ICQWorkInfo.State,
+			&u.ICQWorkInfo.WebPage,
+			&u.ICQWorkInfo.ZIPCode,
+		)
+		if err != nil {
+			return nil, err
+		}
+		u.IdentScreenName = NewIdentScreenName(sn)
+		users = append(users, u)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }
 
 // InsertUser inserts a user to the store. Return ErrDupUser if a user with the
 // same screen name already exists.
 func (f SQLiteUserStore) InsertUser(u User) error {
 	q := `
-		INSERT INTO users (identScreenName, displayScreenName, authKey, weakMD5Pass, strongMD5Pass)
-		VALUES (?, ?, ?, ?, ?)
+		INSERT INTO users (identScreenName, displayScreenName, authKey, weakMD5Pass, strongMD5Pass, isICQ)
+		VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT (identScreenName) DO NOTHING
 	`
-	result, err := f.db.Exec(q, u.IdentScreenName.String(), u.DisplayScreenName, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass)
+	result, err := f.db.Exec(q,
+		u.IdentScreenName.String(),
+		u.DisplayScreenName,
+		u.AuthKey,
+		u.WeakMD5Pass,
+		u.StrongMD5Pass,
+		u.IsICQ,
+	)
 	if err != nil {
 		return err
 	}
@@ -173,10 +428,10 @@ func (f SQLiteUserStore) DeleteUser(screenName IdentScreenName) error {
 // - WeakMD5Pass
 // - StrongMD5Pass
 // - IdentScreenName
-func (f SQLiteUserStore) SetUserPassword(u User) (err error) {
+func (f SQLiteUserStore) SetUserPassword(screenName IdentScreenName, newPassword string) error {
 	tx, err := f.db.Begin()
 	if err != nil {
-		return
+		return err
 	}
 
 	defer func() {
@@ -186,18 +441,41 @@ func (f SQLiteUserStore) SetUserPassword(u User) (err error) {
 	}()
 
 	q := `
+		SELECT
+			authKey,
+			isICQ
+		FROM users
+		WHERE identScreenName = ?
+	`
+
+	u := User{}
+
+	err = tx.QueryRow(q, screenName.String()).Scan(
+		&u.AuthKey,
+		&u.IsICQ,
+	)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNoUser
+	}
+
+	if err = u.HashPassword(newPassword); err != nil {
+		return err
+	}
+
+	q = `
 		UPDATE users
 		SET authKey = ?, weakMD5Pass = ?, strongMD5Pass = ?
 		WHERE identScreenName = ?
 	`
-	result, err := tx.Exec(q, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass, u.IdentScreenName.String())
+	result, err := tx.Exec(q, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass, screenName.String())
 	if err != nil {
-		return
+		return err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return
+		return err
 	}
 
 	if rowsAffected == 0 {
@@ -206,11 +484,11 @@ func (f SQLiteUserStore) SetUserPassword(u User) (err error) {
 		var exists int
 		err = tx.QueryRow("SELECT COUNT(*) FROM users WHERE identScreenName = ?", u.IdentScreenName.String()).Scan(&exists)
 		if err != nil {
-			return // Handle possible SQL errors during the select
+			return err // Handle possible SQL errors during the select
 		}
 		if exists == 0 {
 			err = ErrNoUser // User does not exist
-			return
+			return err
 		}
 	}
 
@@ -682,4 +960,241 @@ func (f SQLiteUserStore) ConfirmStatusByName(screenName IdentScreenName) (bool, 
 		return false, err
 	}
 	return confirmStatus, nil
+}
+
+// SetWorkInfo updates the work-related information for an ICQ user.
+func (f SQLiteUserStore) SetWorkInfo(name IdentScreenName, data ICQWorkInfo) error {
+	q := `
+		UPDATE users SET 
+			icq_workInfo_company = ?,
+			icq_workInfo_department = ?,
+			icq_workInfo_occupationCode = ?,
+			icq_workInfo_position = ?,
+			icq_workInfo_address = ?,
+			icq_workInfo_city = ?,
+			icq_workInfo_countryCode = ?,
+			icq_workInfo_fax = ?,
+			icq_workInfo_phone = ?,
+			icq_workInfo_state = ?,
+			icq_workInfo_webPage = ?,
+			icq_workInfo_zipCode = ?
+		WHERE identScreenName = ?
+	`
+	res, err := f.db.Exec(q,
+		data.Company,
+		data.Department,
+		data.OccupationCode,
+		data.Position,
+		data.Address,
+		data.City,
+		data.CountryCode,
+		data.Fax,
+		data.Phone,
+		data.State,
+		data.WebPage,
+		data.ZIPCode,
+		name.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+	c, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if c == 0 {
+		return ErrNoUser
+	}
+	return nil
+}
+
+func (f SQLiteUserStore) SetMoreInfo(name IdentScreenName, data ICQMoreInfo) error {
+	q := `
+		UPDATE users SET 
+			icq_moreInfo_birthDay = ?,
+			icq_moreInfo_birthMonth = ?,
+			icq_moreInfo_birthYear = ?,
+			icq_moreInfo_gender = ?,
+			icq_moreInfo_homePageAddr = ?,
+			icq_moreInfo_lang1 = ?,
+			icq_moreInfo_lang2 = ?,
+			icq_moreInfo_lang3 = ?
+		WHERE identScreenName = ?
+	`
+	res, err := f.db.Exec(q,
+		data.BirthDay,
+		data.BirthMonth,
+		data.BirthYear,
+		data.Gender,
+		data.HomePageAddr,
+		data.Lang1,
+		data.Lang2,
+		data.Lang3,
+		name.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+	c, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if c == 0 {
+		return ErrNoUser
+	}
+	return nil
+}
+
+func (f SQLiteUserStore) SetUserNotes(name IdentScreenName, data ICQUserNotes) error {
+	q := `
+		UPDATE users
+		SET icq_notes = ?
+		WHERE identScreenName = ?
+	`
+	res, err := f.db.Exec(q,
+		data.Notes,
+		name.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+	c, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if c == 0 {
+		return ErrNoUser
+	}
+	return nil
+}
+
+func (f SQLiteUserStore) SetInterests(name IdentScreenName, data ICQInterests) error {
+	q := `
+		UPDATE users SET 
+			icq_interests_code1 = ?,
+			icq_interests_keyword1 = ?,
+			icq_interests_code2 = ?,
+			icq_interests_keyword2 = ?,
+			icq_interests_code3 = ?,
+			icq_interests_keyword3 = ?,
+			icq_interests_code4 = ?,
+			icq_interests_keyword4 = ?
+		WHERE identScreenName = ?
+	`
+	res, err := f.db.Exec(q,
+		data.Code1,
+		data.Keyword1,
+		data.Code2,
+		data.Keyword2,
+		data.Code3,
+		data.Keyword3,
+		data.Code4,
+		data.Keyword4,
+		name.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+	c, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if c == 0 {
+		return ErrNoUser
+	}
+	return nil
+}
+
+func (f SQLiteUserStore) SetAffiliations(name IdentScreenName, data ICQAffiliations) error {
+	q := `
+		UPDATE users SET 
+			icq_affiliations_currentCode1 = ?,
+			icq_affiliations_currentKeyword1 = ?,
+			icq_affiliations_currentCode2 = ?,
+			icq_affiliations_currentKeyword2 = ?,
+			icq_affiliations_currentCode3 = ?,
+			icq_affiliations_currentKeyword3 = ?,
+			icq_affiliations_pastCode1 = ?,
+			icq_affiliations_pastKeyword1 = ?,
+			icq_affiliations_pastCode2 = ?,
+			icq_affiliations_pastKeyword2 = ?,
+			icq_affiliations_pastCode3 = ?,
+			icq_affiliations_pastKeyword3 = ?
+		WHERE identScreenName = ?
+	`
+	res, err := f.db.Exec(q,
+		data.CurrentCode1,
+		data.CurrentKeyword1,
+		data.CurrentCode2,
+		data.CurrentKeyword2,
+		data.CurrentCode3,
+		data.CurrentKeyword3,
+		data.PastCode1,
+		data.PastKeyword1,
+		data.PastCode2,
+		data.PastKeyword2,
+		data.PastCode3,
+		data.PastKeyword3,
+		name.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+	c, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if c == 0 {
+		return ErrNoUser
+	}
+	return nil
+}
+
+func (f SQLiteUserStore) SetBasicInfo(name IdentScreenName, data ICQBasicInfo) error {
+	q := `
+		UPDATE users SET 
+			icq_basicInfo_cellPhone = ?,
+			icq_basicInfo_countryCode = ?,
+			icq_basicInfo_emailAddress = ?,
+			icq_basicInfo_firstName = ?,
+			icq_basicInfo_gmtOffset = ?,
+			icq_basicInfo_address = ?,
+			icq_basicInfo_city = ?,
+			icq_basicInfo_fax = ?,
+			icq_basicInfo_phone = ?,
+			icq_basicInfo_state = ?,
+			icq_basicInfo_lastName = ?,
+			icq_basicInfo_nickName = ?,
+			icq_basicInfo_publishEmail = ?,
+			icq_basicInfo_zipCode = ?
+		WHERE identScreenName = ?
+	`
+	res, err := f.db.Exec(q,
+		data.CellPhone,
+		data.CountryCode,
+		data.EmailAddress,
+		data.FirstName,
+		data.GMTOffset,
+		data.Address,
+		data.City,
+		data.Fax,
+		data.Phone,
+		data.State,
+		data.LastName,
+		data.Nickname,
+		data.PublishEmail,
+		data.ZIPCode,
+		name.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+	c, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if c == 0 {
+		return ErrNoUser
+	}
+	return nil
 }

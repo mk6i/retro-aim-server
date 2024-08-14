@@ -122,8 +122,16 @@ curl http://localhost:8080/user
 
 #### Create Users
 
+##### AIM
+
 ```shell
 curl -d'{"screen_name":"MyScreenName", "password":"thepassword"}' http://localhost:8080/user
+```
+
+##### ICQ
+
+```shell
+curl -d'{"screen_name":"100003", "password":"thepassw", "is_icq": true}' http://localhost:8080/user
 ```
 
 #### Delete Users

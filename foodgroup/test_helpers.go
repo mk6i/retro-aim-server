@@ -20,11 +20,130 @@ type mockParams struct {
 	chatRoomRegistryParams
 	cookieBakerParams
 	feedbagManagerParams
+	icqUserFinderParams
+	icqUserUpdaterParams
 	legacyBuddyListManagerParams
 	messageRelayerParams
 	profileManagerParams
 	sessionManagerParams
+	sessionRetrieverParams
 	userManagerParams
+}
+
+// sessionRetrieverParams is a helper struct that contains mock parameters for
+// SessionRetriever methods
+type sessionRetrieverParams struct {
+	retrieveSessionParams
+}
+
+// retrieveSessionParams is a helper struct that contains mock parameters for
+// SessionRetriever methods
+type retrieveSessionParams []struct {
+	screenName state.IdentScreenName
+	result     *state.Session
+}
+
+// icqUserFinderParams is a helper struct that contains mock parameters for
+// ICQUserFinder methods
+type icqUserFinderParams struct {
+	findByUINParams
+	findByEmailParams
+	findByDetailsParams
+	findByInterestsParams
+}
+
+// findByUINParams is the list of parameters passed at the mock
+// ICQUserFinder.FindByUIN call site
+type findByUINParams []struct {
+	UIN    uint32
+	result state.User
+	err    error
+}
+
+// findByEmailParams is the list of parameters passed at the mock
+// ICQUserFinder.FindByEmail call site
+type findByEmailParams []struct {
+	email  string
+	result state.User
+	err    error
+}
+
+// setBasicInfoParams is the list of parameters passed at the mock
+// ICQUserFinder.FindByDetails call site
+type findByDetailsParams []struct {
+	firstName string
+	lastName  string
+	nickName  string
+	result    []state.User
+	err       error
+}
+
+// setBasicInfoParams is the list of parameters passed at the mock
+// ICQUserFinder.FindByInterests call site
+type findByInterestsParams []struct {
+	code     uint16
+	keywords []string
+	result   []state.User
+	err      error
+}
+
+// icqUserUpdaterParams is a helper struct that contains mock parameters for
+// ICQUserUpdater methods
+type icqUserUpdaterParams struct {
+	setAffiliationsParams
+	setBasicInfoParams
+	setInterestsParams
+	setMoreInfoParams
+	setUserNotesParams
+	setWorkInfoParams
+}
+
+// setAffiliationsParams is the list of parameters passed at the mock
+// ICQUserUpdater.SetAffiliations call site
+type setAffiliationsParams []struct {
+	name state.IdentScreenName
+	data state.ICQAffiliations
+	err  error
+}
+
+// setInterestsParams is the list of parameters passed at the mock
+// ICQUserUpdater.SetInterests call site
+type setInterestsParams []struct {
+	name state.IdentScreenName
+	data state.ICQInterests
+	err  error
+}
+
+// setUserNotesParams is the list of parameters passed at the mock
+// ICQUserUpdater.SetUserNotes call site
+type setUserNotesParams []struct {
+	name state.IdentScreenName
+	data state.ICQUserNotes
+	err  error
+}
+
+// setBasicInfoParams is the list of parameters passed at the mock
+// ICQUserUpdater.SetBasicInfo call site
+type setBasicInfoParams []struct {
+	name state.IdentScreenName
+	data state.ICQBasicInfo
+	err  error
+}
+
+// setWorkInfoParams is the list of parameters passed at the mock
+// ICQUserUpdater.SetWorkInfo call site
+type setWorkInfoParams []struct {
+	name state.IdentScreenName
+	data state.ICQWorkInfo
+	err  error
+}
+
+// setMoreInfoParams is the list of parameters passed at the mock
+// ICQUserUpdater.SetMoreInfo call site
+type setMoreInfoParams []struct {
+	name state.IdentScreenName
+	data state.ICQMoreInfo
+	err  error
 }
 
 // bartManagerParams is a helper struct that contains mock parameters for
@@ -507,6 +626,13 @@ func sessOptSignonComplete(session *state.Session) {
 func sessOptCaps(caps [][16]byte) func(session *state.Session) {
 	return func(session *state.Session) {
 		session.SetCaps(caps)
+	}
+}
+
+// sessOptCaps sets caps
+func sessOptUIN(UIN uint32) func(session *state.Session) {
+	return func(session *state.Session) {
+		session.SetUIN(UIN)
 	}
 }
 

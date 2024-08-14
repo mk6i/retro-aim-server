@@ -2,6 +2,7 @@ package state
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,33 +20,57 @@ func TestUser_HashPassword(t *testing.T) {
 		wantError         bool
 	}{
 		{
-			name:              "Valid password",
-			user:              User{AuthKey: "someAuthKey"},
+			name:              "Valid AIM password",
+			user:              User{AuthKey: "someAuthKey", IsICQ: false},
 			password:          "validPassword",
 			expectedWeakMD5:   wire.WeakMD5PasswordHash("validPassword", "someAuthKey"),
 			expectedStrongMD5: wire.StrongMD5PasswordHash("validPassword", "someAuthKey"),
 			wantError:         false,
 		},
 		{
-			name:              "Empty password",
-			user:              User{AuthKey: "someAuthKey"},
+			name:              "Empty AIM password",
+			user:              User{AuthKey: "someAuthKey", IsICQ: false},
 			password:          "",
 			expectedWeakMD5:   nil,
 			expectedStrongMD5: nil,
 			wantError:         true,
 		},
 		{
-			name:              "Password too short",
-			user:              User{AuthKey: "someAuthKey"},
+			name:              "AIM password too short",
+			user:              User{AuthKey: "someAuthKey", IsICQ: false},
 			password:          "abc",
 			expectedWeakMD5:   nil,
 			expectedStrongMD5: nil,
 			wantError:         true,
 		},
 		{
-			name:              "Password too long",
-			user:              User{AuthKey: "someAuthKey"},
+			name:              "AIM password too long",
+			user:              User{AuthKey: "someAuthKey", IsICQ: false},
 			password:          "thispasswordistoolong",
+			expectedWeakMD5:   nil,
+			expectedStrongMD5: nil,
+			wantError:         true,
+		},
+		{
+			name:              "Valid ICQ password",
+			user:              User{AuthKey: "someAuthKey", IsICQ: true},
+			password:          "validICQ",
+			expectedWeakMD5:   wire.WeakMD5PasswordHash("validICQ", "someAuthKey"),
+			expectedStrongMD5: wire.StrongMD5PasswordHash("validICQ", "someAuthKey"),
+			wantError:         false,
+		},
+		{
+			name:              "Empty ICQ password",
+			user:              User{AuthKey: "someAuthKey", IsICQ: true},
+			password:          "",
+			expectedWeakMD5:   nil,
+			expectedStrongMD5: nil,
+			wantError:         true,
+		},
+		{
+			name:              "ICQ password too long",
+			user:              User{AuthKey: "someAuthKey", IsICQ: true},
+			password:          "icqpass89",
 			expectedWeakMD5:   nil,
 			expectedStrongMD5: nil,
 			wantError:         true,
@@ -62,6 +87,121 @@ func TestUser_HashPassword(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, tt.expectedWeakMD5, tt.user.WeakMD5Pass)
 				assert.Equal(t, tt.expectedStrongMD5, tt.user.StrongMD5Pass)
+			}
+		})
+	}
+}
+
+func TestAge(t *testing.T) {
+	tests := []struct {
+		name        string
+		user        User
+		timeNow     func() time.Time
+		expectedAge uint16
+	}{
+		{
+			name: "Valid birthday, only year is set",
+			user: User{
+				ICQMoreInfo: ICQMoreInfo{
+					BirthYear: 1990,
+				},
+			},
+			timeNow: func() time.Time {
+				return time.Date(2024, 8, 1, 0, 0, 0, 0, time.UTC)
+			},
+			expectedAge: 34,
+		},
+		{
+			name: "Valid birthday, birthday passed this year",
+			user: User{
+				ICQMoreInfo: ICQMoreInfo{
+					BirthYear:  1990,
+					BirthMonth: 5,
+					BirthDay:   10,
+				},
+			},
+			timeNow: func() time.Time {
+				return time.Date(2024, 8, 1, 0, 0, 0, 0, time.UTC)
+			},
+			expectedAge: 34,
+		},
+		{
+			name: "Valid birthday, birthday not yet passed this year",
+			user: User{
+				ICQMoreInfo: ICQMoreInfo{
+					BirthYear:  1990,
+					BirthMonth: 12,
+					BirthDay:   10,
+				},
+			},
+			timeNow: func() time.Time {
+				return time.Date(2024, 8, 1, 0, 0, 0, 0, time.UTC)
+			},
+			expectedAge: 33,
+		},
+		{
+			name: "Birthday is today",
+			user: User{
+				ICQMoreInfo: ICQMoreInfo{
+					BirthYear:  1990,
+					BirthMonth: 8,
+					BirthDay:   1,
+				},
+			},
+			timeNow: func() time.Time {
+				return time.Date(2024, 8, 1, 0, 0, 0, 0, time.UTC)
+			},
+			expectedAge: 34,
+		},
+		{
+			name: "Invalid birthday, year is zero",
+			user: User{
+				ICQMoreInfo: ICQMoreInfo{
+					BirthYear:  0,
+					BirthMonth: 8,
+					BirthDay:   1,
+				},
+			},
+			timeNow: func() time.Time {
+				return time.Date(2024, 8, 1, 0, 0, 0, 0, time.UTC)
+			},
+			expectedAge: 0,
+		},
+		{
+			name: "Invalid birthday, day is zero",
+			user: User{
+				ICQMoreInfo: ICQMoreInfo{
+					BirthYear:  1990,
+					BirthMonth: 8,
+					BirthDay:   0,
+				},
+			},
+			timeNow: func() time.Time {
+				return time.Date(2024, 8, 1, 0, 0, 0, 0, time.UTC)
+			},
+			expectedAge: 0,
+		},
+		{
+			name: "Invalid birthday, month is zero",
+			user: User{
+				ICQMoreInfo: ICQMoreInfo{
+					BirthYear:  1990,
+					BirthMonth: 0,
+					BirthDay:   1,
+				},
+			},
+			timeNow: func() time.Time {
+				return time.Date(2024, 8, 1, 0, 0, 0, 0, time.UTC)
+			},
+			expectedAge: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			age := tt.user.Age(tt.timeNow)
+			if age != tt.expectedAge {
+				t.Errorf("expected age %d, got %d", tt.expectedAge, age)
 			}
 		})
 	}

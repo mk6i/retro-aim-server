@@ -59,6 +59,7 @@ func main() {
 		feedbagService := foodgroup.NewFeedbagService(logger, sessionManager, feedbagStore, feedbagStore, adjListBuddyListStore)
 		foodgroupService := foodgroup.NewPermitDenyService()
 		icbmService := foodgroup.NewICBMService(sessionManager, feedbagStore, adjListBuddyListStore)
+		icqService := foodgroup.NewICQService(sessionManager, feedbagStore, feedbagStore, logger, sessionManager)
 		locateService := foodgroup.NewLocateService(sessionManager, feedbagStore, feedbagStore, adjListBuddyListStore)
 		oServiceService := foodgroup.NewOServiceServiceForBOS(cfg, sessionManager, adjListBuddyListStore, logger, cookieBaker, feedbagStore, feedbagStore)
 
@@ -71,6 +72,7 @@ func main() {
 				BuddyHandler:      handler.NewBuddyHandler(logger, buddyService),
 				ChatNavHandler:    handler.NewChatNavHandler(chatNavService, logger),
 				FeedbagHandler:    handler.NewFeedbagHandler(logger, feedbagService),
+				ICQHandler:        handler.NewICQHandler(logger, icqService),
 				ICBMHandler:       handler.NewICBMHandler(logger, icbmService),
 				LocateHandler:     handler.NewLocateHandler(locateService, logger),
 				OServiceHandler:   handler.NewOServiceHandler(logger, oServiceService),

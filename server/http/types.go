@@ -28,7 +28,7 @@ type UserManager interface {
 	AllUsers() ([]state.User, error)
 	DeleteUser(screenName state.IdentScreenName) error
 	InsertUser(u state.User) error
-	SetUserPassword(u state.User) error
+	SetUserPassword(screenName state.IdentScreenName, newPassword string) error
 	User(screenName state.IdentScreenName) (*state.User, error)
 }
 
@@ -39,6 +39,7 @@ type MessageRelayer interface {
 type userWithPassword struct {
 	ScreenName string `json:"screen_name"`
 	Password   string `json:"password,omitempty"`
+	IsICQ      bool   `json:"is_icq"`
 }
 
 type onlineUsers struct {
@@ -49,6 +50,12 @@ type onlineUsers struct {
 type userHandle struct {
 	ID         string `json:"id"`
 	ScreenName string `json:"screen_name"`
+	IsICQ      bool   `json:"is_icq"`
+}
+
+type aimChatUserHandle struct {
+	ID         string `json:"id"`
+	ScreenName string `json:"screen_name"`
 }
 
 type chatRoomCreate struct {
@@ -56,11 +63,11 @@ type chatRoomCreate struct {
 }
 
 type chatRoom struct {
-	Name         string       `json:"name"`
-	CreateTime   time.Time    `json:"create_time"`
-	CreatorID    string       `json:"creator_id,omitempty"`
-	URL          string       `json:"url"`
-	Participants []userHandle `json:"participants"`
+	Name         string              `json:"name"`
+	CreateTime   time.Time           `json:"create_time"`
+	CreatorID    string              `json:"creator_id,omitempty"`
+	URL          string              `json:"url"`
+	Participants []aimChatUserHandle `json:"participants"`
 }
 
 type instantMessage struct {
