@@ -445,9 +445,7 @@ func TestSQLiteUserStore_Users(t *testing.T) {
 	}()
 
 	f, err := NewSQLiteUserStore(testFile)
-	if err != nil {
-		assert.NoError(t, err)
-	}
+	assert.NoError(t, err)
 
 	want := []User{
 		{
@@ -462,6 +460,11 @@ func TestSQLiteUserStore_Users(t *testing.T) {
 			IdentScreenName:   NewIdentScreenName("userC"),
 			DisplayScreenName: "userC",
 		},
+		{
+			IdentScreenName:   NewIdentScreenName("100003"),
+			DisplayScreenName: "100003",
+			IsICQ:             true,
+		},
 	}
 
 	for _, u := range want {
@@ -473,6 +476,23 @@ func TestSQLiteUserStore_Users(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, want, have)
+}
+
+func TestSQLiteUserStore_InsertUser_UINButNotIsICQ(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	user := User{
+		IdentScreenName:   NewIdentScreenName("100003"),
+		DisplayScreenName: "100003",
+	}
+
+	err = f.InsertUser(user)
+	assert.ErrorContains(t, err, "inserting user with UIN and isICQ=false")
 }
 
 func TestSQLiteUserStore_DeleteUser_DeleteExistentUser(t *testing.T) {
@@ -840,9 +860,7 @@ func TestSQLiteUserStore_SetWorkInfo(t *testing.T) {
 	}()
 
 	f, err := NewSQLiteUserStore(testFile)
-	if err != nil {
-		assert.NoError(t, err)
-	}
+	assert.NoError(t, err)
 
 	screenName := NewIdentScreenName("testuser")
 	user := User{
@@ -930,9 +948,7 @@ func TestSQLiteUserStore_SetMoreInfo(t *testing.T) {
 
 	// Initialize the SQLiteUserStore with a test database file
 	f, err := NewSQLiteUserStore(testFile)
-	if err != nil {
-		assert.NoError(t, err)
-	}
+	assert.NoError(t, err)
 
 	// Create a test user
 	screenName := NewIdentScreenName("testuser")
@@ -1009,9 +1025,7 @@ func TestSQLiteUserStore_SetUserNotes(t *testing.T) {
 
 	// Initialize the SQLiteUserStore with a test database file
 	f, err := NewSQLiteUserStore(testFile)
-	if err != nil {
-		assert.NoError(t, err)
-	}
+	assert.NoError(t, err)
 
 	// Create a test user
 	screenName := NewIdentScreenName("testuser")
@@ -1067,9 +1081,7 @@ func TestSQLiteUserStore_SetInterests(t *testing.T) {
 
 	// Initialize the SQLiteUserStore with a test database file
 	f, err := NewSQLiteUserStore(testFile)
-	if err != nil {
-		assert.NoError(t, err)
-	}
+	assert.NoError(t, err)
 
 	// Create a test user
 	screenName := NewIdentScreenName("testuser")
@@ -1146,9 +1158,7 @@ func TestSQLiteUserStore_SetAffiliations(t *testing.T) {
 
 	// Initialize the SQLiteUserStore with a test database file
 	f, err := NewSQLiteUserStore(testFile)
-	if err != nil {
-		assert.NoError(t, err)
-	}
+	assert.NoError(t, err)
 
 	// Create a test user
 	screenName := NewIdentScreenName("testuser")
@@ -1237,9 +1247,7 @@ func TestSQLiteUserStore_SetBasicInfo(t *testing.T) {
 
 	// Initialize the SQLiteUserStore with a test database file
 	f, err := NewSQLiteUserStore(testFile)
-	if err != nil {
-		assert.NoError(t, err)
-	}
+	assert.NoError(t, err)
 
 	// Create a test user
 	screenName := NewIdentScreenName("testuser")
@@ -1334,9 +1342,7 @@ func TestSQLiteUserStore_FindByInterests(t *testing.T) {
 
 	// Initialize the SQLiteUserStore with a test database file
 	f, err := NewSQLiteUserStore(testFile)
-	if err != nil {
-		assert.NoError(t, err)
-	}
+	assert.NoError(t, err)
 
 	// Create and set up test users with different interests
 	user1 := User{
@@ -1444,9 +1450,7 @@ func TestSQLiteUserStore_FindByDetails(t *testing.T) {
 
 	// Initialize the SQLiteUserStore with a test database file
 	f, err := NewSQLiteUserStore(testFile)
-	if err != nil {
-		assert.NoError(t, err)
-	}
+	assert.NoError(t, err)
 
 	// Create and set up test users with different details using SetBasicInfo
 	user1 := User{
@@ -1556,9 +1560,7 @@ func TestSQLiteUserStore_FindByEmail(t *testing.T) {
 
 	// Initialize the SQLiteUserStore with a test database file
 	f, err := NewSQLiteUserStore(testFile)
-	if err != nil {
-		assert.NoError(t, err)
-	}
+	assert.NoError(t, err)
 
 	// Create and set up test users with different email addresses using SetBasicInfo
 	user1 := User{
@@ -1626,9 +1628,7 @@ func TestSQLiteUserStore_FindByUIN(t *testing.T) {
 
 	// Initialize the SQLiteUserStore with a test database file
 	f, err := NewSQLiteUserStore(testFile)
-	if err != nil {
-		assert.NoError(t, err)
-	}
+	assert.NoError(t, err)
 
 	// Create and set up test users where UIN is the same as IdentScreenName
 	user1 := User{

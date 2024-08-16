@@ -153,6 +153,7 @@ func NewStubUser(screenName DisplayScreenName) (User, error) {
 		IdentScreenName:   NewIdentScreenName(string(screenName)),
 		DisplayScreenName: screenName,
 		AuthKey:           uid.String(),
+		IsICQ:             screenName.IsUIN(),
 	}
 	err = u.HashPassword("welcome1")
 	return u, err

@@ -70,10 +70,12 @@ func (f SQLiteUserStore) runMigrations() error {
 	return nil
 }
 
-// AllUsers returns all stored users. It only populates the User.IdentScreenName and
-// User.DisplayScreenName fields in the return slice.
+// AllUsers returns all stored users. It only populates the following fields:
+// - IdentScreenName
+// - DisplayScreenName
+// - IsICQ
 func (f SQLiteUserStore) AllUsers() ([]User, error) {
-	q := `SELECT identScreenName, displayScreenName FROM users`
+	q := `SELECT identScreenName, displayScreenName, isICQ FROM users`
 	rows, err := f.db.Query(q)
 	if err != nil {
 		return nil, err
@@ -83,12 +85,14 @@ func (f SQLiteUserStore) AllUsers() ([]User, error) {
 	var users []User
 	for rows.Next() {
 		var identSN, displaySN string
-		if err := rows.Scan(&identSN, &displaySN); err != nil {
+		var isICQ bool
+		if err := rows.Scan(&identSN, &displaySN, &isICQ); err != nil {
 			return nil, err
 		}
 		users = append(users, User{
 			IdentScreenName:   NewIdentScreenName(identSN),
 			DisplayScreenName: DisplayScreenName(displaySN),
+			IsICQ:             isICQ,
 		})
 	}
 
@@ -372,6 +376,9 @@ func getUsers(filterFN filterFN, tx queryer) ([]User, error) {
 // InsertUser inserts a user to the store. Return ErrDupUser if a user with the
 // same screen name already exists.
 func (f SQLiteUserStore) InsertUser(u User) error {
+	if u.DisplayScreenName.IsUIN() && !u.IsICQ {
+		return errors.New("inserting user with UIN and isICQ=false")
+	}
 	q := `
 		INSERT INTO users (identScreenName, displayScreenName, authKey, weakMD5Pass, strongMD5Pass, isICQ)
 		VALUES (?, ?, ?, ?, ?, ?)
