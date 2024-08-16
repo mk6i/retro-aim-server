@@ -4,6 +4,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/mk6i/retro-aim-server/wire"
 
@@ -1670,5 +1671,128 @@ func TestSQLiteUserStore_FindByUIN(t *testing.T) {
 		// Search for a UIN that doesn't exist
 		_, err := f.FindByUIN(99999)
 		assert.ErrorIs(t, err, ErrNoUser)
+	})
+}
+
+func TestSQLiteUserStore_RetrieveMessages(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	sendTime := time.Now().UTC()
+
+	offlineMessages := []OfflineMessage{
+		{
+			Sender:    NewIdentScreenName("John"),
+			Recipient: NewIdentScreenName("Jack"),
+			Message: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				Cookie: 1,
+			},
+			Sent: sendTime,
+		},
+		{
+			Sender:    NewIdentScreenName("John"),
+			Recipient: NewIdentScreenName("Anne"),
+			Message: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				Cookie: 2,
+			},
+			Sent: sendTime,
+		},
+		{
+			Sender:    NewIdentScreenName("John"),
+			Recipient: NewIdentScreenName("Jack"),
+			Message: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				Cookie: 3,
+			},
+			Sent: sendTime,
+		},
+	}
+
+	for _, msg := range offlineMessages {
+		err = f.SaveMessage(msg)
+		assert.NoError(t, err)
+	}
+
+	t.Run("Retrieve Messages", func(t *testing.T) {
+		messages, err := f.RetrieveMessages(NewIdentScreenName("Jack"))
+		assert.NoError(t, err)
+		if assert.Len(t, messages, 2) {
+			assert.Equal(t, offlineMessages[0], messages[0])
+			assert.Equal(t, offlineMessages[2], messages[1])
+		}
+	})
+
+	t.Run("Retrieve No Messages", func(t *testing.T) {
+		messages, err := f.RetrieveMessages(NewIdentScreenName("Franke"))
+		assert.NoError(t, err)
+		assert.Empty(t, messages)
+	})
+}
+
+func TestSQLiteUserStore_DeleteMessages(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	sendTime := time.Now().UTC()
+
+	offlineMessages := []OfflineMessage{
+		{
+			Sender:    NewIdentScreenName("John"),
+			Recipient: NewIdentScreenName("Jack"),
+			Message: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				Cookie: 1,
+			},
+			Sent: sendTime,
+		},
+		{
+			Sender:    NewIdentScreenName("John"),
+			Recipient: NewIdentScreenName("Anne"),
+			Message: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				Cookie: 2,
+			},
+			Sent: sendTime,
+		},
+		{
+			Sender:    NewIdentScreenName("John"),
+			Recipient: NewIdentScreenName("Jack"),
+			Message: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				Cookie: 3,
+			},
+			Sent: sendTime,
+		},
+	}
+
+	for _, msg := range offlineMessages {
+		err = f.SaveMessage(msg)
+		assert.NoError(t, err)
+	}
+
+	t.Run("Delete Messages", func(t *testing.T) {
+		err := f.DeleteMessages(NewIdentScreenName("Jack"))
+		assert.NoError(t, err)
+
+		messages, err := f.RetrieveMessages(NewIdentScreenName("Jack"))
+		assert.NoError(t, err)
+		assert.Empty(t, messages)
+
+		messages, err = f.RetrieveMessages(NewIdentScreenName("Anne"))
+		assert.NoError(t, err)
+		assert.Len(t, messages, 1)
+	})
+
+	t.Run("Delete No Messages", func(t *testing.T) {
+		err := f.DeleteMessages(NewIdentScreenName("Franke"))
+		assert.NoError(t, err)
+
+		messages, err := f.RetrieveMessages(NewIdentScreenName("Anne"))
+		assert.NoError(t, err)
+		assert.Len(t, messages, 1)
 	})
 }

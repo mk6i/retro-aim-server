@@ -510,7 +510,7 @@ const (
 	ICBMTLVAutoResponse   uint16 = 0x04
 	ICBMTLVData           uint16 = 0x05
 	ICBMTLVStore          uint16 = 0x06
-	ICBMTLVICQblob        uint16 = 0x07
+	ICBMTLVICQBlob        uint16 = 0x07
 	ICBMTLVAvatarInfo     uint16 = 0x08
 	ICBMTLVWantAvatar     uint16 = 0x09
 	ICBMTLVMultiUser      uint16 = 0x0A
@@ -527,20 +527,55 @@ const (
 	ICBMMessageEncodingASCII   uint16 = 0x00 // ANSI ASCII -- ISO 646
 	ICBMMessageEncodingUnicode uint16 = 0x02 // ISO 10646.USC-2 Unicode
 	ICBMMessageEncodingLatin1  uint16 = 0x03 // ISO 8859-1
+
+	ICBMExtendedMsgTypePlain    uint8 = 0x01 // Plain text (simple) message
+	ICBMExtendedMsgTypeChat     uint8 = 0x02 // Chat request message
+	ICBMExtendedMsgTypeFileReq  uint8 = 0x03 // File request / file ok message
+	ICBMExtendedMsgTypeURL      uint8 = 0x04 // URL message (0xFE formatted)
+	ICBMExtendedMsgTypeAuthReq  uint8 = 0x06 // Authorization request message (0xFE formatted)
+	ICBMExtendedMsgTypeAuthDeny uint8 = 0x07 // Authorization denied message (0xFE formatted)
+	ICBMExtendedMsgTypeAuthOK   uint8 = 0x08 // Authorization given message (empty)
+	ICBMExtendedMsgTypeServer   uint8 = 0x09 // Message from OSCAR server (0xFE formatted)
+	ICBMExtendedMsgTypeAdded    uint8 = 0x0C // "You-were-added" message (0xFE formatted)
+	ICBMExtendedMsgTypeWWP      uint8 = 0x0D // Web pager message (0xFE formatted)
+	ICBMExtendedMsgTypeExpress  uint8 = 0x0E // Email express message (0xFE formatted)
+	ICBMExtendedMsgTypeContacts uint8 = 0x13 // Contact list message
+	ICBMExtendedMsgTypePlugin   uint8 = 0x1A // Plugin message described by text string
+	ICBMExtendedMsgTypeAutoAway uint8 = 0xE8 // Auto away message
+	ICBMExtendedMsgTypeAutoBusy uint8 = 0xE9 // Auto occupied message
+	ICBMExtendedMsgTypeAutoNA   uint8 = 0xEA // Auto not available message
+	ICBMExtendedMsgTypeAutoDND  uint8 = 0xEB // Auto do not disturb message
+	ICBMExtendedMsgTypeAutoFFC  uint8 = 0xEC // Auto free for chat message
+
+	ICBMChannelIM         uint16 = 0x01
+	ICBMChannelRendezvous uint16 = 0x02
+	ICBMChannelMIME       uint16 = 0x03
+	ICBMChannelICQ        uint16 = 0x04
+	ICBMChannelCoBrowser  uint16 = 0x05
 )
 
-// ICBMFragment represents an ICBM message component.
-type ICBMFragment struct {
+// ICBMCh1Fragment represents an ICBM channel 1 (instant message) message
+// component.
+type ICBMCh1Fragment struct {
 	ID      uint8
 	Version uint8
 	Payload []byte `oscar:"len_prefix=uint16"`
 }
 
-// ICBMMessage represents the text component of an ICBM message.
-type ICBMMessage struct {
+// ICBMCh1Message represents the text component of an ICBM channel 1 (instant
+// message) message.
+type ICBMCh1Message struct {
 	Charset  uint16
 	Language uint16
 	Text     []byte
+}
+
+// ICBMCh4Message represents an ICBM channel 4 (ICQ) message component.
+type ICBMCh4Message struct {
+	UIN         uint32
+	MessageType uint8
+	Flags       uint8
+	Message     string `oscar:"len_prefix=uint16,nullterm"`
 }
 
 type SNAC_0x04_0x02_ICBMAddParameters struct {
@@ -577,8 +612,8 @@ type SNAC_0x04_0x07_ICBMChannelMsgToClient struct {
 
 // ICBMFragmentList creates an ICBM fragment list for an instant message
 // payload.
-func ICBMFragmentList(text string) ([]ICBMFragment, error) {
-	msg := ICBMMessage{
+func ICBMFragmentList(text string) ([]ICBMCh1Fragment, error) {
+	msg := ICBMCh1Message{
 		Charset:  ICBMMessageEncodingASCII,
 		Language: 0, // not clear what this means, but it works
 		Text:     []byte(text),
@@ -588,7 +623,7 @@ func ICBMFragmentList(text string) ([]ICBMFragment, error) {
 		return nil, fmt.Errorf("unable to marshal ICBM message: %w", err)
 	}
 
-	return []ICBMFragment{
+	return []ICBMCh1Fragment{
 		{
 			ID:      5, // 5 = capabilities
 			Version: 1,
@@ -605,14 +640,14 @@ func ICBMFragmentList(text string) ([]ICBMFragment, error) {
 // UnmarshalICBMMessageText extracts message text from an ICBM fragment list.
 // Param b is a slice from TLV wire.ICBMTLVAOLIMData.
 func UnmarshalICBMMessageText(b []byte) (string, error) {
-	var frags []ICBMFragment
+	var frags []ICBMCh1Fragment
 	if err := UnmarshalBE(&frags, bytes.NewBuffer(b)); err != nil {
 		return "", fmt.Errorf("unable to unmarshal ICBM fragment: %w", err)
 	}
 
 	for _, frag := range frags {
 		if frag.ID == 1 { // 1 = message text
-			msg := ICBMMessage{}
+			msg := ICBMCh1Message{}
 			err := UnmarshalBE(&msg, bytes.NewBuffer(frag.Payload))
 			if err != nil {
 				err = fmt.Errorf("unable to unmarshal ICBM message: %w", err)
@@ -1002,7 +1037,7 @@ const (
 	ICQDBQueryMetaReplyXMLData         uint16 = 0x08A2
 )
 
-type SNAC_0x0F_0x02_ICQDBQuery struct {
+type SNAC_0x0F_0x02_BQuery struct {
 	TLVRestBlock
 }
 
@@ -1131,7 +1166,7 @@ type ICQ_0x07D0_0x03EA_DBQueryMetaReqSetBasicInfo struct {
 	PublishEmail uint8
 }
 
-type SNAC_0x0F_0x02_ICQDBReply struct {
+type SNAC_0x0F_0x02_DBReply struct {
 	TLVRestBlock
 }
 
@@ -1247,6 +1282,19 @@ func (s *ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound) LastResult() {
 	}{
 		FoundUsersLeft: 0,
 	}
+}
+
+type ICQ_0x0041_DBQueryOfflineMsgReply struct {
+	ICQMetadata
+	SenderUIN uint32
+	Year      uint16
+	Month     uint8
+	Day       uint8
+	Hour      uint8
+	Minute    uint8
+	MsgType   uint8
+	Flags     uint8
+	Message   string `oscar:"len_prefix=uint16,nullterm"`
 }
 
 type ICQ_0x0042_DBQueryOfflineMsgReplyLast struct {

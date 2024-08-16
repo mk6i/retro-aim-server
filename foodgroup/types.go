@@ -196,3 +196,9 @@ type ICQUserUpdater interface {
 type SessionRetriever interface {
 	RetrieveSession(screenName state.IdentScreenName) *state.Session
 }
+
+type OfflineMessageManager interface {
+	DeleteMessages(recip state.IdentScreenName) error
+	RetrieveMessages(recip state.IdentScreenName) ([]state.OfflineMessage, error)
+	SaveMessage(offlineMessage state.OfflineMessage) error
+}

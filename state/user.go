@@ -51,6 +51,12 @@ func (i IdentScreenName) String() string {
 	return i.screenName
 }
 
+// UIN returns a numeric UIN representation of the IdentScreenName.
+func (i IdentScreenName) UIN() uint32 {
+	v, _ := strconv.Atoi(i.screenName)
+	return uint32(v)
+}
+
 // NewIdentScreenName creates a new IdentScreenName.
 func NewIdentScreenName(screenName string) IdentScreenName {
 	str := strings.ReplaceAll(screenName, " ", "")
@@ -420,4 +426,11 @@ func validateICQPassword(pass string) error {
 		return fmt.Errorf("%w: password must be between 6-8 characters", ErrPasswordInvalid)
 	}
 	return nil
+}
+
+type OfflineMessage struct {
+	Sender    IdentScreenName
+	Recipient IdentScreenName
+	Message   wire.SNAC_0x04_0x06_ICBMChannelMsgToHost
+	Sent      time.Time
 }

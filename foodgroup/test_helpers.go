@@ -24,10 +24,41 @@ type mockParams struct {
 	icqUserUpdaterParams
 	legacyBuddyListManagerParams
 	messageRelayerParams
+	offlineMessageManagerParams
 	profileManagerParams
 	sessionManagerParams
 	sessionRetrieverParams
 	userManagerParams
+}
+
+// offlineMessageManagerParams is a helper struct that contains mock parameters for
+// OfflineMessageManager methods
+type offlineMessageManagerParams struct {
+	deleteMessagesParams
+	retrieveMessagesParams
+	saveMessageParams
+}
+
+// deleteMessagesParams is the list of parameters passed at the mock
+// OfflineMessageManager.DeleteMessages call site
+type deleteMessagesParams []struct {
+	recipIn state.IdentScreenName
+	err     error
+}
+
+// deleteMessagesParams is the list of parameters passed at the mock
+// OfflineMessageManager.RetrieveMessages call site
+type retrieveMessagesParams []struct {
+	recipIn     state.IdentScreenName
+	messagesOut []state.OfflineMessage
+	err         error
+}
+
+// deleteMessagesParams is the list of parameters passed at the mock
+// OfflineMessageManager.SaveMessage call site
+type saveMessageParams []struct {
+	offlineMessageIn state.OfflineMessage
+	err              error
 }
 
 // sessionRetrieverParams is a helper struct that contains mock parameters for

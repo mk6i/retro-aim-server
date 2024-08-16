@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -22,25 +23,35 @@ func NewICQService(
 	userUpdater ICQUserUpdater,
 	logger *slog.Logger,
 	sessionRetriever SessionRetriever,
+	offlineMessageManager OfflineMessageManager,
 ) ICQService {
 	return ICQService{
-		messageRelayer:   messageRelayer,
-		userFinder:       finder,
-		userUpdater:      userUpdater,
-		logger:           logger,
-		sessionRetriever: sessionRetriever,
-		timeNow:          time.Now,
+		messageRelayer:        messageRelayer,
+		userFinder:            finder,
+		userUpdater:           userUpdater,
+		logger:                logger,
+		sessionRetriever:      sessionRetriever,
+		offlineMessageManager: offlineMessageManager,
+		timeNow:               time.Now,
 	}
 }
 
 // ICQService provides functionality for the ICQ food group.
 type ICQService struct {
-	userFinder       ICQUserFinder
-	logger           *slog.Logger
-	messageRelayer   MessageRelayer
-	sessionRetriever SessionRetriever
-	userUpdater      ICQUserUpdater
-	timeNow          func() time.Time
+	userFinder            ICQUserFinder
+	logger                *slog.Logger
+	messageRelayer        MessageRelayer
+	sessionRetriever      SessionRetriever
+	userUpdater           ICQUserUpdater
+	timeNow               func() time.Time
+	offlineMessageManager OfflineMessageManager
+}
+
+func (s ICQService) DeleteMsgReq(ctx context.Context, sess *state.Session, seq uint16) error {
+	if err := s.offlineMessageManager.DeleteMessages(sess.IdentScreenName()); err != nil {
+		return fmt.Errorf("deleting messages: %w", err)
+	}
+	return nil
 }
 
 func (s ICQService) FindByDetails(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, seq uint16) error {
@@ -233,9 +244,66 @@ func (s ICQService) FullUserInfo(ctx context.Context, sess *state.Session, req w
 	return nil
 }
 
-func (s ICQService) MessagesEOF(ctx context.Context, sess *state.Session, seq uint16) error {
-	s.logger.Debug("returning offline messages is not yet supported")
-	msg := wire.ICQMessageReplyEnvelope{
+func (s ICQService) OfflineMsgReq(ctx context.Context, sess *state.Session, seq uint16) error {
+	messages, err := s.offlineMessageManager.RetrieveMessages(sess.IdentScreenName())
+	if err != nil {
+		return fmt.Errorf("retrieving messages: %w", err)
+	}
+
+	for _, msgIn := range messages {
+		reply := wire.ICQ_0x0041_DBQueryOfflineMsgReply{
+			ICQMetadata: wire.ICQMetadata{
+				UIN:     sess.UIN(),
+				ReqType: wire.ICQDBQueryOfflineMsgReply,
+				Seq:     seq,
+			},
+			SenderUIN: msgIn.Sender.UIN(),
+			Year:      uint16(msgIn.Sent.Year()),
+			Month:     uint8(msgIn.Sent.Month()),
+			Day:       uint8(msgIn.Sent.Day()),
+			Hour:      uint8(msgIn.Sent.Hour()),
+			Minute:    uint8(msgIn.Sent.Minute()),
+		}
+
+		switch msgIn.Message.ChannelID {
+		case wire.ICBMChannelIM:
+			if payload, hasIM := msgIn.Message.Slice(wire.ICBMTLVAOLIMData); hasIM {
+				// send regular IM
+				msgText, err := wire.UnmarshalICBMMessageText(payload)
+				if err != nil {
+					return fmt.Errorf("unmarshalling offline message: %w", err)
+				}
+				reply.MsgType = wire.ICBMExtendedMsgTypePlain
+				reply.Message = msgText
+			}
+		case wire.ICBMChannelICQ:
+			if b, hasAuthReq := msgIn.Message.Slice(wire.ICBMTLVData); hasAuthReq {
+				// send authorization request
+				rdv := wire.ICBMCh4Message{}
+				buf := bytes.NewBuffer(b)
+				if err := wire.UnmarshalLE(&rdv, buf); err != nil {
+					return err
+				}
+				reply.MsgType = rdv.MessageType
+				reply.Flags = rdv.Flags
+				reply.Message = rdv.Message
+			}
+		}
+
+		if reply.MsgType == 0 {
+			return fmt.Errorf("did not find an appropriate saved message payload. channel: %d",
+				msgIn.Message.ChannelID)
+		}
+
+		msgOut := wire.ICQMessageReplyEnvelope{
+			Message: reply,
+		}
+		if err := s.reply(ctx, sess, msgOut); err != nil {
+			return fmt.Errorf("sending offline message: %w", err)
+		}
+	}
+
+	eofMsg := wire.ICQMessageReplyEnvelope{
 		Message: wire.ICQ_0x0042_DBQueryOfflineMsgReplyLast{
 			ICQMetadata: wire.ICQMetadata{
 				UIN:     sess.UIN(),
@@ -246,7 +314,7 @@ func (s ICQService) MessagesEOF(ctx context.Context, sess *state.Session, seq ui
 		},
 	}
 
-	return s.reply(ctx, sess, msg)
+	return s.reply(ctx, sess, eofMsg)
 }
 
 func (s ICQService) SetAffiliations(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations, seq uint16) error {
@@ -603,7 +671,7 @@ func (s ICQService) reply(ctx context.Context, sess *state.Session, message wire
 			FoodGroup: wire.ICQ,
 			SubGroup:  wire.ICQDBReply,
 		},
-		Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+		Body: wire.SNAC_0x0F_0x02_DBReply{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
 					wire.NewTLV(wire.ICQTLVTagsMetadata, message),

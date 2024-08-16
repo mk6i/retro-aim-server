@@ -2,6 +2,8 @@ package foodgroup
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -17,11 +19,14 @@ func NewICBMService(
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
 	legacyBuddyListManager LegacyBuddyListManager,
+	offlineMessageSaver OfflineMessageManager,
 ) *ICBMService {
 	return &ICBMService{
 		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
 		feedbagManager:         feedbagManager,
 		messageRelayer:         messageRelayer,
+		offlineMessageSaver:    offlineMessageSaver,
+		timeNow:                time.Now,
 	}
 }
 
@@ -32,6 +37,8 @@ type ICBMService struct {
 	buddyUpdateBroadcaster buddyBroadcaster
 	feedbagManager         FeedbagManager
 	messageRelayer         MessageRelayer
+	offlineMessageSaver    OfflineMessageManager
+	timeNow                func() time.Time
 }
 
 // ParameterQuery returns ICBM service parameters.
@@ -58,7 +65,8 @@ func (s ICBMService) ParameterQuery(_ context.Context, inFrame wire.SNACFrame) w
 // the wire.ICBMChannelMsgToHost message contains a request acknowledgement
 // flag.
 func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*wire.SNACMessage, error) {
-	blocked, err := s.feedbagManager.BlockedState(sess.IdentScreenName(), state.NewIdentScreenName(inBody.ScreenName))
+	recip := state.NewIdentScreenName(inBody.ScreenName)
+	blocked, err := s.feedbagManager.BlockedState(sess.IdentScreenName(), recip)
 	if err != nil {
 		return nil, err
 	}
@@ -80,8 +88,20 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		}, nil
 	}
 
-	recipSess := s.messageRelayer.RetrieveByScreenName(state.NewIdentScreenName(inBody.ScreenName))
+	recipSess := s.messageRelayer.RetrieveByScreenName(recip)
 	if recipSess == nil {
+		// todo: verify user exists, otherwise this could save a bunch of garbage records
+		if _, saveOffline := inBody.Slice(wire.ICBMTLVStore); saveOffline {
+			offlineMsg := state.OfflineMessage{
+				Message:   inBody,
+				Recipient: recip,
+				Sender:    sess.IdentScreenName(),
+				Sent:      s.timeNow().UTC(),
+			}
+			if err := s.offlineMessageSaver.SaveMessage(offlineMsg); err != nil {
+				return nil, fmt.Errorf("save ICBM offline message failed: %w", err)
+			}
+		}
 		return &wire.SNACMessage{
 			Frame: wire.SNACFrame{
 				FoodGroup: wire.ICBM,

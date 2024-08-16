@@ -1205,3 +1205,79 @@ func (f SQLiteUserStore) SetBasicInfo(name IdentScreenName, data ICQBasicInfo) e
 	}
 	return nil
 }
+
+// SaveMessage saves an offline message for later retrieval.
+func (f SQLiteUserStore) SaveMessage(offlineMessage OfflineMessage) error {
+	buf := &bytes.Buffer{}
+	if err := wire.MarshalBE(offlineMessage.Message, buf); err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+
+	q := `
+		INSERT INTO offlineMessage (sender, recipient, message, sent)
+		VALUES (?, ?, ?, ?)
+	`
+	_, err := f.db.Exec(
+		q,
+		offlineMessage.Sender.String(),
+		offlineMessage.Recipient.String(),
+		buf.Bytes(),
+		offlineMessage.Sent,
+	)
+	return err
+}
+
+// RetrieveMessages retrieves all offline messages sent to recipient.
+func (f SQLiteUserStore) RetrieveMessages(recip IdentScreenName) ([]OfflineMessage, error) {
+	q := `
+		SELECT 
+		    sender, 
+		    message,
+		    sent
+		FROM offlineMessage
+		WHERE recipient = ?
+	`
+	rows, err := f.db.Query(q, recip.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var messages []OfflineMessage
+
+	for rows.Next() {
+		var sender string
+		var buf []byte
+		var sent time.Time
+		if err := rows.Scan(&sender, &buf, &sent); err != nil {
+			return nil, err
+		}
+
+		var msg wire.SNAC_0x04_0x06_ICBMChannelMsgToHost
+		if err := wire.UnmarshalBE(&msg, bytes.NewBuffer(buf)); err != nil {
+			return nil, fmt.Errorf("unmarshal: %w", err)
+		}
+
+		messages = append(messages, OfflineMessage{
+			Sender:    NewIdentScreenName(sender),
+			Recipient: recip,
+			Message:   msg,
+			Sent:      sent,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return messages, nil
+}
+
+// DeleteMessages deletes all offline messages sent to recipient.
+func (f SQLiteUserStore) DeleteMessages(recip IdentScreenName) error {
+	q := `
+		DELETE FROM offlineMessage WHERE recipient = ?
+	`
+	_, err := f.db.Exec(q, recip.String())
+	return err
+}

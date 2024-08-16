@@ -16,12 +16,13 @@ import (
 )
 
 type ICQService interface {
+	DeleteMsgReq(ctx context.Context, sess *state.Session, seq uint16) error
 	FindByDetails(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, seq uint16) error
 	FindByEmail(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, seq uint16) error
 	FindByInterests(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, seq uint16) error
 	FindByUIN(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x051F_DBQueryMetaReqSearchByUIN, seq uint16) error
 	FullUserInfo(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x051F_DBQueryMetaReqSearchByUIN, seq uint16) error
-	MessagesEOF(ctx context.Context, sess *state.Session, seq uint16) error
+	OfflineMsgReq(ctx context.Context, sess *state.Session, seq uint16) error
 	SetAffiliations(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations, seq uint16) error
 	SetBasicInfo(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x03EA_DBQueryMetaReqSetBasicInfo, seq uint16) error
 	SetEmails(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x040B_DBQueryMetaReqSetEmails, seq uint16) error
@@ -53,7 +54,7 @@ type ICQHandler struct {
 }
 
 func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
-	inBody := wire.SNAC_0x0F_0x02_ICQDBQuery{}
+	inBody := wire.SNAC_0x0F_0x02_BQuery{}
 	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
@@ -75,9 +76,9 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 
 	switch icqMD.ReqType {
 	case wire.ICQDBQueryOfflineMsgReq:
-		return rt.ICQService.MessagesEOF(ctx, sess, icqMD.Seq)
+		return rt.ICQService.OfflineMsgReq(ctx, sess, icqMD.Seq)
 	case wire.ICQDBQueryDeleteMsgReq:
-		rt.Logger.Debug("returning offline messages is not yet supported")
+		return rt.ICQService.DeleteMsgReq(ctx, sess, icqMD.Seq)
 	case wire.ICQDBQueryMetaReq:
 		if icqMD.Optional == nil {
 			return errors.New("got req without subtype")

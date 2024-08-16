@@ -2,6 +2,7 @@ package foodgroup
 
 import (
 	"testing"
+	"time"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -29,6 +30,8 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 		// inputSNAC is the SNAC frame sent from the server to the recipient
 		// client
 		expectOutput *wire.SNACMessage
+		mockParams   mockParams
+		timeNow      func() time.Time
 	}{
 		{
 			name:             "transmit message from sender to recipient, ack message back to sender",
@@ -214,6 +217,61 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:             "send offline message to ICQ recipient",
+			blockedState:     state.BlockedNo,
+			senderSession:    newTestSession("11111111"),
+			recipientSession: nil,
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ScreenName: "22222222",
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.ICBMTLVRequestHostAck, []byte{}),
+							wire.NewTLV(wire.ICBMTLVStore, []byte{}),
+						},
+					},
+				},
+			},
+			expectOutput: &wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeNotLoggedOn,
+				},
+			},
+			timeNow: func() time.Time {
+				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
+			},
+			mockParams: mockParams{
+				offlineMessageManagerParams: offlineMessageManagerParams{
+					saveMessageParams: saveMessageParams{
+						{
+							offlineMessageIn: state.OfflineMessage{
+								Message: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+									ScreenName: "22222222",
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICBMTLVRequestHostAck, []byte{}),
+											wire.NewTLV(wire.ICBMTLVStore, []byte{}),
+										},
+									},
+								},
+								Recipient: state.NewIdentScreenName("22222222"),
+								Sender:    state.NewIdentScreenName("11111111"),
+								Sent:      time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC),
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -237,10 +295,19 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					RelayToScreenName(mock.Anything, tc.recipientSession.IdentScreenName(), tc.expectSNACToClient).
 					Maybe()
 			}
+
+			offlineMessageManager := newMockOfflineMessageManager(t)
+			for _, params := range tc.mockParams.saveMessageParams {
+				offlineMessageManager.EXPECT().
+					SaveMessage(params.offlineMessageIn).
+					Return(params.err)
+			}
 			//
 			// send input SNAC
 			//
-			svc := NewICBMService(messageRelayer, feedbagManager, nil)
+			svc := NewICBMService(messageRelayer, feedbagManager, nil, offlineMessageManager)
+			svc.timeNow = tc.timeNow
+
 			outputSNAC, err := svc.ChannelMsgToHost(nil, tc.senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x06_ICBMChannelMsgToHost))
 			assert.NoError(t, err)
@@ -332,7 +399,7 @@ func TestICBMService_ClientEvent(t *testing.T) {
 			// send input SNAC
 			//
 			senderSession := newTestSession(tc.senderScreenName)
-			svc := NewICBMService(messageRelayer, feedbagManager, nil)
+			svc := NewICBMService(messageRelayer, feedbagManager, nil, nil)
 			assert.NoError(t, svc.ClientEvent(nil, senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x14_ICBMClientEvent)))
 		})
@@ -624,7 +691,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			svc := NewICBMService(messageRelayer, feedbagManager, nil)
+			svc := NewICBMService(messageRelayer, feedbagManager, nil, nil)
 			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
 			outputSNAC, err := svc.EvilRequest(nil, tc.senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest))
@@ -635,7 +702,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 }
 
 func TestICBMService_ParameterQuery(t *testing.T) {
-	svc := NewICBMService(nil, nil, nil)
+	svc := NewICBMService(nil, nil, nil, nil)
 
 	have := svc.ParameterQuery(nil, wire.SNACFrame{RequestID: 1234})
 	want := wire.SNACMessage{

@@ -125,3 +125,6 @@ packages:
       SessionRetriever:
         config:
           filename: "mock_session_retriever_test.go"
+      OfflineMessageManager:
+        config:
+          filename: "mock_offline_message_manager_test.go"

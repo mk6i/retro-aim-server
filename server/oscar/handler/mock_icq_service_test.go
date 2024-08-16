@@ -24,6 +24,54 @@ func (_m *mockICQService) EXPECT() *mockICQService_Expecter {
 	return &mockICQService_Expecter{mock: &_m.Mock}
 }
 
+// DeleteMsgReq provides a mock function with given fields: ctx, sess, seq
+func (_m *mockICQService) DeleteMsgReq(ctx context.Context, sess *state.Session, seq uint16) error {
+	ret := _m.Called(ctx, sess, seq)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteMsgReq")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, uint16) error); ok {
+		r0 = rf(ctx, sess, seq)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockICQService_DeleteMsgReq_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteMsgReq'
+type mockICQService_DeleteMsgReq_Call struct {
+	*mock.Call
+}
+
+// DeleteMsgReq is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sess *state.Session
+//   - seq uint16
+func (_e *mockICQService_Expecter) DeleteMsgReq(ctx interface{}, sess interface{}, seq interface{}) *mockICQService_DeleteMsgReq_Call {
+	return &mockICQService_DeleteMsgReq_Call{Call: _e.mock.On("DeleteMsgReq", ctx, sess, seq)}
+}
+
+func (_c *mockICQService_DeleteMsgReq_Call) Run(run func(ctx context.Context, sess *state.Session, seq uint16)) *mockICQService_DeleteMsgReq_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(uint16))
+	})
+	return _c
+}
+
+func (_c *mockICQService_DeleteMsgReq_Call) Return(_a0 error) *mockICQService_DeleteMsgReq_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockICQService_DeleteMsgReq_Call) RunAndReturn(run func(context.Context, *state.Session, uint16) error) *mockICQService_DeleteMsgReq_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FindByDetails provides a mock function with given fields: ctx, sess, req, seq
 func (_m *mockICQService) FindByDetails(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, seq uint16) error {
 	ret := _m.Called(ctx, sess, req, seq)
@@ -269,12 +317,12 @@ func (_c *mockICQService_FullUserInfo_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// MessagesEOF provides a mock function with given fields: ctx, sess, seq
-func (_m *mockICQService) MessagesEOF(ctx context.Context, sess *state.Session, seq uint16) error {
+// OfflineMsgReq provides a mock function with given fields: ctx, sess, seq
+func (_m *mockICQService) OfflineMsgReq(ctx context.Context, sess *state.Session, seq uint16) error {
 	ret := _m.Called(ctx, sess, seq)
 
 	if len(ret) == 0 {
-		panic("no return value specified for MessagesEOF")
+		panic("no return value specified for OfflineMsgReq")
 	}
 
 	var r0 error
@@ -287,32 +335,32 @@ func (_m *mockICQService) MessagesEOF(ctx context.Context, sess *state.Session, 
 	return r0
 }
 
-// mockICQService_MessagesEOF_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MessagesEOF'
-type mockICQService_MessagesEOF_Call struct {
+// mockICQService_OfflineMsgReq_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OfflineMsgReq'
+type mockICQService_OfflineMsgReq_Call struct {
 	*mock.Call
 }
 
-// MessagesEOF is a helper method to define mock.On call
+// OfflineMsgReq is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sess *state.Session
 //   - seq uint16
-func (_e *mockICQService_Expecter) MessagesEOF(ctx interface{}, sess interface{}, seq interface{}) *mockICQService_MessagesEOF_Call {
-	return &mockICQService_MessagesEOF_Call{Call: _e.mock.On("MessagesEOF", ctx, sess, seq)}
+func (_e *mockICQService_Expecter) OfflineMsgReq(ctx interface{}, sess interface{}, seq interface{}) *mockICQService_OfflineMsgReq_Call {
+	return &mockICQService_OfflineMsgReq_Call{Call: _e.mock.On("OfflineMsgReq", ctx, sess, seq)}
 }
 
-func (_c *mockICQService_MessagesEOF_Call) Run(run func(ctx context.Context, sess *state.Session, seq uint16)) *mockICQService_MessagesEOF_Call {
+func (_c *mockICQService_OfflineMsgReq_Call) Run(run func(ctx context.Context, sess *state.Session, seq uint16)) *mockICQService_OfflineMsgReq_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(*state.Session), args[2].(uint16))
 	})
 	return _c
 }
 
-func (_c *mockICQService_MessagesEOF_Call) Return(_a0 error) *mockICQService_MessagesEOF_Call {
+func (_c *mockICQService_OfflineMsgReq_Call) Return(_a0 error) *mockICQService_OfflineMsgReq_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockICQService_MessagesEOF_Call) RunAndReturn(run func(context.Context, *state.Session, uint16) error) *mockICQService_MessagesEOF_Call {
+func (_c *mockICQService_OfflineMsgReq_Call) RunAndReturn(run func(context.Context, *state.Session, uint16) error) *mockICQService_OfflineMsgReq_Call {
 	_c.Call.Return(run)
 	return _c
 }

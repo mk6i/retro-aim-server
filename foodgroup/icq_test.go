@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"bytes"
 	"log/slog"
 	"testing"
 	"time"
@@ -11,6 +12,45 @@ import (
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
+
+func TestICQService_DeleteMsgReq(t *testing.T) {
+	tests := []struct {
+		name       string
+		seq        uint16
+		sess       *state.Session
+		mockParams mockParams
+		wantErr    error
+	}{
+		{
+			name: "send offline IM, offline friend request",
+			seq:  1,
+			sess: newTestSession("11111111", sessOptUIN(11111111)),
+			mockParams: mockParams{
+				offlineMessageManagerParams: offlineMessageManagerParams{
+					deleteMessagesParams: deleteMessagesParams{
+						{
+							recipIn: state.NewIdentScreenName("11111111"),
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			offlineMessageManager := newMockOfflineMessageManager(t)
+			for _, params := range tt.mockParams.deleteMessagesParams {
+				offlineMessageManager.EXPECT().
+					DeleteMessages(params.recipIn).
+					Return(params.err)
+			}
+
+			s := NewICQService(nil, nil, nil, slog.Default(), nil, offlineMessageManager)
+			err := s.DeleteMsgReq(nil, tt.sess, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}
 
 func TestICQService_FindByDetails(t *testing.T) {
 	tests := []struct {
@@ -91,7 +131,7 @@ func TestICQService_FindByDetails(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -128,7 +168,7 @@ func TestICQService_FindByDetails(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -268,7 +308,7 @@ func TestICQService_FindByEmail(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -404,7 +444,7 @@ func TestICQService_FindByUIN(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -562,7 +602,7 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -599,7 +639,7 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -794,7 +834,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -838,7 +878,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -879,7 +919,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -905,7 +945,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -931,7 +971,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -971,7 +1011,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1000,7 +1040,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1047,7 +1087,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1140,7 +1180,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 	}
 }
 
-func TestICQService_MessagesEOF(t *testing.T) {
+func TestICQService_OfflineMsgReq(t *testing.T) {
 	tests := []struct {
 		name       string
 		seq        uint16
@@ -1149,10 +1189,59 @@ func TestICQService_MessagesEOF(t *testing.T) {
 		wantErr    error
 	}{
 		{
-			name: "happy path",
+			name: "send offline IM, offline friend request",
 			seq:  1,
 			sess: newTestSession("11111111", sessOptUIN(11111111)),
 			mockParams: mockParams{
+				offlineMessageManagerParams: offlineMessageManagerParams{
+					retrieveMessagesParams: retrieveMessagesParams{
+						{
+							recipIn: state.NewIdentScreenName("11111111"),
+							messagesOut: []state.OfflineMessage{
+								{
+									Sender:    state.NewIdentScreenName("22222222"),
+									Recipient: state.NewIdentScreenName("11111111"),
+									Message: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+										ChannelID: wire.ICBMChannelIM,
+										TLVRestBlock: wire.TLVRestBlock{
+											TLVList: wire.TLVList{
+												wire.NewTLV(wire.ICBMTLVAOLIMData, func() []wire.ICBMCh1Fragment {
+													frags, err := wire.ICBMFragmentList("hello!")
+													assert.NoError(t, err)
+													return frags
+												}()),
+											},
+										},
+									},
+									Sent: time.Date(2024, time.August, 2, 12, 5, 0, 0, time.UTC),
+								},
+								{
+									Sender:    state.NewIdentScreenName("33333333"),
+									Recipient: state.NewIdentScreenName("11111111"),
+									Message: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+										ChannelID: wire.ICBMChannelICQ,
+										TLVRestBlock: wire.TLVRestBlock{
+											TLVList: wire.TLVList{
+												wire.NewTLV(wire.ICBMTLVData, func() []byte {
+													msg := wire.ICBMCh4Message{
+														UIN:         33333333,
+														MessageType: wire.ICBMExtendedMsgTypeAuthReq,
+														Flags:       0,
+														Message:     "please add me to your contacts list",
+													}
+													buf := &bytes.Buffer{}
+													assert.NoError(t, wire.MarshalLE(msg, buf))
+													return buf.Bytes()
+												}()),
+											},
+										},
+									},
+									Sent: time.Date(2024, time.August, 1, 8, 2, 0, 0, time.UTC),
+								},
+							},
+						},
+					},
+				},
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNameParams: relayToScreenNameParams{
 						{
@@ -1162,7 +1251,71 @@ func TestICQService_MessagesEOF(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+												Message: wire.ICQ_0x0041_DBQueryOfflineMsgReply{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryOfflineMsgReply,
+														Seq:     1,
+													},
+													SenderUIN: 22222222,
+													Year:      uint16(2024),
+													Month:     uint8(8),
+													Day:       uint8(2),
+													Hour:      uint8(12),
+													Minute:    uint8(5),
+													MsgType:   wire.ICBMExtendedMsgTypePlain,
+													Message:   "hello!",
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_DBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+												Message: wire.ICQ_0x0041_DBQueryOfflineMsgReply{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryOfflineMsgReply,
+														Seq:     1,
+													},
+													SenderUIN: 33333333,
+													Year:      uint16(2024),
+													Month:     uint8(8),
+													Day:       uint8(1),
+													Hour:      uint8(8),
+													Minute:    uint8(2),
+													MsgType:   wire.ICBMExtendedMsgTypeAuthReq,
+													Message:   "please add me to your contacts list",
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1187,13 +1340,19 @@ func TestICQService_MessagesEOF(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			offlineMessageManager := newMockOfflineMessageManager(t)
+			for _, params := range tt.mockParams.retrieveMessagesParams {
+				offlineMessageManager.EXPECT().
+					RetrieveMessages(params.recipIn).
+					Return(params.messagesOut, params.err)
+			}
 			messageRelayer := newMockMessageRelayer(t)
 			for _, params := range tt.mockParams.relayToScreenNameParams {
 				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
 			}
 
-			s := NewICQService(messageRelayer, nil, nil, slog.Default(), nil)
-			err := s.MessagesEOF(nil, tt.sess, tt.seq)
+			s := NewICQService(messageRelayer, nil, nil, slog.Default(), nil, offlineMessageManager)
+			err := s.OfflineMsgReq(nil, tt.sess, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -1279,7 +1438,7 @@ func TestICQService_SetAffiliations(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1387,7 +1546,7 @@ func TestICQService_SetEmails(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1490,7 +1649,7 @@ func TestICQService_SetBasicInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1601,7 +1760,7 @@ func TestICQService_SetInterests(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1721,7 +1880,7 @@ func TestICQService_SetMoreInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1793,7 +1952,7 @@ func TestICQService_SetPermissions(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1870,7 +2029,7 @@ func TestICQService_SetUserNotes(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1976,7 +2135,7 @@ func TestICQService_SetWorkInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -2054,7 +2213,7 @@ func TestICQService_XMLReqData(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_ICQDBReply{
+								Body: wire.SNAC_0x0F_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{

@@ -58,8 +58,8 @@ func main() {
 		chatNavService := foodgroup.NewChatNavService(logger, feedbagStore)
 		feedbagService := foodgroup.NewFeedbagService(logger, sessionManager, feedbagStore, feedbagStore, adjListBuddyListStore)
 		foodgroupService := foodgroup.NewPermitDenyService()
-		icbmService := foodgroup.NewICBMService(sessionManager, feedbagStore, adjListBuddyListStore)
-		icqService := foodgroup.NewICQService(sessionManager, feedbagStore, feedbagStore, logger, sessionManager)
+		icbmService := foodgroup.NewICBMService(sessionManager, feedbagStore, adjListBuddyListStore, feedbagStore)
+		icqService := foodgroup.NewICQService(sessionManager, feedbagStore, feedbagStore, logger, sessionManager, feedbagStore)
 		locateService := foodgroup.NewLocateService(sessionManager, feedbagStore, feedbagStore, adjListBuddyListStore)
 		oServiceService := foodgroup.NewOServiceServiceForBOS(cfg, sessionManager, adjListBuddyListStore, logger, cookieBaker, feedbagStore, feedbagStore)
 
