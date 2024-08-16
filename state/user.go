@@ -105,11 +105,24 @@ func (s DisplayScreenName) ValidateAIMHandle() error {
 	return nil
 }
 
-// ValidateICQHandle returns an error if the instance is not a valid ICQ UIN.
+// IsUIN indicates whether the screen name is an ICQ UIN.
+func (s DisplayScreenName) IsUIN() bool {
+	if len(s) == 0 {
+		return false
+	}
+	for _, r := range s {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
+}
+
+// ValidateUIN returns an error if the instance is not a valid ICQ UIN.
 // Possible errors:
 //   - ErrICQUINInvalidFormat: if the UIN is not a number or is not in the valid
 //     range
-func (s DisplayScreenName) ValidateICQHandle() error {
+func (s DisplayScreenName) ValidateUIN() error {
 	uin, err := strconv.Atoi(string(s))
 	if err != nil || uin < 10000 || uin > 2147483646 {
 		return ErrICQUINInvalidFormat

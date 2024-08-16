@@ -251,11 +251,11 @@ func TestDisplayScreenName_ValidateICQHandle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.input.ValidateICQHandle()
+			err := tt.input.ValidateUIN()
 			if tt.wantErr != nil {
-				assert.ErrorIs(t, err, tt.wantErr, "ValidateICQHandle() error = %v, wantErr %v", err, tt.wantErr)
+				assert.ErrorIs(t, err, tt.wantErr, "ValidateUIN() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
-				assert.NoError(t, err, "ValidateICQHandle() error = %v, wantErr %v", err, tt.wantErr)
+				assert.NoError(t, err, "ValidateUIN() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

@@ -39,7 +39,6 @@ type MessageRelayer interface {
 type userWithPassword struct {
 	ScreenName string `json:"screen_name"`
 	Password   string `json:"password,omitempty"`
-	IsICQ      bool   `json:"is_icq"`
 }
 
 type onlineUsers struct {

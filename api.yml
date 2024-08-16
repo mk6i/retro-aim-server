@@ -46,9 +46,6 @@ paths:
                 password:
                   type: string
                   description: The user's password for account creation.
-                is_icq:
-                  type: boolean
-                  description: If true, indicates an ICQ user instead of an AIM user.
       responses:
         '201':
           description: User account created successfully.

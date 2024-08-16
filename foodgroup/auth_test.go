@@ -125,7 +125,6 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 							dataIn: func() []byte {
 								loginCookie := bosCookie{
 									ScreenName: user.DisplayScreenName,
-									ICQ:        1,
 								}
 								buf := &bytes.Buffer{}
 								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
@@ -239,9 +238,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LoginTLVTagsClientIdentity, "ICQ 2000b"),
 						wire.NewTLV(wire.LoginTLVTagsPasswordHash, []byte("password")),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, []byte("non_existent_uin")),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, []byte("100003")),
 					},
 				},
 			},
@@ -249,7 +247,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 				userManagerParams: userManagerParams{
 					getUserParams: getUserParams{
 						{
-							screenName: state.NewIdentScreenName("non_existent_uin"),
+							screenName: state.NewIdentScreenName("100003"),
 							result:     nil,
 						},
 					},
@@ -263,7 +261,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: []wire.TLV{
-							wire.NewTLV(wire.LoginTLVTagsScreenName, state.NewIdentScreenName("non_existent_uin")),
+							wire.NewTLV(wire.LoginTLVTagsScreenName, state.NewIdentScreenName("100003")),
 							wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrICQUserErr),
 						},
 					},
@@ -556,7 +554,6 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 							dataIn: func() []byte {
 								loginCookie := bosCookie{
 									ScreenName: user.DisplayScreenName,
-									ICQ:        1,
 								}
 								buf := &bytes.Buffer{}
 								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
@@ -648,7 +645,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 					TLVList: wire.TLVList{
 						wire.NewTLV(wire.LoginTLVTagsClientIdentity, "ICQ 2000b"),
 						wire.NewTLV(wire.LoginTLVTagsRoastedPassword, roastedPassword),
-						wire.NewTLV(wire.LoginTLVTagsScreenName, []byte("non_existent_uin")),
+						wire.NewTLV(wire.LoginTLVTagsScreenName, []byte("100003")),
 					},
 				},
 			},
@@ -656,7 +653,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				userManagerParams: userManagerParams{
 					getUserParams: getUserParams{
 						{
-							screenName: state.NewIdentScreenName("non_existent_uin"),
+							screenName: state.NewIdentScreenName("100003"),
 							result:     nil,
 						},
 					},
@@ -664,7 +661,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			},
 			expectOutput: wire.TLVRestBlock{
 				TLVList: []wire.TLV{
-					wire.NewTLV(wire.LoginTLVTagsScreenName, state.NewIdentScreenName("non_existent_uin")),
+					wire.NewTLV(wire.LoginTLVTagsScreenName, state.NewIdentScreenName("100003")),
 					wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrICQUserErr),
 				},
 			},
@@ -1042,7 +1039,6 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 
 	uin := state.DisplayScreenName("100003")
 	icqAuthCookie := bosCookie{
-		ICQ:        1,
 		ScreenName: uin,
 	}
 	buf = &bytes.Buffer{}

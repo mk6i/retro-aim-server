@@ -131,7 +131,7 @@ curl -d'{"screen_name":"MyScreenName", "password":"thepassword"}' http://localho
 ##### ICQ
 
 ```shell
-curl -d'{"screen_name":"100003", "password":"thepassw", "is_icq": true}' http://localhost:8080/user
+curl -d'{"screen_name":"100003", "password":"thepassw"}' http://localhost:8080/user
 ```
 
 #### Delete Users

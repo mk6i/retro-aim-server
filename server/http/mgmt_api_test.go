@@ -169,7 +169,7 @@ func TestUserHandler_POST(t *testing.T) {
 		statusCode       int
 	}{
 		{
-			name: "with valid user",
+			name: "with valid AIM user",
 			body: `{"screen_name":"userA", "password":"thepassword"}`,
 			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
 			insertUserParams: []insertUserParams{
@@ -181,6 +181,27 @@ func TestUserHandler_POST(t *testing.T) {
 							IdentScreenName:   state.NewIdentScreenName("userA"),
 						}
 						assert.NoError(t, user.HashPassword("thepassword"))
+						return user
+					}(),
+				},
+			},
+			want:       `User account created successfully.`,
+			statusCode: http.StatusCreated,
+		},
+		{
+			name: "with valid ICQ user",
+			body: `{"screen_name":"100003", "password":"thepass"}`,
+			UUID: uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
+			insertUserParams: []insertUserParams{
+				{
+					user: func() state.User {
+						user := state.User{
+							AuthKey:           uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b").String(),
+							DisplayScreenName: "100003",
+							IdentScreenName:   state.NewIdentScreenName("100003"),
+							IsICQ:             true,
+						}
+						assert.NoError(t, user.HashPassword("thepass"))
 						return user
 					}(),
 				},
@@ -252,14 +273,14 @@ func TestUserHandler_POST(t *testing.T) {
 		},
 		{
 			name:       "invalid ICQ UIN",
-			body:       `{"screen_name":"1000", "password":"thepass", "is_icq":true}`,
+			body:       `{"screen_name":"1000", "password":"thepass"}`,
 			UUID:       uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
 			want:       `invalid uin: uin must be a number in the range 10000-2147483646`,
 			statusCode: http.StatusBadRequest,
 		},
 		{
 			name:       "invalid ICQ password",
-			body:       `{"screen_name":"100003", "password":"thelongpassword", "is_icq":true}`,
+			body:       `{"screen_name":"100003", "password":"thelongpassword"}`,
 			UUID:       uuid.MustParse("07c70701-ba68-49a9-9f9b-67a53816e37b"),
 			want:       `invalid password: invalid password length: password must be between 6-8 characters`,
 			statusCode: http.StatusBadRequest,

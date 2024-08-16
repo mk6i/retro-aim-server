@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
@@ -78,7 +77,6 @@ func (s AuthService) RegisterChatSession(authCookie []byte) (*state.Session, err
 }
 
 type bosCookie struct {
-	ICQ        uint8                   `oscar:"len_prefix=uint8"`
 	ScreenName state.DisplayScreenName `oscar:"len_prefix=uint8"`
 }
 
@@ -110,7 +108,7 @@ func (s AuthService) RegisterBOSSession(authCookie []byte) (*state.Session, erro
 		sess.SetUserInfoFlag(wire.OServiceUserFlagUnconfirmed)
 	}
 
-	if c.ICQ == 1 {
+	if u.DisplayScreenName.IsUIN() {
 		sess.SetUserInfoFlag(wire.OServiceUserFlagICQ)
 
 		uin, err := strconv.Atoi(u.IdentScreenName.String())
@@ -270,24 +268,23 @@ func (s AuthService) login(
 		return wire.TLVRestBlock{}, errors.New("screen name doesn't exist in tlv")
 	}
 
-	isICQ := false
-	if clientName, hasclientName := TLVList.String(wire.LoginTLVTagsClientIdentity); hasclientName {
-		isICQ = strings.HasPrefix(clientName, "ICQ ")
-	}
+	sn := state.DisplayScreenName(screenName)
 
-	user, err := s.userManager.User(state.NewIdentScreenName(screenName))
+	user, err := s.userManager.User(sn.IdentScreenName())
 	if err != nil {
 		return wire.TLVRestBlock{}, err
 	}
 
 	if user == nil {
 		if s.config.DisableAuth {
-			sn := state.DisplayScreenName(screenName)
-
-			handleValid := (isICQ && sn.ValidateICQHandle() == nil) ||
-				(!isICQ && sn.ValidateAIMHandle() == nil)
+			handleValid := false
+			if sn.IsUIN() {
+				handleValid = sn.ValidateUIN() == nil
+			} else {
+				handleValid = sn.ValidateAIMHandle() == nil
+			}
 			if !handleValid {
-				return loginFailureResponse(screenName, wire.LoginErrInvalidUsernameOrPassword), nil
+				return loginFailureResponse(sn, wire.LoginErrInvalidUsernameOrPassword), nil
 			}
 
 			newUser, err := newUserFn(sn)
@@ -298,18 +295,18 @@ func (s AuthService) login(
 				return wire.TLVRestBlock{}, err
 			}
 
-			return s.loginSuccessResponse(screenName, isICQ, err)
+			return s.loginSuccessResponse(sn, err)
 		}
 
 		loginErr := wire.LoginErrInvalidUsernameOrPassword
-		if isICQ {
+		if sn.IsUIN() {
 			loginErr = wire.LoginErrICQUserErr
 		}
-		return loginFailureResponse(screenName, loginErr), nil
+		return loginFailureResponse(sn, loginErr), nil
 	}
 
 	if s.config.DisableAuth {
-		return s.loginSuccessResponse(screenName, isICQ, err)
+		return s.loginSuccessResponse(sn, err)
 	}
 
 	var loginOK bool
@@ -322,18 +319,15 @@ func (s AuthService) login(
 		loginOK = user.ValidateRoastedPass(roastedPass)
 	}
 	if !loginOK {
-		return loginFailureResponse(screenName, wire.LoginErrInvalidPassword), nil
+		return loginFailureResponse(sn, wire.LoginErrInvalidPassword), nil
 	}
 
-	return s.loginSuccessResponse(screenName, isICQ, err)
+	return s.loginSuccessResponse(sn, err)
 }
 
-func (s AuthService) loginSuccessResponse(screenName string, isICQ bool, err error) (wire.TLVRestBlock, error) {
+func (s AuthService) loginSuccessResponse(screenName state.DisplayScreenName, err error) (wire.TLVRestBlock, error) {
 	loginCookie := bosCookie{
-		ScreenName: state.DisplayScreenName(screenName),
-	}
-	if isICQ {
-		loginCookie.ICQ = 1
+		ScreenName: screenName,
 	}
 
 	buf := &bytes.Buffer{}
@@ -354,7 +348,7 @@ func (s AuthService) loginSuccessResponse(screenName string, isICQ bool, err err
 	}, nil
 }
 
-func loginFailureResponse(screenName string, code uint16) wire.TLVRestBlock {
+func loginFailureResponse(screenName state.DisplayScreenName, code uint16) wire.TLVRestBlock {
 	return wire.TLVRestBlock{
 		TLVList: []wire.TLV{
 			wire.NewTLV(wire.LoginTLVTagsScreenName, screenName),

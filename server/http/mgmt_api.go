@@ -199,8 +199,8 @@ func postUserHandler(w http.ResponseWriter, r *http.Request, userManager UserMan
 
 	sn := state.DisplayScreenName(input.ScreenName)
 
-	if input.IsICQ {
-		if err := sn.ValidateICQHandle(); err != nil {
+	if sn.IsUIN() {
+		if err := sn.ValidateUIN(); err != nil {
 			http.Error(w, fmt.Sprintf("invalid uin: %s", err), http.StatusBadRequest)
 			return
 		}
@@ -215,7 +215,7 @@ func postUserHandler(w http.ResponseWriter, r *http.Request, userManager UserMan
 		AuthKey:           newUUID().String(),
 		DisplayScreenName: sn,
 		IdentScreenName:   sn.IdentScreenName(),
-		IsICQ:             input.IsICQ,
+		IsICQ:             sn.IsUIN(),
 	}
 
 	if err := user.HashPassword(input.Password); err != nil {
