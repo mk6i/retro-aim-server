@@ -43,7 +43,6 @@ builds:
     env:
       - CGO_ENABLED=1
       - CC=x86_64-w64-mingw32-gcc
-    gobinary: /root/go/bin/garble
 
 archives:
   - id: linux
@@ -89,3 +88,6 @@ archives:
       {{ .Binary }}.{{ .Version }}.{{ .Os }}.
       {{- if eq .Arch "amd64" }}x86_64
       {{- else }}{{ .Arch }}{{ end }}
+
+release:
+    draft: true
