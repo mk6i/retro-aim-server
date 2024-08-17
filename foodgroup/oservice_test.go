@@ -97,7 +97,9 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				cookieBakerParams: cookieBakerParams{
 					cookieIssueParams: cookieIssueParams{
 						{
-							dataIn:    []byte("user_screen_name"),
+							dataIn: []byte{
+								0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
+							},
 							cookieOut: []byte("the-cookie"),
 						},
 					},
@@ -141,7 +143,9 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				cookieBakerParams: cookieBakerParams{
 					cookieIssueParams: cookieIssueParams{
 						{
-							dataIn:    []byte("user_screen_name"),
+							dataIn: []byte{
+								0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
+							},
 							cookieOut: []byte("the-cookie"),
 						},
 					},
@@ -185,7 +189,9 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				cookieBakerParams: cookieBakerParams{
 					cookieIssueParams: cookieIssueParams{
 						{
-							dataIn:    []byte("user_screen_name"),
+							dataIn: []byte{
+								0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
+							},
 							cookieOut: []byte("the-cookie"),
 						},
 					},

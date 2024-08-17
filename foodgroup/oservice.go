@@ -574,9 +574,19 @@ type chatLoginCookie struct {
 // ServiceRequest handles service discovery, providing a host name and metadata
 // for connecting to the food group service specified in inFrame.
 func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
+	fnIssueCookie := func(val any) ([]byte, error) {
+		buf := &bytes.Buffer{}
+		if err := wire.MarshalBE(val, buf); err != nil {
+			return nil, err
+		}
+		return s.cookieIssuer.Issue(buf.Bytes())
+	}
+
 	switch inBody.FoodGroup {
 	case wire.Admin:
-		cookie, err := s.cookieIssuer.Issue([]byte(sess.IdentScreenName().String()))
+		cookie, err := fnIssueCookie(bosCookie{
+			ScreenName: sess.DisplayScreenName(),
+		})
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}
@@ -599,7 +609,9 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			},
 		}, nil
 	case wire.Alert:
-		cookie, err := s.cookieIssuer.Issue([]byte(sess.IdentScreenName().String()))
+		cookie, err := fnIssueCookie(bosCookie{
+			ScreenName: sess.DisplayScreenName(),
+		})
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}
@@ -622,7 +634,9 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			},
 		}, nil
 	case wire.BART:
-		cookie, err := s.cookieIssuer.Issue([]byte(sess.IdentScreenName().String()))
+		cookie, err := fnIssueCookie(bosCookie{
+			ScreenName: sess.DisplayScreenName(),
+		})
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}
@@ -645,7 +659,9 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			},
 		}, nil
 	case wire.ChatNav:
-		cookie, err := s.cookieIssuer.Issue([]byte(sess.IdentScreenName().String()))
+		cookie, err := fnIssueCookie(bosCookie{
+			ScreenName: sess.DisplayScreenName(),
+		})
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}
@@ -683,15 +699,10 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			return wire.SNACMessage{}, fmt.Errorf("unable to retrieve room info: %w", err)
 		}
 
-		loginCookie := chatLoginCookie{
+		cookie, err := fnIssueCookie(chatLoginCookie{
 			ChatCookie: room.Cookie(),
 			ScreenName: sess.DisplayScreenName(),
-		}
-		buf := &bytes.Buffer{}
-		if err := wire.MarshalBE(loginCookie, buf); err != nil {
-			return wire.SNACMessage{}, err
-		}
-		cookie, err := s.cookieIssuer.Issue(buf.Bytes())
+		})
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}
