@@ -757,6 +757,55 @@ func (_c *mockICQService_SetWorkInfo_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// ShortUserInfo provides a mock function with given fields: ctx, sess, req, seq
+func (_m *mockICQService) ShortUserInfo(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo, seq uint16) error {
+	ret := _m.Called(ctx, sess, req, seq)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ShortUserInfo")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo, uint16) error); ok {
+		r0 = rf(ctx, sess, req, seq)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockICQService_ShortUserInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ShortUserInfo'
+type mockICQService_ShortUserInfo_Call struct {
+	*mock.Call
+}
+
+// ShortUserInfo is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sess *state.Session
+//   - req wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo
+//   - seq uint16
+func (_e *mockICQService_Expecter) ShortUserInfo(ctx interface{}, sess interface{}, req interface{}, seq interface{}) *mockICQService_ShortUserInfo_Call {
+	return &mockICQService_ShortUserInfo_Call{Call: _e.mock.On("ShortUserInfo", ctx, sess, req, seq)}
+}
+
+func (_c *mockICQService_ShortUserInfo_Call) Run(run func(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo, seq uint16)) *mockICQService_ShortUserInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo), args[3].(uint16))
+	})
+	return _c
+}
+
+func (_c *mockICQService_ShortUserInfo_Call) Return(_a0 error) *mockICQService_ShortUserInfo_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockICQService_ShortUserInfo_Call) RunAndReturn(run func(context.Context, *state.Session, wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo, uint16) error) *mockICQService_ShortUserInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // XMLReqData provides a mock function with given fields: ctx, sess, req, seq
 func (_m *mockICQService) XMLReqData(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0898_DBQueryMetaReqXMLReq, seq uint16) error {
 	ret := _m.Called(ctx, sess, req, seq)

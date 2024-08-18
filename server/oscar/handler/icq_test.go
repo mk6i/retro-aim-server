@@ -49,6 +49,7 @@ func TestICQHandler_DBQuery(t *testing.T) {
 		setPermissions  *mockParam
 		setUserNotes    *mockParam
 		setWorkInfo     *mockParam
+		shortUserInfo   *mockParam
 		xmlReqData      *mockParam
 	}
 	tests := []struct {
@@ -83,6 +84,38 @@ func TestICQHandler_DBQuery(t *testing.T) {
 			allMockParams: allMockParams{
 				fullUserInfo: &mockParam{
 					req: wire.ICQ_0x07D0_0x051F_DBQueryMetaReqSearchByUIN{
+						UIN: 123456789,
+					},
+				},
+			},
+		},
+		{
+			name: "MetaReqShortInfo - happy path",
+			reqParams: reqParams{
+				sess: &state.Session{},
+				inBody: wire.SNAC_0x0F_0x02_BQuery{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+								Message: ICQMetaRequest{
+									ICQMetadata: wire.ICQMetadata{
+										ReqType: wire.ICQDBQueryMetaReq,
+										Seq:     1,
+									},
+									ReqSubType: wire.ICQDBQueryMetaReqShortInfo,
+									MetaRequest: wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo{
+										UIN: 123456789,
+									},
+								},
+							}),
+						},
+					},
+				},
+				seq: 1,
+			},
+			allMockParams: allMockParams{
+				shortUserInfo: &mockParam{
+					req: wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo{
 						UIN: 123456789,
 					},
 				},
@@ -723,6 +756,10 @@ func TestICQHandler_DBQuery(t *testing.T) {
 				icqService.EXPECT().
 					FullUserInfo(mock.Anything, tt.reqParams.sess, tt.allMockParams.fullUserInfo.req, tt.reqParams.seq).
 					Return(tt.allMockParams.fullUserInfo.wantErr)
+			case tt.allMockParams.shortUserInfo != nil:
+				icqService.EXPECT().
+					ShortUserInfo(mock.Anything, tt.reqParams.sess, tt.allMockParams.shortUserInfo.req, tt.reqParams.seq).
+					Return(tt.allMockParams.shortUserInfo.wantErr)
 			case tt.allMockParams.xmlReqData != nil:
 				icqService.EXPECT().
 					XMLReqData(mock.Anything, tt.reqParams.sess, tt.allMockParams.xmlReqData.req, tt.reqParams.seq).

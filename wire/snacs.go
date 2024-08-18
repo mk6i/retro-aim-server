@@ -997,6 +997,7 @@ const (
 	ICQDBQueryMetaReqSetInterests     uint16 = 0x0410
 	ICQDBQueryMetaReqSetAffiliations  uint16 = 0x041A
 	ICQDBQueryMetaReqSetPermissions   uint16 = 0x0424
+	ICQDBQueryMetaReqShortInfo        uint16 = 0x04BA
 	ICQDBQueryMetaReqFullInfo         uint16 = 0x04B2
 	ICQDBQueryMetaReqFullInfo2        uint16 = 0x04D0
 	ICQDBQueryMetaReqSearchByDetails  uint16 = 0x0515
@@ -1031,6 +1032,7 @@ const (
 	ICQDBQueryMetaReplyExtEmailInfo    uint16 = 0x00EB
 	ICQDBQueryMetaReplyInterests       uint16 = 0x00F0
 	ICQDBQueryMetaReplyAffiliations    uint16 = 0x00FA
+	ICQDBQueryMetaReplyShortInfo       uint16 = 0x0104
 	ICQDBQueryMetaReplyHomePageCat     uint16 = 0x010E
 	ICQDBQueryMetaReplyUserFound       uint16 = 0x01A4
 	ICQDBQueryMetaReplyLastUserFound   uint16 = 0x01AE
@@ -1039,6 +1041,10 @@ const (
 
 type SNAC_0x0F_0x02_BQuery struct {
 	TLVRestBlock
+}
+
+type ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo struct {
+	UIN uint32
 }
 
 type ICQ_0x07D0_0x0898_DBQueryMetaReqXMLReq struct {
@@ -1282,6 +1288,19 @@ func (s *ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound) LastResult() {
 	}{
 		FoundUsersLeft: 0,
 	}
+}
+
+type ICQ_0x07DA_0x0104_DBQueryMetaReplyShortInfo struct {
+	ICQMetadata
+	ReqSubType    uint16
+	Success       uint8
+	Nickname      string `oscar:"len_prefix=uint16,nullterm"`
+	FirstName     string `oscar:"len_prefix=uint16,nullterm"`
+	LastName      string `oscar:"len_prefix=uint16,nullterm"`
+	Email         string `oscar:"len_prefix=uint16,nullterm"`
+	Authorization uint8
+	Unknown       uint8
+	Gender        uint8
 }
 
 type ICQ_0x0041_DBQueryOfflineMsgReply struct {

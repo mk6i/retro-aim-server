@@ -2183,6 +2183,121 @@ func TestICQService_SetWorkInfo(t *testing.T) {
 	}
 }
 
+func TestICQService_ShortUserInfo(t *testing.T) {
+	tests := []struct {
+		name       string
+		timeNow    func() time.Time
+		seq        uint16
+		sess       *state.Session
+		req        wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo
+		mockParams mockParams
+		wantErr    error
+	}{
+		{
+			name: "happy path",
+			timeNow: func() time.Time {
+				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
+			},
+			seq:  1,
+			sess: newTestSession("11111111", sessOptUIN(11111111)),
+			req: wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo{
+				UIN: 123456789,
+			},
+			mockParams: mockParams{
+				icqUserFinderParams: icqUserFinderParams{
+					findByUINParams: findByUINParams{
+						{
+							UIN: 123456789,
+							result: state.User{
+								IdentScreenName: state.NewIdentScreenName("123456789"),
+								ICQPermissions: state.ICQPermissions{
+									AuthRequired: true,
+								},
+								ICQMoreInfo: state.ICQMoreInfo{
+									Gender: 2,
+								},
+								ICQBasicInfo: state.ICQBasicInfo{
+									EmailAddress: "john.doe@example.com",
+									FirstName:    "John",
+									LastName:     "Doe",
+									Nickname:     "CoolUser123",
+								},
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x0F_0x02_DBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+												Message: wire.ICQ_0x07DA_0x0104_DBQueryMetaReplyShortInfo{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:       wire.ICQStatusCodeOK,
+													ReqSubType:    wire.ICQDBQueryMetaReplyShortInfo,
+													Nickname:      "CoolUser123",
+													FirstName:     "John",
+													LastName:      "Doe",
+													Email:         "john.doe@example.com",
+													Authorization: 1,
+													Gender:        2,
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("123456789"),
+							result:     &state.Session{},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userFinder := newMockICQUserFinder(t)
+			for _, params := range tt.mockParams.findByUINParams {
+				userFinder.EXPECT().
+					FindByUIN(params.UIN).
+					Return(params.result, params.err)
+			}
+
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+
+			s := ICQService{
+				messageRelayer: messageRelayer,
+				timeNow:        tt.timeNow,
+				userFinder:     userFinder,
+			}
+			err := s.ShortUserInfo(nil, tt.sess, tt.req, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}
+
 func TestICQService_XMLReqData(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -31,6 +31,7 @@ type ICQService interface {
 	SetPermissions(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0424_DBQueryMetaReqSetPermissions, seq uint16) error
 	SetUserNotes(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0406_DBQueryMetaReqSetNotes, seq uint16) error
 	SetWorkInfo(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x03F3_DBQueryMetaReqSetWorkInfo, seq uint16) error
+	ShortUserInfo(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo, seq uint16) error
 	XMLReqData(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0898_DBQueryMetaReqXMLReq, seq uint16) error
 }
 
@@ -89,6 +90,12 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			"uin", sess.UIN())
 
 		switch icqMD.Optional.ReqSubType {
+		case wire.ICQDBQueryMetaReqShortInfo:
+			userInfo := wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo{}
+			if err := binary.Read(buf, binary.LittleEndian, &userInfo); err != nil {
+				return nil
+			}
+			return rt.ICQService.ShortUserInfo(ctx, sess, userInfo, icqMD.Seq)
 		case wire.ICQDBQueryMetaReqFullInfo, wire.ICQDBQueryMetaReqFullInfo2:
 			userInfo := wire.ICQ_0x07D0_0x051F_DBQueryMetaReqSearchByUIN{}
 			if err := binary.Read(buf, binary.LittleEndian, &userInfo); err != nil {

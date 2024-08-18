@@ -456,6 +456,37 @@ func (s ICQService) SetWorkInfo(ctx context.Context, sess *state.Session, req wi
 	return s.reqAck(ctx, sess, seq, wire.ICQDBQueryMetaReplySetWorkInfo)
 }
 
+func (s ICQService) ShortUserInfo(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo, seq uint16) error {
+	user, err := s.userFinder.FindByUIN(req.UIN)
+	if err != nil {
+		return err
+	}
+
+	info := wire.ICQ_0x07DA_0x0104_DBQueryMetaReplyShortInfo{
+		ICQMetadata: wire.ICQMetadata{
+			UIN:     sess.UIN(),
+			ReqType: wire.ICQDBQueryMetaReply,
+			Seq:     seq,
+		},
+		ReqSubType: wire.ICQDBQueryMetaReplyShortInfo,
+		Success:    wire.ICQStatusCodeOK,
+		Nickname:   user.ICQBasicInfo.Nickname,
+		FirstName:  user.ICQBasicInfo.FirstName,
+		LastName:   user.ICQBasicInfo.LastName,
+		Email:      user.ICQBasicInfo.EmailAddress,
+		Gender:     uint8(user.ICQMoreInfo.Gender),
+	}
+	if user.ICQPermissions.AuthRequired {
+		info.Authorization = 1
+	}
+
+	msg := wire.ICQMessageReplyEnvelope{
+		Message: info,
+	}
+
+	return s.reply(ctx, sess, msg)
+}
+
 func (s ICQService) XMLReqData(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0898_DBQueryMetaReqXMLReq, seq uint16) error {
 	msg := wire.ICQMessageReplyEnvelope{
 		Message: wire.ICQ_0x07DA_0x08A2_DBQueryMetaReplyXMLData{
