@@ -4,6 +4,12 @@ This guide explains how to install and configure **ICQ 2000b** for Retro AIM Ser
 
 > ICQ 2000b is the only version of ICQ currently supported by RAS.
 
+Installation guides are available for the following operating systems:
+
+* [Windows](#windows)
+* [Linux](#linux)
+* [macOS (Intel & Apple Silicon)](#macos-intel--apple-silicon)
+
 ## Installation
 
 ### Windows
@@ -14,9 +20,7 @@ This guide explains how to install and configure **ICQ 2000b** for Retro AIM Ser
 
 2. **Run Installer**
 
-   Install ICQ as you would normally install any application. For Windows 10/11,
-   set [Windows XP compatibility mode](https://support.microsoft.com/en-us/windows/make-older-apps-or-programs-compatible-with-windows-783d6dd7-b439-bdb0-0490-54eea0f45938)
-   on the executable.
+   Run the ICQ installer.
 
 3. **Close the Registration Window**
 
@@ -30,7 +34,7 @@ This guide explains how to install and configure **ICQ 2000b** for Retro AIM Ser
 
 ### Linux
 
-You can ICQ 2000b under Linux via [WINE](https://www.winehq.org/).
+You can run ICQ 2000b under Linux via [WINE](https://www.winehq.org/).
 
 1. **Download ICQ**
 
@@ -38,7 +42,7 @@ You can ICQ 2000b under Linux via [WINE](https://www.winehq.org/).
 
 2. **Install WINE**
 
-   Run and install [WINE](https://wiki.winehq.org/Download)
+   Run and install [WINE](https://wiki.winehq.org/Download).
 
 3. **Run the Installer**
 
@@ -54,7 +58,7 @@ You can ICQ 2000b under Linux via [WINE](https://www.winehq.org/).
    the [post-installation steps](#post-install-configuration).
 
     <p align="center">
-       <img width="400" alt="screenshot of ICQ registration window" src="https://github.com/user-attachments/assets/b5684b93-02b0-4314-adfa-16ea9826cf69">
+        <img width="400" alt="screenshot of ICQ registration window" src="https://github.com/user-attachments/assets/d9820dc6-c29b-4ff6-9dfe-5a6bcd9effc5">
     </p>
 
 ### macOS (Intel & Apple Silicon)
@@ -76,13 +80,13 @@ using [WineskinServer](https://github.com/Gcenx/WineskinServer), a wrapper for W
    wrapper for installing ICQ.
 
    Generating the wrapper might take 1-2 minutes, and the application might not
-3. respond during this time. Once complete, click `View wrapper in Finder`.
+   respond during this time. Once complete, click `View wrapper in Finder`.
 
    <p align="center">
       <img width="325" alt="screenshot of wineskin server" src="https://github.com/user-attachments/assets/8d2ed477-f41c-4f00-90c2-d24c468b4aae">
    </p>
 
-3. **Install ICQ into the application wrapper**
+3. **Install ICQ into the Application Wrapper**
 
    Launch the wrapper from the Finder window. Select `Install Software`.
 
@@ -112,17 +116,17 @@ using [WineskinServer](https://github.com/Gcenx/WineskinServer), a wrapper for W
 
 ## Post-install Configuration
 
-Configure the default OSCAR hostname in the registry so that ICQ can connect to
-your server. This needs to be done before the first launch of the ICQ.
+In this step, we'll replace ICQ's default server hostname with your Retro AIM
+Server's hostname in the Windows Registry. 
 
 > Do not attempt to set the ICQ hostname via the registration Window. If you do
-> this, a bug will surface that forever prevents the client from "remembering"
->  settings such as saved passwords and OSCAR hostname.  
+> this, a bug will surface that prevents the client from "remembering" settings
+> such as saved passwords and OSCAR hostname.
 
 1. **Open Registry Editor**
 
     - Windows
-        - Click `Start > Run`.
+        - Open the Run dialog <kbd>⊞ Win</kbd> + <kbd>`R`</kbd>.
         - Enter `regedit` and click `OK`.
     - Wine (Linux)
         - Open a terminal.
@@ -133,7 +137,7 @@ your server. This needs to be done before the first launch of the ICQ.
           ```shell
           ~/Applications/Wineskin/icq2000b.app/Contents/Wineskin.app/Contents/Resources/regedit
           ```
-      
+
 2. **Open Default ICQ Settings**
 
    Navigate to `HKEY_CURRENT_USER\Software\Mirabilis\ICQ\DefaultPrefs`.
@@ -143,41 +147,53 @@ your server. This needs to be done before the first launch of the ICQ.
 
 3. **Configure OSCAR Host**
 
-   Set the `Default Server Host` registry entry to the value of `OSCAR_HOST`
-   found in `config/settings`.
+    - Double-click the `Default Server Host` registry entry.
+    - Set `Value data` to the value of `OSCAR_HOST` found in Retro AIM Server
+      configuration `config/settings.env` (Linux/macOS) or `config/settings.bat` (Windows).
+    - Click OK.
+
    <p align="center">
       <img width="325" alt="screenshot editing Default Server Host in regedit" src="https://github.com/user-attachments/assets/ebcf66fa-1841-41f7-986a-90b24dd0a94d">
    </p>
 
-4. **Configure Server Port**
+4. **Configure Server Port (uncommon)**
 
-   Set `Default Server Port` to the value of `AUTH_PORT` found in `config/settings`. Make sure to tick the `Decimal`
-   radio button.
+   Only change this value if your server does not listen on the default OSCAR
+   ports.
+
+    - Double-click the `Default Server Port` registry entry.
+    - Tick the `Decimal` radio button.
+    - Set `Value data` to the value of `AUTH_PORT` found in Retro AIM Server
+      configuration `config/settings.env` (Linux/macOS) or `config/settings.bat`
+      (Windows).
+    - Click OK.
+
    <p align="center">
       <img width="325" alt="screenshot editing Default Server Port in regedit" src="https://github.com/user-attachments/assets/11a3efff-40f1-4f1d-b88a-9c78fddb9c3d">
    </p>
-   
+
 5. **Exit Registry Editor**
 
-   Client configuration is complete. Close the Registry Editor.   
+   Client configuration is complete. Close the Registry Editor.
 
 ## First Time Login
 
-Now that ICQ is installed and configured, all that remains is to log in.
-
 Start ICQ and complete the first-time registration wizard. Start by selecting `Existing User`.
 
-> Do not try to create a new user in the registration wizard. To create a new user in Retro AIM Server, follow account creation steps in the [server quickstart guides](https://github.com/mk6i/retro-aim-server?tab=readme-ov-file#-how-to-run).
-   
+> Do not try to create a new user in the registration wizard. To create a new user in Retro AIM Server, follow account
+> creation steps in
+> the [server quickstart guides](https://github.com/mk6i/retro-aim-server?tab=readme-ov-file#-how-to-run).
+
    <p align="center">
-      <img width="400" alt="screenshot of ICQ registration wizard" src="https://github.com/user-attachments/assets/93bd3fc9-96a6-45ff-af90-e96b3f938dc3">
+      <img width="400" alt="screenshot of ICQ registration wizard" src="https://github.com/user-attachments/assets/48c666a8-04c8-4b48-a86a-fc52e8a9af41">
    </p>
 
-
-Enter the ICQ user credentials and finish out the rest of the wizard.
+Enter ICQ user credentials. If you're running RAS with the default settings,
+you can enter *any* UIN and password. Click next on the remaining screens until
+the wizard is finished.
 
 <p align="center">
    <img width="400" alt="screenshot of ICQ registration wizard" src="https://github.com/user-attachments/assets/7520db7c-0512-42d1-88f3-e3f8f9d5eaec">
 </p>
 
-You should now be able to successfully connect ICQ 2000b to Retro AIM Server.
+You should now be able to connect to Retro AIM Server using ICQ 2000b.

@@ -7,10 +7,10 @@ paths:
   /user:
     get:
       summary: Get all users
-      description: Retrieve a list of all user accounts without passwords.
+      description: Retrieve a list of all user accounts.
       responses:
         '200':
-          description: Successful response containing a list of users without passwords.
+          description: Successful response containing a list of users.
           content:
             application/json:
               schema:

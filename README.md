@@ -7,7 +7,7 @@
 
 </div>
 
-**Retro AIM Server** is an instant messaging server that revives AOL Instant Messenger clients from the 2000s.
+**Retro AIM Server** is an instant messaging server that revives AOL Instant Messenger (and ICQ!) clients from the 2000s.
 
 <p align="center">
   <img width="616" alt="screenshot of retro aim server running next to AIM" src="https://github.com/mk6i/retro-aim-server/assets/2894330/81ff419f-50fa-4961-bd2f-ac7dcac903b5">
@@ -15,7 +15,8 @@
 
 The following features are supported:
 
-- [x] Windows AIM client v2.x, v3.x, v4.x, v5.x
+**AIM**
+- [x] Windows AIM Clients: v2.x, v3.x, v4.x, v5.x
 - [x] Away Messages
 - [x] Buddy Icons (v4.x, v5.x)
 - [x] Buddy List
@@ -27,6 +28,14 @@ The following features are supported:
 - [x] Visibility Toggle / Idle Notification
 - [x] Warning
 
+**ICQ**
+- [x] Windows ICQ Clients: 2000b (more to come soon)
+- [x] Instant Messaging
+- [x] Profiles
+- [x] User search
+- [x] Presence Statuses
+- [x] Offline Messaging
+
 ## 🏁 How to Run
 
 Get up and running with Retro AIM Server using one of these handy server quickstart guides:
@@ -36,6 +45,8 @@ Get up and running with Retro AIM Server using one of these handy server quickst
 * [Windows 10/11 (x86_64)](./docs/WINDOWS.md)
 
 Don't have AIM installed yet? Check out the [AIM Client Setup Guide](./docs/CLIENT.md).
+
+...how about ICQ? Check out the [ICQ Client Setup Guide](./docs/CLIENT_ICQ.md).
 
 ## 🛠️ Development
 
