@@ -2,6 +2,7 @@ package foodgroup
 
 import (
 	"context"
+	"math"
 	"testing"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -104,6 +105,62 @@ func TestChatService_ChannelMsgToHost(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name: "send chat room message with macOS client 4.0.9 bug containing bad channel ID, expect message to " +
+				"client on MIME channel",
+			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime,
+				sessOptChatRoomCookie("the-chat-cookie")),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+					Cookie:  1234,
+					Channel: math.MaxUint16,
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							{
+								Tag:   wire.ChatTLVPublicWhisperFlag,
+								Value: []byte{},
+							},
+							{
+								Tag:   wire.ChatTLVMessageInformation,
+								Value: []byte{},
+							},
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				chatMessageRelayerParams: chatMessageRelayerParams{
+					chatRelayToAllExceptParams: chatRelayToAllExceptParams{
+						{
+							screenName: state.NewIdentScreenName("user_sending_chat_msg"),
+							cookie:     "the-chat-cookie",
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.Chat,
+									SubGroup:  wire.ChatChannelMsgToClient,
+								},
+								Body: wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+									Cookie:  1234,
+									Channel: wire.ICBMChannelMIME,
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLV(wire.ChatTLVSenderInformation,
+												newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
+											wire.NewTLV(wire.ChatTLVPublicWhisperFlag, []byte{}),
+											wire.NewTLV(wire.ChatTLVMessageInformation, []byte{}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectOutput: nil,
 		},
 		{
 			name: "send chat room message, don't expect acknowledgement to sender client",

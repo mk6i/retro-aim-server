@@ -121,16 +121,22 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
 				{
-					Tag:   0x0B,
+					// todo only add this TLV if the sender wants client events
+					Tag:   wire.ICBMTLVWantEvents,
 					Value: []byte{},
 				},
 			},
 		},
 	}
-	// copy over TLVs from sender SNAC to recipient SNAC verbatim. this
-	// includes ICBMTLVRequestHostAck, which is ignored by the client, as
-	// far as I can tell.
-	clientIM.AppendList(inBody.TLVRestBlock.TLVList)
+
+	for _, tlv := range inBody.TLVRestBlock.TLVList {
+		if tlv.Tag == wire.ICBMTLVRequestHostAck {
+			// Exclude this TLV, because its presence breaks chat invitations
+			// on macOS client v4.0.9.
+			continue
+		}
+		clientIM.Append(tlv)
+	}
 
 	s.messageRelayer.RelayToScreenName(ctx, recipSess.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -186,6 +192,24 @@ func (s ICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFra
 		})
 		return nil
 	}
+}
+
+func (s ICBMService) ClientErr(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x0B_ICBMClientErr) error {
+	s.messageRelayer.RelayToScreenName(ctx, state.NewIdentScreenName(inBody.ScreenName), wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICBM,
+			SubGroup:  wire.ICBMClientErr,
+			RequestID: inFrame.RequestID,
+		},
+		Body: wire.SNAC_0x04_0x0B_ICBMClientErr{
+			Cookie:     inBody.Cookie,
+			ChannelID:  inBody.ChannelID,
+			ScreenName: sess.DisplayScreenName().String(),
+			Code:       inBody.Code,
+			ErrInfo:    inBody.ErrInfo,
+		},
+	})
+	return nil
 }
 
 // EvilRequest handles user warning (a.k.a evil) notifications. It receives

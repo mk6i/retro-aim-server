@@ -17,6 +17,7 @@ type ICBMService interface {
 	ClientEvent(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x14_ICBMClientEvent) error
 	EvilRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x08_ICBMEvilRequest) (wire.SNACMessage, error)
 	ParameterQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
+	ClientErr(ctx context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x04_0x0B_ICBMClientErr) error
 }
 
 func NewICBMHandler(logger *slog.Logger, icbmService ICBMService) ICBMHandler {
@@ -75,10 +76,14 @@ func (h ICBMHandler) EvilRequest(ctx context.Context, sess *state.Session, inFra
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
 
-func (h ICBMHandler) ClientErr(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
+func (h ICBMHandler) ClientErr(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x04_0x0B_ICBMClientErr{}
 	h.LogRequest(ctx, inFrame, inBody)
-	return wire.UnmarshalBE(&inBody, r)
+	err := wire.UnmarshalBE(&inBody, r)
+	if err != nil {
+		return err
+	}
+	return h.ICBMService.ClientErr(ctx, sess, inFrame, inBody)
 }
 
 func (h ICBMHandler) ClientEvent(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {

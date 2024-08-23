@@ -85,6 +85,55 @@ func (_c *mockICBMService_ChannelMsgToHost_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// ClientErr provides a mock function with given fields: ctx, sess, frame, body
+func (_m *mockICBMService) ClientErr(ctx context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x04_0x0B_ICBMClientErr) error {
+	ret := _m.Called(ctx, sess, frame, body)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ClientErr")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x04_0x0B_ICBMClientErr) error); ok {
+		r0 = rf(ctx, sess, frame, body)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockICBMService_ClientErr_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ClientErr'
+type mockICBMService_ClientErr_Call struct {
+	*mock.Call
+}
+
+// ClientErr is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sess *state.Session
+//   - frame wire.SNACFrame
+//   - body wire.SNAC_0x04_0x0B_ICBMClientErr
+func (_e *mockICBMService_Expecter) ClientErr(ctx interface{}, sess interface{}, frame interface{}, body interface{}) *mockICBMService_ClientErr_Call {
+	return &mockICBMService_ClientErr_Call{Call: _e.mock.On("ClientErr", ctx, sess, frame, body)}
+}
+
+func (_c *mockICBMService_ClientErr_Call) Run(run func(ctx context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x04_0x0B_ICBMClientErr)) *mockICBMService_ClientErr_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACFrame), args[3].(wire.SNAC_0x04_0x0B_ICBMClientErr))
+	})
+	return _c
+}
+
+func (_c *mockICBMService_ClientErr_Call) Return(_a0 error) *mockICBMService_ClientErr_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockICBMService_ClientErr_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x04_0x0B_ICBMClientErr) error) *mockICBMService_ClientErr_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ClientEvent provides a mock function with given fields: ctx, sess, inFrame, inBody
 func (_m *mockICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x14_ICBMClientEvent) error {
 	ret := _m.Called(ctx, sess, inFrame, inBody)

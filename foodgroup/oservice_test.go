@@ -1468,7 +1468,6 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 				wire.Alert,
 				wire.BART,
 				wire.Buddy,
-				wire.ChatNav,
 				wire.Feedbag,
 				wire.ICBM,
 				wire.ICQ,

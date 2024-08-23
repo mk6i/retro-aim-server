@@ -3,6 +3,7 @@ package foodgroup
 import (
 	"context"
 	"errors"
+	"math"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -48,6 +49,11 @@ func (s ChatService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 				wire.NewTLV(wire.ChatTLVMessageInformation, msg),
 			},
 		},
+	}
+
+	if bodyOut.Channel == math.MaxUint16 {
+		// Fix incorrect channel bug in macOS client v4.0.9.
+		bodyOut.Channel = wire.ICBMChannelMIME
 	}
 
 	// send message to all the participants except sender

@@ -542,7 +542,6 @@ func NewOServiceServiceForBOS(
 				wire.Alert,
 				wire.BART,
 				wire.Buddy,
-				wire.ChatNav,
 				wire.Feedbag,
 				wire.ICBM,
 				wire.ICQ,
@@ -807,9 +806,14 @@ func (s OServiceServiceForChat) ClientOnline(ctx context.Context, _ wire.SNAC_0x
 	if err != nil {
 		return fmt.Errorf("error getting chat room: %w", err)
 	}
+
+	// Do not change the order of the following 3 methods. macOS client v4.0.9
+	// requires this exact sequence, otherwise the chat session prematurely
+	// closes seconds after users join a chat room.
+	setOnlineChatUsers(ctx, sess, s.chatMessageRelayer)
 	sendChatRoomInfoUpdate(ctx, sess, s.chatMessageRelayer, room)
 	alertUserJoined(ctx, sess, s.chatMessageRelayer)
-	setOnlineChatUsers(ctx, sess, s.chatMessageRelayer)
+
 	return nil
 }
 

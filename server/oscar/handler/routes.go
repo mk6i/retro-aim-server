@@ -103,6 +103,7 @@ func NewChatRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
 	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceHandler.SetUserInfoFields)
 	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceHandler.UserInfoQuery)
+	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
 
 	return router
 }
@@ -124,6 +125,7 @@ func NewChatNavRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
 	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceHandler.SetUserInfoFields)
 	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceHandler.UserInfoQuery)
+	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
 
 	return router
 }

@@ -50,6 +50,10 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 								Tag:   wire.ICBMTLVRequestHostAck,
 								Value: []byte{},
 							},
+							{
+								Tag:   wire.ICBMTLVData,
+								Value: []byte{1, 2, 3, 4},
+							},
 						},
 					},
 				},
@@ -68,8 +72,8 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 								Value: []byte{},
 							},
 							{
-								Tag:   wire.ICBMTLVRequestHostAck,
-								Value: []byte{},
+								Tag:   wire.ICBMTLVData,
+								Value: []byte{1, 2, 3, 4},
 							},
 						},
 					},
@@ -98,7 +102,12 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 					ScreenName: "recipient-screen-name",
 					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{},
+						TLVList: wire.TLVList{
+							{
+								Tag:   wire.ICBMTLVData,
+								Value: []byte{1, 2, 3, 4},
+							},
+						},
 					},
 				},
 			},
@@ -114,6 +123,10 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 							{
 								Tag:   wire.ICBMTLVWantEvents,
 								Value: []byte{},
+							},
+							{
+								Tag:   wire.ICBMTLVData,
+								Value: []byte{1, 2, 3, 4},
 							},
 						},
 					},
@@ -722,4 +735,40 @@ func TestICBMService_ParameterQuery(t *testing.T) {
 	}
 
 	assert.Equal(t, want, have)
+}
+
+func TestICBMService_ClientErr(t *testing.T) {
+	sess := newTestSession("theScreenName")
+
+	inBody := wire.SNAC_0x04_0x0B_ICBMClientErr{
+		Cookie:     1234,
+		ChannelID:  wire.ICBMChannelMIME,
+		ScreenName: "recipientScreenName",
+		Code:       10,
+		ErrInfo:    []byte{1, 2, 3, 4},
+	}
+
+	expect := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICBM,
+			SubGroup:  wire.ICBMClientErr,
+			RequestID: 1234,
+		},
+		Body: wire.SNAC_0x04_0x0B_ICBMClientErr{
+			Cookie:     inBody.Cookie,
+			ChannelID:  inBody.ChannelID,
+			ScreenName: sess.DisplayScreenName().String(),
+			Code:       inBody.Code,
+			ErrInfo:    inBody.ErrInfo,
+		},
+	}
+
+	messageRelayer := newMockMessageRelayer(t)
+	messageRelayer.EXPECT().
+		RelayToScreenName(mock.Anything, state.NewIdentScreenName("recipientScreenName"), expect)
+
+	svc := NewICBMService(messageRelayer, nil, nil, nil)
+
+	err := svc.ClientErr(nil, sess, wire.SNACFrame{RequestID: 1234}, inBody)
+	assert.NoError(t, err)
 }

@@ -82,7 +82,12 @@ func TestICBMHandler_ClientErr(t *testing.T) {
 	}
 
 	svc := newMockICBMService(t)
+	svc.EXPECT().
+		ClientErr(mock.Anything, mock.Anything, input.Frame, input.Body).
+		Return(nil)
+
 	h := NewICBMHandler(slog.Default(), svc)
+
 	responseWriter := newMockResponseWriter(t)
 
 	buf := &bytes.Buffer{}

@@ -84,13 +84,13 @@ func (c ChatRoom) Cookie() string {
 
 // URL creates a URL that can be used to join a chat room.
 func (c ChatRoom) URL() *url.URL {
-	v := url.Values{}
-	v.Set("roomname", c.name)
-	v.Set("exchange", fmt.Sprintf("%d", c.exchange))
-
+	// macOS client v4.0.9 requires the `roomname` param to precede `exchange`
+	// param. Create the path using string concatenation rather than url.Values
+	// because url.Values sorts the params alphabetically.
+	opaque := fmt.Sprintf("gochat?roomname=%s&exchange=%d", url.QueryEscape(c.name), c.exchange)
 	return &url.URL{
 		Scheme: "aim",
-		Opaque: "gochat?" + v.Encode(),
+		Opaque: opaque,
 	}
 }
 
