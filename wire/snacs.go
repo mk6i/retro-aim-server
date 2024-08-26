@@ -961,404 +961,6 @@ type SNAC_0x0E_0x06_ChatChannelMsgToClient struct {
 }
 
 //
-// 0x0F: ICQ
-//
-
-const (
-	ICQErr     uint16 = 0x0001
-	ICQDBQuery uint16 = 0x0002
-	ICQDBReply uint16 = 0x0003
-
-	ICQTLVTagsMetadata uint16 = 0x01
-
-	ICQStatusCodeOK   uint8 = 0x0A
-	ICQStatusCodeFail uint8 = 0x32
-	ICQStatusCodeErr  uint8 = 0x14
-
-	ICQDBQueryOfflineMsgReq       uint16 = 0x003C
-	ICQDBQueryOfflineMsgReply     uint16 = 0x0041
-	ICQDBQueryOfflineMsgReplyLast uint16 = 0x0042
-	ICQDBQueryDeleteMsgReq        uint16 = 0x003E
-	ICQDBQueryMetaReq             uint16 = 0x07D0
-	ICQDBQueryMetaReply           uint16 = 0x07DA
-)
-
-const (
-	ICQUserFlagPublishEmailYes uint8 = 0
-	ICQUserFlagPublishEmailNo  uint8 = 1
-)
-
-const (
-	ICQDBQueryMetaReqSetBasicInfo     uint16 = 0x03EA
-	ICQDBQueryMetaReqSetWorkInfo      uint16 = 0x03F3
-	ICQDBQueryMetaReqSetMoreInfo      uint16 = 0x03FD
-	ICQDBQueryMetaReqSetNotes         uint16 = 0x0406
-	ICQDBQueryMetaReqSetEmails        uint16 = 0x040B
-	ICQDBQueryMetaReqSetInterests     uint16 = 0x0410
-	ICQDBQueryMetaReqSetAffiliations  uint16 = 0x041A
-	ICQDBQueryMetaReqSetPermissions   uint16 = 0x0424
-	ICQDBQueryMetaReqShortInfo        uint16 = 0x04BA
-	ICQDBQueryMetaReqFullInfo         uint16 = 0x04B2
-	ICQDBQueryMetaReqFullInfo2        uint16 = 0x04D0
-	ICQDBQueryMetaReqSearchByDetails  uint16 = 0x0515
-	ICQDBQueryMetaReqSearchByUIN      uint16 = 0x051F
-	ICQDBQueryMetaReqSearchByEmail    uint16 = 0x0529
-	ICQDBQueryMetaReqSearchWhitePages uint16 = 0x0533
-	ICQDBQueryMetaReqXMLReq           uint16 = 0x0898
-	ICQDBQueryMetaReqStat0a8c         uint16 = 0x0A8C
-	ICQDBQueryMetaReqStat0a96         uint16 = 0x0A96
-	ICQDBQueryMetaReqStat0aaa         uint16 = 0x0AAA
-	ICQDBQueryMetaReqStat0ab4         uint16 = 0x0AB4
-	ICQDBQueryMetaReqStat0ab9         uint16 = 0x0AB9
-	ICQDBQueryMetaReqStat0abe         uint16 = 0x0ABE
-	ICQDBQueryMetaReqStat0ac8         uint16 = 0x0AC8
-	ICQDBQueryMetaReqStat0acd         uint16 = 0x0ACD
-	ICQDBQueryMetaReqStat0ad2         uint16 = 0x0AD2
-	ICQDBQueryMetaReqStat0ad7         uint16 = 0x0AD7
-	ICQDBQueryMetaReqStat0758         uint16 = 0x0758
-
-	ICQDBQueryMetaReplySetBasicInfo    uint16 = 0x0064
-	ICQDBQueryMetaReplySetWorkInfo     uint16 = 0x006E
-	ICQDBQueryMetaReplySetMoreInfo     uint16 = 0x0078
-	ICQDBQueryMetaReplySetNotes        uint16 = 0x0082
-	ICQDBQueryMetaReplySetEmails       uint16 = 0x0087
-	ICQDBQueryMetaReplySetInterests    uint16 = 0x008C
-	ICQDBQueryMetaReplySetAffiliations uint16 = 0x0096
-	ICQDBQueryMetaReplySetPermissions  uint16 = 0x00A0
-	ICQDBQueryMetaReplyBasicInfo       uint16 = 0x00C8
-	ICQDBQueryMetaReplyWorkInfo        uint16 = 0x00D2
-	ICQDBQueryMetaReplyMoreInfo        uint16 = 0x00DC
-	ICQDBQueryMetaReplyNotes           uint16 = 0x00E6
-	ICQDBQueryMetaReplyExtEmailInfo    uint16 = 0x00EB
-	ICQDBQueryMetaReplyInterests       uint16 = 0x00F0
-	ICQDBQueryMetaReplyAffiliations    uint16 = 0x00FA
-	ICQDBQueryMetaReplyShortInfo       uint16 = 0x0104
-	ICQDBQueryMetaReplyHomePageCat     uint16 = 0x010E
-	ICQDBQueryMetaReplyUserFound       uint16 = 0x01A4
-	ICQDBQueryMetaReplyLastUserFound   uint16 = 0x01AE
-	ICQDBQueryMetaReplyXMLData         uint16 = 0x08A2
-)
-
-type SNAC_0x0F_0x02_BQuery struct {
-	TLVRestBlock
-}
-
-type ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo struct {
-	UIN uint32
-}
-
-type ICQ_0x07D0_0x0898_DBQueryMetaReqXMLReq struct {
-	XMLRequest string `oscar:"len_prefix=uint16,nullterm"`
-}
-
-type ICQ_0x07D0_0x0424_DBQueryMetaReqSetPermissions struct {
-	Authorization uint8 // (1-required, 0-not required)
-	WebAware      uint8 // webaware (0-no, 1-yes)
-	DCPerms       uint8 // dc_perms (0-any, 1-contact, 2-authorization)
-	Unknown       uint8
-}
-
-type ICQ_0x07D0_0x051F_DBQueryMetaReqSearchByUIN struct {
-	UIN uint32
-}
-
-type ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail struct {
-	Email string `oscar:"len_prefix=uint16,nullterm"`
-}
-
-type ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails struct {
-	FirstName string `oscar:"len_prefix=uint16,nullterm"`
-	LastName  string `oscar:"len_prefix=uint16,nullterm"`
-	NickName  string `oscar:"len_prefix=uint16,nullterm"`
-}
-
-type ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages struct {
-	FirstName           string `oscar:"len_prefix=uint16,nullterm"`
-	LastName            string `oscar:"len_prefix=uint16,nullterm"`
-	Nickname            string `oscar:"len_prefix=uint16,nullterm"`
-	Email               string `oscar:"len_prefix=uint16,nullterm"`
-	MinAge              uint16
-	MaxAge              uint16
-	Gender              uint8
-	SpeakingLang        uint8
-	City                string `oscar:"len_prefix=uint16,nullterm"`
-	State               string `oscar:"len_prefix=uint16,nullterm"`
-	CountryCode         uint16
-	Company             string `oscar:"len_prefix=uint16,nullterm"`
-	Department          string `oscar:"len_prefix=uint16,nullterm"`
-	Position            string `oscar:"len_prefix=uint16,nullterm"`
-	OccupationCode      uint16
-	PastCode            uint16
-	PastKeywords        string `oscar:"len_prefix=uint16,nullterm"`
-	InterestsCode       uint16
-	InterestsKeyword    string `oscar:"len_prefix=uint16,nullterm"`
-	AffiliationsCode    uint16
-	AffiliationsKeyword string `oscar:"len_prefix=uint16,nullterm"`
-	HomePageCode        uint16
-	HomePageKeywords    string `oscar:"len_prefix=uint16,nullterm"`
-	SearchScope         uint8
-}
-
-type ICQ_0x07D0_0x03FD_DBQueryMetaReqSetMoreInfo struct {
-	Age          uint8 // not used because age is calculated from birthdate
-	Gender       uint16
-	HomePageAddr string `oscar:"len_prefix=uint16,nullterm"`
-	BirthYear    uint16
-	BirthMonth   uint8
-	BirthDay     uint8
-	Lang1        uint8
-	Lang2        uint8
-	Lang3        uint8
-}
-
-type ICQ_0x07D0_0x03F3_DBQueryMetaReqSetWorkInfo struct {
-	City           string `oscar:"len_prefix=uint16,nullterm"`
-	State          string `oscar:"len_prefix=uint16,nullterm"`
-	Phone          string `oscar:"len_prefix=uint16,nullterm"`
-	Fax            string `oscar:"len_prefix=uint16,nullterm"`
-	Address        string `oscar:"len_prefix=uint16,nullterm"`
-	ZIP            string `oscar:"len_prefix=uint16,nullterm"`
-	CountryCode    uint16
-	Company        string `oscar:"len_prefix=uint16,nullterm"`
-	Department     string `oscar:"len_prefix=uint16,nullterm"`
-	Position       string `oscar:"len_prefix=uint16,nullterm"`
-	OccupationCode uint16
-	WebPage        string `oscar:"len_prefix=uint16,nullterm"`
-}
-
-type ICQ_0x07D0_0x040B_DBQueryMetaReqSetEmails struct {
-	Emails []struct {
-		Publish uint8
-		Email   string `oscar:"len_prefix=uint16,nullterm"`
-	} `oscar:"count_prefix=uint8"`
-}
-
-type ICQ_0x07D0_0x0406_DBQueryMetaReqSetNotes struct {
-	Notes string `oscar:"len_prefix=uint16,nullterm"`
-}
-
-type ICQ_0x07D0_0x0410_DBQueryMetaReqSetInterests struct {
-	Interests []struct {
-		Code    uint16
-		Keyword string `oscar:"len_prefix=uint16,nullterm"`
-	} `oscar:"count_prefix=uint8"`
-}
-
-type ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations struct {
-	PastAffiliations []struct {
-		Code    uint16
-		Keyword string `oscar:"len_prefix=uint16,nullterm"`
-	} `oscar:"count_prefix=uint8"`
-	Affiliations []struct {
-		Code    uint16
-		Keyword string `oscar:"len_prefix=uint16,nullterm"`
-	} `oscar:"count_prefix=uint8"`
-}
-
-type ICQ_0x07D0_0x03EA_DBQueryMetaReqSetBasicInfo struct {
-	Nickname     string `oscar:"len_prefix=uint16,nullterm"`
-	FirstName    string `oscar:"len_prefix=uint16,nullterm"`
-	LastName     string `oscar:"len_prefix=uint16,nullterm"`
-	EmailAddress string `oscar:"len_prefix=uint16,nullterm"`
-	City         string `oscar:"len_prefix=uint16,nullterm"`
-	State        string `oscar:"len_prefix=uint16,nullterm"`
-	Phone        string `oscar:"len_prefix=uint16,nullterm"`
-	Fax          string `oscar:"len_prefix=uint16,nullterm"`
-	HomeAddress  string `oscar:"len_prefix=uint16,nullterm"`
-	CellPhone    string `oscar:"len_prefix=uint16,nullterm"`
-	ZIP          string `oscar:"len_prefix=uint16,nullterm"`
-	CountryCode  uint16
-	GMTOffset    uint8
-	PublishEmail uint8
-}
-
-type SNAC_0x0F_0x02_DBReply struct {
-	TLVRestBlock
-}
-
-type ICQ_0x07DA_0x010E_DBQueryMetaReplyHomePageCat struct {
-	ICQMetadata
-	ReqSubType uint16
-	Success    uint8
-	Enabled    uint8
-	CatCode    uint16
-	Keywords   string `oscar:"len_prefix=uint16,nullterm"`
-	Unknown    uint8
-}
-
-type ICQ_0x07DA_0x08A2_DBQueryMetaReplyXMLData struct {
-	ICQMetadata
-	ReqSubType uint16
-	Success    uint8
-	XML        string `oscar:"len_prefix=uint16,nullterm"`
-}
-
-type ICQ_0x07DA_0x00DC_DBQueryMetaReplyMoreInfo struct {
-	ICQMetadata
-	ReqSubType uint16
-	Success    uint8
-	ICQ_0x07D0_0x03FD_DBQueryMetaReqSetMoreInfo
-	Unknown     uint16
-	City        string `oscar:"len_prefix=uint16,nullterm"`
-	State       string `oscar:"len_prefix=uint16,nullterm"`
-	CountryCode uint16
-	TimeZone    uint8
-}
-
-type ICQ_0x07DA_0x00EB_DBQueryMetaReplyExtEmailInfo struct {
-	ICQMetadata
-	ReqSubType uint16
-	Success    uint8
-	Emails     []struct {
-		Flag  uint8  // (0-publish, 1-don't)
-		Email string `oscar:"len_prefix=uint16,nullterm"`
-	} `oscar:"count_prefix=uint8"`
-}
-
-type ICQ_0x07DA_0x00D2_DBQueryMetaReplyWorkInfo struct {
-	ICQMetadata
-	ReqSubType uint16
-	Success    uint8
-	ICQ_0x07D0_0x03F3_DBQueryMetaReqSetWorkInfo
-}
-
-type ICQ_0x07DA_0x00F0_DBQueryMetaReplyInterests struct {
-	ICQMetadata
-	ReqSubType uint16
-	Success    uint8
-	Interests  []struct {
-		Code    uint16
-		Keyword string `oscar:"len_prefix=uint16,nullterm"`
-	} `oscar:"count_prefix=uint8"`
-}
-
-type ICQ_0x07DA_0x00E6_DBQueryMetaReplyNotes struct {
-	ICQMetadata
-	ReqSubType uint16
-	Success    uint8
-	ICQ_0x07D0_0x0406_DBQueryMetaReqSetNotes
-}
-
-type ICQ_0x07DA_0x00FA_DBQueryMetaReplyAffiliations struct {
-	ICQMetadata
-	ReqSubType uint16
-	Success    uint8
-	ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations
-}
-
-type ICQ_0x07DA_0x00C8_DBQueryMetaReplyBasicInfo struct {
-	ICQMetadata
-	ReqSubType   uint16
-	Success      uint8
-	Nickname     string `oscar:"len_prefix=uint16,nullterm"`
-	FirstName    string `oscar:"len_prefix=uint16,nullterm"`
-	LastName     string `oscar:"len_prefix=uint16,nullterm"`
-	Email        string `oscar:"len_prefix=uint16,nullterm"`
-	City         string `oscar:"len_prefix=uint16,nullterm"`
-	State        string `oscar:"len_prefix=uint16,nullterm"`
-	Phone        string `oscar:"len_prefix=uint16,nullterm"`
-	Fax          string `oscar:"len_prefix=uint16,nullterm"`
-	Address      string `oscar:"len_prefix=uint16,nullterm"`
-	CellPhone    string `oscar:"len_prefix=uint16,nullterm"`
-	ZIP          string `oscar:"len_prefix=uint16,nullterm"`
-	CountryCode  uint16
-	GMTOffset    uint8
-	AuthFlag     uint8
-	WebAware     uint8
-	DCPerms      uint8
-	PublishEmail uint8
-}
-
-type ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound struct {
-	ICQMetadata
-	ReqSubType uint16
-	Success    uint8
-	Details    ICQUserSearchRecord `oscar:"len_prefix=uint16"`
-	// LastMessageFooter is set only on the last message in the batch
-	LastMessageFooter *struct {
-		FoundUsersLeft uint32
-	} `oscar:"optional"`
-}
-
-// LastResult flags the message as the last message in the search results.
-func (s *ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound) LastResult() {
-	s.ReqSubType = ICQDBQueryMetaReplyLastUserFound
-	s.LastMessageFooter = &struct {
-		FoundUsersLeft uint32
-	}{
-		FoundUsersLeft: 0,
-	}
-}
-
-type ICQ_0x07DA_0x0104_DBQueryMetaReplyShortInfo struct {
-	ICQMetadata
-	ReqSubType    uint16
-	Success       uint8
-	Nickname      string `oscar:"len_prefix=uint16,nullterm"`
-	FirstName     string `oscar:"len_prefix=uint16,nullterm"`
-	LastName      string `oscar:"len_prefix=uint16,nullterm"`
-	Email         string `oscar:"len_prefix=uint16,nullterm"`
-	Authorization uint8
-	Unknown       uint8
-	Gender        uint8
-}
-
-type ICQ_0x0041_DBQueryOfflineMsgReply struct {
-	ICQMetadata
-	SenderUIN uint32
-	Year      uint16
-	Month     uint8
-	Day       uint8
-	Hour      uint8
-	Minute    uint8
-	MsgType   uint8
-	Flags     uint8
-	Message   string `oscar:"len_prefix=uint16,nullterm"`
-}
-
-type ICQ_0x0042_DBQueryOfflineMsgReplyLast struct {
-	ICQMetadata
-	DroppedMessages uint8
-}
-
-type ICQMetadataWithSubType struct {
-	ICQMetadata
-	Optional *struct {
-		ReqSubType uint16
-	} `oscar:"optional"`
-}
-
-type ICQMetadata struct {
-	UIN     uint32
-	ReqType uint16
-	Seq     uint16
-}
-
-// ICQMessageRequestEnvelope is a helper struct that provides syntactic sugar for
-// unmarshaling an ICQ message into a little-endian byte array.
-type ICQMessageRequestEnvelope struct {
-	Body []byte `oscar:"len_prefix=uint16"`
-}
-
-// ICQMessageReplyEnvelope is a helper struct that provides syntactic sugar for
-// marshaling an ICQ message into a little-endian byte array.
-type ICQMessageReplyEnvelope struct {
-	Message any `oscar:"len_prefix=uint16"`
-}
-
-type ICQUserSearchRecord struct {
-	UIN           uint32
-	Nickname      string `oscar:"len_prefix=uint16,nullterm"`
-	FirstName     string `oscar:"len_prefix=uint16,nullterm"`
-	LastName      string `oscar:"len_prefix=uint16,nullterm"`
-	Email         string `oscar:"len_prefix=uint16,nullterm"`
-	Authorization uint8
-	OnlineStatus  uint16
-	Gender        uint8
-	Age           uint16
-}
-
-//
 // 0x10: BART
 //
 //
@@ -1662,6 +1264,404 @@ type SNAC_0x13_0x0E_FeedbagStatus struct {
 
 type SNAC_0x13_0x11_FeedbagStartCluster struct {
 	TLVRestBlock
+}
+
+//
+// 0x15: ICQ
+//
+
+const (
+	ICQErr     uint16 = 0x0001
+	ICQDBQuery uint16 = 0x0002
+	ICQDBReply uint16 = 0x0003
+
+	ICQTLVTagsMetadata uint16 = 0x01
+
+	ICQStatusCodeOK   uint8 = 0x0A
+	ICQStatusCodeFail uint8 = 0x32
+	ICQStatusCodeErr  uint8 = 0x14
+
+	ICQDBQueryOfflineMsgReq       uint16 = 0x003C
+	ICQDBQueryOfflineMsgReply     uint16 = 0x0041
+	ICQDBQueryOfflineMsgReplyLast uint16 = 0x0042
+	ICQDBQueryDeleteMsgReq        uint16 = 0x003E
+	ICQDBQueryMetaReq             uint16 = 0x07D0
+	ICQDBQueryMetaReply           uint16 = 0x07DA
+)
+
+const (
+	ICQUserFlagPublishEmailYes uint8 = 0
+	ICQUserFlagPublishEmailNo  uint8 = 1
+)
+
+const (
+	ICQDBQueryMetaReqSetBasicInfo     uint16 = 0x03EA
+	ICQDBQueryMetaReqSetWorkInfo      uint16 = 0x03F3
+	ICQDBQueryMetaReqSetMoreInfo      uint16 = 0x03FD
+	ICQDBQueryMetaReqSetNotes         uint16 = 0x0406
+	ICQDBQueryMetaReqSetEmails        uint16 = 0x040B
+	ICQDBQueryMetaReqSetInterests     uint16 = 0x0410
+	ICQDBQueryMetaReqSetAffiliations  uint16 = 0x041A
+	ICQDBQueryMetaReqSetPermissions   uint16 = 0x0424
+	ICQDBQueryMetaReqShortInfo        uint16 = 0x04BA
+	ICQDBQueryMetaReqFullInfo         uint16 = 0x04B2
+	ICQDBQueryMetaReqFullInfo2        uint16 = 0x04D0
+	ICQDBQueryMetaReqSearchByDetails  uint16 = 0x0515
+	ICQDBQueryMetaReqSearchByUIN      uint16 = 0x051F
+	ICQDBQueryMetaReqSearchByEmail    uint16 = 0x0529
+	ICQDBQueryMetaReqSearchWhitePages uint16 = 0x0533
+	ICQDBQueryMetaReqXMLReq           uint16 = 0x0898
+	ICQDBQueryMetaReqStat0a8c         uint16 = 0x0A8C
+	ICQDBQueryMetaReqStat0a96         uint16 = 0x0A96
+	ICQDBQueryMetaReqStat0aaa         uint16 = 0x0AAA
+	ICQDBQueryMetaReqStat0ab4         uint16 = 0x0AB4
+	ICQDBQueryMetaReqStat0ab9         uint16 = 0x0AB9
+	ICQDBQueryMetaReqStat0abe         uint16 = 0x0ABE
+	ICQDBQueryMetaReqStat0ac8         uint16 = 0x0AC8
+	ICQDBQueryMetaReqStat0acd         uint16 = 0x0ACD
+	ICQDBQueryMetaReqStat0ad2         uint16 = 0x0AD2
+	ICQDBQueryMetaReqStat0ad7         uint16 = 0x0AD7
+	ICQDBQueryMetaReqStat0758         uint16 = 0x0758
+
+	ICQDBQueryMetaReplySetBasicInfo    uint16 = 0x0064
+	ICQDBQueryMetaReplySetWorkInfo     uint16 = 0x006E
+	ICQDBQueryMetaReplySetMoreInfo     uint16 = 0x0078
+	ICQDBQueryMetaReplySetNotes        uint16 = 0x0082
+	ICQDBQueryMetaReplySetEmails       uint16 = 0x0087
+	ICQDBQueryMetaReplySetInterests    uint16 = 0x008C
+	ICQDBQueryMetaReplySetAffiliations uint16 = 0x0096
+	ICQDBQueryMetaReplySetPermissions  uint16 = 0x00A0
+	ICQDBQueryMetaReplyBasicInfo       uint16 = 0x00C8
+	ICQDBQueryMetaReplyWorkInfo        uint16 = 0x00D2
+	ICQDBQueryMetaReplyMoreInfo        uint16 = 0x00DC
+	ICQDBQueryMetaReplyNotes           uint16 = 0x00E6
+	ICQDBQueryMetaReplyExtEmailInfo    uint16 = 0x00EB
+	ICQDBQueryMetaReplyInterests       uint16 = 0x00F0
+	ICQDBQueryMetaReplyAffiliations    uint16 = 0x00FA
+	ICQDBQueryMetaReplyShortInfo       uint16 = 0x0104
+	ICQDBQueryMetaReplyHomePageCat     uint16 = 0x010E
+	ICQDBQueryMetaReplyUserFound       uint16 = 0x01A4
+	ICQDBQueryMetaReplyLastUserFound   uint16 = 0x01AE
+	ICQDBQueryMetaReplyXMLData         uint16 = 0x08A2
+)
+
+type SNAC_0x15_0x02_BQuery struct {
+	TLVRestBlock
+}
+
+type ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo struct {
+	UIN uint32
+}
+
+type ICQ_0x07D0_0x0898_DBQueryMetaReqXMLReq struct {
+	XMLRequest string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQ_0x07D0_0x0424_DBQueryMetaReqSetPermissions struct {
+	Authorization uint8 // (1-required, 0-not required)
+	WebAware      uint8 // webaware (0-no, 1-yes)
+	DCPerms       uint8 // dc_perms (0-any, 1-contact, 2-authorization)
+	Unknown       uint8
+}
+
+type ICQ_0x07D0_0x051F_DBQueryMetaReqSearchByUIN struct {
+	UIN uint32
+}
+
+type ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail struct {
+	Email string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails struct {
+	FirstName string `oscar:"len_prefix=uint16,nullterm"`
+	LastName  string `oscar:"len_prefix=uint16,nullterm"`
+	NickName  string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages struct {
+	FirstName           string `oscar:"len_prefix=uint16,nullterm"`
+	LastName            string `oscar:"len_prefix=uint16,nullterm"`
+	Nickname            string `oscar:"len_prefix=uint16,nullterm"`
+	Email               string `oscar:"len_prefix=uint16,nullterm"`
+	MinAge              uint16
+	MaxAge              uint16
+	Gender              uint8
+	SpeakingLang        uint8
+	City                string `oscar:"len_prefix=uint16,nullterm"`
+	State               string `oscar:"len_prefix=uint16,nullterm"`
+	CountryCode         uint16
+	Company             string `oscar:"len_prefix=uint16,nullterm"`
+	Department          string `oscar:"len_prefix=uint16,nullterm"`
+	Position            string `oscar:"len_prefix=uint16,nullterm"`
+	OccupationCode      uint16
+	PastCode            uint16
+	PastKeywords        string `oscar:"len_prefix=uint16,nullterm"`
+	InterestsCode       uint16
+	InterestsKeyword    string `oscar:"len_prefix=uint16,nullterm"`
+	AffiliationsCode    uint16
+	AffiliationsKeyword string `oscar:"len_prefix=uint16,nullterm"`
+	HomePageCode        uint16
+	HomePageKeywords    string `oscar:"len_prefix=uint16,nullterm"`
+	SearchScope         uint8
+}
+
+type ICQ_0x07D0_0x03FD_DBQueryMetaReqSetMoreInfo struct {
+	Age          uint8 // not used because age is calculated from birthdate
+	Gender       uint16
+	HomePageAddr string `oscar:"len_prefix=uint16,nullterm"`
+	BirthYear    uint16
+	BirthMonth   uint8
+	BirthDay     uint8
+	Lang1        uint8
+	Lang2        uint8
+	Lang3        uint8
+}
+
+type ICQ_0x07D0_0x03F3_DBQueryMetaReqSetWorkInfo struct {
+	City           string `oscar:"len_prefix=uint16,nullterm"`
+	State          string `oscar:"len_prefix=uint16,nullterm"`
+	Phone          string `oscar:"len_prefix=uint16,nullterm"`
+	Fax            string `oscar:"len_prefix=uint16,nullterm"`
+	Address        string `oscar:"len_prefix=uint16,nullterm"`
+	ZIP            string `oscar:"len_prefix=uint16,nullterm"`
+	CountryCode    uint16
+	Company        string `oscar:"len_prefix=uint16,nullterm"`
+	Department     string `oscar:"len_prefix=uint16,nullterm"`
+	Position       string `oscar:"len_prefix=uint16,nullterm"`
+	OccupationCode uint16
+	WebPage        string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQ_0x07D0_0x040B_DBQueryMetaReqSetEmails struct {
+	Emails []struct {
+		Publish uint8
+		Email   string `oscar:"len_prefix=uint16,nullterm"`
+	} `oscar:"count_prefix=uint8"`
+}
+
+type ICQ_0x07D0_0x0406_DBQueryMetaReqSetNotes struct {
+	Notes string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQ_0x07D0_0x0410_DBQueryMetaReqSetInterests struct {
+	Interests []struct {
+		Code    uint16
+		Keyword string `oscar:"len_prefix=uint16,nullterm"`
+	} `oscar:"count_prefix=uint8"`
+}
+
+type ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations struct {
+	PastAffiliations []struct {
+		Code    uint16
+		Keyword string `oscar:"len_prefix=uint16,nullterm"`
+	} `oscar:"count_prefix=uint8"`
+	Affiliations []struct {
+		Code    uint16
+		Keyword string `oscar:"len_prefix=uint16,nullterm"`
+	} `oscar:"count_prefix=uint8"`
+}
+
+type ICQ_0x07D0_0x03EA_DBQueryMetaReqSetBasicInfo struct {
+	Nickname     string `oscar:"len_prefix=uint16,nullterm"`
+	FirstName    string `oscar:"len_prefix=uint16,nullterm"`
+	LastName     string `oscar:"len_prefix=uint16,nullterm"`
+	EmailAddress string `oscar:"len_prefix=uint16,nullterm"`
+	City         string `oscar:"len_prefix=uint16,nullterm"`
+	State        string `oscar:"len_prefix=uint16,nullterm"`
+	Phone        string `oscar:"len_prefix=uint16,nullterm"`
+	Fax          string `oscar:"len_prefix=uint16,nullterm"`
+	HomeAddress  string `oscar:"len_prefix=uint16,nullterm"`
+	CellPhone    string `oscar:"len_prefix=uint16,nullterm"`
+	ZIP          string `oscar:"len_prefix=uint16,nullterm"`
+	CountryCode  uint16
+	GMTOffset    uint8
+	PublishEmail uint8
+}
+
+type SNAC_0x15_0x02_DBReply struct {
+	TLVRestBlock
+}
+
+type ICQ_0x07DA_0x010E_DBQueryMetaReplyHomePageCat struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	Enabled    uint8
+	CatCode    uint16
+	Keywords   string `oscar:"len_prefix=uint16,nullterm"`
+	Unknown    uint8
+}
+
+type ICQ_0x07DA_0x08A2_DBQueryMetaReplyXMLData struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	XML        string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQ_0x07DA_0x00DC_DBQueryMetaReplyMoreInfo struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	ICQ_0x07D0_0x03FD_DBQueryMetaReqSetMoreInfo
+	Unknown     uint16
+	City        string `oscar:"len_prefix=uint16,nullterm"`
+	State       string `oscar:"len_prefix=uint16,nullterm"`
+	CountryCode uint16
+	TimeZone    uint8
+}
+
+type ICQ_0x07DA_0x00EB_DBQueryMetaReplyExtEmailInfo struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	Emails     []struct {
+		Flag  uint8  // (0-publish, 1-don't)
+		Email string `oscar:"len_prefix=uint16,nullterm"`
+	} `oscar:"count_prefix=uint8"`
+}
+
+type ICQ_0x07DA_0x00D2_DBQueryMetaReplyWorkInfo struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	ICQ_0x07D0_0x03F3_DBQueryMetaReqSetWorkInfo
+}
+
+type ICQ_0x07DA_0x00F0_DBQueryMetaReplyInterests struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	Interests  []struct {
+		Code    uint16
+		Keyword string `oscar:"len_prefix=uint16,nullterm"`
+	} `oscar:"count_prefix=uint8"`
+}
+
+type ICQ_0x07DA_0x00E6_DBQueryMetaReplyNotes struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	ICQ_0x07D0_0x0406_DBQueryMetaReqSetNotes
+}
+
+type ICQ_0x07DA_0x00FA_DBQueryMetaReplyAffiliations struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations
+}
+
+type ICQ_0x07DA_0x00C8_DBQueryMetaReplyBasicInfo struct {
+	ICQMetadata
+	ReqSubType   uint16
+	Success      uint8
+	Nickname     string `oscar:"len_prefix=uint16,nullterm"`
+	FirstName    string `oscar:"len_prefix=uint16,nullterm"`
+	LastName     string `oscar:"len_prefix=uint16,nullterm"`
+	Email        string `oscar:"len_prefix=uint16,nullterm"`
+	City         string `oscar:"len_prefix=uint16,nullterm"`
+	State        string `oscar:"len_prefix=uint16,nullterm"`
+	Phone        string `oscar:"len_prefix=uint16,nullterm"`
+	Fax          string `oscar:"len_prefix=uint16,nullterm"`
+	Address      string `oscar:"len_prefix=uint16,nullterm"`
+	CellPhone    string `oscar:"len_prefix=uint16,nullterm"`
+	ZIP          string `oscar:"len_prefix=uint16,nullterm"`
+	CountryCode  uint16
+	GMTOffset    uint8
+	AuthFlag     uint8
+	WebAware     uint8
+	DCPerms      uint8
+	PublishEmail uint8
+}
+
+type ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound struct {
+	ICQMetadata
+	ReqSubType uint16
+	Success    uint8
+	Details    ICQUserSearchRecord `oscar:"len_prefix=uint16"`
+	// LastMessageFooter is set only on the last message in the batch
+	LastMessageFooter *struct {
+		FoundUsersLeft uint32
+	} `oscar:"optional"`
+}
+
+// LastResult flags the message as the last message in the search results.
+func (s *ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound) LastResult() {
+	s.ReqSubType = ICQDBQueryMetaReplyLastUserFound
+	s.LastMessageFooter = &struct {
+		FoundUsersLeft uint32
+	}{
+		FoundUsersLeft: 0,
+	}
+}
+
+type ICQ_0x07DA_0x0104_DBQueryMetaReplyShortInfo struct {
+	ICQMetadata
+	ReqSubType    uint16
+	Success       uint8
+	Nickname      string `oscar:"len_prefix=uint16,nullterm"`
+	FirstName     string `oscar:"len_prefix=uint16,nullterm"`
+	LastName      string `oscar:"len_prefix=uint16,nullterm"`
+	Email         string `oscar:"len_prefix=uint16,nullterm"`
+	Authorization uint8
+	Unknown       uint8
+	Gender        uint8
+}
+
+type ICQ_0x0041_DBQueryOfflineMsgReply struct {
+	ICQMetadata
+	SenderUIN uint32
+	Year      uint16
+	Month     uint8
+	Day       uint8
+	Hour      uint8
+	Minute    uint8
+	MsgType   uint8
+	Flags     uint8
+	Message   string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQ_0x0042_DBQueryOfflineMsgReplyLast struct {
+	ICQMetadata
+	DroppedMessages uint8
+}
+
+type ICQMetadataWithSubType struct {
+	ICQMetadata
+	Optional *struct {
+		ReqSubType uint16
+	} `oscar:"optional"`
+}
+
+type ICQMetadata struct {
+	UIN     uint32
+	ReqType uint16
+	Seq     uint16
+}
+
+// ICQMessageRequestEnvelope is a helper struct that provides syntactic sugar for
+// unmarshaling an ICQ message into a little-endian byte array.
+type ICQMessageRequestEnvelope struct {
+	Body []byte `oscar:"len_prefix=uint16"`
+}
+
+// ICQMessageReplyEnvelope is a helper struct that provides syntactic sugar for
+// marshaling an ICQ message into a little-endian byte array.
+type ICQMessageReplyEnvelope struct {
+	Message any `oscar:"len_prefix=uint16"`
+}
+
+type ICQUserSearchRecord struct {
+	UIN           uint32
+	Nickname      string `oscar:"len_prefix=uint16,nullterm"`
+	FirstName     string `oscar:"len_prefix=uint16,nullterm"`
+	LastName      string `oscar:"len_prefix=uint16,nullterm"`
+	Email         string `oscar:"len_prefix=uint16,nullterm"`
+	Authorization uint8
+	OnlineStatus  uint16
+	Gender        uint8
+	Age           uint16
 }
 
 //

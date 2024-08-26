@@ -55,7 +55,7 @@ type ICQHandler struct {
 }
 
 func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
-	inBody := wire.SNAC_0x0F_0x02_BQuery{}
+	inBody := wire.SNAC_0x15_0x02_BQuery{}
 	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}

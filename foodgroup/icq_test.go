@@ -131,7 +131,7 @@ func TestICQService_FindByDetails(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -168,7 +168,7 @@ func TestICQService_FindByDetails(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -308,7 +308,7 @@ func TestICQService_FindByEmail(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -444,7 +444,7 @@ func TestICQService_FindByUIN(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -602,7 +602,7 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -639,7 +639,7 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -834,7 +834,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -878,7 +878,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -919,7 +919,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -945,7 +945,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -971,7 +971,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1011,7 +1011,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1040,7 +1040,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1087,7 +1087,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1251,7 +1251,7 @@ func TestICQService_OfflineMsgReq(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1283,7 +1283,7 @@ func TestICQService_OfflineMsgReq(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1315,7 +1315,7 @@ func TestICQService_OfflineMsgReq(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1438,7 +1438,7 @@ func TestICQService_SetAffiliations(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1546,7 +1546,7 @@ func TestICQService_SetEmails(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1649,7 +1649,7 @@ func TestICQService_SetBasicInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1760,7 +1760,7 @@ func TestICQService_SetInterests(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1880,7 +1880,7 @@ func TestICQService_SetMoreInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -1952,7 +1952,7 @@ func TestICQService_SetPermissions(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -2029,7 +2029,7 @@ func TestICQService_SetUserNotes(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -2135,7 +2135,7 @@ func TestICQService_SetWorkInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -2235,7 +2235,7 @@ func TestICQService_ShortUserInfo(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
@@ -2328,7 +2328,7 @@ func TestICQService_XMLReqData(t *testing.T) {
 									FoodGroup: wire.ICQ,
 									SubGroup:  wire.ICQDBReply,
 								},
-								Body: wire.SNAC_0x0F_0x02_DBReply{
+								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{

@@ -702,7 +702,7 @@ func (s ICQService) reply(ctx context.Context, sess *state.Session, message wire
 			FoodGroup: wire.ICQ,
 			SubGroup:  wire.ICQDBReply,
 		},
-		Body: wire.SNAC_0x0F_0x02_DBReply{
+		Body: wire.SNAC_0x15_0x02_DBReply{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
 					wire.NewTLV(wire.ICQTLVTagsMetadata, message),
