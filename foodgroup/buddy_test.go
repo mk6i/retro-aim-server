@@ -444,7 +444,7 @@ func TestBuddyService_BroadcastDeparture(t *testing.T) {
 										WarningLevel: 0,
 										TLVBlock: wire.TLVBlock{
 											TLVList: wire.TLVList{
-												wire.NewTLV(wire.OServiceUserInfoUserFlags, uint8(0)),
+												wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0)),
 											},
 										},
 									},

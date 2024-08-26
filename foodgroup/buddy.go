@@ -221,7 +221,7 @@ func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Se
 					TLVList: wire.TLVList{
 						// this TLV needs to be set in order for departure
 						// events to work in ICQ
-						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint8(0)),
+						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0)),
 					},
 				},
 			},
