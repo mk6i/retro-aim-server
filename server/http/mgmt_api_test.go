@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
@@ -1244,6 +1245,42 @@ func TestInstantMessageHandler_POST(t *testing.T) {
 
 			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
 				t.Errorf("want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
+func TestVersionHandler_GET(t *testing.T) {
+	tt := []struct {
+		name       string
+		want       string
+		statusCode int
+		buildInfo  config.Build
+	}{
+		{
+			name:       "get ras version",
+			want:       `{"version":"13.3.7","commit":"asdfASDF12345678","date":"2024-03-01"}`,
+			statusCode: http.StatusOK,
+			buildInfo: config.Build{
+				Version: "13.3.7",
+				Commit:  "asdfASDF12345678",
+				Date:    "2024-03-01",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			responseRecorder := httptest.NewRecorder()
+
+			getVersionHandler(responseRecorder, tc.buildInfo)
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
 			}
 		})
 	}

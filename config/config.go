@@ -18,3 +18,9 @@ type Config struct {
 	LogLevel    string `envconfig:"LOG_LEVEL" required:"true" val:"info" description:"Set logging granularity. Possible values: 'trace', 'debug', 'info', 'warn', 'error'."`
 	OSCARHost   string `envconfig:"OSCAR_HOST" required:"true" val:"127.0.0.1" description:"The hostname that AIM clients connect to in order to reach OSCAR services (auth, BOS, BUCP, etc). Make sure the hostname is reachable by all clients. For local development, the default loopback address should work provided the server and AIM client(s) are running on the same machine. For LAN-only clients, a private IP address (e.g. 192.168..) or hostname should suffice. For clients connecting over the Internet, specify your public IP address and ensure that TCP ports 5190-5196 are open on your firewall."`
 }
+
+type Build struct {
+	Version string `json:"version"`
+	Commit  string `json:"commit"`
+	Date    string `json:"date"`
+}

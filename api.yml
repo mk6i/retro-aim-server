@@ -363,3 +363,25 @@ paths:
           description: Message sent successfully.
         '400':
           description: Bad request. Invalid input data.
+
+  /version:
+    get:
+      summary: Get build information of RAS.
+      description: Retrieve the build version, git commit, and build date of the running RAS binary.
+      responses:
+        '200':
+          description: Successful response containing the build information.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                    description: The release version number.
+                  commit:
+                    type: string
+                    description: The latest git commit hash in this build.
+                  date:
+                    type: string
+                    description: The build date and timestamp in RFC3339 format.
