@@ -133,7 +133,7 @@ func (s AuthService) RetrieveBOSSession(authCookie []byte) (*state.Session, erro
 		return nil, err
 	}
 
-	u, err := s.userManager.User(state.NewIdentScreenName(c.ScreenName.String()))
+	u, err := s.userManager.User(c.ScreenName.IdentScreenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
 	}

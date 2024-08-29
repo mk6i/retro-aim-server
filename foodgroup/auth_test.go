@@ -1191,7 +1191,7 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 }
 
 func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
-	sess := newTestSession("screen-name")
+	sess := newTestSession("screenName")
 
 	aimAuthCookie := bosCookie{
 		ScreenName: sess.DisplayScreenName(),
@@ -1223,7 +1223,7 @@ func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
 }
 
 func TestAuthService_RetrieveBOSSession_SessionNotFound(t *testing.T) {
-	sess := newTestSession("screen-name")
+	sess := newTestSession("screenName")
 
 	aimAuthCookie := bosCookie{
 		ScreenName: sess.DisplayScreenName(),
