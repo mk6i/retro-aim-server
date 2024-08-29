@@ -480,8 +480,6 @@ func postInstantMessageHandler(w http.ResponseWriter, r *http.Request, messageRe
 
 // getUserBuddyIconHandler handles the GET /user/{screenname}/icon endpoint.
 func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManager, f FeedBagRetriever, b BARTRetriever, logger *slog.Logger) {
-	w.Header().Set("Content-Type", "image/gif")
-
 	screenName := state.NewIdentScreenName(r.PathValue("screenname"))
 	user, err := u.User(screenName)
 	if err != nil {
@@ -509,6 +507,7 @@ func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManag
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", http.DetectContentType(icon))
 	w.Write(icon)
 }
 
