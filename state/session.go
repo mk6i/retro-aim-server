@@ -138,6 +138,27 @@ func (s *Session) SetSignonTime(t time.Time) {
 	s.signonTime = t
 }
 
+// SignonTime reports when the user signed on
+func (s *Session) SignonTime() time.Time {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.signonTime
+}
+
+// Idle reports the user's idle state.
+func (s *Session) Idle() bool {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.idle
+}
+
+// IdleTime reports when the user went idle
+func (s *Session) IdleTime() time.Time {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.idleTime
+}
+
 // SetIdle sets the user's idle state.
 func (s *Session) SetIdle(dur time.Duration) {
 	s.mutex.Lock()

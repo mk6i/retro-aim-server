@@ -197,6 +197,64 @@ func (_c *mockFeedbagManager_Buddies_Call) RunAndReturn(run func(state.IdentScre
 	return _c
 }
 
+// BuddyIconRefByName provides a mock function with given fields: screenName
+func (_m *mockFeedbagManager) BuddyIconRefByName(screenName state.IdentScreenName) (*wire.BARTID, error) {
+	ret := _m.Called(screenName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BuddyIconRefByName")
+	}
+
+	var r0 *wire.BARTID
+	var r1 error
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) (*wire.BARTID, error)); ok {
+		return rf(screenName)
+	}
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *wire.BARTID); ok {
+		r0 = rf(screenName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*wire.BARTID)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
+		r1 = rf(screenName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockFeedbagManager_BuddyIconRefByName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BuddyIconRefByName'
+type mockFeedbagManager_BuddyIconRefByName_Call struct {
+	*mock.Call
+}
+
+// BuddyIconRefByName is a helper method to define mock.On call
+//   - screenName state.IdentScreenName
+func (_e *mockFeedbagManager_Expecter) BuddyIconRefByName(screenName interface{}) *mockFeedbagManager_BuddyIconRefByName_Call {
+	return &mockFeedbagManager_BuddyIconRefByName_Call{Call: _e.mock.On("BuddyIconRefByName", screenName)}
+}
+
+func (_c *mockFeedbagManager_BuddyIconRefByName_Call) Run(run func(screenName state.IdentScreenName)) *mockFeedbagManager_BuddyIconRefByName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(state.IdentScreenName))
+	})
+	return _c
+}
+
+func (_c *mockFeedbagManager_BuddyIconRefByName_Call) Return(_a0 *wire.BARTID, _a1 error) *mockFeedbagManager_BuddyIconRefByName_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockFeedbagManager_BuddyIconRefByName_Call) RunAndReturn(run func(state.IdentScreenName) (*wire.BARTID, error)) *mockFeedbagManager_BuddyIconRefByName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Feedbag provides a mock function with given fields: screenName
 func (_m *mockFeedbagManager) Feedbag(screenName state.IdentScreenName) ([]wire.FeedbagItem, error) {
 	ret := _m.Called(screenName)

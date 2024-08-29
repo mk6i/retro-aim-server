@@ -50,6 +50,7 @@ type FeedbagManager interface {
 	FeedbagLastModified(screenName state.IdentScreenName) (time.Time, error)
 	Feedbag(screenName state.IdentScreenName) ([]wire.FeedbagItem, error)
 	FeedbagUpsert(screenName state.IdentScreenName, items []wire.FeedbagItem) error
+	BuddyIconRefByName(screenName state.IdentScreenName) (*wire.BARTID, error)
 }
 
 // LegacyBuddyListManager defines operations for tracking user relationships

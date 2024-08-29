@@ -67,8 +67,8 @@ type sessionRetrieverParams struct {
 	retrieveSessionParams
 }
 
-// retrieveSessionParams is a helper struct that contains mock parameters for
-// SessionRetriever methods
+// retrieveSessionParams is the list of parameters passed at the mock
+// SessionRetriever.RetrieveSession call site
 type retrieveSessionParams []struct {
 	screenName state.IdentScreenName
 	result     *state.Session
@@ -257,6 +257,7 @@ type feedbagManagerParams struct {
 	feedbagParams
 	feedbagLastModifiedParams
 	feedbagDeleteParams
+	buddyIconRefByNameParams
 }
 
 // blockedStateParams is the list of parameters passed at the mock
@@ -311,6 +312,14 @@ type feedbagDeleteParams []struct {
 	items      []wire.FeedbagItem
 }
 
+// buddyIconRefByNameParams is the list of parameters passed at the mock
+// FeedbagManager.BuddyIconRefByName call site
+type buddyIconRefByNameParams []struct {
+	screenName state.IdentScreenName
+	result     *wire.BARTID
+	err        error
+}
+
 // messageRelayerParams is a helper struct that contains mock parameters for
 // MessageRelayer methods
 type messageRelayerParams struct {
@@ -348,7 +357,7 @@ type profileManagerParams struct {
 	setProfileParams
 }
 
-// retrieveByScreenNameParams is the list of parameters passed at the mock
+// retrieveProfileParams is the list of parameters passed at the mock
 // ProfileManager.Profile call site
 type retrieveProfileParams []struct {
 	screenName state.IdentScreenName

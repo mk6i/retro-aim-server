@@ -1281,3 +1281,45 @@ func (f SQLiteUserStore) DeleteMessages(recip IdentScreenName) error {
 	_, err := f.db.Exec(q, recip.String())
 	return err
 }
+
+// BuddyIconRefByName retrieves the buddy icon reference for a given user
+func (f SQLiteUserStore) BuddyIconRefByName(screenName IdentScreenName) (*wire.BARTID, error) {
+	q := `
+		SELECT
+			groupID,
+			itemID,
+			classID,
+			name,
+			attributes
+		FROM feedBag
+		WHERE screenname = ? AND name = ? AND classID = ?
+	`
+	var item wire.FeedbagItem
+	var attrs []byte
+	err := f.db.QueryRow(q, screenName.String(), wire.BARTTypesBuddyIcon, wire.FeedbagClassIdBart).Scan(&item.GroupID, &item.ItemID, &item.ClassID, &item.Name, &attrs)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := wire.UnmarshalBE(&item.TLVLBlock, bytes.NewBuffer(attrs)); err != nil {
+		return nil, err
+	}
+	b, hasBuf := item.Slice(wire.FeedbagAttributesBartInfo)
+	if !hasBuf {
+		return nil, errors.New("unable to extract icon payload")
+	}
+	bartInfo := wire.BARTInfo{}
+	if err := wire.UnmarshalBE(&bartInfo, bytes.NewBuffer(b)); err != nil {
+		return nil, err
+	}
+	return &wire.BARTID{
+		Type: wire.BARTTypesBuddyIcon,
+		BARTInfo: wire.BARTInfo{
+			Flags: bartInfo.Flags,
+			Hash:  bartInfo.Hash,
+		},
+	}, nil
+
+}

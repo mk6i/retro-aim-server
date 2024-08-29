@@ -72,6 +72,66 @@ paths:
         '404':
           description: User not found.
 
+  /user/{screenname}/account:
+    get:
+      summary: Get account details for a specific screen name.
+      description: Retrieve account details for a specific screen name.
+      parameters:
+      - name: screenname
+        in: path
+        description: User's AIM screen name or ICQ UIN.
+        required: true
+        type: string
+      responses:
+        '200':
+          description: Successful response containing account details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                    id:
+                      type: string
+                      description: User's unique identifier.
+                    screen_name:
+                      type: string
+                      description: User's AIM screen name or ICQ UIN.
+                    profile:
+                      type: string
+                      description: User's AIM profile HTML.
+                    email_address:
+                      type: string
+                      description: User's email address
+                    confirmed:
+                      type: bool
+                      description: User's account confirmation status
+                    is_icq:
+                      type: boolean
+                      description: If true, indicates an ICQ user instead of an AIM user.
+        '404':
+          description: User not found.
+
+  /user/{screenname}/icon:
+    get:
+      summary: Get AIM buddy icon for a screen name
+      description: Retrieve account buddy icon for a specific screen name.
+      parameters:
+      - name: screenname
+        in: path
+        description: User's AIM screen name or ICQ UIN.
+        required: true
+        type: string
+      responses:
+        '200':
+          description: Successful response containing buddy icon bytes
+          content:
+            image/gif:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: User not found, or user has no buddy icon
+
   /session:
     get:
       summary: Get active sessions
@@ -98,9 +158,65 @@ paths:
                         screen_name:
                           type: string
                           description: User's AIM screen name or ICQ UIN.
+                        online_seconds:
+                          type: float
+                          description: Number of seconds this user session has been online.
+                        away_message:
+                          type: string
+                          description: User's AIM away message HTML. Empty if the user is not away.
+                        idle_seconds:
+                          type: float
+                          description: Number of seconds this user session has been idle. 0 if not idle.
                         is_icq:
                           type: boolean
                           description: If true, indicates an ICQ user instead of an AIM user.
+
+  /session/{screenname}:
+    get:
+      summary: Get active sessions for a given screen name or UIN.
+      description: Retrieve a list of active sessions of a specific logged in user.
+      parameters:
+      - name: screenname
+        in: path
+        description: User's AIM screen name or ICQ UIN.
+        required: true
+        type: string
+      responses:
+        '200':
+          description: Successful response containing a list of active sessions for the given screen name
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    description: The number of active sessions.
+                  sessions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: User's unique identifier.
+                        screen_name:
+                          type: string
+                          description: User's AIM screen name or ICQ UIN.
+                        online_seconds:
+                          type: float
+                          description: Number of seconds this user session has been online.
+                        away_message:
+                          type: string
+                          description: User's AIM away message HTML. Empty if the user is not away.
+                        idle_seconds:
+                          type: float
+                          description: Number of seconds this user session has been idle. 0 if not idle.
+                        is_icq:
+                          type: boolean
+                          description: If true, indicates an ICQ user instead of an AIM user.
+        '404':
+          description: User not found.
 
   /user/password:
     put:

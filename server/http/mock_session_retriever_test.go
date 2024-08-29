@@ -67,6 +67,54 @@ func (_c *mockSessionRetriever_AllSessions_Call) RunAndReturn(run func() []*stat
 	return _c
 }
 
+// RetrieveByScreenName provides a mock function with given fields: screenName
+func (_m *mockSessionRetriever) RetrieveByScreenName(screenName state.IdentScreenName) *state.Session {
+	ret := _m.Called(screenName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RetrieveByScreenName")
+	}
+
+	var r0 *state.Session
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *state.Session); ok {
+		r0 = rf(screenName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*state.Session)
+		}
+	}
+
+	return r0
+}
+
+// mockSessionRetriever_RetrieveByScreenName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RetrieveByScreenName'
+type mockSessionRetriever_RetrieveByScreenName_Call struct {
+	*mock.Call
+}
+
+// RetrieveByScreenName is a helper method to define mock.On call
+//   - screenName state.IdentScreenName
+func (_e *mockSessionRetriever_Expecter) RetrieveByScreenName(screenName interface{}) *mockSessionRetriever_RetrieveByScreenName_Call {
+	return &mockSessionRetriever_RetrieveByScreenName_Call{Call: _e.mock.On("RetrieveByScreenName", screenName)}
+}
+
+func (_c *mockSessionRetriever_RetrieveByScreenName_Call) Run(run func(screenName state.IdentScreenName)) *mockSessionRetriever_RetrieveByScreenName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(state.IdentScreenName))
+	})
+	return _c
+}
+
+func (_c *mockSessionRetriever_RetrieveByScreenName_Call) Return(_a0 *state.Session) *mockSessionRetriever_RetrieveByScreenName_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockSessionRetriever_RetrieveByScreenName_Call) RunAndReturn(run func(state.IdentScreenName) *state.Session) *mockSessionRetriever_RetrieveByScreenName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // newMockSessionRetriever creates a new instance of mockSessionRetriever. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func newMockSessionRetriever(t interface {
