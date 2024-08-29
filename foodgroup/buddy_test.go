@@ -106,9 +106,10 @@ func TestBuddyService_AddBuddies(t *testing.T) {
 					},
 				},
 				feedbagManagerParams: feedbagManagerParams{
-					feedbagParams: feedbagParams{
+					buddyIconRefByNameParams: buddyIconRefByNameParams{
 						{
 							screenName: state.NewIdentScreenName("buddy_1_online"),
+							result:     nil,
 						},
 					},
 				},
@@ -159,6 +160,11 @@ func TestBuddyService_AddBuddies(t *testing.T) {
 			}
 
 			feedbagManager := newMockFeedbagManager(t)
+			for _, params := range tt.mockParams.feedbagManagerParams.buddyIconRefByNameParams {
+				feedbagManager.EXPECT().
+					BuddyIconRefByName(params.screenName).
+					Return(params.result, params.err)
+			}
 			for _, params := range tt.mockParams.feedbagParams {
 				feedbagManager.EXPECT().
 					Feedbag(params.screenName).
@@ -266,6 +272,12 @@ func TestBuddyService_BroadcastBuddyArrived(t *testing.T) {
 							results:    []wire.FeedbagItem{},
 						},
 					},
+					buddyIconRefByNameParams: buddyIconRefByNameParams{
+						{
+							screenName: state.NewIdentScreenName("user_screen_name"),
+							result:     nil,
+						},
+					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNamesParams: relayToScreenNamesParams{
@@ -307,28 +319,14 @@ func TestBuddyService_BroadcastBuddyArrived(t *testing.T) {
 							users:      []state.IdentScreenName{state.NewIdentScreenName("friend1")},
 						},
 					},
-					feedbagParams: feedbagParams{
+					buddyIconRefByNameParams: buddyIconRefByNameParams{
 						{
 							screenName: state.NewIdentScreenName("user_screen_name"),
-							results: []wire.FeedbagItem{
-								{
-									ClassID: wire.FeedbagClassIdBuddy,
-									Name:    "friend10",
-								},
-								{
-									ClassID: wire.FeedbagClassIdBart,
-									Name:    strconv.Itoa(int(wire.BARTTypesBadgeUrl)),
-								},
-								{
-									ClassID: wire.FeedbagClassIdBart,
-									Name:    strconv.Itoa(int(wire.BARTTypesBuddyIcon)),
-									TLVLBlock: wire.TLVLBlock{
-										TLVList: wire.TLVList{
-											wire.NewTLV(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
-												Hash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
-											}),
-										},
-									},
+							result: &wire.BARTID{
+								Type: wire.BARTTypesBuddyIcon,
+								BARTInfo: wire.BARTInfo{
+									Flags: wire.BARTFlagsKnown,
+									Hash:  []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
 								},
 							},
 						},
@@ -379,10 +377,10 @@ func TestBuddyService_BroadcastBuddyArrived(t *testing.T) {
 					AdjacentUsers(params.screenName).
 					Return(params.users, params.err)
 			}
-			for _, params := range tc.mockParams.feedbagManagerParams.feedbagParams {
+			for _, params := range tc.mockParams.feedbagManagerParams.buddyIconRefByNameParams {
 				feedbagManager.EXPECT().
-					Feedbag(params.screenName).
-					Return(params.results, nil)
+					BuddyIconRefByName(params.screenName).
+					Return(params.result, params.err)
 			}
 			messageRelayer := newMockMessageRelayer(t)
 			for _, params := range tc.mockParams.messageRelayerParams.relayToScreenNamesParams {
@@ -566,10 +564,10 @@ func TestBuddyService_UnicastBuddyArrived(t *testing.T) {
 			destSession:   newTestSession("dest_screen_name"),
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					feedbagParams: feedbagParams{
+					buddyIconRefByNameParams: buddyIconRefByNameParams{
 						{
 							screenName: state.NewIdentScreenName("src_screen_name"),
-							results:    []wire.FeedbagItem{},
+							result:     nil,
 						},
 					},
 				},
@@ -623,6 +621,18 @@ func TestBuddyService_UnicastBuddyArrived(t *testing.T) {
 							},
 						},
 					},
+					buddyIconRefByNameParams: buddyIconRefByNameParams{
+						{
+							screenName: state.NewIdentScreenName("src_screen_name"),
+							result: &wire.BARTID{
+								Type: wire.BARTTypesBuddyIcon,
+								BARTInfo: wire.BARTInfo{
+									Flags: wire.BARTFlagsKnown,
+									Hash:  []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
+								},
+							},
+						},
+					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNameParams: relayToScreenNameParams{
@@ -656,17 +666,16 @@ func TestBuddyService_UnicastBuddyArrived(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tc.mockParams.feedbagManagerParams.feedbagParams {
+			for _, params := range tc.mockParams.feedbagManagerParams.buddyIconRefByNameParams {
 				feedbagManager.EXPECT().
-					Feedbag(params.screenName).
-					Return(params.results, nil)
+					BuddyIconRefByName(params.screenName).
+					Return(params.result, params.err)
 			}
 			messageRelayer := newMockMessageRelayer(t)
 			for _, params := range tc.mockParams.messageRelayerParams.relayToScreenNameParams {
 				messageRelayer.EXPECT().
 					RelayToScreenName(mock.Anything, params.screenName, params.message)
 			}
-
 			svc := NewBuddyService(messageRelayer, feedbagManager, nil)
 
 			err := svc.UnicastBuddyArrived(nil, tc.sourceSession, tc.destSession)

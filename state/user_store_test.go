@@ -1796,3 +1796,75 @@ func TestSQLiteUserStore_DeleteMessages(t *testing.T) {
 		assert.Len(t, messages, 1)
 	})
 }
+
+func TestSQLiteUserStore_BuddyIconRefByNameExistingRef(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+	screenName := NewIdentScreenName("TalkingTyler")
+	testHash := []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'}
+
+	feedbagStore, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	itemsIn := []wire.FeedbagItem{
+		{
+			Name:    "1",
+			ClassID: wire.FeedbagClassIdBart,
+			TLVLBlock: wire.TLVLBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
+						Hash: testHash,
+					}),
+				},
+			},
+		},
+	}
+	if err := feedbagStore.FeedbagUpsert(screenName, itemsIn); err != nil {
+		t.Fatalf("failed to upsert: %s", err.Error())
+	}
+
+	b, err := feedbagStore.BuddyIconRefByName(screenName)
+	assert.NoError(t, err)
+
+	if !reflect.DeepEqual(b.BARTInfo.Hash, testHash) {
+		t.Fatalf("expected hash did not match")
+	}
+}
+
+func TestSQLiteUserStore_BuddyIconRefByNameMissingRef(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	existingScreenName := NewIdentScreenName("TalkingTyler")
+	queryScreenName := NewIdentScreenName("SingingSuzy")
+	testHash := []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'}
+
+	feedbagStore, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	itemsIn := []wire.FeedbagItem{
+		{
+			Name:    "1",
+			ClassID: wire.FeedbagClassIdBart,
+			TLVLBlock: wire.TLVLBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLV(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
+						Hash: testHash,
+					}),
+				},
+			},
+		},
+	}
+	if err := feedbagStore.FeedbagUpsert(existingScreenName, itemsIn); err != nil {
+		t.Fatalf("failed to upsert: %s", err.Error())
+	}
+
+	b, err := feedbagStore.BuddyIconRefByName(queryScreenName)
+	assert.NoError(t, err)
+
+	if b != nil {
+		t.Fatalf("empty BARTID expected")
+	}
+}
