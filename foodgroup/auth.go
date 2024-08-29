@@ -123,12 +123,17 @@ func (s AuthService) RegisterBOSSession(authCookie []byte) (*state.Session, erro
 
 // RetrieveBOSSession returns a user's existing session
 func (s AuthService) RetrieveBOSSession(authCookie []byte) (*state.Session, error) {
-	screenName, err := s.cookieBaker.Crack(authCookie)
+	buf, err := s.cookieBaker.Crack(authCookie)
 	if err != nil {
 		return nil, err
 	}
 
-	u, err := s.userManager.User(state.NewIdentScreenName(string(screenName)))
+	c := bosCookie{}
+	if err := wire.UnmarshalBE(&c, bytes.NewBuffer(buf)); err != nil {
+		return nil, err
+	}
+
+	u, err := s.userManager.User(state.NewIdentScreenName(c.ScreenName.String()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
 	}

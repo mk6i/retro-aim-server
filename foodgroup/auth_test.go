@@ -1193,17 +1193,22 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
 	sess := newTestSession("screen-name")
 
+	aimAuthCookie := bosCookie{
+		ScreenName: sess.DisplayScreenName(),
+	}
+	buf := &bytes.Buffer{}
+	assert.NoError(t, wire.MarshalBE(aimAuthCookie, buf))
+	authCookie := buf.Bytes()
+
 	sessionManager := newMockSessionManager(t)
 	sessionManager.EXPECT().
 		RetrieveSession(sess.IdentScreenName()).
 		Return(sess)
 
-	authCookie := []byte(`the-auth-cookie`)
-
 	cookieBaker := newMockCookieBaker(t)
 	cookieBaker.EXPECT().
 		Crack(authCookie).
-		Return([]byte("screen-name"), nil)
+		Return(authCookie, nil)
 
 	userManager := newMockUserManager(t)
 	userManager.EXPECT().
@@ -1220,17 +1225,23 @@ func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
 func TestAuthService_RetrieveBOSSession_SessionNotFound(t *testing.T) {
 	sess := newTestSession("screen-name")
 
+	aimAuthCookie := bosCookie{
+		ScreenName: sess.DisplayScreenName(),
+	}
+	buf := &bytes.Buffer{}
+	assert.NoError(t, wire.MarshalBE(aimAuthCookie, buf))
+	authCookie := buf.Bytes()
+
 	sessionManager := newMockSessionManager(t)
 	sessionManager.EXPECT().
 		RetrieveSession(sess.IdentScreenName()).
 		Return(nil)
 
-	authCookie := []byte(`the-auth-cookie`)
 	cookieBaker := newMockCookieBaker(t)
 
 	cookieBaker.EXPECT().
 		Crack(authCookie).
-		Return([]byte("screen-name"), nil)
+		Return(authCookie, nil)
 
 	userManager := newMockUserManager(t)
 	userManager.EXPECT().
