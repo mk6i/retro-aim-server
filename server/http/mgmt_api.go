@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -27,30 +28,72 @@ func StartManagementAPI(
 	chatRoomCreator ChatRoomCreator,
 	chatSessionRetriever ChatSessionRetriever,
 	messageRelayer MessageRelayer,
+	bartRetriever BARTRetriever,
+	feedbagRetriever FeedBagRetriever,
+	accountRetriever AccountRetriever,
+	profileRetriever ProfileRetriever,
 	logger *slog.Logger,
 ) {
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
-		userHandler(w, r, userManager, uuid.New, logger)
+
+	// Handlers for '/user' route
+	mux.HandleFunc("DELETE /user", func(w http.ResponseWriter, r *http.Request) {
+		deleteUserHandler(w, r, userManager, logger)
 	})
-	mux.HandleFunc("/user/password", func(w http.ResponseWriter, r *http.Request) {
-		userPasswordHandler(w, r, userManager, logger)
+	mux.HandleFunc("GET /user", func(w http.ResponseWriter, r *http.Request) {
+		getUserHandler(w, userManager, logger)
 	})
-	mux.HandleFunc("/user/login", func(w http.ResponseWriter, r *http.Request) {
-		loginHandler(w, r, userManager, logger)
+	mux.HandleFunc("POST /user", func(w http.ResponseWriter, r *http.Request) {
+		postUserHandler(w, r, userManager, uuid.New, logger)
 	})
-	mux.HandleFunc("/session", func(w http.ResponseWriter, r *http.Request) {
-		sessionHandler(w, r, sessionRetriever)
+
+	// Handlers for '/user/password' route
+	mux.HandleFunc("PUT /user/password", func(w http.ResponseWriter, r *http.Request) {
+		putUserPasswordHandler(w, r, userManager, logger)
 	})
-	mux.HandleFunc("/chat/room/public", func(w http.ResponseWriter, r *http.Request) {
-		publicChatHandler(w, r, chatRoomRetriever, chatRoomCreator, chatSessionRetriever, logger)
+
+	// Handlers for '/user/login' route
+	mux.HandleFunc("GET /user/login", func(w http.ResponseWriter, r *http.Request) {
+		getUserLoginHandler(w, r, userManager, logger)
 	})
-	mux.HandleFunc("/chat/room/private", func(w http.ResponseWriter, r *http.Request) {
-		privateChatHandler(w, r, chatRoomRetriever, chatSessionRetriever, logger)
+
+	// Handlers for '/user/{screenname}/account' route
+	mux.HandleFunc("GET /user/{screenname}/account", func(w http.ResponseWriter, r *http.Request) {
+		getUserAccountHandler(w, r, userManager, accountRetriever, profileRetriever, logger)
 	})
-	mux.HandleFunc("/instant-message", func(w http.ResponseWriter, r *http.Request) {
-		instantMessageHandler(w, r, messageRelayer, logger)
+
+	// Handlers for '/user/{screenname}/icon' route
+	mux.HandleFunc("GET /user/{screenname}/icon", func(w http.ResponseWriter, r *http.Request) {
+		getUserBuddyIconHandler(w, r, userManager, feedbagRetriever, bartRetriever, logger)
+	})
+
+	// Handlers for '/session' route
+	mux.HandleFunc("GET /session", func(w http.ResponseWriter, r *http.Request) {
+		getSessionHandler(w, r, sessionRetriever, time.Since)
+	})
+
+	// Handlers for '/session/{screenname}' route
+	mux.HandleFunc("GET /session/{screenname}", func(w http.ResponseWriter, r *http.Request) {
+		getSessionHandler(w, r, sessionRetriever, time.Since)
+	})
+
+	// Handlers for '/chat/room/public' route
+	mux.HandleFunc("GET /chat/room/public", func(w http.ResponseWriter, r *http.Request) {
+		getPublicChatHandler(w, r, chatRoomRetriever, chatSessionRetriever, logger)
+	})
+	mux.HandleFunc("POST /chat/room/public", func(w http.ResponseWriter, r *http.Request) {
+		postPublicChatHandler(w, r, chatRoomCreator, logger)
+	})
+
+	// Handlers for '/chat/room/private' route
+	mux.HandleFunc("GET /chat/room/private", func(w http.ResponseWriter, r *http.Request) {
+		getPrivateChatHandler(w, r, chatRoomRetriever, chatSessionRetriever, logger)
+	})
+
+	// Handlers for '/instant-message' route
+	mux.HandleFunc("POST /instant-message", func(w http.ResponseWriter, r *http.Request) {
+		postInstantMessageHandler(w, r, messageRelayer, logger)
 	})
 
 	addr := net.JoinHostPort(cfg.ApiHost, cfg.ApiPort)
@@ -61,19 +104,7 @@ func StartManagementAPI(
 	}
 }
 
-func userHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, newUUID func() uuid.UUID, logger *slog.Logger) {
-	switch r.Method {
-	case http.MethodDelete:
-		deleteUserHandler(w, r, userManager, logger)
-	case http.MethodGet:
-		getUserHandler(w, r, userManager, logger)
-	case http.MethodPost:
-		postUserHandler(w, r, userManager, newUUID, logger)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
+// deleteUserHandler handles the DELETE /user endpoint.
 func deleteUserHandler(w http.ResponseWriter, r *http.Request, manager UserManager, logger *slog.Logger) {
 	user, err := userFromBody(r)
 	if err != nil {
@@ -96,15 +127,6 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request, manager UserManag
 	_, _ = fmt.Fprintln(w, "User account successfully deleted.")
 }
 
-func userPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, logger *slog.Logger) {
-	switch r.Method {
-	case http.MethodPut:
-		putUserPasswordHandler(w, r, userManager, logger)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
 // putUserPasswordHandler handles the PUT /user/password endpoint.
 func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, logger *slog.Logger) {
 	input, err := userFromBody(r)
@@ -123,7 +145,7 @@ func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager 
 		case errors.Is(err, state.ErrPasswordInvalid):
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
-		case err != nil:
+		default:
 			logger.Error("error updating user password PUT /user/password", "err", err.Error())
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
@@ -134,26 +156,43 @@ func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager 
 	_, _ = fmt.Fprintln(w, "Password successfully reset.")
 }
 
-// sessionHandler handles GET /session
-func sessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever SessionRetriever) {
+// getSessionHandler handles GET /session
+func getSessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever SessionRetriever, funcTimeSince func(t time.Time) time.Duration) {
 	w.Header().Set("Content-Type", "application/json")
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
-	allUsers := sessionRetriever.AllSessions()
+	var allUsers []*state.Session
+
+	if screenName := r.PathValue("screenname"); screenName != "" {
+		session := sessionRetriever.RetrieveByScreenName(state.NewIdentScreenName(screenName))
+		if session == nil {
+			http.Error(w, "session not found", http.StatusNotFound)
+			return
+		}
+		allUsers = append(allUsers, session)
+	} else {
+		allUsers = sessionRetriever.AllSessions()
+	}
 
 	ou := onlineUsers{
 		Count:    len(allUsers),
-		Sessions: make([]userHandle, len(allUsers)),
+		Sessions: make([]sessionHandle, len(allUsers)),
 	}
 
 	for i, s := range allUsers {
-		ou.Sessions[i] = userHandle{
-			ID:         s.IdentScreenName().String(),
-			ScreenName: s.DisplayScreenName().String(),
-			IsICQ:      s.UIN() > 0,
+		// report 0 if the user is not idle
+		idleSeconds := funcTimeSince(s.IdleTime()).Seconds()
+		if !s.Idle() {
+			idleSeconds = 0
+		}
+		onlineSeconds := funcTimeSince(s.SignonTime()).Seconds()
+
+		ou.Sessions[i] = sessionHandle{
+			ID:            s.IdentScreenName().String(),
+			ScreenName:    s.DisplayScreenName().String(),
+			OnlineSeconds: onlineSeconds,
+			AwayMessage:   s.AwayMessage(),
+			IdleSeconds:   idleSeconds,
+			IsICQ:         s.UIN() > 0,
 		}
 	}
 
@@ -164,7 +203,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever Ses
 }
 
 // getUserHandler handles the GET /user endpoint.
-func getUserHandler(w http.ResponseWriter, _ *http.Request, userManager UserManager, logger *slog.Logger) {
+func getUserHandler(w http.ResponseWriter, userManager UserManager, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "application/json")
 
 	users, err := userManager.AllUsers()
@@ -246,9 +285,9 @@ func userFromBody(r *http.Request) (userWithPassword, error) {
 	return user, nil
 }
 
-// loginHandler is a temporary endpoint for validating user credentials for
+// getUserLoginHandler is a temporary endpoint for validating user credentials for
 // chivanet. do not rely on this endpoint, as it will be eventually removed.
-func loginHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, logger *slog.Logger) {
+func getUserLoginHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, logger *slog.Logger) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		// No authentication header found
@@ -297,26 +336,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request, userManager UserManage
 	// Successfully authenticated
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("200 OK: Successfully Authenticated\n"))
-}
-
-func publicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatSessionRetriever ChatSessionRetriever, logger *slog.Logger) {
-	switch r.Method {
-	case http.MethodGet:
-		getPublicChatHandler(w, r, chatRoomRetriever, chatSessionRetriever, logger)
-	case http.MethodPost:
-		postPublicChatHandler(w, r, chatRoomCreator, logger)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func privateChatHandler(w http.ResponseWriter, r *http.Request, chatRoomRetriever ChatRoomRetriever, chatSessionRetriever ChatSessionRetriever, logger *slog.Logger) {
-	switch r.Method {
-	case http.MethodGet:
-		getPrivateChatHandler(w, r, chatRoomRetriever, chatSessionRetriever, logger)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
 }
 
 // getPublicChatHandler handles the GET /chat/room/public endpoint.
@@ -421,15 +440,6 @@ func getPrivateChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetri
 	}
 }
 
-func instantMessageHandler(w http.ResponseWriter, r *http.Request, messageRelayer MessageRelayer, logger *slog.Logger) {
-	switch r.Method {
-	case http.MethodPost:
-		postInstantMessageHandler(w, r, messageRelayer, logger)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
 // postIMHandler handles the POST /instant-message endpoint.
 func postInstantMessageHandler(w http.ResponseWriter, r *http.Request, messageRelayer MessageRelayer, logger *slog.Logger) {
 	input := instantMessage{}
@@ -466,4 +476,96 @@ func postInstantMessageHandler(w http.ResponseWriter, r *http.Request, messageRe
 
 	w.WriteHeader(http.StatusOK)
 	_, _ = fmt.Fprintln(w, "Message sent successfully.")
+}
+
+// getUserBuddyIconHandler handles the GET /user/{screenname}/icon endpoint.
+func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManager, f FeedBagRetriever, b BARTRetriever, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "image/gif")
+
+	screenName := state.NewIdentScreenName(r.PathValue("screenname"))
+	user, err := u.User(screenName)
+	if err != nil {
+		logger.Error("error retrieving user", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if user == nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+	iconRef, err := f.BuddyIconRefByName(screenName)
+	if err != nil {
+		logger.Error("error retrieving buddy icon ref", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if iconRef == nil || iconRef.HasClearIconHash() {
+		http.Error(w, "icon not found", http.StatusNotFound)
+		return
+	}
+	icon, err := b.BARTRetrieve(iconRef.Hash)
+	if err != nil {
+		logger.Error("error retrieving buddy icon bart item", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Write(icon)
+}
+
+// getUserAccountHandler handles the GET /user/{screenname}/account endpoint.
+func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, a AccountRetriever, p ProfileRetriever, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+
+	screenName := r.PathValue("screenname")
+	user, err := userManager.User(state.NewIdentScreenName(screenName))
+	if err != nil {
+		logger.Error("error in GET /user/{screenname}/account", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if user == nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	emailAddress := ""
+	email, err := a.EmailAddressByName(user.IdentScreenName)
+	if err != nil {
+		emailAddress = ""
+	} else {
+		emailAddress = email.String()
+	}
+	regStatus, err := a.RegStatusByName(user.IdentScreenName)
+	if err != nil {
+		logger.Error("error in GET /user/*/account RegStatus", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	confirmStatus, err := a.ConfirmStatusByName(user.IdentScreenName)
+	if err != nil {
+		logger.Error("error in GET /user/*/account ConfirmStatus", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	profile, err := p.Profile(user.IdentScreenName)
+	if err != nil {
+		logger.Error("error in GET /user/*/account Profile", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	out := userAccountHandle{
+		ID:           user.IdentScreenName.String(),
+		ScreenName:   user.DisplayScreenName.String(),
+		EmailAddress: emailAddress,
+		RegStatus:    regStatus,
+		Confirmed:    confirmStatus,
+		Profile:      profile,
+		IsICQ:        user.IsICQ,
+	}
+
+	if err := json.NewEncoder(w).Encode(out); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
