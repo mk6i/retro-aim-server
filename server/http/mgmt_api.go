@@ -21,6 +21,7 @@ import (
 )
 
 func StartManagementAPI(
+	bld config.Build,
 	cfg config.Config,
 	userManager UserManager,
 	sessionRetriever SessionRetriever,
@@ -94,6 +95,11 @@ func StartManagementAPI(
 	// Handlers for '/instant-message' route
 	mux.HandleFunc("POST /instant-message", func(w http.ResponseWriter, r *http.Request) {
 		postInstantMessageHandler(w, r, messageRelayer, logger)
+	})
+
+	// Handlers for '/version' route
+	mux.HandleFunc("GET /version", func(w http.ResponseWriter, r *http.Request) {
+		getVersionHandler(w, bld)
 	})
 
 	addr := net.JoinHostPort(cfg.ApiHost, cfg.ApiPort)
@@ -564,6 +570,15 @@ func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager U
 	}
 
 	if err := json.NewEncoder(w).Encode(out); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// getVersionHandler handles the GET /version endpoint.
+func getVersionHandler(w http.ResponseWriter, bld config.Build) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(bld); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log/slog"
 	"net"
@@ -18,7 +19,30 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
+// Default build fields are populated by GoReleaser
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
+	bld := config.Build{
+		Version: version,
+		Commit:  commit,
+		Date:    date,
+	}
+	var showVersion bool
+	flag.BoolVar(&showVersion, "version", false, "Display build information")
+	flag.BoolVar(&showVersion, "v", false, "Display build information")
+	flag.Parse()
+	if showVersion {
+		fmt.Printf("%-10s %s\n", "version:", bld.Version)
+		fmt.Printf("%-10s %s\n", "commit:", bld.Commit)
+		fmt.Printf("%-10s %s\n", "date:", bld.Date)
+		os.Exit(0)
+	}
+
 	var cfg config.Config
 	err := envconfig.Process("", &cfg)
 	if err != nil {
@@ -47,7 +71,7 @@ func main() {
 	wg.Add(7)
 
 	go func() {
-		http.StartManagementAPI(cfg, feedbagStore, sessionManager, feedbagStore, feedbagStore, chatSessionManager, sessionManager, feedbagStore, feedbagStore, feedbagStore, feedbagStore, logger)
+		http.StartManagementAPI(bld, cfg, feedbagStore, sessionManager, feedbagStore, feedbagStore, chatSessionManager, sessionManager, feedbagStore, feedbagStore, feedbagStore, feedbagStore, logger)
 		wg.Done()
 	}()
 	go func(logger *slog.Logger) {
