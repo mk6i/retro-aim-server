@@ -298,6 +298,12 @@ func TestUserAccountHandler_GET(t *testing.T) {
 }
 
 func TestUserBuddyIconHandler_GET(t *testing.T) {
+	sampleGIF := []byte{
+		0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x32, 0x00, 0x32, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x21, 0xf9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x00,
+		0x32, 0x00, 0x32, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3b}
+
+	sampleJPG := []byte{0xFF, 0xD8, 0xFF, 0x43, 0x13, 0x37}
 	tt := []struct {
 		name              string
 		requestScreenName state.IdentScreenName
@@ -324,9 +330,9 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 			},
 		},
 		{
-			name:              "account with buddy icon",
+			name:              "account with gif buddy icon",
 			requestScreenName: state.NewIdentScreenName("userA"),
-			want:              string([]byte{'i', 'c', 'o', 'n'}),
+			want:              string(sampleGIF),
 			statusCode:        http.StatusOK,
 			contentType:       "image/gif",
 			mockParams: mockParams{
@@ -359,7 +365,91 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 					bartRetrieveParams: bartRetrieveParams{
 						{
 							itemHash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
-							result:   []byte{'i', 'c', 'o', 'n'},
+							result:   sampleGIF,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:              "account with jpg buddy icon",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			want:              string(sampleJPG),
+			statusCode:        http.StatusOK,
+			contentType:       "image/jpeg",
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result: &state.User{
+								DisplayScreenName: "userA",
+								IdentScreenName:   state.NewIdentScreenName("userA"),
+							},
+						},
+					},
+				},
+				feedBagRetrieverParams: feedBagRetrieverParams{
+					buddyIconRefByNameParams: buddyIconRefByNameParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result: &wire.BARTID{
+								Type: wire.BARTTypesBuddyIcon,
+								BARTInfo: wire.BARTInfo{
+									Flags: 0x00,
+									Hash:  []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
+								},
+							},
+						},
+					},
+				},
+				bartRetrieverParams: bartRetrieverParams{
+					bartRetrieveParams: bartRetrieveParams{
+						{
+							itemHash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
+							result:   sampleJPG,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:              "account with unknown format buddy icon",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			want:              string([]byte{0x13, 0x37, 0x13, 0x37, 0x13, 0x37}),
+			statusCode:        http.StatusOK,
+			contentType:       "application/octet-stream",
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result: &state.User{
+								DisplayScreenName: "userA",
+								IdentScreenName:   state.NewIdentScreenName("userA"),
+							},
+						},
+					},
+				},
+				feedBagRetrieverParams: feedBagRetrieverParams{
+					buddyIconRefByNameParams: buddyIconRefByNameParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result: &wire.BARTID{
+								Type: wire.BARTTypesBuddyIcon,
+								BARTInfo: wire.BARTInfo{
+									Flags: 0x00,
+									Hash:  []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
+								},
+							},
+						},
+					},
+				},
+				bartRetrieverParams: bartRetrieverParams{
+					bartRetrieveParams: bartRetrieveParams{
+						{
+							itemHash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
+							result:   []byte{0x13, 0x37, 0x13, 0x37, 0x13, 0x37},
 						},
 					},
 				},
