@@ -84,11 +84,11 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
-							wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.ChatNav),
-							wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
-							wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ChatNav),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 						},
 					},
 				},
@@ -130,11 +130,11 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
-							wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Alert),
-							wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
-							wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Alert),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 						},
 					},
 				},
@@ -176,11 +176,11 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
-							wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Admin),
-							wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
-							wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Admin),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 						},
 					},
 				},
@@ -213,7 +213,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					FoodGroup: wire.Chat,
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
+							wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
 								Exchange:       chatRoom.Exchange(),
 								Cookie:         chatRoom.Cookie(),
 								InstanceNumber: chatRoom.InstanceNumber(),
@@ -231,11 +231,11 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte("the-auth-cookie")),
-							wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Chat),
-							wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
-							wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-auth-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Chat),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 						},
 					},
 				},
@@ -279,7 +279,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					FoodGroup: wire.Chat,
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
+							wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
 								Exchange:       8,
 								Cookie:         "the-chat-cookie",
 								InstanceNumber: 16,
@@ -373,7 +373,7 @@ func TestSetUserInfoFields(t *testing.T) {
 				Body: wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
+							wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0000)),
 						},
 					},
 				},
@@ -408,7 +408,7 @@ func TestSetUserInfoFields(t *testing.T) {
 				Body: wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0100)),
+							wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0100)),
 						},
 					},
 				},

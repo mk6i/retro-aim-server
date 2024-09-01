@@ -77,7 +77,7 @@ func (rt AuthServer) handleNewConnection(rwc io.ReadWriteCloser) error {
 	// presence of the roasted password TLV, however that proved an unreliable
 	// indicator of FLAP-auth because older ICQ clients appear to omit the
 	// roasted password TLV when the password is not stored client-side.
-	if _, hasScreenName := signonFrame.Uint16(wire.LoginTLVTagsScreenName); hasScreenName {
+	if _, hasScreenName := signonFrame.Uint16BE(wire.LoginTLVTagsScreenName); hasScreenName {
 		return rt.processFLAPAuth(signonFrame, flapc)
 	}
 

@@ -65,7 +65,7 @@ func TestOServiceBOSHandler_ServiceRequest(t *testing.T) {
 		Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(0x01, uint16(1000)),
+					wire.NewTLVBE(0x01, uint16(1000)),
 				},
 			},
 		},
@@ -262,7 +262,7 @@ func TestOServiceHandler_RateParamsSubAdd(t *testing.T) {
 		Body: wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(0x01, []byte{1, 2, 3, 4}),
+					wire.NewTLVBE(0x01, []byte{1, 2, 3, 4}),
 				},
 			},
 		},
@@ -296,7 +296,7 @@ func TestOServiceHandler_SetUserInfoFields(t *testing.T) {
 		Body: wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(0x01, []byte{1, 2, 3, 4}),
+					wire.NewTLVBE(0x01, []byte{1, 2, 3, 4}),
 				},
 			},
 		},

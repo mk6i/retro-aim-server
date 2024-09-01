@@ -134,7 +134,7 @@ func TestICQService_FindByDetails(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -171,7 +171,7 @@ func TestICQService_FindByDetails(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -311,7 +311,7 @@ func TestICQService_FindByEmail(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -389,6 +389,148 @@ func TestICQService_FindByEmail(t *testing.T) {
 	}
 }
 
+func TestICQService_FindByEmail3(t *testing.T) {
+	tests := []struct {
+		name       string
+		timeNow    func() time.Time
+		seq        uint16
+		sess       *state.Session
+		req        wire.ICQ_0x07D0_0x0573_DBQueryMetaReqSearchByEmail3
+		mockParams mockParams
+		wantErr    error
+	}{
+		{
+			name: "happy path",
+			timeNow: func() time.Time {
+				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
+			},
+			seq:  1,
+			sess: newTestSession("11111111", sessOptUIN(11111111)),
+			req: wire.ICQ_0x07D0_0x0573_DBQueryMetaReqSearchByEmail3{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVLE(wire.ICQTLVTagsEmail, wire.ICQEmail{
+							Email: "john@example.com",
+						}),
+					},
+				},
+			},
+			mockParams: mockParams{
+				icqUserFinderParams: icqUserFinderParams{
+					findByEmailParams: findByEmailParams{
+						{
+							email: "john@example.com",
+							result: state.User{
+								IdentScreenName: state.NewIdentScreenName("123456789"),
+								ICQBasicInfo: state.ICQBasicInfo{
+									EmailAddress: "john@example.com",
+									FirstName:    "John",
+									LastName:     "Doe",
+									Nickname:     "Johnny",
+								},
+								ICQPermissions: state.ICQPermissions{
+									AuthRequired: true,
+								},
+								ICQMoreInfo: state.ICQMoreInfo{
+									BirthDay:   31,
+									BirthMonth: 7,
+									BirthYear:  1999,
+									Gender:     1,
+								},
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x15_0x02_DBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+												Message: wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
+													Details: wire.ICQUserSearchRecord{
+														UIN:           123456789,
+														Nickname:      "Johnny",
+														FirstName:     "John",
+														LastName:      "Doe",
+														Email:         "john@example.com",
+														Authorization: 1,
+														OnlineStatus:  1,
+														Gender:        1,
+														Age:           21,
+													},
+													LastMessageFooter: &struct {
+														FoundUsersLeft uint32
+													}{
+														FoundUsersLeft: 0,
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("123456789"),
+							result:     &state.Session{},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userFinder := newMockICQUserFinder(t)
+			for _, params := range tt.mockParams.findByEmailParams {
+				userFinder.EXPECT().
+					FindByEmail(params.email).
+					Return(params.result, params.err)
+			}
+
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+
+			sessionRetriever := newMockSessionRetriever(t)
+			for _, params := range tt.mockParams.retrieveSessionParams {
+				sessionRetriever.EXPECT().
+					RetrieveSession(params.screenName).
+					Return(params.result)
+			}
+
+			s := ICQService{
+				messageRelayer:   messageRelayer,
+				sessionRetriever: sessionRetriever,
+				timeNow:          tt.timeNow,
+				userFinder:       userFinder,
+			}
+			err := s.FindByEmail3(nil, tt.sess, tt.req, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}
+
 func TestICQService_FindByUIN(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -447,7 +589,7 @@ func TestICQService_FindByUIN(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -520,6 +662,146 @@ func TestICQService_FindByUIN(t *testing.T) {
 				userFinder:       userFinder,
 			}
 			err := s.FindByUIN(nil, tt.sess, tt.req, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestICQService_FindByUIN2(t *testing.T) {
+	tests := []struct {
+		name       string
+		timeNow    func() time.Time
+		seq        uint16
+		sess       *state.Session
+		req        wire.ICQ_0x07D0_0x0569_DBQueryMetaReqSearchByUIN2
+		mockParams mockParams
+		wantErr    error
+	}{
+		{
+			name: "happy path",
+			timeNow: func() time.Time {
+				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
+			},
+			seq:  1,
+			sess: newTestSession("11111111", sessOptUIN(11111111)),
+			req: wire.ICQ_0x07D0_0x0569_DBQueryMetaReqSearchByUIN2{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVLE(wire.ICQTLVTagsUIN, uint32(123456789)),
+					},
+				},
+			},
+			mockParams: mockParams{
+				icqUserFinderParams: icqUserFinderParams{
+					findByUINParams: findByUINParams{
+						{
+							UIN: 123456789,
+							result: state.User{
+								IdentScreenName: state.NewIdentScreenName("123456789"),
+								ICQPermissions: state.ICQPermissions{
+									AuthRequired: true,
+								},
+								ICQBasicInfo: state.ICQBasicInfo{
+									EmailAddress: "john@example.com",
+									FirstName:    "John",
+									LastName:     "Doe",
+									Nickname:     "Johnny",
+								},
+								ICQMoreInfo: state.ICQMoreInfo{
+									Gender:     1,
+									BirthDay:   31,
+									BirthMonth: 7,
+									BirthYear:  1999,
+								},
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x15_0x02_DBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+												Message: wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
+													Details: wire.ICQUserSearchRecord{
+														UIN:           123456789,
+														Nickname:      "Johnny",
+														FirstName:     "John",
+														LastName:      "Doe",
+														Email:         "john@example.com",
+														Authorization: 1,
+														OnlineStatus:  1,
+														Gender:        1,
+														Age:           21,
+													},
+													LastMessageFooter: &struct {
+														FoundUsersLeft uint32
+													}{
+														FoundUsersLeft: 0,
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("123456789"),
+							result:     &state.Session{},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userFinder := newMockICQUserFinder(t)
+			for _, params := range tt.mockParams.findByUINParams {
+				userFinder.EXPECT().
+					FindByUIN(params.UIN).
+					Return(params.result, params.err)
+			}
+
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+
+			sessionRetriever := newMockSessionRetriever(t)
+			for _, params := range tt.mockParams.retrieveSessionParams {
+				sessionRetriever.EXPECT().
+					RetrieveSession(params.screenName).
+					Return(params.result)
+			}
+
+			s := ICQService{
+				messageRelayer:   messageRelayer,
+				sessionRetriever: sessionRetriever,
+				timeNow:          tt.timeNow,
+				userFinder:       userFinder,
+			}
+			err := s.FindByUIN2(nil, tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -605,7 +887,7 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -642,7 +924,7 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -719,6 +1001,330 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 				userFinder:       userFinder,
 			}
 			err := s.FindByInterests(nil, tt.sess, tt.req, tt.seq)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestICQService_FindByWhitePages2(t *testing.T) {
+	tests := []struct {
+		name       string
+		timeNow    func() time.Time
+		seq        uint16
+		sess       *state.Session
+		req        wire.ICQ_0x07D0_0x055F_DBQueryMetaReqSearchWhitePages2
+		mockParams mockParams
+		wantErr    error
+	}{
+		{
+			name: "search by keyword",
+			timeNow: func() time.Time {
+				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
+			},
+			seq:  1,
+			sess: newTestSession("11111111", sessOptUIN(11111111)),
+			req: wire.ICQ_0x07D0_0x055F_DBQueryMetaReqSearchWhitePages2{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVLE(wire.ICQTLVTagsWhitepagesSearchKeywords, struct {
+							Val string `oscar:"len_prefix=uint16,nullterm"`
+						}{
+							Val: "knitting",
+						}),
+					},
+				},
+			},
+			mockParams: mockParams{
+				icqUserFinderParams: icqUserFinderParams{
+					findByKeywordParams: findByKeywordParams{
+						{
+							keyword: "knitting",
+							result: []state.User{
+								{
+									IdentScreenName: state.NewIdentScreenName("987654321"),
+									ICQBasicInfo: state.ICQBasicInfo{
+										EmailAddress: "janey@example.com",
+										FirstName:    "Jane",
+										LastName:     "Doe",
+										Nickname:     "Janey",
+									},
+									ICQPermissions: state.ICQPermissions{
+										AuthRequired: false,
+									},
+									ICQMoreInfo: state.ICQMoreInfo{
+										BirthDay:   31,
+										BirthMonth: 7,
+										BirthYear:  1995,
+										Gender:     2,
+									},
+								},
+								{
+									IdentScreenName: state.NewIdentScreenName("123456789"),
+									ICQBasicInfo: state.ICQBasicInfo{
+										EmailAddress: "alice@example.com",
+										FirstName:    "Alice",
+										LastName:     "Smith",
+										Nickname:     "Ally123",
+									},
+									ICQPermissions: state.ICQPermissions{
+										AuthRequired: true,
+									},
+									ICQMoreInfo: state.ICQMoreInfo{
+										BirthDay:   31,
+										BirthMonth: 7,
+										BirthYear:  1999,
+										Gender:     1,
+									},
+								},
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x15_0x02_DBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+												Message: wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyUserFound,
+													Details: wire.ICQUserSearchRecord{
+														UIN:           987654321,
+														Nickname:      "Janey",
+														FirstName:     "Jane",
+														LastName:      "Doe",
+														Email:         "janey@example.com",
+														Authorization: 0,
+														OnlineStatus:  0,
+														Gender:        2,
+														Age:           25,
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x15_0x02_DBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+												Message: wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
+													Details: wire.ICQUserSearchRecord{
+														UIN:           123456789,
+														Nickname:      "Ally123",
+														FirstName:     "Alice",
+														LastName:      "Smith",
+														Email:         "alice@example.com",
+														Authorization: 1,
+														OnlineStatus:  1,
+														Gender:        1,
+														Age:           21,
+													},
+													LastMessageFooter: &struct {
+														FoundUsersLeft uint32
+													}{
+														FoundUsersLeft: 0,
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("987654321"),
+							result:     nil,
+						},
+						{
+							screenName: state.NewIdentScreenName("123456789"),
+							result:     &state.Session{},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "search by name",
+			timeNow: func() time.Time {
+				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
+			},
+			seq:  1,
+			sess: newTestSession("11111111", sessOptUIN(11111111)),
+			req: wire.ICQ_0x07D0_0x055F_DBQueryMetaReqSearchWhitePages2{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVLE(wire.ICQTLVTagsNickname, struct {
+							Val string `oscar:"len_prefix=uint16,nullterm"`
+						}{
+							Val: "Janey",
+						}),
+						wire.NewTLVLE(wire.ICQTLVTagsFirstName, struct {
+							Val string `oscar:"len_prefix=uint16,nullterm"`
+						}{
+							Val: "Jane",
+						}),
+						wire.NewTLVLE(wire.ICQTLVTagsLastName, struct {
+							Val string `oscar:"len_prefix=uint16,nullterm"`
+						}{
+							Val: "Janey",
+						}),
+					},
+				},
+			},
+			mockParams: mockParams{
+				icqUserFinderParams: icqUserFinderParams{
+					findByDetailsParams: findByDetailsParams{
+						{
+							nickName:  "Janey",
+							firstName: "Jane",
+							lastName:  "Janey",
+							result: []state.User{
+								{
+									IdentScreenName: state.NewIdentScreenName("987654321"),
+									ICQBasicInfo: state.ICQBasicInfo{
+										EmailAddress: "janey@example.com",
+										FirstName:    "Jane",
+										LastName:     "Doe",
+										Nickname:     "Janey",
+									},
+									ICQPermissions: state.ICQPermissions{
+										AuthRequired: false,
+									},
+									ICQMoreInfo: state.ICQMoreInfo{
+										BirthDay:   31,
+										BirthMonth: 7,
+										BirthYear:  1995,
+										Gender:     2,
+									},
+								},
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("11111111"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICQ,
+									SubGroup:  wire.ICQDBReply,
+								},
+								Body: wire.SNAC_0x15_0x02_DBReply{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+												Message: wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
+													ICQMetadata: wire.ICQMetadata{
+														UIN:     11111111,
+														ReqType: wire.ICQDBQueryMetaReply,
+														Seq:     1,
+													},
+													Success:    wire.ICQStatusCodeOK,
+													ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
+													Details: wire.ICQUserSearchRecord{
+														UIN:           987654321,
+														Nickname:      "Janey",
+														FirstName:     "Jane",
+														LastName:      "Doe",
+														Email:         "janey@example.com",
+														Authorization: 0,
+														OnlineStatus:  0,
+														Gender:        2,
+														Age:           25,
+													},
+													LastMessageFooter: &struct {
+														FoundUsersLeft uint32
+													}{
+														FoundUsersLeft: 0,
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("987654321"),
+							result:     nil,
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userFinder := newMockICQUserFinder(t)
+			for _, params := range tt.mockParams.findByKeywordParams {
+				userFinder.EXPECT().
+					FindByKeyword(params.keyword).
+					Return(params.result, params.err)
+			}
+			for _, params := range tt.mockParams.findByDetailsParams {
+				userFinder.EXPECT().
+					FindByDetails(params.firstName, params.lastName, params.nickName).
+					Return(params.result, params.err)
+			}
+
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().RelayToScreenName(mock.Anything, params.screenName, params.message)
+			}
+
+			sessionRetriever := newMockSessionRetriever(t)
+			for _, params := range tt.mockParams.retrieveSessionParams {
+				sessionRetriever.EXPECT().
+					RetrieveSession(params.screenName).
+					Return(params.result)
+			}
+
+			s := ICQService{
+				messageRelayer:   messageRelayer,
+				sessionRetriever: sessionRetriever,
+				timeNow:          tt.timeNow,
+				userFinder:       userFinder,
+			}
+			err := s.FindByWhitePages2(nil, tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -837,7 +1443,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00C8_DBQueryMetaReplyBasicInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -881,7 +1487,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00DC_DBQueryMetaReplyMoreInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -922,7 +1528,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00EB_DBQueryMetaReplyExtEmailInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -948,7 +1554,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x010E_DBQueryMetaReplyHomePageCat{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -974,7 +1580,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00D2_DBQueryMetaReplyWorkInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -1014,7 +1620,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00E6_DBQueryMetaReplyNotes{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -1043,7 +1649,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00F0_DBQueryMetaReplyInterests{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -1090,7 +1696,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00FA_DBQueryMetaReplyAffiliations{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -1205,7 +1811,7 @@ func TestICQService_OfflineMsgReq(t *testing.T) {
 										ChannelID: wire.ICBMChannelIM,
 										TLVRestBlock: wire.TLVRestBlock{
 											TLVList: wire.TLVList{
-												wire.NewTLV(wire.ICBMTLVAOLIMData, func() []wire.ICBMCh1Fragment {
+												wire.NewTLVBE(wire.ICBMTLVAOLIMData, func() []wire.ICBMCh1Fragment {
 													frags, err := wire.ICBMFragmentList("hello!")
 													assert.NoError(t, err)
 													return frags
@@ -1222,7 +1828,7 @@ func TestICQService_OfflineMsgReq(t *testing.T) {
 										ChannelID: wire.ICBMChannelICQ,
 										TLVRestBlock: wire.TLVRestBlock{
 											TLVList: wire.TLVList{
-												wire.NewTLV(wire.ICBMTLVData, func() []byte {
+												wire.NewTLVBE(wire.ICBMTLVData, func() []byte {
 													msg := wire.ICBMCh4Message{
 														UIN:         33333333,
 														MessageType: wire.ICBMExtendedMsgTypeAuthReq,
@@ -1254,7 +1860,7 @@ func TestICQService_OfflineMsgReq(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x0041_DBQueryOfflineMsgReply{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -1286,7 +1892,7 @@ func TestICQService_OfflineMsgReq(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x0041_DBQueryOfflineMsgReply{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -1318,7 +1924,7 @@ func TestICQService_OfflineMsgReq(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x0042_DBQueryOfflineMsgReplyLast{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -1441,7 +2047,7 @@ func TestICQService_SetAffiliations(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00DC_DBQueryMetaReplyMoreInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     100003,
@@ -1549,7 +2155,7 @@ func TestICQService_SetEmails(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00DC_DBQueryMetaReplyMoreInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     100003,
@@ -1652,7 +2258,7 @@ func TestICQService_SetBasicInfo(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00DC_DBQueryMetaReplyMoreInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     100003,
@@ -1763,7 +2369,7 @@ func TestICQService_SetInterests(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00DC_DBQueryMetaReplyMoreInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     100003,
@@ -1883,7 +2489,7 @@ func TestICQService_SetMoreInfo(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00DC_DBQueryMetaReplyMoreInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     100003,
@@ -1955,7 +2561,7 @@ func TestICQService_SetPermissions(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00DC_DBQueryMetaReplyMoreInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     100003,
@@ -2032,7 +2638,7 @@ func TestICQService_SetUserNotes(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00DC_DBQueryMetaReplyMoreInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     100003,
@@ -2138,7 +2744,7 @@ func TestICQService_SetWorkInfo(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x00DC_DBQueryMetaReplyMoreInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     100003,
@@ -2238,7 +2844,7 @@ func TestICQService_ShortUserInfo(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x0104_DBQueryMetaReplyShortInfo{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,
@@ -2331,7 +2937,7 @@ func TestICQService_XMLReqData(t *testing.T) {
 								Body: wire.SNAC_0x15_0x02_DBReply{
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+											wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
 												Message: wire.ICQ_0x07DA_0x08A2_DBQueryMetaReplyXMLData{
 													ICQMetadata: wire.ICQMetadata{
 														UIN:     11111111,

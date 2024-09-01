@@ -68,7 +68,7 @@ func (rt AdminServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteC
 		return err
 	}
 
-	authCookie, ok := flap.Slice(wire.OServiceTLVTagsLoginCookie)
+	authCookie, ok := flap.Bytes(wire.OServiceTLVTagsLoginCookie)
 	if !ok {
 		return errors.New("unable to get session id from payload")
 	}

@@ -1315,7 +1315,7 @@ func TestInstantMessageHandler_POST(t *testing.T) {
 					body := msg.Body.(wire.SNAC_0x04_0x07_ICBMChannelMsgToClient)
 					assert.Equal(t, params.sender.String(), body.TLVUserInfo.ScreenName)
 
-					b, ok := body.Slice(wire.ICBMTLVAOLIMData)
+					b, ok := body.Bytes(wire.ICBMTLVAOLIMData)
 					assert.True(t, ok)
 
 					txt, err := wire.UnmarshalICBMMessageText(b)

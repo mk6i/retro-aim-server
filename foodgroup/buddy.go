@@ -42,10 +42,10 @@ func (s BuddyService) RightsQuery(_ context.Context, frameIn wire.SNACFrame) wir
 		Body: wire.SNAC_0x03_0x03_BuddyRightsReply{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.BuddyTLVTagsParmMaxBuddies, uint16(100)),
-					wire.NewTLV(wire.BuddyTLVTagsParmMaxWatchers, uint16(100)),
-					wire.NewTLV(wire.BuddyTLVTagsParmMaxIcqBroad, uint16(100)),
-					wire.NewTLV(wire.BuddyTLVTagsParmMaxTempBuddies, uint16(100)),
+					wire.NewTLVBE(wire.BuddyTLVTagsParmMaxBuddies, uint16(100)),
+					wire.NewTLVBE(wire.BuddyTLVTagsParmMaxWatchers, uint16(100)),
+					wire.NewTLVBE(wire.BuddyTLVTagsParmMaxIcqBroad, uint16(100)),
+					wire.NewTLVBE(wire.BuddyTLVTagsParmMaxTempBuddies, uint16(100)),
 				},
 			},
 		},
@@ -89,7 +89,7 @@ func (s BuddyService) UnicastBuddyArrived(ctx context.Context, from *state.Sessi
 	case err != nil:
 		return err
 	case icon != nil:
-		userInfo.Append(wire.NewTLV(wire.OServiceUserInfoBARTInfo, *icon))
+		userInfo.Append(wire.NewTLVBE(wire.OServiceUserInfoBARTInfo, *icon))
 	}
 	s.messageRelayer.RelayToScreenName(ctx, to.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -124,7 +124,7 @@ func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, sess *state.Ses
 	case err != nil:
 		return err
 	case icon != nil:
-		userInfo.Append(wire.NewTLV(wire.OServiceUserInfoBARTInfo, *icon))
+		userInfo.Append(wire.NewTLVBE(wire.OServiceUserInfoBARTInfo, *icon))
 	}
 
 	s.messageRelayer.RelayToScreenNames(ctx, recipients, wire.SNACMessage{
@@ -164,7 +164,7 @@ func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Se
 					TLVList: wire.TLVList{
 						// this TLV needs to be set in order for departure
 						// events to work in ICQ
-						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0)),
+						wire.NewTLVBE(wire.OServiceUserInfoUserFlags, uint16(0)),
 					},
 				},
 			},

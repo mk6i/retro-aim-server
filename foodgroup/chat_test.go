@@ -74,10 +74,10 @@ func TestChatService_ChannelMsgToHost(t *testing.T) {
 									Channel: 14,
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ChatTLVSenderInformation,
+											wire.NewTLVBE(wire.ChatTLVSenderInformation,
 												newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
-											wire.NewTLV(wire.ChatTLVPublicWhisperFlag, []byte{}),
-											wire.NewTLV(wire.ChatTLVMessageInformation, []byte{}),
+											wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}),
+											wire.NewTLVBE(wire.ChatTLVMessageInformation, []byte{}),
 										},
 									},
 								},
@@ -97,10 +97,10 @@ func TestChatService_ChannelMsgToHost(t *testing.T) {
 					Channel: 14,
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatTLVSenderInformation,
+							wire.NewTLVBE(wire.ChatTLVSenderInformation,
 								newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
-							wire.NewTLV(wire.ChatTLVPublicWhisperFlag, []byte{}),
-							wire.NewTLV(wire.ChatTLVMessageInformation, []byte{}),
+							wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}),
+							wire.NewTLVBE(wire.ChatTLVMessageInformation, []byte{}),
 						},
 					},
 				},
@@ -148,10 +148,10 @@ func TestChatService_ChannelMsgToHost(t *testing.T) {
 									Channel: wire.ICBMChannelMIME,
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ChatTLVSenderInformation,
+											wire.NewTLVBE(wire.ChatTLVSenderInformation,
 												newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
-											wire.NewTLV(wire.ChatTLVPublicWhisperFlag, []byte{}),
-											wire.NewTLV(wire.ChatTLVMessageInformation, []byte{}),
+											wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}),
+											wire.NewTLVBE(wire.ChatTLVMessageInformation, []byte{}),
 										},
 									},
 								},
@@ -203,10 +203,10 @@ func TestChatService_ChannelMsgToHost(t *testing.T) {
 									Channel: 14,
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ChatTLVSenderInformation,
+											wire.NewTLVBE(wire.ChatTLVSenderInformation,
 												newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
-											wire.NewTLV(wire.ChatTLVPublicWhisperFlag, []byte{}),
-											wire.NewTLV(wire.ChatTLVMessageInformation, []byte{}),
+											wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}),
+											wire.NewTLVBE(wire.ChatTLVMessageInformation, []byte{}),
 										},
 									},
 								},

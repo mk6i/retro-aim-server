@@ -424,7 +424,7 @@ func (s OServiceService) UserInfoQuery(_ context.Context, sess *state.Session, i
 // to 0x0100, set invisible. Else, return an error for any other value.
 // It returns SNAC wire.OServiceUserInfoUpdate containing the user's info.
 func (s OServiceService) SetUserInfoFields(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (wire.SNACMessage, error) {
-	if status, hasStatus := inBody.Uint32(wire.OServiceUserInfoStatus); hasStatus {
+	if status, hasStatus := inBody.Uint32BE(wire.OServiceUserInfoStatus); hasStatus {
 		sess.SetUserStatusBitmask(status)
 		if sess.Invisible() {
 			if err := s.buddyUpdateBroadcaster.BroadcastBuddyDeparted(ctx, sess); err != nil {
@@ -598,11 +598,11 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.AdminPort)),
-						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, cookie),
-						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Admin),
-						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
-						wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.AdminPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
+						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Admin),
+						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
+						wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 					},
 				},
 			},
@@ -623,11 +623,11 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.AlertPort)),
-						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, cookie),
-						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Alert),
-						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
-						wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.AlertPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
+						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Alert),
+						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
+						wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 					},
 				},
 			},
@@ -648,11 +648,11 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.BARTPort)),
-						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, cookie),
-						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.BART),
-						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
-						wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.BARTPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
+						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.BART),
+						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
+						wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 					},
 				},
 			},
@@ -673,17 +673,17 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ChatNavPort)),
-						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, cookie),
-						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.ChatNav),
-						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
-						wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ChatNavPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
+						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ChatNav),
+						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
+						wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 					},
 				},
 			},
 		}, nil
 	case wire.Chat:
-		roomMeta, ok := inBody.Slice(0x01)
+		roomMeta, ok := inBody.Bytes(0x01)
 		if !ok {
 			return wire.SNACMessage{}, errors.New("missing room info")
 		}
@@ -715,11 +715,11 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ChatPort)),
-						wire.NewTLV(wire.OServiceTLVTagsLoginCookie, cookie),
-						wire.NewTLV(wire.OServiceTLVTagsGroupID, wire.Chat),
-						wire.NewTLV(wire.OServiceTLVTagsSSLCertName, ""),
-						wire.NewTLV(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ChatPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
+						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Chat),
+						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
+						wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 					},
 				},
 			},

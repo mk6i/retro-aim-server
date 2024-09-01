@@ -128,8 +128,8 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 						TLVUserInfo(),
 					LocateInfo: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
-							wire.NewTLV(wire.LocateTLVTagsInfoSigData, "this is my profile!"),
+							wire.NewTLVBE(wire.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
+							wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, "this is my profile!"),
 						},
 					},
 				},
@@ -190,8 +190,8 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 						TLVUserInfo(),
 					LocateInfo: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
-							wire.NewTLV(wire.LocateTLVTagsInfoSigData, "this is my profile!"),
+							wire.NewTLVBE(wire.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
+							wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, "this is my profile!"),
 						},
 					},
 				},
@@ -244,8 +244,8 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 						TLVUserInfo(),
 					LocateInfo: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.LocateTLVTagsInfoUnavailableMime, `text/aolrtf; charset="us-ascii"`),
-							wire.NewTLV(wire.LocateTLVTagsInfoUnavailableData, "this is my away message!"),
+							wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableMime, `text/aolrtf; charset="us-ascii"`),
+							wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableData, "this is my away message!"),
 						},
 					},
 				},
@@ -417,7 +417,7 @@ func TestLocateService_SetInfo(t *testing.T) {
 			inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LocateTLVTagsInfoSigData, "profile-result"),
+						wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, "profile-result"),
 					},
 				},
 			},
@@ -438,7 +438,7 @@ func TestLocateService_SetInfo(t *testing.T) {
 			inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.LocateTLVTagsInfoUnavailableData, "this is my away message!"),
+						wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableData, "this is my away message!"),
 					},
 				},
 			},
@@ -484,7 +484,7 @@ func TestLocateService_SetInfo_SetCaps(t *testing.T) {
 	inBody := wire.SNAC_0x02_0x04_LocateSetInfo{
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
-				wire.NewTLV(wire.LocateTLVTagsInfoCapabilities, []byte{
+				wire.NewTLVBE(wire.LocateTLVTagsInfoCapabilities, []byte{
 					// chat: "748F2420-6287-11D1-8222-444553540000"
 					0x74, 0x8f, 0x24, 0x20, 0x62, 0x87, 0x11, 0xd1, 0x82, 0x22, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00,
 					// avatar: "09461346-4c7f-11d1-8222-444553540000"
@@ -523,11 +523,11 @@ func TestLocateService_RightsQuery(t *testing.T) {
 		Body: wire.SNAC_0x02_0x03_LocateRightsReply{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.LocateTLVTagsRightsMaxSigLen, uint16(1000)),
-					wire.NewTLV(wire.LocateTLVTagsRightsMaxCapabilitiesLen, uint16(1000)),
-					wire.NewTLV(wire.LocateTLVTagsRightsMaxFindByEmailList, uint16(1000)),
-					wire.NewTLV(wire.LocateTLVTagsRightsMaxCertsLen, uint16(1000)),
-					wire.NewTLV(wire.LocateTLVTagsRightsMaxMaxShortCapabilities, uint16(1000)),
+					wire.NewTLVBE(wire.LocateTLVTagsRightsMaxSigLen, uint16(1000)),
+					wire.NewTLVBE(wire.LocateTLVTagsRightsMaxCapabilitiesLen, uint16(1000)),
+					wire.NewTLVBE(wire.LocateTLVTagsRightsMaxFindByEmailList, uint16(1000)),
+					wire.NewTLVBE(wire.LocateTLVTagsRightsMaxCertsLen, uint16(1000)),
+					wire.NewTLVBE(wire.LocateTLVTagsRightsMaxMaxShortCapabilities, uint16(1000)),
 				},
 			},
 		},

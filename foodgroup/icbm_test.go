@@ -243,8 +243,8 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					ScreenName: "22222222",
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ICBMTLVRequestHostAck, []byte{}),
-							wire.NewTLV(wire.ICBMTLVStore, []byte{}),
+							wire.NewTLVBE(wire.ICBMTLVRequestHostAck, []byte{}),
+							wire.NewTLVBE(wire.ICBMTLVStore, []byte{}),
 						},
 					},
 				},
@@ -271,8 +271,8 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 									ScreenName: "22222222",
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.ICBMTLVRequestHostAck, []byte{}),
-											wire.NewTLV(wire.ICBMTLVStore, []byte{}),
+											wire.NewTLVBE(wire.ICBMTLVRequestHostAck, []byte{}),
+											wire.NewTLVBE(wire.ICBMTLVStore, []byte{}),
 										},
 									},
 								},

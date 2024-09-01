@@ -552,6 +552,25 @@ const (
 	ICBMChannelMIME       uint16 = 0x03
 	ICBMChannelICQ        uint16 = 0x04
 	ICBMChannelCoBrowser  uint16 = 0x05
+
+	ICBMMsgTypePlain    uint8 = 0x01 // Plain text (simple) message
+	ICBMMsgTypeChat     uint8 = 0x02 // Chat request message
+	ICBMMsgTypeFileReq  uint8 = 0x03 // File request / file ok message
+	ICBMMsgTypeUrl      uint8 = 0x04 // URL message (0xFE formatted)
+	ICBMMsgTypeAuthReq  uint8 = 0x06 // Authorization request message (0xFE formatted)
+	ICBMMsgTypeAuthDeny uint8 = 0x07 // Authorization denied message (0xFE formatted)
+	ICBMMsgTypeAuthOK   uint8 = 0x08 // Authorization given message (empty)
+	ICBMMsgTypeServer   uint8 = 0x09 // Message from OSCAR server (0xFE formatted)
+	ICBMMsgTypeAdded    uint8 = 0x0C // "You-were-added" message (0xFE formatted)
+	ICBMMsgTypeWWP      uint8 = 0x0D // Web pager message (0xFE formatted)
+	ICBMMsgTypeEExpress uint8 = 0x0E // Email express message (0xFE formatted)
+	ICBMMsgTypeContacts uint8 = 0x13 // Contact list message
+	ICBMMsgTypePlugin   uint8 = 0x1A // Plugin message described by text string
+	ICBMMsgTypeAutoAway uint8 = 0xE8 // Auto away message
+	ICBMMsgTypeAutoBusy uint8 = 0xE9 // Auto occupied message
+	ICBMMsgTypeAutoNA   uint8 = 0xEA // Auto not available message
+	ICBMMsgTypeAutoDND  uint8 = 0xEB // Auto do not disturb message
+	ICBMMsgTypeAutoFFC  uint8 = 0xEC // Auto free for chat message
 )
 
 // ICBMCh1Fragment represents an ICBM channel 1 (instant message) message
@@ -1266,6 +1285,24 @@ type SNAC_0x13_0x11_FeedbagStartCluster struct {
 	TLVRestBlock
 }
 
+type SNAC_0x13_0x18_FeedbagRequestAuthorizationToHost struct {
+	ScreenName string `oscar:"len_prefix=uint8"`
+	Reason     string `oscar:"len_prefix=uint16"`
+	Unknown    uint16
+}
+
+type SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost struct {
+	ScreenName string `oscar:"len_prefix=uint8"`
+	Accepted   uint8
+	Reason     string `oscar:"len_prefix=uint16"`
+}
+
+type SNAC_0x13_0x1B_FeedbagRespondAuthorizeToClient struct {
+	ScreenName string `oscar:"len_prefix=uint8"`
+	Accepted   uint8
+	Reason     string `oscar:"len_prefix=uint16"`
+}
+
 //
 // 0x15: ICQ
 //
@@ -1275,7 +1312,51 @@ const (
 	ICQDBQuery uint16 = 0x0002
 	ICQDBReply uint16 = 0x0003
 
-	ICQTLVTagsMetadata uint16 = 0x01
+	ICQTLVTagsMetadata                  uint16 = 0x0001
+	ICQTLVTagsUIN                       uint16 = 0x0136 // User UIN (search)
+	ICQTLVTagsFirstName                 uint16 = 0x0140 // User first name
+	ICQTLVTagsLastName                  uint16 = 0x014A // User last name
+	ICQTLVTagsNickname                  uint16 = 0x0154 // User nickname
+	ICQTLVTagsEmail                     uint16 = 0x015E // User email
+	ICQTLVTagsAgeRangeSearch            uint16 = 0x0168 // Age range to search (search)
+	ICQTLVTagsAge                       uint16 = 0x0172 // User age
+	ICQTLVTagsGender                    uint16 = 0x017C // User gender
+	ICQTLVTagsSpokenLanguage            uint16 = 0x0186 // User spoken language
+	ICQTLVTagsHomeCityName              uint16 = 0x0190 // User home city name
+	ICQTLVTagsHomeStateAbbr             uint16 = 0x019A // User home state abbreviation
+	ICQTLVTagsHomeCountryCode           uint16 = 0x01A4 // User home country code
+	ICQTLVTagsWorkCompanyName           uint16 = 0x01AE // User work company name
+	ICQTLVTagsWorkDepartmentName        uint16 = 0x01B8 // User work department name
+	ICQTLVTagsWorkPositionTitle         uint16 = 0x01C2 // User work position (title)
+	ICQTLVTagsWorkOccupationCode        uint16 = 0x01CC // User work occupation code
+	ICQTLVTagsAffiliationsNode          uint16 = 0x01D6 // User affiliations node
+	ICQTLVTagsInterestsNode             uint16 = 0x01EA // User interests node
+	ICQTLVTagsPastInfoNode              uint16 = 0x01FE // User past info node
+	ICQTLVTagsHomepageCategoryKeywords  uint16 = 0x0212 // User homepage category/keywords
+	ICQTLVTagsHomepageURL               uint16 = 0x0213 // User homepage URL
+	ICQTLVTagsWhitepagesSearchKeywords  uint16 = 0x0226 // Whitepages search keywords string (search)
+	ICQTLVTagsSearchOnlineUsersFlag     uint16 = 0x0230 // Search only online users flag (search)
+	ICQTLVTagsBirthdayInfo              uint16 = 0x023A // User birthday info (year, month, day)
+	ICQTLVTagsNotesText                 uint16 = 0x0258 // User notes (about) text
+	ICQTLVTagsHomeStreetAddress         uint16 = 0x0262 // User home street address
+	ICQTLVTagsHomeZipCode               uint16 = 0x026C // User home zip code
+	ICQTLVTagsHomePhoneNumber           uint16 = 0x0276 // User home phone number
+	ICQTLVTagsHomeFaxNumber             uint16 = 0x0280 // User home fax number
+	ICQTLVTagsHomeCellularPhoneNumber   uint16 = 0x028A // User home cellular phone number
+	ICQTLVTagsWorkStreetAddress         uint16 = 0x0294 // User work street address
+	ICQTLVTagsWorkCityName              uint16 = 0x029E // User work city name
+	ICQTLVTagsWorkStateName             uint16 = 0x02A8 // User work state name
+	ICQTLVTagsWorkCountryCode           uint16 = 0x02B2 // User work country code
+	ICQTLVTagsWorkZipCode               uint16 = 0x02BC // User work zip code
+	ICQTLVTagsWorkPhoneNumber           uint16 = 0x02C6 // User work phone number
+	ICQTLVTagsWorkFaxNumber             uint16 = 0x02D0 // User work fax number
+	ICQTLVTagsWorkWebpageURL            uint16 = 0x02DA // User work webpage URL
+	ICQTLVTagsShowWebStatusPermissions  uint16 = 0x02F8 // User 'show web status' permissions
+	ICQTLVTagsAuthorizationPermissions  uint16 = 0x030C // User authorization permissions
+	ICQTLVTagsGMTOffset                 uint16 = 0x0316 // User GMT offset
+	ICQTLVTagsOriginallyFromCity        uint16 = 0x0320 // User originally from city
+	ICQTLVTagsOriginallyFromState       uint16 = 0x032A // User originally from state
+	ICQTLVTagsOriginallyFromCountryCode uint16 = 0x0334 // User originally from country (code)
 
 	ICQStatusCodeOK   uint8 = 0x0A
 	ICQStatusCodeFail uint8 = 0x32
@@ -1295,33 +1376,36 @@ const (
 )
 
 const (
-	ICQDBQueryMetaReqSetBasicInfo     uint16 = 0x03EA
-	ICQDBQueryMetaReqSetWorkInfo      uint16 = 0x03F3
-	ICQDBQueryMetaReqSetMoreInfo      uint16 = 0x03FD
-	ICQDBQueryMetaReqSetNotes         uint16 = 0x0406
-	ICQDBQueryMetaReqSetEmails        uint16 = 0x040B
-	ICQDBQueryMetaReqSetInterests     uint16 = 0x0410
-	ICQDBQueryMetaReqSetAffiliations  uint16 = 0x041A
-	ICQDBQueryMetaReqSetPermissions   uint16 = 0x0424
-	ICQDBQueryMetaReqShortInfo        uint16 = 0x04BA
-	ICQDBQueryMetaReqFullInfo         uint16 = 0x04B2
-	ICQDBQueryMetaReqFullInfo2        uint16 = 0x04D0
-	ICQDBQueryMetaReqSearchByDetails  uint16 = 0x0515
-	ICQDBQueryMetaReqSearchByUIN      uint16 = 0x051F
-	ICQDBQueryMetaReqSearchByEmail    uint16 = 0x0529
-	ICQDBQueryMetaReqSearchWhitePages uint16 = 0x0533
-	ICQDBQueryMetaReqXMLReq           uint16 = 0x0898
-	ICQDBQueryMetaReqStat0a8c         uint16 = 0x0A8C
-	ICQDBQueryMetaReqStat0a96         uint16 = 0x0A96
-	ICQDBQueryMetaReqStat0aaa         uint16 = 0x0AAA
-	ICQDBQueryMetaReqStat0ab4         uint16 = 0x0AB4
-	ICQDBQueryMetaReqStat0ab9         uint16 = 0x0AB9
-	ICQDBQueryMetaReqStat0abe         uint16 = 0x0ABE
-	ICQDBQueryMetaReqStat0ac8         uint16 = 0x0AC8
-	ICQDBQueryMetaReqStat0acd         uint16 = 0x0ACD
-	ICQDBQueryMetaReqStat0ad2         uint16 = 0x0AD2
-	ICQDBQueryMetaReqStat0ad7         uint16 = 0x0AD7
-	ICQDBQueryMetaReqStat0758         uint16 = 0x0758
+	ICQDBQueryMetaReqSetBasicInfo      uint16 = 0x03EA
+	ICQDBQueryMetaReqSetWorkInfo       uint16 = 0x03F3
+	ICQDBQueryMetaReqSetMoreInfo       uint16 = 0x03FD
+	ICQDBQueryMetaReqSetNotes          uint16 = 0x0406
+	ICQDBQueryMetaReqSetEmails         uint16 = 0x040B
+	ICQDBQueryMetaReqSetInterests      uint16 = 0x0410
+	ICQDBQueryMetaReqSetAffiliations   uint16 = 0x041A
+	ICQDBQueryMetaReqSetPermissions    uint16 = 0x0424
+	ICQDBQueryMetaReqShortInfo         uint16 = 0x04BA
+	ICQDBQueryMetaReqFullInfo          uint16 = 0x04B2
+	ICQDBQueryMetaReqFullInfo2         uint16 = 0x04D0
+	ICQDBQueryMetaReqSearchByDetails   uint16 = 0x0515
+	ICQDBQueryMetaReqSearchByUIN       uint16 = 0x051F
+	ICQDBQueryMetaReqSearchByEmail     uint16 = 0x0529
+	ICQDBQueryMetaReqSearchWhitePages  uint16 = 0x0533
+	ICQDBQueryMetaReqSearchWhitePages2 uint16 = 0x055F
+	ICQDBQueryMetaReqSearchByUIN2      uint16 = 0x0569
+	ICQDBQueryMetaReqSearchByEmail3    uint16 = 0x0573
+	ICQDBQueryMetaReqStat0758          uint16 = 0x0758
+	ICQDBQueryMetaReqXMLReq            uint16 = 0x0898
+	ICQDBQueryMetaReqStat0a8c          uint16 = 0x0A8C
+	ICQDBQueryMetaReqStat0a96          uint16 = 0x0A96
+	ICQDBQueryMetaReqStat0aaa          uint16 = 0x0AAA
+	ICQDBQueryMetaReqStat0ab4          uint16 = 0x0AB4
+	ICQDBQueryMetaReqStat0ab9          uint16 = 0x0AB9
+	ICQDBQueryMetaReqStat0abe          uint16 = 0x0ABE
+	ICQDBQueryMetaReqStat0ac8          uint16 = 0x0AC8
+	ICQDBQueryMetaReqStat0acd          uint16 = 0x0ACD
+	ICQDBQueryMetaReqStat0ad2          uint16 = 0x0AD2
+	ICQDBQueryMetaReqStat0ad7          uint16 = 0x0AD7
 
 	ICQDBQueryMetaReplySetBasicInfo    uint16 = 0x0064
 	ICQDBQueryMetaReplySetWorkInfo     uint16 = 0x006E
@@ -1368,14 +1452,31 @@ type ICQ_0x07D0_0x051F_DBQueryMetaReqSearchByUIN struct {
 	UIN uint32
 }
 
+type ICQ_0x07D0_0x0569_DBQueryMetaReqSearchByUIN2 struct {
+	TLVRestBlock
+}
+
 type ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail struct {
 	Email string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQ_0x07D0_0x0573_DBQueryMetaReqSearchByEmail3 struct {
+	TLVRestBlock
 }
 
 type ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails struct {
 	FirstName string `oscar:"len_prefix=uint16,nullterm"`
 	LastName  string `oscar:"len_prefix=uint16,nullterm"`
 	NickName  string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQInterests struct {
+	Code    uint16
+	Keyword string `oscar:"len_prefix=uint16,nullterm"`
+}
+
+type ICQEmail struct {
+	Email string `oscar:"len_prefix=uint16,nullterm"`
 }
 
 type ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages struct {
@@ -1403,6 +1504,10 @@ type ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages struct {
 	HomePageCode        uint16
 	HomePageKeywords    string `oscar:"len_prefix=uint16,nullterm"`
 	SearchScope         uint8
+}
+
+type ICQ_0x07D0_0x055F_DBQueryMetaReqSearchWhitePages2 struct {
+	TLVRestBlock
 }
 
 type ICQ_0x07D0_0x03FD_DBQueryMetaReqSetMoreInfo struct {

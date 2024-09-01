@@ -175,14 +175,20 @@ type AccountManager interface {
 }
 
 type ICQUserFinder interface {
-	// FindByUIN returns a user where the UIN matches the ident screen name.
+	// FindByUIN returns a user with a matching UIN.
 	FindByUIN(UIN uint32) (state.User, error)
 	// FindByEmail returns a user with a matching email address.
 	FindByEmail(email string) (state.User, error)
-	// FindByDetails returns a user with either a matching first name, last name, or nickname.
+	// FindByDetails returns users with either a matching first name, last
+	// name, and nickname. Empty values are not included in the search
+	// parameters.
 	FindByDetails(firstName, lastName, nickName string) ([]state.User, error)
-	// FindByInterests returns a user who has at least one matching interest.
+	// FindByInterests returns users who have at least one matching interest
+	// for a given category code.
 	FindByInterests(code uint16, keywords []string) ([]state.User, error)
+	// FindByKeyword returns users with matching interest keyword across all
+	// interest categories.
+	FindByKeyword(keyword string) ([]state.User, error)
 }
 
 type ICQUserUpdater interface {

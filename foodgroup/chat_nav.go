@@ -12,15 +12,15 @@ import (
 
 var defaultExchangeCfg = wire.TLVBlock{
 	TLVList: wire.TLVList{
-		wire.NewTLV(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
-		wire.NewTLV(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
-		wire.NewTLV(wire.ChatRoomTLVMaxNameLen, uint16(100)),
-		wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
-		wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
-		wire.NewTLV(wire.ChatRoomTLVCharSet1, "us-ascii"),
-		wire.NewTLV(wire.ChatRoomTLVLang1, "en"),
-		wire.NewTLV(wire.ChatRoomTLVCharSet2, "us-ascii"),
-		wire.NewTLV(wire.ChatRoomTLVLang2, "en"),
+		wire.NewTLVBE(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
+		wire.NewTLVBE(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
+		wire.NewTLVBE(wire.ChatRoomTLVMaxNameLen, uint16(100)),
+		wire.NewTLVBE(wire.ChatRoomTLVFlags, uint16(15)),
+		wire.NewTLVBE(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
+		wire.NewTLVBE(wire.ChatRoomTLVCharSet1, "us-ascii"),
+		wire.NewTLVBE(wire.ChatRoomTLVLang1, "en"),
+		wire.NewTLVBE(wire.ChatRoomTLVCharSet2, "us-ascii"),
+		wire.NewTLVBE(wire.ChatRoomTLVLang2, "en"),
 	},
 }
 
@@ -58,12 +58,12 @@ func (s ChatNavService) RequestChatRights(_ context.Context, inFrame wire.SNACFr
 		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
-					wire.NewTLV(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
+					wire.NewTLVBE(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
+					wire.NewTLVBE(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
 						Identifier: state.PrivateExchange,
 						TLVBlock:   defaultExchangeCfg,
 					}),
-					wire.NewTLV(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
+					wire.NewTLVBE(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
 						Identifier: state.PublicExchange,
 						TLVBlock:   defaultExchangeCfg,
 					}),
@@ -118,7 +118,7 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+					wire.NewTLVBE(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 						Cookie:         room.Cookie(),
 						Exchange:       room.Exchange(),
 						DetailLevel:    room.DetailLevel(),
@@ -159,7 +159,7 @@ func (s ChatNavService) RequestRoomInfo(_ context.Context, inFrame wire.SNACFram
 		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+					wire.NewTLVBE(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 						Cookie:         room.Cookie(),
 						Exchange:       room.Exchange(),
 						DetailLevel:    room.DetailLevel(),
@@ -188,8 +188,8 @@ func (s ChatNavService) ExchangeInfo(_ context.Context, inFrame wire.SNACFrame, 
 		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
-					wire.NewTLV(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
+					wire.NewTLVBE(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
+					wire.NewTLVBE(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
 						Identifier: inBody.Exchange,
 						TLVBlock:   defaultExchangeCfg,
 					}),

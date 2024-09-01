@@ -268,8 +268,8 @@ func TestMarshal(t *testing.T) {
 				Val []TLV `oscar:"count_prefix=uint8"`
 			}{
 				Val: []TLV{
-					NewTLV(10, uint16(1234)),
-					NewTLV(20, uint16(1234)),
+					NewTLVBE(10, uint16(1234)),
+					NewTLVBE(20, uint16(1234)),
 				},
 			},
 			want: append(
@@ -283,7 +283,7 @@ func TestMarshal(t *testing.T) {
 				Val []TLV `oscar:"count_prefix=uint8"`
 			}{
 				Val: []TLV{
-					NewTLV(10, uint16(1234)),
+					NewTLVBE(10, uint16(1234)),
 				},
 			},
 			wantErr: io.EOF,
@@ -295,8 +295,8 @@ func TestMarshal(t *testing.T) {
 				Val []TLV `oscar:"count_prefix=uint16"`
 			}{
 				Val: []TLV{
-					NewTLV(10, uint16(1234)),
-					NewTLV(20, uint16(1234)),
+					NewTLVBE(10, uint16(1234)),
+					NewTLVBE(20, uint16(1234)),
 				},
 			},
 			want: append(
@@ -310,7 +310,7 @@ func TestMarshal(t *testing.T) {
 				Val []TLV `oscar:"count_prefix=uint16"`
 			}{
 				Val: []TLV{
-					NewTLV(10, uint16(1234)),
+					NewTLVBE(10, uint16(1234)),
 				},
 			},
 			wantErr: io.EOF,

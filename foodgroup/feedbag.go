@@ -71,17 +71,17 @@ func (s FeedbagService) RightsQuery(_ context.Context, inFrame wire.SNACFrame) w
 		Body: wire.SNAC_0x13_0x03_FeedbagRightsReply{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.FeedbagRightsMaxItemAttrs, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsMaxItemsByClass, maxItemsByClass),
-					wire.NewTLV(wire.FeedbagRightsMaxClientItems, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsMaxItemNameLen, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsMaxRecentBuddies, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsInteractionBuddies, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsInteractionHalfLife, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsInteractionMaxScore, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsMaxBuddiesPerGroup, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsMaxMegaBots, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsMaxSmartGroups, uint16(100)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxItemAttrs, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxItemsByClass, maxItemsByClass),
+					wire.NewTLVBE(wire.FeedbagRightsMaxClientItems, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxItemNameLen, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxRecentBuddies, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsInteractionBuddies, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsInteractionHalfLife, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsInteractionMaxScore, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxBuddiesPerGroup, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxMegaBots, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxSmartGroups, uint16(100)),
 				},
 			},
 		},
@@ -244,7 +244,7 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 // If the icon already exists, tell the user's buddies about the icon change.
 func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Session, item wire.FeedbagItem) error {
 	btlv := wire.BARTInfo{}
-	if b, hasBuf := item.Slice(wire.FeedbagAttributesBartInfo); hasBuf {
+	if b, hasBuf := item.Bytes(wire.FeedbagAttributesBartInfo); hasBuf {
 		if err := wire.UnmarshalBE(&btlv, bytes.NewBuffer(b)); err != nil {
 			return err
 		}
@@ -362,5 +362,46 @@ func (s FeedbagService) Use(ctx context.Context, sess *state.Session) error {
 			return err
 		}
 	}
+	return nil
+}
+
+// RespondAuthorizeToHost forwards an authorization response from the user
+// whose authorization was requested to the user who made the authorization
+// request.
+// Right now we send an ICBM request so that responses can work for both ICQ
+// 2000b and ICQ 2001a. This function should eventually only send an ICBM
+// message to non-feedbag clients and SNAC(0x0013,0x001B) to feedbag clients.
+func (s FeedbagService) RespondAuthorizeToHost(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost) error {
+	response := wire.ICBMCh4Message{
+		UIN:     sess.UIN(),
+		Message: inBody.Reason,
+	}
+
+	switch inBody.Accepted {
+	case 0:
+		response.MessageType = wire.ICBMMsgTypeAuthDeny
+	case 1:
+		response.MessageType = wire.ICBMMsgTypeAuthOK
+	default:
+		return fmt.Errorf("invalid accepted flag %d", inBody.Accepted)
+	}
+
+	s.messageRelayer.RelayToScreenName(ctx, state.NewIdentScreenName(inBody.ScreenName), wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICBM,
+			SubGroup:  wire.ICBMChannelMsgToClient,
+		},
+		Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+			ChannelID:   wire.ICBMChannelICQ,
+			TLVUserInfo: sess.TLVUserInfo(),
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLVLE(wire.ICBMTLVData, response),
+					wire.NewTLVBE(wire.ICBMTLVStore, []byte{}),
+				},
+			},
+		},
+	})
+
 	return nil
 }

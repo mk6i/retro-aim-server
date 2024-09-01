@@ -128,6 +128,46 @@ func (s ICQService) FindByEmail(ctx context.Context, sess *state.Session, req wi
 	})
 }
 
+func (s ICQService) FindByEmail3(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0573_DBQueryMetaReqSearchByEmail3, seq uint16) error {
+	b, hasEmail := req.Bytes(wire.ICQTLVTagsEmail)
+	if !hasEmail {
+		return errors.New("unable to get email from request")
+	}
+
+	email := wire.ICQEmail{}
+	if err := wire.UnmarshalLE(&email, bytes.NewReader(b)); err != nil {
+		return fmt.Errorf("unmarshal email: %w", err)
+	}
+
+	resp := wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
+		ICQMetadata: wire.ICQMetadata{
+			UIN:     sess.UIN(),
+			ReqType: wire.ICQDBQueryMetaReply,
+			Seq:     seq,
+		},
+		ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
+		Success:    wire.ICQStatusCodeOK,
+	}
+	resp.LastResult()
+
+	res, err := s.userFinder.FindByEmail(email.Email)
+
+	switch {
+	case errors.Is(err, state.ErrNoUser):
+		resp.Success = wire.ICQStatusCodeFail
+	case err != nil:
+		s.logger.Error("FindByEmail failed", "err", err.Error())
+		resp.Success = wire.ICQStatusCodeErr
+	default:
+		resp.Success = wire.ICQStatusCodeOK
+		resp.Details = s.createResult(res)
+	}
+
+	return s.reply(ctx, sess, wire.ICQMessageReplyEnvelope{
+		Message: resp,
+	})
+}
+
 func (s ICQService) FindByInterests(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, seq uint16) error {
 	resp := wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
 		ICQMetadata: wire.ICQMetadata{
@@ -173,6 +213,74 @@ func (s ICQService) FindByInterests(ctx context.Context, sess *state.Session, re
 	return nil
 }
 
+func (s ICQService) FindByWhitePages2(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x055F_DBQueryMetaReqSearchWhitePages2, seq uint16) error {
+
+	users, err := func() ([]state.User, error) {
+		if keyword, hasKeyword := req.ICQString(wire.ICQTLVTagsWhitepagesSearchKeywords); hasKeyword {
+			res, err := s.userFinder.FindByKeyword(keyword)
+			if err != nil {
+				return nil, fmt.Errorf("FindByKeyword failed: %w", err)
+			}
+			return res, nil
+		}
+
+		bNick, hasNick := req.ICQString(wire.ICQTLVTagsNickname)
+		bFirst, hasFirst := req.ICQString(wire.ICQTLVTagsFirstName)
+		bLast, hastLast := req.ICQString(wire.ICQTLVTagsLastName)
+
+		if hasNick || hasFirst || hastLast {
+			res, err := s.userFinder.FindByDetails(bFirst, bLast, bNick)
+			if err != nil {
+				return nil, fmt.Errorf("FindByDetails failed: %w", err)
+			}
+			return res, nil
+		}
+
+		return nil, nil
+	}()
+
+	resp := wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
+		ICQMetadata: wire.ICQMetadata{
+			UIN:     sess.UIN(),
+			ReqType: wire.ICQDBQueryMetaReply,
+			Seq:     seq,
+		},
+		Success:    wire.ICQStatusCodeOK,
+		ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
+	}
+
+	if err != nil {
+		s.logger.Error("FindByWhitePages2 failed", "err", err.Error())
+		resp.Success = wire.ICQStatusCodeErr
+		return s.reply(ctx, sess, wire.ICQMessageReplyEnvelope{
+			Message: resp,
+		})
+	}
+
+	if len(users) == 0 {
+		resp.Success = wire.ICQStatusCodeFail
+		return s.reply(ctx, sess, wire.ICQMessageReplyEnvelope{
+			Message: resp,
+		})
+	}
+
+	for i := 0; i < len(users); i++ {
+		if i == len(users)-1 {
+			resp.LastResult()
+		} else {
+			resp.ReqSubType = wire.ICQDBQueryMetaReplyUserFound
+		}
+		resp.Details = s.createResult(users[i])
+		if err := s.reply(ctx, sess, wire.ICQMessageReplyEnvelope{
+			Message: resp,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (s ICQService) FindByUIN(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x051F_DBQueryMetaReqSearchByUIN, seq uint16) error {
 	resp := wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
 		ICQMetadata: wire.ICQMetadata{
@@ -186,6 +294,41 @@ func (s ICQService) FindByUIN(ctx context.Context, sess *state.Session, req wire
 	resp.LastResult()
 
 	res, err := s.userFinder.FindByUIN(req.UIN)
+
+	switch {
+	case errors.Is(err, state.ErrNoUser):
+		resp.Success = wire.ICQStatusCodeFail
+	case err != nil:
+		s.logger.Error("FindByUIN failed", "err", err.Error())
+		resp.Success = wire.ICQStatusCodeErr
+	default:
+		resp.Success = wire.ICQStatusCodeOK
+		resp.Details = s.createResult(res)
+	}
+
+	return s.reply(ctx, sess, wire.ICQMessageReplyEnvelope{
+		Message: resp,
+	})
+}
+
+func (s ICQService) FindByUIN2(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0569_DBQueryMetaReqSearchByUIN2, seq uint16) error {
+	UIN, hasUIN := req.Uint32LE(wire.ICQTLVTagsUIN)
+	if !hasUIN {
+		return errors.New("unable to get UIN from request")
+	}
+
+	resp := wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
+		ICQMetadata: wire.ICQMetadata{
+			UIN:     sess.UIN(),
+			ReqType: wire.ICQDBQueryMetaReply,
+			Seq:     seq,
+		},
+		ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
+		Success:    wire.ICQStatusCodeOK,
+	}
+	resp.LastResult()
+
+	res, err := s.userFinder.FindByUIN(UIN)
 
 	switch {
 	case errors.Is(err, state.ErrNoUser):
@@ -267,7 +410,7 @@ func (s ICQService) OfflineMsgReq(ctx context.Context, sess *state.Session, seq 
 
 		switch msgIn.Message.ChannelID {
 		case wire.ICBMChannelIM:
-			if payload, hasIM := msgIn.Message.Slice(wire.ICBMTLVAOLIMData); hasIM {
+			if payload, hasIM := msgIn.Message.Bytes(wire.ICBMTLVAOLIMData); hasIM {
 				// send regular IM
 				msgText, err := wire.UnmarshalICBMMessageText(payload)
 				if err != nil {
@@ -277,16 +420,16 @@ func (s ICQService) OfflineMsgReq(ctx context.Context, sess *state.Session, seq 
 				reply.Message = msgText
 			}
 		case wire.ICBMChannelICQ:
-			if b, hasAuthReq := msgIn.Message.Slice(wire.ICBMTLVData); hasAuthReq {
+			if b, hasAuthReq := msgIn.Message.Bytes(wire.ICBMTLVData); hasAuthReq {
 				// send authorization request
-				rdv := wire.ICBMCh4Message{}
+				msg := wire.ICBMCh4Message{}
 				buf := bytes.NewBuffer(b)
-				if err := wire.UnmarshalLE(&rdv, buf); err != nil {
+				if err := wire.UnmarshalLE(&msg, buf); err != nil {
 					return err
 				}
-				reply.MsgType = rdv.MessageType
-				reply.Flags = rdv.Flags
-				reply.Message = rdv.Message
+				reply.MsgType = msg.MessageType
+				reply.Flags = msg.Flags
+				reply.Message = msg.Message
 			}
 		}
 
@@ -705,7 +848,7 @@ func (s ICQService) reply(ctx context.Context, sess *state.Session, message wire
 		Body: wire.SNAC_0x15_0x02_DBReply{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.ICQTLVTagsMetadata, message),
+					wire.NewTLVBE(wire.ICQTLVTagsMetadata, message),
 				},
 			},
 		},

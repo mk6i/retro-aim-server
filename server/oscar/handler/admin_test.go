@@ -56,7 +56,7 @@ func TestAdminHandler_InfoQuery_RegistrationStatus(t *testing.T) {
 		Body: wire.SNAC_0x07_0x02_AdminInfoQuery{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.AdminTLVRegistrationStatus, uint16(0x00))},
+					wire.NewTLVBE(wire.AdminTLVRegistrationStatus, uint16(0x00))},
 			},
 		},
 	}
@@ -69,7 +69,7 @@ func TestAdminHandler_InfoQuery_RegistrationStatus(t *testing.T) {
 			Permissions: wire.AdminInfoPermissionsReadWrite,
 			TLVBlock: wire.TLVBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusFullDisclosure),
+					wire.NewTLVBE(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusFullDisclosure),
 				},
 			},
 		},
@@ -102,7 +102,7 @@ func TestAdminHandler_InfoChangeRequest_ScreenNameFormatted(t *testing.T) {
 		Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.AdminTLVScreenNameFormatted, "Chatting Chuck")},
+					wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "Chatting Chuck")},
 			},
 		},
 	}
@@ -115,7 +115,7 @@ func TestAdminHandler_InfoChangeRequest_ScreenNameFormatted(t *testing.T) {
 			Permissions: wire.AdminInfoPermissionsReadWrite,
 			TLVBlock: wire.TLVBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
+					wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
 				},
 			},
 		},

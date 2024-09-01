@@ -77,10 +77,19 @@ type retrieveSessionParams []struct {
 // icqUserFinderParams is a helper struct that contains mock parameters for
 // ICQUserFinder methods
 type icqUserFinderParams struct {
-	findByUINParams
-	findByEmailParams
 	findByDetailsParams
+	findByEmailParams
 	findByInterestsParams
+	findByKeywordParams
+	findByUINParams
+}
+
+// findByKeywordParams is the list of parameters passed at the mock
+// ICQUserFinder.FindByKeyword call site
+type findByKeywordParams []struct {
+	keyword string
+	result  []state.User
+	err     error
 }
 
 // findByUINParams is the list of parameters passed at the mock
@@ -345,7 +354,6 @@ type relayToScreenNamesParams []struct {
 // relayToScreenNameParams is the list of parameters passed at the mock
 // MessageRelayer.RelayToScreenName call site
 type relayToScreenNameParams []struct {
-	cookie     string
 	screenName state.IdentScreenName
 	message    wire.SNACMessage
 }
@@ -690,7 +698,7 @@ func newTestSession(screenName state.DisplayScreenName, options ...func(session 
 
 func userInfoWithBARTIcon(sess *state.Session, bid wire.BARTID) wire.TLVUserInfo {
 	info := sess.TLVUserInfo()
-	info.Append(wire.NewTLV(wire.OServiceUserInfoBARTInfo, bid))
+	info.Append(wire.NewTLVBE(wire.OServiceUserInfoBARTInfo, bid))
 	return info
 }
 

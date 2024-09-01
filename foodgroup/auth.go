@@ -201,7 +201,7 @@ func (s AuthService) BUCPChallenge(
 			Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: []wire.TLV{
-						wire.NewTLV(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidUsernameOrPassword),
+						wire.NewTLVBE(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidUsernameOrPassword),
 					},
 				},
 			},
@@ -318,9 +318,9 @@ func (s AuthService) login(
 	// get the password from the appropriate TLV. older clients have a
 	// roasted password, newer clients have a hashed password. ICQ may omit
 	// the password TLV when logging in without saved password.
-	if md5Hash, hasMD5 := TLVList.Slice(wire.LoginTLVTagsPasswordHash); hasMD5 {
+	if md5Hash, hasMD5 := TLVList.Bytes(wire.LoginTLVTagsPasswordHash); hasMD5 {
 		loginOK = user.ValidateHash(md5Hash)
-	} else if roastedPass, hasRoasted := TLVList.Slice(wire.LoginTLVTagsRoastedPassword); hasRoasted {
+	} else if roastedPass, hasRoasted := TLVList.Bytes(wire.LoginTLVTagsRoastedPassword); hasRoasted {
 		loginOK = user.ValidateRoastedPass(roastedPass)
 	}
 	if !loginOK {
@@ -346,9 +346,9 @@ func (s AuthService) loginSuccessResponse(screenName state.DisplayScreenName, er
 
 	return wire.TLVRestBlock{
 		TLVList: []wire.TLV{
-			wire.NewTLV(wire.LoginTLVTagsScreenName, screenName),
-			wire.NewTLV(wire.LoginTLVTagsReconnectHere, net.JoinHostPort(s.config.OSCARHost, s.config.BOSPort)),
-			wire.NewTLV(wire.LoginTLVTagsAuthorizationCookie, cookie),
+			wire.NewTLVBE(wire.LoginTLVTagsScreenName, screenName),
+			wire.NewTLVBE(wire.LoginTLVTagsReconnectHere, net.JoinHostPort(s.config.OSCARHost, s.config.BOSPort)),
+			wire.NewTLVBE(wire.LoginTLVTagsAuthorizationCookie, cookie),
 		},
 	}, nil
 }
@@ -356,8 +356,8 @@ func (s AuthService) loginSuccessResponse(screenName state.DisplayScreenName, er
 func loginFailureResponse(screenName state.DisplayScreenName, code uint16) wire.TLVRestBlock {
 	return wire.TLVRestBlock{
 		TLVList: []wire.TLV{
-			wire.NewTLV(wire.LoginTLVTagsScreenName, screenName),
-			wire.NewTLV(wire.LoginTLVTagsErrorSubcode, code),
+			wire.NewTLVBE(wire.LoginTLVTagsScreenName, screenName),
+			wire.NewTLVBE(wire.LoginTLVTagsErrorSubcode, code),
 		},
 	}
 }

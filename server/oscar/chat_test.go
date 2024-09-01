@@ -31,7 +31,7 @@ func TestChatService_handleNewConnection(t *testing.T) {
 		flapSignonFrame = wire.FLAPSignonFrame{
 			FLAPVersion: 1,
 		}
-		flapSignonFrame.Append(wire.NewTLV(wire.OServiceTLVTagsLoginCookie, []byte(`the-chat-login-cookie`)))
+		flapSignonFrame.Append(wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte(`the-chat-login-cookie`)))
 		buf := &bytes.Buffer{}
 		assert.NoError(t, wire.MarshalBE(flapSignonFrame, buf))
 		flap = wire.FLAPFrame{

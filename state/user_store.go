@@ -103,11 +103,9 @@ func (f SQLiteUserStore) AllUsers() ([]User, error) {
 	return users, nil
 }
 
-// FindByUIN returns a user where the UIN matches the ident screen name.
+// FindByUIN returns a user with a matching UIN.
 func (f SQLiteUserStore) FindByUIN(UIN uint32) (User, error) {
-	users, err := getUsers(func() (string, []any) {
-		return `identScreenName = ?`, []any{strconv.Itoa(int(UIN))}
-	}, f.db)
+	users, err := f.queryUsers(`identScreenName = ?`, []any{strconv.Itoa(int(UIN))})
 	if err != nil {
 		return User{}, fmt.Errorf("FindByUIN: %w", err)
 	}
@@ -121,9 +119,7 @@ func (f SQLiteUserStore) FindByUIN(UIN uint32) (User, error) {
 
 // FindByEmail returns a user with a matching email address.
 func (f SQLiteUserStore) FindByEmail(email string) (User, error) {
-	users, err := getUsers(func() (string, []any) {
-		return `icq_basicInfo_emailAddress = ?`, []any{email}
-	}, f.db)
+	users, err := f.queryUsers(`icq_basicInfo_emailAddress = ?`, []any{email})
 	if err != nil {
 		return User{}, fmt.Errorf("FindByEmail: %w", err)
 	}
@@ -135,63 +131,89 @@ func (f SQLiteUserStore) FindByEmail(email string) (User, error) {
 	return users[0], nil
 }
 
-// FindByDetails returns a user with either a matching first name, last name, or nickname.
+// FindByDetails returns users with either a matching first name, last name,
+// and nickname. Empty values are not included in the search parameters.
 func (f SQLiteUserStore) FindByDetails(firstName, lastName, nickName string) ([]User, error) {
-	users, err := getUsers(func() (string, []any) {
-		var conds []string
-		var vals []any
-		if firstName != "" {
-			conds = append(conds, `LOWER(icq_basicInfo_firstName) = LOWER(?)`)
-			vals = append(vals, firstName)
-		}
-		if lastName != "" {
-			conds = append(conds, `LOWER(icq_basicInfo_lastName) = LOWER(?)`)
-			vals = append(vals, lastName)
-		}
-		if nickName != "" {
-			conds = append(conds, `LOWER(icq_basicInfo_nickName) = LOWER(?)`)
-			vals = append(vals, nickName)
-		}
-		return strings.Join(conds, " AND "), vals
-	}, f.db)
+	var args []any
+	var clauses []string
+
+	if firstName != "" {
+		args = append(args, firstName)
+		clauses = append(clauses, `LOWER(icq_basicInfo_firstName) = LOWER(?)`)
+	}
+
+	if lastName != "" {
+		args = append(args, lastName)
+		clauses = append(clauses, `LOWER(icq_basicInfo_lastName) = LOWER(?)`)
+	}
+
+	if nickName != "" {
+		args = append(args, nickName)
+		clauses = append(clauses, `LOWER(icq_basicInfo_nickName) = LOWER(?)`)
+	}
+
+	whereClause := strings.Join(clauses, " AND ")
+
+	users, err := f.queryUsers(whereClause, args)
 	if err != nil {
 		err = fmt.Errorf("FindByDetails: %w", err)
 	}
+
 	return users, nil
 }
 
-// FindByInterests returns a user who has at least one matching interest.
+// FindByInterests returns users who have at least one matching interest.
 func (f SQLiteUserStore) FindByInterests(code uint16, keywords []string) ([]User, error) {
-	users, err := getUsers(func() (string, []any) {
-		var conds []string
-		var vals []any
+	var args []any
+	var clauses []string
 
-		for i := 1; i <= 4; i++ {
-			var subConds []string
-			vals = append(vals, code)
-			for _, key := range keywords {
-				subConds = append(subConds, fmt.Sprintf("icq_interests_keyword%d LIKE ?", i))
-				vals = append(vals, "%"+key+"%")
-			}
-			conds = append(conds, fmt.Sprintf("(icq_interests_code%d = ? AND (%s))", i, strings.Join(subConds, " OR ")))
+	for i := 1; i <= 4; i++ {
+		var subClauses []string
+		args = append(args, code)
+		for _, key := range keywords {
+			subClauses = append(subClauses, fmt.Sprintf("icq_interests_keyword%d LIKE ?", i))
+			args = append(args, "%"+key+"%")
 		}
+		clauses = append(clauses, fmt.Sprintf("(icq_interests_code%d = ? AND (%s))", i, strings.Join(subClauses, " OR ")))
+	}
 
-		return strings.Join(conds, " OR "), vals
-	}, f.db)
+	cond := strings.Join(clauses, " OR ")
+
+	users, err := f.queryUsers(cond, args)
 	if err != nil {
 		err = fmt.Errorf("FindByInterests: %w", err)
 	}
+
+	return users, nil
+}
+
+// FindByKeyword returns users with matching interest keyword across all
+// interest categories.
+func (f SQLiteUserStore) FindByKeyword(keyword string) ([]User, error) {
+	var args []any
+	var clauses []string
+
+	for i := 1; i <= 4; i++ {
+		args = append(args, "%"+keyword+"%")
+		clauses = append(clauses, fmt.Sprintf("icq_interests_keyword%d LIKE ?", i))
+	}
+
+	whereClause := strings.Join(clauses, " OR ")
+
+	users, err := f.queryUsers(whereClause, args)
+	if err != nil {
+		err = fmt.Errorf("FindByKeyword: %w", err)
+	}
+
 	return users, nil
 }
 
 // User looks up a user by screen name. It populates the User record with
 // credentials that can be used to validate the user's password.
 func (f SQLiteUserStore) User(screenName IdentScreenName) (*User, error) {
-	users, err := getUsers(func() (string, []any) {
-		return `identScreenName = ?`, []any{screenName.String()}
-	}, f.db)
+	users, err := f.queryUsers(`identScreenName = ?`, []any{screenName.String()})
 	if err != nil {
-		return nil, fmt.Errorf("user: %w", err)
+		return nil, fmt.Errorf("User: %w", err)
 	}
 
 	if len(users) == 0 {
@@ -201,17 +223,10 @@ func (f SQLiteUserStore) User(screenName IdentScreenName) (*User, error) {
 	return &users[0], nil
 }
 
-type filterFN func() (string, []any)
-
-type queryer interface {
-	Query(query string, args ...any) (*sql.Rows, error)
-}
-
-// getUsers fetches users from the database by their screen name.
-func getUsers(filterFN filterFN, tx queryer) ([]User, error) {
-
-	cond, parms := filterFN()
-
+// queryUsers retrieves a list of users from the database based on the
+// specified WHERE clause and query parameters. Returns a slice of User objects
+// or an error if the query fails.
+func (f SQLiteUserStore) queryUsers(whereClause string, queryParams []any) ([]User, error) {
 	q := `
 		SELECT
 			identScreenName,
@@ -282,8 +297,8 @@ func getUsers(filterFN filterFN, tx queryer) ([]User, error) {
 		FROM users
 		WHERE %s
 	`
-	q = fmt.Sprintf(q, cond)
-	rows, err := tx.Query(q, parms...)
+	q = fmt.Sprintf(q, whereClause)
+	rows, err := f.db.Query(q, queryParams...)
 	if err != nil {
 		return nil, err
 	}
@@ -1306,7 +1321,7 @@ func (f SQLiteUserStore) BuddyIconRefByName(screenName IdentScreenName) (*wire.B
 	if err := wire.UnmarshalBE(&item.TLVLBlock, bytes.NewBuffer(attrs)); err != nil {
 		return nil, err
 	}
-	b, hasBuf := item.Slice(wire.FeedbagAttributesBartInfo)
+	b, hasBuf := item.Bytes(wire.FeedbagAttributesBartInfo)
 	if !hasBuf {
 		return nil, errors.New("unable to extract icon payload")
 	}

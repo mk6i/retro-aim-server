@@ -345,3 +345,28 @@ func TestFeedbagHandler_Use(t *testing.T) {
 
 	assert.NoError(t, h.Use(nil, nil, input.Frame, buf, responseWriter))
 }
+
+func TestFeedbagHandler_RespondAuthorizeToHost(t *testing.T) {
+	input := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.Feedbag,
+			SubGroup:  wire.FeedbagRequestAuthorizeToHost,
+		},
+		Body: wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost{
+			ScreenName: "theScreenName",
+		},
+	}
+
+	svc := newMockFeedbagService(t)
+	svc.EXPECT().
+		RespondAuthorizeToHost(mock.Anything, mock.Anything, input.Frame, input.Body).
+		Return(nil)
+
+	h := NewFeedbagHandler(slog.Default(), svc)
+	responseWriter := newMockResponseWriter(t)
+
+	buf := &bytes.Buffer{}
+	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+	assert.NoError(t, h.RespondAuthorizeToHost(nil, nil, input.Frame, buf, responseWriter))
+}

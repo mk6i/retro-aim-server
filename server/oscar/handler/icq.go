@@ -19,8 +19,11 @@ type ICQService interface {
 	DeleteMsgReq(ctx context.Context, sess *state.Session, seq uint16) error
 	FindByDetails(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, seq uint16) error
 	FindByEmail(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, seq uint16) error
+	FindByEmail3(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0573_DBQueryMetaReqSearchByEmail3, seq uint16) error
 	FindByInterests(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, seq uint16) error
 	FindByUIN(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x051F_DBQueryMetaReqSearchByUIN, seq uint16) error
+	FindByUIN2(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0569_DBQueryMetaReqSearchByUIN2, seq uint16) error
+	FindByWhitePages2(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x055F_DBQueryMetaReqSearchWhitePages2, seq uint16) error
 	FullUserInfo(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x051F_DBQueryMetaReqSearchByUIN, seq uint16) error
 	OfflineMsgReq(ctx context.Context, sess *state.Session, seq uint16) error
 	SetAffiliations(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations, seq uint16) error
@@ -60,7 +63,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 		return err
 	}
 
-	md, ok := inBody.Slice(wire.ICQTLVTagsMetadata)
+	md, ok := inBody.Bytes(wire.ICQTLVTagsMetadata)
 	if !ok {
 		return errors.New("invalid ICQ frame")
 	}
@@ -126,12 +129,28 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := rt.ICQService.FindByUIN(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
+		case wire.ICQDBQueryMetaReqSearchByUIN2:
+			req := wire.ICQ_0x07D0_0x0569_DBQueryMetaReqSearchByUIN2{}
+			if err := wire.UnmarshalLE(&req, buf); err != nil {
+				return err
+			}
+			if err := rt.ICQService.FindByUIN2(ctx, sess, req, icqMD.Seq); err != nil {
+				return err
+			}
 		case wire.ICQDBQueryMetaReqSearchByEmail:
 			req := wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail{}
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
 			if err := rt.ICQService.FindByEmail(ctx, sess, req, icqMD.Seq); err != nil {
+				return err
+			}
+		case wire.ICQDBQueryMetaReqSearchByEmail3:
+			req := wire.ICQ_0x07D0_0x0573_DBQueryMetaReqSearchByEmail3{}
+			if err := wire.UnmarshalLE(&req, buf); err != nil {
+				return err
+			}
+			if err := rt.ICQService.FindByEmail3(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSearchByDetails:
@@ -148,6 +167,14 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 				return err
 			}
 			if err := rt.ICQService.FindByInterests(ctx, sess, req, icqMD.Seq); err != nil {
+				return err
+			}
+		case wire.ICQDBQueryMetaReqSearchWhitePages2:
+			req := wire.ICQ_0x07D0_0x055F_DBQueryMetaReqSearchWhitePages2{}
+			if err := wire.UnmarshalLE(&req, buf); err != nil {
+				return err
+			}
+			if err := rt.ICQService.FindByWhitePages2(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSetBasicInfo:

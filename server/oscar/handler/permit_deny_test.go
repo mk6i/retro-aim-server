@@ -27,7 +27,7 @@ func TestPermitDenyHandler_RightsQuery(t *testing.T) {
 		Body: wire.SNAC_0x09_0x03_PermitDenyRightsReply{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(0x01, uint16(1000)),
+					wire.NewTLVBE(0x01, uint16(1000)),
 				},
 			},
 		},

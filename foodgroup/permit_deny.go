@@ -32,9 +32,9 @@ func (s PermitDenyService) RightsQuery(_ context.Context, frame wire.SNACFrame) 
 		Body: wire.SNAC_0x09_0x03_PermitDenyRightsReply{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.PermitDenyTLVMaxDenies, uint16(100)),
-					wire.NewTLV(wire.PermitDenyTLVMaxPermits, uint16(100)),
-					wire.NewTLV(wire.PermitDenyTLVMaxTempPermits, uint16(100)),
+					wire.NewTLVBE(wire.PermitDenyTLVMaxDenies, uint16(100)),
+					wire.NewTLVBE(wire.PermitDenyTLVMaxPermits, uint16(100)),
+					wire.NewTLVBE(wire.PermitDenyTLVMaxTempPermits, uint16(100)),
 				},
 			},
 		},

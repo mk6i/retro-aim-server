@@ -4,11 +4,12 @@ import (
 	"net/mail"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestAdminService_ConfirmRequest(t *testing.T) {
@@ -236,7 +237,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 				Body: wire.SNAC_0x07_0x02_AdminInfoQuery{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVRegistrationStatus, uint16(0x00))},
+							wire.NewTLVBE(wire.AdminTLVRegistrationStatus, uint16(0x00))},
 					},
 				},
 			},
@@ -250,7 +251,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusLimitDisclosure),
+							wire.NewTLVBE(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusLimitDisclosure),
 						},
 					},
 				},
@@ -279,7 +280,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 				Body: wire.SNAC_0x07_0x02_AdminInfoQuery{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVEmailAddress, uint16(0x00))},
+							wire.NewTLVBE(wire.AdminTLVEmailAddress, uint16(0x00))},
 					},
 				},
 			},
@@ -293,7 +294,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVEmailAddress, "chattingchuck@aol.com"),
+							wire.NewTLVBE(wire.AdminTLVEmailAddress, "chattingchuck@aol.com"),
 						},
 					},
 				},
@@ -324,7 +325,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 				Body: wire.SNAC_0x07_0x02_AdminInfoQuery{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVEmailAddress, uint16(0x00))},
+							wire.NewTLVBE(wire.AdminTLVEmailAddress, uint16(0x00))},
 					},
 				},
 			},
@@ -338,7 +339,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVEmailAddress, ""),
+							wire.NewTLVBE(wire.AdminTLVEmailAddress, ""),
 						},
 					},
 				},
@@ -367,7 +368,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 				Body: wire.SNAC_0x07_0x02_AdminInfoQuery{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVScreenNameFormatted, uint16(0x00))},
+							wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, uint16(0x00))},
 					},
 				},
 			},
@@ -381,7 +382,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVScreenNameFormatted, "ChattingChuck"),
+							wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "ChattingChuck"),
 						},
 					},
 				},
@@ -399,7 +400,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 				Body: wire.SNAC_0x07_0x02_AdminInfoQuery{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(uint16(0x99), uint16(0x00))},
+							wire.NewTLVBE(uint16(0x99), uint16(0x00))},
 					},
 				},
 			},
@@ -511,7 +512,7 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
+							wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
 						},
 					},
 				},
@@ -526,7 +527,7 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
+							wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
 						},
 					},
 				},
@@ -544,7 +545,7 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVScreenNameFormatted, "c  h  a  t  t  i  n  g  c  h  u  c  k")},
+							wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "c  h  a  t  t  i  n  g  c  h  u  c  k")},
 					},
 				},
 			},
@@ -558,8 +559,8 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidNickNameLength),
-							wire.NewTLV(wire.AdminTLVUrl, ""),
+							wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidNickNameLength),
+							wire.NewTLVBE(wire.AdminTLVUrl, ""),
 						},
 					},
 				},
@@ -577,7 +578,7 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVScreenNameFormatted, "QuietQuinton")},
+							wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "QuietQuinton")},
 					},
 				},
 			},
@@ -591,8 +592,8 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVErrorCode, wire.AdminInfoErrorValidateNickName),
-							wire.NewTLV(wire.AdminTLVUrl, ""),
+							wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorValidateNickName),
+							wire.NewTLVBE(wire.AdminTLVUrl, ""),
 						},
 					},
 				},
@@ -610,7 +611,7 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVScreenNameFormatted, "ChattingChuck ")},
+							wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "ChattingChuck ")},
 					},
 				},
 			},
@@ -624,8 +625,8 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidNickName),
-							wire.NewTLV(wire.AdminTLVUrl, ""),
+							wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidNickName),
+							wire.NewTLVBE(wire.AdminTLVUrl, ""),
 						},
 					},
 				},
@@ -725,7 +726,7 @@ func TestAdminService_InfoChangeRequest_EmailAddress(t *testing.T) {
 				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVEmailAddress, "chattingchuck@aol.com"),
+							wire.NewTLVBE(wire.AdminTLVEmailAddress, "chattingchuck@aol.com"),
 						},
 					},
 				},
@@ -740,7 +741,7 @@ func TestAdminService_InfoChangeRequest_EmailAddress(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVEmailAddress, "chattingchuck@aol.com"),
+							wire.NewTLVBE(wire.AdminTLVEmailAddress, "chattingchuck@aol.com"),
 						},
 					},
 				},
@@ -758,7 +759,7 @@ func TestAdminService_InfoChangeRequest_EmailAddress(t *testing.T) {
 				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVEmailAddress, "chattingchuck@@@@@@@aol.com"),
+							wire.NewTLVBE(wire.AdminTLVEmailAddress, "chattingchuck@@@@@@@aol.com"),
 						},
 					},
 				},
@@ -773,8 +774,8 @@ func TestAdminService_InfoChangeRequest_EmailAddress(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidEmail),
-							wire.NewTLV(wire.AdminTLVUrl, ""),
+							wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidEmail),
+							wire.NewTLVBE(wire.AdminTLVUrl, ""),
 						},
 					},
 				},
@@ -792,7 +793,7 @@ func TestAdminService_InfoChangeRequest_EmailAddress(t *testing.T) {
 				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVEmailAddress, longEmailAddress),
+							wire.NewTLVBE(wire.AdminTLVEmailAddress, longEmailAddress),
 						},
 					},
 				},
@@ -807,8 +808,8 @@ func TestAdminService_InfoChangeRequest_EmailAddress(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidEmailLength),
-							wire.NewTLV(wire.AdminTLVUrl, ""),
+							wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidEmailLength),
+							wire.NewTLVBE(wire.AdminTLVUrl, ""),
 						},
 					},
 				},
@@ -885,7 +886,7 @@ func TestAdminService_InfoChangeRequest_RegStatus(t *testing.T) {
 				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusNoDisclosure),
+							wire.NewTLVBE(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusNoDisclosure),
 						},
 					},
 				},
@@ -900,7 +901,7 @@ func TestAdminService_InfoChangeRequest_RegStatus(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusNoDisclosure),
+							wire.NewTLVBE(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusNoDisclosure),
 						},
 					},
 				},
@@ -918,7 +919,7 @@ func TestAdminService_InfoChangeRequest_RegStatus(t *testing.T) {
 				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVRegistrationStatus, uint16(0x1337)),
+							wire.NewTLVBE(wire.AdminTLVRegistrationStatus, uint16(0x1337)),
 						},
 					},
 				},
@@ -933,8 +934,8 @@ func TestAdminService_InfoChangeRequest_RegStatus(t *testing.T) {
 					Permissions: wire.AdminInfoPermissionsReadWrite,
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidRegistrationPreference),
-							wire.NewTLV(wire.AdminTLVUrl, ""),
+							wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidRegistrationPreference),
+							wire.NewTLVBE(wire.AdminTLVUrl, ""),
 						},
 					},
 				},

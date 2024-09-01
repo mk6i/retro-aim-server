@@ -16,6 +16,7 @@ type FeedbagService interface {
 	DeleteItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x0A_FeedbagDeleteItem) (wire.SNACMessage, error)
 	Query(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame) (wire.SNACMessage, error)
 	QueryIfModified(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x05_FeedbagQueryIfModified) (wire.SNACMessage, error)
+	RespondAuthorizeToHost(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost) error
 	RightsQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 	StartCluster(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x11_FeedbagStartCluster)
 	UpsertItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, items []wire.FeedbagItem) (wire.SNACMessage, error)
@@ -124,5 +125,17 @@ func (h FeedbagHandler) StartCluster(ctx context.Context, _ *state.Session, inFr
 
 func (h FeedbagHandler) EndCluster(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, _ io.Reader, _ oscar.ResponseWriter) error {
 	h.LogRequest(ctx, inFrame, nil)
+	return nil
+}
+
+func (h FeedbagHandler) RespondAuthorizeToHost(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
+	inBody := wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost{}
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
+		return err
+	}
+	if err := h.FeedbagService.RespondAuthorizeToHost(ctx, sess, inFrame, inBody); err != nil {
+		return err
+	}
+	h.LogRequest(ctx, inFrame, inBody)
 	return nil
 }

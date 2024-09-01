@@ -104,19 +104,19 @@ func (c ChatRoom) TLVList() []wire.TLV {
 		// - 4 Instancing Allowed
 		// - 8 Occupant Peek Allowed
 		// It's unclear what effect they actually have.
-		wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
-		wire.NewTLV(wire.ChatRoomTLVCreateTime, uint32(c.createTime.Unix())),
-		wire.NewTLV(wire.ChatRoomTLVMaxMsgLen, uint16(1024)),
-		wire.NewTLV(wire.ChatRoomTLVMaxOccupancy, uint16(100)),
+		wire.NewTLVBE(wire.ChatRoomTLVFlags, uint16(15)),
+		wire.NewTLVBE(wire.ChatRoomTLVCreateTime, uint32(c.createTime.Unix())),
+		wire.NewTLVBE(wire.ChatRoomTLVMaxMsgLen, uint16(1024)),
+		wire.NewTLVBE(wire.ChatRoomTLVMaxOccupancy, uint16(100)),
 		// From protocols/oscar/family_chatnav.c in lib purple, these are the
 		// room creation permission values:
 		// - 0  creation not allowed
 		// - 1  room creation allowed
 		// - 2  exchange creation allowed
 		// It's unclear what effect they actually have.
-		wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
-		wire.NewTLV(wire.ChatRoomTLVFullyQualifiedName, c.name),
-		wire.NewTLV(wire.ChatRoomTLVRoomName, c.name),
-		wire.NewTLV(wire.ChatRoomTLVMaxMsgVisLen, uint16(1024)),
+		wire.NewTLVBE(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
+		wire.NewTLVBE(wire.ChatRoomTLVFullyQualifiedName, c.name),
+		wire.NewTLVBE(wire.ChatRoomTLVRoomName, c.name),
+		wire.NewTLVBE(wire.ChatRoomTLVMaxMsgVisLen, uint16(1024)),
 	}
 }

@@ -32,7 +32,7 @@ func (s ChatService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		SubGroup:  wire.ChatChannelMsgToClient,
 	}
 
-	msg, hasMessage := inBody.Slice(wire.ChatTLVMessageInformation)
+	msg, hasMessage := inBody.Bytes(wire.ChatTLVMessageInformation)
 	if !hasMessage {
 		return nil, errors.New("SNAC(0x0E,0x05) does not contain a message TLV")
 	}
@@ -44,9 +44,9 @@ func (s ChatService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 			TLVList: wire.TLVList{
 				// The order of these TLVs matters for AIM 2.x. if out of
 				// order, screen names do not appear with each chat message.
-				wire.NewTLV(wire.ChatTLVSenderInformation, sess.TLVUserInfo()),
-				wire.NewTLV(wire.ChatTLVPublicWhisperFlag, []byte{}),
-				wire.NewTLV(wire.ChatTLVMessageInformation, msg),
+				wire.NewTLVBE(wire.ChatTLVSenderInformation, sess.TLVUserInfo()),
+				wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}),
+				wire.NewTLVBE(wire.ChatTLVMessageInformation, msg),
 			},
 		},
 	}
@@ -63,7 +63,7 @@ func (s ChatService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 	})
 
 	var ret *wire.SNACMessage
-	if _, ackMsg := inBody.Slice(wire.ChatTLVEnableReflectionFlag); ackMsg {
+	if _, ackMsg := inBody.Bytes(wire.ChatTLVEnableReflectionFlag); ackMsg {
 		// reflect the message back to the sender
 		ret = &wire.SNACMessage{
 			Frame: frameOut,

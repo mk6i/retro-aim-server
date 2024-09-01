@@ -20,7 +20,7 @@ func TestBuddyHandler_RightsQuery(t *testing.T) {
 		Body: wire.SNAC_0x03_0x02_BuddyRightsQuery{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(0x01, uint16(1000)),
+					wire.NewTLVBE(0x01, uint16(1000)),
 				},
 			},
 		},
@@ -33,7 +33,7 @@ func TestBuddyHandler_RightsQuery(t *testing.T) {
 		Body: wire.SNAC_0x03_0x03_BuddyRightsReply{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(0x01, uint16(1000)),
+					wire.NewTLVBE(0x01, uint16(1000)),
 				},
 			},
 		},

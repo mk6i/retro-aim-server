@@ -24,10 +24,10 @@ func TestBuddyService_RightsQuery(t *testing.T) {
 		Body: wire.SNAC_0x03_0x03_BuddyRightsReply{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.BuddyTLVTagsParmMaxBuddies, uint16(100)),
-					wire.NewTLV(wire.BuddyTLVTagsParmMaxWatchers, uint16(100)),
-					wire.NewTLV(wire.BuddyTLVTagsParmMaxIcqBroad, uint16(100)),
-					wire.NewTLV(wire.BuddyTLVTagsParmMaxTempBuddies, uint16(100)),
+					wire.NewTLVBE(wire.BuddyTLVTagsParmMaxBuddies, uint16(100)),
+					wire.NewTLVBE(wire.BuddyTLVTagsParmMaxWatchers, uint16(100)),
+					wire.NewTLVBE(wire.BuddyTLVTagsParmMaxIcqBroad, uint16(100)),
+					wire.NewTLVBE(wire.BuddyTLVTagsParmMaxTempBuddies, uint16(100)),
 				},
 			},
 		},
@@ -442,7 +442,7 @@ func TestBuddyService_BroadcastDeparture(t *testing.T) {
 										WarningLevel: 0,
 										TLVBlock: wire.TLVBlock{
 											TLVList: wire.TLVList{
-												wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0)),
+												wire.NewTLVBE(wire.OServiceUserInfoUserFlags, uint16(0)),
 											},
 										},
 									},
@@ -612,7 +612,7 @@ func TestBuddyService_UnicastBuddyArrived(t *testing.T) {
 									Name:    strconv.Itoa(int(wire.BARTTypesBuddyIcon)),
 									TLVLBlock: wire.TLVLBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
+											wire.NewTLVBE(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
 												Hash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
 											}),
 										},

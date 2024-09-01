@@ -473,7 +473,7 @@ func postInstantMessageHandler(w http.ResponseWriter, r *http.Request, messageRe
 			},
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.ICBMTLVAOLIMData, tlv),
+					wire.NewTLVBE(wire.ICBMTLVAOLIMData, tlv),
 				},
 			},
 		},

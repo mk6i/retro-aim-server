@@ -58,11 +58,11 @@ func (s LocateService) RightsQuery(_ context.Context, inFrame wire.SNACFrame) wi
 				TLVList: wire.TLVList{
 					// these are arbitrary values--AIM clients seem to perform
 					// OK with them
-					wire.NewTLV(wire.LocateTLVTagsRightsMaxSigLen, uint16(1000)),
-					wire.NewTLV(wire.LocateTLVTagsRightsMaxCapabilitiesLen, uint16(1000)),
-					wire.NewTLV(wire.LocateTLVTagsRightsMaxFindByEmailList, uint16(1000)),
-					wire.NewTLV(wire.LocateTLVTagsRightsMaxCertsLen, uint16(1000)),
-					wire.NewTLV(wire.LocateTLVTagsRightsMaxMaxShortCapabilities, uint16(1000)),
+					wire.NewTLVBE(wire.LocateTLVTagsRightsMaxSigLen, uint16(1000)),
+					wire.NewTLVBE(wire.LocateTLVTagsRightsMaxCapabilitiesLen, uint16(1000)),
+					wire.NewTLVBE(wire.LocateTLVTagsRightsMaxFindByEmailList, uint16(1000)),
+					wire.NewTLVBE(wire.LocateTLVTagsRightsMaxCertsLen, uint16(1000)),
+					wire.NewTLVBE(wire.LocateTLVTagsRightsMaxMaxShortCapabilities, uint16(1000)),
 				},
 			},
 		},
@@ -87,7 +87,7 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 	}
 
 	// update client capabilities (buddy icon, chat, etc...)
-	if b, hasCaps := inBody.Slice(wire.LocateTLVTagsInfoCapabilities); hasCaps {
+	if b, hasCaps := inBody.Bytes(wire.LocateTLVTagsInfoCapabilities); hasCaps {
 		if len(b)%16 != 0 {
 			return errors.New("capability list must be array of 16-byte values")
 		}
@@ -152,15 +152,15 @@ func (s LocateService) UserInfoQuery(_ context.Context, sess *state.Session, inF
 			return wire.SNACMessage{}, err
 		}
 		list.AppendList([]wire.TLV{
-			wire.NewTLV(wire.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
-			wire.NewTLV(wire.LocateTLVTagsInfoSigData, profile),
+			wire.NewTLVBE(wire.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
+			wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, profile),
 		})
 	}
 
 	if inBody.RequestAwayMessage() {
 		list.AppendList([]wire.TLV{
-			wire.NewTLV(wire.LocateTLVTagsInfoUnavailableMime, `text/aolrtf; charset="us-ascii"`),
-			wire.NewTLV(wire.LocateTLVTagsInfoUnavailableData, buddySess.AwayMessage()),
+			wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableMime, `text/aolrtf; charset="us-ascii"`),
+			wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableData, buddySess.AwayMessage()),
 		})
 	}
 

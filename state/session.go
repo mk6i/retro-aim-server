@@ -249,32 +249,32 @@ func (s *Session) userInfo() wire.TLVList {
 	tlvs := wire.TLVList{}
 
 	// sign-in timestamp
-	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(s.signonTime.Unix())))
+	tlvs.Append(wire.NewTLVBE(wire.OServiceUserInfoSignonTOD, uint32(s.signonTime.Unix())))
 
 	// user info flags
 	uFlags := s.userInfoBitmask
 	if s.awayMessage != "" {
 		uFlags |= wire.OServiceUserFlagUnavailable
 	}
-	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoUserFlags, uFlags))
+	tlvs.Append(wire.NewTLVBE(wire.OServiceUserInfoUserFlags, uFlags))
 
 	// user status flags
-	tlvs.Append(wire.NewTLV(wire.OServiceUserInfoStatus, s.userStatusBitmask))
+	tlvs.Append(wire.NewTLVBE(wire.OServiceUserInfoStatus, s.userStatusBitmask))
 
 	// idle status
 	if s.idle {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(s.nowFn().Sub(s.idleTime).Minutes())))
+		tlvs.Append(wire.NewTLVBE(wire.OServiceUserInfoIdleTime, uint16(s.nowFn().Sub(s.idleTime).Minutes())))
 	}
 
 	// ICQ direct-connect info. The TLV is required for buddy arrival events to
 	// work in ICQ, even if the values are set to default.
 	if s.userInfoBitmask&wire.OServiceUserFlagICQ == wire.OServiceUserFlagICQ {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoICQDC, wire.ICQDCInfo{}))
+		tlvs.Append(wire.NewTLVBE(wire.OServiceUserInfoICQDC, wire.ICQDCInfo{}))
 	}
 
 	// capabilities (buddy icon, chat, etc...)
 	if len(s.caps) > 0 {
-		tlvs.Append(wire.NewTLV(wire.OServiceUserInfoOscarCaps, s.caps))
+		tlvs.Append(wire.NewTLVBE(wire.OServiceUserInfoOscarCaps, s.caps))
 	}
 
 	return tlvs

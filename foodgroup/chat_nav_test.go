@@ -41,7 +41,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					DetailLevel:    basicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
+							wire.NewTLVBE(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
 						},
 					},
 				},
@@ -55,7 +55,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(
+							wire.NewTLVBE(
 								wire.ChatNavRequestRoomInfo,
 								wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 									Exchange:       basicChatRoom.Exchange(),
@@ -98,7 +98,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					DetailLevel:    basicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
+							wire.NewTLVBE(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
 						},
 					},
 				},
@@ -112,7 +112,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(
+							wire.NewTLVBE(
 								wire.ChatNavRequestRoomInfo,
 								wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 									Exchange:       basicChatRoom.Exchange(),
@@ -163,7 +163,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					DetailLevel:    publicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, publicChatRoom.Name()),
+							wire.NewTLVBE(wire.ChatRoomTLVRoomName, publicChatRoom.Name()),
 						},
 					},
 				},
@@ -177,7 +177,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(
+							wire.NewTLVBE(
 								wire.ChatNavRequestRoomInfo,
 								wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 									Exchange:       publicChatRoom.Exchange(),
@@ -220,7 +220,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					DetailLevel:    publicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, publicChatRoom.Name()),
+							wire.NewTLVBE(wire.ChatRoomTLVRoomName, publicChatRoom.Name()),
 						},
 					},
 				},
@@ -265,7 +265,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					DetailLevel:    basicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
+							wire.NewTLVBE(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
 						},
 					},
 				},
@@ -317,7 +317,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					DetailLevel:    basicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
+							wire.NewTLVBE(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
 						},
 					},
 				},
@@ -360,7 +360,7 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 					DetailLevel:    basicChatRoom.DetailLevel(),
 					TLVBlock: wire.TLVBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
+							wire.NewTLVBE(wire.ChatRoomTLVRoomName, basicChatRoom.Name()),
 						},
 					},
 				},
@@ -437,7 +437,7 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(0x04, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+							wire.NewTLVBE(0x04, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 								Cookie:         privateChatRoom.Cookie(),
 								DetailLevel:    privateChatRoom.DetailLevel(),
 								Exchange:       privateChatRoom.Exchange(),
@@ -481,7 +481,7 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(0x04, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+							wire.NewTLVBE(0x04, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 								Cookie:         publicChatRoom.Cookie(),
 								DetailLevel:    publicChatRoom.DetailLevel(),
 								Exchange:       publicChatRoom.Exchange(),
@@ -611,36 +611,36 @@ func TestChatNavService_RequestChatRights(t *testing.T) {
 		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
-					wire.NewTLV(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
+					wire.NewTLVBE(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
+					wire.NewTLVBE(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
 						Identifier: 4,
 						TLVBlock: wire.TLVBlock{
 							TLVList: wire.TLVList{
-								wire.NewTLV(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
-								wire.NewTLV(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
-								wire.NewTLV(wire.ChatRoomTLVMaxNameLen, uint16(100)),
-								wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
-								wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
-								wire.NewTLV(wire.ChatRoomTLVCharSet1, "us-ascii"),
-								wire.NewTLV(wire.ChatRoomTLVLang1, "en"),
-								wire.NewTLV(wire.ChatRoomTLVCharSet2, "us-ascii"),
-								wire.NewTLV(wire.ChatRoomTLVLang2, "en"),
+								wire.NewTLVBE(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
+								wire.NewTLVBE(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
+								wire.NewTLVBE(wire.ChatRoomTLVMaxNameLen, uint16(100)),
+								wire.NewTLVBE(wire.ChatRoomTLVFlags, uint16(15)),
+								wire.NewTLVBE(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
+								wire.NewTLVBE(wire.ChatRoomTLVCharSet1, "us-ascii"),
+								wire.NewTLVBE(wire.ChatRoomTLVLang1, "en"),
+								wire.NewTLVBE(wire.ChatRoomTLVCharSet2, "us-ascii"),
+								wire.NewTLVBE(wire.ChatRoomTLVLang2, "en"),
 							},
 						},
 					}),
-					wire.NewTLV(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
+					wire.NewTLVBE(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
 						Identifier: 5,
 						TLVBlock: wire.TLVBlock{
 							TLVList: wire.TLVList{
-								wire.NewTLV(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
-								wire.NewTLV(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
-								wire.NewTLV(wire.ChatRoomTLVMaxNameLen, uint16(100)),
-								wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
-								wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
-								wire.NewTLV(wire.ChatRoomTLVCharSet1, "us-ascii"),
-								wire.NewTLV(wire.ChatRoomTLVLang1, "en"),
-								wire.NewTLV(wire.ChatRoomTLVCharSet2, "us-ascii"),
-								wire.NewTLV(wire.ChatRoomTLVLang2, "en"),
+								wire.NewTLVBE(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
+								wire.NewTLVBE(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
+								wire.NewTLVBE(wire.ChatRoomTLVMaxNameLen, uint16(100)),
+								wire.NewTLVBE(wire.ChatRoomTLVFlags, uint16(15)),
+								wire.NewTLVBE(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
+								wire.NewTLVBE(wire.ChatRoomTLVCharSet1, "us-ascii"),
+								wire.NewTLVBE(wire.ChatRoomTLVLang1, "en"),
+								wire.NewTLVBE(wire.ChatRoomTLVCharSet2, "us-ascii"),
+								wire.NewTLVBE(wire.ChatRoomTLVLang2, "en"),
 							},
 						},
 					}),
@@ -679,20 +679,20 @@ func TestChatNavService_ExchangeInfo(t *testing.T) {
 				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
-							wire.NewTLV(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
+							wire.NewTLVBE(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
+							wire.NewTLVBE(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
 								Identifier: state.PrivateExchange,
 								TLVBlock: wire.TLVBlock{
 									TLVList: wire.TLVList{
-										wire.NewTLV(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
-										wire.NewTLV(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
-										wire.NewTLV(wire.ChatRoomTLVMaxNameLen, uint16(100)),
-										wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
-										wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
-										wire.NewTLV(wire.ChatRoomTLVCharSet1, "us-ascii"),
-										wire.NewTLV(wire.ChatRoomTLVLang1, "en"),
-										wire.NewTLV(wire.ChatRoomTLVCharSet2, "us-ascii"),
-										wire.NewTLV(wire.ChatRoomTLVLang2, "en"),
+										wire.NewTLVBE(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
+										wire.NewTLVBE(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
+										wire.NewTLVBE(wire.ChatRoomTLVMaxNameLen, uint16(100)),
+										wire.NewTLVBE(wire.ChatRoomTLVFlags, uint16(15)),
+										wire.NewTLVBE(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
+										wire.NewTLVBE(wire.ChatRoomTLVCharSet1, "us-ascii"),
+										wire.NewTLVBE(wire.ChatRoomTLVLang1, "en"),
+										wire.NewTLVBE(wire.ChatRoomTLVCharSet2, "us-ascii"),
+										wire.NewTLVBE(wire.ChatRoomTLVLang2, "en"),
 									},
 								},
 							}),
@@ -720,20 +720,20 @@ func TestChatNavService_ExchangeInfo(t *testing.T) {
 				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
-							wire.NewTLV(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
-							wire.NewTLV(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
+							wire.NewTLVBE(wire.ChatNavTLVMaxConcurrentRooms, uint8(10)),
+							wire.NewTLVBE(wire.ChatNavTLVExchangeInfo, wire.SNAC_0x0D_0x09_TLVExchangeInfo{
 								Identifier: state.PublicExchange,
 								TLVBlock: wire.TLVBlock{
 									TLVList: wire.TLVList{
-										wire.NewTLV(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
-										wire.NewTLV(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
-										wire.NewTLV(wire.ChatRoomTLVMaxNameLen, uint16(100)),
-										wire.NewTLV(wire.ChatRoomTLVFlags, uint16(15)),
-										wire.NewTLV(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
-										wire.NewTLV(wire.ChatRoomTLVCharSet1, "us-ascii"),
-										wire.NewTLV(wire.ChatRoomTLVLang1, "en"),
-										wire.NewTLV(wire.ChatRoomTLVCharSet2, "us-ascii"),
-										wire.NewTLV(wire.ChatRoomTLVLang2, "en"),
+										wire.NewTLVBE(wire.ChatRoomTLVMaxConcurrentRooms, uint8(10)),
+										wire.NewTLVBE(wire.ChatRoomTLVClassPerms, uint16(0x0010)),
+										wire.NewTLVBE(wire.ChatRoomTLVMaxNameLen, uint16(100)),
+										wire.NewTLVBE(wire.ChatRoomTLVFlags, uint16(15)),
+										wire.NewTLVBE(wire.ChatRoomTLVNavCreatePerms, uint8(2)),
+										wire.NewTLVBE(wire.ChatRoomTLVCharSet1, "us-ascii"),
+										wire.NewTLVBE(wire.ChatRoomTLVLang1, "en"),
+										wire.NewTLVBE(wire.ChatRoomTLVCharSet2, "us-ascii"),
+										wire.NewTLVBE(wire.ChatRoomTLVLang2, "en"),
 									},
 								},
 							}),

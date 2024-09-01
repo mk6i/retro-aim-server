@@ -80,9 +80,9 @@ func TestSession_TLVUserInfo(t *testing.T) {
 				WarningLevel: 10,
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
-						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
-						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
+						wire.NewTLVBE(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLVBE(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
+						wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0000)),
 					},
 				},
 			},
@@ -102,10 +102,10 @@ func TestSession_TLVUserInfo(t *testing.T) {
 				ScreenName: "1000003",
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
-						wire.NewTLV(wire.OServiceUserInfoUserFlags, wire.OServiceUserFlagOSCARFree|wire.OServiceUserFlagICQ),
-						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
-						wire.NewTLV(wire.OServiceUserInfoICQDC, wire.ICQDCInfo{}),
+						wire.NewTLVBE(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLVBE(wire.OServiceUserInfoUserFlags, wire.OServiceUserFlagOSCARFree|wire.OServiceUserFlagICQ),
+						wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0000)),
+						wire.NewTLVBE(wire.OServiceUserInfoICQDC, wire.ICQDCInfo{}),
 					},
 				},
 			},
@@ -121,9 +121,9 @@ func TestSession_TLVUserInfo(t *testing.T) {
 			want: wire.TLVUserInfo{
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
-						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x30)),
-						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
+						wire.NewTLVBE(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLVBE(wire.OServiceUserInfoUserFlags, uint16(0x30)),
+						wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0000)),
 					},
 				},
 			},
@@ -139,9 +139,9 @@ func TestSession_TLVUserInfo(t *testing.T) {
 			want: wire.TLVUserInfo{
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
-						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
-						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0100)),
+						wire.NewTLVBE(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLVBE(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
+						wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0100)),
 					},
 				},
 			},
@@ -165,10 +165,10 @@ func TestSession_TLVUserInfo(t *testing.T) {
 			want: wire.TLVUserInfo{
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(0)),
-						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
-						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
-						wire.NewTLV(wire.OServiceUserInfoIdleTime, uint16(6)),
+						wire.NewTLVBE(wire.OServiceUserInfoSignonTOD, uint32(0)),
+						wire.NewTLVBE(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
+						wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0000)),
+						wire.NewTLVBE(wire.OServiceUserInfoIdleTime, uint16(6)),
 					},
 				},
 			},
@@ -185,9 +185,9 @@ func TestSession_TLVUserInfo(t *testing.T) {
 			want: wire.TLVUserInfo{
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
-						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
-						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
+						wire.NewTLVBE(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLVBE(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
+						wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0000)),
 					},
 				},
 			},
@@ -214,10 +214,10 @@ func TestSession_TLVUserInfo(t *testing.T) {
 			want: wire.TLVUserInfo{
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
-						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
-						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
-						wire.NewTLV(wire.OServiceUserInfoOscarCaps, []byte{
+						wire.NewTLVBE(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLVBE(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
+						wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0000)),
+						wire.NewTLVBE(wire.OServiceUserInfoOscarCaps, []byte{
 							// chat: "748F2420-6287-11D1-8222-444553540000"
 							0x74, 0x8f, 0x24, 0x20, 0x62, 0x87, 0x11, 0xd1,
 							0x82, 0x22, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00,
@@ -240,9 +240,9 @@ func TestSession_TLVUserInfo(t *testing.T) {
 				WarningLevel: 0,
 				TLVBlock: wire.TLVBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLV(wire.OServiceUserInfoSignonTOD, uint32(1)),
-						wire.NewTLV(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
-						wire.NewTLV(wire.OServiceUserInfoStatus, uint32(0x0000)),
+						wire.NewTLVBE(wire.OServiceUserInfoSignonTOD, uint32(1)),
+						wire.NewTLVBE(wire.OServiceUserInfoUserFlags, uint16(0x0010)),
+						wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0000)),
 					},
 				},
 			},

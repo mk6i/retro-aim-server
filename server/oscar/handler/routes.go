@@ -53,6 +53,7 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.Feedbag, wire.FeedbagStartCluster, h.FeedbagHandler.StartCluster)
 	router.Register(wire.Feedbag, wire.FeedbagUpdateItem, h.FeedbagHandler.UpdateItem)
 	router.Register(wire.Feedbag, wire.FeedbagUse, h.FeedbagHandler.Use)
+	router.Register(wire.Feedbag, wire.FeedbagRespondAuthorizeToHost, h.FeedbagHandler.RespondAuthorizeToHost)
 
 	router.Register(wire.ICQ, wire.ICQDBQuery, h.ICQHandler.DBQuery)
 

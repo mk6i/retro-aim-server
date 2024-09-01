@@ -200,6 +200,55 @@ func (_c *mockFeedbagService_QueryIfModified_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// RespondAuthorizeToHost provides a mock function with given fields: ctx, sess, inFrame, inBody
+func (_m *mockFeedbagService) RespondAuthorizeToHost(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost) error {
+	ret := _m.Called(ctx, sess, inFrame, inBody)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RespondAuthorizeToHost")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost) error); ok {
+		r0 = rf(ctx, sess, inFrame, inBody)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockFeedbagService_RespondAuthorizeToHost_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RespondAuthorizeToHost'
+type mockFeedbagService_RespondAuthorizeToHost_Call struct {
+	*mock.Call
+}
+
+// RespondAuthorizeToHost is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sess *state.Session
+//   - inFrame wire.SNACFrame
+//   - inBody wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost
+func (_e *mockFeedbagService_Expecter) RespondAuthorizeToHost(ctx interface{}, sess interface{}, inFrame interface{}, inBody interface{}) *mockFeedbagService_RespondAuthorizeToHost_Call {
+	return &mockFeedbagService_RespondAuthorizeToHost_Call{Call: _e.mock.On("RespondAuthorizeToHost", ctx, sess, inFrame, inBody)}
+}
+
+func (_c *mockFeedbagService_RespondAuthorizeToHost_Call) Run(run func(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost)) *mockFeedbagService_RespondAuthorizeToHost_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACFrame), args[3].(wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost))
+	})
+	return _c
+}
+
+func (_c *mockFeedbagService_RespondAuthorizeToHost_Call) Return(_a0 error) *mockFeedbagService_RespondAuthorizeToHost_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockFeedbagService_RespondAuthorizeToHost_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost) error) *mockFeedbagService_RespondAuthorizeToHost_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RightsQuery provides a mock function with given fields: ctx, inFrame
 func (_m *mockFeedbagService) RightsQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage {
 	ret := _m.Called(ctx, inFrame)

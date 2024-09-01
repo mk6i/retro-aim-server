@@ -91,7 +91,7 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 	recipSess := s.messageRelayer.RetrieveByScreenName(recip)
 	if recipSess == nil {
 		// todo: verify user exists, otherwise this could save a bunch of garbage records
-		if _, saveOffline := inBody.Slice(wire.ICBMTLVStore); saveOffline {
+		if _, saveOffline := inBody.Bytes(wire.ICBMTLVStore); saveOffline {
 			offlineMsg := state.OfflineMessage{
 				Message:   inBody,
 				Recipient: recip,
@@ -146,7 +146,7 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		Body: clientIM,
 	})
 
-	if _, requestedConfirmation := inBody.TLVRestBlock.Slice(wire.ICBMTLVRequestHostAck); !requestedConfirmation {
+	if _, requestedConfirmation := inBody.TLVRestBlock.Bytes(wire.ICBMTLVRequestHostAck); !requestedConfirmation {
 		// don't ack message
 		return nil, nil
 	}

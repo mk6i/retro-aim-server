@@ -195,6 +195,64 @@ func (_c *mockICQUserFinder_FindByInterests_Call) RunAndReturn(run func(uint16, 
 	return _c
 }
 
+// FindByKeyword provides a mock function with given fields: keyword
+func (_m *mockICQUserFinder) FindByKeyword(keyword string) ([]state.User, error) {
+	ret := _m.Called(keyword)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindByKeyword")
+	}
+
+	var r0 []state.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]state.User, error)); ok {
+		return rf(keyword)
+	}
+	if rf, ok := ret.Get(0).(func(string) []state.User); ok {
+		r0 = rf(keyword)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]state.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(keyword)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockICQUserFinder_FindByKeyword_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByKeyword'
+type mockICQUserFinder_FindByKeyword_Call struct {
+	*mock.Call
+}
+
+// FindByKeyword is a helper method to define mock.On call
+//   - keyword string
+func (_e *mockICQUserFinder_Expecter) FindByKeyword(keyword interface{}) *mockICQUserFinder_FindByKeyword_Call {
+	return &mockICQUserFinder_FindByKeyword_Call{Call: _e.mock.On("FindByKeyword", keyword)}
+}
+
+func (_c *mockICQUserFinder_FindByKeyword_Call) Run(run func(keyword string)) *mockICQUserFinder_FindByKeyword_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *mockICQUserFinder_FindByKeyword_Call) Return(_a0 []state.User, _a1 error) *mockICQUserFinder_FindByKeyword_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockICQUserFinder_FindByKeyword_Call) RunAndReturn(run func(string) ([]state.User, error)) *mockICQUserFinder_FindByKeyword_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FindByUIN provides a mock function with given fields: UIN
 func (_m *mockICQUserFinder) FindByUIN(UIN uint32) (state.User, error) {
 	ret := _m.Called(UIN)

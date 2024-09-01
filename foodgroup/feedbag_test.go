@@ -327,8 +327,8 @@ func TestFeedbagService_RightsQuery(t *testing.T) {
 		Body: wire.SNAC_0x13_0x03_FeedbagRightsReply{
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.FeedbagRightsMaxItemAttrs, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsMaxItemsByClass, []uint16{
+					wire.NewTLVBE(wire.FeedbagRightsMaxItemAttrs, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxItemsByClass, []uint16{
 						61,
 						61,
 						100,
@@ -351,15 +351,15 @@ func TestFeedbagService_RightsQuery(t *testing.T) {
 						1,
 						200,
 					}),
-					wire.NewTLV(wire.FeedbagRightsMaxClientItems, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsMaxItemNameLen, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsMaxRecentBuddies, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsInteractionBuddies, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsInteractionHalfLife, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsInteractionMaxScore, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsMaxBuddiesPerGroup, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsMaxMegaBots, uint16(200)),
-					wire.NewTLV(wire.FeedbagRightsMaxSmartGroups, uint16(100)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxClientItems, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxItemNameLen, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxRecentBuddies, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsInteractionBuddies, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsInteractionHalfLife, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsInteractionMaxScore, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxBuddiesPerGroup, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxMegaBots, uint16(200)),
+					wire.NewTLVBE(wire.FeedbagRightsMaxSmartGroups, uint16(100)),
 				},
 			},
 		},
@@ -750,7 +750,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 							ClassID: wire.FeedbagClassIdBart,
 							TLVLBlock: wire.TLVLBlock{
 								TLVList: wire.TLVList{
-									wire.NewTLV(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
+									wire.NewTLVBE(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
 										Hash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
 									}),
 								},
@@ -777,7 +777,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 									ClassID: wire.FeedbagClassIdBart,
 									TLVLBlock: wire.TLVLBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
+											wire.NewTLVBE(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
 												Hash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
 											}),
 										},
@@ -834,7 +834,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 							ClassID: wire.FeedbagClassIdBart,
 							TLVLBlock: wire.TLVLBlock{
 								TLVList: wire.TLVList{
-									wire.NewTLV(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
+									wire.NewTLVBE(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
 										Hash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
 									}),
 								},
@@ -861,7 +861,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 									ClassID: wire.FeedbagClassIdBart,
 									TLVLBlock: wire.TLVLBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
+											wire.NewTLVBE(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
 												Hash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
 											}),
 										},
@@ -927,7 +927,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 							ClassID: wire.FeedbagClassIdBart,
 							TLVLBlock: wire.TLVLBlock{
 								TLVList: wire.TLVList{
-									wire.NewTLV(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
+									wire.NewTLVBE(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
 										Hash: wire.GetClearIconHash(),
 									}),
 								},
@@ -946,7 +946,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 									ClassID: wire.FeedbagClassIdBart,
 									TLVLBlock: wire.TLVLBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLV(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
+											wire.NewTLVBE(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
 												Hash: wire.GetClearIconHash(),
 											}),
 										},
@@ -1437,6 +1437,104 @@ func TestFeedbagService_Use(t *testing.T) {
 			svc.buddyUpdateBroadcaster = buddyUpdateBroadcast
 
 			haveErr := svc.Use(nil, tt.sess)
+			assert.ErrorIs(t, tt.wantErr, haveErr)
+		})
+	}
+}
+
+func TestFeedbagService_RespondAuthorizeToHost(t *testing.T) {
+	tests := []struct {
+		name       string
+		sess       *state.Session
+		bodyIn     wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost
+		mockParams mockParams
+		wantErr    error
+	}{
+		{
+			name: "authorization accepted",
+			sess: newTestSession("100001", sessOptUIN(100001)),
+			bodyIn: wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost{
+				ScreenName: "100003",
+				Accepted:   1,
+			},
+			mockParams: mockParams{
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("100003"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICBM,
+									SubGroup:  wire.ICBMChannelMsgToClient,
+								},
+								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									ChannelID:   wire.ICBMChannelICQ,
+									TLVUserInfo: newTestSession("100001").TLVUserInfo(),
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVLE(wire.ICBMTLVData, wire.ICBMCh4Message{
+												UIN:         100001,
+												MessageType: wire.ICBMMsgTypeAuthOK,
+											}),
+											wire.NewTLVBE(wire.ICBMTLVStore, []byte{}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "authorization denied (with reason)",
+			sess: newTestSession("100001", sessOptUIN(100001)),
+			bodyIn: wire.SNAC_0x13_0x1A_FeedbagRespondAuthorizeToHost{
+				ScreenName: "100003",
+				Accepted:   0,
+				Reason:     "I don't know you!",
+			},
+			mockParams: mockParams{
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("100003"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICBM,
+									SubGroup:  wire.ICBMChannelMsgToClient,
+								},
+								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									ChannelID:   wire.ICBMChannelICQ,
+									TLVUserInfo: newTestSession("100001").TLVUserInfo(),
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVLE(wire.ICBMTLVData, wire.ICBMCh4Message{
+												UIN:         100001,
+												MessageType: wire.ICBMMsgTypeAuthDeny,
+												Message:     "I don't know you!",
+											}),
+											wire.NewTLVBE(wire.ICBMTLVStore, []byte{}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().
+					RelayToScreenName(nil, params.screenName, params.message)
+			}
+
+			svc := NewFeedbagService(slog.Default(), messageRelayer, nil, nil, nil)
+			haveErr := svc.RespondAuthorizeToHost(nil, tt.sess, wire.SNACFrame{}, tt.bodyIn)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
 		})
 	}

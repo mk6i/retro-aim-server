@@ -72,7 +72,7 @@ func TestFeedbagDelete(t *testing.T) {
 			Name:    "spimmer1234",
 			TLVLBlock: wire.TLVLBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(0x01, uint16(1000)),
+					wire.NewTLVBE(0x01, uint16(1000)),
 				},
 			},
 		},
@@ -1443,6 +1443,82 @@ func TestSQLiteUserStore_FindByInterests(t *testing.T) {
 	})
 }
 
+func TestSQLiteUserStore_FindByKeyword(t *testing.T) {
+	// Cleanup after test
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	// Initialize the SQLiteUserStore with a test database file
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	// Create and set up test users with different interests
+	user1 := User{
+		IdentScreenName: NewIdentScreenName("user1"),
+	}
+	err = f.InsertUser(user1)
+	assert.NoError(t, err)
+	interests1 := ICQInterests{
+		Keyword1: "Coding",
+		Keyword2: "Music",
+	}
+	err = f.SetInterests(user1.IdentScreenName, interests1)
+	assert.NoError(t, err)
+
+	user2 := User{
+		IdentScreenName: NewIdentScreenName("user2"),
+	}
+	err = f.InsertUser(user2)
+	assert.NoError(t, err)
+	interests2 := ICQInterests{
+		Keyword1: "Coding",
+		Keyword3: "Gaming",
+	}
+	err = f.SetInterests(user2.IdentScreenName, interests2)
+	assert.NoError(t, err)
+
+	user3 := User{
+		IdentScreenName: NewIdentScreenName("user3"),
+	}
+	err = f.InsertUser(user3)
+	assert.NoError(t, err)
+	interests3 := ICQInterests{
+		Keyword3: "Music",
+		Keyword4: "Travel",
+	}
+	err = f.SetInterests(user3.IdentScreenName, interests3)
+	assert.NoError(t, err)
+
+	// Helper function to check if a user with a specific IdentScreenName exists in the results
+	containsUserWithScreenName := func(users []User, screenName IdentScreenName) bool {
+		for _, user := range users {
+			if user.IdentScreenName == screenName {
+				return true
+			}
+		}
+		return false
+	}
+
+	t.Run("Find Users by Keyword", func(t *testing.T) {
+		// Search for users interested in "Music"
+		users, err := f.FindByKeyword("Music")
+		assert.NoError(t, err)
+		assert.Len(t, users, 2)
+
+		// Check that the correct users are returned by IdentScreenName
+		assert.True(t, containsUserWithScreenName(users, user1.IdentScreenName))
+		assert.True(t, containsUserWithScreenName(users, user3.IdentScreenName))
+	})
+
+	t.Run("No Users Found", func(t *testing.T) {
+		// Search for users interested in a keyword that no user has
+		users, err := f.FindByKeyword("Knitting")
+		assert.NoError(t, err)
+		assert.Empty(t, users)
+	})
+}
+
 func TestSQLiteUserStore_FindByDetails(t *testing.T) {
 	// Cleanup after test
 	defer func() {
@@ -1813,7 +1889,7 @@ func TestSQLiteUserStore_BuddyIconRefByNameExistingRef(t *testing.T) {
 			ClassID: wire.FeedbagClassIdBart,
 			TLVLBlock: wire.TLVLBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
+					wire.NewTLVBE(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
 						Hash: testHash,
 					}),
 				},
@@ -1850,7 +1926,7 @@ func TestSQLiteUserStore_BuddyIconRefByNameMissingRef(t *testing.T) {
 			ClassID: wire.FeedbagClassIdBart,
 			TLVLBlock: wire.TLVLBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLV(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
+					wire.NewTLVBE(wire.FeedbagAttributesBartInfo, wire.BARTInfo{
 						Hash: testHash,
 					}),
 				},
