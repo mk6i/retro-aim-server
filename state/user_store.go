@@ -16,9 +16,9 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/sqlite3"
+	migratesqlite "github.com/golang-migrate/migrate/v4/database/sqlite"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
-	sqlite "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 //go:embed migrations/*
@@ -34,12 +34,25 @@ type SQLiteUserStore struct {
 // database does not already exist, a new one is created with the required
 // schema.
 func NewSQLiteUserStore(dbFilePath string) (*SQLiteUserStore, error) {
-	db, err := sql.Open("sqlite3", dbFilePath)
+	db, err := sql.Open("sqlite", dbFilePath)
 	if err != nil {
 		return nil, err
 	}
+
+	// Set the maximum number of open connections to 1.
+	// This is crucial to prevent SQLITE_BUSY errors, which occur when the database
+	// is locked due to concurrent access. By limiting the number of open connections
+	// to 1, we ensure that all database operations are serialized, thus avoiding
+	// any potential locking issues.
+	db.SetMaxOpenConns(1)
+
 	store := &SQLiteUserStore{db: db}
-	return store, store.runMigrations()
+
+	if err := store.runMigrations(); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	return store, nil
 }
 
 func (f SQLiteUserStore) runMigrations() error {
@@ -53,12 +66,12 @@ func (f SQLiteUserStore) runMigrations() error {
 		return fmt.Errorf("failed to create source instance from embedded filesystem: %v", err)
 	}
 
-	driver, err := sqlite3.WithInstance(f.db, &sqlite3.Config{})
+	driver, err := migratesqlite.WithInstance(f.db, &migratesqlite.Config{})
 	if err != nil {
 		return fmt.Errorf("cannot create database driver: %v", err)
 	}
 
-	m, err := migrate.NewWithInstance("httpfs", sourceInstance, "sqlite3", driver)
+	m, err := migrate.NewWithInstance("httpfs", sourceInstance, "sqlite", driver)
 	if err != nil {
 		return fmt.Errorf("failed to create migrate instance: %v", err)
 	}
@@ -845,10 +858,8 @@ func (f SQLiteUserStore) CreateChatRoom(chatRoom *ChatRoom) error {
 	)
 
 	if err != nil {
-		if sqliteErr, ok := err.(sqlite.Error); ok {
-			if sqliteErr.ExtendedCode == sqlite.ErrConstraintUnique || sqliteErr.ExtendedCode == sqlite.ErrConstraintPrimaryKey {
-				err = ErrDupChatRoom
-			}
+		if strings.Contains(err.Error(), "constraint failed") {
+			err = ErrDupChatRoom
 		}
 		err = fmt.Errorf("CreateChatRoom: %w", err)
 	}

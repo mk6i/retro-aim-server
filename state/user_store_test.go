@@ -802,6 +802,12 @@ func TestSQLiteUserStore_CreateChatRoom_ErrChatRoomExists(t *testing.T) {
 			secondInsert: NewChatRoom("chat room", NewIdentScreenName("creator"), PrivateExchange),
 			wantErr:      nil,
 		},
+		{
+			name:         "create two rooms with same cookie/exchange/name",
+			firstInsert:  NewChatRoom("chat room", NewIdentScreenName("creator"), PublicExchange),
+			secondInsert: NewChatRoom("chat room", NewIdentScreenName("creator"), PublicExchange),
+			wantErr:      ErrDupChatRoom,
+		},
 	}
 
 	for _, tc := range tt {

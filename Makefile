@@ -1,9 +1,7 @@
-GO_RELEASER_CROSS_VERSION := v1.22.1
-DOCKER_IMAGE_TAG := goreleaser-cross-garble:${GO_RELEASER_CROSS_VERSION}
-GARBLE_VERSION := v0.12.1
+DOCKER_IMAGE_TAG := goreleaser/goreleaser:v2.2.0
 
 DOCKER_RUN := @docker run \
-	--env CGO_ENABLED=1 \
+	--env CGO_ENABLED=0 \
 	--env GITHUB_TOKEN=$(GITHUB_TOKEN) \
 	--rm \
 	--volume `pwd`:/go/src/retro-aim-server \
@@ -13,15 +11,6 @@ DOCKER_RUN := @docker run \
 .PHONY: config
 config:
 	go generate ./config
-
-.PHONY: goreleaser-docker
-goreleaser-docker:
-	@docker build \
-		--build-arg GARBLE_VERSION=$(GARBLE_VERSION) \
-		--build-arg GO_RELEASER_CROSS_VERSION=$(GO_RELEASER_CROSS_VERSION) \
-		--file Dockerfile.goreleaser \
-		--tag $(DOCKER_IMAGE_TAG) \
-		.
 
 .PHONY: release
 release:

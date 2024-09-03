@@ -1,4 +1,4 @@
-version: 1
+version: 2
 
 before:
   hooks:
@@ -16,10 +16,7 @@ builds:
       - "7"
     main: ./cmd/server
     env:
-      - CGO_ENABLED=1
-      - >-
-        {{- if eq .Arch "amd64"}}CC=x86_64-linux-gnu-gcc{{- end }}
-        {{- if eq .Arch "arm"}}CC=arm-linux-gnueabihf-gcc{{- end }}
+      - CGO_ENABLED=0
   - id: macos
     binary: retro_aim_server
     goos:
@@ -29,10 +26,7 @@ builds:
       - arm64
     main: ./cmd/server
     env:
-      - CGO_ENABLED=1
-      - >-
-        {{- if eq .Arch "amd64"}}CC=o64-clang{{- end }}
-        {{- if eq .Arch "arm64"}}CC=oa64-clang{{- end }}
+      - CGO_ENABLED=0
   - id: windows
     binary: retro_aim_server
     goos:
@@ -41,8 +35,7 @@ builds:
       - amd64
     main: ./cmd/server
     env:
-      - CGO_ENABLED=1
-      - CC=x86_64-w64-mingw32-gcc
+      - CGO_ENABLED=0
 
 archives:
   - id: linux
