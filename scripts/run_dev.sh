@@ -9,14 +9,6 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ENV_FILE="$SCRIPT_DIR/../config/settings.env"
 REPO_ROOT="$SCRIPT_DIR/.."
 
-# Load the settings file.
-if [ -f "$ENV_FILE" ]; then
-    . "$ENV_FILE"
-else
-    echo "error: environment file '$ENV_FILE' not found."
-    exit 1
-fi
-
 # Run Retro AIM Server from repo root.
 cd "$REPO_ROOT"
-go run -v ./cmd/server
+go run -v ./cmd/server -config "$ENV_FILE"

@@ -8,6 +8,9 @@ import (
 	"os"
 	"sync"
 
+	"github.com/joho/godotenv"
+	"github.com/kelseyhightower/envconfig"
+
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/foodgroup"
 	"github.com/mk6i/retro-aim-server/server/http"
@@ -15,8 +18,6 @@ import (
 	"github.com/mk6i/retro-aim-server/server/oscar/handler"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
-
-	"github.com/kelseyhightower/envconfig"
 )
 
 // Default build fields are populated by GoReleaser
@@ -26,23 +27,33 @@ var (
 	date    = "unknown"
 )
 
-func main() {
-	bld := config.Build{
-		Version: version,
-		Commit:  commit,
-		Date:    date,
-	}
-	var showVersion bool
-	flag.BoolVar(&showVersion, "version", false, "Display build information")
-	flag.BoolVar(&showVersion, "v", false, "Display build information")
+func init() {
+	cfgFile := flag.String("config", "settings.env", "Path to config file")
+	showHelp := flag.Bool("help", false, "Display help")
+	showVersion := flag.Bool("version", false, "Display build information")
+
 	flag.Parse()
-	if showVersion {
-		fmt.Printf("%-10s %s\n", "version:", bld.Version)
-		fmt.Printf("%-10s %s\n", "commit:", bld.Commit)
-		fmt.Printf("%-10s %s\n", "date:", bld.Date)
+
+	switch {
+	case *showVersion:
+		fmt.Printf("%-10s %s\n", "version:", version)
+		fmt.Printf("%-10s %s\n", "commit:", commit)
+		fmt.Printf("%-10s %s\n", "date:", date)
+		os.Exit(0)
+	case *showHelp:
+		flag.PrintDefaults()
 		os.Exit(0)
 	}
 
+	// Optionally populate environment variables with config file
+	if err := godotenv.Load(*cfgFile); err != nil {
+		fmt.Printf("Config file not found (%s). Moving on...\n", *cfgFile)
+	} else {
+		fmt.Printf("Successfully loaded config file (%s)\n", *cfgFile)
+	}
+}
+
+func main() {
 	var cfg config.Config
 	err := envconfig.Process("", &cfg)
 	if err != nil {
@@ -71,6 +82,11 @@ func main() {
 	wg.Add(7)
 
 	go func() {
+		bld := config.Build{
+			Version: version,
+			Commit:  commit,
+			Date:    date,
+		}
 		http.StartManagementAPI(bld, cfg, feedbagStore, sessionManager, feedbagStore, feedbagStore, chatSessionManager, sessionManager, feedbagStore, feedbagStore, feedbagStore, feedbagStore, logger)
 		wg.Done()
 	}()

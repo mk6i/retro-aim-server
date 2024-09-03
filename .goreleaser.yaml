@@ -6,7 +6,7 @@ before:
 
 builds:
   - id: linux
-    binary: bin/retro_aim_server
+    binary: retro_aim_server
     goos:
       - linux
     goarch:
@@ -21,7 +21,7 @@ builds:
         {{- if eq .Arch "amd64"}}CC=x86_64-linux-gnu-gcc{{- end }}
         {{- if eq .Arch "arm"}}CC=arm-linux-gnueabihf-gcc{{- end }}
   - id: macos
-    binary: bin/retro_aim_server
+    binary: retro_aim_server
     goos:
       - darwin
     goarch:
@@ -34,7 +34,7 @@ builds:
         {{- if eq .Arch "amd64"}}CC=o64-clang{{- end }}
         {{- if eq .Arch "arm64"}}CC=oa64-clang{{- end }}
   - id: windows
-    binary: bin/retro_aim_server
+    binary: retro_aim_server
     goos:
       - windows
     goarch:
@@ -54,8 +54,6 @@ archives:
       - LICENSE
       - src: config/settings.env
         strip_parent: true
-      - src: scripts/run.sh
-        strip_parent: true
     name_template: >-
       {{ .Binary }}.{{ .Version }}.{{ .Os }}.
       {{- if eq .Arch "amd64" }}x86_64{{ else }}arm64_arm7_raspberry_pi{{ end }}
@@ -68,8 +66,6 @@ archives:
       - LICENSE
       - src: config/settings.env
         strip_parent: true
-      - src: scripts/run.sh
-        strip_parent: true
     name_template: >-
       {{ .Binary }}.{{ .Version }}.macos.
       {{- if eq .Arch "amd64" }}intel_x86_64{{ else }}apple_silicon{{ end }}
@@ -80,9 +76,7 @@ archives:
     wrap_in_directory: true
     files:
       - LICENSE
-      - src: config/settings.bat
-        strip_parent: true
-      - src: scripts/run.cmd
+      - src: config/settings.env
         strip_parent: true
     name_template: >-
       {{ .Binary }}.{{ .Version }}.{{ .Os }}.

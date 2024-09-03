@@ -1,6 +1,5 @@
 package config
 
-//go:generate go run github.com/mk6i/retro-aim-server/cmd/config_generator windows settings.bat
 //go:generate go run github.com/mk6i/retro-aim-server/cmd/config_generator unix settings.env
 type Config struct {
 	ApiHost     string `envconfig:"API_HOST" require:"true" val:"127.0.0.1" description:"The hostname or address at which the management API listens."`
