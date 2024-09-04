@@ -100,11 +100,12 @@ func NewChatRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceClientOnline, h.ClientOnline)
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
 	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceHandler.IdleNotification)
+	router.Register(wire.OService, wire.OServiceNoop, h.OServiceHandler.Noop)
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
+	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
 	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceHandler.SetUserInfoFields)
 	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceHandler.UserInfoQuery)
-	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
 
 	return router
 }

@@ -794,7 +794,7 @@ func (f SQLiteUserStore) ChatRoomByCookie(cookie string) (ChatRoom, error) {
 		&creator,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
-		err = ErrChatRoomNotFound
+		err = fmt.Errorf("%w: %s", ErrChatRoomNotFound, cookie)
 	}
 	chatRoom.creator = NewIdentScreenName(creator)
 
