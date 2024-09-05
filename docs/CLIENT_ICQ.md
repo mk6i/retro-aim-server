@@ -117,7 +117,7 @@ using [WineskinServer](https://github.com/Gcenx/WineskinServer), a wrapper for W
 ## Post-install Configuration
 
 In this step, we'll replace ICQ's default server hostname with your Retro AIM
-Server's hostname in the Windows Registry. 
+Server's hostname in the Windows Registry.
 
 > Do not attempt to set the ICQ hostname via the registration Window. If you do
 > this, a bug will surface that prevents the client from "remembering" settings
@@ -149,7 +149,7 @@ Server's hostname in the Windows Registry.
 
     - Double-click the `Default Server Host` registry entry.
     - Set `Value data` to the value of `OSCAR_HOST` found in Retro AIM Server
-      configuration `config/settings.env` (Linux/macOS) or `config/settings.bat` (Windows).
+      configuration `config/settings.env`.
     - Click OK.
 
    <p align="center">
@@ -163,9 +163,7 @@ Server's hostname in the Windows Registry.
 
     - Double-click the `Default Server Port` registry entry.
     - Tick the `Decimal` radio button.
-    - Set `Value data` to the value of `AUTH_PORT` found in Retro AIM Server
-      configuration `config/settings.env` (Linux/macOS) or `config/settings.bat`
-      (Windows).
+    - Set `Value data` to the value of `AUTH_PORT` found in Retro AIM Server configuration `config/settings.env`.
     - Click OK.
 
    <p align="center">

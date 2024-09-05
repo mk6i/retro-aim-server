@@ -47,7 +47,7 @@ func init() {
 
 	// Optionally populate environment variables with config file
 	if err := godotenv.Load(*cfgFile); err != nil {
-		fmt.Printf("Config file not found (%s). Moving on...\n", *cfgFile)
+		fmt.Printf("Config file (%s) not found, defaulting to env vars for app config...\n", *cfgFile)
 	} else {
 		fmt.Printf("Successfully loaded config file (%s)\n", *cfgFile)
 	}

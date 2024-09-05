@@ -20,7 +20,7 @@ This guide explains how to download, configure and run Retro AIM Server on Linux
    Run the following command to launch Retro AIM Server:
 
    ```shell
-   ./run.sh
+   ./retro_aim_server
    ```
 
    Retro AIM Server will run in the terminal, ready to accept AIM client connections.

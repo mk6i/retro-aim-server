@@ -17,7 +17,7 @@ Environment="DISABLE_AUTH=true"
 Environment="FAIL_FAST=false"
 Environment="LOG_LEVEL=info"
 Environment="OSCAR_HOST=127.0.0.1"
-ExecStart=/opt/ras/bin/retro_aim_server
+ExecStart=/opt/ras/retro_aim_server
 Restart=on-failure
 
 [Install]

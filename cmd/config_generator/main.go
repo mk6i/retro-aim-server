@@ -1,7 +1,7 @@
 // This program generates env config scripts from config.Config struct tags for
 // unix and windows platforms.
 // Usage: go run ./cmd/config_generator [platform] [filename]
-// Example: go run ./cmd/config_generator windows settings.bat
+// Example: go run ./cmd/config_generator unix settings.env
 package main
 
 import (

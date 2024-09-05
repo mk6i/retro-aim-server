@@ -11,30 +11,8 @@ Before you can run Retro AIM Server, set up the following software dependencies.
 
 Since Retro AIM Server is written in go, install the latest version of [golang](https://go.dev/).
 
-If you're new to go, try [Visual Studio Code](https://code.visualstudio.com) wth the
-[go plugin](https://code.visualstudio.com/docs/languages/go) as your first IDE.
-
-### C Compiler
-
-A C compiler is required in order to build the sqlite dependency.
-
-#### macOS
-
-> If you have git, this is likely already set up on your machine.
-
-```shell
-xcode-select --install
-```
-
-#### Linux (Ubuntu)
-
-```shell
-sudo apt install build-essential
-```
-
-#### Windows
-
-Install the [tdm-gcc compiler](https://jmeubank.github.io/tdm-gcc/).
+If you're new to go, try [Visual Studio Code](https://code.visualstudio.com) wth the [go plugin](https://code.visualstudio.com/docs/languages/go)
+as your first IDE.
 
 ### Mockery (optional)
 
@@ -71,8 +49,7 @@ go build -o retro_aim_server ./cmd/server
 To run the binary with the settings file:
 
 ```shell
-source config/settings.env
-./retro_aim_server
+./retro_aim_server -config config/settings.env
 ```
 
 ## Testing
@@ -86,7 +63,6 @@ go test -race ./...
 
 ## Config File Generation
 
-The config files `config/settings.bat` and `config/settings.env` are generated programmatically from the
-[Config](../config/config.go) struct using `go generate`. If you want to add or remove application configuration
-options, first edit the Config struct and then generate the configuration files by running `make config` from the
-project root. Do not edit the config files by hand.
+The config file `config/settings.env` is generated programmatically from the [Config](../config/config.go) struct using
+`go generate`. If you want to add or remove application configuration options, first edit the Config struct and then
+generate the configuration files by running `make config` from the project root. Do not edit the config files by hand.
