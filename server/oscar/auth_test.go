@@ -3,13 +3,13 @@ package oscar
 import (
 	"bytes"
 	"io"
-	"log/slog"
 	"testing"
-
-	"github.com/mk6i/retro-aim-server/wire"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/exp/slog"
+
+	"github.com/mk6i/retro-aim-server/wire"
 )
 
 func TestBUCPAuthService_handleNewConnection(t *testing.T) {

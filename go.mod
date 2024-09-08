@@ -1,6 +1,6 @@
 module github.com/mk6i/retro-aim-server
 
-go 1.22
+go 1.20
 
 require (
 	github.com/golang-migrate/migrate/v4 v4.17.1
@@ -9,6 +9,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/stretchr/testify v1.9.0
+	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e
 )
 
 require (

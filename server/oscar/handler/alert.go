@@ -3,7 +3,8 @@ package handler
 import (
 	"context"
 	"io"
-	"log/slog"
+
+	"golang.org/x/exp/slog"
 
 	"github.com/mk6i/retro-aim-server/server/oscar"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"

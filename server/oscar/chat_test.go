@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"log/slog"
 	"testing"
-
-	"github.com/mk6i/retro-aim-server/state"
-	"github.com/mk6i/retro-aim-server/wire"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/exp/slog"
+
+	"github.com/mk6i/retro-aim-server/state"
+	"github.com/mk6i/retro-aim-server/wire"
 )
 
 func TestChatService_handleNewConnection(t *testing.T) {

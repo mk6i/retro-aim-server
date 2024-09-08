@@ -6,7 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
+
+	"golang.org/x/exp/slog"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"

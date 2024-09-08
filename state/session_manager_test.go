@@ -2,12 +2,12 @@ package state
 
 import (
 	"context"
-	"log/slog"
 	"testing"
 
 	"github.com/mk6i/retro-aim-server/wire"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slog"
 )
 
 func TestInMemorySessionManager_AddSession(t *testing.T) {

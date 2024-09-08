@@ -3,15 +3,15 @@ package oscar
 import (
 	"context"
 	"io"
-	"log/slog"
 	"net"
 	"os"
+
+	"github.com/google/uuid"
+	"golang.org/x/exp/slog"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
-
-	"github.com/google/uuid"
 )
 
 type AuthService interface {

@@ -2,12 +2,12 @@ package handler
 
 import (
 	"bytes"
-	"log/slog"
 	"testing"
 
-	"github.com/mk6i/retro-aim-server/wire"
-
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slog"
+
+	"github.com/mk6i/retro-aim-server/wire"
 )
 
 func TestAlertHandler_NotifyCapabilities(t *testing.T) {

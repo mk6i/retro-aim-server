@@ -3,9 +3,10 @@ package middleware
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
+
+	"golang.org/x/exp/slog"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/wire"

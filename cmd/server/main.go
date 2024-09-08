@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"net"
 	"os"
 	"sync"
+
+	"github.com/kelseyhightower/envconfig"
+	"golang.org/x/exp/slog"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/foodgroup"
@@ -14,8 +16,6 @@ import (
 	"github.com/mk6i/retro-aim-server/server/oscar/handler"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
-
-	"github.com/kelseyhightower/envconfig"
 )
 
 func main() {

@@ -2,8 +2,9 @@ package state
 
 import (
 	"context"
-	"log/slog"
 	"sync"
+
+	"golang.org/x/exp/slog"
 
 	"github.com/mk6i/retro-aim-server/wire"
 )

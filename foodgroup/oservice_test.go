@@ -2,15 +2,15 @@ package foodgroup
 
 import (
 	"context"
-	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/mk6i/retro-aim-server/config"
-
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slog"
+
+	"github.com/mk6i/retro-aim-server/config"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"

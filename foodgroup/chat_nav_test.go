@@ -3,13 +3,13 @@ package foodgroup
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slog"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestChatNavService_CreateRoom(t *testing.T) {
