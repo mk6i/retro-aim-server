@@ -71,22 +71,32 @@ func (_c *mockLocateService_RightsQuery_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// SetDirInfo provides a mock function with given fields: ctx, frame
-func (_m *mockLocateService) SetDirInfo(ctx context.Context, frame wire.SNACFrame) wire.SNACMessage {
-	ret := _m.Called(ctx, frame)
+// SetDirInfo provides a mock function with given fields: ctx, sess, inFrame, inBody
+func (_m *mockLocateService) SetDirInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x09_LocateSetDirInfo) (wire.SNACMessage, error) {
+	ret := _m.Called(ctx, sess, inFrame, inBody)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetDirInfo")
 	}
 
 	var r0 wire.SNACMessage
-	if rf, ok := ret.Get(0).(func(context.Context, wire.SNACFrame) wire.SNACMessage); ok {
-		r0 = rf(ctx, frame)
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x09_LocateSetDirInfo) (wire.SNACMessage, error)); ok {
+		return rf(ctx, sess, inFrame, inBody)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x09_LocateSetDirInfo) wire.SNACMessage); ok {
+		r0 = rf(ctx, sess, inFrame, inBody)
 	} else {
 		r0 = ret.Get(0).(wire.SNACMessage)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x09_LocateSetDirInfo) error); ok {
+		r1 = rf(ctx, sess, inFrame, inBody)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // mockLocateService_SetDirInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetDirInfo'
@@ -96,24 +106,26 @@ type mockLocateService_SetDirInfo_Call struct {
 
 // SetDirInfo is a helper method to define mock.On call
 //   - ctx context.Context
-//   - frame wire.SNACFrame
-func (_e *mockLocateService_Expecter) SetDirInfo(ctx interface{}, frame interface{}) *mockLocateService_SetDirInfo_Call {
-	return &mockLocateService_SetDirInfo_Call{Call: _e.mock.On("SetDirInfo", ctx, frame)}
+//   - sess *state.Session
+//   - inFrame wire.SNACFrame
+//   - inBody wire.SNAC_0x02_0x09_LocateSetDirInfo
+func (_e *mockLocateService_Expecter) SetDirInfo(ctx interface{}, sess interface{}, inFrame interface{}, inBody interface{}) *mockLocateService_SetDirInfo_Call {
+	return &mockLocateService_SetDirInfo_Call{Call: _e.mock.On("SetDirInfo", ctx, sess, inFrame, inBody)}
 }
 
-func (_c *mockLocateService_SetDirInfo_Call) Run(run func(ctx context.Context, frame wire.SNACFrame)) *mockLocateService_SetDirInfo_Call {
+func (_c *mockLocateService_SetDirInfo_Call) Run(run func(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x09_LocateSetDirInfo)) *mockLocateService_SetDirInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(wire.SNACFrame))
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACFrame), args[3].(wire.SNAC_0x02_0x09_LocateSetDirInfo))
 	})
 	return _c
 }
 
-func (_c *mockLocateService_SetDirInfo_Call) Return(_a0 wire.SNACMessage) *mockLocateService_SetDirInfo_Call {
-	_c.Call.Return(_a0)
+func (_c *mockLocateService_SetDirInfo_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockLocateService_SetDirInfo_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockLocateService_SetDirInfo_Call) RunAndReturn(run func(context.Context, wire.SNACFrame) wire.SNACMessage) *mockLocateService_SetDirInfo_Call {
+func (_c *mockLocateService_SetDirInfo_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x09_LocateSetDirInfo) (wire.SNACMessage, error)) *mockLocateService_SetDirInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -166,22 +178,32 @@ func (_c *mockLocateService_SetInfo_Call) RunAndReturn(run func(context.Context,
 	return _c
 }
 
-// SetKeywordInfo provides a mock function with given fields: ctx, inFrame
-func (_m *mockLocateService) SetKeywordInfo(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage {
-	ret := _m.Called(ctx, inFrame)
+// SetKeywordInfo provides a mock function with given fields: ctx, sess, inFrame, body
+func (_m *mockLocateService) SetKeywordInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, body wire.SNAC_0x02_0x0F_LocateSetKeywordInfo) (wire.SNACMessage, error) {
+	ret := _m.Called(ctx, sess, inFrame, body)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetKeywordInfo")
 	}
 
 	var r0 wire.SNACMessage
-	if rf, ok := ret.Get(0).(func(context.Context, wire.SNACFrame) wire.SNACMessage); ok {
-		r0 = rf(ctx, inFrame)
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x0F_LocateSetKeywordInfo) (wire.SNACMessage, error)); ok {
+		return rf(ctx, sess, inFrame, body)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x0F_LocateSetKeywordInfo) wire.SNACMessage); ok {
+		r0 = rf(ctx, sess, inFrame, body)
 	} else {
 		r0 = ret.Get(0).(wire.SNACMessage)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x0F_LocateSetKeywordInfo) error); ok {
+		r1 = rf(ctx, sess, inFrame, body)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // mockLocateService_SetKeywordInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetKeywordInfo'
@@ -191,24 +213,26 @@ type mockLocateService_SetKeywordInfo_Call struct {
 
 // SetKeywordInfo is a helper method to define mock.On call
 //   - ctx context.Context
+//   - sess *state.Session
 //   - inFrame wire.SNACFrame
-func (_e *mockLocateService_Expecter) SetKeywordInfo(ctx interface{}, inFrame interface{}) *mockLocateService_SetKeywordInfo_Call {
-	return &mockLocateService_SetKeywordInfo_Call{Call: _e.mock.On("SetKeywordInfo", ctx, inFrame)}
+//   - body wire.SNAC_0x02_0x0F_LocateSetKeywordInfo
+func (_e *mockLocateService_Expecter) SetKeywordInfo(ctx interface{}, sess interface{}, inFrame interface{}, body interface{}) *mockLocateService_SetKeywordInfo_Call {
+	return &mockLocateService_SetKeywordInfo_Call{Call: _e.mock.On("SetKeywordInfo", ctx, sess, inFrame, body)}
 }
 
-func (_c *mockLocateService_SetKeywordInfo_Call) Run(run func(ctx context.Context, inFrame wire.SNACFrame)) *mockLocateService_SetKeywordInfo_Call {
+func (_c *mockLocateService_SetKeywordInfo_Call) Run(run func(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, body wire.SNAC_0x02_0x0F_LocateSetKeywordInfo)) *mockLocateService_SetKeywordInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(wire.SNACFrame))
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACFrame), args[3].(wire.SNAC_0x02_0x0F_LocateSetKeywordInfo))
 	})
 	return _c
 }
 
-func (_c *mockLocateService_SetKeywordInfo_Call) Return(_a0 wire.SNACMessage) *mockLocateService_SetKeywordInfo_Call {
-	_c.Call.Return(_a0)
+func (_c *mockLocateService_SetKeywordInfo_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockLocateService_SetKeywordInfo_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockLocateService_SetKeywordInfo_Call) RunAndReturn(run func(context.Context, wire.SNACFrame) wire.SNACMessage) *mockLocateService_SetKeywordInfo_Call {
+func (_c *mockLocateService_SetKeywordInfo_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACFrame, wire.SNAC_0x02_0x0F_LocateSetKeywordInfo) (wire.SNACMessage, error)) *mockLocateService_SetKeywordInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

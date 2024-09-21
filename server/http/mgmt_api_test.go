@@ -1,6 +1,8 @@
 package http
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -1364,6 +1366,647 @@ func TestVersionHandler_GET(t *testing.T) {
 			responseRecorder := httptest.NewRecorder()
 
 			getVersionHandler(responseRecorder, tc.buildInfo)
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
+func TestDirectoryCategoryHandler_GET(t *testing.T) {
+	tt := []struct {
+		name       string
+		want       string
+		statusCode int
+		mockParams mockParams
+	}{
+		{
+			name:       "no categories",
+			want:       `[]`,
+			statusCode: http.StatusOK,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					categoriesParams: categoriesParams{
+						{
+							result: nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "error fetching categories",
+			want:       `{"message":"internal server error"}`,
+			statusCode: http.StatusInternalServerError,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					categoriesParams: categoriesParams{
+						{
+							result: nil,
+							err:    errors.New("error fetching categories"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "fetch some categories",
+			want:       `[{"id":1,"name":"category-1"},{"id":2,"name":"category-2"}]`,
+			statusCode: http.StatusOK,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					categoriesParams: categoriesParams{
+						{
+							result: []state.Category{
+								{
+									ID:   1,
+									Name: "category-1",
+								},
+								{
+									ID:   2,
+									Name: "category-2",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			responseRecorder := httptest.NewRecorder()
+
+			directoryManager := newMockDirectoryManager(t)
+			for _, params := range tc.mockParams.categoriesParams {
+				directoryManager.EXPECT().
+					Categories().
+					Return(params.result, params.err)
+			}
+
+			getDirectoryCategoryHandler(responseRecorder, directoryManager, slog.Default())
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
+func TestDirectoryCategoryKeywordHandler_GET(t *testing.T) {
+	tt := []struct {
+		name       string
+		categoryID int
+		want       string
+		statusCode int
+		mockParams mockParams
+	}{
+		{
+			name:       "category not found",
+			categoryID: 1,
+			want:       `{"message":"category not found"}`,
+			statusCode: http.StatusNotFound,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					keywordsByCategoryParams: keywordsByCategoryParams{
+						{
+							categoryID: 1,
+							result:     nil,
+							err:        state.ErrKeywordCategoryNotFound,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "error fetching keywords by category",
+			categoryID: 1,
+			want:       `{"message":"internal server error"}`,
+			statusCode: http.StatusInternalServerError,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					keywordsByCategoryParams: keywordsByCategoryParams{
+						{
+							categoryID: 1,
+							result:     nil,
+							err:        errors.New("error fetching keywords by category"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "invalid category ID",
+			categoryID: -1,
+			want:       `{"message":"invalid category ID"}`,
+			statusCode: http.StatusBadRequest,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					keywordsByCategoryParams: keywordsByCategoryParams{},
+				},
+			},
+		},
+		{
+			name:       "no keywords",
+			categoryID: 1,
+			want:       `[]`,
+			statusCode: http.StatusOK,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					keywordsByCategoryParams: keywordsByCategoryParams{
+						{
+							categoryID: 1,
+							result:     nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "fetch some keywords by category",
+			categoryID: 1,
+			want:       `[{"id":1,"name":"keyword-1"},{"id":2,"name":"keyword-2"}]`,
+			statusCode: http.StatusOK,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					keywordsByCategoryParams: keywordsByCategoryParams{
+						{
+							categoryID: 1,
+							result: []state.Keyword{
+								{
+									ID:   1,
+									Name: "keyword-1",
+								},
+								{
+									ID:   2,
+									Name: "keyword-2",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/directory/category/%d/keyword", tc.categoryID), nil)
+			request.SetPathValue("id", fmt.Sprintf("%d", tc.categoryID))
+			responseRecorder := httptest.NewRecorder()
+
+			directoryManager := newMockDirectoryManager(t)
+			for _, params := range tc.mockParams.keywordsByCategoryParams {
+				directoryManager.EXPECT().
+					KeywordsByCategory(params.categoryID).
+					Return(params.result, params.err)
+			}
+
+			getDirectoryCategoryKeywordHandler(responseRecorder, request, directoryManager, slog.Default())
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
+func TestDirectoryCategoryHandler_DELETE(t *testing.T) {
+	tt := []struct {
+		name       string
+		categoryID int
+		want       string
+		statusCode int
+		mockParams mockParams
+	}{
+		{
+			name:       "category not found",
+			categoryID: 1,
+			want:       `{"message":"category not found"}`,
+			statusCode: http.StatusNotFound,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					deleteCategoryParams: deleteCategoryParams{
+						{
+							categoryID: 1,
+							err:        state.ErrKeywordCategoryNotFound,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "keyword in use by user",
+			categoryID: 1,
+			want:       `{"message":"can't delete because category in use by a user"}`,
+			statusCode: http.StatusConflict,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					deleteCategoryParams: deleteCategoryParams{
+						{
+							categoryID: 1,
+							err:        state.ErrKeywordInUse,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "runtime error",
+			categoryID: 1,
+			want:       `{"message":"internal server error"}`,
+			statusCode: http.StatusInternalServerError,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					deleteCategoryParams: deleteCategoryParams{
+						{
+							categoryID: 1,
+							err:        errors.New("error deleting keyword"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "successful deletion",
+			categoryID: 1,
+			want:       ``,
+			statusCode: http.StatusNoContent,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					deleteCategoryParams: deleteCategoryParams{
+						{
+							categoryID: 1,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "invalid category ID",
+			categoryID: -1,
+			want:       `invalid category ID`,
+			statusCode: http.StatusBadRequest,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					deleteCategoryParams: deleteCategoryParams{},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/directory/category/%d/keyword", tc.categoryID), nil)
+			request.SetPathValue("id", fmt.Sprintf("%d", tc.categoryID))
+			responseRecorder := httptest.NewRecorder()
+
+			directoryManager := newMockDirectoryManager(t)
+			for _, params := range tc.mockParams.deleteCategoryParams {
+				directoryManager.EXPECT().
+					DeleteCategory(params.categoryID).
+					Return(params.err)
+			}
+
+			deleteDirectoryCategoryHandler(responseRecorder, request, directoryManager, slog.Default())
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
+func TestDirectoryCategoryHandler_POST(t *testing.T) {
+	tt := []struct {
+		name       string
+		body       string
+		want       string
+		statusCode int
+		mockParams mockParams
+	}{
+		{
+			name:       "category already exists",
+			body:       `{"name":"the_category"}`,
+			want:       `{"message":"category already exists"}`,
+			statusCode: http.StatusConflict,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					createCategoryParams: createCategoryParams{
+						{
+							name: "the_category",
+							err:  state.ErrKeywordCategoryExists,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "runtime error",
+			body:       `{"name":"the_category"}`,
+			want:       `{"message":"internal server error"}`,
+			statusCode: http.StatusInternalServerError,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					createCategoryParams: createCategoryParams{
+						{
+							name: "the_category",
+							err:  errors.New("error creating category"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "bad input",
+			body:       `{"name":"the_category"`,
+			want:       `{"message":"malformed input"}`,
+			statusCode: http.StatusBadRequest,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					createCategoryParams: createCategoryParams{},
+				},
+			},
+		},
+		{
+			name:       "successful creation",
+			body:       `{"name":"the_category"}`,
+			want:       `{"id":1,"name":"the_category"}`,
+			statusCode: http.StatusCreated,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					createCategoryParams: createCategoryParams{
+						{
+							name: "the_category",
+							result: state.Category{
+								ID:   1,
+								Name: "the_category",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/directory/category", strings.NewReader(tc.body))
+			responseRecorder := httptest.NewRecorder()
+
+			directoryManager := newMockDirectoryManager(t)
+			for _, params := range tc.mockParams.createCategoryParams {
+				directoryManager.EXPECT().
+					CreateCategory(params.name).
+					Return(params.result, params.err)
+			}
+
+			postDirectoryCategoryHandler(responseRecorder, request, directoryManager, slog.Default())
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
+func TestDirectoryKeywordHandler_POST(t *testing.T) {
+	tt := []struct {
+		name       string
+		body       string
+		want       string
+		statusCode int
+		mockParams mockParams
+	}{
+		{
+			name:       "keyword already exists",
+			body:       `{"category_id":1,"name":"the_keyword"}`,
+			want:       `{"message":"keyword already exists"}`,
+			statusCode: http.StatusConflict,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					createKeywordParams: createKeywordParams{
+						{
+							name:       "the_keyword",
+							categoryID: 1,
+							err:        state.ErrKeywordExists,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "category not found",
+			body:       `{"category_id":1,"name":"the_keyword"}`,
+			want:       `{"message":"category not found"}`,
+			statusCode: http.StatusNotFound,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					createKeywordParams: createKeywordParams{
+						{
+							name:       "the_keyword",
+							categoryID: 1,
+							err:        state.ErrKeywordCategoryNotFound,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "runtime error",
+			body:       `{"category_id":1,"name":"the_keyword"}`,
+			want:       `{"message":"internal server error"}`,
+			statusCode: http.StatusInternalServerError,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					createKeywordParams: createKeywordParams{
+						{
+							name:       "the_keyword",
+							categoryID: 1,
+							err:        errors.New("error creating keyword"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "bad input",
+			body:       `{"category_id":1,"name":"the_keyword"`,
+			want:       `{"message":"malformed input"}`,
+			statusCode: http.StatusBadRequest,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					createKeywordParams: createKeywordParams{},
+				},
+			},
+		},
+		{
+			name:       "successful creation",
+			body:       `{"category_id":1,"name":"the_keyword"}`,
+			want:       `{"id":1,"name":"the_keyword"}`,
+			statusCode: http.StatusCreated,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					createKeywordParams: createKeywordParams{
+						{
+							name:       "the_keyword",
+							categoryID: 1,
+							result: state.Keyword{
+								ID:   1,
+								Name: "the_keyword",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/directory/keyword", strings.NewReader(tc.body))
+			responseRecorder := httptest.NewRecorder()
+
+			directoryManager := newMockDirectoryManager(t)
+			for _, params := range tc.mockParams.createKeywordParams {
+				directoryManager.EXPECT().
+					CreateKeyword(params.name, params.categoryID).
+					Return(params.result, params.err)
+			}
+
+			postDirectoryKeywordHandler(responseRecorder, request, directoryManager, slog.Default())
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
+func TestDirectoryKeywordHandler_DELETE(t *testing.T) {
+	tt := []struct {
+		name       string
+		categoryID int
+		want       string
+		statusCode int
+		mockParams mockParams
+	}{
+		{
+			name:       "keyword not found",
+			categoryID: 1,
+			want:       `{"message":"keyword not found"}`,
+			statusCode: http.StatusNotFound,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					deleteKeywordParams: deleteKeywordParams{
+						{
+							id:  1,
+							err: state.ErrKeywordNotFound,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "keyword in use by user",
+			categoryID: 1,
+			want:       `{"message":"can't delete because category in use by a user"}`,
+			statusCode: http.StatusConflict,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					deleteKeywordParams: deleteKeywordParams{
+						{
+							id:  1,
+							err: state.ErrKeywordInUse,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "runtime error",
+			categoryID: 1,
+			want:       `{"message":"internal server error"}`,
+			statusCode: http.StatusInternalServerError,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					deleteKeywordParams: deleteKeywordParams{
+						{
+							id:  1,
+							err: errors.New("error deleting keyword"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "successful deletion",
+			categoryID: 1,
+			want:       ``,
+			statusCode: http.StatusNoContent,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					deleteKeywordParams: deleteKeywordParams{
+						{
+							id: 1,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "invalid keyword ID",
+			categoryID: -1,
+			want:       `{"message":"invalid keyword ID"}`,
+			statusCode: http.StatusBadRequest,
+			mockParams: mockParams{
+				directoryManagerParams: directoryManagerParams{
+					deleteKeywordParams: deleteKeywordParams{},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/directory/keyword/%d", tc.categoryID), nil)
+			request.SetPathValue("id", fmt.Sprintf("%d", tc.categoryID))
+			responseRecorder := httptest.NewRecorder()
+
+			directoryManager := newMockDirectoryManager(t)
+			for _, params := range tc.mockParams.deleteKeywordParams {
+				directoryManager.EXPECT().
+					DeleteKeyword(params.id).
+					Return(params.err)
+			}
+
+			deleteDirectoryKeywordHandler(responseRecorder, request, directoryManager, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)

@@ -54,7 +54,7 @@ func (s ICQService) DeleteMsgReq(ctx context.Context, sess *state.Session, seq u
 	return nil
 }
 
-func (s ICQService) FindByDetails(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, seq uint16) error {
+func (s ICQService) FindByICQName(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, seq uint16) error {
 	resp := wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
 		ICQMetadata: wire.ICQMetadata{
 			UIN:     sess.UIN(),
@@ -65,10 +65,10 @@ func (s ICQService) FindByDetails(ctx context.Context, sess *state.Session, req 
 		ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
 	}
 
-	res, err := s.userFinder.FindByDetails(req.FirstName, req.LastName, req.NickName)
+	res, err := s.userFinder.FindByICQName(req.FirstName, req.LastName, req.NickName)
 
 	if err != nil {
-		s.logger.Error("FindByDetails failed", "err", err.Error())
+		s.logger.Error("FindByICQName failed", "err", err.Error())
 		resp.Success = wire.ICQStatusCodeErr
 		return s.reply(ctx, sess, wire.ICQMessageReplyEnvelope{
 			Message: resp,
@@ -98,7 +98,7 @@ func (s ICQService) FindByDetails(ctx context.Context, sess *state.Session, req 
 	return nil
 }
 
-func (s ICQService) FindByEmail(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, seq uint16) error {
+func (s ICQService) FindByICQEmail(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, seq uint16) error {
 	resp := wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
 		ICQMetadata: wire.ICQMetadata{
 			UIN:     sess.UIN(),
@@ -110,13 +110,13 @@ func (s ICQService) FindByEmail(ctx context.Context, sess *state.Session, req wi
 	}
 	resp.LastResult()
 
-	res, err := s.userFinder.FindByEmail(req.Email)
+	res, err := s.userFinder.FindByICQEmail(req.Email)
 
 	switch {
 	case errors.Is(err, state.ErrNoUser):
 		resp.Success = wire.ICQStatusCodeFail
 	case err != nil:
-		s.logger.Error("FindByEmail failed", "err", err.Error())
+		s.logger.Error("FindByICQEmail failed", "err", err.Error())
 		resp.Success = wire.ICQStatusCodeErr
 	default:
 		resp.Success = wire.ICQStatusCodeOK
@@ -150,13 +150,13 @@ func (s ICQService) FindByEmail3(ctx context.Context, sess *state.Session, req w
 	}
 	resp.LastResult()
 
-	res, err := s.userFinder.FindByEmail(email.Email)
+	res, err := s.userFinder.FindByICQEmail(email.Email)
 
 	switch {
 	case errors.Is(err, state.ErrNoUser):
 		resp.Success = wire.ICQStatusCodeFail
 	case err != nil:
-		s.logger.Error("FindByEmail failed", "err", err.Error())
+		s.logger.Error("FindByICQEmail failed", "err", err.Error())
 		resp.Success = wire.ICQStatusCodeErr
 	default:
 		resp.Success = wire.ICQStatusCodeOK
@@ -168,7 +168,7 @@ func (s ICQService) FindByEmail3(ctx context.Context, sess *state.Session, req w
 	})
 }
 
-func (s ICQService) FindByInterests(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, seq uint16) error {
+func (s ICQService) FindByICQInterests(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, seq uint16) error {
 	resp := wire.ICQ_0x07DA_0x01AE_DBQueryMetaReplyLastUserFound{
 		ICQMetadata: wire.ICQMetadata{
 			UIN:     sess.UIN(),
@@ -180,10 +180,10 @@ func (s ICQService) FindByInterests(ctx context.Context, sess *state.Session, re
 	}
 
 	interests := strings.Split(req.InterestsKeyword, ",")
-	res, err := s.userFinder.FindByInterests(req.InterestsCode, interests)
+	res, err := s.userFinder.FindByICQInterests(req.InterestsCode, interests)
 
 	if err != nil {
-		s.logger.Error("FindByInterests failed", "err", err.Error())
+		s.logger.Error("FindByICQInterests failed", "err", err.Error())
 		resp.Success = wire.ICQStatusCodeErr
 		return s.reply(ctx, sess, wire.ICQMessageReplyEnvelope{
 			Message: resp,
@@ -217,9 +217,9 @@ func (s ICQService) FindByWhitePages2(ctx context.Context, sess *state.Session, 
 
 	users, err := func() ([]state.User, error) {
 		if keyword, hasKeyword := req.ICQString(wire.ICQTLVTagsWhitepagesSearchKeywords); hasKeyword {
-			res, err := s.userFinder.FindByKeyword(keyword)
+			res, err := s.userFinder.FindByICQKeyword(keyword)
 			if err != nil {
-				return nil, fmt.Errorf("FindByKeyword failed: %w", err)
+				return nil, fmt.Errorf("FindByICQKeyword failed: %w", err)
 			}
 			return res, nil
 		}
@@ -229,9 +229,9 @@ func (s ICQService) FindByWhitePages2(ctx context.Context, sess *state.Session, 
 		bLast, hastLast := req.ICQString(wire.ICQTLVTagsLastName)
 
 		if hasNick || hasFirst || hastLast {
-			res, err := s.userFinder.FindByDetails(bFirst, bLast, bNick)
+			res, err := s.userFinder.FindByICQName(bFirst, bLast, bNick)
 			if err != nil {
-				return nil, fmt.Errorf("FindByDetails failed: %w", err)
+				return nil, fmt.Errorf("FindByICQName failed: %w", err)
 			}
 			return res, nil
 		}

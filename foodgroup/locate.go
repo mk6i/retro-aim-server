@@ -3,6 +3,7 @@ package foodgroup
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -180,9 +181,14 @@ func (s LocateService) UserInfoQuery(_ context.Context, sess *state.Session, inF
 }
 
 // SetDirInfo sets directory information for current user (first name, last
-// name, etc). This method does nothing and exists to placate the AIM client.
-// It returns wire.LocateSetDirReply with a canned success message.
-func (s LocateService) SetDirInfo(_ context.Context, inFrame wire.SNACFrame) wire.SNACMessage {
+// name, etc).
+func (s LocateService) SetDirInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x09_LocateSetDirInfo) (wire.SNACMessage, error) {
+	info := newAIMNameAndAddrFromTLVList(inBody.TLVList)
+
+	if err := s.profileManager.SetDirectoryInfo(sess.IdentScreenName(), info); err != nil {
+		return wire.SNACMessage{}, err
+	}
+
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Locate,
@@ -192,13 +198,31 @@ func (s LocateService) SetDirInfo(_ context.Context, inFrame wire.SNACFrame) wir
 		Body: wire.SNAC_0x02_0x0A_LocateSetDirReply{
 			Result: 1,
 		},
-	}
+	}, nil
 }
 
 // SetKeywordInfo sets profile keywords and interests. This method does nothing
 // and exists to placate the AIM client. It returns wire.LocateSetKeywordReply
 // with a canned success message.
-func (s LocateService) SetKeywordInfo(_ context.Context, inFrame wire.SNACFrame) wire.SNACMessage {
+func (s LocateService) SetKeywordInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, body wire.SNAC_0x02_0x0F_LocateSetKeywordInfo) (wire.SNACMessage, error) {
+	var keywords [5]string
+
+	i := 0
+	for _, tlv := range body.TLVList {
+		if tlv.Tag != wire.ODirTLVInterest {
+			continue
+		}
+		keywords[i] = string(tlv.Value)
+		i++
+		if i == len(body.TLVList) {
+			break
+		}
+	}
+
+	if err := s.profileManager.SetKeywords(sess.IdentScreenName(), keywords); err != nil {
+		return wire.SNACMessage{}, fmt.Errorf("SetKeywords: %w", err)
+	}
+
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Locate,
@@ -208,5 +232,5 @@ func (s LocateService) SetKeywordInfo(_ context.Context, inFrame wire.SNACFrame)
 		Body: wire.SNAC_0x02_0x10_LocateSetKeywordReply{
 			Unknown: 1,
 		},
-	}
+	}, nil
 }

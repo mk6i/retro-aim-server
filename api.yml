@@ -77,11 +77,11 @@ paths:
       summary: Get account details for a specific screen name.
       description: Retrieve account details for a specific screen name.
       parameters:
-      - name: screenname
-        in: path
-        description: User's AIM screen name or ICQ UIN.
-        required: true
-        type: string
+        - name: screenname
+          in: path
+          description: User's AIM screen name or ICQ UIN.
+          required: true
+          type: string
       responses:
         '200':
           description: Successful response containing account details
@@ -90,24 +90,24 @@ paths:
               schema:
                 type: object
                 properties:
-                    id:
-                      type: string
-                      description: User's unique identifier.
-                    screen_name:
-                      type: string
-                      description: User's AIM screen name or ICQ UIN.
-                    profile:
-                      type: string
-                      description: User's AIM profile HTML.
-                    email_address:
-                      type: string
-                      description: User's email address
-                    confirmed:
-                      type: bool
-                      description: User's account confirmation status
-                    is_icq:
-                      type: boolean
-                      description: If true, indicates an ICQ user instead of an AIM user.
+                  id:
+                    type: string
+                    description: User's unique identifier.
+                  screen_name:
+                    type: string
+                    description: User's AIM screen name or ICQ UIN.
+                  profile:
+                    type: string
+                    description: User's AIM profile HTML.
+                  email_address:
+                    type: string
+                    description: User's email address
+                  confirmed:
+                    type: bool
+                    description: User's account confirmation status
+                  is_icq:
+                    type: boolean
+                    description: If true, indicates an ICQ user instead of an AIM user.
         '404':
           description: User not found.
 
@@ -116,11 +116,11 @@ paths:
       summary: Get AIM buddy icon for a screen name
       description: Retrieve account buddy icon for a specific screen name.
       parameters:
-      - name: screenname
-        in: path
-        description: User's AIM screen name or ICQ UIN.
-        required: true
-        type: string
+        - name: screenname
+          in: path
+          description: User's AIM screen name or ICQ UIN.
+          required: true
+          type: string
       responses:
         '200':
           description: Successful response containing buddy icon bytes
@@ -188,11 +188,11 @@ paths:
       summary: Get active sessions for a given screen name or UIN.
       description: Retrieve a list of active sessions of a specific logged in user.
       parameters:
-      - name: screenname
-        in: path
-        description: User's AIM screen name or ICQ UIN.
-        required: true
-        type: string
+        - name: screenname
+          in: path
+          description: User's AIM screen name or ICQ UIN.
+          required: true
+          type: string
       responses:
         '200':
           description: Successful response containing a list of active sessions for the given screen name
@@ -397,3 +397,267 @@ paths:
                   date:
                     type: string
                     description: The build date and timestamp in RFC3339 format.
+
+  /directory/category:
+    get:
+      summary: Get all keyword categories
+      description: Retrieve a list of all keyword categories.
+      responses:
+        '200':
+          description: Successful response containing a list of keyword categories.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - id
+                    - name
+                  properties:
+                    id:
+                      type: integer
+                      description: The unique identifier of the keyword category.
+                    name:
+                      type: string
+                      description: The name of the keyword category.
+    post:
+      summary: Create a new keyword category
+      description: Create a new keyword category.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: The name of the keyword category.
+      responses:
+        '201':
+          description: Keyword category created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: The ID keyword category.
+                  name:
+                    type: string
+                    description: The name of the keyword category.
+        '400':
+          description: Malformed input body.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '409':
+          description: A category with the specified name already exists.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /directory/category/{id}:
+    delete:
+      summary: Delete a keyword category
+      description: Delete a keyword category specified by its ID.
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the keyword category.
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Keyword category deleted successfully.
+        '400':
+          description: Invalid category ID.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Keyword category not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '409':
+          description: The keyword category is currently in use and cannot be deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /directory/category/{id}/keyword:
+    get:
+      summary: Get all keywords in a category
+      description: Retrieve a list of all keywords in the specified category.
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the keyword category.
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response containing a list of keywords.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - id
+                    - name
+                    - parent
+                  properties:
+                    id:
+                      type: integer
+                      description: The unique identifier of the keyword.
+                    name:
+                      type: string
+                      description: The name of the keyword.
+                    parent:
+                      type: integer
+                      description: The ID of the parent keyword category.
+        '400':
+          description: Invalid category ID.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Keyword category not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /directory/keyword:
+    post:
+      summary: Create a new keyword
+      description: Create a new keyword in a category.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - parent
+              properties:
+                name:
+                  type: string
+                  description: The name of the keyword.
+                parent:
+                  type: integer
+                  description: The ID of the parent keyword category.
+      responses:
+        '201':
+          description: Keyword created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: The keyword ID.
+                  name:
+                    type: string
+                    description: The name of the keyword.
+                  parent:
+                    type: integer
+                    description: The ID of the parent keyword category.
+        '400':
+          description: Malformed input body.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Parent keyword category not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '409':
+          description: A keyword with the specified name already exists.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /directory/keyword/{id}:
+    delete:
+      summary: Delete a keyword
+      description: Delete a keyword specified by its ID.
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the keyword.
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Keyword deleted successfully.
+        '404':
+          description: Keyword not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '409':
+          description: Conflict. The keyword is currently in use and cannot be deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string

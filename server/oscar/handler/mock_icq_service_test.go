@@ -72,104 +72,6 @@ func (_c *mockICQService_DeleteMsgReq_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// FindByDetails provides a mock function with given fields: ctx, sess, req, seq
-func (_m *mockICQService) FindByDetails(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, seq uint16) error {
-	ret := _m.Called(ctx, sess, req, seq)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FindByDetails")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, uint16) error); ok {
-		r0 = rf(ctx, sess, req, seq)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// mockICQService_FindByDetails_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByDetails'
-type mockICQService_FindByDetails_Call struct {
-	*mock.Call
-}
-
-// FindByDetails is a helper method to define mock.On call
-//   - ctx context.Context
-//   - sess *state.Session
-//   - req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails
-//   - seq uint16
-func (_e *mockICQService_Expecter) FindByDetails(ctx interface{}, sess interface{}, req interface{}, seq interface{}) *mockICQService_FindByDetails_Call {
-	return &mockICQService_FindByDetails_Call{Call: _e.mock.On("FindByDetails", ctx, sess, req, seq)}
-}
-
-func (_c *mockICQService_FindByDetails_Call) Run(run func(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, seq uint16)) *mockICQService_FindByDetails_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails), args[3].(uint16))
-	})
-	return _c
-}
-
-func (_c *mockICQService_FindByDetails_Call) Return(_a0 error) *mockICQService_FindByDetails_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockICQService_FindByDetails_Call) RunAndReturn(run func(context.Context, *state.Session, wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, uint16) error) *mockICQService_FindByDetails_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// FindByEmail provides a mock function with given fields: ctx, sess, req, seq
-func (_m *mockICQService) FindByEmail(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, seq uint16) error {
-	ret := _m.Called(ctx, sess, req, seq)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FindByEmail")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, uint16) error); ok {
-		r0 = rf(ctx, sess, req, seq)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// mockICQService_FindByEmail_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByEmail'
-type mockICQService_FindByEmail_Call struct {
-	*mock.Call
-}
-
-// FindByEmail is a helper method to define mock.On call
-//   - ctx context.Context
-//   - sess *state.Session
-//   - req wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail
-//   - seq uint16
-func (_e *mockICQService_Expecter) FindByEmail(ctx interface{}, sess interface{}, req interface{}, seq interface{}) *mockICQService_FindByEmail_Call {
-	return &mockICQService_FindByEmail_Call{Call: _e.mock.On("FindByEmail", ctx, sess, req, seq)}
-}
-
-func (_c *mockICQService_FindByEmail_Call) Run(run func(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, seq uint16)) *mockICQService_FindByEmail_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail), args[3].(uint16))
-	})
-	return _c
-}
-
-func (_c *mockICQService_FindByEmail_Call) Return(_a0 error) *mockICQService_FindByEmail_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockICQService_FindByEmail_Call) RunAndReturn(run func(context.Context, *state.Session, wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, uint16) error) *mockICQService_FindByEmail_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // FindByEmail3 provides a mock function with given fields: ctx, sess, req, seq
 func (_m *mockICQService) FindByEmail3(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0573_DBQueryMetaReqSearchByEmail3, seq uint16) error {
 	ret := _m.Called(ctx, sess, req, seq)
@@ -219,12 +121,61 @@ func (_c *mockICQService_FindByEmail3_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// FindByInterests provides a mock function with given fields: ctx, sess, req, seq
-func (_m *mockICQService) FindByInterests(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, seq uint16) error {
+// FindByICQEmail provides a mock function with given fields: ctx, sess, req, seq
+func (_m *mockICQService) FindByICQEmail(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, seq uint16) error {
 	ret := _m.Called(ctx, sess, req, seq)
 
 	if len(ret) == 0 {
-		panic("no return value specified for FindByInterests")
+		panic("no return value specified for FindByICQEmail")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, uint16) error); ok {
+		r0 = rf(ctx, sess, req, seq)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockICQService_FindByICQEmail_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByICQEmail'
+type mockICQService_FindByICQEmail_Call struct {
+	*mock.Call
+}
+
+// FindByICQEmail is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sess *state.Session
+//   - req wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail
+//   - seq uint16
+func (_e *mockICQService_Expecter) FindByICQEmail(ctx interface{}, sess interface{}, req interface{}, seq interface{}) *mockICQService_FindByICQEmail_Call {
+	return &mockICQService_FindByICQEmail_Call{Call: _e.mock.On("FindByICQEmail", ctx, sess, req, seq)}
+}
+
+func (_c *mockICQService_FindByICQEmail_Call) Run(run func(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, seq uint16)) *mockICQService_FindByICQEmail_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail), args[3].(uint16))
+	})
+	return _c
+}
+
+func (_c *mockICQService_FindByICQEmail_Call) Return(_a0 error) *mockICQService_FindByICQEmail_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockICQService_FindByICQEmail_Call) RunAndReturn(run func(context.Context, *state.Session, wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, uint16) error) *mockICQService_FindByICQEmail_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindByICQInterests provides a mock function with given fields: ctx, sess, req, seq
+func (_m *mockICQService) FindByICQInterests(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, seq uint16) error {
+	ret := _m.Called(ctx, sess, req, seq)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindByICQInterests")
 	}
 
 	var r0 error
@@ -237,33 +188,82 @@ func (_m *mockICQService) FindByInterests(ctx context.Context, sess *state.Sessi
 	return r0
 }
 
-// mockICQService_FindByInterests_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByInterests'
-type mockICQService_FindByInterests_Call struct {
+// mockICQService_FindByICQInterests_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByICQInterests'
+type mockICQService_FindByICQInterests_Call struct {
 	*mock.Call
 }
 
-// FindByInterests is a helper method to define mock.On call
+// FindByICQInterests is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sess *state.Session
 //   - req wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages
 //   - seq uint16
-func (_e *mockICQService_Expecter) FindByInterests(ctx interface{}, sess interface{}, req interface{}, seq interface{}) *mockICQService_FindByInterests_Call {
-	return &mockICQService_FindByInterests_Call{Call: _e.mock.On("FindByInterests", ctx, sess, req, seq)}
+func (_e *mockICQService_Expecter) FindByICQInterests(ctx interface{}, sess interface{}, req interface{}, seq interface{}) *mockICQService_FindByICQInterests_Call {
+	return &mockICQService_FindByICQInterests_Call{Call: _e.mock.On("FindByICQInterests", ctx, sess, req, seq)}
 }
 
-func (_c *mockICQService_FindByInterests_Call) Run(run func(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, seq uint16)) *mockICQService_FindByInterests_Call {
+func (_c *mockICQService_FindByICQInterests_Call) Run(run func(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, seq uint16)) *mockICQService_FindByICQInterests_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages), args[3].(uint16))
 	})
 	return _c
 }
 
-func (_c *mockICQService_FindByInterests_Call) Return(_a0 error) *mockICQService_FindByInterests_Call {
+func (_c *mockICQService_FindByICQInterests_Call) Return(_a0 error) *mockICQService_FindByICQInterests_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockICQService_FindByInterests_Call) RunAndReturn(run func(context.Context, *state.Session, wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, uint16) error) *mockICQService_FindByInterests_Call {
+func (_c *mockICQService_FindByICQInterests_Call) RunAndReturn(run func(context.Context, *state.Session, wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, uint16) error) *mockICQService_FindByICQInterests_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindByICQName provides a mock function with given fields: ctx, sess, req, seq
+func (_m *mockICQService) FindByICQName(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, seq uint16) error {
+	ret := _m.Called(ctx, sess, req, seq)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindByICQName")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, uint16) error); ok {
+		r0 = rf(ctx, sess, req, seq)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockICQService_FindByICQName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByICQName'
+type mockICQService_FindByICQName_Call struct {
+	*mock.Call
+}
+
+// FindByICQName is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sess *state.Session
+//   - req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails
+//   - seq uint16
+func (_e *mockICQService_Expecter) FindByICQName(ctx interface{}, sess interface{}, req interface{}, seq interface{}) *mockICQService_FindByICQName_Call {
+	return &mockICQService_FindByICQName_Call{Call: _e.mock.On("FindByICQName", ctx, sess, req, seq)}
+}
+
+func (_c *mockICQService_FindByICQName_Call) Run(run func(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, seq uint16)) *mockICQService_FindByICQName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails), args[3].(uint16))
+	})
+	return _c
+}
+
+func (_c *mockICQService_FindByICQName_Call) Return(_a0 error) *mockICQService_FindByICQName_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockICQService_FindByICQName_Call) RunAndReturn(run func(context.Context, *state.Session, wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, uint16) error) *mockICQService_FindByICQName_Call {
 	_c.Call.Return(run)
 	return _c
 }

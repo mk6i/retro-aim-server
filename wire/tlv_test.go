@@ -30,6 +30,26 @@ func TestTLVList_Append(t *testing.T) {
 	assert.Equal(t, want, have)
 }
 
+func TestTLVList_HasTag(t *testing.T) {
+	list := TLVList{
+		{
+			Tag:   0,
+			Value: []byte(`0`),
+		},
+		{
+			Tag:   1,
+			Value: []byte(`1`),
+		},
+		{
+			Tag:   2,
+			Value: []byte(`2`),
+		},
+	}
+
+	assert.True(t, list.HasTag(0))
+	assert.False(t, list.HasTag(3))
+}
+
 func TestTLVList_AppendList(t *testing.T) {
 	want := TLVList{
 		{

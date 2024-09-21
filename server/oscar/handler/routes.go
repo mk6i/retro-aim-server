@@ -20,6 +20,7 @@ type Handlers struct {
 	ICBMHandler
 	ICQHandler
 	LocateHandler
+	ODirHandler
 	OServiceHandler
 	PermitDenyHandler
 }
@@ -72,10 +73,6 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.Locate, wire.LocateUserInfoQuery, h.LocateHandler.UserInfoQuery)
 	router.Register(wire.Locate, wire.LocateUserInfoQuery2, h.LocateHandler.UserInfoQuery2)
 
-	router.Register(wire.PermitDeny, wire.PermitDenyRightsQuery, h.PermitDenyHandler.RightsQuery)
-	router.Register(wire.PermitDeny, wire.PermitDenyAddPermListEntries, h.PermitDenyHandler.AddPermListEntries)
-	router.Register(wire.PermitDeny, wire.PermitDenySetGroupPermitMask, h.PermitDenyHandler.SetGroupPermitMask)
-
 	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceHandler.ClientOnline)
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
 	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceHandler.IdleNotification)
@@ -86,6 +83,10 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceHandler.SetUserInfoFields)
 	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceHandler.UserInfoQuery)
 	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
+
+	router.Register(wire.PermitDeny, wire.PermitDenyRightsQuery, h.PermitDenyHandler.RightsQuery)
+	router.Register(wire.PermitDeny, wire.PermitDenyAddPermListEntries, h.PermitDenyHandler.AddPermListEntries)
+	router.Register(wire.PermitDeny, wire.PermitDenySetGroupPermitMask, h.PermitDenyHandler.SetGroupPermitMask)
 
 	return router
 }
@@ -172,6 +173,20 @@ func NewAdminRouter(h Handlers) oscar.Router {
 	router.Register(wire.Admin, wire.AdminAcctConfirmRequest, h.AdminHandler.ConfirmRequest)
 	router.Register(wire.Admin, wire.AdminInfoQuery, h.AdminHandler.InfoQuery)
 	router.Register(wire.Admin, wire.AdminInfoChangeRequest, h.AdminHandler.InfoChangeRequest)
+
+	return router
+}
+
+func NewODirRouter(h Handlers) oscar.Router {
+	router := oscar.NewRouter()
+
+	router.Register(wire.ODir, wire.ODirInfoQuery, h.ODirHandler.InfoQuery)
+	router.Register(wire.ODir, wire.ODirKeywordListQuery, h.ODirHandler.KeywordListQuery)
+
+	router.Register(wire.OService, wire.OServiceClientOnline, h.ClientOnline)
+	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
+	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
 
 	return router
 }

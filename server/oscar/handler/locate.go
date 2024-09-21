@@ -14,9 +14,9 @@ import (
 
 type LocateService interface {
 	RightsQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
-	SetDirInfo(ctx context.Context, frame wire.SNACFrame) wire.SNACMessage
+	SetDirInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x09_LocateSetDirInfo) (wire.SNACMessage, error)
 	SetInfo(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x02_0x04_LocateSetInfo) error
-	SetKeywordInfo(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
+	SetKeywordInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, body wire.SNAC_0x02_0x0F_LocateSetKeywordInfo) (wire.SNACMessage, error)
 	UserInfoQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery) (wire.SNACMessage, error)
 }
 
@@ -49,12 +49,15 @@ func (h LocateHandler) SetInfo(ctx context.Context, sess *state.Session, inFrame
 	return h.LocateService.SetInfo(ctx, sess, inBody)
 }
 
-func (h LocateHandler) SetDirInfo(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
+func (h LocateHandler) SetDirInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x02_0x09_LocateSetDirInfo{}
 	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
-	outSNAC := h.LocateService.SetDirInfo(ctx, inFrame)
+	outSNAC, err := h.LocateService.SetDirInfo(ctx, sess, inFrame, inBody)
+	if err != nil {
+		return err
+	}
 	h.LogRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
@@ -65,12 +68,15 @@ func (h LocateHandler) GetDirInfo(ctx context.Context, _ *state.Session, inFrame
 	return wire.UnmarshalBE(&inBody, r)
 }
 
-func (h LocateHandler) SetKeywordInfo(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
+func (h LocateHandler) SetKeywordInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x02_0x0F_LocateSetKeywordInfo{}
 	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
-	outSNAC := h.LocateService.SetKeywordInfo(ctx, inFrame)
+	outSNAC, err := h.LocateService.SetKeywordInfo(ctx, sess, inFrame, inBody)
+	if err != nil {
+		return err
+	}
 	h.LogRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }

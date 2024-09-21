@@ -17,10 +17,10 @@ import (
 
 type ICQService interface {
 	DeleteMsgReq(ctx context.Context, sess *state.Session, seq uint16) error
-	FindByDetails(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, seq uint16) error
-	FindByEmail(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, seq uint16) error
+	FindByICQName(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0515_DBQueryMetaReqSearchByDetails, seq uint16) error
+	FindByICQEmail(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0529_DBQueryMetaReqSearchByEmail, seq uint16) error
 	FindByEmail3(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0573_DBQueryMetaReqSearchByEmail3, seq uint16) error
-	FindByInterests(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, seq uint16) error
+	FindByICQInterests(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0533_DBQueryMetaReqSearchWhitePages, seq uint16) error
 	FindByUIN(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x051F_DBQueryMetaReqSearchByUIN, seq uint16) error
 	FindByUIN2(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0569_DBQueryMetaReqSearchByUIN2, seq uint16) error
 	FindByWhitePages2(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x055F_DBQueryMetaReqSearchWhitePages2, seq uint16) error
@@ -142,7 +142,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
-			if err := rt.ICQService.FindByEmail(ctx, sess, req, icqMD.Seq); err != nil {
+			if err := rt.ICQService.FindByICQEmail(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSearchByEmail3:
@@ -158,7 +158,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
-			if err := rt.ICQService.FindByDetails(ctx, sess, req, icqMD.Seq); err != nil {
+			if err := rt.ICQService.FindByICQName(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSearchWhitePages:
@@ -166,7 +166,7 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 			if err := wire.UnmarshalLE(&req, buf); err != nil {
 				return err
 			}
-			if err := rt.ICQService.FindByInterests(ctx, sess, req, icqMD.Seq); err != nil {
+			if err := rt.ICQService.FindByICQInterests(ctx, sess, req, icqMD.Seq); err != nil {
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSearchWhitePages2:

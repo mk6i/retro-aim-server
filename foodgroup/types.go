@@ -88,7 +88,13 @@ type SessionManager interface {
 }
 
 type ProfileManager interface {
+	FindByAIMEmail(email string) (state.User, error)
+	FindByAIMKeyword(keyword string) ([]state.User, error)
+	FindByAIMNameAndAddr(info state.AIMNameAndAddr) ([]state.User, error)
+	InterestList() ([]wire.ODirKeywordListItem, error)
 	Profile(screenName state.IdentScreenName) (string, error)
+	SetDirectoryInfo(name state.IdentScreenName, info state.AIMNameAndAddr) error
+	SetKeywords(name state.IdentScreenName, keywords [5]string) error
 	SetProfile(screenName state.IdentScreenName, body string) error
 }
 
@@ -177,18 +183,17 @@ type AccountManager interface {
 type ICQUserFinder interface {
 	// FindByUIN returns a user with a matching UIN.
 	FindByUIN(UIN uint32) (state.User, error)
-	// FindByEmail returns a user with a matching email address.
-	FindByEmail(email string) (state.User, error)
-	// FindByDetails returns users with either a matching first name, last
-	// name, and nickname. Empty values are not included in the search
-	// parameters.
-	FindByDetails(firstName, lastName, nickName string) ([]state.User, error)
-	// FindByInterests returns users who have at least one matching interest
+	// FindByICQEmail returns a user with a matching email address.
+	FindByICQEmail(email string) (state.User, error)
+	// FindByICQName returns users with matching first name, last name, and
+	// nickname. Empty values are not included in the search parameters.
+	FindByICQName(firstName, lastName, nickName string) ([]state.User, error)
+	// FindByICQInterests returns users who have at least one matching interest
 	// for a given category code.
-	FindByInterests(code uint16, keywords []string) ([]state.User, error)
-	// FindByKeyword returns users with matching interest keyword across all
+	FindByICQInterests(code uint16, keywords []string) ([]state.User, error)
+	// FindByICQKeyword returns users with matching interest keyword across all
 	// interest categories.
-	FindByKeyword(keyword string) ([]state.User, error)
+	FindByICQKeyword(keyword string) ([]state.User, error)
 }
 
 type ICQUserUpdater interface {

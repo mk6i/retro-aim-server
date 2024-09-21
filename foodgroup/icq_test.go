@@ -52,7 +52,7 @@ func TestICQService_DeleteMsgReq(t *testing.T) {
 	}
 }
 
-func TestICQService_FindByDetails(t *testing.T) {
+func TestICQService_FindByICQName(t *testing.T) {
 	tests := []struct {
 		name       string
 		timeNow    func() time.Time
@@ -225,7 +225,7 @@ func TestICQService_FindByDetails(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByDetailsParams {
 				userFinder.EXPECT().
-					FindByDetails(params.firstName, params.lastName, params.nickName).
+					FindByICQName(params.firstName, params.lastName, params.nickName).
 					Return(params.result, params.err)
 			}
 
@@ -247,13 +247,13 @@ func TestICQService_FindByDetails(t *testing.T) {
 				timeNow:          tt.timeNow,
 				userFinder:       userFinder,
 			}
-			err := s.FindByDetails(nil, tt.sess, tt.req, tt.seq)
+			err := s.FindByICQName(nil, tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
 }
 
-func TestICQService_FindByEmail(t *testing.T) {
+func TestICQService_FindByICQEmail(t *testing.T) {
 	tests := []struct {
 		name       string
 		timeNow    func() time.Time
@@ -361,7 +361,7 @@ func TestICQService_FindByEmail(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByEmailParams {
 				userFinder.EXPECT().
-					FindByEmail(params.email).
+					FindByICQEmail(params.email).
 					Return(params.result, params.err)
 			}
 
@@ -383,7 +383,7 @@ func TestICQService_FindByEmail(t *testing.T) {
 				timeNow:          tt.timeNow,
 				userFinder:       userFinder,
 			}
-			err := s.FindByEmail(nil, tt.sess, tt.req, tt.seq)
+			err := s.FindByICQEmail(nil, tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -503,7 +503,7 @@ func TestICQService_FindByEmail3(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByEmailParams {
 				userFinder.EXPECT().
-					FindByEmail(params.email).
+					FindByICQEmail(params.email).
 					Return(params.result, params.err)
 			}
 
@@ -978,7 +978,7 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByInterestsParams {
 				userFinder.EXPECT().
-					FindByInterests(params.code, params.keywords).
+					FindByICQInterests(params.code, params.keywords).
 					Return(params.result, params.err)
 			}
 
@@ -1000,7 +1000,7 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 				timeNow:          tt.timeNow,
 				userFinder:       userFinder,
 			}
-			err := s.FindByInterests(nil, tt.sess, tt.req, tt.seq)
+			err := s.FindByICQInterests(nil, tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -1297,12 +1297,12 @@ func TestICQService_FindByWhitePages2(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByKeywordParams {
 				userFinder.EXPECT().
-					FindByKeyword(params.keyword).
+					FindByICQKeyword(params.keyword).
 					Return(params.result, params.err)
 			}
 			for _, params := range tt.mockParams.findByDetailsParams {
 				userFinder.EXPECT().
-					FindByDetails(params.firstName, params.lastName, params.nickName).
+					FindByICQName(params.firstName, params.lastName, params.nickName).
 					Return(params.result, params.err)
 			}
 

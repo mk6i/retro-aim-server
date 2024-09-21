@@ -37,6 +37,9 @@ packages:
       MessageRelayer:
         config:
           filename: "mock_message_relayer_test.go"
+      DirectoryManager:
+        config:
+          filename: "mock_directory_manager_test.go"
   github.com/mk6i/retro-aim-server/server/oscar/handler:
     interfaces:
       ResponseWriter:
@@ -75,6 +78,9 @@ packages:
       ICQService:
         config:
           filename: "mock_icq_service_test.go"
+      ODirService:
+        config:
+          filename: "mock_odir_service_test.go"
   github.com/mk6i/retro-aim-server/foodgroup:
     interfaces:
       FeedbagManager:

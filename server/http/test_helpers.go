@@ -14,6 +14,7 @@ type mockParams struct {
 	chatRoomCreatorParams
 	chatRoomRetrieverParams
 	chatSessionRetrieverParams
+	directoryManagerParams
 	feedBagRetrieverParams
 	messageRelayerParams
 	profileRetrieverParams
@@ -105,6 +106,61 @@ type chatSessionRetrieverParams struct {
 type chatSessionRetrieverAllSessionsParams []struct {
 	cookie string
 	result []*state.Session
+}
+
+type directoryManagerParams struct {
+	categoriesParams
+	createCategoryParams
+	createKeywordParams
+	deleteCategoryParams
+	deleteKeywordParams
+	keywordsByCategoryParams
+}
+
+// categoriesParams is the list of parameters passed at the mock
+// DirectoryManager.Categories call site
+type categoriesParams []struct {
+	result []state.Category
+	err    error
+}
+
+// createCategoryParams is the list of parameters passed at the mock
+// DirectoryManager.CreateCategory call site
+type createCategoryParams []struct {
+	name   string
+	result state.Category
+	err    error
+}
+
+// createKeywordParams is the list of parameters passed at the mock
+// DirectoryManager.CreateKeyword call site
+type createKeywordParams []struct {
+	name       string
+	categoryID uint8
+	result     state.Keyword
+	err        error
+}
+
+// deleteCategoryParams is the list of parameters passed at the mock
+// DirectoryManager.DeleteCategory call site
+type deleteCategoryParams []struct {
+	categoryID uint8
+	err        error
+}
+
+// deleteKeywordParams is the list of parameters passed at the mock
+// DirectoryManager.DeleteKeyword call site
+type deleteKeywordParams []struct {
+	id  uint8
+	err error
+}
+
+// keywordsByCategoryParams is the list of parameters passed at the mock
+// DirectoryManager.KeywordsByCategory call site
+type keywordsByCategoryParams []struct {
+	categoryID uint8
+	result     []state.Keyword
+	err        error
 }
 
 // feedBagRetrieverParams is a helper struct that contains mock parameters for

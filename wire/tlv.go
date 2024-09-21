@@ -83,6 +83,16 @@ func (s *TLVList) AppendList(tlvs []TLV) {
 	*s = append(*s, tlvs...)
 }
 
+// HasTag indicates if a TLV list has a tag.
+func (s *TLVList) HasTag(tag uint16) bool {
+	for _, tlv := range *s {
+		if tag == tlv.Tag {
+			return true
+		}
+	}
+	return false
+}
+
 // String retrieves the string value associated with the specified tag from the
 // TLVList.
 //

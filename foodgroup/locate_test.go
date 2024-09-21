@@ -363,39 +363,173 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 }
 
 func TestLocateService_SetKeywordInfo(t *testing.T) {
-	svc := NewLocateService(nil, nil, nil, nil)
-
-	outputSNAC := svc.SetKeywordInfo(nil, wire.SNACFrame{RequestID: 1234})
-	expectSNAC := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Locate,
-			SubGroup:  wire.LocateSetKeywordReply,
-			RequestID: 1234,
-		},
-		Body: wire.SNAC_0x02_0x10_LocateSetKeywordReply{
-			Unknown: 1,
+	tests := []struct {
+		// name is the unit test name
+		name string
+		// userSession is the session of the user setting info
+		userSession *state.Session
+		// inputSNAC is the SNAC sent from client to server
+		inputSNAC wire.SNACMessage
+		// expectOutput is the SNAC sent from the server to client
+		expectOutput wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// wantErr is the expected error
+		wantErr error
+	}{
+		{
+			name:        "set keyword info",
+			userSession: newTestSession("test-user"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x0F_LocateSetKeywordInfo{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest1"),
+							wire.NewTLVBE(wire.ODirTLVFirstName, "first_name"),
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest2"),
+							wire.NewTLVBE(wire.ODirTLVLastName, "last_name"),
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest3"),
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest4"),
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest5"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateSetKeywordReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x10_LocateSetKeywordReply{
+					Unknown: 1,
+				},
+			},
+			mockParams: mockParams{
+				profileManagerParams: profileManagerParams{
+					setKeywordsParams: setKeywordsParams{
+						{
+							screenName: state.NewIdentScreenName("test-user"),
+							keywords: [5]string{
+								"interest1",
+								"interest2",
+								"interest3",
+								"interest4",
+								"interest5",
+							},
+						},
+					},
+				},
+			},
 		},
 	}
-
-	assert.Equal(t, expectSNAC, outputSNAC)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			profileManager := newMockProfileManager(t)
+			for _, params := range tt.mockParams.setKeywordsParams {
+				profileManager.EXPECT().
+					SetKeywords(params.screenName, params.keywords).
+					Return(params.err)
+			}
+			svc := NewLocateService(nil, nil, profileManager, nil)
+			outputSNAC, err := svc.SetKeywordInfo(nil, tt.userSession, tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x02_0x0F_LocateSetKeywordInfo))
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectOutput, outputSNAC)
+		})
+	}
 }
 
 func TestLocateService_SetDirInfo(t *testing.T) {
-	svc := NewLocateService(nil, nil, nil, nil)
-
-	outputSNAC := svc.SetDirInfo(nil, wire.SNACFrame{RequestID: 1234})
-	expectSNAC := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Locate,
-			SubGroup:  wire.LocateSetDirReply,
-			RequestID: 1234,
-		},
-		Body: wire.SNAC_0x02_0x0A_LocateSetDirReply{
-			Result: 1,
+	tests := []struct {
+		// name is the unit test name
+		name string
+		// userSession is the session of the user setting info
+		userSession *state.Session
+		// inputSNAC is the SNAC sent from client to server
+		inputSNAC wire.SNACMessage
+		// expectOutput is the SNAC sent from the server to client
+		expectOutput wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// wantErr is the expected error
+		wantErr error
+	}{
+		{
+			name:        "set directory info",
+			userSession: newTestSession("test-user"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x09_LocateSetDirInfo{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ODirTLVFirstName, "first_name"),
+							wire.NewTLVBE(wire.ODirTLVLastName, "last_name"),
+							wire.NewTLVBE(wire.ODirTLVMiddleName, "middle_name"),
+							wire.NewTLVBE(wire.ODirTLVMaidenName, "maiden_name"),
+							wire.NewTLVBE(wire.ODirTLVCountry, "country"),
+							wire.NewTLVBE(wire.ODirTLVState, "state"),
+							wire.NewTLVBE(wire.ODirTLVCity, "city"),
+							wire.NewTLVBE(wire.ODirTLVNickName, "nick_name"),
+							wire.NewTLVBE(wire.ODirTLVZIP, "zip"),
+							wire.NewTLVBE(wire.ODirTLVAddress, "address"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateSetDirReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x0A_LocateSetDirReply{
+					Result: 1,
+				},
+			},
+			mockParams: mockParams{
+				profileManagerParams: profileManagerParams{
+					setDirectoryInfoParams: setDirectoryInfoParams{
+						{
+							screenName: state.NewIdentScreenName("test-user"),
+							info: state.AIMNameAndAddr{
+								FirstName:  "first_name",
+								LastName:   "last_name",
+								MiddleName: "middle_name",
+								MaidenName: "maiden_name",
+								Country:    "country",
+								State:      "state",
+								City:       "city",
+								NickName:   "nick_name",
+								ZIPCode:    "zip",
+								Address:    "address",
+							},
+						},
+					},
+				},
+			},
 		},
 	}
-
-	assert.Equal(t, expectSNAC, outputSNAC)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			profileManager := newMockProfileManager(t)
+			for _, params := range tt.mockParams.setDirectoryInfoParams {
+				profileManager.EXPECT().
+					SetDirectoryInfo(params.screenName, params.info).
+					Return(nil)
+			}
+			svc := NewLocateService(nil, nil, profileManager, nil)
+			outputSNAC, err := svc.SetDirInfo(nil, tt.userSession, tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x02_0x09_LocateSetDirInfo))
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectOutput, outputSNAC)
+		})
+	}
 }
 
 func TestLocateService_SetInfo(t *testing.T) {

@@ -344,6 +344,13 @@ func init() {
 			wire.PermitDenyAddTempPermitListEntries,
 			wire.PermitDenyDelTempPermitListEntries,
 		},
+		wire.ODir: {
+			wire.ODirErr,
+			wire.ODirInfoQuery,
+			wire.ODirInfoReply,
+			wire.ODirKeywordListQuery,
+			wire.ODirKeywordListReply,
+		},
 	}
 
 	for _, foodGroup := range []uint16{
@@ -359,6 +366,7 @@ func init() {
 		wire.Alert,
 		wire.ICQ,
 		wire.PermitDeny,
+		wire.ODir,
 	} {
 		subGroups := foodGroupToSubgroup[foodGroup]
 		for _, subGroup := range subGroups {
@@ -724,6 +732,31 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 				},
 			},
 		}, nil
+	case wire.ODir:
+		cookie, err := fnIssueCookie(bosCookie{
+			ScreenName: sess.DisplayScreenName(),
+		})
+		if err != nil {
+			return wire.SNACMessage{}, err
+		}
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceServiceResponse,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ODirPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
+						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ODir),
+						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
+						wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+					},
+				},
+			},
+		}, nil
 	default:
 		s.logger.InfoContext(ctx, "client service request for unsupported service", "food_group", wire.FoodGroupName(inBody.FoodGroup))
 		return wire.SNACMessage{
@@ -852,6 +885,19 @@ func NewOServiceServiceForAlert(
 		logger:                 logger,
 		foodGroups: []uint16{
 			wire.Alert,
+			wire.OService,
+		},
+	}
+}
+
+// NewOServiceServiceForODir creates a new instance of OServiceService for the
+// ODir server.
+func NewOServiceServiceForODir(cfg config.Config, logger *slog.Logger) *OServiceService {
+	return &OServiceService{
+		cfg:    cfg,
+		logger: logger,
+		foodGroups: []uint16{
+			wire.ODir,
 			wire.OService,
 		},
 	}

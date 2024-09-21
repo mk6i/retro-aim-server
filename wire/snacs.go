@@ -980,6 +980,76 @@ type SNAC_0x0E_0x06_ChatChannelMsgToClient struct {
 }
 
 //
+// 0x0F: ODir
+//
+
+const (
+	ODirErr              uint16 = 0x0001
+	ODirInfoQuery        uint16 = 0x0002
+	ODirInfoReply        uint16 = 0x0003
+	ODirKeywordListQuery uint16 = 0x0004
+	ODirKeywordListReply uint16 = 0x0005
+
+	ODirTLVFirstName    uint16 = 0x0001 // The first name of the individual being searched.
+	ODirTLVLastName     uint16 = 0x0002 // The last name of the individual being searched.
+	ODirTLVMiddleName   uint16 = 0x0003 // The middle name of the individual being searched.
+	ODirTLVMaidenName   uint16 = 0x0004 // The maiden name of the individual being searched.
+	ODirTLVEmailAddress uint16 = 0x0005 // The email address you're searching for.
+	ODirTLVCountry      uint16 = 0x0006 // The country where the individual resides.
+	ODirTLVState        uint16 = 0x0007 // The state where the individual resides.
+	ODirTLVCity         uint16 = 0x0008 // The city where the individual resides.
+	ODirTLVScreenName   uint16 = 0x0009 // The screen name of the individual being searched.
+	ODirTLVSearchType   uint16 = 0x000a // Likely denotes the search type: 0x0000 for "name and other criteria" search, 0x0001 for "email address" or "interest" search.
+	ODirTLVInterest     uint16 = 0x000b // The interest or hobby of the individual being searched.
+	ODirTLVNickName     uint16 = 0x000c // The nickname of the individual being searched.
+	ODirTLVZIP          uint16 = 0x000d // The ZIP code where the individual resides.
+	ODirTLVRegion       uint16 = 0x001c // Encodes region information, possibly as 8 bytes in "us-ascii."
+	ODirTLVAddress      uint16 = 0x0021 // The street address where the individual resides.
+
+	ODirKeywordCategory uint8 = 0x01
+	ODirKeyword         uint8 = 0x02
+
+	ODirSearchByNameAndAddress  uint16 = 0x0000
+	ODirSearchByEmailOrInterest uint16 = 0x0001
+
+	ODirSearchResponseUnavailable1   uint16 = 0x01 // Search is unavailable
+	ODirSearchResponseUnavailable2   uint16 = 0x02 // Search is unavailable (same as above)
+	ODirSearchResponseTooManyResults uint16 = 0x03 // Too many results returned, narrow search
+	ODirSearchResponseNameMissing    uint16 = 0x04 // Missing first or last name
+	ODirSearchResponseOK             uint16 = 0x05 // Successful search
+)
+
+type SNAC_0x0F_0x02_InfoQuery struct {
+	TLVRestBlock
+}
+
+type SNAC_0x0F_0x03_InfoReply struct {
+	Status  uint16
+	Unknown uint16
+	Results struct {
+		List []TLVBlock `oscar:"count_prefix=uint16"`
+	} `oscar:"count_prefix=uint16"`
+}
+
+type SNAC_0x0F_0x04_KeywordListQuery struct{}
+
+type SNAC_0x0F_0x04_KeywordListReply struct {
+	Status    uint16
+	Interests []ODirKeywordListItem `oscar:"count_prefix=uint16"`
+}
+
+type ODirKeywordListItem struct {
+	// Type is the item type (parent category = 1, keyword = 2).
+	Type uint8
+	// ID is the ID of the keyword or category. If item type is category, then
+	// it's the category ID. If item type is keyword, then it's the parent
+	// category ID. If it's a top-level keyword, value is 0.
+	ID uint8
+	// Name is the keyword or category name.
+	Name string `oscar:"len_prefix=uint16"`
+}
+
+//
 // 0x10: BART
 //
 //
