@@ -1,4 +1,4 @@
-DOCKER_IMAGE_TAG := goreleaser/goreleaser:v2.2.0
+DOCKER_IMAGE_TAG := goreleaser/goreleaser:v2.3.2
 
 DOCKER_RUN := @docker run \
 	--env CGO_ENABLED=0 \
