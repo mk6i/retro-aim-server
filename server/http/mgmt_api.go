@@ -614,7 +614,7 @@ func getVersionHandler(w http.ResponseWriter, bld config.Build) {
 	}
 }
 
-// getUserAccountHandler handles the GET /directory/category endpoint.
+// getDirectoryCategoryHandler handles the GET /directory/category endpoint.
 func getDirectoryCategoryHandler(w http.ResponseWriter, manager DirectoryManager, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "application/json")
 	categories, err := manager.Categories()
@@ -678,11 +678,14 @@ func deleteDirectoryCategoryHandler(w http.ResponseWriter, r *http.Request, mana
 		switch {
 		case errors.Is(err, state.ErrKeywordCategoryNotFound):
 			errorMsg(w, "category not found", http.StatusNotFound)
+			return
 		case errors.Is(err, state.ErrKeywordInUse):
 			errorMsg(w, "can't delete because category in use by a user", http.StatusConflict)
+			return
 		default:
 			logger.Error("error in DELETE /directory/category/{id}", "err", err.Error())
 			errorMsg(w, "internal server error", http.StatusInternalServerError)
+			return
 		}
 	}
 
@@ -738,13 +741,15 @@ func postDirectoryKeywordHandler(w http.ResponseWriter, r *http.Request, manager
 		switch {
 		case errors.Is(err, state.ErrKeywordCategoryNotFound):
 			errorMsg(w, "category not found", http.StatusNotFound)
+			return
 		case errors.Is(err, state.ErrKeywordExists):
 			errorMsg(w, "keyword already exists", http.StatusConflict)
+			return
 		default:
 			logger.Error("error in POST /directory/keyword", "err", err.Error())
 			errorMsg(w, "internal server error", http.StatusInternalServerError)
+			return
 		}
-		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -770,11 +775,14 @@ func deleteDirectoryKeywordHandler(w http.ResponseWriter, r *http.Request, manag
 		switch {
 		case errors.Is(err, state.ErrKeywordInUse):
 			errorMsg(w, "can't delete because category in use by a user", http.StatusConflict)
+			return
 		case errors.Is(err, state.ErrKeywordNotFound):
 			errorMsg(w, "keyword not found", http.StatusNotFound)
+			return
 		default:
 			logger.Error("error in DELETE /directory/keyword/{id}", "err", err.Error())
 			errorMsg(w, "internal server error", http.StatusInternalServerError)
+			return
 		}
 	}
 

@@ -1522,19 +1522,19 @@ func (f SQLiteUserStore) BuddyIconRefByName(screenName IdentScreenName) (*wire.B
 
 func (f SQLiteUserStore) SetKeywords(name IdentScreenName, keywords [5]string) error {
 	q := `
-		WITH interests AS (SELECT CASE WHEN name = ? THEN id END AS aim_keyword1,
-								  CASE WHEN name = ? THEN id END AS aim_keyword2,
-								  CASE WHEN name = ? THEN id END AS aim_keyword3,
-								  CASE WHEN name = ? THEN id END AS aim_keyword4,
-								  CASE WHEN name = ? THEN id END AS aim_keyword5
+		WITH interests AS (SELECT CASE WHEN name = ? THEN id ELSE NULL END AS aim_keyword1,
+								  CASE WHEN name = ? THEN id ELSE NULL END AS aim_keyword2,
+								  CASE WHEN name = ? THEN id ELSE NULL END AS aim_keyword3,
+								  CASE WHEN name = ? THEN id ELSE NULL END AS aim_keyword4,
+								  CASE WHEN name = ? THEN id ELSE NULL END AS aim_keyword5
 						   FROM aimKeyword
 						   WHERE name IN (?, ?, ?, ?, ?))
 		UPDATE users
-		SET aim_keyword1 = (SELECT aim_keyword1 FROM interests WHERE aim_keyword1),
-			aim_keyword2 = (SELECT aim_keyword2 FROM interests WHERE aim_keyword2),
-			aim_keyword3 = (SELECT aim_keyword3 FROM interests WHERE aim_keyword3),
-			aim_keyword4 = (SELECT aim_keyword4 FROM interests WHERE aim_keyword4),
-			aim_keyword5 = (SELECT aim_keyword5 FROM interests WHERE aim_keyword5)
+		SET aim_keyword1 = (SELECT aim_keyword1 FROM interests WHERE aim_keyword1 IS NOT NULL),
+			aim_keyword2 = (SELECT aim_keyword2 FROM interests WHERE aim_keyword2 IS NOT NULL),
+			aim_keyword3 = (SELECT aim_keyword3 FROM interests WHERE aim_keyword3 IS NOT NULL),
+			aim_keyword4 = (SELECT aim_keyword4 FROM interests WHERE aim_keyword4 IS NOT NULL),
+			aim_keyword5 = (SELECT aim_keyword5 FROM interests WHERE aim_keyword5 IS NOT NULL)
 		WHERE identScreenName = ?
 	`
 
@@ -1766,6 +1766,8 @@ func (f SQLiteUserStore) DeleteKeyword(id uint8) error {
 // Conceptually, the list looks like this:
 //
 //	> Animals (top-level keyword, id=0)
+//	> Artificial Intelligence (keyword, id=3)
+//		> Cybersecurity (keyword, id=3)
 //	> Music (category, id=1)
 //		> Jazz (keyword, id=1)
 //		> Rock (keyword, id=1)
@@ -1774,8 +1776,6 @@ func (f SQLiteUserStore) DeleteKeyword(id uint8) error {
 //		> Soccer (keyword, id=2)
 //		> Tennis (keyword, id=2)
 //	> Technology (category, id=3)
-//	> Artificial Intelligence (keyword, id=3)
-//		> Cybersecurity (keyword, id=3)
 //	> Zoology (top-level keyword, id=0)
 func (f SQLiteUserStore) InterestList() ([]wire.ODirKeywordListItem, error) {
 	q := `

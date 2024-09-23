@@ -214,7 +214,7 @@ func (s LocateService) SetKeywordInfo(ctx context.Context, sess *state.Session, 
 		}
 		keywords[i] = string(tlv.Value)
 		i++
-		if i == len(body.TLVList) {
+		if i == len(keywords) {
 			break
 		}
 	}

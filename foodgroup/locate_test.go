@@ -379,7 +379,7 @@ func TestLocateService_SetKeywordInfo(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:        "set keyword info",
+			name:        "set exactly 5 interests",
 			userSession: newTestSession("test-user"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -395,6 +395,101 @@ func TestLocateService_SetKeywordInfo(t *testing.T) {
 							wire.NewTLVBE(wire.ODirTLVInterest, "interest3"),
 							wire.NewTLVBE(wire.ODirTLVInterest, "interest4"),
 							wire.NewTLVBE(wire.ODirTLVInterest, "interest5"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateSetKeywordReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x10_LocateSetKeywordReply{
+					Unknown: 1,
+				},
+			},
+			mockParams: mockParams{
+				profileManagerParams: profileManagerParams{
+					setKeywordsParams: setKeywordsParams{
+						{
+							screenName: state.NewIdentScreenName("test-user"),
+							keywords: [5]string{
+								"interest1",
+								"interest2",
+								"interest3",
+								"interest4",
+								"interest5",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "set less than 5 interests",
+			userSession: newTestSession("test-user"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x0F_LocateSetKeywordInfo{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest1"),
+							wire.NewTLVBE(wire.ODirTLVFirstName, "first_name"),
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest2"),
+							wire.NewTLVBE(wire.ODirTLVLastName, "last_name"),
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest3"),
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest4"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateSetKeywordReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x10_LocateSetKeywordReply{
+					Unknown: 1,
+				},
+			},
+			mockParams: mockParams{
+				profileManagerParams: profileManagerParams{
+					setKeywordsParams: setKeywordsParams{
+						{
+							screenName: state.NewIdentScreenName("test-user"),
+							keywords: [5]string{
+								"interest1",
+								"interest2",
+								"interest3",
+								"interest4",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "set more than 5 interests",
+			userSession: newTestSession("test-user"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x0F_LocateSetKeywordInfo{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest1"),
+							wire.NewTLVBE(wire.ODirTLVFirstName, "first_name"),
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest2"),
+							wire.NewTLVBE(wire.ODirTLVLastName, "last_name"),
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest3"),
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest4"),
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest5"),
+							wire.NewTLVBE(wire.ODirTLVInterest, "interest6"),
 						},
 					},
 				},
