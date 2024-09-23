@@ -51,3 +51,8 @@ This guide explains how to download, configure and run Retro AIM Server on Windo
    > Account auto-creation is meant to be a convenience feature for local development. In a production deployment, you
    should set `DISABLE_AUTH=false` in `settings.env` to enforce account authentication. User accounts can be created via
    the [Management API](../README.md#-management-api).
+
+5. **Additional Setup**
+
+   For optional configuration steps that enhance your Retro AIM Server experience, refer to
+   the [Additional Setup Guide](./ADDITIONAL_SETUP.md).
