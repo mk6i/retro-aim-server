@@ -65,7 +65,7 @@ keywords and keyword categories via the management API.
     curl -d'{"name": "Live, laugh, love!"}' http://localhost:8080/directory/keyword
     ```
 
-   Fully rendered, the keyword list looks like this in the AIN client:
+   Fully rendered, the keyword list looks like this in the AIM client:
 
     <p align="center">
         <img width="500" alt="screenshot of AIM interests keywords menu" src="https://github.com/user-attachments/assets/f5295867-b74e-4566-879f-dfd81b2aab08">
