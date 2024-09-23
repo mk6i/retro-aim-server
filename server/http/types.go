@@ -52,6 +52,19 @@ type FeedBagRetriever interface {
 	BuddyIconRefByName(screenName state.IdentScreenName) (*wire.BARTID, error)
 }
 
+type ProfileRetriever interface {
+	Profile(screenName state.IdentScreenName) (string, error)
+}
+
+type DirectoryManager interface {
+	Categories() ([]state.Category, error)
+	CreateCategory(name string) (state.Category, error)
+	CreateKeyword(name string, categoryID uint8) (state.Keyword, error)
+	DeleteCategory(categoryID uint8) error
+	DeleteKeyword(id uint8) error
+	KeywordsByCategory(categoryID uint8) ([]state.Keyword, error)
+}
+
 type userWithPassword struct {
 	ScreenName string `json:"screen_name"`
 	Password   string `json:"password,omitempty"`
@@ -92,10 +105,6 @@ type sessionHandle struct {
 	IsICQ         bool    `json:"is_icq"`
 }
 
-type ProfileRetriever interface {
-	Profile(screenName state.IdentScreenName) (string, error)
-}
-
 type chatRoomCreate struct {
 	Name string `json:"name"`
 }
@@ -112,4 +121,27 @@ type instantMessage struct {
 	From string `json:"from"`
 	To   string `json:"to"`
 	Text string `json:"text"`
+}
+
+type directoryKeyword struct {
+	ID   uint8  `json:"id"`
+	Name string `json:"name"`
+}
+
+type directoryCategory struct {
+	ID   uint8  `json:"id"`
+	Name string `json:"name"`
+}
+
+type directoryCategoryCreate struct {
+	Name string `json:"name"`
+}
+
+type directoryKeywordCreate struct {
+	CategoryID uint8  `json:"category_id"`
+	Name       string `json:"name"`
+}
+
+type messageBody struct {
+	Message string `json:"message"`
 }

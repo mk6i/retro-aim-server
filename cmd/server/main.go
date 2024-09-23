@@ -87,7 +87,8 @@ func main() {
 			Commit:  commit,
 			Date:    date,
 		}
-		http.StartManagementAPI(bld, cfg, feedbagStore, sessionManager, feedbagStore, feedbagStore, chatSessionManager, sessionManager, feedbagStore, feedbagStore, feedbagStore, feedbagStore, logger)
+		http.StartManagementAPI(bld, cfg, feedbagStore, sessionManager, feedbagStore, feedbagStore, chatSessionManager,
+			feedbagStore, sessionManager, feedbagStore, feedbagStore, feedbagStore, feedbagStore, logger)
 		wg.Done()
 	}()
 	go func(logger *slog.Logger) {
@@ -230,6 +231,26 @@ func main() {
 			AuthService: authHandler,
 			Config:      cfg,
 			Logger:      logger,
+		}.Start()
+		wg.Done()
+	}(logger)
+	go func(logger *slog.Logger) {
+		logger = logger.With("svc", "ODIR")
+		sessionManager := state.NewInMemorySessionManager(logger)
+		authService := foodgroup.NewAuthService(cfg, sessionManager, chatSessionManager, feedbagStore, adjListBuddyListStore, cookieBaker, sessionManager, feedbagStore, chatSessionManager, feedbagStore)
+		oServiceService := foodgroup.NewOServiceServiceForODir(cfg, logger)
+
+		oDirService := foodgroup.NewODirService(logger, feedbagStore)
+		oscar.BOSServer{
+			AuthService: authService,
+			Config:      cfg,
+			Handler: handler.NewODirRouter(handler.Handlers{
+				OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
+				ODirHandler:     handler.NewODirHandler(logger, oDirService),
+			}),
+			Logger:         logger,
+			OnlineNotifier: oServiceService,
+			ListenAddr:     net.JoinHostPort("", cfg.ODirPort),
 		}.Start()
 		wg.Done()
 	}(logger)

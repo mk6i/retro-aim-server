@@ -27,12 +27,13 @@ The following features are supported:
 - [x] Blocking (v3.5+)
 - [x] Visibility Toggle / Idle Notification
 - [x] Warning
+- [x] User Directory Search
 
 **ICQ**
 - [x] Windows ICQ Clients: 2000b (more to come soon)
 - [x] Instant Messaging
 - [x] Profiles
-- [x] User search
+- [x] User Search
 - [x] Presence Statuses
 - [x] Offline Messaging
 
@@ -176,6 +177,43 @@ curl -d'{"name":"Office Hijinks"}' http://localhost:8080/chat/room/public
 ```shell
 curl http://localhost:8080/chat/room/public
 ```
+
+#### Create Category
+
+```shell
+curl -d'{"name": "Programming Languages"}' http://localhost:8080/directory/category
+```
+
+#### Create Keyword
+
+```shell
+curl -d'{"category_id": 1, "name": "c++"}' http://localhost:8080/directory/keyword
+```
+
+#### Get Directory Categories
+
+```shell
+curl http://localhost:8080/directory/category
+```
+
+#### Get Directory Keywords by Category
+
+```shell
+curl http://localhost:8080/directory/category/1/keyword
+```
+
+#### Delete Directory Category
+
+```shell
+curl -X DELETE http://localhost:8080/directory/category/1
+```
+
+#### Delete Directory Keyword
+
+```shell
+curl -X DELETE http://localhost:8080/directory/keyword/2
+```
+
 
 ## 🔗 Acknowledgements
 

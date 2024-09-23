@@ -901,7 +901,7 @@ func TestICQHandler_DBQuery(t *testing.T) {
 					Return(tt.allMockParams.findByUIN2.wantErr)
 			case tt.allMockParams.findByEmail != nil:
 				icqService.EXPECT().
-					FindByEmail(mock.Anything, tt.reqParams.sess, tt.allMockParams.findByEmail.req, tt.reqParams.seq).
+					FindByICQEmail(mock.Anything, tt.reqParams.sess, tt.allMockParams.findByEmail.req, tt.reqParams.seq).
 					Return(tt.allMockParams.findByEmail.wantErr)
 			case tt.allMockParams.findByEmail3 != nil:
 				icqService.EXPECT().
@@ -909,11 +909,11 @@ func TestICQHandler_DBQuery(t *testing.T) {
 					Return(tt.allMockParams.findByEmail3.wantErr)
 			case tt.allMockParams.findByDetails != nil:
 				icqService.EXPECT().
-					FindByDetails(mock.Anything, tt.reqParams.sess, tt.allMockParams.findByDetails.req, tt.reqParams.seq).
+					FindByICQName(mock.Anything, tt.reqParams.sess, tt.allMockParams.findByDetails.req, tt.reqParams.seq).
 					Return(tt.allMockParams.findByDetails.wantErr)
 			case tt.allMockParams.findByInterests != nil:
 				icqService.EXPECT().
-					FindByInterests(mock.Anything, tt.reqParams.sess, tt.allMockParams.findByInterests.req, tt.reqParams.seq).
+					FindByICQInterests(mock.Anything, tt.reqParams.sess, tt.allMockParams.findByInterests.req, tt.reqParams.seq).
 					Return(tt.allMockParams.findByInterests.wantErr)
 			case tt.allMockParams.findByWhitePages2 != nil:
 				icqService.EXPECT().

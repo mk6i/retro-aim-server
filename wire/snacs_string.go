@@ -292,6 +292,13 @@ var subGroupName = map[uint16]map[uint16]string{
 		ICQDBQuery: "ICQDBQuery",
 		ICQDBReply: "ICQDBReply",
 	},
+	ODir: {
+		ODirErr:              "ODirErr",
+		ODirInfoQuery:        "ODirInfoQuery",
+		ODirInfoReply:        "ODirInfoReply",
+		ODirKeywordListQuery: "ODirKeywordListQuery",
+		ODirKeywordListReply: "ODirKeywordListReply",
+	},
 }
 
 // SubGroupName gets the string name of a subgroup within a food group. It

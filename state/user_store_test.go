@@ -1,6 +1,9 @@
 package state
 
 import (
+	"fmt"
+	"math"
+	"net/mail"
 	"os"
 	"reflect"
 	"testing"
@@ -1341,7 +1344,7 @@ func TestSQLiteUserStore_SetBasicInfo(t *testing.T) {
 	})
 }
 
-func TestSQLiteUserStore_FindByInterests(t *testing.T) {
+func TestSQLiteUserStore_FindByICQInterests(t *testing.T) {
 	// Cleanup after test
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
@@ -1406,7 +1409,7 @@ func TestSQLiteUserStore_FindByInterests(t *testing.T) {
 
 	t.Run("Find Users by Single Keyword", func(t *testing.T) {
 		// Search for users interested in "Music"
-		users, err := f.FindByInterests(2, []string{"Music"})
+		users, err := f.FindByICQInterests(2, []string{"Music"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 
@@ -1417,7 +1420,7 @@ func TestSQLiteUserStore_FindByInterests(t *testing.T) {
 
 	t.Run("Find Users by Multiple Keywords", func(t *testing.T) {
 		// Search for users interested in "Coding" or "Gaming"
-		users, err := f.FindByInterests(1, []string{"Coding", "Gaming"})
+		users, err := f.FindByICQInterests(1, []string{"Coding", "Gaming"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 
@@ -1428,14 +1431,14 @@ func TestSQLiteUserStore_FindByInterests(t *testing.T) {
 
 	t.Run("Find Users by Multiple Codes and Keywords", func(t *testing.T) {
 		// Search for users interested in "Coding"
-		users, err := f.FindByInterests(1, []string{"Coding"})
+		users, err := f.FindByICQInterests(1, []string{"Coding"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 		assert.True(t, containsUserWithScreenName(users, user1.IdentScreenName))
 		assert.True(t, containsUserWithScreenName(users, user2.IdentScreenName))
 
 		// Search for users interested in "Travel"
-		users, err = f.FindByInterests(4, []string{"Travel"})
+		users, err = f.FindByICQInterests(4, []string{"Travel"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 1)
 		assert.True(t, containsUserWithScreenName(users, user3.IdentScreenName))
@@ -1443,13 +1446,13 @@ func TestSQLiteUserStore_FindByInterests(t *testing.T) {
 
 	t.Run("No Users Found", func(t *testing.T) {
 		// Search for users interested in a keyword that no user has
-		users, err := f.FindByInterests(1, []string{"Unknown"})
+		users, err := f.FindByICQInterests(1, []string{"Status"})
 		assert.NoError(t, err)
 		assert.Empty(t, users)
 	})
 }
 
-func TestSQLiteUserStore_FindByKeyword(t *testing.T) {
+func TestSQLiteUserStore_FindByICQKeyword(t *testing.T) {
 	// Cleanup after test
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
@@ -1508,7 +1511,7 @@ func TestSQLiteUserStore_FindByKeyword(t *testing.T) {
 
 	t.Run("Find Users by Keyword", func(t *testing.T) {
 		// Search for users interested in "Music"
-		users, err := f.FindByKeyword("Music")
+		users, err := f.FindByICQKeyword("Music")
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 
@@ -1519,13 +1522,13 @@ func TestSQLiteUserStore_FindByKeyword(t *testing.T) {
 
 	t.Run("No Users Found", func(t *testing.T) {
 		// Search for users interested in a keyword that no user has
-		users, err := f.FindByKeyword("Knitting")
+		users, err := f.FindByICQKeyword("Knitting")
 		assert.NoError(t, err)
 		assert.Empty(t, users)
 	})
 }
 
-func TestSQLiteUserStore_FindByDetails(t *testing.T) {
+func TestSQLiteUserStore_FindByICQName(t *testing.T) {
 	// Cleanup after test
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
@@ -1587,7 +1590,7 @@ func TestSQLiteUserStore_FindByDetails(t *testing.T) {
 
 	t.Run("Find Users by First Name", func(t *testing.T) {
 		// Search for users with the first name "John"
-		users, err := f.FindByDetails("John", "", "")
+		users, err := f.FindByICQName("John", "", "")
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 
@@ -1598,7 +1601,7 @@ func TestSQLiteUserStore_FindByDetails(t *testing.T) {
 
 	t.Run("Find Users by Last Name", func(t *testing.T) {
 		// Search for users with the last name "Smith"
-		users, err := f.FindByDetails("", "Smith", "")
+		users, err := f.FindByICQName("", "Smith", "")
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 
@@ -1609,7 +1612,7 @@ func TestSQLiteUserStore_FindByDetails(t *testing.T) {
 
 	t.Run("Find Users by Nickname", func(t *testing.T) {
 		// Search for users with the nickname "Johnny"
-		users, err := f.FindByDetails("", "", "Johnny")
+		users, err := f.FindByICQName("", "", "Johnny")
 		assert.NoError(t, err)
 		assert.Len(t, users, 1)
 
@@ -1619,7 +1622,7 @@ func TestSQLiteUserStore_FindByDetails(t *testing.T) {
 
 	t.Run("Find Users by Multiple Fields", func(t *testing.T) {
 		// Search for users with the first name "Jane" and last name "Smith"
-		users, err := f.FindByDetails("Jane", "Smith", "")
+		users, err := f.FindByICQName("Jane", "Smith", "")
 		assert.NoError(t, err)
 		assert.Len(t, users, 1)
 
@@ -1629,13 +1632,136 @@ func TestSQLiteUserStore_FindByDetails(t *testing.T) {
 
 	t.Run("No Users Found", func(t *testing.T) {
 		// Search for users with a first name that no user has
-		users, err := f.FindByDetails("NonExistent", "", "")
+		users, err := f.FindByICQName("NonExistent", "", "")
 		assert.NoError(t, err)
 		assert.Empty(t, users)
 	})
 }
 
-func TestSQLiteUserStore_FindByEmail(t *testing.T) {
+func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
+	// Cleanup after test
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	// Initialize the SQLiteUserStore with a test database file
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	// Create and set up test users with different directory info
+	user1 := User{
+		IdentScreenName: NewIdentScreenName("user1"),
+	}
+	err = f.InsertUser(user1)
+	assert.NoError(t, err)
+	directoryInfo1 := AIMNameAndAddr{
+		FirstName: "John",
+		LastName:  "Doe",
+		NickName:  "Johnny",
+		City:      "New York",
+	}
+	err = f.SetDirectoryInfo(user1.IdentScreenName, directoryInfo1)
+	assert.NoError(t, err)
+
+	user2 := User{
+		IdentScreenName: NewIdentScreenName("user2"),
+	}
+	err = f.InsertUser(user2)
+	assert.NoError(t, err)
+	directoryInfo2 := AIMNameAndAddr{
+		FirstName: "Jane",
+		LastName:  "Smith",
+		NickName:  "Janey",
+		Country:   "USA",
+	}
+	err = f.SetDirectoryInfo(user2.IdentScreenName, directoryInfo2)
+	assert.NoError(t, err)
+
+	user3 := User{
+		IdentScreenName: NewIdentScreenName("user3"),
+	}
+	err = f.InsertUser(user3)
+	assert.NoError(t, err)
+	directoryInfo3 := AIMNameAndAddr{
+		FirstName: "John",
+		LastName:  "Smith",
+		NickName:  "JohnnyS",
+		State:     "California",
+	}
+	err = f.SetDirectoryInfo(user3.IdentScreenName, directoryInfo3)
+	assert.NoError(t, err)
+
+	// Helper function to check if a user with a specific IdentScreenName exists in the results
+	containsUserWithScreenName := func(users []User, screenName IdentScreenName) bool {
+		for _, user := range users {
+			if user.IdentScreenName == screenName {
+				return true
+			}
+		}
+		return false
+	}
+
+	t.Run("Find Users by First Name", func(t *testing.T) {
+		// Search for users with the first name "John"
+		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{FirstName: "John"})
+		assert.NoError(t, err)
+		assert.Len(t, users, 2)
+
+		// Check that the correct users are returned by IdentScreenName
+		assert.True(t, containsUserWithScreenName(users, user1.IdentScreenName))
+		assert.True(t, containsUserWithScreenName(users, user3.IdentScreenName))
+	})
+
+	t.Run("Find Users by Last Name", func(t *testing.T) {
+		// Search for users with the last name "Smith"
+		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{LastName: "Smith"})
+		assert.NoError(t, err)
+		assert.Len(t, users, 2)
+
+		// Check that the correct users are returned by IdentScreenName
+		assert.True(t, containsUserWithScreenName(users, user2.IdentScreenName))
+		assert.True(t, containsUserWithScreenName(users, user3.IdentScreenName))
+	})
+
+	t.Run("Find Users by Nickname", func(t *testing.T) {
+		// Search for users with the nickname "Johnny"
+		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{NickName: "Johnny"})
+		assert.NoError(t, err)
+		assert.Len(t, users, 1)
+
+		// Check that the correct user is returned by IdentScreenName
+		assert.True(t, containsUserWithScreenName(users, user1.IdentScreenName))
+	})
+
+	t.Run("Find Users by City", func(t *testing.T) {
+		// Search for users with the city "New York"
+		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{City: "New York"})
+		assert.NoError(t, err)
+		assert.Len(t, users, 1)
+
+		// Check that the correct user is returned by IdentScreenName
+		assert.True(t, containsUserWithScreenName(users, user1.IdentScreenName))
+	})
+
+	t.Run("Find Users by Multiple Fields", func(t *testing.T) {
+		// Search for users with the first name "Jane" and country "USA"
+		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{FirstName: "Jane", Country: "USA"})
+		assert.NoError(t, err)
+		assert.Len(t, users, 1)
+
+		// Check that the correct user is returned by IdentScreenName
+		assert.True(t, containsUserWithScreenName(users, user2.IdentScreenName))
+	})
+
+	t.Run("No Users Found", func(t *testing.T) {
+		// Search for users with a first name that no user has
+		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{FirstName: "NonExistent"})
+		assert.NoError(t, err)
+		assert.Empty(t, users)
+	})
+}
+
+func TestSQLiteUserStore_FindByICQEmail(t *testing.T) {
 	// Cleanup after test
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
@@ -1681,24 +1807,82 @@ func TestSQLiteUserStore_FindByEmail(t *testing.T) {
 
 	t.Run("Find User by Email", func(t *testing.T) {
 		// Search for user with email "user1@example.com"
-		user, err := f.FindByEmail("user1@example.com")
+		user, err := f.FindByICQEmail("user1@example.com")
 		assert.NoError(t, err)
 		assert.Equal(t, user1.IdentScreenName, user.IdentScreenName)
 
 		// Search for user with email "user2@example.com"
-		user, err = f.FindByEmail("user2@example.com")
+		user, err = f.FindByICQEmail("user2@example.com")
 		assert.NoError(t, err)
 		assert.Equal(t, user2.IdentScreenName, user.IdentScreenName)
 
 		// Search for user with email "user3@example.com"
-		user, err = f.FindByEmail("user3@example.com")
+		user, err = f.FindByICQEmail("user3@example.com")
 		assert.NoError(t, err)
 		assert.Equal(t, user3.IdentScreenName, user.IdentScreenName)
 	})
 
 	t.Run("User Not Found", func(t *testing.T) {
 		// Search for an email that doesn't exist
-		_, err := f.FindByEmail("nonexistent@example.com")
+		_, err := f.FindByICQEmail("nonexistent@example.com")
+		assert.ErrorIs(t, err, ErrNoUser)
+	})
+}
+
+func TestSQLiteUserStore_FindByAIMEmail(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	user1 := User{
+		IdentScreenName: NewIdentScreenName("user1"),
+	}
+	err = f.InsertUser(user1)
+	assert.NoError(t, err)
+	err = f.UpdateEmailAddress(&mail.Address{Address: "user1@example.com"}, user1.IdentScreenName)
+	assert.NoError(t, err)
+
+	user2 := User{
+		IdentScreenName: NewIdentScreenName("user2"),
+		EmailAddress:    "user2@example.com",
+	}
+	err = f.InsertUser(user2)
+	assert.NoError(t, err)
+	err = f.UpdateEmailAddress(&mail.Address{Address: "user2@example.com"}, user2.IdentScreenName)
+	assert.NoError(t, err)
+
+	user3 := User{
+		IdentScreenName: NewIdentScreenName("user3"),
+		EmailAddress:    "user3@example.com",
+	}
+	err = f.InsertUser(user3)
+	assert.NoError(t, err)
+	err = f.UpdateEmailAddress(&mail.Address{Address: "user3@example.com"}, user3.IdentScreenName)
+	assert.NoError(t, err)
+
+	t.Run("Find User by Email", func(t *testing.T) {
+		// Search for user with email "user1@example.com"
+		user, err := f.FindByAIMEmail("user1@example.com")
+		assert.NoError(t, err)
+		assert.Equal(t, user1.IdentScreenName, user.IdentScreenName)
+
+		// Search for user with email "user2@example.com"
+		user, err = f.FindByAIMEmail("user2@example.com")
+		assert.NoError(t, err)
+		assert.Equal(t, user2.IdentScreenName, user.IdentScreenName)
+
+		// Search for user with email "user3@example.com"
+		user, err = f.FindByAIMEmail("user3@example.com")
+		assert.NoError(t, err)
+		assert.Equal(t, user3.IdentScreenName, user.IdentScreenName)
+	})
+
+	t.Run("User Not Found", func(t *testing.T) {
+		// Search for an email that doesn't exist
+		_, err := f.FindByAIMEmail("nonexistent@example.com")
 		assert.ErrorIs(t, err, ErrNoUser)
 	})
 }
@@ -1949,4 +2133,653 @@ func TestSQLiteUserStore_BuddyIconRefByNameMissingRef(t *testing.T) {
 	if b != nil {
 		t.Fatalf("empty BARTID expected")
 	}
+}
+
+func TestSQLiteUserStore_SetDirectoryInfo(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	screenName := NewIdentScreenName("testuser")
+	user := User{
+		IdentScreenName: screenName,
+	}
+	err = f.InsertUser(user)
+	assert.NoError(t, err)
+
+	directoryInfo := AIMNameAndAddr{
+		FirstName:  "John",
+		LastName:   "Doe",
+		MiddleName: "Michael",
+		MaidenName: "Smith",
+		Country:    "USA",
+		State:      "CA",
+		City:       "San Francisco",
+		NickName:   "Johnny",
+		ZIPCode:    "94105",
+		Address:    "123 Main St",
+	}
+
+	t.Run("Successful Update", func(t *testing.T) {
+		err := f.SetDirectoryInfo(screenName, directoryInfo)
+		assert.NoError(t, err)
+
+		updatedUser, err := f.User(screenName)
+		assert.NoError(t, err)
+		assert.Equal(t, directoryInfo.FirstName, updatedUser.AIMDirectoryInfo.FirstName)
+		assert.Equal(t, directoryInfo.LastName, updatedUser.AIMDirectoryInfo.LastName)
+		assert.Equal(t, directoryInfo.MiddleName, updatedUser.AIMDirectoryInfo.MiddleName)
+		assert.Equal(t, directoryInfo.MaidenName, updatedUser.AIMDirectoryInfo.MaidenName)
+		assert.Equal(t, directoryInfo.Country, updatedUser.AIMDirectoryInfo.Country)
+		assert.Equal(t, directoryInfo.State, updatedUser.AIMDirectoryInfo.State)
+		assert.Equal(t, directoryInfo.City, updatedUser.AIMDirectoryInfo.City)
+		assert.Equal(t, directoryInfo.NickName, updatedUser.AIMDirectoryInfo.NickName)
+		assert.Equal(t, directoryInfo.ZIPCode, updatedUser.AIMDirectoryInfo.ZIPCode)
+		assert.Equal(t, directoryInfo.Address, updatedUser.AIMDirectoryInfo.Address)
+	})
+
+	t.Run("Update Non-Existing User", func(t *testing.T) {
+		nonExistingScreenName := NewIdentScreenName("nonexistentuser")
+		err := f.SetDirectoryInfo(nonExistingScreenName, directoryInfo)
+
+		assert.ErrorIs(t, err, ErrNoUser)
+	})
+
+	t.Run("Empty Directory Info", func(t *testing.T) {
+		emptyDirectoryInfo := AIMNameAndAddr{}
+		err := f.SetDirectoryInfo(screenName, emptyDirectoryInfo)
+		assert.NoError(t, err)
+
+		updatedUser, err := f.User(screenName)
+		assert.NoError(t, err)
+		assert.Empty(t, updatedUser.AIMDirectoryInfo.FirstName)
+		assert.Empty(t, updatedUser.AIMDirectoryInfo.LastName)
+		assert.Empty(t, updatedUser.AIMDirectoryInfo.MiddleName)
+		assert.Empty(t, updatedUser.AIMDirectoryInfo.MaidenName)
+		assert.Empty(t, updatedUser.AIMDirectoryInfo.Country)
+		assert.Empty(t, updatedUser.AIMDirectoryInfo.State)
+		assert.Empty(t, updatedUser.AIMDirectoryInfo.City)
+		assert.Empty(t, updatedUser.AIMDirectoryInfo.NickName)
+		assert.Empty(t, updatedUser.AIMDirectoryInfo.ZIPCode)
+		assert.Empty(t, updatedUser.AIMDirectoryInfo.Address)
+	})
+}
+
+func TestSQLiteUserStore_Categories(t *testing.T) {
+	t.Run("Retrieve Keyword Categories Successfully", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Insert some test keyword categories
+		categories := []string{"Category3", "Category1", "Category2"}
+		for _, categoryName := range categories {
+			_, err := f.CreateCategory(categoryName)
+			assert.NoError(t, err)
+		}
+
+		retrievedCategories, err := f.Categories()
+		assert.NoError(t, err)
+
+		// Make sure all categories are returned in alphabetical order
+		if assert.Len(t, retrievedCategories, len(categories)) {
+			expect := []Category{
+				{
+					ID:   2,
+					Name: "Category1",
+				},
+				{
+					ID:   3,
+					Name: "Category2",
+				},
+				{
+					ID:   1,
+					Name: "Category3",
+				},
+			}
+			assert.Equal(t, expect, retrievedCategories)
+		}
+	})
+
+	t.Run("No Categories Exist", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Clean up the database
+		_, err = f.db.Exec(`DELETE FROM aimKeywordCategory`)
+		assert.NoError(t, err)
+
+		retrievedCategories, err := f.Categories()
+		assert.NoError(t, err)
+		assert.Empty(t, retrievedCategories)
+	})
+
+	t.Run("SQL Error Handling", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Force an error by querying a non-existent table
+		_, err = f.db.Exec(`DROP TABLE aimKeywordCategory`)
+		assert.NoError(t, err)
+
+		_, err = f.Categories()
+		assert.Error(t, err)
+	})
+
+	t.Run("Unique Constraint Violation", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Insert a category with a unique name
+		categoryName := "UniqueCategory"
+		_, err = f.CreateCategory(categoryName)
+		assert.NoError(t, err)
+
+		// Try to insert the same category name again to trigger the unique constraint
+		_, err = f.CreateCategory(categoryName)
+		assert.ErrorIs(t, err, ErrKeywordCategoryExists)
+	})
+}
+
+func TestSQLiteUserStore_CreateCategory(t *testing.T) {
+	t.Run("Successfully Create Keyword Category", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		categoryName := "TestCategory"
+		keywordCategory, err := f.CreateCategory(categoryName)
+		assert.NoError(t, err)
+
+		assert.Equal(t, categoryName, keywordCategory.Name)
+		assert.NotZero(t, keywordCategory.ID)
+
+		categories, err := f.Categories()
+		assert.NoError(t, err)
+		if assert.Len(t, categories, 1) {
+			assert.Equal(t, categoryName, categories[0].Name)
+		}
+	})
+
+	t.Run("Duplicate Category Name", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		categoryName := "DuplicateCategory"
+
+		// Create the category
+		_, err = f.CreateCategory(categoryName)
+		assert.NoError(t, err)
+
+		// Try to create the same category again
+		_, err = f.CreateCategory(categoryName)
+		assert.ErrorIs(t, err, ErrKeywordCategoryExists)
+	})
+
+	t.Run("ID Overflow", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Simulate ID overflow by inserting max number of entries
+		for i := range math.MaxUint8 {
+			_, err := f.CreateCategory(fmt.Sprintf("Category_%d", i))
+			assert.NoError(t, err)
+		}
+
+		// Next insert should cause an ID overflow
+		_, err = f.CreateCategory("OverflowCategory")
+		assert.ErrorIs(t, err, errTooManyCategories)
+	})
+
+	t.Run("SQL Error Handling", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Drop the table to cause an error
+		_, err = f.db.Exec(`DROP TABLE aimKeywordCategory`)
+		assert.NoError(t, err)
+
+		_, err = f.CreateCategory("ShouldFail")
+		assert.Error(t, err)
+	})
+}
+
+func TestSQLiteUserStore_DeleteCategory(t *testing.T) {
+	t.Run("Successfully Delete Keyword Category", func(t *testing.T) {
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		// Insert a test category
+		categoryName := "CategoryToDelete"
+		category, err := f.CreateCategory(categoryName)
+		assert.NoError(t, err)
+
+		// Ensure the category was created
+		retrievedCategories, err := f.Categories()
+		assert.NoError(t, err)
+		assert.Len(t, retrievedCategories, 1)
+
+		// Delete the category
+		err = f.DeleteCategory(category.ID)
+		assert.NoError(t, err)
+
+		// Verify the category was deleted
+		retrievedCategories, err = f.Categories()
+		assert.NoError(t, err)
+		assert.Empty(t, retrievedCategories)
+	})
+
+	t.Run("Delete Non-Existent Category", func(t *testing.T) {
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		// Attempt to delete a category that does not exist
+		nonExistentCategoryID := uint8(99)
+		err = f.DeleteCategory(nonExistentCategoryID)
+		assert.ErrorIs(t, err, ErrKeywordCategoryNotFound)
+	})
+
+	t.Run("Delete category and all of its keywords", func(t *testing.T) {
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		// Insert a category
+		categoryName := "CategoryInUse"
+		category, err := f.CreateCategory(categoryName)
+		assert.NoError(t, err)
+
+		// Insert a keyword that references this category
+		keywordName := "KeywordInUse"
+		_, err = f.CreateKeyword(keywordName, category.ID)
+		assert.NoError(t, err)
+
+		// Create a user and associate it with the keyword
+		u := User{
+			IdentScreenName: NewIdentScreenName("testuser"),
+		}
+		err = f.InsertUser(u)
+		assert.NoError(t, err)
+
+		err = f.SetKeywords(u.IdentScreenName, [5]string{keywordName})
+		assert.NoError(t, err)
+
+		// Attempt to delete the category that is in use by the keyword
+		err = f.DeleteCategory(category.ID)
+		assert.ErrorIs(t, err, ErrKeywordInUse)
+	})
+}
+
+func TestSQLiteUserStore_CreateKeyword(t *testing.T) {
+	t.Run("Successfully Create Keyword", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Create a test category
+		categoryName := "TestCategory"
+		category, err := f.CreateCategory(categoryName)
+		assert.NoError(t, err)
+
+		// Insert a keyword for the category
+		keywordName := "TestKeyword"
+		keyword, err := f.CreateKeyword(keywordName, category.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, keywordName, keyword.Name)
+		assert.NotZero(t, keyword.ID)
+
+		// Verify the keyword and category were inserted into the database
+		keywords, err := f.KeywordsByCategory(category.ID)
+		assert.NoError(t, err)
+		if assert.Len(t, keywords, 1) {
+			expect := []Keyword{
+				keyword,
+			}
+			assert.Equal(t, expect, keywords)
+		}
+	})
+
+	t.Run("Create Keyword Without Category", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Insert a keyword with no category (parent is NULL)
+		keywordName := "UncategorizedKeyword"
+		keyword, err := f.CreateKeyword(keywordName, 0)
+		assert.NoError(t, err)
+
+		assert.Equal(t, keywordName, keyword.Name)
+		assert.NotZero(t, keyword.ID)
+
+		// Verify the keyword was inserted into the database
+		keywords, err := f.KeywordsByCategory(0)
+		assert.NoError(t, err)
+		if assert.Len(t, keywords, 1) {
+			expect := []Keyword{
+				keyword,
+			}
+			assert.Equal(t, expect, keywords)
+		}
+	})
+
+	t.Run("Create Keyword With Unknown Category", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Insert a keyword with no category (parent is NULL)
+		keywordName := "AKeyword"
+		_, err = f.CreateKeyword(keywordName, 1)
+		assert.ErrorIs(t, err, ErrKeywordCategoryNotFound)
+	})
+
+	t.Run("Duplicate Keyword Name", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		keywordName := "DuplicateKeyword"
+
+		// Create the keyword
+		_, err = f.CreateKeyword(keywordName, 0)
+		assert.NoError(t, err)
+
+		// Try to create the same keyword again
+		_, err = f.CreateKeyword(keywordName, 0)
+		assert.ErrorIs(t, err, ErrKeywordExists)
+	})
+
+	t.Run("ID Overflow", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Create a test category
+		categoryName := "OverflowCategory"
+		category, err := f.CreateCategory(categoryName)
+		assert.NoError(t, err)
+
+		// Simulate ID overflow by inserting max number of entries
+		for i := 0; i < math.MaxUint8; i++ {
+			_, err := f.CreateKeyword(fmt.Sprintf("Keyword_%d", i), category.ID)
+			assert.NoError(t, err)
+		}
+
+		// Next insert should cause an ID overflow
+		_, err = f.CreateKeyword("OverflowKeyword", category.ID)
+		assert.ErrorIs(t, err, errTooManyKeywords)
+	})
+
+	t.Run("SQL Error Handling", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Drop the table to cause an error
+		_, err = f.db.Exec(`DROP TABLE aimKeyword`)
+		assert.NoError(t, err)
+
+		_, err = f.CreateKeyword("ShouldFail", 0)
+		assert.Error(t, err)
+	})
+}
+
+func TestSQLiteUserStore_DeleteKeyword(t *testing.T) {
+	t.Run("Successfully Delete Keyword", func(t *testing.T) {
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		// Insert a category
+		categoryName := "TestCategory"
+		category, err := f.CreateCategory(categoryName)
+		assert.NoError(t, err)
+
+		// Insert a keyword for the category
+		keywordName := "TestKeyword"
+		keyword, err := f.CreateKeyword(keywordName, category.ID)
+		assert.NoError(t, err)
+
+		// Ensure the keyword was created
+		retrievedKeywords, err := f.KeywordsByCategory(category.ID)
+		assert.NoError(t, err)
+		assert.Len(t, retrievedKeywords, 1)
+
+		// Delete the keyword
+		err = f.DeleteKeyword(keyword.ID)
+		assert.NoError(t, err)
+
+		// Verify the keyword was deleted
+		retrievedKeywords, err = f.KeywordsByCategory(category.ID)
+		assert.NoError(t, err)
+		assert.Empty(t, retrievedKeywords)
+	})
+
+	t.Run("Delete Non-Existent Keyword", func(t *testing.T) {
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		// Attempt to delete a keyword that does not exist
+		nonExistentKeywordID := uint8(99)
+		err = f.DeleteKeyword(nonExistentKeywordID)
+		assert.ErrorIs(t, err, ErrKeywordNotFound)
+	})
+
+	t.Run("Delete Keyword Associated with User", func(t *testing.T) {
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		// Insert a category
+		categoryName := "CategoryInUse"
+		category, err := f.CreateCategory(categoryName)
+		assert.NoError(t, err)
+
+		// Insert a keyword
+		keywordName := "KeywordInUse"
+		keyword, err := f.CreateKeyword(keywordName, category.ID)
+		assert.NoError(t, err)
+
+		// Create a user and associate it with the keyword
+		u := User{
+			IdentScreenName: NewIdentScreenName("testuser"),
+		}
+		err = f.InsertUser(u)
+		assert.NoError(t, err)
+
+		err = f.SetKeywords(u.IdentScreenName, [5]string{keywordName})
+		assert.NoError(t, err)
+
+		// Attempt to delete the keyword and expect an ErrKeywordInUse
+		err = f.DeleteKeyword(keyword.ID)
+		assert.ErrorIs(t, err, ErrKeywordInUse)
+	})
+}
+
+func TestSQLiteUserStore_InterestList(t *testing.T) {
+	t.Run("Full list", func(t *testing.T) {
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		tech, err := f.CreateCategory("Technology")
+		assert.NoError(t, err)
+		music, err := f.CreateCategory("Music")
+		assert.NoError(t, err)
+		sports, err := f.CreateCategory("Sports")
+		assert.NoError(t, err)
+
+		_, err = f.CreateKeyword("Rock", music.ID)
+		assert.NoError(t, err)
+		_, err = f.CreateKeyword("Soccer", sports.ID)
+		assert.NoError(t, err)
+		_, err = f.CreateKeyword("Cybersecurity", tech.ID)
+		assert.NoError(t, err)
+		_, err = f.CreateKeyword("Zoology", 0)
+		assert.NoError(t, err)
+		_, err = f.CreateKeyword("Jazz", music.ID)
+		assert.NoError(t, err)
+		_, err = f.CreateKeyword("Animals", 0)
+		assert.NoError(t, err)
+		_, err = f.CreateKeyword("Basketball", sports.ID)
+		assert.NoError(t, err)
+		_, err = f.CreateKeyword("Artificial Intelligence", tech.ID)
+		assert.NoError(t, err)
+		_, err = f.CreateKeyword("Tennis", sports.ID)
+		assert.NoError(t, err)
+
+		expect := []wire.ODirKeywordListItem{
+			{
+				ID:   0,
+				Name: "Animals",
+				Type: wire.ODirKeyword,
+			},
+			{
+				ID:   2,
+				Name: "Music",
+				Type: wire.ODirKeywordCategory,
+			},
+			{
+				ID:   2,
+				Name: "Jazz",
+				Type: wire.ODirKeyword,
+			},
+			{
+				ID:   2,
+				Name: "Rock",
+				Type: wire.ODirKeyword,
+			},
+			{
+				ID:   3,
+				Name: "Sports",
+				Type: wire.ODirKeywordCategory,
+			},
+			{
+				ID:   3,
+				Name: "Basketball",
+				Type: wire.ODirKeyword,
+			},
+			{
+				ID:   3,
+				Name: "Soccer",
+				Type: wire.ODirKeyword,
+			},
+			{
+				ID:   3,
+				Name: "Tennis",
+				Type: wire.ODirKeyword,
+			},
+			{
+				ID:   1,
+				Name: "Technology",
+				Type: wire.ODirKeywordCategory,
+			},
+			{
+				ID:   1,
+				Name: "Artificial Intelligence",
+				Type: wire.ODirKeyword,
+			},
+			{
+				ID:   1,
+				Name: "Cybersecurity",
+				Type: wire.ODirKeyword,
+			},
+			{
+				ID:   0,
+				Name: "Zoology",
+				Type: wire.ODirKeyword,
+			},
+		}
+
+		actual, err := f.InterestList()
+		assert.NoError(t, err)
+		assert.Equal(t, expect, actual)
+	})
+
+	t.Run("Empty list list", func(t *testing.T) {
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		actual, err := f.InterestList()
+		assert.NoError(t, err)
+		assert.Empty(t, actual)
+	})
+}
+
+func TestSQLiteUserStore_KeywordsByCategory(t *testing.T) {
+	t.Run("Category Does Not Exist", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Create a test category
+		categoryName := "TestCategory"
+		category, err := f.CreateCategory(categoryName)
+		assert.NoError(t, err)
+
+		keywords, err := f.KeywordsByCategory(category.ID + 1)
+		assert.Empty(t, keywords)
+		assert.ErrorIs(t, err, ErrKeywordCategoryNotFound)
+	})
 }

@@ -209,6 +209,32 @@ type User struct {
 	// ICQWorkInfo contains the user's professional information, including
 	// their workplace address and job-related details.
 	ICQWorkInfo ICQWorkInfo
+
+	AIMDirectoryInfo AIMNameAndAddr
+}
+
+// AIMNameAndAddr holds name and address AIM directory information.
+type AIMNameAndAddr struct {
+	// FirstName is the user's first name.
+	FirstName string
+	// LastName is the user's last name.
+	LastName string
+	// MiddleName is the user's middle name.
+	MiddleName string
+	// MaidenName is the user's maiden name.
+	MaidenName string
+	// Country is the user's country of residence.
+	Country string
+	// State is the user's state or region of residence.
+	State string
+	// City is the user's city of residence.
+	City string
+	// NickName is the user's chosen nickname.
+	NickName string
+	// ZIPCode is the user's postal or ZIP code.
+	ZIPCode string
+	// Address is the user's street address.
+	Address string
 }
 
 // ICQBasicInfo holds basic information about an ICQ user, including their name, contact details, and location.
@@ -433,4 +459,20 @@ type OfflineMessage struct {
 	Recipient IdentScreenName
 	Message   wire.SNAC_0x04_0x06_ICBMChannelMsgToHost
 	Sent      time.Time
+}
+
+// Category represents an AIM directory category.
+type Category struct {
+	// ID is the category ID
+	ID uint8
+	// Name is the category name
+	Name string `oscar:"len_prefix=uint16"`
+}
+
+// Keyword represents an AIM directory keyword.
+type Keyword struct {
+	// ID is the keyword ID
+	ID uint8
+	// Name is the keyword name
+	Name string `oscar:"len_prefix=uint16"`
 }

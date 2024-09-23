@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,6 +29,7 @@ func StartManagementAPI(
 	chatRoomRetriever ChatRoomRetriever,
 	chatRoomCreator ChatRoomCreator,
 	chatSessionRetriever ChatSessionRetriever,
+	directoryManager DirectoryManager,
 	messageRelayer MessageRelayer,
 	bartRetriever BARTRetriever,
 	feedbagRetriever FeedBagRetriever,
@@ -100,6 +102,34 @@ func StartManagementAPI(
 	// Handlers for '/version' route
 	mux.HandleFunc("GET /version", func(w http.ResponseWriter, r *http.Request) {
 		getVersionHandler(w, bld)
+	})
+
+	// Handlers for '/directory/category' route
+	mux.HandleFunc("GET /directory/category", func(w http.ResponseWriter, r *http.Request) {
+		getDirectoryCategoryHandler(w, directoryManager, logger)
+	})
+	mux.HandleFunc("POST /directory/category", func(w http.ResponseWriter, r *http.Request) {
+		postDirectoryCategoryHandler(w, r, directoryManager, logger)
+	})
+
+	// Handlers for '/directory/category/{id}' route
+	mux.HandleFunc("DELETE /directory/category/{id}", func(w http.ResponseWriter, r *http.Request) {
+		deleteDirectoryCategoryHandler(w, r, directoryManager, logger)
+	})
+
+	// Handlers for '/directory/category/{id}/keyword' route
+	mux.HandleFunc("GET /directory/category/{id}/keyword", func(w http.ResponseWriter, r *http.Request) {
+		getDirectoryCategoryKeywordHandler(w, r, directoryManager, logger)
+	})
+
+	// Handlers for '/directory/keyword' route
+	mux.HandleFunc("POST /directory/keyword", func(w http.ResponseWriter, r *http.Request) {
+		postDirectoryKeywordHandler(w, r, directoryManager, logger)
+	})
+
+	// Handlers for '/directory/keyword/{id}' route
+	mux.HandleFunc("DELETE /directory/keyword/{id}", func(w http.ResponseWriter, r *http.Request) {
+		deleteDirectoryKeywordHandler(w, r, directoryManager, logger)
 	})
 
 	addr := net.JoinHostPort(cfg.ApiHost, cfg.ApiPort)
@@ -581,5 +611,181 @@ func getVersionHandler(w http.ResponseWriter, bld config.Build) {
 	if err := json.NewEncoder(w).Encode(bld); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+}
+
+// getUserAccountHandler handles the GET /directory/category endpoint.
+func getDirectoryCategoryHandler(w http.ResponseWriter, manager DirectoryManager, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+	categories, err := manager.Categories()
+	if err != nil {
+		logger.Error("error in GET /directory/category", "err", err.Error())
+		errorMsg(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	out := make([]directoryCategory, len(categories))
+	for i, category := range categories {
+		out[i] = directoryCategory{
+			ID:   category.ID,
+			Name: category.Name,
+		}
+	}
+
+	if err := json.NewEncoder(w).Encode(out); err != nil {
+		errorMsg(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// postDirectoryCategoryHandler handles the POST /directory/category endpoint.
+func postDirectoryCategoryHandler(w http.ResponseWriter, r *http.Request, manager DirectoryManager, logger *slog.Logger) {
+	input := directoryCategoryCreate{}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorMsg(w, "malformed input", http.StatusBadRequest)
+		return
+	}
+
+	category, err := manager.CreateCategory(input.Name)
+	if err != nil {
+		if errors.Is(err, state.ErrKeywordCategoryExists) {
+			errorMsg(w, "category already exists", http.StatusConflict)
+		} else {
+			logger.Error("error in POST /directory/category", "err", err.Error())
+			errorMsg(w, "internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	dc := directoryCategory{
+		ID:   category.ID,
+		Name: category.Name,
+	}
+	if err := json.NewEncoder(w).Encode(dc); err != nil {
+		errorMsg(w, err.Error(), http.StatusBadRequest)
+	}
+}
+
+// deleteDirectoryCategoryHandler handles the DELETE /directory/category/{id} endpoint.
+func deleteDirectoryCategoryHandler(w http.ResponseWriter, r *http.Request, manager DirectoryManager, logger *slog.Logger) {
+	categoryID, err := strconv.ParseUint(r.PathValue("id"), 10, 8)
+	if err != nil {
+		http.Error(w, "invalid category ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := manager.DeleteCategory(uint8(categoryID)); err != nil {
+		switch {
+		case errors.Is(err, state.ErrKeywordCategoryNotFound):
+			errorMsg(w, "category not found", http.StatusNotFound)
+		case errors.Is(err, state.ErrKeywordInUse):
+			errorMsg(w, "can't delete because category in use by a user", http.StatusConflict)
+		default:
+			logger.Error("error in DELETE /directory/category/{id}", "err", err.Error())
+			errorMsg(w, "internal server error", http.StatusInternalServerError)
+		}
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// getDirectoryCategoryKeywordHandler handles the GET /directory/category/{id}/keyword endpoint.
+func getDirectoryCategoryKeywordHandler(w http.ResponseWriter, r *http.Request, manager DirectoryManager, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+
+	categoryID, err := strconv.ParseUint(r.PathValue("id"), 10, 8)
+	if err != nil {
+		errorMsg(w, "invalid category ID", http.StatusBadRequest)
+		return
+	}
+
+	categories, err := manager.KeywordsByCategory(uint8(categoryID))
+	if err != nil {
+		if errors.Is(err, state.ErrKeywordCategoryNotFound) {
+			errorMsg(w, "category not found", http.StatusNotFound)
+		} else {
+			logger.Error("error in GET /directory/category/{id}/keyword", "err", err.Error())
+			errorMsg(w, "internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	out := make([]directoryCategory, len(categories))
+	for i, category := range categories {
+		out[i] = directoryCategory{
+			ID:   category.ID,
+			Name: category.Name,
+		}
+	}
+
+	if err := json.NewEncoder(w).Encode(out); err != nil {
+		errorMsg(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// postDirectoryKeywordHandler handles the POST /directory/keyword endpoint.
+func postDirectoryKeywordHandler(w http.ResponseWriter, r *http.Request, manager DirectoryManager, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+
+	input := directoryKeywordCreate{}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorMsg(w, "malformed input", http.StatusBadRequest)
+		return
+	}
+
+	kw, err := manager.CreateKeyword(input.Name, input.CategoryID)
+	if err != nil {
+		switch {
+		case errors.Is(err, state.ErrKeywordCategoryNotFound):
+			errorMsg(w, "category not found", http.StatusNotFound)
+		case errors.Is(err, state.ErrKeywordExists):
+			errorMsg(w, "keyword already exists", http.StatusConflict)
+		default:
+			logger.Error("error in POST /directory/keyword", "err", err.Error())
+			errorMsg(w, "internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+
+	dc := directoryKeyword{
+		ID:   kw.ID,
+		Name: kw.Name,
+	}
+	if err := json.NewEncoder(w).Encode(dc); err != nil {
+		errorMsg(w, err.Error(), http.StatusBadRequest)
+	}
+}
+
+// deleteDirectoryKeywordHandler handles the DELETE /directory/keyword/{id} endpoint.
+func deleteDirectoryKeywordHandler(w http.ResponseWriter, r *http.Request, manager DirectoryManager, logger *slog.Logger) {
+	keywordID, err := strconv.ParseUint(r.PathValue("id"), 10, 8)
+	if err != nil {
+		errorMsg(w, "invalid keyword ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := manager.DeleteKeyword(uint8(keywordID)); err != nil {
+		switch {
+		case errors.Is(err, state.ErrKeywordInUse):
+			errorMsg(w, "can't delete because category in use by a user", http.StatusConflict)
+		case errors.Is(err, state.ErrKeywordNotFound):
+			errorMsg(w, "keyword not found", http.StatusNotFound)
+		default:
+			logger.Error("error in DELETE /directory/keyword/{id}", "err", err.Error())
+			errorMsg(w, "internal server error", http.StatusInternalServerError)
+		}
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// errorMsg sends an error response message and code.
+func errorMsg(w http.ResponseWriter, error string, code int) {
+	msg := messageBody{Message: error}
+	w.WriteHeader(code)
+	if err := json.NewEncoder(w).Encode(msg); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

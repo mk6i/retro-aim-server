@@ -1445,6 +1445,26 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 							FoodGroup: wire.PermitDeny,
 							SubGroup:  wire.PermitDenyDelTempPermitListEntries,
 						},
+						{
+							FoodGroup: wire.ODir,
+							SubGroup:  wire.ODirErr,
+						},
+						{
+							FoodGroup: wire.ODir,
+							SubGroup:  wire.ODirInfoQuery,
+						},
+						{
+							FoodGroup: wire.ODir,
+							SubGroup:  wire.ODirInfoReply,
+						},
+						{
+							FoodGroup: wire.ODir,
+							SubGroup:  wire.ODirKeywordListQuery,
+						},
+						{
+							FoodGroup: wire.ODir,
+							SubGroup:  wire.ODirKeywordListReply,
+						},
 					},
 				},
 			},

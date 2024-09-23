@@ -101,8 +101,8 @@ func TestLocateHandler_SetDirInfo(t *testing.T) {
 
 	svc := newMockLocateService(t)
 	svc.EXPECT().
-		SetDirInfo(mock.Anything, input.Frame).
-		Return(output)
+		SetDirInfo(mock.Anything, mock.Anything, input.Frame, input.Body).
+		Return(output, nil)
 
 	h := NewLocateHandler(svc, slog.Default())
 
@@ -178,8 +178,8 @@ func TestLocateHandler_SetKeywordInfo(t *testing.T) {
 
 	svc := newMockLocateService(t)
 	svc.EXPECT().
-		SetKeywordInfo(mock.Anything, input.Frame).
-		Return(output)
+		SetKeywordInfo(mock.Anything, mock.Anything, input.Frame, input.Body).
+		Return(output, nil)
 
 	h := NewLocateHandler(svc, slog.Default())
 

@@ -361,8 +361,53 @@ type relayToScreenNameParams []struct {
 // profileManagerParams is a helper struct that contains mock parameters for
 // ProfileManager methods
 type profileManagerParams struct {
+	findByAIMEmailParams
+	findByAIMKeywordParams
+	findByAIMNameAndAddrParams
+	interestListParams
 	retrieveProfileParams
+	setDirectoryInfoParams
+	setKeywordsParams
 	setProfileParams
+}
+
+// findByAIMEmailParams is the list of parameters passed at the mock
+// ProfileManager.FindByAIMEmail call site
+type findByAIMEmailParams []struct {
+	email  string
+	result state.User
+	err    error
+}
+
+// findByAIMKeywordParams is the list of parameters passed at the mock
+// ProfileManager.FindByAIMKeyword call site
+type findByAIMKeywordParams []struct {
+	keyword string
+	result  []state.User
+	err     error
+}
+
+// findByAIMNameAndAddrParams is the list of parameters passed at the mock
+// ProfileManager.FindByAIMNameAndAddr call site
+type findByAIMNameAndAddrParams []struct {
+	info   state.AIMNameAndAddr
+	result []state.User
+	err    error
+}
+
+// interestListParams is the list of parameters passed at the mock
+// ProfileManager.InterestList call site
+type interestListParams []struct {
+	result []wire.ODirKeywordListItem
+	err    error
+}
+
+// setDirectoryInfoParams is the list of parameters passed at the mock
+// ProfileManager.SetDirectoryInfo call site
+type setDirectoryInfoParams []struct {
+	screenName state.IdentScreenName
+	info       state.AIMNameAndAddr
+	err        error
 }
 
 // retrieveProfileParams is the list of parameters passed at the mock
@@ -378,6 +423,14 @@ type retrieveProfileParams []struct {
 type setProfileParams []struct {
 	screenName state.IdentScreenName
 	body       any
+}
+
+// setKeywordsParams is the list of parameters passed at the mock
+// ProfileManager.SetKeywords call site
+type setKeywordsParams []struct {
+	screenName state.IdentScreenName
+	keywords   [5]string
+	err        error
 }
 
 // chatMessageRelayerParams is a helper struct that contains mock parameters
