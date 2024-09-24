@@ -40,7 +40,7 @@ type ODirService struct {
 // send it. It doesn't appear to make a difference, since AIM 5.x sends the
 // same TLV types for each search type.
 func (s ODirService) InfoQuery(_ context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0F_0x02_InfoQuery) (wire.SNACMessage, error) {
-	snac := wire.SNACMessage{
+	response := wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.ODir,
 			SubGroup:  wire.ODirInfoReply,
@@ -48,95 +48,45 @@ func (s ODirService) InfoQuery(_ context.Context, inFrame wire.SNACFrame, inBody
 		},
 	}
 
-	switch {
-	case inBody.HasTag(wire.ODirTLVEmailAddress):
-		var err error
-		snac.Body, err = s.searchByEmail(inBody)
+	// search by email address
+	if email, hasEmail := inBody.String(wire.ODirTLVEmailAddress); hasEmail {
+		foundUser, err := s.profileManager.FindByAIMEmail(email)
 		if err != nil {
-			return wire.SNACMessage{}, err
+			if errors.Is(err, state.ErrNoUser) {
+				response.Body = s.searchResponse(nil)
+				return response, nil
+			}
+			return wire.SNACMessage{}, fmt.Errorf("FindByAIMEmail: %w", err)
 		}
-	case inBody.HasTag(wire.ODirTLVInterest):
-		var err error
-		snac.Body, err = s.searchByInterest(inBody)
+		response.Body = s.searchResponse([]state.User{foundUser})
+		return response, nil
+	}
+
+	// search by interest keyword
+	if interest, hasInterest := inBody.String(wire.ODirTLVInterest); hasInterest {
+		foundUsers, err := s.profileManager.FindByAIMKeyword(interest)
 		if err != nil {
-			return wire.SNACMessage{}, err
+			return wire.SNACMessage{}, fmt.Errorf("FindByAIMKeyword: %w", err)
 		}
-	case inBody.HasTag(wire.ODirTLVFirstName), inBody.HasTag(wire.ODirTLVLastName):
-		var err error
-		snac.Body, err = s.searchByNameAndAddr(inBody)
+		response.Body = s.searchResponse(foundUsers)
+		return response, nil
+	}
+
+	// search by name and address
+	if inBody.HasTag(wire.ODirTLVFirstName) || inBody.HasTag(wire.ODirTLVLastName) {
+		foundUsers, err := s.profileManager.FindByAIMNameAndAddr(newAIMNameAndAddrFromTLVList(inBody.TLVList))
 		if err != nil {
-			return wire.SNACMessage{}, err
+			return wire.SNACMessage{}, fmt.Errorf("FindByAIMNameAndAddr: %w", err)
 		}
-	default:
-		snac.Body = wire.SNAC_0x0F_0x03_InfoReply{
-			Status: wire.ODirSearchResponseNameMissing,
-		}
+		response.Body = s.searchResponse(foundUsers)
+		return response, nil
 	}
 
-	return snac, nil
-}
-
-// searchByNameAndAddr performs a directory search using the user's first or
-// last name and address.
-func (s ODirService) searchByNameAndAddr(inBody wire.SNAC_0x0F_0x02_InfoQuery) (wire.SNAC_0x0F_0x03_InfoReply, error) {
-	foundUsers, err := s.profileManager.FindByAIMNameAndAddr(newAIMNameAndAddrFromTLVList(inBody.TLVList))
-	if err != nil {
-		return wire.SNAC_0x0F_0x03_InfoReply{}, fmt.Errorf("FindByAIMNameAndAddr: %w", err)
+	// no suitable combination of search TLVs found
+	response.Body = wire.SNAC_0x0F_0x03_InfoReply{
+		Status: wire.ODirSearchResponseNameMissing,
 	}
-	return s.searchResponse(foundUsers)
-}
-
-// searchByInterest performs a directory search using the user's specified
-// interest keyword.
-func (s ODirService) searchByInterest(inBody wire.SNAC_0x0F_0x02_InfoQuery) (wire.SNAC_0x0F_0x03_InfoReply, error) {
-	var foundUsers []state.User
-
-	interest, _ := inBody.String(wire.ODirTLVInterest)
-
-	foundUsers, err := s.profileManager.FindByAIMKeyword(interest)
-	if err != nil {
-		return wire.SNAC_0x0F_0x03_InfoReply{}, fmt.Errorf("FindByAIMKeyword: %w", err)
-	}
-
-	return s.searchResponse(foundUsers)
-}
-
-// searchByEmail performs a directory search using the user's email address.
-func (s ODirService) searchByEmail(inBody wire.SNAC_0x0F_0x02_InfoQuery) (wire.SNAC_0x0F_0x03_InfoReply, error) {
-	email, _ := inBody.String(wire.ODirTLVEmailAddress)
-
-	result, err := s.profileManager.FindByAIMEmail(email)
-	if err != nil {
-		if errors.Is(err, state.ErrNoUser) {
-			return s.searchResponse(nil)
-		}
-		return wire.SNAC_0x0F_0x03_InfoReply{}, fmt.Errorf("FindByAIMEmail: %w", err)
-	}
-
-	return s.searchResponse([]state.User{result})
-}
-
-// searchResponse constructs the SNAC reply based on the users found during the
-// search.
-func (s ODirService) searchResponse(foundUsers []state.User) (wire.SNAC_0x0F_0x03_InfoReply, error) {
-	body := wire.SNAC_0x0F_0x03_InfoReply{
-		Status: wire.ODirSearchResponseOK,
-	}
-
-	for _, res := range foundUsers {
-		body.Results.List = append(body.Results.List, wire.TLVBlock{
-			TLVList: wire.TLVList{
-				wire.NewTLVBE(wire.ODirTLVFirstName, res.AIMDirectoryInfo.FirstName),
-				wire.NewTLVBE(wire.ODirTLVLastName, res.AIMDirectoryInfo.LastName),
-				wire.NewTLVBE(wire.ODirTLVState, res.AIMDirectoryInfo.State),
-				wire.NewTLVBE(wire.ODirTLVCity, res.AIMDirectoryInfo.City),
-				wire.NewTLVBE(wire.ODirTLVCountry, res.AIMDirectoryInfo.Country),
-				wire.NewTLVBE(wire.ODirTLVScreenName, res.DisplayScreenName.String()),
-			},
-		})
-	}
-
-	return body, nil
+	return response, nil
 }
 
 // KeywordListQuery returns a list of keywords that can be searched in the user
@@ -158,6 +108,29 @@ func (s ODirService) KeywordListQuery(_ context.Context, inFrame wire.SNACFrame)
 			Interests: interests,
 		},
 	}, nil
+}
+
+// searchResponse constructs the SNAC reply based on the users found during the
+// search.
+func (s ODirService) searchResponse(foundUsers []state.User) wire.SNAC_0x0F_0x03_InfoReply {
+	body := wire.SNAC_0x0F_0x03_InfoReply{
+		Status: wire.ODirSearchResponseOK,
+	}
+
+	for _, res := range foundUsers {
+		body.Results.List = append(body.Results.List, wire.TLVBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(wire.ODirTLVFirstName, res.AIMDirectoryInfo.FirstName),
+				wire.NewTLVBE(wire.ODirTLVLastName, res.AIMDirectoryInfo.LastName),
+				wire.NewTLVBE(wire.ODirTLVState, res.AIMDirectoryInfo.State),
+				wire.NewTLVBE(wire.ODirTLVCity, res.AIMDirectoryInfo.City),
+				wire.NewTLVBE(wire.ODirTLVCountry, res.AIMDirectoryInfo.Country),
+				wire.NewTLVBE(wire.ODirTLVScreenName, res.DisplayScreenName.String()),
+			},
+		})
+	}
+
+	return body
 }
 
 // newAIMNameAndAddrFromTLVList constructs an AIMNameAndAddr structure from the
