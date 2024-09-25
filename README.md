@@ -178,43 +178,6 @@ curl -d'{"name":"Office Hijinks"}' http://localhost:8080/chat/room/public
 curl http://localhost:8080/chat/room/public
 ```
 
-#### Create Category
-
-```shell
-curl -d'{"name": "Programming Languages"}' http://localhost:8080/directory/category
-```
-
-#### Create Keyword
-
-```shell
-curl -d'{"category_id": 1, "name": "c++"}' http://localhost:8080/directory/keyword
-```
-
-#### Get Directory Categories
-
-```shell
-curl http://localhost:8080/directory/category
-```
-
-#### Get Directory Keywords by Category
-
-```shell
-curl http://localhost:8080/directory/category/1/keyword
-```
-
-#### Delete Directory Category
-
-```shell
-curl -X DELETE http://localhost:8080/directory/category/1
-```
-
-#### Delete Directory Keyword
-
-```shell
-curl -X DELETE http://localhost:8080/directory/keyword/2
-```
-
-
 ## 🔗 Acknowledgements
 
 - [aim-oscar-server](https://github.com/ox/aim-oscar-server) is another cool open source AIM server project.

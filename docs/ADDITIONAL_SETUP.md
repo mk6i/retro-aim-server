@@ -4,15 +4,36 @@ This guide covers some optional configuration steps to get the best experience f
 
 ## Configure User Directory Keywords
 
-AIM users can make themselves searchable by interest in the user directory by configuring up to 5 interest keywords. The
-keywords are organized by category.
+AIM users can make themselves searchable by interest in the user directory by configuring up to 5 interest keywords.
+
+Two types of keywords are supported: categorized keywords, which belong to a specific category (e.g., Books, Music), and
+top-level keywords, which appear at the top of the menu and are not associated with any category.
 
 Retro AIM Server does not come with any keywords installed out of the box. The following steps explain how to add
 keywords and keyword categories via the management API.
 
-1. **Add Keyword Categories**
+1. **Add Categories**
 
-   The following requests add 3 keyword categories:
+   ###### Windows PowerShell
+
+   ```powershell
+   Invoke-WebRequest -Uri "http://localhost:8080/directory/category" `
+    -Method POST `
+    -ContentType "application/json" `
+    -Body '{"name": "Programming Languages"}'
+
+   Invoke-WebRequest -Uri "http://localhost:8080/directory/category" `
+    -Method POST `
+    -ContentType "application/json" `
+    -Body '{"name": "Books"}'
+
+   Invoke-WebRequest -Uri "http://localhost:8080/directory/category" `
+    -Method POST `
+    -ContentType "application/json" `
+    -Body '{"name": "Music"}'
+   ```
+
+   ###### macOS / Linux
 
     ```shell
     curl -d'{"name": "Programming Languages"}' http://localhost:8080/directory/category
@@ -20,8 +41,17 @@ keywords and keyword categories via the management API.
     curl -d'{"name": "Music"}' http://localhost:8080/directory/category
     ```
 
-   The following request lists all keyword categories along with their IDs, which are required for associating keywords
-   to categories.
+2. **List Categories**
+
+   Retrieve a list of all keyword categories created in the previous step.
+
+   ###### Windows PowerShell
+
+   ```powershell
+   Invoke-WebRequest -Uri "http://localhost:8080/directory/category" -Method GET
+   ```
+
+   ###### macOS / Linux
 
     ```shell
     curl http://localhost:8080/directory/category
@@ -46,22 +76,41 @@ keywords and keyword categories via the management API.
     ]
     ```
 
-2. **Add Keywords**
+3. **Add Keywords**
 
-   Two types of keywords are supported: categorized keywords, which belong to a specific category (e.g., Books, Music),
-   and top-level keywords, which appear at the top of the menu and are not associated with any category.
+   The first 3 requests set up keywords for books, music, and programming languages categories using the category IDs
+   from the previous step. This last request adds a single top-level keyword with no category ID.
 
-   The following request sets up 3 keywords for books, music, and programming languages categories, respectively.
+   ###### Windows PowerShell
+
+   ```powershell
+   Invoke-WebRequest -Uri "http://localhost:8080/directory/keyword" `
+      -Method POST `
+      -ContentType "application/json" `
+      -Body '{"category_id": 2, "name": "The Dictionary"}'
+
+   Invoke-WebRequest -Uri "http://localhost:8080/directory/keyword" `
+      -Method POST `
+      -ContentType "application/json" `
+      -Body '{"category_id": 3, "name": "Rock"}'
+
+   Invoke-WebRequest -Uri "http://localhost:8080/directory/keyword" `
+      -Method POST `
+      -ContentType "application/json" `
+      -Body '{"category_id": 1, "name": "golang"}'
+
+   Invoke-WebRequest -Uri "http://localhost:8080/directory/keyword" `
+      -Method POST `
+      -ContentType "application/json" `
+      -Body '{"name": "Live, laugh, love!"}'
+   ```
+
+   ###### macOS / Linux
 
     ```shell
     curl -d'{"category_id": 2, "name": "The Dictionary"}' http://localhost:8080/directory/keyword
     curl -d'{"category_id": 3, "name": "Rock"}' http://localhost:8080/directory/keyword
     curl -d'{"category_id": 1, "name": "golang"}' http://localhost:8080/directory/keyword
-    ```
-
-   This request adds a single top-level keyword.
-
-    ```shell
     curl -d'{"name": "Live, laugh, love!"}' http://localhost:8080/directory/keyword
     ```
 
@@ -71,7 +120,9 @@ keywords and keyword categories via the management API.
         <img width="500" alt="screenshot of AIM interests keywords menu" src="https://github.com/user-attachments/assets/f5295867-b74e-4566-879f-dfd81b2aab08">
     </p>
 
-3. **Restart**
+   Check out the [API Spec](../api.yml) for more details on directory API endpoints.
+
+4. **Restart**
 
    After creating or modifying keyword categories and keywords, users currently connected to the server must sign out
    and back in again in order to see the updated keyword list.
