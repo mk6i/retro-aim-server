@@ -364,6 +364,7 @@ type profileManagerParams struct {
 	findByAIMEmailParams
 	findByAIMKeywordParams
 	findByAIMNameAndAddrParams
+	getUserParams
 	interestListParams
 	retrieveProfileParams
 	setDirectoryInfoParams

@@ -21,10 +21,27 @@ func TestLocateHandler_GetDirInfo(t *testing.T) {
 			WatcherScreenNames: "screen-name",
 		},
 	}
+	output := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.Locate,
+			SubGroup:  wire.LocateGetDirReply,
+		},
+		Body: wire.SNAC_0x02_0x0C_LocateGetDirReply{
+			Status: 1,
+		},
+	}
 
 	svc := newMockLocateService(t)
+	svc.EXPECT().
+		DirInfo(mock.Anything, input.Frame, input.Body).
+		Return(output, nil)
+
 	h := NewLocateHandler(svc, slog.Default())
+
 	responseWriter := newMockResponseWriter(t)
+	responseWriter.EXPECT().
+		SendSNAC(output.Frame, output.Body).
+		Return(nil)
 
 	buf := &bytes.Buffer{}
 	assert.NoError(t, wire.MarshalBE(input.Body, buf))

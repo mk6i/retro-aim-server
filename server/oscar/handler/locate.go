@@ -13,6 +13,7 @@ import (
 )
 
 type LocateService interface {
+	DirInfo(ctx context.Context, frame wire.SNACFrame, body wire.SNAC_0x02_0x0B_LocateGetDirInfo) (wire.SNACMessage, error)
 	RightsQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 	SetDirInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x09_LocateSetDirInfo) (wire.SNACMessage, error)
 	SetInfo(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x02_0x04_LocateSetInfo) error
@@ -62,10 +63,17 @@ func (h LocateHandler) SetDirInfo(ctx context.Context, sess *state.Session, inFr
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
 
-func (h LocateHandler) GetDirInfo(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
+func (h LocateHandler) GetDirInfo(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x02_0x0B_LocateGetDirInfo{}
-	h.LogRequest(ctx, inFrame, inBody)
-	return wire.UnmarshalBE(&inBody, r)
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
+		return err
+	}
+	outSNAC, err := h.LocateService.DirInfo(ctx, inFrame, inBody)
+	if err != nil {
+		return err
+	}
+	h.LogRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
+	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
 
 func (h LocateHandler) SetKeywordInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {

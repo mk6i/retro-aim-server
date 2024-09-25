@@ -370,6 +370,9 @@ const (
 	LocateTLVTagsRightsMaxCertsLen uint16 = 0x04
 	// LocateTLVTagsRightsMaxMaxShortCapabilities is the max allowed # of short UUID capabilities allowed
 	LocateTLVTagsRightsMaxMaxShortCapabilities uint16 = 0x05
+
+	LocateGetDirReplyOK          uint16 = 0x01 // Directory info lookup succeeded
+	LocateGetDirReplyUnavailable uint16 = 0x02 // Directory info lookup unavailable
 )
 
 type SNAC_0x02_0x03_LocateRightsReply struct {
@@ -395,6 +398,11 @@ type SNAC_0x02_0x0A_LocateSetDirReply struct {
 
 type SNAC_0x02_0x0B_LocateGetDirInfo struct {
 	WatcherScreenNames string `oscar:"len_prefix=uint8"`
+}
+
+type SNAC_0x02_0x0C_LocateGetDirReply struct {
+	Status uint16
+	TLVBlock
 }
 
 type SNAC_0x02_0x0F_LocateSetKeywordInfo struct {

@@ -24,6 +24,64 @@ func (_m *mockLocateService) EXPECT() *mockLocateService_Expecter {
 	return &mockLocateService_Expecter{mock: &_m.Mock}
 }
 
+// DirInfo provides a mock function with given fields: ctx, frame, body
+func (_m *mockLocateService) DirInfo(ctx context.Context, frame wire.SNACFrame, body wire.SNAC_0x02_0x0B_LocateGetDirInfo) (wire.SNACMessage, error) {
+	ret := _m.Called(ctx, frame, body)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DirInfo")
+	}
+
+	var r0 wire.SNACMessage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, wire.SNACFrame, wire.SNAC_0x02_0x0B_LocateGetDirInfo) (wire.SNACMessage, error)); ok {
+		return rf(ctx, frame, body)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, wire.SNACFrame, wire.SNAC_0x02_0x0B_LocateGetDirInfo) wire.SNACMessage); ok {
+		r0 = rf(ctx, frame, body)
+	} else {
+		r0 = ret.Get(0).(wire.SNACMessage)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, wire.SNACFrame, wire.SNAC_0x02_0x0B_LocateGetDirInfo) error); ok {
+		r1 = rf(ctx, frame, body)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockLocateService_DirInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DirInfo'
+type mockLocateService_DirInfo_Call struct {
+	*mock.Call
+}
+
+// DirInfo is a helper method to define mock.On call
+//   - ctx context.Context
+//   - frame wire.SNACFrame
+//   - body wire.SNAC_0x02_0x0B_LocateGetDirInfo
+func (_e *mockLocateService_Expecter) DirInfo(ctx interface{}, frame interface{}, body interface{}) *mockLocateService_DirInfo_Call {
+	return &mockLocateService_DirInfo_Call{Call: _e.mock.On("DirInfo", ctx, frame, body)}
+}
+
+func (_c *mockLocateService_DirInfo_Call) Run(run func(ctx context.Context, frame wire.SNACFrame, body wire.SNAC_0x02_0x0B_LocateGetDirInfo)) *mockLocateService_DirInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(wire.SNACFrame), args[2].(wire.SNAC_0x02_0x0B_LocateGetDirInfo))
+	})
+	return _c
+}
+
+func (_c *mockLocateService_DirInfo_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockLocateService_DirInfo_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockLocateService_DirInfo_Call) RunAndReturn(run func(context.Context, wire.SNACFrame, wire.SNAC_0x02_0x0B_LocateGetDirInfo) (wire.SNACMessage, error)) *mockLocateService_DirInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RightsQuery provides a mock function with given fields: ctx, inFrame
 func (_m *mockLocateService) RightsQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage {
 	ret := _m.Called(ctx, inFrame)

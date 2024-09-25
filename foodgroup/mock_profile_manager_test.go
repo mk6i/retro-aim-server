@@ -448,6 +448,64 @@ func (_c *mockProfileManager_SetProfile_Call) RunAndReturn(run func(state.IdentS
 	return _c
 }
 
+// User provides a mock function with given fields: screenName
+func (_m *mockProfileManager) User(screenName state.IdentScreenName) (*state.User, error) {
+	ret := _m.Called(screenName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for User")
+	}
+
+	var r0 *state.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) (*state.User, error)); ok {
+		return rf(screenName)
+	}
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *state.User); ok {
+		r0 = rf(screenName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*state.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
+		r1 = rf(screenName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockProfileManager_User_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'User'
+type mockProfileManager_User_Call struct {
+	*mock.Call
+}
+
+// User is a helper method to define mock.On call
+//   - screenName state.IdentScreenName
+func (_e *mockProfileManager_Expecter) User(screenName interface{}) *mockProfileManager_User_Call {
+	return &mockProfileManager_User_Call{Call: _e.mock.On("User", screenName)}
+}
+
+func (_c *mockProfileManager_User_Call) Run(run func(screenName state.IdentScreenName)) *mockProfileManager_User_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(state.IdentScreenName))
+	})
+	return _c
+}
+
+func (_c *mockProfileManager_User_Call) Return(_a0 *state.User, _a1 error) *mockProfileManager_User_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockProfileManager_User_Call) RunAndReturn(run func(state.IdentScreenName) (*state.User, error)) *mockProfileManager_User_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // newMockProfileManager creates a new instance of mockProfileManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func newMockProfileManager(t interface {

@@ -96,6 +96,7 @@ type ProfileManager interface {
 	SetDirectoryInfo(name state.IdentScreenName, info state.AIMNameAndAddr) error
 	SetKeywords(name state.IdentScreenName, keywords [5]string) error
 	SetProfile(screenName state.IdentScreenName, body string) error
+	User(screenName state.IdentScreenName) (*state.User, error)
 }
 
 type MessageRelayer interface {

@@ -234,3 +234,40 @@ func (s LocateService) SetKeywordInfo(ctx context.Context, sess *state.Session, 
 		},
 	}, nil
 }
+
+// DirInfo returns directory information for a user.
+func (s LocateService) DirInfo(ctx context.Context, inFrame wire.SNACFrame, body wire.SNAC_0x02_0x0B_LocateGetDirInfo) (wire.SNACMessage, error) {
+	reply := wire.SNAC_0x02_0x0C_LocateGetDirReply{
+		Status: wire.LocateGetDirReplyOK,
+		TLVBlock: wire.TLVBlock{
+			TLVList: wire.TLVList{},
+		},
+	}
+
+	user, err := s.profileManager.User(state.NewIdentScreenName(body.WatcherScreenNames))
+	if err != nil {
+		return wire.SNACMessage{}, fmt.Errorf("User: %w", err)
+	}
+
+	if user != nil {
+		reply.Append(wire.NewTLVBE(wire.ODirTLVFirstName, user.AIMDirectoryInfo.FirstName))
+		reply.Append(wire.NewTLVBE(wire.ODirTLVLastName, user.AIMDirectoryInfo.LastName))
+		reply.Append(wire.NewTLVBE(wire.ODirTLVMiddleName, user.AIMDirectoryInfo.MiddleName))
+		reply.Append(wire.NewTLVBE(wire.ODirTLVMaidenName, user.AIMDirectoryInfo.MaidenName))
+		reply.Append(wire.NewTLVBE(wire.ODirTLVCountry, user.AIMDirectoryInfo.Country))
+		reply.Append(wire.NewTLVBE(wire.ODirTLVState, user.AIMDirectoryInfo.State))
+		reply.Append(wire.NewTLVBE(wire.ODirTLVCity, user.AIMDirectoryInfo.City))
+		reply.Append(wire.NewTLVBE(wire.ODirTLVNickName, user.AIMDirectoryInfo.NickName))
+		reply.Append(wire.NewTLVBE(wire.ODirTLVZIP, user.AIMDirectoryInfo.ZIPCode))
+		reply.Append(wire.NewTLVBE(wire.ODirTLVAddress, user.AIMDirectoryInfo.Address))
+	}
+
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.Locate,
+			SubGroup:  wire.LocateGetDirReply,
+			RequestID: inFrame.RequestID,
+		},
+		Body: reply,
+	}, nil
+}

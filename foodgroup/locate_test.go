@@ -764,3 +764,130 @@ func TestLocateService_RightsQuery(t *testing.T) {
 
 	assert.Equal(t, expectSNAC, outputSNAC)
 }
+
+func TestLocateService_DirInfo(t *testing.T) {
+	tests := []struct {
+		// name is the unit test name
+		name string
+		// userSession is the session of the user setting info
+		userSession *state.Session
+		// inputSNAC is the SNAC sent from client to server
+		inputSNAC wire.SNACMessage
+		// expectOutput is the SNAC sent from the server to client
+		expectOutput wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// wantErr is the expected error
+		wantErr error
+	}{
+		{
+			name:        "happy path",
+			userSession: newTestSession("test-user"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x0B_LocateGetDirInfo{
+					WatcherScreenNames: "test-user",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateGetDirReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x0C_LocateGetDirReply{
+					Status: wire.LocateGetDirReplyOK,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ODirTLVFirstName, "John"),
+							wire.NewTLVBE(wire.ODirTLVLastName, "Doe"),
+							wire.NewTLVBE(wire.ODirTLVMiddleName, "A"),
+							wire.NewTLVBE(wire.ODirTLVMaidenName, "Smith"),
+							wire.NewTLVBE(wire.ODirTLVCountry, "USA"),
+							wire.NewTLVBE(wire.ODirTLVState, "CA"),
+							wire.NewTLVBE(wire.ODirTLVCity, "San Francisco"),
+							wire.NewTLVBE(wire.ODirTLVNickName, "Johnny"),
+							wire.NewTLVBE(wire.ODirTLVZIP, "94107"),
+							wire.NewTLVBE(wire.ODirTLVAddress, "123 Main St"),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				profileManagerParams: profileManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("test-user"),
+							result: &state.User{
+								AIMDirectoryInfo: state.AIMNameAndAddr{
+									FirstName:  "John",
+									LastName:   "Doe",
+									MiddleName: "A",
+									MaidenName: "Smith",
+									Country:    "USA",
+									State:      "CA",
+									City:       "San Francisco",
+									NickName:   "Johnny",
+									ZIPCode:    "94107",
+									Address:    "123 Main St",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "user not found",
+			userSession: newTestSession("test-user"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x0B_LocateGetDirInfo{
+					WatcherScreenNames: "test-user",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateGetDirReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x02_0x0C_LocateGetDirReply{
+					Status: wire.LocateGetDirReplyOK,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{},
+					},
+				},
+			},
+			mockParams: mockParams{
+				profileManagerParams: profileManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("test-user"),
+							result:     nil,
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			profileManager := newMockProfileManager(t)
+			for _, params := range tt.mockParams.profileManagerParams.getUserParams {
+				profileManager.EXPECT().
+					User(params.screenName).
+					Return(params.result, params.err)
+			}
+			svc := NewLocateService(nil, nil, profileManager, nil)
+			outputSNAC, err := svc.DirInfo(nil, tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x02_0x0B_LocateGetDirInfo))
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectOutput, outputSNAC)
+		})
+	}
+}

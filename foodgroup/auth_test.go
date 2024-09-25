@@ -418,7 +418,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			userManager := newMockUserManager(t)
-			for _, params := range tc.mockParams.getUserParams {
+			for _, params := range tc.mockParams.userManagerParams.getUserParams {
 				userManager.EXPECT().
 					User(params.screenName).
 					Return(params.result, params.err)
@@ -800,7 +800,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			userManager := newMockUserManager(t)
-			for _, params := range tc.mockParams.getUserParams {
+			for _, params := range tc.mockParams.userManagerParams.getUserParams {
 				userManager.EXPECT().
 					User(params.screenName).
 					Return(params.result, params.err)
@@ -980,7 +980,7 @@ func TestAuthService_BUCPChallengeRequest(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			userManager := newMockUserManager(t)
-			for _, params := range tc.mockParams.getUserParams {
+			for _, params := range tc.mockParams.userManagerParams.getUserParams {
 				userManager.EXPECT().
 					User(params.screenName).
 					Return(params.result, params.err)
@@ -1165,7 +1165,7 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 					Return(params.dataOut, nil)
 			}
 			userManager := newMockUserManager(t)
-			for _, params := range tc.mockParams.getUserParams {
+			for _, params := range tc.mockParams.userManagerParams.getUserParams {
 				userManager.EXPECT().
 					User(params.screenName).
 					Return(params.result, nil)
