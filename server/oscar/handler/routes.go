@@ -187,6 +187,7 @@ func NewODirRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
+	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
 
 	return router
 }
