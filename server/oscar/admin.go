@@ -79,11 +79,7 @@ func (rt AdminServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteC
 	}
 
 	defer func() {
-		sess.Close()
 		rwc.Close()
-		if err := rt.Signout(ctx, sess); err != nil {
-			rt.Logger.ErrorContext(ctx, "error notifying departure", "err", err.Error())
-		}
 	}()
 
 	ctx = context.WithValue(ctx, "screenName", sess.IdentScreenName())
