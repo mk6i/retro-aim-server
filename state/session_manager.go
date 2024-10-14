@@ -155,8 +155,9 @@ func (s *InMemorySessionManager) AllSessions() []*Session {
 // InMemoryChatSessionManager.
 func NewInMemoryChatSessionManager(logger *slog.Logger) *InMemoryChatSessionManager {
 	return &InMemoryChatSessionManager{
-		store:  make(map[string]*InMemorySessionManager),
-		logger: logger,
+		countByRoom: make(map[string]int),
+		store:       make(map[string]*InMemorySessionManager),
+		logger:      logger,
 	}
 }
 
@@ -164,27 +165,35 @@ func NewInMemoryChatSessionManager(logger *slog.Logger) *InMemoryChatSessionMana
 // stored in memory. It provides thread-safe operations to add, remove, and
 // manipulate sessions as well as relay messages to participants.
 type InMemoryChatSessionManager struct {
-	logger   *slog.Logger
-	mapMutex sync.RWMutex
-	store    map[string]*InMemorySessionManager
+	countByRoom map[string]int
+	logger      *slog.Logger
+	mapMutex    sync.RWMutex
+	store       map[string]*InMemorySessionManager
 }
 
-// AddSession adds a user to a chat room.
+// AddSession adds a user to a chat room. If screenName already exists, the old
+// session is closed replaced by a new one.
 func (s *InMemoryChatSessionManager) AddSession(chatCookie string, screenName DisplayScreenName) *Session {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
 
 	if _, ok := s.store[chatCookie]; !ok {
 		s.store[chatCookie] = NewInMemorySessionManager(s.logger)
+		s.countByRoom[chatCookie] = 0
 	}
 
+	s.countByRoom[chatCookie]++
+
 	sessionManager := s.store[chatCookie]
+
 	sess := sessionManager.AddSession(screenName)
 	sess.SetChatRoomCookie(chatCookie)
+
 	return sess
 }
 
-// RemoveSession removes a user session from a chat room.
+// RemoveSession removes a user session from a chat room. It panics if you
+// attempt to remove the session twice.
 func (s *InMemoryChatSessionManager) RemoveSession(sess *Session) {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
@@ -194,8 +203,22 @@ func (s *InMemoryChatSessionManager) RemoveSession(sess *Session) {
 		panic("attempting to remove a session after its room has been deleted")
 	}
 	sessionManager.RemoveSession(sess)
-	if sessionManager.Empty() {
+
+	s.countByRoom[sess.ChatRoomCookie()]--
+
+	// remove map entries in order to avoid leaking memory. note that a counter
+	// is needed rather than checking if the session manager is empty because
+	// of the following edge case:
+	// 	1) [connection1] sess1 := AddSession("cookie1234", "userA")
+	// 	2) [connection2] sess2 := AddSession("cookie1234", "userA")
+	// 	3) [connection1] RemoveSession(sess1)
+	// 	4) [connection2] RemoveSession(sess2)
+	// if we were instead checking if session manager is empty() before
+	// removing the map entries, step 3 would prematurely remove the map entry
+	// for "cookie1234", causing the second RemoveSession() to panic.
+	if s.countByRoom[sess.ChatRoomCookie()] == 0 {
 		delete(s.store, sess.ChatRoomCookie())
+		delete(s.countByRoom, sess.ChatRoomCookie())
 	}
 }
 

@@ -366,3 +366,18 @@ func TestInMemoryChatSessionManager_RemoveSession(t *testing.T) {
 
 	assert.Empty(t, sm.AllSessions("chat-room-1"))
 }
+
+func TestInMemoryChatSessionManager_RemoveSession_DoubleLogin(t *testing.T) {
+	sm := NewInMemoryChatSessionManager(slog.Default())
+
+	user1 := sm.AddSession("chat-room-1", "user-screen-name-1")
+	user2 := sm.AddSession("chat-room-1", "user-screen-name-1")
+	assert.NotSame(t, user1, user2)
+
+	assert.Len(t, sm.AllSessions("chat-room-1"), 1)
+
+	sm.RemoveSession(user1)
+	sm.RemoveSession(user2)
+
+	assert.Empty(t, sm.AllSessions("chat-room-1"))
+}
