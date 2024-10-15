@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
@@ -30,31 +31,38 @@ type AdminServer struct {
 // Start starts a TCP server and listens for connections. The initial
 // authentication handshake sequences are handled by this method. The remaining
 // requests are relayed to BOSRouter.
-func (rt AdminServer) Start() {
+func (rt AdminServer) Start(ctx context.Context) {
 	listener, err := net.Listen("tcp", rt.ListenAddr)
 	if err != nil {
 		rt.Logger.Error("unable to bind server address", "host", rt.ListenAddr, "err", err.Error())
 		os.Exit(1)
 	}
-	defer listener.Close()
+
+	go func() {
+		<-ctx.Done()
+		listener.Close()
+	}()
 
 	rt.Logger.Info("starting server", "listen_host", rt.ListenAddr, "oscar_host", rt.Config.OSCARHost)
 
+	wg := sync.WaitGroup{}
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			rt.Logger.Error(err.Error())
-			continue
+			break
 		}
-		ctx := context.Background()
+		wg.Add(1)
 		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 		rt.Logger.DebugContext(ctx, "accepted connection")
 		go func() {
+			defer wg.Done()
 			if err := rt.handleNewConnection(ctx, conn); err != nil {
 				rt.Logger.Info("user session failed", "err", err.Error())
 			}
 		}()
 	}
+
+	wg.Wait()
 }
 
 func (rt AdminServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) error {

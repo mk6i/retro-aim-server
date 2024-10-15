@@ -139,7 +139,7 @@ func StartManagementAPI(
 
 	go func() {
 		logger.Info("starting management API server", "addr", server.Addr)
-		if err := server.ListenAndServe(); err != nil {
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("unable to bind management API address address", "err", err.Error())
 			os.Exit(1)
 		}

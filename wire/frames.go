@@ -26,6 +26,12 @@ type FLAPFrame struct {
 	Payload     []byte `oscar:"len_prefix=uint16"`
 }
 
+type FLAPFrameSignoffStruct struct {
+	StartMarker uint8
+	FrameType   uint8
+	Sequence    uint16
+}
+
 type SNACFrame struct {
 	FoodGroup uint16
 	SubGroup  uint16
@@ -185,7 +191,7 @@ func (f *FlapClient) ReceiveSNAC(frame *SNACFrame, body any) error {
 func (f *FlapClient) Disconnect() error {
 	// gracefully disconnect so that the client does not try to
 	// reconnect when the connection closes.
-	flap := FLAPFrame{
+	flap := FLAPFrameSignoffStruct{
 		StartMarker: 42,
 		FrameType:   FLAPFrameSignoff,
 		Sequence:    uint16(f.sequence),

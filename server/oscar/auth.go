@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
@@ -34,30 +35,38 @@ type AuthServer struct {
 }
 
 // Start starts the authentication server and listens for new connections.
-func (rt AuthServer) Start() {
+func (rt AuthServer) Start(ctx context.Context) {
 	addr := net.JoinHostPort("", rt.Config.AuthPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		rt.Logger.Error("unable to bind server address", "host", addr, "err", err.Error())
 		os.Exit(1)
 	}
-	defer listener.Close()
+
+	go func() {
+		<-ctx.Done()
+		listener.Close()
+	}()
 
 	rt.Logger.Info("starting server", "listen_host", addr, "oscar_host", rt.Config.OSCARHost)
 
+	wg := sync.WaitGroup{}
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			rt.Logger.Error(err.Error())
-			continue
+			break
 		}
+		wg.Add(1)
 
 		go func() {
+			defer wg.Done()
 			if err := rt.handleNewConnection(conn); err != nil {
 				rt.Logger.Info("user session failed", "err", err.Error())
 			}
 		}()
 	}
+
+	wg.Wait()
 }
 
 func (rt AuthServer) handleNewConnection(rwc io.ReadWriteCloser) error {

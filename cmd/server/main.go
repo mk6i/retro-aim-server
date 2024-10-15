@@ -128,7 +128,15 @@ func main() {
 	}
 }
 
-func startODir(ctx context.Context, logger *slog.Logger, cfg config.Config, chatSessionManager *state.InMemoryChatSessionManager, feedbagStore *state.SQLiteUserStore, adjListBuddyListStore *state.AdjListBuddyListStore, cookieBaker state.HMACCookieBaker) {
+func startODir(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg config.Config,
+	chatSessionManager *state.InMemoryChatSessionManager,
+	feedbagStore *state.SQLiteUserStore,
+	adjListBuddyListStore *state.AdjListBuddyListStore,
+	cookieBaker state.HMACCookieBaker,
+) {
 	logger = logger.With("svc", "ODIR")
 	sessionManager := state.NewInMemorySessionManager(logger)
 	authService := foodgroup.NewAuthService(cfg, sessionManager, chatSessionManager, feedbagStore, adjListBuddyListStore, cookieBaker, sessionManager, feedbagStore, chatSessionManager, feedbagStore)
@@ -145,10 +153,19 @@ func startODir(ctx context.Context, logger *slog.Logger, cfg config.Config, chat
 		Logger:         logger,
 		OnlineNotifier: oServiceService,
 		ListenAddr:     net.JoinHostPort("", cfg.ODirPort),
-	}.Start(nil)
+	}.Start(ctx)
 }
 
-func startAuth(ctx context.Context, logger *slog.Logger, cfg config.Config, sessionManager *state.InMemorySessionManager, chatSessionManager *state.InMemoryChatSessionManager, feedbagStore *state.SQLiteUserStore, adjListBuddyListStore *state.AdjListBuddyListStore, cookieBaker state.HMACCookieBaker) {
+func startAuth(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg config.Config,
+	sessionManager *state.InMemorySessionManager,
+	chatSessionManager *state.InMemoryChatSessionManager,
+	feedbagStore *state.SQLiteUserStore,
+	adjListBuddyListStore *state.AdjListBuddyListStore,
+	cookieBaker state.HMACCookieBaker,
+) {
 	logger = logger.With("svc", "AUTH")
 	authHandler := foodgroup.NewAuthService(cfg, sessionManager, chatSessionManager, feedbagStore, adjListBuddyListStore, cookieBaker, nil, nil, chatSessionManager, feedbagStore)
 
@@ -156,10 +173,18 @@ func startAuth(ctx context.Context, logger *slog.Logger, cfg config.Config, sess
 		AuthService: authHandler,
 		Config:      cfg,
 		Logger:      logger,
-	}.Start()
+	}.Start(ctx)
 }
 
-func startBART(ctx context.Context, logger *slog.Logger, feedbagStore *state.SQLiteUserStore, adjListBuddyListStore *state.AdjListBuddyListStore, cfg config.Config, chatSessionManager *state.InMemoryChatSessionManager, cookieBaker state.HMACCookieBaker) {
+func startBART(
+	ctx context.Context,
+	logger *slog.Logger,
+	feedbagStore *state.SQLiteUserStore,
+	adjListBuddyListStore *state.AdjListBuddyListStore,
+	cfg config.Config,
+	chatSessionManager *state.InMemoryChatSessionManager,
+	cookieBaker state.HMACCookieBaker,
+) {
 	logger = logger.With("svc", "BART")
 	sessionManager := state.NewInMemorySessionManager(logger)
 	bartService := foodgroup.NewBARTService(logger, feedbagStore, sessionManager, feedbagStore, adjListBuddyListStore)
@@ -176,10 +201,19 @@ func startBART(ctx context.Context, logger *slog.Logger, feedbagStore *state.SQL
 		ListenAddr:     net.JoinHostPort("", cfg.BARTPort),
 		Logger:         logger,
 		OnlineNotifier: oServiceService,
-	}.Start(nil)
+	}.Start(ctx)
 }
 
-func startAdmin(ctx context.Context, logger *slog.Logger, sessionManager *state.InMemorySessionManager, feedbagStore *state.SQLiteUserStore, adjListBuddyListStore *state.AdjListBuddyListStore, cfg config.Config, chatSessionManager *state.InMemoryChatSessionManager, cookieBaker state.HMACCookieBaker) {
+func startAdmin(
+	ctx context.Context,
+	logger *slog.Logger,
+	sessionManager *state.InMemorySessionManager,
+	feedbagStore *state.SQLiteUserStore,
+	adjListBuddyListStore *state.AdjListBuddyListStore,
+	cfg config.Config,
+	chatSessionManager *state.InMemoryChatSessionManager,
+	cookieBaker state.HMACCookieBaker,
+) {
 	logger = logger.With("svc", "ADMIN")
 	buddyService := foodgroup.NewBuddyService(sessionManager, feedbagStore, adjListBuddyListStore)
 	adminService := foodgroup.NewAdminService(sessionManager, feedbagStore, buddyService, sessionManager)
@@ -196,10 +230,18 @@ func startAdmin(ctx context.Context, logger *slog.Logger, sessionManager *state.
 		Logger:         logger,
 		OnlineNotifier: oServiceService,
 		ListenAddr:     net.JoinHostPort("", cfg.AdminPort),
-	}.Start()
+	}.Start(ctx)
 }
 
-func startAlert(ctx context.Context, logger *slog.Logger, cfg config.Config, chatSessionManager *state.InMemoryChatSessionManager, feedbagStore *state.SQLiteUserStore, adjListBuddyListStore *state.AdjListBuddyListStore, cookieBaker state.HMACCookieBaker) {
+func startAlert(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg config.Config,
+	chatSessionManager *state.InMemoryChatSessionManager,
+	feedbagStore *state.SQLiteUserStore,
+	adjListBuddyListStore *state.AdjListBuddyListStore,
+	cookieBaker state.HMACCookieBaker,
+) {
 	logger = logger.With("svc", "ALERT")
 	sessionManager := state.NewInMemorySessionManager(logger)
 	authService := foodgroup.NewAuthService(cfg, sessionManager, chatSessionManager, feedbagStore, adjListBuddyListStore, cookieBaker, sessionManager, feedbagStore, chatSessionManager, feedbagStore)
@@ -215,10 +257,18 @@ func startAlert(ctx context.Context, logger *slog.Logger, cfg config.Config, cha
 		Logger:         logger,
 		OnlineNotifier: oServiceService,
 		ListenAddr:     net.JoinHostPort("", cfg.AlertPort),
-	}.Start(nil)
+	}.Start(ctx)
 }
 
-func startChatNav(ctx context.Context, logger *slog.Logger, cfg config.Config, chatSessionManager *state.InMemoryChatSessionManager, feedbagStore *state.SQLiteUserStore, adjListBuddyListStore *state.AdjListBuddyListStore, cookieBaker state.HMACCookieBaker) {
+func startChatNav(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg config.Config,
+	chatSessionManager *state.InMemoryChatSessionManager,
+	feedbagStore *state.SQLiteUserStore,
+	adjListBuddyListStore *state.AdjListBuddyListStore,
+	cookieBaker state.HMACCookieBaker,
+) {
 	logger = logger.With("svc", "CHAT_NAV")
 	sessionManager := state.NewInMemorySessionManager(logger)
 	authService := foodgroup.NewAuthService(cfg, sessionManager, chatSessionManager, feedbagStore, adjListBuddyListStore, cookieBaker, sessionManager, feedbagStore, chatSessionManager, feedbagStore)
@@ -235,10 +285,18 @@ func startChatNav(ctx context.Context, logger *slog.Logger, cfg config.Config, c
 		Logger:         logger,
 		OnlineNotifier: oServiceService,
 		ListenAddr:     net.JoinHostPort("", cfg.ChatNavPort),
-	}.Start(nil)
+	}.Start(ctx)
 }
 
-func startChat(ctx context.Context, logger *slog.Logger, cfg config.Config, chatSessionManager *state.InMemoryChatSessionManager, feedbagStore *state.SQLiteUserStore, adjListBuddyListStore *state.AdjListBuddyListStore, cookieBaker state.HMACCookieBaker) {
+func startChat(
+	ctx context.Context,
+	logger *slog.Logger,
+	cfg config.Config,
+	chatSessionManager *state.InMemoryChatSessionManager,
+	feedbagStore *state.SQLiteUserStore,
+	adjListBuddyListStore *state.AdjListBuddyListStore,
+	cookieBaker state.HMACCookieBaker,
+) {
 	logger = logger.With("svc", "CHAT")
 	sessionManager := state.NewInMemorySessionManager(logger)
 	authService := foodgroup.NewAuthService(cfg, sessionManager, chatSessionManager, feedbagStore, adjListBuddyListStore, cookieBaker, sessionManager, feedbagStore, chatSessionManager, feedbagStore)
@@ -254,7 +312,7 @@ func startChat(ctx context.Context, logger *slog.Logger, cfg config.Config, chat
 		}),
 		Logger:         logger,
 		OnlineNotifier: oServiceService,
-	}.Start()
+	}.Start(ctx)
 }
 
 func startBOS(
@@ -300,7 +358,14 @@ func startBOS(
 	}.Start(ctx)
 }
 
-func startMgmtAPI(ctx context.Context, cfg config.Config, feedbagStore *state.SQLiteUserStore, sessionManager *state.InMemorySessionManager, chatSessionManager *state.InMemoryChatSessionManager, logger *slog.Logger) {
+func startMgmtAPI(
+	ctx context.Context,
+	cfg config.Config,
+	feedbagStore *state.SQLiteUserStore,
+	sessionManager *state.InMemorySessionManager,
+	chatSessionManager *state.InMemoryChatSessionManager,
+	logger *slog.Logger,
+) {
 	bld := config.Build{
 		Version: version,
 		Commit:  commit,

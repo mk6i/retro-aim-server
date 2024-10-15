@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -24,32 +25,39 @@ type ChatServer struct {
 }
 
 // Start creates a TCP server that implements that chat flow.
-func (rt ChatServer) Start() {
+func (rt ChatServer) Start(ctx context.Context) {
 	addr := net.JoinHostPort("", rt.Config.ChatPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		rt.Logger.Error("unable to bind server address", "host", addr, "err", err.Error())
 		os.Exit(1)
 	}
-	defer listener.Close()
+
+	go func() {
+		<-ctx.Done()
+		listener.Close()
+	}()
 
 	rt.Logger.Info("starting server", "listen_host", addr, "oscar_host", rt.Config.OSCARHost)
 
+	wg := sync.WaitGroup{}
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			rt.Logger.Error(err.Error())
-			continue
+			break
 		}
-		ctx := context.Background()
-		ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
-		rt.Logger.DebugContext(ctx, "accepted connection")
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
+			ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
+			rt.Logger.DebugContext(ctx, "accepted connection")
 			if err := rt.handleNewConnection(ctx, conn); err != nil {
 				rt.Logger.Info("user session failed", "err", err.Error())
 			}
 		}()
 	}
+
+	wg.Wait()
 }
 
 func (rt ChatServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) error {

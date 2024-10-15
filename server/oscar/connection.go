@@ -113,6 +113,13 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
 			}
 			return nil
+		case <-ctx.Done():
+			// gracefully disconnect so that the client does not try to
+			// reconnect when the connection closes.
+			if err := flapc.Disconnect(); err != nil {
+				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
+			}
+			return nil
 		case err := <-errCh:
 			if !errors.Is(io.EOF, err) {
 				logger.ErrorContext(ctx, "client disconnected with error", "err", err)
