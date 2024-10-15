@@ -21,8 +21,7 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-func StartManagementAPI(
-	ctx context.Context,
+func NewManagementAPI(
 	bld config.Build,
 	cfg config.Config,
 	userManager UserManager,
@@ -37,7 +36,7 @@ func StartManagementAPI(
 	accountRetriever AccountRetriever,
 	profileRetriever ProfileRetriever,
 	logger *slog.Logger,
-) {
+) *Server {
 	mux := http.NewServeMux()
 
 	// Handlers for '/user' route
@@ -132,15 +131,26 @@ func StartManagementAPI(
 		deleteDirectoryKeywordHandler(w, r, directoryManager, logger)
 	})
 
-	server := &http.Server{
-		Addr:    net.JoinHostPort(cfg.ApiHost, cfg.ApiPort),
-		Handler: mux,
+	return &Server{
+		Server: http.Server{
+			Addr:    net.JoinHostPort(cfg.ApiHost, cfg.ApiPort),
+			Handler: mux,
+		},
+		Logger: logger,
 	}
 
+}
+
+type Server struct {
+	http.Server
+	Logger *slog.Logger
+}
+
+func (s *Server) Start(ctx context.Context) {
 	go func() {
-		logger.Info("starting management API server", "addr", server.Addr)
-		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("unable to bind management API address address", "err", err.Error())
+		s.Logger.Info("starting management API server", "addr", s.Addr)
+		if err := s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			s.Logger.Error("unable to bind management API address address", "err", err.Error())
 			os.Exit(1)
 		}
 	}()
@@ -150,8 +160,8 @@ func StartManagementAPI(
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		logger.Error("unable to shutdown management API server", "err", err.Error())
+	if err := s.Shutdown(shutdownCtx); err != nil {
+		s.Logger.Error("unable to shutdown management API server", "err", err.Error())
 	}
 }
 
