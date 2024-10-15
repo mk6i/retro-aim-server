@@ -9,6 +9,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/stretchr/testify v1.9.0
+	golang.org/x/sync v0.6.0
 	modernc.org/sqlite v1.33.0
 )
 

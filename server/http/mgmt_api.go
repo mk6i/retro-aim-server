@@ -22,6 +22,7 @@ import (
 )
 
 func StartManagementAPI(
+	ctx context.Context,
 	bld config.Build,
 	cfg config.Config,
 	userManager UserManager,
@@ -37,7 +38,6 @@ func StartManagementAPI(
 	profileRetriever ProfileRetriever,
 	logger *slog.Logger,
 ) {
-
 	mux := http.NewServeMux()
 
 	// Handlers for '/user' route
@@ -132,11 +132,26 @@ func StartManagementAPI(
 		deleteDirectoryKeywordHandler(w, r, directoryManager, logger)
 	})
 
-	addr := net.JoinHostPort(cfg.ApiHost, cfg.ApiPort)
-	logger.Info("starting management API server", "addr", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		logger.Error("unable to bind management API address address", "err", err.Error())
-		os.Exit(1)
+	server := &http.Server{
+		Addr:    net.JoinHostPort(cfg.ApiHost, cfg.ApiPort),
+		Handler: mux,
+	}
+
+	go func() {
+		logger.Info("starting management API server", "addr", server.Addr)
+		if err := server.ListenAndServe(); err != nil {
+			logger.Error("unable to bind management API address address", "err", err.Error())
+			os.Exit(1)
+		}
+	}()
+
+	<-ctx.Done()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Error("unable to shutdown management API server", "err", err.Error())
 	}
 }
 

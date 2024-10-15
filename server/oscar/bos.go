@@ -33,7 +33,7 @@ type BOSServer struct {
 // Start starts a TCP server and listens for connections. The initial
 // authentication handshake sequences are handled by this method. The remaining
 // requests are relayed to BOSRouter.
-func (rt BOSServer) Start() {
+func (rt BOSServer) Start(context.Context) {
 	listener, err := net.Listen("tcp", rt.ListenAddr)
 	if err != nil {
 		rt.Logger.Error("unable to bind server address", "host", rt.ListenAddr, "err", err.Error())
