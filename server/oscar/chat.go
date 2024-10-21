@@ -101,5 +101,5 @@ func (rt ChatServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 	}
 
 	ctx = context.WithValue(ctx, "screenName", chatSess.IdentScreenName())
-	return dispatchIncomingMessages(ctx, chatSess, flapc, rwc, rt.Logger, rt.Handler, rt.Config)
+	return dispatchIncomingMessages(ctx, chatSess, flapc, rwc, rt.Logger, rt.Handler)
 }

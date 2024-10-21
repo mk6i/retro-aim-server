@@ -16,6 +16,7 @@ Environment="DB_PATH=/var/ras/oscar.sqlite"
 Environment="DISABLE_AUTH=true"
 Environment="FAIL_FAST=false"
 Environment="LOG_LEVEL=info"
+Environment="ODIR_PORT=5197"
 Environment="OSCAR_HOST=127.0.0.1"
 ExecStart=/opt/ras/retro_aim_server
 Restart=on-failure

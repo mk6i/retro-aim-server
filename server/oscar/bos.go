@@ -113,5 +113,5 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 		return err
 	}
 
-	return dispatchIncomingMessages(ctx, sess, flapc, rwc, rt.Logger, rt.Handler, rt.Config)
+	return dispatchIncomingMessages(ctx, sess, flapc, rwc, rt.Logger, rt.Handler)
 }

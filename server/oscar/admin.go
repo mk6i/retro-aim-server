@@ -102,10 +102,10 @@ func (rt AdminServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteC
 		return err
 	}
 
-	return dispatchIncomingMessagesSimple(ctx, sess, flapc, rwc, rt.Logger, rt.Handler, rt.Config)
+	return dispatchIncomingMessagesSimple(ctx, sess, flapc, rwc, rt.Logger, rt.Handler)
 }
 
-func dispatchIncomingMessagesSimple(ctx context.Context, sess *state.Session, flapc *wire.FlapClient, r io.Reader, logger *slog.Logger, router Handler, config config.Config) error {
+func dispatchIncomingMessagesSimple(ctx context.Context, sess *state.Session, flapc *wire.FlapClient, r io.Reader, logger *slog.Logger, router Handler) error {
 	defer func() {
 		logger.InfoContext(ctx, "user disconnected")
 	}()
@@ -150,9 +150,6 @@ func dispatchIncomingMessagesSimple(ctx context.Context, sess *state.Session, fl
 					if errors.Is(err, ErrRouteNotFound) {
 						if err1 := sendInvalidSNACErr(inFrame, flapc); err1 != nil {
 							return errors.Join(err1, err)
-						}
-						if config.FailFast {
-							panic(err.Error())
 						}
 						break
 					}

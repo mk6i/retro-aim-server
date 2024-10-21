@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
@@ -26,7 +25,7 @@ func TestHandleChatConnection_MessageRelay(t *testing.T) {
 	clientReader, serverWriter := io.Pipe()
 	go func() {
 		flapc := wire.NewFlapClient(0, nil, serverWriter)
-		err := dispatchIncomingMessages(context.Background(), sess, flapc, serverReader, slog.Default(), nil, config.Config{})
+		err := dispatchIncomingMessages(context.Background(), sess, flapc, serverReader, slog.Default(), nil)
 		assert.NoError(t, err)
 	}()
 
@@ -145,7 +144,7 @@ func TestHandleChatConnection_ClientRequest(t *testing.T) {
 	clientReader, serverWriter := io.Pipe()
 	go func() {
 		flapc := wire.NewFlapClient(0, nil, serverWriter)
-		assert.NoError(t, dispatchIncomingMessages(context.Background(), sess, flapc, serverReader, slog.Default(), router, config.Config{}))
+		assert.NoError(t, dispatchIncomingMessages(context.Background(), sess, flapc, serverReader, slog.Default(), router))
 	}()
 
 	// send client messages

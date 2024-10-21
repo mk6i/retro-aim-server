@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -34,7 +33,7 @@ func sendInvalidSNACErr(frameIn wire.SNACFrame, rw ResponseWriter) error {
 // or when the session closes.
 //
 // todo: this method has too many params and should be folded into a new type
-func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient, r io.Reader, logger *slog.Logger, router Handler, config config.Config) error {
+func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient, r io.Reader, logger *slog.Logger, router Handler) error {
 	defer func() {
 		logger.InfoContext(ctx, "user disconnected")
 	}()
@@ -80,9 +79,6 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 						if err1 := sendInvalidSNACErr(inFrame, flapc); err1 != nil {
 							return errors.Join(err1, err)
 						}
-						if config.FailFast {
-							panic(err.Error())
-						}
 						break
 					}
 					return err
@@ -107,10 +103,10 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 			}
 			middleware.LogRequest(ctx, logger, m.Frame, m.Body)
 		case <-sess.Closed():
-			// disconnect with error code that indicates user was kicked off by
-			// another sign on event
 			block := wire.TLVRestBlock{}
+			// error code indicating user signed in a different location
 			block.Append(wire.NewTLVBE(0x0009, uint8(0x01)))
+			// "more info" button
 			block.Append(wire.NewTLVBE(0x000b, "https://github.com/mk6i/retro-aim-server"))
 			if err := flapc.SendSignoffFrame(block); err != nil {
 				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
