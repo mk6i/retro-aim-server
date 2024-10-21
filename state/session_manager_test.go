@@ -26,39 +26,35 @@ func TestInMemorySessionManager_AddSession(t *testing.T) {
 	assert.NotSame(t, have1, have2)
 }
 
-func TestInMemorySessionManager_Remove(t *testing.T) {
-	tests := []struct {
-		name   string
-		given  []DisplayScreenName
-		remove IdentScreenName
-		want   []IdentScreenName
-	}{
-		{
-			name: "remove user that exists",
-			given: []DisplayScreenName{
-				"user-screen-name-1",
-				"user-screen-name-2",
-			},
-			remove: NewIdentScreenName("user-screen-name-1"),
-			want: []IdentScreenName{
-				NewIdentScreenName("user-screen-name-2"),
-			},
-		},
+func TestInMemorySessionManager_Remove_Existing(t *testing.T) {
+	sm := NewInMemorySessionManager(slog.Default())
+
+	user1Old := sm.AddSession("user-screen-name-1")
+	user1New := sm.AddSession("user-screen-name-1")
+	user2 := sm.AddSession("user-screen-name-2")
+
+	sm.RemoveSession(user1New)
+
+	if assert.Len(t, sm.AllSessions(), 1) {
+		assert.NotContains(t, sm.AllSessions(), user1Old)
+		assert.NotContains(t, sm.AllSessions(), user1New)
+		assert.Contains(t, sm.AllSessions(), user2)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			sm := NewInMemorySessionManager(slog.Default())
+}
 
-			for _, screenName := range tt.given {
-				sm.AddSession(screenName)
-			}
+func TestInMemorySessionManager_Remove_MissingSameScreenName(t *testing.T) {
+	sm := NewInMemorySessionManager(slog.Default())
 
-			sm.RemoveSession(sm.RetrieveByScreenName(tt.remove))
+	user1Old := sm.AddSession("user-screen-name-1")
+	user1New := sm.AddSession("user-screen-name-1")
+	user2 := sm.AddSession("user-screen-name-2")
 
-			for i, sess := range sm.AllSessions() {
-				assert.Equal(t, tt.want[i], sess.identScreenName)
-			}
-		})
+	sm.RemoveSession(user1Old)
+
+	if assert.Len(t, sm.AllSessions(), 2) {
+		assert.NotContains(t, sm.AllSessions(), user1Old)
+		assert.Contains(t, sm.AllSessions(), user1New)
+		assert.Contains(t, sm.AllSessions(), user2)
 	}
 }
 

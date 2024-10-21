@@ -2,10 +2,12 @@ package oscar
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
-	"os"
+	"sync"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
@@ -34,30 +36,45 @@ type AuthServer struct {
 }
 
 // Start starts the authentication server and listens for new connections.
-func (rt AuthServer) Start() {
+func (rt AuthServer) Start(ctx context.Context) error {
 	addr := net.JoinHostPort("", rt.Config.AuthPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		rt.Logger.Error("unable to bind server address", "host", addr, "err", err.Error())
-		os.Exit(1)
+		return fmt.Errorf("unable to start auth server: %w", err)
 	}
-	defer listener.Close()
+
+	go func() {
+		<-ctx.Done()
+		listener.Close()
+	}()
 
 	rt.Logger.Info("starting server", "listen_host", addr, "oscar_host", rt.Config.OSCARHost)
 
+	wg := sync.WaitGroup{}
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			rt.Logger.Error(err.Error())
+			if errors.Is(err, net.ErrClosed) {
+				break
+			}
+			rt.Logger.Error("accept failed", "err", err.Error())
 			continue
 		}
 
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
+			connCtx := context.WithValue(ctx, "ip", conn.RemoteAddr().String())
+			rt.Logger.DebugContext(connCtx, "accepted connection")
 			if err := rt.handleNewConnection(conn); err != nil {
 				rt.Logger.Info("user session failed", "err", err.Error())
 			}
 		}()
 	}
+
+	wg.Wait()
+	rt.Logger.Info("shutdown complete")
+	return nil
 }
 
 func (rt AuthServer) handleNewConnection(rwc io.ReadWriteCloser) error {

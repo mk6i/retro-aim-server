@@ -107,8 +107,17 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 			}
 			middleware.LogRequest(ctx, logger, m.Frame, m.Body)
 		case <-sess.Closed():
-			// gracefully disconnect so that the client does not try to
-			// reconnect when the connection closes.
+			// disconnect with error code that indicates user was kicked off by
+			// another sign on event
+			block := wire.TLVRestBlock{}
+			block.Append(wire.NewTLVBE(0x0009, uint8(0x01)))
+			block.Append(wire.NewTLVBE(0x000b, "https://github.com/mk6i/retro-aim-server"))
+			if err := flapc.SendSignoffFrame(block); err != nil {
+				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
+			}
+			return nil
+		case <-ctx.Done():
+			// application is shutting down
 			if err := flapc.Disconnect(); err != nil {
 				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
 			}

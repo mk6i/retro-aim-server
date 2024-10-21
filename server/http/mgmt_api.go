@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -21,7 +20,7 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-func StartManagementAPI(
+func NewManagementAPI(
 	bld config.Build,
 	cfg config.Config,
 	userManager UserManager,
@@ -36,8 +35,7 @@ func StartManagementAPI(
 	accountRetriever AccountRetriever,
 	profileRetriever ProfileRetriever,
 	logger *slog.Logger,
-) {
-
+) *Server {
 	mux := http.NewServeMux()
 
 	// Handlers for '/user' route
@@ -132,12 +130,44 @@ func StartManagementAPI(
 		deleteDirectoryKeywordHandler(w, r, directoryManager, logger)
 	})
 
-	addr := net.JoinHostPort(cfg.ApiHost, cfg.ApiPort)
-	logger.Info("starting management API server", "addr", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		logger.Error("unable to bind management API address address", "err", err.Error())
-		os.Exit(1)
+	return &Server{
+		Server: http.Server{
+			Addr:    net.JoinHostPort(cfg.ApiHost, cfg.ApiPort),
+			Handler: mux,
+		},
+		Logger: logger,
 	}
+
+}
+
+type Server struct {
+	http.Server
+	Logger *slog.Logger
+}
+
+func (s *Server) Start(ctx context.Context) error {
+	ch := make(chan error)
+
+	go func() {
+		s.Logger.Info("starting management API server", "addr", s.Addr)
+		if err := s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			ch <- fmt.Errorf("unable to start management API server: %w", err)
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+	case err := <-ch:
+		return err
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := s.Shutdown(shutdownCtx); err != nil {
+		s.Logger.Error("unable to shutdown management API server", "err", err.Error())
+	}
+	return nil
 }
 
 // deleteUserHandler handles the DELETE /user endpoint.

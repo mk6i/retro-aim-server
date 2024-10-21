@@ -26,6 +26,16 @@ type FLAPFrame struct {
 	Payload     []byte `oscar:"len_prefix=uint16"`
 }
 
+// FLAPFrameDisconnect is the last FLAP frame sent to a client before
+// disconnection. It differs from FLAPFrame in that there is no payload length
+// prefix at the end, which causes Windows AIM clients to improperly handle
+// server disconnections, as when the regular FLAPFrame type is used.
+type FLAPFrameDisconnect struct {
+	StartMarker uint8
+	FrameType   uint8
+	Sequence    uint16
+}
+
 type SNACFrame struct {
 	FoodGroup uint16
 	SubGroup  uint16
@@ -62,6 +72,12 @@ type FlapClient struct {
 	sequence uint32
 	r        io.Reader
 	w        io.Writer
+}
+
+// Fixes a race condition caused by testify. Yup...
+// https://github.com/stretchr/testify/issues/625
+func (f *FlapClient) String() string {
+	return ""
 }
 
 // SendSignonFrame sends a signon FLAP frame containing a list of TLVs to
@@ -183,9 +199,7 @@ func (f *FlapClient) ReceiveSNAC(frame *SNACFrame, body any) error {
 
 // Disconnect sends a signoff FLAP frame.
 func (f *FlapClient) Disconnect() error {
-	// gracefully disconnect so that the client does not try to
-	// reconnect when the connection closes.
-	flap := FLAPFrame{
+	flap := FLAPFrameDisconnect{
 		StartMarker: 42,
 		FrameType:   FLAPFrameSignoff,
 		Sequence:    uint16(f.sequence),
