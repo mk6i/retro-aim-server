@@ -351,6 +351,9 @@ func init() {
 			wire.ODirKeywordListQuery,
 			wire.ODirKeywordListReply,
 		},
+		wire.UserLookup: {
+			wire.UserLookupFindByEmail,
+		},
 	}
 
 	for _, foodGroup := range []uint16{
@@ -367,6 +370,7 @@ func init() {
 		wire.ICQ,
 		wire.PermitDeny,
 		wire.ODir,
+		wire.UserLookup,
 	} {
 		subGroups := foodGroupToSubgroup[foodGroup]
 		for _, subGroup := range subGroups {
@@ -556,6 +560,7 @@ func NewOServiceServiceForBOS(
 				wire.Locate,
 				wire.OService,
 				wire.PermitDeny,
+				wire.UserLookup,
 			},
 		},
 	}

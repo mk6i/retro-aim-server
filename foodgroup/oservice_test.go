@@ -1465,6 +1465,10 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 							FoodGroup: wire.ODir,
 							SubGroup:  wire.ODirKeywordListReply,
 						},
+						{
+							FoodGroup: wire.UserLookup,
+							SubGroup:  wire.UserLookupFindByEmail,
+						},
 					},
 				},
 			},
@@ -1494,6 +1498,7 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 				wire.Locate,
 				wire.OService,
 				wire.PermitDeny,
+				wire.UserLookup,
 			},
 		},
 	}

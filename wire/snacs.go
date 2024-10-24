@@ -849,6 +849,28 @@ type SNAC_0x09_0x03_PermitDenyRightsReply struct {
 }
 
 //
+// 0x0A: UserLookup
+//
+
+const (
+	UserLookupErr         uint16 = 0x0001
+	UserLookupFindByEmail uint16 = 0x0002
+	UserLookupFindReply   uint16 = 0x0003
+
+	UserLookupErrNoUserFound uint16 = 0x0014
+
+	UserLookupTLVEmailAddress uint16 = 0x0001
+)
+
+type SNAC_0x0A_0x02_UserLookupFindByEmail struct {
+	Email []byte
+}
+
+type SNAC_0x0A_0x03_UserLookupFindReply struct {
+	TLVRestBlock
+}
+
+//
 // 0x0D: ChatNav
 //
 

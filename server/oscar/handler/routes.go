@@ -23,6 +23,7 @@ type Handlers struct {
 	ODirHandler
 	OServiceHandler
 	PermitDenyHandler
+	UserLookupHandler
 }
 
 // NewBOSRouter initializes and configures a new Router instance for handling
@@ -87,6 +88,8 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.PermitDeny, wire.PermitDenyRightsQuery, h.PermitDenyHandler.RightsQuery)
 	router.Register(wire.PermitDeny, wire.PermitDenyAddPermListEntries, h.PermitDenyHandler.AddPermListEntries)
 	router.Register(wire.PermitDeny, wire.PermitDenySetGroupPermitMask, h.PermitDenyHandler.SetGroupPermitMask)
+
+	router.Register(wire.UserLookup, wire.UserLookupFindByEmail, h.UserLookupHandler.FindByEmail)
 
 	return router
 }

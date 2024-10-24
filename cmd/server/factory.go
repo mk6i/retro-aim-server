@@ -159,6 +159,7 @@ func BOS(deps Container) oscar.BOSServer {
 		deps.adjListBuddyListStore)
 	oServiceService := foodgroup.NewOServiceServiceForBOS(deps.cfg, deps.inMemorySessionManager,
 		deps.adjListBuddyListStore, logger, deps.hmacCookieBaker, deps.sqLiteUserStore, deps.sqLiteUserStore)
+	userLookupService := foodgroup.NewUserLookupService(deps.sqLiteUserStore)
 
 	return oscar.BOSServer{
 		AuthService: authService,
@@ -174,6 +175,7 @@ func BOS(deps Container) oscar.BOSServer {
 			LocateHandler:     handler.NewLocateHandler(locateService, logger),
 			OServiceHandler:   handler.NewOServiceHandler(logger, oServiceService),
 			PermitDenyHandler: handler.NewPermitDenyHandler(logger, permitDenyService),
+			UserLookupHandler: handler.NewUserLookupHandler(logger, userLookupService),
 		}),
 		Logger:         logger,
 		OnlineNotifier: oServiceService,
