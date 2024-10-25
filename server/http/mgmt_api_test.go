@@ -1035,7 +1035,7 @@ func TestPublicChatHandler_GET(t *testing.T) {
 	}{
 		{
 			name:       "multiple chat rooms with participants",
-			want:       `[{"name":"chat-room-1-name","create_time":"0001-01-01T00:00:00Z","url":"aim:gochat?roomname=chat-room-1-name\u0026exchange=5","participants":[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]},{"name":"chat-room-2-name","create_time":"0001-01-01T00:00:00Z","url":"aim:gochat?roomname=chat-room-2-name\u0026exchange=5","participants":[{"id":"userc","screen_name":"userC"},{"id":"userd","screen_name":"userD"}]}]`,
+			want:       `[{"name":"chat-room-1-name","create_time":"0001-01-01T00:00:00Z","url":"aim:gochat?roomname=chat-room-1-name&exchange=5","participants":[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]},{"name":"chat-room-2-name","create_time":"0001-01-01T00:00:00Z","url":"aim:gochat?roomname=chat-room-2-name&exchange=5","participants":[{"id":"userc","screen_name":"userC"},{"id":"userd","screen_name":"userD"}]}]`,
 			statusCode: http.StatusOK,
 			mockParams: mockParams{
 				chatRoomRetrieverParams: chatRoomRetrieverParams{
@@ -1071,7 +1071,7 @@ func TestPublicChatHandler_GET(t *testing.T) {
 		},
 		{
 			name:       "chat room without participants",
-			want:       `[{"name":"chat-room-1-name","create_time":"0001-01-01T00:00:00Z","url":"aim:gochat?roomname=chat-room-1-name\u0026exchange=5","participants":[]}]`,
+			want:       `[{"name":"chat-room-1-name","create_time":"0001-01-01T00:00:00Z","url":"aim:gochat?roomname=chat-room-1-name&exchange=5","participants":[]}]`,
 			statusCode: http.StatusOK,
 			mockParams: mockParams{
 				chatRoomRetrieverParams: chatRoomRetrieverParams{
@@ -1162,7 +1162,7 @@ func TestPrivateChatHandler_GET(t *testing.T) {
 	}{
 		{
 			name:       "multiple chat rooms with participants",
-			want:       `[{"name":"chat-room-1-name","create_time":"0001-01-01T00:00:00Z","creator_id":"chat-room-1-creator","url":"aim:gochat?roomname=chat-room-1-name\u0026exchange=4","participants":[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]},{"name":"chat-room-2-name","create_time":"0001-01-01T00:00:00Z","creator_id":"chat-room-2-creator","url":"aim:gochat?roomname=chat-room-2-name\u0026exchange=4","participants":[{"id":"userc","screen_name":"userC"},{"id":"userd","screen_name":"userD"}]}]`,
+			want:       `[{"name":"chat-room-1-name","create_time":"0001-01-01T00:00:00Z","creator_id":"chat-room-1-creator","url":"aim:gochat?roomname=chat-room-1-name&exchange=4","participants":[{"id":"usera","screen_name":"userA"},{"id":"userb","screen_name":"userB"}]},{"name":"chat-room-2-name","create_time":"0001-01-01T00:00:00Z","creator_id":"chat-room-2-creator","url":"aim:gochat?roomname=chat-room-2-name&exchange=4","participants":[{"id":"userc","screen_name":"userC"},{"id":"userd","screen_name":"userD"}]}]`,
 			statusCode: http.StatusOK,
 			mockParams: mockParams{
 				chatRoomRetrieverParams: chatRoomRetrieverParams{
@@ -1198,7 +1198,7 @@ func TestPrivateChatHandler_GET(t *testing.T) {
 		},
 		{
 			name:       "chat room without participants",
-			want:       `[{"name":"chat-room-1-name","create_time":"0001-01-01T00:00:00Z","creator_id":"chat-room-1-creator","url":"aim:gochat?roomname=chat-room-1-name\u0026exchange=4","participants":[]}]`,
+			want:       `[{"name":"chat-room-1-name","create_time":"0001-01-01T00:00:00Z","creator_id":"chat-room-1-creator","url":"aim:gochat?roomname=chat-room-1-name&exchange=4","participants":[]}]`,
 			statusCode: http.StatusOK,
 			mockParams: mockParams{
 				chatRoomRetrieverParams: chatRoomRetrieverParams{

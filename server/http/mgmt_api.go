@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -433,10 +434,7 @@ func getPublicChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetrie
 		out[i] = cr
 	}
 
-	if err := json.NewEncoder(w).Encode(out); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	writeUnescapeChatURL(w, out)
 }
 
 // postPublicChatHandler handles the POST /chat/room/public endpoint.
@@ -500,7 +498,26 @@ func getPrivateChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetri
 		out[i] = cr
 	}
 
-	if err := json.NewEncoder(w).Encode(out); err != nil {
+	writeUnescapeChatURL(w, out)
+}
+
+// writeUnescapeChatURL writes a JSON-encoded list of chat rooms with unescaped
+// ampersands preceding the exchange query param.
+//
+//	before: aim:gochat?roomname=Office+Hijinks\u0026exchange=5
+//	after:  aim:gochat?roomname=Office+Hijinks&exchange=5
+//
+// This makes it easier to copy the gochat URL into AIM, which does not
+// recognize the ampersand unicode character \u0026.
+func writeUnescapeChatURL(w http.ResponseWriter, out []chatRoom) {
+	buf := &bytes.Buffer{}
+	if err := json.NewEncoder(buf).Encode(out); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	b := bytes.ReplaceAll(buf.Bytes(), []byte(`\u0026exchange`), []byte(`&exchange`))
+	if _, err := w.Write(b); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
