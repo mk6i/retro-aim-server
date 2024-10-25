@@ -697,64 +697,100 @@ func TestSQLiteUserStore_SetUserPassword_ErrNoUser(t *testing.T) {
 	assert.ErrorIs(t, err, ErrNoUser)
 }
 
-func TestSQLiteUserStore_ChatRoomByCookie_RoomFound(t *testing.T) {
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
+func TestSQLiteUserStore_ChatRoomByCookie(t *testing.T) {
+	tests := []struct {
+		name        string
+		givenRoom   ChatRoom
+		lookupRoom  ChatRoom
+		expectedErr error
+	}{
+		{
+			name:        "chat room found",
+			givenRoom:   NewChatRoom("my chat room", NewIdentScreenName("creator"), PrivateExchange),
+			lookupRoom:  NewChatRoom("my chat room", NewIdentScreenName("creator"), PrivateExchange),
+			expectedErr: nil,
+		},
+		{
+			name:        "chat room found - different name casing",
+			givenRoom:   NewChatRoom("my chat room", NewIdentScreenName("creator"), PrivateExchange),
+			lookupRoom:  NewChatRoom("MY CHAT ROOM", NewIdentScreenName("creator"), PrivateExchange),
+			expectedErr: nil,
+		},
+		{
+			name:        "chat room not found",
+			givenRoom:   NewChatRoom("my chat room", NewIdentScreenName("creator"), PrivateExchange),
+			lookupRoom:  NewChatRoom("your chat room", NewIdentScreenName("creator"), PrivateExchange),
+			expectedErr: ErrChatRoomNotFound,
+		},
+	}
 
-	userStore, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				assert.NoError(t, os.Remove(testFile))
+			}()
 
-	chatRoom := NewChatRoom("my new chat room!", NewIdentScreenName("the-screen-name"), PrivateExchange)
+			userStore, err := NewSQLiteUserStore(testFile)
+			assert.NoError(t, err)
 
-	err = userStore.CreateChatRoom(&chatRoom)
-	assert.NoError(t, err)
+			err = userStore.CreateChatRoom(&tt.givenRoom)
+			assert.NoError(t, err)
 
-	gotRoom, err := userStore.ChatRoomByCookie(chatRoom.Cookie())
-	assert.NoError(t, err)
-	assert.Equal(t, chatRoom, gotRoom)
+			gotRoom, err := userStore.ChatRoomByCookie(tt.lookupRoom.Cookie())
+			assert.ErrorIs(t, err, tt.expectedErr)
+			if tt.expectedErr == nil {
+				assert.Equal(t, tt.givenRoom.Cookie(), gotRoom.Cookie())
+			}
+		})
+	}
 }
 
-func TestSQLiteUserStore_ChatRoomByCookie_RoomNotFound(t *testing.T) {
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
+func TestSQLiteUserStore_ChatRoomByName(t *testing.T) {
+	tests := []struct {
+		name        string
+		givenRoom   ChatRoom
+		lookupRoom  ChatRoom
+		expectedErr error
+	}{
+		{
+			name:        "chat room found",
+			givenRoom:   NewChatRoom("my chat room", NewIdentScreenName("creator"), PrivateExchange),
+			lookupRoom:  NewChatRoom("my chat room", NewIdentScreenName("creator"), PrivateExchange),
+			expectedErr: nil,
+		},
+		{
+			name:        "chat room found - different name casing",
+			givenRoom:   NewChatRoom("my chat room", NewIdentScreenName("creator"), PrivateExchange),
+			lookupRoom:  NewChatRoom("MY CHAT ROOM", NewIdentScreenName("creator"), PrivateExchange),
+			expectedErr: nil,
+		},
+		{
+			name:        "chat room not found",
+			givenRoom:   NewChatRoom("my chat room", NewIdentScreenName("creator"), PrivateExchange),
+			lookupRoom:  NewChatRoom("your chat room", NewIdentScreenName("creator"), PrivateExchange),
+			expectedErr: ErrChatRoomNotFound,
+		},
+	}
 
-	userStore, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				assert.NoError(t, os.Remove(testFile))
+			}()
 
-	_, err = userStore.ChatRoomByCookie("the-chat-cookie")
-	assert.ErrorIs(t, err, ErrChatRoomNotFound)
-}
+			userStore, err := NewSQLiteUserStore(testFile)
+			assert.NoError(t, err)
 
-func TestSQLiteUserStore_ChatRoomByName_RoomFound(t *testing.T) {
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
+			err = userStore.CreateChatRoom(&tt.givenRoom)
+			assert.NoError(t, err)
 
-	userStore, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
-
-	chatRoom := NewChatRoom("my new chat room!", NewIdentScreenName("the-screen-name"), PrivateExchange)
-
-	err = userStore.CreateChatRoom(&chatRoom)
-	assert.NoError(t, err)
-
-	gotRoom, err := userStore.ChatRoomByName(chatRoom.Exchange(), chatRoom.Name())
-	assert.NoError(t, err)
-	assert.Equal(t, chatRoom, gotRoom)
-}
-
-func TestSQLiteUserStore_ChatRoomByName_RoomNotFound(t *testing.T) {
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
-
-	userStore, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
-
-	_, err = userStore.ChatRoomByName(4, "the-chat-room")
-	assert.ErrorIs(t, err, ErrChatRoomNotFound)
+			gotRoom, err := userStore.ChatRoomByName(tt.lookupRoom.Exchange(), tt.lookupRoom.Name())
+			assert.ErrorIs(t, err, tt.expectedErr)
+			if tt.expectedErr == nil {
+				assert.Equal(t, tt.givenRoom.Cookie(), gotRoom.Cookie())
+			}
+		})
+	}
 }
 
 func TestSQLiteUserStore_AllChatRooms(t *testing.T) {

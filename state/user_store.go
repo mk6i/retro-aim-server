@@ -967,7 +967,7 @@ func (f SQLiteUserStore) ChatRoomByCookie(cookie string) (ChatRoom, error) {
 	q := `
 		SELECT exchange, name, created, creator
 		FROM chatRoom
-		WHERE cookie = ?
+		WHERE lower(cookie) = lower(?)
 	`
 	var creator string
 	err := f.db.QueryRow(q, cookie).Scan(
@@ -989,16 +989,16 @@ func (f SQLiteUserStore) ChatRoomByCookie(cookie string) (ChatRoom, error) {
 func (f SQLiteUserStore) ChatRoomByName(exchange uint16, name string) (ChatRoom, error) {
 	chatRoom := ChatRoom{
 		exchange: exchange,
-		name:     name,
 	}
 
 	q := `
-		SELECT created, creator
+		SELECT name, created, creator
 		FROM chatRoom
-		WHERE exchange = ? AND name = ?
+		WHERE exchange = ? AND lower(name) = lower(?)
 	`
 	var creator string
 	err := f.db.QueryRow(q, exchange, name).Scan(
+		&chatRoom.name,
 		&chatRoom.createTime,
 		&creator,
 	)
