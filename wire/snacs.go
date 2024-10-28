@@ -960,8 +960,12 @@ const (
 
 	ChatTLVPublicWhisperFlag    uint16 = 0x01
 	ChatTLVSenderInformation    uint16 = 0x03
-	ChatTLVMessageInformation   uint16 = 0x05
+	ChatTLVMessageInfo          uint16 = 0x05
 	ChatTLVEnableReflectionFlag uint16 = 0x06
+
+	ChatTLVMessageInfoEncoding uint16 = 0x02
+	ChatTLVMessageInfoLang     uint16 = 0x03
+	ChatTLVMessageInfoText     uint16 = 0x01
 
 	// referenced from protocols/oscar/family_chatnav.c in lib purple
 	ChatRoomTLVClassPerms         uint16 = 0x02
