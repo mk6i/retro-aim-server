@@ -213,17 +213,17 @@ func (_c *mockOServiceService_IdleNotification_Call) RunAndReturn(run func(conte
 	return _c
 }
 
-// RateParamsQuery provides a mock function with given fields: ctx, frame
-func (_m *mockOServiceService) RateParamsQuery(ctx context.Context, frame wire.SNACFrame) wire.SNACMessage {
-	ret := _m.Called(ctx, frame)
+// RateParamsQuery provides a mock function with given fields: ctx, sess, frame
+func (_m *mockOServiceService) RateParamsQuery(ctx context.Context, sess *state.Session, frame wire.SNACFrame) wire.SNACMessage {
+	ret := _m.Called(ctx, sess, frame)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RateParamsQuery")
 	}
 
 	var r0 wire.SNACMessage
-	if rf, ok := ret.Get(0).(func(context.Context, wire.SNACFrame) wire.SNACMessage); ok {
-		r0 = rf(ctx, frame)
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNACFrame) wire.SNACMessage); ok {
+		r0 = rf(ctx, sess, frame)
 	} else {
 		r0 = ret.Get(0).(wire.SNACMessage)
 	}
@@ -238,14 +238,15 @@ type mockOServiceService_RateParamsQuery_Call struct {
 
 // RateParamsQuery is a helper method to define mock.On call
 //   - ctx context.Context
+//   - sess *state.Session
 //   - frame wire.SNACFrame
-func (_e *mockOServiceService_Expecter) RateParamsQuery(ctx interface{}, frame interface{}) *mockOServiceService_RateParamsQuery_Call {
-	return &mockOServiceService_RateParamsQuery_Call{Call: _e.mock.On("RateParamsQuery", ctx, frame)}
+func (_e *mockOServiceService_Expecter) RateParamsQuery(ctx interface{}, sess interface{}, frame interface{}) *mockOServiceService_RateParamsQuery_Call {
+	return &mockOServiceService_RateParamsQuery_Call{Call: _e.mock.On("RateParamsQuery", ctx, sess, frame)}
 }
 
-func (_c *mockOServiceService_RateParamsQuery_Call) Run(run func(ctx context.Context, frame wire.SNACFrame)) *mockOServiceService_RateParamsQuery_Call {
+func (_c *mockOServiceService_RateParamsQuery_Call) Run(run func(ctx context.Context, sess *state.Session, frame wire.SNACFrame)) *mockOServiceService_RateParamsQuery_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(wire.SNACFrame))
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACFrame))
 	})
 	return _c
 }
@@ -255,7 +256,7 @@ func (_c *mockOServiceService_RateParamsQuery_Call) Return(_a0 wire.SNACMessage)
 	return _c
 }
 
-func (_c *mockOServiceService_RateParamsQuery_Call) RunAndReturn(run func(context.Context, wire.SNACFrame) wire.SNACMessage) *mockOServiceService_RateParamsQuery_Call {
+func (_c *mockOServiceService_RateParamsQuery_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACFrame) wire.SNACMessage) *mockOServiceService_RateParamsQuery_Call {
 	_c.Call.Return(run)
 	return _c
 }

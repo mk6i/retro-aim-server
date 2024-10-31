@@ -58,6 +58,14 @@ func TestSession_SetAndGetUIN(t *testing.T) {
 	assert.Equal(t, uin, s.UIN())
 }
 
+func TestSession_SetAndGetClientID(t *testing.T) {
+	s := NewSession()
+	assert.Empty(t, s.ClientID())
+	clientID := "AIM Client ID"
+	s.SetClientID(clientID)
+	assert.Equal(t, clientID, s.ClientID())
+}
+
 func TestSession_TLVUserInfo(t *testing.T) {
 	tests := []struct {
 		name           string

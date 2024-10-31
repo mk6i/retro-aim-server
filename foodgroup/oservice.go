@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -44,7 +45,9 @@ func (s OServiceService) ClientVersions(_ context.Context, frame wire.SNACFrame,
 	}
 }
 
-var rateLimitSNAC = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
+// rateLimitSNACV1 is the rate params reply sent to AIM 1.x clients that does
+// not contain LastTime and CurrentState fields.
+var rateLimitSNACV1 = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
 	RateClasses: []struct {
 		ID              uint16
 		WindowSize      uint32
@@ -54,8 +57,10 @@ var rateLimitSNAC = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
 		DisconnectLevel uint32
 		CurrentLevel    uint32
 		MaxLevel        uint32
-		LastTime        uint32
-		CurrentState    uint8
+		V2Params        *struct {
+			LastTime     uint32
+			CurrentState uint8
+		} `oscar:"optional"`
 	}{
 		{
 			ID:              0x01,
@@ -66,8 +71,58 @@ var rateLimitSNAC = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
 			DisconnectLevel: 0x0320,
 			CurrentLevel:    0x0D69,
 			MaxLevel:        0x1770,
-			LastTime:        0x0000,
-			CurrentState:    0x0,
+			V2Params:        nil,
+		},
+	},
+	RateGroups: []struct {
+		ID    uint16
+		Pairs []struct {
+			FoodGroup uint16
+			SubGroup  uint16
+		} `oscar:"count_prefix=uint16"`
+	}{
+		{
+			ID: 1,
+			Pairs: []struct {
+				FoodGroup uint16
+				SubGroup  uint16
+			}{},
+		},
+	},
+}
+
+// rateLimitSNACV2 is the rate params reply sent to non-AIM 1.x clients.
+var rateLimitSNACV2 = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
+	RateClasses: []struct {
+		ID              uint16
+		WindowSize      uint32
+		ClearLevel      uint32
+		AlertLevel      uint32
+		LimitLevel      uint32
+		DisconnectLevel uint32
+		CurrentLevel    uint32
+		MaxLevel        uint32
+		V2Params        *struct {
+			LastTime     uint32
+			CurrentState uint8
+		} `oscar:"optional"`
+	}{
+		{
+			ID:              0x01,
+			WindowSize:      0x0050,
+			ClearLevel:      0x09C4,
+			AlertLevel:      0x07D0,
+			LimitLevel:      0x05DC,
+			DisconnectLevel: 0x0320,
+			CurrentLevel:    0x0D69,
+			MaxLevel:        0x1770,
+			V2Params: &struct {
+				LastTime     uint32
+				CurrentState uint8
+			}{
+				LastTime:     0x0000,
+				CurrentState: 0x0,
+			},
 		},
 	},
 	RateGroups: []struct {
@@ -374,7 +429,16 @@ func init() {
 	} {
 		subGroups := foodGroupToSubgroup[foodGroup]
 		for _, subGroup := range subGroups {
-			rateLimitSNAC.RateGroups[0].Pairs = append(rateLimitSNAC.RateGroups[0].Pairs, struct {
+			// build response for AIM 1.x clients
+			rateLimitSNACV1.RateGroups[0].Pairs = append(rateLimitSNACV1.RateGroups[0].Pairs, struct {
+				FoodGroup uint16
+				SubGroup  uint16
+			}{
+				FoodGroup: foodGroup,
+				SubGroup:  subGroup,
+			})
+			// build response for all other clients
+			rateLimitSNACV2.RateGroups[0].Pairs = append(rateLimitSNACV2.RateGroups[0].Pairs, struct {
 				FoodGroup uint16
 				SubGroup  uint16
 			}{
@@ -404,14 +468,18 @@ func init() {
 // AIM clients silently fail when they expect a rate limit rule that does not
 // exist in this response. When support for a new food group is added to the
 // server, update this function accordingly.
-func (s OServiceService) RateParamsQuery(_ context.Context, inFrame wire.SNACFrame) wire.SNACMessage {
+func (s OServiceService) RateParamsQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame) wire.SNACMessage {
+	limits := rateLimitSNACV2
+	if strings.Contains(sess.ClientID(), "AOL Instant Messenger (TM), version 1.") {
+		limits = rateLimitSNACV1
+	}
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.OService,
 			SubGroup:  wire.OServiceRateParamsReply,
 			RequestID: inFrame.RequestID,
 		},
-		Body: rateLimitSNAC,
+		Body: limits,
 	}
 }
 

@@ -232,7 +232,7 @@ func TestOServiceHandler_RateParamsQuery(t *testing.T) {
 
 	svc := newMockOServiceService(t)
 	svc.EXPECT().
-		RateParamsQuery(mock.Anything, input.Frame).
+		RateParamsQuery(mock.Anything, mock.Anything, input.Frame).
 		Return(output)
 
 	h := OServiceHandler{

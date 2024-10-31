@@ -125,6 +125,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 							dataIn: func() []byte {
 								loginCookie := bosCookie{
 									ScreenName: user.DisplayScreenName,
+									ClientID:   "ICQ 2000b",
 								}
 								buf := &bytes.Buffer{}
 								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
@@ -554,6 +555,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 							dataIn: func() []byte {
 								loginCookie := bosCookie{
 									ScreenName: user.DisplayScreenName,
+									ClientID:   "ICQ 2000b",
 								}
 								buf := &bytes.Buffer{}
 								assert.NoError(t, wire.MarshalBE(loginCookie, buf))

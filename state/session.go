@@ -42,6 +42,7 @@ type Session struct {
 	warning           uint16
 	userInfoBitmask   uint16
 	userStatusBitmask uint32
+	clientID          string
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
@@ -347,4 +348,18 @@ func (s *Session) Close() {
 // Closed blocks until the session is closed.
 func (s *Session) Closed() <-chan struct{} {
 	return s.stopCh
+}
+
+// SetClientID sets the client ID.
+func (s *Session) SetClientID(clientID string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.clientID = clientID
+}
+
+// ClientID retrieves the client ID.
+func (s *Session) ClientID() string {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.clientID
 }

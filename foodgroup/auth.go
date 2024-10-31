@@ -76,8 +76,11 @@ func (s AuthService) RegisterChatSession(authCookie []byte) (*state.Session, err
 	return s.chatSessionRegistry.AddSession(c.ChatCookie, c.ScreenName), nil
 }
 
+// bosCookie represents a token containing client metadata passed to the BOS
+// service upon connection.
 type bosCookie struct {
 	ScreenName state.DisplayScreenName `oscar:"len_prefix=uint8"`
+	ClientID   string                  `oscar:"len_prefix=uint8"`
 }
 
 // RegisterBOSSession adds a new session to the session registry.
@@ -107,6 +110,9 @@ func (s AuthService) RegisterBOSSession(authCookie []byte) (*state.Session, erro
 	} else if !confirmed {
 		sess.SetUserInfoFlag(wire.OServiceUserFlagUnconfirmed)
 	}
+
+	// set string containing OSCAR client name and version
+	sess.SetClientID(c.ClientID)
 
 	if u.DisplayScreenName.IsUIN() {
 		sess.SetUserInfoFlag(wire.OServiceUserFlagICQ)
@@ -229,7 +235,10 @@ func (s AuthService) BUCPChallenge(
 // (wire.LoginTLVTagsReconnectHere) and an authorization cookie
 // (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
 // (wire.LoginTLVTagsErrorSubcode).
-func (s AuthService) BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error) {
+func (s AuthService) BUCPLogin(
+	bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest,
+	newUserFn func(screenName state.DisplayScreenName) (state.User, error),
+) (wire.SNACMessage, error) {
 
 	block, err := s.login(bodyIn.TLVList, newUserFn)
 	if err != nil {
@@ -257,82 +266,132 @@ func (s AuthService) BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newU
 // (wire.LoginTLVTagsReconnectHere) and an authorization cookie
 // (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
 // (wire.LoginTLVTagsErrorSubcode).
-func (s AuthService) FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error) {
+func (s AuthService) FLAPLogin(
+	frame wire.FLAPSignonFrame,
+	newUserFn func(screenName state.DisplayScreenName) (state.User, error),
+) (wire.TLVRestBlock, error) {
 	return s.login(frame.TLVList, newUserFn)
+}
+
+// loginProperties represents the properties sent by the client at login.
+type loginProperties struct {
+	screenName   state.DisplayScreenName
+	clientID     string
+	isBUCPAuth   bool
+	passwordHash []byte
+	roastedPass  []byte
+}
+
+// fromTLV creates an instance of loginProperties from a TLV list.
+func (l *loginProperties) fromTLV(list wire.TLVList) error {
+	// extract screen name
+	if screenName, found := list.String(wire.LoginTLVTagsScreenName); found {
+		l.screenName = state.DisplayScreenName(screenName)
+	} else {
+		return errors.New("screen name doesn't exist in tlv")
+	}
+
+	// extract client name and version
+	if clientID, found := list.String(wire.LoginTLVTagsClientIdentity); found {
+		l.clientID = clientID
+	}
+
+	// get the password from the appropriate TLV. older clients have a
+	// roasted password, newer clients have a hashed password. ICQ may omit
+	// the password TLV when logging in without saved password.
+
+	// extract password hash for BUCP login
+	if passwordHash, found := list.Bytes(wire.LoginTLVTagsPasswordHash); found {
+		l.passwordHash = passwordHash
+		l.isBUCPAuth = true
+	}
+
+	// extract roasted password for FLAP login
+	if roastedPass, found := list.Bytes(wire.LoginTLVTagsRoastedPassword); found {
+		l.roastedPass = roastedPass
+	}
+
+	return nil
 }
 
 // login validates a user's credentials and creates their session. it returns
 // metadata used in both BUCP and FLAP authentication responses.
 func (s AuthService) login(
-	TLVList wire.TLVList,
+	tlv wire.TLVList,
 	newUserFn func(screenName state.DisplayScreenName) (state.User, error),
 ) (wire.TLVRestBlock, error) {
 
-	screenName, found := TLVList.String(wire.LoginTLVTagsScreenName)
-	if !found {
-		return wire.TLVRestBlock{}, errors.New("screen name doesn't exist in tlv")
+	props := loginProperties{}
+	if err := props.fromTLV(tlv); err != nil {
+		return wire.TLVRestBlock{}, err
 	}
 
-	sn := state.DisplayScreenName(screenName)
-
-	user, err := s.userManager.User(sn.IdentScreenName())
+	user, err := s.userManager.User(props.screenName.IdentScreenName())
 	if err != nil {
 		return wire.TLVRestBlock{}, err
 	}
 
 	if user == nil {
+		// user not found
 		if s.config.DisableAuth {
-			handleValid := false
-			if sn.IsUIN() {
-				handleValid = sn.ValidateUIN() == nil
-			} else {
-				handleValid = sn.ValidateAIMHandle() == nil
-			}
-			if !handleValid {
-				return loginFailureResponse(sn, wire.LoginErrInvalidUsernameOrPassword), nil
-			}
-
-			newUser, err := newUserFn(sn)
-			if err != nil {
+			// auth disabled, create the user and return success
+			if err := s.createUser(props, newUserFn); err != nil {
 				return wire.TLVRestBlock{}, err
 			}
-			if err := s.userManager.InsertUser(newUser); err != nil {
-				return wire.TLVRestBlock{}, err
-			}
-
-			return s.loginSuccessResponse(sn, err)
+			return s.loginSuccessResponse(props)
 		}
-
+		// auth enabled, return separate login errors for ICQ and AIM
 		loginErr := wire.LoginErrInvalidUsernameOrPassword
-		if sn.IsUIN() {
+		if props.screenName.IsUIN() {
 			loginErr = wire.LoginErrICQUserErr
 		}
-		return loginFailureResponse(sn, loginErr), nil
+		return loginFailureResponse(props, loginErr), nil
 	}
 
 	if s.config.DisableAuth {
-		return s.loginSuccessResponse(sn, err)
+		// user exists, but don't validate
+		return s.loginSuccessResponse(props)
 	}
 
 	var loginOK bool
-	// get the password from the appropriate TLV. older clients have a
-	// roasted password, newer clients have a hashed password. ICQ may omit
-	// the password TLV when logging in without saved password.
-	if md5Hash, hasMD5 := TLVList.Bytes(wire.LoginTLVTagsPasswordHash); hasMD5 {
-		loginOK = user.ValidateHash(md5Hash)
-	} else if roastedPass, hasRoasted := TLVList.Bytes(wire.LoginTLVTagsRoastedPassword); hasRoasted {
-		loginOK = user.ValidateRoastedPass(roastedPass)
+	if props.isBUCPAuth {
+		loginOK = user.ValidateHash(props.passwordHash)
+	} else {
+		loginOK = user.ValidateRoastedPass(props.roastedPass)
 	}
 	if !loginOK {
-		return loginFailureResponse(sn, wire.LoginErrInvalidPassword), nil
+		return loginFailureResponse(props, wire.LoginErrInvalidPassword), nil
 	}
 
-	return s.loginSuccessResponse(sn, err)
+	return s.loginSuccessResponse(props)
 }
 
-func (s AuthService) loginSuccessResponse(screenName state.DisplayScreenName, err error) (wire.TLVRestBlock, error) {
+func (s AuthService) createUser(
+	props loginProperties,
+	newUserFn func(screenName state.DisplayScreenName) (state.User, error),
+) error {
+
+	handleValid := false
+	if props.screenName.IsUIN() {
+		handleValid = props.screenName.ValidateUIN() == nil
+	} else {
+		handleValid = props.screenName.ValidateAIMHandle() == nil
+	}
+	if !handleValid {
+		return nil
+	}
+
+	newUser, err := newUserFn(props.screenName)
+	if err != nil {
+		return err
+	}
+	return s.userManager.InsertUser(newUser)
+}
+
+func (s AuthService) loginSuccessResponse(props loginProperties) (wire.TLVRestBlock, error) {
 	loginCookie := bosCookie{
-		ScreenName: screenName,
+		ScreenName: props.screenName,
+		ClientID:   props.clientID,
 	}
 
 	buf := &bytes.Buffer{}
@@ -346,18 +405,18 @@ func (s AuthService) loginSuccessResponse(screenName state.DisplayScreenName, er
 
 	return wire.TLVRestBlock{
 		TLVList: []wire.TLV{
-			wire.NewTLVBE(wire.LoginTLVTagsScreenName, screenName),
+			wire.NewTLVBE(wire.LoginTLVTagsScreenName, props.screenName),
 			wire.NewTLVBE(wire.LoginTLVTagsReconnectHere, net.JoinHostPort(s.config.OSCARHost, s.config.BOSPort)),
 			wire.NewTLVBE(wire.LoginTLVTagsAuthorizationCookie, cookie),
 		},
 	}, nil
 }
 
-func loginFailureResponse(screenName state.DisplayScreenName, code uint16) wire.TLVRestBlock {
+func loginFailureResponse(props loginProperties, errCode uint16) wire.TLVRestBlock {
 	return wire.TLVRestBlock{
 		TLVList: []wire.TLV{
-			wire.NewTLVBE(wire.LoginTLVTagsScreenName, screenName),
-			wire.NewTLVBE(wire.LoginTLVTagsErrorSubcode, code),
+			wire.NewTLVBE(wire.LoginTLVTagsScreenName, props.screenName),
+			wire.NewTLVBE(wire.LoginTLVTagsErrorSubcode, errCode),
 		},
 	}
 }

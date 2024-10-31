@@ -738,6 +738,13 @@ func sessOptUIN(UIN uint32) func(session *state.Session) {
 	}
 }
 
+// sessClientID sets the client ID
+func sessClientID(clientID string) func(session *state.Session) {
+	return func(session *state.Session) {
+		session.SetClientID(clientID)
+	}
+}
+
 // newTestSession creates a session object with 0 or more functional options
 // applied
 func newTestSession(screenName state.DisplayScreenName, options ...func(session *state.Session)) *state.Session {

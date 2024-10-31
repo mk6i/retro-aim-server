@@ -17,7 +17,7 @@ type OServiceService interface {
 	ClientVersions(ctx context.Context, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x17_OServiceClientVersions) wire.SNACMessage
 	HostOnline() wire.SNACMessage
 	IdleNotification(ctx context.Context, sess *state.Session, bodyIn wire.SNAC_0x01_0x11_OServiceIdleNotification) error
-	RateParamsQuery(ctx context.Context, frame wire.SNACFrame) wire.SNACMessage
+	RateParamsQuery(ctx context.Context, sess *state.Session, frame wire.SNACFrame) wire.SNACMessage
 	RateParamsSubAdd(context.Context, wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd)
 	ServiceRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error)
 	SetPrivacyFlags(ctx context.Context, bodyIn wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags)
@@ -39,8 +39,8 @@ type OServiceHandler struct {
 	middleware.RouteLogger
 }
 
-func (h OServiceHandler) RateParamsQuery(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
-	outSNAC := h.OServiceService.RateParamsQuery(ctx, inFrame)
+func (h OServiceHandler) RateParamsQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
+	outSNAC := h.OServiceService.RateParamsQuery(ctx, sess, inFrame)
 	h.LogRequestAndResponse(ctx, inFrame, nil, outSNAC.Frame, outSNAC.Body)
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
