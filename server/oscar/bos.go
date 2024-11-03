@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -69,9 +70,33 @@ func (rt BOSServer) Start(ctx context.Context) error {
 		}()
 	}
 
-	wg.Wait()
-	rt.Logger.Info("shutdown complete")
+	if !waitForShutdown(&wg) {
+		rt.Logger.Error("shutdown complete, but connections didn't close cleanly")
+	} else {
+		rt.Logger.Info("shutdown complete")
+	}
+
 	return nil
+}
+
+// waitForShutdown returns when either the wg completes or 5 seconds has
+// passed. This is a temporary hack to ensure that the server shuts down even
+// if all the TCP connections do not drain. Return true if the shutdown is
+// clean.
+func waitForShutdown(wg *sync.WaitGroup) bool {
+	ch := make(chan struct{})
+
+	go func() {
+		wg.Wait() // goroutine leak if wg never completes
+		close(ch)
+	}()
+
+	select {
+	case <-ch:
+		return true
+	case <-time.After(time.Second * 5):
+		return false
+	}
 }
 
 func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) error {

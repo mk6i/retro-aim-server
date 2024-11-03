@@ -65,8 +65,12 @@ func (rt AdminServer) Start(ctx context.Context) error {
 		}()
 	}
 
-	wg.Wait()
-	rt.Logger.Info("shutdown complete")
+	if !waitForShutdown(&wg) {
+		rt.Logger.Error("shutdown complete, but connections didn't close cleanly")
+	} else {
+		rt.Logger.Info("shutdown complete")
+	}
+
 	return nil
 }
 
