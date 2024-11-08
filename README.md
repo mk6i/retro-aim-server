@@ -7,11 +7,16 @@
 
 </div>
 
-**Retro AIM Server** is an instant messaging server that revives AOL Instant Messenger (and ICQ!) clients from the 2000s.
+**Retro AIM Server** is an open source instant messaging server that makes classic AIM and ICQ clients work again.
 
 <p align="center">
   <img width="616" alt="screenshot of retro aim server running next to AIM" src="https://github.com/mk6i/retro-aim-server/assets/2894330/81ff419f-50fa-4961-bd2f-ac7dcac903b5">
 </p>
+
+| Disclaimer |
+|------------|
+| This project is an independent, open-source initiative and is not affiliated with, endorsed by, or associated with AOL or Yahoo! Inc. All references to AIM are for historical and compatibility purposes only. This project is entirely non-commercial and does not generate any revenue or accept donations. |
+
 
 The following features are supported:
 
