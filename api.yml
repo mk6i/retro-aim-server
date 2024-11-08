@@ -144,6 +144,95 @@ paths:
         '404':
           description: User not found, or user has no buddy icon
 
+  /user/buddylist:
+    get:
+      summary: Get buddy list for a specific user
+      description: Retrieve the buddy list for a specified user by their screen name.
+      parameters:
+        - name: screen_name
+          in: query
+          description: The AIM screen name or ICQ UIN of the user.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response containing a buddy list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    group_id:
+                      type: integer
+                      description: The unique identifier of the buddy list group.
+                    category_name:
+                      type: string
+                      description: The name of the buddy list category.
+                    buddies:
+                      type: array
+                      items:
+                        type: string
+                      description: List of screen names in this category.
+        '404':
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+    post:
+      summary: Add buddies to a buddy list for a specific user
+      description: Add buddies to an existing buddy list category for a specified user by their screen name.
+      parameters:
+        - name: screen_name
+          in: query
+          description: The AIM screen name or ICQ UIN of the user.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                group_id:
+                  type: integer
+                  description: The unique identifier of the buddy list category.
+                buddies:
+                  type: array
+                  items:
+                    type: string
+                  description: List of screen names to add to the category.
+      responses:
+        '201':
+          description: Buddies added to the buddy list successfully.
+        '400':
+          description: Bad request. Invalid input data.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: User or buddy list category not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
   /session:
     get:
       summary: Get active sessions

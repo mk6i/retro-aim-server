@@ -237,9 +237,7 @@ func MgmtAPI(deps Container) *http.Server {
 		Commit:  commit,
 		Date:    date,
 	}
-	return http.NewManagementAPI(bld, deps.cfg, deps.sqLiteUserStore, deps.inMemorySessionManager, deps.sqLiteUserStore,
-		deps.sqLiteUserStore, deps.chatSessionManager, deps.sqLiteUserStore, deps.inMemorySessionManager,
-		deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.logger)
+	return http.NewManagementAPI(bld, deps.cfg, deps.sqLiteUserStore, deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.chatSessionManager, deps.sqLiteUserStore, deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.logger)
 }
 
 // ODir creates an OSCAR server for the ODir food group.

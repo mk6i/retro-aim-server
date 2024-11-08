@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -21,22 +22,7 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-func NewManagementAPI(
-	bld config.Build,
-	cfg config.Config,
-	userManager UserManager,
-	sessionRetriever SessionRetriever,
-	chatRoomRetriever ChatRoomRetriever,
-	chatRoomCreator ChatRoomCreator,
-	chatSessionRetriever ChatSessionRetriever,
-	directoryManager DirectoryManager,
-	messageRelayer MessageRelayer,
-	bartRetriever BARTRetriever,
-	feedbagRetriever FeedBagRetriever,
-	accountRetriever AccountRetriever,
-	profileRetriever ProfileRetriever,
-	logger *slog.Logger,
-) *Server {
+func NewManagementAPI(bld config.Build, cfg config.Config, userManager UserManager, sessionRetriever SessionRetriever, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatSessionRetriever ChatSessionRetriever, directoryManager DirectoryManager, messageRelayer MessageRelayer, bartRetriever BARTRetriever, feedbagRetriever FeedBagRetriever, accountRetriever AccountRetriever, profileRetriever ProfileRetriever, logger *slog.Logger) *Server {
 	mux := http.NewServeMux()
 
 	// Handlers for '/user' route
@@ -53,6 +39,16 @@ func NewManagementAPI(
 	// Handlers for '/user/password' route
 	mux.HandleFunc("PUT /user/password", func(w http.ResponseWriter, r *http.Request) {
 		putUserPasswordHandler(w, r, userManager, logger)
+	})
+
+	// Handlers for 'GET /user/buddylist' route
+	mux.HandleFunc("GET /user/buddylist", func(w http.ResponseWriter, r *http.Request) {
+		getUserBuddyListHandler(w, r, feedbagRetriever, logger)
+	})
+
+	// Handlers for 'POST /user/buddylist' route
+	mux.HandleFunc("POST /user/buddylist", func(w http.ResponseWriter, r *http.Request) {
+		postUserBuddyListHandler(w, r, feedbagRetriever, logger)
 	})
 
 	// Handlers for '/user/login' route
@@ -139,6 +135,107 @@ func NewManagementAPI(
 		Logger: logger,
 	}
 
+}
+
+func postUserBuddyListHandler(w http.ResponseWriter, r *http.Request, feedBagRetriever FeedBagRetriever, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+
+	sn := state.NewIdentScreenName(r.URL.Query().Get("screen_name"))
+	if sn.String() == "" {
+		errorMsg(w, "screen_name query parameter is missing", http.StatusBadRequest)
+		return
+	}
+
+	input := feedbagGroup{}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorMsg(w, "malformed input", http.StatusBadRequest)
+		return
+	}
+
+	items, err := feedBagRetriever.Feedbag(sn)
+	if err != nil {
+		errorMsg(w, "malformed input", http.StatusBadRequest)
+		return
+	}
+
+	groupExists := false
+	for _, item := range items {
+		if item.ClassID == wire.FeedbagClassIdGroup && int(item.GroupID) == input.GroupID {
+			groupExists = true
+			break
+		}
+	}
+	if !groupExists {
+		errorMsg(w, fmt.Sprintf("group %d does not exist", input.GroupID), http.StatusNotFound)
+		return
+	}
+
+	var newItems []wire.FeedbagItem
+	for _, toAdd := range input.Buddies {
+		newItems = append(newItems, wire.FeedbagItem{
+			ClassID: wire.FeedbagClassIdBuddy,
+			GroupID: uint16(input.GroupID),
+			ItemID:  math.MaxUint16,
+			Name:    toAdd,
+		})
+	}
+
+	if err := feedBagRetriever.FeedbagUpsert(sn, newItems); err != nil {
+		logger.Error("error in POST /user/buddylist", "err", err.Error())
+		errorMsg(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	errorMsg(w, "successfully added users to buddy list", http.StatusCreated)
+}
+
+// getUserBuddyListHandler handles the GET /user/buddylist endpoint.
+func getUserBuddyListHandler(w http.ResponseWriter, r *http.Request, feedBagRetriever FeedBagRetriever, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+
+	sn := r.URL.Query().Get("screen_name")
+	if sn == "" {
+		errorMsg(w, "screen_name query parameter is missing", http.StatusBadRequest)
+		return
+	}
+
+	fb, err := feedBagRetriever.Feedbag(state.NewIdentScreenName(sn))
+	if err != nil {
+		logger.Error("error in GET /user/buddylist", "err", err.Error())
+		errorMsg(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	groups := make(map[int]*feedbagGroup)
+
+	for _, item := range fb {
+		groupID := int(item.GroupID)
+		switch item.ClassID {
+		case wire.FeedbagClassIdGroup:
+			if groupID == 0 {
+				continue
+			}
+			if _, ok := groups[groupID]; !ok {
+				groups[groupID] = &feedbagGroup{Buddies: make([]string, 0)}
+			}
+			groups[groupID].GroupID = groupID
+			groups[groupID].GroupName = item.Name
+		case wire.FeedbagClassIdBuddy:
+			if _, ok := groups[groupID]; !ok {
+				groups[groupID] = &feedbagGroup{Buddies: make([]string, 0)}
+			}
+			groups[groupID].Buddies = append(groups[groupID].Buddies, item.Name)
+		}
+	}
+
+	resp := make([]*feedbagGroup, 0)
+	for _, v := range groups {
+		resp = append(resp, v)
+	}
+
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		errorMsg(w, err.Error(), http.StatusBadRequest)
+	}
 }
 
 type Server struct {

@@ -50,10 +50,20 @@ type BARTRetriever interface {
 
 type FeedBagRetriever interface {
 	BuddyIconRefByName(screenName state.IdentScreenName) (*wire.BARTID, error)
+	Feedbag(screenName state.IdentScreenName) ([]wire.FeedbagItem, error)
+	FeedbagUpsert(screenName state.IdentScreenName, items []wire.FeedbagItem) error
+}
+
+type FeedbagQueryer interface {
+	Query(_ context.Context, sess *state.Session, inFrame wire.SNACFrame) (wire.SNACMessage, error)
 }
 
 type ProfileRetriever interface {
 	Profile(screenName state.IdentScreenName) (string, error)
+}
+
+type BuddyUpdateBroadcaster interface {
+	UnicastBuddyArrived(ctx context.Context, from *state.Session, to *state.Session) error
 }
 
 type DirectoryManager interface {
@@ -144,4 +154,10 @@ type directoryKeywordCreate struct {
 
 type messageBody struct {
 	Message string `json:"message"`
+}
+
+type feedbagGroup struct {
+	GroupID   int      `json:"group_id"`
+	GroupName string   `json:"group_name"`
+	Buddies   []string `json:"buddies"`
 }
