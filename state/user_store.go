@@ -725,6 +725,9 @@ func (f SQLiteUserStore) FeedbagUpsert(screenName IdentScreenName, items []wire.
 						  name         = excluded.name,
 						  attributes   = excluded.attributes,
 						  lastModified = UNIXEPOCH()
+		ON CONFLICT (screenName, groupID, classID, name)
+			DO UPDATE SET attributes   = excluded.attributes,
+						  lastModified = UNIXEPOCH()
 	`
 
 	for _, item := range items {

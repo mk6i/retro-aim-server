@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 )
 
 //
@@ -1948,6 +1949,32 @@ type FeedbagItem struct {
 	ItemID  uint16
 	ClassID uint16
 	TLVLBlock
+}
+
+type FeedbagList []FeedbagItem
+
+// NextItemID returns the next available item ID. It returns 0 if the feedbag
+// is full.
+func (f FeedbagList) NextItemID() uint16 {
+	usedIDs := make(map[uint16]bool, len(f))
+	for _, item := range f {
+		usedIDs[item.ItemID] = true
+	}
+	for i := uint16(1); i < math.MaxUint16; i++ {
+		if !usedIDs[i] {
+			return i
+		}
+	}
+	return 0
+}
+
+func (f FeedbagList) HasGroup(groupID uint16) bool {
+	for _, item := range f {
+		if item.ClassID == FeedbagClassIdGroup && item.GroupID == groupID {
+			return true
+		}
+	}
+	return false
 }
 
 // ICQDCInfo represents ICQ direct connect settings.

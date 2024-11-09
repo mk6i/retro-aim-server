@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -157,25 +156,24 @@ func postUserBuddyListHandler(w http.ResponseWriter, r *http.Request, feedBagRet
 		errorMsg(w, "malformed input", http.StatusBadRequest)
 		return
 	}
+	feedbagItems := wire.FeedbagList(items)
 
-	groupExists := false
-	for _, item := range items {
-		if item.ClassID == wire.FeedbagClassIdGroup && int(item.GroupID) == input.GroupID {
-			groupExists = true
-			break
-		}
-	}
-	if !groupExists {
+	if !feedbagItems.HasGroup(uint16(input.GroupID)) {
 		errorMsg(w, fmt.Sprintf("group %d does not exist", input.GroupID), http.StatusNotFound)
 		return
 	}
 
 	var newItems []wire.FeedbagItem
 	for _, toAdd := range input.Buddies {
+		itemID := feedbagItems.NextItemID()
+		if itemID == 0 {
+			errorMsg(w, "buddy list has reached maximum capacity", http.StatusBadRequest)
+			return
+		}
 		newItems = append(newItems, wire.FeedbagItem{
 			ClassID: wire.FeedbagClassIdBuddy,
 			GroupID: uint16(input.GroupID),
-			ItemID:  math.MaxUint16,
+			ItemID:  itemID,
 			Name:    toAdd,
 		})
 	}
