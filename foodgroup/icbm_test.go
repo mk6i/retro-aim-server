@@ -15,29 +15,75 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
-		// blockedState is the response to the sender/recipient block check
-		blockedState state.BlockedState
-		// recipRetrieveErr is the error returned by the recipient session
-		// lookup
-		recipRetrieveErr error
-		senderSession    *state.Session
-		recipientSession *state.Session
-		// inputSNAC is the SNAC sent by the sender client
-		inputSNAC wire.SNACMessage
-		// expectSNACToClient is the SNAC sent from the server to the
-		// recipient client
-		expectSNACToClient wire.SNACMessage
+		// senderSession is the session of the user sending the message
+		senderSession *state.Session
 		// inputSNAC is the SNAC frame sent from the server to the recipient
 		// client
+		inputSNAC wire.SNACMessage
+		// expectOutput is the expected return SNAC value.
 		expectOutput *wire.SNACMessage
-		mockParams   mockParams
-		timeNow      func() time.Time
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// timeNow returns the current time
+		timeNow func() time.Time
 	}{
 		{
-			name:             "transmit message from sender to recipient, ack message back to sender",
-			blockedState:     state.BlockedNo,
-			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
-			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
+			name:          "transmit message from sender to recipient, ack message back to sender",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     newTestSession("recipient-screen-name", sessOptWarning(20)),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICBM,
+									SubGroup:  wire.ICBMChannelMsgToClient,
+								},
+								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											{
+												Tag:   wire.ICBMTLVWantEvents,
+												Value: []byte{},
+											},
+											{
+												Tag:   wire.ICBMTLVData,
+												Value: []byte{1, 2, 3, 4},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -48,27 +94,6 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 						TLVList: wire.TLVList{
 							{
 								Tag:   wire.ICBMTLVRequestHostAck,
-								Value: []byte{},
-							},
-							{
-								Tag:   wire.ICBMTLVData,
-								Value: []byte{1, 2, 3, 4},
-							},
-						},
-					},
-				},
-			},
-			expectSNACToClient: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.ICBM,
-					SubGroup:  wire.ICBMChannelMsgToClient,
-				},
-				Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
-					TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							{
-								Tag:   wire.ICBMTLVWantEvents,
 								Value: []byte{},
 							},
 							{
@@ -91,10 +116,61 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			},
 		},
 		{
-			name:             "transmit message from sender to recipient, don't ack message back to sender",
-			blockedState:     state.BlockedNo,
-			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
-			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
+			name:          "transmit message from sender to recipient, don't ack message back to sender",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     newTestSession("recipient-screen-name", sessOptWarning(20)),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICBM,
+									SubGroup:  wire.ICBMChannelMsgToClient,
+								},
+								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											{
+												Tag:   wire.ICBMTLVWantEvents,
+												Value: []byte{},
+											},
+											{
+												Tag:   wire.ICBMTLVData,
+												Value: []byte{1, 2, 3, 4},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -111,34 +187,34 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					},
 				},
 			},
-			expectSNACToClient: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.ICBM,
-					SubGroup:  wire.ICBMChannelMsgToClient,
-				},
-				Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
-					TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							{
-								Tag:   wire.ICBMTLVWantEvents,
-								Value: []byte{},
-							},
-							{
-								Tag:   wire.ICBMTLVData,
-								Value: []byte{1, 2, 3, 4},
+			expectOutput: nil,
+		},
+		{
+			name:          "don't transmit message from sender to recipient because sender has blocked recipient",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      true,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
 							},
 						},
 					},
 				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{},
+				},
 			},
-			expectOutput: nil,
-		},
-		{
-			name:             "don't transmit message from sender to recipient because sender has blocked recipient",
-			blockedState:     state.BlockedA,
-			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
-			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -167,10 +243,31 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			},
 		},
 		{
-			name:             "don't transmit message from sender to recipient because recipient has blocked sender",
-			blockedState:     state.BlockedB,
-			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
-			recipientSession: newTestSession("recipient-screen-name", sessOptWarning(20)),
+			name:          "don't transmit message from sender to recipient because recipient has blocked sender",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     true,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{},
+				},
+			},
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -199,10 +296,36 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			},
 		},
 		{
-			name:             "don't transmit message from sender to recipient because recipient doesn't exist",
-			blockedState:     state.BlockedNo,
-			senderSession:    newTestSession("sender-screen-name", sessOptWarning(10)),
-			recipientSession: nil,
+			name:          "don't transmit message from sender to recipient because recipient doesn't exist",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     nil,
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{},
+				},
+			},
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -231,10 +354,8 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			},
 		},
 		{
-			name:             "send offline message to ICQ recipient",
-			blockedState:     state.BlockedNo,
-			senderSession:    newTestSession("11111111"),
-			recipientSession: nil,
+			name:          "send offline message to ICQ recipient",
+			senderSession: newTestSession("11111111"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -263,6 +384,32 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
 			},
 			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("11111111"),
+							them: state.NewIdentScreenName("22222222"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("22222222"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("22222222"),
+							result:     nil,
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{},
+				},
 				offlineMessageManagerParams: offlineMessageManagerParams{
 					saveMessageParams: saveMessageParams{
 						{
@@ -289,44 +436,41 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			//
-			// initialize dependencies
-			//
-			feedbagManager := newMockFeedbagManager(t)
-			feedbagManager.EXPECT().
-				BlockedState(tc.senderSession.IdentScreenName(),
-					state.NewIdentScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x06_ICBMChannelMsgToHost).ScreenName)).
-				Return(tc.blockedState, nil).
-				Maybe()
-			messageRelayer := newMockMessageRelayer(t)
-			messageRelayer.EXPECT().
-				RetrieveByScreenName(state.NewIdentScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x06_ICBMChannelMsgToHost).ScreenName)).
-				Return(tc.recipientSession).
-				Maybe()
-			if tc.recipientSession != nil {
-				messageRelayer.EXPECT().
-					RelayToScreenName(mock.Anything, tc.recipientSession.IdentScreenName(), tc.expectSNACToClient).
-					Maybe()
+			buddyListRetriever := newMockBuddyListRetriever(t)
+			for _, item := range tc.mockParams.buddyListRetrieverParams.relationshipParams {
+				buddyListRetriever.EXPECT().
+					Relationship(item.me, item.them).
+					Return(item.result, item.err)
 			}
-
+			sessionRetriever := newMockSessionRetriever(t)
+			for _, item := range tc.mockParams.sessionRetrieverParams.retrieveSessionParams {
+				sessionRetriever.EXPECT().
+					RetrieveSession(item.screenName).
+					Return(item.result)
+			}
+			messageRelayer := newMockMessageRelayer(t)
+			for _, item := range tc.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().
+					RelayToScreenName(mock.Anything, item.screenName, item.message)
+			}
 			offlineMessageManager := newMockOfflineMessageManager(t)
 			for _, params := range tc.mockParams.saveMessageParams {
 				offlineMessageManager.EXPECT().
 					SaveMessage(params.offlineMessageIn).
 					Return(params.err)
 			}
-			//
-			// send input SNAC
-			//
-			svc := NewICBMService(messageRelayer, feedbagManager, nil, offlineMessageManager)
-			svc.timeNow = tc.timeNow
+
+			svc := ICBMService{
+				buddyListRetriever:  buddyListRetriever,
+				messageRelayer:      messageRelayer,
+				offlineMessageSaver: offlineMessageManager,
+				sessionRetriever:    sessionRetriever,
+				timeNow:             tc.timeNow,
+			}
 
 			outputSNAC, err := svc.ChannelMsgToHost(nil, tc.senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x06_ICBMChannelMsgToHost))
 			assert.NoError(t, err)
-			//
-			// verify output
-			//
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
 	}
@@ -336,20 +480,54 @@ func TestICBMService_ClientEvent(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
-		// blockedState is the response to the sender/recipient block check
-		blockedState state.BlockedState
 		// senderScreenName is the screen name of the user sending the event
 		senderScreenName state.DisplayScreenName
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC wire.SNACMessage
-		// expectSNACToClient is the SNAC sent from the server to the
-		// recipient client
-		expectSNACToClient wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
 	}{
 		{
 			name:             "transmit message from sender to recipient",
-			blockedState:     state.BlockedNo,
 			senderScreenName: "sender-screen-name",
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICBM,
+									SubGroup:  wire.ICBMClientEvent,
+									RequestID: 1234,
+								},
+								Body: wire.SNAC_0x04_0x14_ICBMClientEvent{
+									Cookie:     12345678,
+									ChannelID:  42,
+									ScreenName: "sender-screen-name",
+									Event:      12,
+								},
+							},
+						},
+					},
+				},
+			},
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -361,24 +539,30 @@ func TestICBMService_ClientEvent(t *testing.T) {
 					Event:      12,
 				},
 			},
-			expectSNACToClient: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.ICBM,
-					SubGroup:  wire.ICBMClientEvent,
-					RequestID: 1234,
-				},
-				Body: wire.SNAC_0x04_0x14_ICBMClientEvent{
-					Cookie:     12345678,
-					ChannelID:  42,
-					ScreenName: "sender-screen-name",
-					Event:      12,
-				},
-			},
 		},
 		{
 			name:             "don't transmit message from sender to recipient because sender has blocked recipient",
-			blockedState:     state.BlockedA,
 			senderScreenName: "sender-screen-name",
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      true,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{},
+				},
+			},
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -392,27 +576,23 @@ func TestICBMService_ClientEvent(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			//
-			// initialize dependencies
-			//
-			feedbagManager := newMockFeedbagManager(t)
-			feedbagManager.EXPECT().
-				BlockedState(tc.senderScreenName.IdentScreenName(),
-					state.NewIdentScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x14_ICBMClientEvent).ScreenName)).
-				Return(tc.blockedState, nil).
-				Maybe()
-			messageRelayer := newMockMessageRelayer(t)
-			if tc.blockedState == state.BlockedNo {
-				messageRelayer.EXPECT().
-					RelayToScreenName(mock.Anything,
-						state.NewIdentScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x14_ICBMClientEvent).ScreenName),
-						tc.expectSNACToClient)
+			buddyListRetriever := newMockBuddyListRetriever(t)
+			for _, item := range tc.mockParams.buddyListRetrieverParams.relationshipParams {
+				buddyListRetriever.EXPECT().
+					Relationship(item.me, item.them).
+					Return(item.result, item.err)
 			}
-			//
-			// send input SNAC
-			//
+			messageRelayer := newMockMessageRelayer(t)
+			for _, item := range tc.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().
+					RelayToScreenName(mock.Anything, item.screenName, item.message)
+			}
+
 			senderSession := newTestSession(tc.senderScreenName)
-			svc := NewICBMService(messageRelayer, feedbagManager, nil, nil)
+			svc := ICBMService{
+				buddyListRetriever: buddyListRetriever,
+				messageRelayer:     messageRelayer,
+			}
 			assert.NoError(t, svc.ClientEvent(nil, senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x14_ICBMClientEvent)))
 		})
@@ -423,22 +603,10 @@ func TestICBMService_EvilRequest(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
-		// blockedState is the response to the sender/recipient block check
-		blockedState state.BlockedState
-		// recipRetrieveErr is the error returned by the recipient session
-		// lookup
-		recipRetrieveErr error
 		// senderScreenName is the session of the user sending the EvilRequest
 		senderSession *state.Session
-		// recipientSession is the session of the user receiving the EvilNotification
-		recipientSession *state.Session
-		// recipientScreenName is the screen name of the user receiving the EvilNotification
-		recipientScreenName state.IdentScreenName
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC wire.SNACMessage
-		// expectSNACToClient is the SNAC sent from the server to the
-		// recipient client
-		expectSNACToClient wire.SNACMessage
 		// expectOutput is the SNAC sent from the server to client
 		expectOutput wire.SNACMessage
 		// mockParams is the list of params sent to mocks that satisfy this
@@ -446,11 +614,8 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		mockParams mockParams
 	}{
 		{
-			name:                "transmit anonymous warning from sender to recipient",
-			blockedState:        state.BlockedNo,
-			senderSession:       newTestSession("sender-screen-name"),
-			recipientSession:    newTestSession("recipient-screen-name", sessOptCannedSignonTime),
-			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
+			name:          "transmit anonymous warning from sender to recipient",
+			senderSession: newTestSession("sender-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -458,15 +623,6 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
 					SendAs:     1, // make it anonymous
 					ScreenName: "recipient-screen-name",
-				},
-			},
-			expectSNACToClient: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.OService,
-					SubGroup:  wire.OServiceEvilNotification,
-				},
-				Body: wire.SNAC_0x01_0x10_OServiceEvilNotification{
-					NewEvil: evilDeltaAnon,
 				},
 			},
 			expectOutput: wire.SNACMessage{
@@ -488,14 +644,50 @@ func TestICBMService_EvilRequest(t *testing.T) {
 						},
 					},
 				},
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     newTestSession("recipient-screen-name", sessOptCannedSignonTime),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.OService,
+									SubGroup:  wire.OServiceEvilNotification,
+								},
+								Body: wire.SNAC_0x01_0x10_OServiceEvilNotification{
+									NewEvil: evilDeltaAnon,
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 		{
-			name:                "transmit non-anonymous warning from sender to recipient",
-			blockedState:        state.BlockedNo,
-			senderSession:       newTestSession("sender-screen-name", sessOptWarning(110)),
-			recipientSession:    newTestSession("recipient-screen-name", sessOptCannedSignonTime),
-			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
+			name:          "transmit non-anonymous warning from sender to recipient",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(110)),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -503,23 +695,6 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
 					SendAs:     0, // make it identified
 					ScreenName: "recipient-screen-name",
-				},
-			},
-			expectSNACToClient: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.OService,
-					SubGroup:  wire.OServiceEvilNotification,
-				},
-				Body: wire.SNAC_0x01_0x10_OServiceEvilNotification{
-					NewEvil: evilDelta,
-					Snitcher: &struct {
-						wire.TLVUserInfo
-					}{
-						wire.TLVUserInfo{
-							ScreenName:   "sender-screen-name",
-							WarningLevel: 110,
-						},
-					},
 				},
 			},
 			expectOutput: wire.SNACMessage{
@@ -541,14 +716,58 @@ func TestICBMService_EvilRequest(t *testing.T) {
 						},
 					},
 				},
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     newTestSession("recipient-screen-name", sessOptCannedSignonTime),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.OService,
+									SubGroup:  wire.OServiceEvilNotification,
+								},
+								Body: wire.SNAC_0x01_0x10_OServiceEvilNotification{
+									NewEvil: evilDelta,
+									Snitcher: &struct {
+										wire.TLVUserInfo
+									}{
+										wire.TLVUserInfo{
+											ScreenName:   "sender-screen-name",
+											WarningLevel: 110,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 		{
-			name:                "don't transmit non-anonymous warning from sender to recipient because sender has blocked recipient",
-			blockedState:        state.BlockedA,
-			senderSession:       newTestSession("sender-screen-name"),
-			recipientSession:    nil,
-			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
+			name:          "don't transmit non-anonymous warning from sender to recipient because sender has blocked recipient",
+			senderSession: newTestSession("sender-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -568,13 +787,27 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					Code: wire.ErrorCodeNotLoggedOn,
 				},
 			},
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      true,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+			},
 		},
 		{
-			name:                "don't transmit non-anonymous warning from sender to recipient because recipient has blocked sender",
-			blockedState:        state.BlockedB,
-			senderSession:       newTestSession("sender-screen-name"),
-			recipientSession:    nil,
-			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
+			name:          "don't transmit non-anonymous warning from sender to recipient because recipient has blocked sender",
+			senderSession: newTestSession("sender-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -594,12 +827,27 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					Code: wire.ErrorCodeNotLoggedOn,
 				},
 			},
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     true,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+			},
 		},
 		{
-			name:                "don't let users warn themselves",
-			senderSession:       newTestSession("sender-screen-name"),
-			recipientSession:    nil,
-			recipientScreenName: state.NewIdentScreenName("sender-screen-name"),
+			name:          "don't let users warn themselves",
+			senderSession: newTestSession("sender-screen-name"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -621,11 +869,33 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			},
 		},
 		{
-			name:                "don't transmit non-anonymous warning from sender to recipient because recipient is offline",
-			blockedState:        state.BlockedNo,
-			senderSession:       newTestSession("sender-screen-name"),
-			recipientSession:    nil,
-			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
+			name:          "don't transmit non-anonymous warning from sender to recipient because recipient is offline",
+			senderSession: newTestSession("sender-screen-name"),
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     nil,
+						},
+					},
+				},
+			},
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -647,11 +917,33 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			},
 		},
 		{
-			name:                "don't transmit anonymous warning from sender to recipient because recipient is offline",
-			blockedState:        state.BlockedNo,
-			senderSession:       newTestSession("sender-screen-name"),
-			recipientSession:    nil,
-			recipientScreenName: state.NewIdentScreenName("recipient-screen-name"),
+			name:          "don't transmit anonymous warning from sender to recipient because recipient is offline",
+			senderSession: newTestSession("sender-screen-name"),
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     nil,
+						},
+					},
+				},
+			},
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -676,36 +968,44 @@ func TestICBMService_EvilRequest(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			//
-			// initialize dependencies
-			//
-			feedbagManager := newMockFeedbagManager(t)
-			feedbagManager.EXPECT().
-				BlockedState(tc.senderSession.IdentScreenName(), tc.recipientScreenName).
-				Return(tc.blockedState, nil).
-				Maybe()
-			messageRelayer := newMockMessageRelayer(t)
-			messageRelayer.EXPECT().
-				RetrieveByScreenName(tc.recipientScreenName).
-				Return(tc.recipientSession).
-				Maybe()
-			messageRelayer.EXPECT().
-				RelayToScreenName(mock.Anything, tc.recipientScreenName, tc.expectSNACToClient).
-				Maybe()
-			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
-			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
-				p := params
-				buddyUpdateBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.IdentScreenName() == p.screenName
-					})).
-					Return(nil)
+			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
+			for _, item := range tc.mockParams.broadcastBuddyArrivedParams {
+				mockBuddyBroadcaster.EXPECT().
+					BroadcastBuddyArrived(mock.Anything, matchSession(item.screenName)).
+					Return(item.err)
 			}
-			//
-			// send input SNAC
-			//
-			svc := NewICBMService(messageRelayer, feedbagManager, nil, nil)
-			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
+			buddyListRetriever := newMockBuddyListRetriever(t)
+			for _, item := range tc.mockParams.buddyListRetrieverParams.relationshipParams {
+				buddyListRetriever.EXPECT().
+					Relationship(item.me, item.them).
+					Return(item.result, item.err)
+			}
+			sessionRetriever := newMockSessionRetriever(t)
+			for _, item := range tc.mockParams.sessionRetrieverParams.retrieveSessionParams {
+				sessionRetriever.EXPECT().
+					RetrieveSession(item.screenName).
+					Return(item.result)
+			}
+			messageRelayer := newMockMessageRelayer(t)
+			for _, item := range tc.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().
+					RelayToScreenName(mock.Anything, item.screenName, item.message)
+			}
+			offlineMessageManager := newMockOfflineMessageManager(t)
+			for _, params := range tc.mockParams.saveMessageParams {
+				offlineMessageManager.EXPECT().
+					SaveMessage(params.offlineMessageIn).
+					Return(params.err)
+			}
+
+			svc := ICBMService{
+				buddyBroadcaster:    mockBuddyBroadcaster,
+				buddyListRetriever:  buddyListRetriever,
+				messageRelayer:      messageRelayer,
+				offlineMessageSaver: offlineMessageManager,
+				sessionRetriever:    sessionRetriever,
+			}
+
 			outputSNAC, err := svc.EvilRequest(nil, tc.senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest))
 			assert.NoError(t, err)

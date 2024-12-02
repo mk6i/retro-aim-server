@@ -23,7 +23,7 @@ type ChatSessionRetriever interface {
 
 type SessionRetriever interface {
 	AllSessions() []*state.Session
-	RetrieveByScreenName(screenName state.IdentScreenName) *state.Session
+	RetrieveSession(screenName state.IdentScreenName) *state.Session
 }
 
 type UserManager interface {

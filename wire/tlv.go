@@ -162,6 +162,23 @@ func (s *TLVList) Bytes(tag uint16) ([]byte, bool) {
 	return nil, false
 }
 
+// Uint8 retrieves a byte value from the TLVList associated with the specified
+// tag.
+//
+// If the specified tag is found, the function returns the associated value
+// as a uint8 and true. If the tag is not found, the function returns 0 and
+// false.
+func (s *TLVList) Uint8(tag uint16) (uint8, bool) {
+	for _, tlv := range *s {
+		if tag == tlv.Tag {
+			if len(tlv.Value) > 0 {
+				return tlv.Value[0], true
+			}
+		}
+	}
+	return 0, false
+}
+
 // Uint16BE retrieves a 16-bit unsigned integer value from the TLVList
 // associated with the specified tag, interpreting the bytes in big-endian
 // format.

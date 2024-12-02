@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mk6i/retro-aim-server/config"
+	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
@@ -21,10 +22,20 @@ type OnlineNotifier interface {
 	HostOnline() wire.SNACMessage
 }
 
+// BuddyListRegistry is the interface for keeping track of users with active
+// buddy lists. Once registered, a user becomes visible to other users' buddy
+// lists and vice versa.
+type BuddyListRegistry interface {
+	ClearBuddyListRegistry() error
+	RegisterBuddyList(user state.IdentScreenName) error
+	UnregisterBuddyList(user state.IdentScreenName) error
+}
+
 // BOSServer provides client connection lifecycle management for the BOS
 // service.
 type BOSServer struct {
 	AuthService
+	BuddyListRegistry
 	Handler
 	ListenAddr string
 	Logger     *slog.Logger
@@ -47,6 +58,12 @@ func (rt BOSServer) Start(ctx context.Context) error {
 	}()
 
 	rt.Logger.Info("starting server", "listen_host", rt.ListenAddr, "oscar_host", rt.Config.OSCARHost)
+
+	if rt.BuddyListRegistry != nil { // nil check is a hack until server refactor
+		if err = rt.BuddyListRegistry.ClearBuddyListRegistry(); err != nil {
+			return fmt.Errorf("unable to clear client-side buddy list: %s", err.Error())
+		}
+	}
 
 	wg := sync.WaitGroup{}
 	for {
@@ -123,11 +140,22 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 		return errors.New("session not found")
 	}
 
+	if rt.BuddyListRegistry != nil { // nil check is a hack until server refactor
+		if err := rt.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
+			return fmt.Errorf("unable to init buddy list: %w", err)
+		}
+	}
+
 	defer func() {
 		sess.Close()
 		rwc.Close()
 		if err := rt.Signout(ctx, sess); err != nil {
 			rt.Logger.ErrorContext(ctx, "error notifying departure", "err", err.Error())
+		}
+		if rt.BuddyListRegistry != nil { // nil check is a hack until server refactor
+			if err := rt.BuddyListRegistry.UnregisterBuddyList(sess.IdentScreenName()); err != nil {
+				rt.Logger.ErrorContext(ctx, "error removing buddy list entry", "err", err.Error())
+			}
 		}
 	}()
 

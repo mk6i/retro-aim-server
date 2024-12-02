@@ -850,6 +850,38 @@ type SNAC_0x09_0x03_PermitDenyRightsReply struct {
 	TLVRestBlock
 }
 
+type SNAC_0x09_0x05_PermitDenyAddPermListEntries struct {
+	Users []struct {
+		ScreenName string `oscar:"len_prefix=uint8"`
+	}
+}
+
+type SNAC_0x09_0x06_PermitDenyDelPermListEntries struct {
+	Users []struct {
+		ScreenName string `oscar:"len_prefix=uint8"`
+	}
+}
+
+type SNAC_0x09_0x07_PermitDenyAddDenyListEntries struct {
+	Users []struct {
+		ScreenName string `oscar:"len_prefix=uint8"`
+	}
+}
+
+type SNAC_0x09_0x08_PermitDenyDelDenyListEntries struct {
+	Users []struct {
+		ScreenName string `oscar:"len_prefix=uint8"`
+	}
+}
+
+type SNAC_0x09_0x04_PermitDenySetGroupPermitMask struct {
+	PermMask uint32
+}
+
+func (s SNAC_0x09_0x04_PermitDenySetGroupPermitMask) IsFlagSet(flag uint16) bool {
+	return flag&uint16(s.PermMask) == flag
+}
+
 //
 // 0x0A: UserLookup
 //
@@ -1350,6 +1382,27 @@ const (
 	FeedbagIsAuthRequiredQuery      uint16 = 0x0023
 	FeedbagIsAuthRequiredReply      uint16 = 0x0024
 	FeedbagRecentBuddyUpdate        uint16 = 0x0025
+)
+
+// FeedbagPDMode represents a buddy list permit/deny mode setting that
+// determines who can interact with a user.
+type FeedbagPDMode uint8
+
+const (
+	// FeedbagPDModePermitAll allows all users to see and talk to user. This is
+	// the session default.
+	FeedbagPDModePermitAll FeedbagPDMode = 0x01
+	// FeedbagPDModeDenyAll blocks all users from communicating with user.
+	FeedbagPDModeDenyAll FeedbagPDMode = 0x02
+	// FeedbagPDModePermitSome only allows a specified list of users to see and
+	// talk to user and blocks all others from communicating.
+	FeedbagPDModePermitSome FeedbagPDMode = 0x03
+	// FeedbagPDModeDenySome blocks a list of users from seeing and talking to
+	// user and allows all others to communicate.
+	FeedbagPDModeDenySome FeedbagPDMode = 0x04
+	// FeedbagPDModePermitOnList only allows communication with users on buddy
+	// list and blocks all others from communicating.
+	FeedbagPDModePermitOnList FeedbagPDMode = 0x05
 )
 
 type SNAC_0x13_0x02_FeedbagRightsQuery struct {

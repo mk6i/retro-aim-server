@@ -24,237 +24,6 @@ func (_m *mockFeedbagManager) EXPECT() *mockFeedbagManager_Expecter {
 	return &mockFeedbagManager_Expecter{mock: &_m.Mock}
 }
 
-// AdjacentUsers provides a mock function with given fields: screenName
-func (_m *mockFeedbagManager) AdjacentUsers(screenName state.IdentScreenName) ([]state.IdentScreenName, error) {
-	ret := _m.Called(screenName)
-
-	if len(ret) == 0 {
-		panic("no return value specified for AdjacentUsers")
-	}
-
-	var r0 []state.IdentScreenName
-	var r1 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) ([]state.IdentScreenName, error)); ok {
-		return rf(screenName)
-	}
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) []state.IdentScreenName); ok {
-		r0 = rf(screenName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]state.IdentScreenName)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
-		r1 = rf(screenName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// mockFeedbagManager_AdjacentUsers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AdjacentUsers'
-type mockFeedbagManager_AdjacentUsers_Call struct {
-	*mock.Call
-}
-
-// AdjacentUsers is a helper method to define mock.On call
-//   - screenName state.IdentScreenName
-func (_e *mockFeedbagManager_Expecter) AdjacentUsers(screenName interface{}) *mockFeedbagManager_AdjacentUsers_Call {
-	return &mockFeedbagManager_AdjacentUsers_Call{Call: _e.mock.On("AdjacentUsers", screenName)}
-}
-
-func (_c *mockFeedbagManager_AdjacentUsers_Call) Run(run func(screenName state.IdentScreenName)) *mockFeedbagManager_AdjacentUsers_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
-	})
-	return _c
-}
-
-func (_c *mockFeedbagManager_AdjacentUsers_Call) Return(_a0 []state.IdentScreenName, _a1 error) *mockFeedbagManager_AdjacentUsers_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *mockFeedbagManager_AdjacentUsers_Call) RunAndReturn(run func(state.IdentScreenName) ([]state.IdentScreenName, error)) *mockFeedbagManager_AdjacentUsers_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// BlockedState provides a mock function with given fields: screenName1, screenName2
-func (_m *mockFeedbagManager) BlockedState(screenName1 state.IdentScreenName, screenName2 state.IdentScreenName) (state.BlockedState, error) {
-	ret := _m.Called(screenName1, screenName2)
-
-	if len(ret) == 0 {
-		panic("no return value specified for BlockedState")
-	}
-
-	var r0 state.BlockedState
-	var r1 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName, state.IdentScreenName) (state.BlockedState, error)); ok {
-		return rf(screenName1, screenName2)
-	}
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName, state.IdentScreenName) state.BlockedState); ok {
-		r0 = rf(screenName1, screenName2)
-	} else {
-		r0 = ret.Get(0).(state.BlockedState)
-	}
-
-	if rf, ok := ret.Get(1).(func(state.IdentScreenName, state.IdentScreenName) error); ok {
-		r1 = rf(screenName1, screenName2)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// mockFeedbagManager_BlockedState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BlockedState'
-type mockFeedbagManager_BlockedState_Call struct {
-	*mock.Call
-}
-
-// BlockedState is a helper method to define mock.On call
-//   - screenName1 state.IdentScreenName
-//   - screenName2 state.IdentScreenName
-func (_e *mockFeedbagManager_Expecter) BlockedState(screenName1 interface{}, screenName2 interface{}) *mockFeedbagManager_BlockedState_Call {
-	return &mockFeedbagManager_BlockedState_Call{Call: _e.mock.On("BlockedState", screenName1, screenName2)}
-}
-
-func (_c *mockFeedbagManager_BlockedState_Call) Run(run func(screenName1 state.IdentScreenName, screenName2 state.IdentScreenName)) *mockFeedbagManager_BlockedState_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName), args[1].(state.IdentScreenName))
-	})
-	return _c
-}
-
-func (_c *mockFeedbagManager_BlockedState_Call) Return(_a0 state.BlockedState, _a1 error) *mockFeedbagManager_BlockedState_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *mockFeedbagManager_BlockedState_Call) RunAndReturn(run func(state.IdentScreenName, state.IdentScreenName) (state.BlockedState, error)) *mockFeedbagManager_BlockedState_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Buddies provides a mock function with given fields: screenName
-func (_m *mockFeedbagManager) Buddies(screenName state.IdentScreenName) ([]state.IdentScreenName, error) {
-	ret := _m.Called(screenName)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Buddies")
-	}
-
-	var r0 []state.IdentScreenName
-	var r1 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) ([]state.IdentScreenName, error)); ok {
-		return rf(screenName)
-	}
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) []state.IdentScreenName); ok {
-		r0 = rf(screenName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]state.IdentScreenName)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
-		r1 = rf(screenName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// mockFeedbagManager_Buddies_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Buddies'
-type mockFeedbagManager_Buddies_Call struct {
-	*mock.Call
-}
-
-// Buddies is a helper method to define mock.On call
-//   - screenName state.IdentScreenName
-func (_e *mockFeedbagManager_Expecter) Buddies(screenName interface{}) *mockFeedbagManager_Buddies_Call {
-	return &mockFeedbagManager_Buddies_Call{Call: _e.mock.On("Buddies", screenName)}
-}
-
-func (_c *mockFeedbagManager_Buddies_Call) Run(run func(screenName state.IdentScreenName)) *mockFeedbagManager_Buddies_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
-	})
-	return _c
-}
-
-func (_c *mockFeedbagManager_Buddies_Call) Return(_a0 []state.IdentScreenName, _a1 error) *mockFeedbagManager_Buddies_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *mockFeedbagManager_Buddies_Call) RunAndReturn(run func(state.IdentScreenName) ([]state.IdentScreenName, error)) *mockFeedbagManager_Buddies_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// BuddyIconRefByName provides a mock function with given fields: screenName
-func (_m *mockFeedbagManager) BuddyIconRefByName(screenName state.IdentScreenName) (*wire.BARTID, error) {
-	ret := _m.Called(screenName)
-
-	if len(ret) == 0 {
-		panic("no return value specified for BuddyIconRefByName")
-	}
-
-	var r0 *wire.BARTID
-	var r1 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) (*wire.BARTID, error)); ok {
-		return rf(screenName)
-	}
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *wire.BARTID); ok {
-		r0 = rf(screenName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*wire.BARTID)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
-		r1 = rf(screenName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// mockFeedbagManager_BuddyIconRefByName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BuddyIconRefByName'
-type mockFeedbagManager_BuddyIconRefByName_Call struct {
-	*mock.Call
-}
-
-// BuddyIconRefByName is a helper method to define mock.On call
-//   - screenName state.IdentScreenName
-func (_e *mockFeedbagManager_Expecter) BuddyIconRefByName(screenName interface{}) *mockFeedbagManager_BuddyIconRefByName_Call {
-	return &mockFeedbagManager_BuddyIconRefByName_Call{Call: _e.mock.On("BuddyIconRefByName", screenName)}
-}
-
-func (_c *mockFeedbagManager_BuddyIconRefByName_Call) Run(run func(screenName state.IdentScreenName)) *mockFeedbagManager_BuddyIconRefByName_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
-	})
-	return _c
-}
-
-func (_c *mockFeedbagManager_BuddyIconRefByName_Call) Return(_a0 *wire.BARTID, _a1 error) *mockFeedbagManager_BuddyIconRefByName_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *mockFeedbagManager_BuddyIconRefByName_Call) RunAndReturn(run func(state.IdentScreenName) (*wire.BARTID, error)) *mockFeedbagManager_BuddyIconRefByName_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Feedbag provides a mock function with given fields: screenName
 func (_m *mockFeedbagManager) Feedbag(screenName state.IdentScreenName) ([]wire.FeedbagItem, error) {
 	ret := _m.Called(screenName)
@@ -459,6 +228,52 @@ func (_c *mockFeedbagManager_FeedbagUpsert_Call) Return(_a0 error) *mockFeedbagM
 }
 
 func (_c *mockFeedbagManager_FeedbagUpsert_Call) RunAndReturn(run func(state.IdentScreenName, []wire.FeedbagItem) error) *mockFeedbagManager_FeedbagUpsert_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UseFeedbag provides a mock function with given fields: user
+func (_m *mockFeedbagManager) UseFeedbag(user state.IdentScreenName) error {
+	ret := _m.Called(user)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UseFeedbag")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) error); ok {
+		r0 = rf(user)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockFeedbagManager_UseFeedbag_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UseFeedbag'
+type mockFeedbagManager_UseFeedbag_Call struct {
+	*mock.Call
+}
+
+// UseFeedbag is a helper method to define mock.On call
+//   - user state.IdentScreenName
+func (_e *mockFeedbagManager_Expecter) UseFeedbag(user interface{}) *mockFeedbagManager_UseFeedbag_Call {
+	return &mockFeedbagManager_UseFeedbag_Call{Call: _e.mock.On("UseFeedbag", user)}
+}
+
+func (_c *mockFeedbagManager_UseFeedbag_Call) Run(run func(user state.IdentScreenName)) *mockFeedbagManager_UseFeedbag_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(state.IdentScreenName))
+	})
+	return _c
+}
+
+func (_c *mockFeedbagManager_UseFeedbag_Call) Return(_a0 error) *mockFeedbagManager_UseFeedbag_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockFeedbagManager_UseFeedbag_Call) RunAndReturn(run func(state.IdentScreenName) error) *mockFeedbagManager_UseFeedbag_Call {
 	_c.Call.Return(run)
 	return _c
 }

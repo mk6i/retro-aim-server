@@ -31,7 +31,6 @@ type Session struct {
 	identScreenName   IdentScreenName
 	idle              bool
 	idleTime          time.Time
-	invisible         bool
 	msgCh             chan wire.SNACMessage
 	mutex             sync.RWMutex
 	nowFn             func() time.Time

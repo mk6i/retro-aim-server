@@ -18,26 +18,27 @@ import (
 // NewAuthService creates a new instance of AuthService.
 func NewAuthService(
 	cfg config.Config,
-	sessionManager SessionManager,
+	sessionManager SessionRegistry,
 	chatSessionRegistry ChatSessionRegistry,
 	userManager UserManager,
-	legacyBuddyListManager LegacyBuddyListManager,
 	cookieBaker CookieBaker,
 	messageRelayer MessageRelayer,
-	feedbagManager FeedbagManager,
 	chatMessageRelayer ChatMessageRelayer,
 	accountManager AccountManager,
+	buddyListRetriever BuddyListRetriever,
+	adminServerSessionRetriever SessionRetriever,
 ) *AuthService {
 	return &AuthService{
-		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
-		chatSessionRegistry:    chatSessionRegistry,
-		config:                 cfg,
-		cookieBaker:            cookieBaker,
-		legacyBuddyListManager: legacyBuddyListManager,
-		sessionManager:         sessionManager,
-		userManager:            userManager,
-		chatMessageRelayer:     chatMessageRelayer,
-		accountManager:         accountManager,
+		buddyBroadcaster:    newBuddyNotifier(buddyListRetriever, messageRelayer, adminServerSessionRetriever),
+		chatSessionRegistry: chatSessionRegistry,
+		config:              cfg,
+		cookieBaker:         cookieBaker,
+		sessionManager:      sessionManager,
+		userManager:         userManager,
+		chatMessageRelayer:  chatMessageRelayer,
+		accountManager:      accountManager,
+		// hack - adminServerSessionRetriever is just used for admin server
+		adminServerSessionRetriever: adminServerSessionRetriever,
 	}
 }
 
@@ -45,16 +46,15 @@ func NewAuthService(
 // supports both FLAP (AIM v1.0-v3.0) and BUCP (AIM v3.5-v5.9) authentication
 // modes.
 type AuthService struct {
-	buddyUpdateBroadcaster buddyBroadcaster
-	chatMessageRelayer     ChatMessageRelayer
-	chatSessionRegistry    ChatSessionRegistry
-	config                 config.Config
-	cookieBaker            CookieBaker
-	legacyBuddyListManager LegacyBuddyListManager
-	sessionManager         SessionManager
-	userManager            UserManager
-	chatRoomManager        ChatRoomRegistry
-	accountManager         AccountManager
+	buddyBroadcaster            buddyBroadcaster
+	chatMessageRelayer          ChatMessageRelayer
+	chatSessionRegistry         ChatSessionRegistry
+	config                      config.Config
+	cookieBaker                 CookieBaker
+	sessionManager              SessionRegistry
+	userManager                 UserManager
+	accountManager              AccountManager
+	adminServerSessionRetriever SessionRetriever
 }
 
 // RegisterChatSession adds a user to a chat room. The authCookie param is an
@@ -147,17 +147,16 @@ func (s AuthService) RetrieveBOSSession(authCookie []byte) (*state.Session, erro
 		return nil, fmt.Errorf("user not found")
 	}
 
-	return s.sessionManager.RetrieveSession(u.IdentScreenName), nil
+	return s.adminServerSessionRetriever.RetrieveSession(u.IdentScreenName), nil
 }
 
 // Signout removes this user's session and notifies users who have this user on
 // their buddy list about this user's departure.
 func (s AuthService) Signout(ctx context.Context, sess *state.Session) error {
-	if err := s.buddyUpdateBroadcaster.BroadcastBuddyDeparted(ctx, sess); err != nil {
+	if err := s.buddyBroadcaster.BroadcastBuddyDeparted(ctx, sess); err != nil {
 		return err
 	}
 	s.sessionManager.RemoveSession(sess)
-	s.legacyBuddyListManager.DeleteUser(sess.IdentScreenName())
 	return nil
 }
 

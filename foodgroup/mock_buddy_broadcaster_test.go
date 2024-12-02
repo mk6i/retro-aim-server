@@ -116,17 +116,17 @@ func (_c *mockbuddyBroadcaster_BroadcastBuddyDeparted_Call) RunAndReturn(run fun
 	return _c
 }
 
-// UnicastBuddyArrived provides a mock function with given fields: ctx, from, to
-func (_m *mockbuddyBroadcaster) UnicastBuddyArrived(ctx context.Context, from *state.Session, to *state.Session) error {
-	ret := _m.Called(ctx, from, to)
+// BroadcastVisibility provides a mock function with given fields: ctx, from, filter
+func (_m *mockbuddyBroadcaster) BroadcastVisibility(ctx context.Context, from *state.Session, filter []state.IdentScreenName) error {
+	ret := _m.Called(ctx, from, filter)
 
 	if len(ret) == 0 {
-		panic("no return value specified for UnicastBuddyArrived")
+		panic("no return value specified for BroadcastVisibility")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, *state.Session) error); ok {
-		r0 = rf(ctx, from, to)
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, []state.IdentScreenName) error); ok {
+		r0 = rf(ctx, from, filter)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -134,67 +134,32 @@ func (_m *mockbuddyBroadcaster) UnicastBuddyArrived(ctx context.Context, from *s
 	return r0
 }
 
-// mockbuddyBroadcaster_UnicastBuddyArrived_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnicastBuddyArrived'
-type mockbuddyBroadcaster_UnicastBuddyArrived_Call struct {
+// mockbuddyBroadcaster_BroadcastVisibility_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BroadcastVisibility'
+type mockbuddyBroadcaster_BroadcastVisibility_Call struct {
 	*mock.Call
 }
 
-// UnicastBuddyArrived is a helper method to define mock.On call
+// BroadcastVisibility is a helper method to define mock.On call
 //   - ctx context.Context
 //   - from *state.Session
-//   - to *state.Session
-func (_e *mockbuddyBroadcaster_Expecter) UnicastBuddyArrived(ctx interface{}, from interface{}, to interface{}) *mockbuddyBroadcaster_UnicastBuddyArrived_Call {
-	return &mockbuddyBroadcaster_UnicastBuddyArrived_Call{Call: _e.mock.On("UnicastBuddyArrived", ctx, from, to)}
+//   - filter []state.IdentScreenName
+func (_e *mockbuddyBroadcaster_Expecter) BroadcastVisibility(ctx interface{}, from interface{}, filter interface{}) *mockbuddyBroadcaster_BroadcastVisibility_Call {
+	return &mockbuddyBroadcaster_BroadcastVisibility_Call{Call: _e.mock.On("BroadcastVisibility", ctx, from, filter)}
 }
 
-func (_c *mockbuddyBroadcaster_UnicastBuddyArrived_Call) Run(run func(ctx context.Context, from *state.Session, to *state.Session)) *mockbuddyBroadcaster_UnicastBuddyArrived_Call {
+func (_c *mockbuddyBroadcaster_BroadcastVisibility_Call) Run(run func(ctx context.Context, from *state.Session, filter []state.IdentScreenName)) *mockbuddyBroadcaster_BroadcastVisibility_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session), args[2].(*state.Session))
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].([]state.IdentScreenName))
 	})
 	return _c
 }
 
-func (_c *mockbuddyBroadcaster_UnicastBuddyArrived_Call) Return(_a0 error) *mockbuddyBroadcaster_UnicastBuddyArrived_Call {
+func (_c *mockbuddyBroadcaster_BroadcastVisibility_Call) Return(_a0 error) *mockbuddyBroadcaster_BroadcastVisibility_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockbuddyBroadcaster_UnicastBuddyArrived_Call) RunAndReturn(run func(context.Context, *state.Session, *state.Session) error) *mockbuddyBroadcaster_UnicastBuddyArrived_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UnicastBuddyDeparted provides a mock function with given fields: ctx, from, to
-func (_m *mockbuddyBroadcaster) UnicastBuddyDeparted(ctx context.Context, from *state.Session, to *state.Session) {
-	_m.Called(ctx, from, to)
-}
-
-// mockbuddyBroadcaster_UnicastBuddyDeparted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnicastBuddyDeparted'
-type mockbuddyBroadcaster_UnicastBuddyDeparted_Call struct {
-	*mock.Call
-}
-
-// UnicastBuddyDeparted is a helper method to define mock.On call
-//   - ctx context.Context
-//   - from *state.Session
-//   - to *state.Session
-func (_e *mockbuddyBroadcaster_Expecter) UnicastBuddyDeparted(ctx interface{}, from interface{}, to interface{}) *mockbuddyBroadcaster_UnicastBuddyDeparted_Call {
-	return &mockbuddyBroadcaster_UnicastBuddyDeparted_Call{Call: _e.mock.On("UnicastBuddyDeparted", ctx, from, to)}
-}
-
-func (_c *mockbuddyBroadcaster_UnicastBuddyDeparted_Call) Run(run func(ctx context.Context, from *state.Session, to *state.Session)) *mockbuddyBroadcaster_UnicastBuddyDeparted_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session), args[2].(*state.Session))
-	})
-	return _c
-}
-
-func (_c *mockbuddyBroadcaster_UnicastBuddyDeparted_Call) Return() *mockbuddyBroadcaster_UnicastBuddyDeparted_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *mockbuddyBroadcaster_UnicastBuddyDeparted_Call) RunAndReturn(run func(context.Context, *state.Session, *state.Session)) *mockbuddyBroadcaster_UnicastBuddyDeparted_Call {
+func (_c *mockbuddyBroadcaster_BroadcastVisibility_Call) RunAndReturn(run func(context.Context, *state.Session, []state.IdentScreenName) error) *mockbuddyBroadcaster_BroadcastVisibility_Call {
 	_c.Call.Return(run)
 	return _c
 }

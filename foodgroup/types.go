@@ -42,80 +42,31 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-type FeedbagManager interface {
-	BlockedState(screenName1, screenName2 state.IdentScreenName) (state.BlockedState, error)
-	Buddies(screenName state.IdentScreenName) ([]state.IdentScreenName, error)
-	FeedbagDelete(screenName state.IdentScreenName, items []wire.FeedbagItem) error
-	AdjacentUsers(screenName state.IdentScreenName) ([]state.IdentScreenName, error)
-	FeedbagLastModified(screenName state.IdentScreenName) (time.Time, error)
-	Feedbag(screenName state.IdentScreenName) ([]wire.FeedbagItem, error)
-	FeedbagUpsert(screenName state.IdentScreenName, items []wire.FeedbagItem) error
+type AccountManager interface {
+	UpdateDisplayScreenName(displayScreenName state.DisplayScreenName) error
+	UpdateEmailAddress(emailAddress *mail.Address, screenName state.IdentScreenName) error
+	EmailAddressByName(screenName state.IdentScreenName) (*mail.Address, error)
+	UpdateRegStatus(regStatus uint16, screenName state.IdentScreenName) error
+	RegStatusByName(screenName state.IdentScreenName) (uint16, error)
+	UpdateConfirmStatus(confirmStatus bool, screenName state.IdentScreenName) error
+	ConfirmStatusByName(screnName state.IdentScreenName) (bool, error)
+}
+
+type BARTManager interface {
+	BARTUpsert(itemHash []byte, payload []byte) error
+	BARTRetrieve(itemHash []byte) ([]byte, error)
+}
+
+type buddyBroadcaster interface {
+	BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error
+	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
+	BroadcastVisibility(ctx context.Context, from *state.Session, filter []state.IdentScreenName) error
+}
+
+type BuddyListRetriever interface {
+	AllRelationships(screenName state.IdentScreenName, filter []state.IdentScreenName) ([]state.Relationship, error)
 	BuddyIconRefByName(screenName state.IdentScreenName) (*wire.BARTID, error)
-}
-
-// LegacyBuddyListManager defines operations for tracking user relationships
-// for the client-side buddy list system used by clients prior to AIM version
-// 4.3.
-type LegacyBuddyListManager interface {
-	// AddBuddy adds buddyScreenName to userScreenName's buddy list.
-	AddBuddy(userScreenName, buddyScreenName state.IdentScreenName)
-
-	// Buddies returns a list of all buddies associated with the specified
-	// userScreenName.
-	Buddies(userScreenName state.IdentScreenName) []state.IdentScreenName
-
-	// DeleteBuddy removes buddyScreenName from userScreenName's buddy list.
-	DeleteBuddy(userScreenName, buddyScreenName state.IdentScreenName)
-
-	// DeleteUser removes userScreenName's buddy list.
-	DeleteUser(userScreenName state.IdentScreenName)
-
-	// WhoAddedUser returns a list of screen names who have userScreenName in
-	// their buddy lists.
-	WhoAddedUser(userScreenName state.IdentScreenName) []state.IdentScreenName
-}
-
-type UserManager interface {
-	User(screenName state.IdentScreenName) (*state.User, error)
-	InsertUser(u state.User) error
-}
-
-type SessionManager interface {
-	Empty() bool
-	AddSession(screenName state.DisplayScreenName) *state.Session
-	RemoveSession(sess *state.Session)
-	RetrieveSession(screenName state.IdentScreenName) *state.Session
-}
-
-type ProfileManager interface {
-	FindByAIMEmail(email string) (state.User, error)
-	FindByAIMKeyword(keyword string) ([]state.User, error)
-	FindByAIMNameAndAddr(info state.AIMNameAndAddr) ([]state.User, error)
-	InterestList() ([]wire.ODirKeywordListItem, error)
-	Profile(screenName state.IdentScreenName) (string, error)
-	SetDirectoryInfo(name state.IdentScreenName, info state.AIMNameAndAddr) error
-	SetKeywords(name state.IdentScreenName, keywords [5]string) error
-	SetProfile(screenName state.IdentScreenName, body string) error
-	User(screenName state.IdentScreenName) (*state.User, error)
-}
-
-type MessageRelayer interface {
-	RelayToScreenNames(ctx context.Context, screenNames []state.IdentScreenName, msg wire.SNACMessage)
-	RetrieveByScreenName(screenName state.IdentScreenName) *state.Session
-	RelayToScreenName(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage)
-}
-
-// ChatSessionRegistry defines the interface for adding and removing chat
-// sessions.
-type ChatSessionRegistry interface {
-	// AddSession adds a session to the chat session manager. The chatCookie
-	// param identifies the chat room to which screenName is added. It returns
-	// the newly created session instance registered in the chat session
-	// manager.
-	AddSession(chatCookie string, screenName state.DisplayScreenName) *state.Session
-
-	// RemoveSession removes a session from the chat session manager.
-	RemoveSession(sess *state.Session)
+	Relationship(me state.IdentScreenName, them state.IdentScreenName) (state.Relationship, error)
 }
 
 // ChatMessageRelayer defines the interface for sending messages to chat room
@@ -154,9 +105,17 @@ type ChatRoomRegistry interface {
 	CreateChatRoom(chatRoom *state.ChatRoom) error
 }
 
-type BARTManager interface {
-	BARTUpsert(itemHash []byte, payload []byte) error
-	BARTRetrieve(itemHash []byte) ([]byte, error)
+// ChatSessionRegistry defines the interface for adding and removing chat
+// sessions.
+type ChatSessionRegistry interface {
+	// AddSession adds a session to the chat session manager. The chatCookie
+	// param identifies the chat room to which screenName is added. It returns
+	// the newly created session instance registered in the chat session
+	// manager.
+	AddSession(chatCookie string, screenName state.DisplayScreenName) *state.Session
+
+	// RemoveSession removes a session from the chat session manager.
+	RemoveSession(sess *state.Session)
 }
 
 type CookieBaker interface {
@@ -164,21 +123,12 @@ type CookieBaker interface {
 	Issue(data []byte) ([]byte, error)
 }
 
-type buddyBroadcaster interface {
-	BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error
-	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
-	UnicastBuddyArrived(ctx context.Context, from *state.Session, to *state.Session) error
-	UnicastBuddyDeparted(ctx context.Context, from *state.Session, to *state.Session)
-}
-
-type AccountManager interface {
-	UpdateDisplayScreenName(displayScreenName state.DisplayScreenName) error
-	UpdateEmailAddress(emailAddress *mail.Address, screenName state.IdentScreenName) error
-	EmailAddressByName(screenName state.IdentScreenName) (*mail.Address, error)
-	UpdateRegStatus(regStatus uint16, screenName state.IdentScreenName) error
-	RegStatusByName(screenName state.IdentScreenName) (uint16, error)
-	UpdateConfirmStatus(confirmStatus bool, screenName state.IdentScreenName) error
-	ConfirmStatusByName(screnName state.IdentScreenName) (bool, error)
+type FeedbagManager interface {
+	Feedbag(screenName state.IdentScreenName) ([]wire.FeedbagItem, error)
+	FeedbagDelete(screenName state.IdentScreenName, items []wire.FeedbagItem) error
+	FeedbagLastModified(screenName state.IdentScreenName) (time.Time, error)
+	FeedbagUpsert(screenName state.IdentScreenName, items []wire.FeedbagItem) error
+	UseFeedbag(user state.IdentScreenName) error
 }
 
 type ICQUserFinder interface {
@@ -206,12 +156,49 @@ type ICQUserUpdater interface {
 	SetWorkInfo(name state.IdentScreenName, data state.ICQWorkInfo) error
 }
 
-type SessionRetriever interface {
-	RetrieveSession(screenName state.IdentScreenName) *state.Session
+type LocalBuddyListManager interface {
+	AddBuddy(me state.IdentScreenName, them state.IdentScreenName) error
+	RemoveBuddy(me state.IdentScreenName, them state.IdentScreenName) error
+	DenyBuddy(me state.IdentScreenName, them state.IdentScreenName) error
+	PermitBuddy(me state.IdentScreenName, them state.IdentScreenName) error
+	RemoveDenyBuddy(me state.IdentScreenName, them state.IdentScreenName) error
+	RemovePermitBuddy(me state.IdentScreenName, them state.IdentScreenName) error
+	SetPDMode(user state.IdentScreenName, pdMode wire.FeedbagPDMode) error
+}
+
+type MessageRelayer interface {
+	RelayToScreenNames(ctx context.Context, screenNames []state.IdentScreenName, msg wire.SNACMessage)
+	RelayToScreenName(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage)
 }
 
 type OfflineMessageManager interface {
 	DeleteMessages(recip state.IdentScreenName) error
 	RetrieveMessages(recip state.IdentScreenName) ([]state.OfflineMessage, error)
 	SaveMessage(offlineMessage state.OfflineMessage) error
+}
+
+type ProfileManager interface {
+	FindByAIMEmail(email string) (state.User, error)
+	FindByAIMKeyword(keyword string) ([]state.User, error)
+	FindByAIMNameAndAddr(info state.AIMNameAndAddr) ([]state.User, error)
+	InterestList() ([]wire.ODirKeywordListItem, error)
+	Profile(screenName state.IdentScreenName) (string, error)
+	SetDirectoryInfo(name state.IdentScreenName, info state.AIMNameAndAddr) error
+	SetKeywords(name state.IdentScreenName, keywords [5]string) error
+	SetProfile(screenName state.IdentScreenName, body string) error
+	User(screenName state.IdentScreenName) (*state.User, error)
+}
+
+type SessionRegistry interface {
+	AddSession(screenName state.DisplayScreenName) *state.Session
+	RemoveSession(sess *state.Session)
+}
+
+type SessionRetriever interface {
+	RetrieveSession(screenName state.IdentScreenName) *state.Session
+}
+
+type UserManager interface {
+	User(screenName state.IdentScreenName) (*state.User, error)
+	InsertUser(u state.User) error
 }

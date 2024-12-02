@@ -16,19 +16,54 @@ type mockParams struct {
 	accountManagerParams
 	bartManagerParams
 	buddyBroadcasterParams
+	buddyListRetrieverParams
 	chatMessageRelayerParams
 	chatRoomRegistryParams
 	cookieBakerParams
 	feedbagManagerParams
 	icqUserFinderParams
 	icqUserUpdaterParams
-	legacyBuddyListManagerParams
+	localBuddyListManagerParams
 	messageRelayerParams
 	offlineMessageManagerParams
 	profileManagerParams
-	sessionManagerParams
+	sessionRegistryParams
 	sessionRetrieverParams
 	userManagerParams
+}
+
+// buddyListRetrieverParams is a helper struct that contains mock parameters
+// for BuddyListRetriever methods
+type buddyListRetrieverParams struct {
+	allRelationshipsParams
+	buddyIconRefByNameParams
+	relationshipParams
+}
+
+// allRelationshipsParams is the list of parameters passed at the mock
+// BuddyListRetriever.AllRelationships call site
+type allRelationshipsParams []struct {
+	screenName state.IdentScreenName
+	filter     []state.IdentScreenName
+	result     []state.Relationship
+	err        error
+}
+
+// buddyIconRefByNameParams is the list of parameters passed at the mock
+// BuddyListRetriever.BuddyIconRefByName call site
+type buddyIconRefByNameParams []struct {
+	screenName state.IdentScreenName
+	result     *wire.BARTID
+	err        error
+}
+
+// relationshipParams is the list of parameters passed at the mock
+// BuddyListRetriever.Relationship call site
+type relationshipParams []struct {
+	me     state.IdentScreenName
+	them   state.IdentScreenName
+	result state.Relationship
+	err    error
 }
 
 // offlineMessageManagerParams is a helper struct that contains mock parameters for
@@ -229,53 +264,35 @@ type insertUserParams []struct {
 	err  error
 }
 
-// sessionManagerParams is a helper struct that contains mock parameters for
-// SessionManager methods
-type sessionManagerParams struct {
-	emptyParams
+// sessionRegistryParams is a helper struct that contains mock parameters for
+// SessionRegistry methods
+type sessionRegistryParams struct {
 	addSessionParams
 	removeSessionParams
 }
 
 // addSessionParams is the list of parameters passed at the mock
-// SessionManager.AddSession call site
+// SessionRegistry.AddSession call site
 type addSessionParams []struct {
 	screenName state.DisplayScreenName
 	result     *state.Session
 }
 
 // removeSessionParams is the list of parameters passed at the mock
-// SessionManager.RemoveSession call site
+// SessionRegistry.RemoveSession call site
 type removeSessionParams []struct {
 	screenName state.IdentScreenName
-}
-
-// emptyParams is the list of parameters passed at the mock
-// SessionManager.Empty call site
-type emptyParams []struct {
-	result bool
 }
 
 // feedbagManagerParams is a helper struct that contains mock parameters for
 // FeedbagManager methods
 type feedbagManagerParams struct {
-	blockedStateParams
 	adjacentUsersParams
 	feedbagUpsertParams
 	buddiesParams
 	feedbagParams
 	feedbagLastModifiedParams
 	feedbagDeleteParams
-	buddyIconRefByNameParams
-}
-
-// blockedStateParams is the list of parameters passed at the mock
-// FeedbagManager.BlockedState call site
-type blockedStateParams []struct {
-	screenName1 state.IdentScreenName
-	screenName2 state.IdentScreenName
-	result      state.BlockedState
-	err         error
 }
 
 // adjacentUsersParams is the list of parameters passed at the mock
@@ -321,27 +338,11 @@ type feedbagDeleteParams []struct {
 	items      []wire.FeedbagItem
 }
 
-// buddyIconRefByNameParams is the list of parameters passed at the mock
-// FeedbagManager.BuddyIconRefByName call site
-type buddyIconRefByNameParams []struct {
-	screenName state.IdentScreenName
-	result     *wire.BARTID
-	err        error
-}
-
 // messageRelayerParams is a helper struct that contains mock parameters for
 // MessageRelayer methods
 type messageRelayerParams struct {
-	retrieveByScreenNameParams
 	relayToScreenNamesParams
 	relayToScreenNameParams
-}
-
-// retrieveByScreenNameParams is the list of parameters passed at the mock
-// MessageRelayer.RetrieveByScreenName call site
-type retrieveByScreenNameParams []struct {
-	screenName state.IdentScreenName
-	sess       *state.Session
 }
 
 // relayToScreenNamesParams is the list of parameters passed at the mock
@@ -468,48 +469,72 @@ type chatRelayToScreenNameParams []struct {
 	err        error
 }
 
-// legacyBuddyListManagerParams is a helper struct that contains mock
-// parameters for LegacyBuddyListManager methods
-type legacyBuddyListManagerParams struct {
+// localBuddyListManagerParams is a helper struct that contains mock
+// parameters for LocalBuddyListManager methods
+type localBuddyListManagerParams struct {
 	addBuddyParams
 	deleteBuddyParams
-	deleteUserParams
-	legacyBuddiesParams
-	whoAddedUserParams
+	denyBuddyParams
+	permitBuddyParams
+	removeDenyBuddyParams
+	removePermitBuddyParams
+	setPDModeParams
 }
 
 // legacyBuddiesParams is the list of parameters passed at the mock
-// LegacyBuddyListManager.AddBuddy call site
+// LocalBuddyListManager.AddBuddy call site
 type addBuddyParams []struct {
-	userScreenName  state.IdentScreenName
-	buddyScreenName state.IdentScreenName
+	me   state.IdentScreenName
+	them state.IdentScreenName
+	err  error
 }
 
 // legacyBuddiesParams is the list of parameters passed at the mock
-// LegacyBuddyListManager.DeleteBuddy call site
+// LocalBuddyListManager.RemoveBuddy call site
 type deleteBuddyParams []struct {
-	userScreenName  state.IdentScreenName
-	buddyScreenName state.IdentScreenName
+	me   state.IdentScreenName
+	them state.IdentScreenName
+	err  error
 }
 
 // deleteUserParams is the list of parameters passed at the mock
-// LegacyBuddyListManager.DeleteUser call site
-type deleteUserParams []struct {
-	userScreenName state.IdentScreenName
+// LocalBuddyListManager.RemoveBuddy call site
+type denyBuddyParams []struct {
+	me   state.IdentScreenName
+	them state.IdentScreenName
+	err  error
 }
 
-// legacyBuddiesParams is the list of parameters passed at the mock
-// LegacyBuddyListManager.Buddies call site
-type legacyBuddiesParams []struct {
-	userScreenName state.IdentScreenName
-	result         []state.IdentScreenName
+// permitBuddyParams is the list of parameters passed at the mock
+// LocalBuddyListManager.PermitBuddy call site
+type permitBuddyParams []struct {
+	me   state.IdentScreenName
+	them state.IdentScreenName
+	err  error
 }
 
-// whoAddedUserParams is the list of parameters passed at the mock
-// LegacyBuddyListManager.WhoAddedUser call site
-type whoAddedUserParams []struct {
+// removeDenyBuddyParams is the list of parameters passed at the mock
+// LocalBuddyListManager.RemoveDenyBuddy call site
+type removeDenyBuddyParams []struct {
+	me   state.IdentScreenName
+	them state.IdentScreenName
+	err  error
+}
+
+// removePermitBuddyParams is the list of parameters passed at the mock
+// LocalBuddyListManager.RemovePermitBuddy call site
+type removePermitBuddyParams []struct {
+	me   state.IdentScreenName
+	them state.IdentScreenName
+	err  error
+}
+
+// setPDModeParams is the list of parameters passed at the mock
+// LocalBuddyListManager.SetPDMode call site
+type setPDModeParams []struct {
 	userScreenName state.IdentScreenName
-	result         []state.IdentScreenName
+	pdMode         wire.FeedbagPDMode
+	err            error
 }
 
 // cookieBakerParams is a helper struct that contains mock parameters for
@@ -607,8 +632,15 @@ type accountManagerConfirmStatusByNameParams []struct {
 type buddyBroadcasterParams struct {
 	broadcastBuddyArrivedParams
 	broadcastBuddyDepartedParams
-	unicastBuddyArrivedParams
-	unicastBuddyDepartedParams
+	broadcastVisibilityParams
+}
+
+// broadcastVisibilityParams is the list of parameters passed at the mock
+// buddyBroadcaster.BroadcastVisibility call site
+type broadcastVisibilityParams []struct {
+	from   state.IdentScreenName
+	filter []state.IdentScreenName
+	err    error
 }
 
 // broadcastBuddyArrivedParams is the list of parameters passed at the mock
@@ -623,22 +655,6 @@ type broadcastBuddyArrivedParams []struct {
 type broadcastBuddyDepartedParams []struct {
 	screenName state.IdentScreenName
 	err        error
-}
-
-// unicastBuddyArrivedParams is the list of parameters passed at the mock
-// buddyBroadcaster.UnicastBuddyArrived call site
-type unicastBuddyArrivedParams []struct {
-	from state.IdentScreenName
-	to   state.IdentScreenName
-	err  error
-}
-
-// unicastBuddyDepartedParams is the list of parameters passed at the mock
-// buddyBroadcaster.UnicastBuddyDeparted call site
-type unicastBuddyDepartedParams []struct {
-	from state.IdentScreenName
-	to   state.IdentScreenName
-	err  error
 }
 
 // chatRoomRegistryParams is a helper struct that contains mock parameters for
@@ -680,13 +696,6 @@ func sessOptWarning(level uint16) func(session *state.Session) {
 	}
 }
 
-// sessOptAwayMessage sets away message on the session object
-func sessOptAwayMessage(awayMessage string) func(session *state.Session) {
-	return func(session *state.Session) {
-		session.SetAwayMessage(awayMessage)
-	}
-}
-
 // sessOptCannedAwayMessage sets a canned away message ("this is my away
 // message!") on the session object
 func sessOptCannedAwayMessage(session *state.Session) {
@@ -722,13 +731,6 @@ func sessOptIdle(dur time.Duration) func(session *state.Session) {
 // sessOptSignonComplete sets the sign on complete flag to true
 func sessOptSignonComplete(session *state.Session) {
 	session.SetSignonComplete()
-}
-
-// sessOptCaps sets caps
-func sessOptCaps(caps [][16]byte) func(session *state.Session) {
-	return func(session *state.Session) {
-		session.SetCaps(caps)
-	}
 }
 
 // sessOptCaps sets caps

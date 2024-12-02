@@ -14,11 +14,11 @@ func TestInMemorySessionManager_AddSession(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
 	want1 := sm.AddSession("user-screen-name")
-	have1 := sm.RetrieveByScreenName(NewIdentScreenName("user-screen-name"))
+	have1 := sm.RetrieveSession(NewIdentScreenName("user-screen-name"))
 	assert.Same(t, want1, have1)
 
 	want2 := sm.AddSession("user-screen-name")
-	have2 := sm.RetrieveByScreenName(NewIdentScreenName("user-screen-name"))
+	have2 := sm.RetrieveSession(NewIdentScreenName("user-screen-name"))
 	assert.Same(t, want2, have2)
 
 	// ensure that the second session created with the same screen name as the

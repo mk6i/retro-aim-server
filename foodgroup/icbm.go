@@ -17,16 +17,17 @@ const (
 // NewICBMService returns a new instance of ICBMService.
 func NewICBMService(
 	messageRelayer MessageRelayer,
-	feedbagManager FeedbagManager,
-	legacyBuddyListManager LegacyBuddyListManager,
 	offlineMessageSaver OfflineMessageManager,
+	buddyListRetriever BuddyListRetriever,
+	sessionRetriever SessionRetriever,
 ) *ICBMService {
 	return &ICBMService{
-		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
-		feedbagManager:         feedbagManager,
-		messageRelayer:         messageRelayer,
-		offlineMessageSaver:    offlineMessageSaver,
-		timeNow:                time.Now,
+		buddyListRetriever:  buddyListRetriever,
+		buddyBroadcaster:    newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		messageRelayer:      messageRelayer,
+		offlineMessageSaver: offlineMessageSaver,
+		timeNow:             time.Now,
+		sessionRetriever:    sessionRetriever,
 	}
 }
 
@@ -34,11 +35,12 @@ func NewICBMService(
 // responsible for sending and receiving instant messages and associated
 // functionality such as warning, typing events, etc.
 type ICBMService struct {
-	buddyUpdateBroadcaster buddyBroadcaster
-	feedbagManager         FeedbagManager
-	messageRelayer         MessageRelayer
-	offlineMessageSaver    OfflineMessageManager
-	timeNow                func() time.Time
+	buddyListRetriever  BuddyListRetriever
+	buddyBroadcaster    buddyBroadcaster
+	messageRelayer      MessageRelayer
+	offlineMessageSaver OfflineMessageManager
+	timeNow             func() time.Time
+	sessionRetriever    SessionRetriever
 }
 
 // ParameterQuery returns ICBM service parameters.
@@ -60,35 +62,39 @@ func (s ICBMService) ParameterQuery(_ context.Context, inFrame wire.SNACFrame) w
 	}
 }
 
+func newICBMErr(requestID uint32, errCode uint16) *wire.SNACMessage {
+	return &wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICBM,
+			SubGroup:  wire.ICBMErr,
+			RequestID: requestID,
+		},
+		Body: wire.SNACError{
+			Code: errCode,
+		},
+	}
+}
+
 // ChannelMsgToHost relays the instant message SNAC wire.ICBMChannelMsgToHost
 // from the sender to the intended recipient. It returns wire.ICBMHostAck if
 // the wire.ICBMChannelMsgToHost message contains a request acknowledgement
 // flag.
 func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*wire.SNACMessage, error) {
 	recip := state.NewIdentScreenName(inBody.ScreenName)
-	blocked, err := s.feedbagManager.BlockedState(sess.IdentScreenName(), recip)
+
+	rel, err := s.buddyListRetriever.Relationship(sess.IdentScreenName(), recip)
 	if err != nil {
 		return nil, err
 	}
 
-	if blocked != state.BlockedNo {
-		code := wire.ErrorCodeNotLoggedOn
-		if blocked == state.BlockedA {
-			code = wire.ErrorCodeInLocalPermitDeny
-		}
-		return &wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.ICBM,
-				SubGroup:  wire.ICBMErr,
-				RequestID: inFrame.RequestID,
-			},
-			Body: wire.SNACError{
-				Code: code,
-			},
-		}, nil
+	switch {
+	case rel.BlocksYou:
+		return newICBMErr(inFrame.RequestID, wire.ErrorCodeNotLoggedOn), nil
+	case rel.YouBlock:
+		return newICBMErr(inFrame.RequestID, wire.ErrorCodeInLocalPermitDeny), nil
 	}
 
-	recipSess := s.messageRelayer.RetrieveByScreenName(recip)
+	recipSess := s.sessionRetriever.RetrieveSession(recip)
 	if recipSess == nil {
 		// todo: verify user exists, otherwise this could save a bunch of garbage records
 		if _, saveOffline := inBody.Bytes(wire.ICBMTLVStore); saveOffline {
@@ -169,12 +175,12 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 // ClientEvent relays SNAC wire.ICBMClientEvent typing events from the
 // sender to the recipient.
 func (s ICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x14_ICBMClientEvent) error {
-	blocked, err := s.feedbagManager.BlockedState(sess.IdentScreenName(), state.NewIdentScreenName(inBody.ScreenName))
+	blocked, err := s.buddyListRetriever.Relationship(sess.IdentScreenName(), state.NewIdentScreenName(inBody.ScreenName))
 
 	switch {
 	case err != nil:
 		return err
-	case blocked != state.BlockedNo:
+	case blocked.BlocksYou || blocked.YouBlock:
 		return nil
 	default:
 		s.messageRelayer.RelayToScreenName(ctx, state.NewIdentScreenName(inBody.ScreenName), wire.SNACMessage{
@@ -237,11 +243,11 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		}, nil
 	}
 
-	blocked, err := s.feedbagManager.BlockedState(sess.IdentScreenName(), identScreenName)
+	blocked, err := s.buddyListRetriever.Relationship(sess.IdentScreenName(), identScreenName)
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}
-	if blocked != state.BlockedNo {
+	if blocked.BlocksYou || blocked.YouBlock {
 		return wire.SNACMessage{
 			Frame: wire.SNACFrame{
 				FoodGroup: wire.ICBM,
@@ -254,7 +260,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		}, nil
 	}
 
-	recipSess := s.messageRelayer.RetrieveByScreenName(identScreenName)
+	recipSess := s.sessionRetriever.RetrieveSession(identScreenName)
 	if recipSess == nil {
 		return wire.SNACMessage{
 			Frame: wire.SNACFrame{
@@ -299,7 +305,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 	})
 
 	// inform the warned user's buddies that their warning level has increased
-	if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, recipSess); err != nil {
+	if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, recipSess); err != nil {
 		return wire.SNACMessage{}, err
 	}
 

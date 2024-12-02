@@ -18,25 +18,26 @@ func NewFeedbagService(
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
 	bartManager BARTManager,
-	legacyBuddyListManager LegacyBuddyListManager,
+	buddyListRetriever BuddyListRetriever,
+	sessionRetriever SessionRetriever,
 ) FeedbagService {
 	return FeedbagService{
-		bartManager:            bartManager,
-		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
-		feedbagManager:         feedbagManager,
-		logger:                 logger,
-		messageRelayer:         messageRelayer,
+		bartManager:      bartManager,
+		buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		feedbagManager:   feedbagManager,
+		logger:           logger,
+		messageRelayer:   messageRelayer,
 	}
 }
 
 // FeedbagService provides functionality for the Feedbag food group, which
 // handles buddy list management.
 type FeedbagService struct {
-	bartManager            BARTManager
-	buddyUpdateBroadcaster buddyBroadcaster
-	feedbagManager         FeedbagManager
-	logger                 *slog.Logger
-	messageRelayer         MessageRelayer
+	bartManager      BARTManager
+	buddyBroadcaster buddyBroadcaster
+	feedbagManager   FeedbagManager
+	logger           *slog.Logger
+	messageRelayer   MessageRelayer
 }
 
 // RightsQuery returns SNAC wire.FeedbagRightsReply, which contains Feedbag
@@ -195,32 +196,24 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 		return wire.SNACMessage{}, err
 	}
 
+	var filter []state.IdentScreenName
+	var alertAll bool
 	for _, item := range items {
 		switch item.ClassID {
-		case wire.FeedbagClassIdBuddy, wire.FeedbagClassIDPermit: // add new buddy
-			buddy := s.messageRelayer.RetrieveByScreenName(state.NewIdentScreenName(item.Name))
-			if buddy == nil || buddy.Invisible() {
-				continue
-			}
-			if err := s.buddyUpdateBroadcaster.UnicastBuddyArrived(ctx, buddy, sess); err != nil {
-				return wire.SNACMessage{}, err
-			}
-		case wire.FeedbagClassIDDeny: // block buddy
-			if sess.Invisible() {
-				continue // user's offline, don't send departure notification
-			}
-			blockedSess := s.messageRelayer.RetrieveByScreenName(state.NewIdentScreenName(item.Name))
-			if blockedSess == nil {
-				continue // blocked buddy is offline, nothing to do here
-			}
-			// alert blocked buddy that current user is offline
-			s.buddyUpdateBroadcaster.UnicastBuddyDeparted(ctx, sess, blockedSess)
-			// tell blocker that blocked user is offline
-			s.buddyUpdateBroadcaster.UnicastBuddyDeparted(ctx, blockedSess, sess)
+		case wire.FeedbagClassIdBuddy, wire.FeedbagClassIDPermit, wire.FeedbagClassIDDeny:
+			filter = append(filter, state.NewIdentScreenName(item.Name))
 		case wire.FeedbagClassIdBart:
 			if err := s.broadcastIconUpdate(ctx, sess, item); err != nil {
 				return wire.SNACMessage{}, err
 			}
+		case wire.FeedbagClassIdPdinfo:
+			alertAll = true
+		}
+	}
+
+	if alertAll || len(filter) > 0 {
+		if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, filter); err != nil {
+			return wire.SNACMessage{}, err
 		}
 	}
 
@@ -256,7 +249,7 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 		s.logger.DebugContext(ctx, "user is clearing icon",
 			"hash", fmt.Sprintf("%x", btlv.Hash))
 		// tell buddies about the icon update
-		return s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess)
+		return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess)
 	}
 
 	bid := wire.BARTID{
@@ -277,7 +270,7 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 		s.logger.DebugContext(ctx, "icon already exists in BART store, don't upload the icon file",
 			"hash", fmt.Sprintf("%x", btlv.Hash))
 		// tell buddies about the icon update
-		if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+		if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
 			return err
 		}
 	}
@@ -304,25 +297,17 @@ func (s FeedbagService) DeleteItem(ctx context.Context, sess *state.Session, inF
 		return wire.SNACMessage{}, err
 	}
 
+	var filter []state.IdentScreenName
+
 	for _, item := range inBody.Items {
-		if item.ClassID == wire.FeedbagClassIDDeny {
-			unblockedSess := s.messageRelayer.RetrieveByScreenName(state.NewIdentScreenName(item.Name))
-			if unblockedSess == nil {
-				continue // unblocked user is offline, nothing to do here
-			}
-			if !sess.Invisible() {
-				// alert unblocked user that current user is online
-				if err := s.buddyUpdateBroadcaster.UnicastBuddyArrived(ctx, sess, unblockedSess); err != nil {
-					return wire.SNACMessage{}, err
-				}
-			}
-			if !unblockedSess.Invisible() {
-				// alert current user that unblocked user is online
-				if err := s.buddyUpdateBroadcaster.UnicastBuddyArrived(ctx, unblockedSess, sess); err != nil {
-					return wire.SNACMessage{}, err
-				}
-			}
+		switch item.ClassID {
+		case wire.FeedbagClassIdBuddy, wire.FeedbagClassIDDeny, wire.FeedbagClassIDPermit:
+			filter = append(filter, state.NewIdentScreenName(item.Name))
 		}
+	}
+
+	if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, filter); err != nil {
+		return wire.SNACMessage{}, err
 	}
 
 	snacPayloadOut := wire.SNAC_0x13_0x0E_FeedbagStatus{}
@@ -349,18 +334,8 @@ func (s FeedbagService) StartCluster(context.Context, wire.SNACFrame, wire.SNAC_
 // by AIM clients that use the feedbag food group for buddy list management (as
 // opposed to client-side management).
 func (s FeedbagService) Use(ctx context.Context, sess *state.Session) error {
-	buddies, err := s.feedbagManager.Buddies(sess.IdentScreenName())
-	if err != nil {
-		return err
-	}
-	for _, screenName := range buddies {
-		buddy := s.messageRelayer.RetrieveByScreenName(screenName)
-		if buddy == nil || buddy.Invisible() {
-			continue
-		}
-		if err := s.buddyUpdateBroadcaster.UnicastBuddyArrived(ctx, buddy, sess); err != nil {
-			return err
-		}
+	if err := s.feedbagManager.UseFeedbag(sess.IdentScreenName()); err != nil {
+		return fmt.Errorf("could not use feedbag: %w", err)
 	}
 	return nil
 }

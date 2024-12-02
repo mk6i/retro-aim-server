@@ -230,7 +230,7 @@ func getSessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever 
 	var allUsers []*state.Session
 
 	if screenName := r.PathValue("screenname"); screenName != "" {
-		session := sessionRetriever.RetrieveByScreenName(state.NewIdentScreenName(screenName))
+		session := sessionRetriever.RetrieveSession(state.NewIdentScreenName(screenName))
 		if session == nil {
 			http.Error(w, "session not found", http.StatusNotFound)
 			return

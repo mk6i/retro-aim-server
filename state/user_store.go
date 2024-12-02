@@ -718,12 +718,13 @@ func (f SQLiteUserStore) FeedbagDelete(screenName IdentScreenName, items []wire.
 // created if it doesn't already exist, or modified if it already exists.
 func (f SQLiteUserStore) FeedbagUpsert(screenName IdentScreenName, items []wire.FeedbagItem) error {
 	q := `
-		INSERT INTO feedbag (screenName, groupID, itemID, classID, name, attributes, lastModified)
-		VALUES (?, ?, ?, ?, ?, ?, UNIXEPOCH())
+		INSERT INTO feedbag (screenName, groupID, itemID, classID, name, attributes, pdMode, lastModified)
+		VALUES (?, ?, ?, ?, ?, ?, ?, UNIXEPOCH())
 		ON CONFLICT (screenName, groupID, itemID)
 			DO UPDATE SET classID      = excluded.classID,
 						  name         = excluded.name,
 						  attributes   = excluded.attributes,
+						  pdMode       = excluded.pdMode, 
 						  lastModified = UNIXEPOCH()
 	`
 
@@ -733,12 +734,19 @@ func (f SQLiteUserStore) FeedbagUpsert(screenName IdentScreenName, items []wire.
 			return err
 		}
 
-		// todo are these all the right items?
 		if item.ClassID == wire.FeedbagClassIdBuddy ||
 			item.ClassID == wire.FeedbagClassIDPermit ||
 			item.ClassID == wire.FeedbagClassIDDeny {
 			// insert screen name identifier
 			item.Name = NewIdentScreenName(item.Name).String()
+		}
+		pdMode := uint8(0)
+		if item.ClassID == wire.FeedbagClassIdPdinfo {
+			var hasMode bool
+			pdMode, hasMode = item.Uint8(wire.FeedbagAttributesPdMode)
+			if !hasMode {
+				return fmt.Errorf("pd info doesn't have mode")
+			}
 		}
 		_, err := f.db.Exec(q,
 			screenName.String(),
@@ -746,7 +754,8 @@ func (f SQLiteUserStore) FeedbagUpsert(screenName IdentScreenName, items []wire.
 			item.ItemID,
 			item.ClassID,
 			item.Name,
-			buf.Bytes())
+			buf.Bytes(),
+			pdMode)
 		if err != nil {
 			return err
 		}
@@ -755,112 +764,166 @@ func (f SQLiteUserStore) FeedbagUpsert(screenName IdentScreenName, items []wire.
 	return nil
 }
 
-// AdjacentUsers returns all users who have screenName in their buddy list.
-// Exclude users who are on screenName's block list.
-func (f SQLiteUserStore) AdjacentUsers(screenName IdentScreenName) ([]IdentScreenName, error) {
-	q := `
-		SELECT f.screenName
-		FROM feedbag f
-		WHERE f.name = ?
-		  AND f.classID = 0
-		-- Don't show screenName that its blocked buddy is online
-		AND NOT EXISTS(SELECT 1 FROM feedbag WHERE screenName = ? AND name = f.screenName AND classID = 3)
-		-- Don't show blocked buddy that screenName is online
-		AND NOT EXISTS(SELECT 1 FROM feedbag WHERE screenName = f.screenName AND name = f.name AND classID = 3)
-	`
-
-	rows, err := f.db.Query(q, screenName.String(), screenName.String(), screenName.String())
-	if err != nil {
-		return nil, err
+// ClearBuddyListRegistry removes all buddy lists from the visiblity registry.
+func (f SQLiteUserStore) ClearBuddyListRegistry() error {
+	if _, err := f.db.Exec(`DELETE FROM buddyListMode`); err != nil {
+		return err
 	}
-	defer rows.Close()
-
-	var items []IdentScreenName
-	for rows.Next() {
-		var sn string
-		if err := rows.Scan(&sn); err != nil {
-			return nil, err
-		}
-		items = append(items, NewIdentScreenName(sn))
+	if _, err := f.db.Exec(`DELETE FROM clientSideBuddyList`); err != nil {
+		return err
 	}
-
-	return items, nil
+	return nil
 }
 
-// Buddies returns all user's buddies. Don't return a buddy if the user has
-// them on their block list.
-func (f SQLiteUserStore) Buddies(screenName IdentScreenName) ([]IdentScreenName, error) {
+// RegisterBuddyList makes my buddy list visible to other buddy lists.
+func (f SQLiteUserStore) RegisterBuddyList(user IdentScreenName) error {
 	q := `
-		SELECT f.name
-		FROM feedbag f
-		WHERE f.screenName = ? AND f.classID = 0
-		-- Don't include buddy if they blocked screenName
-		AND NOT EXISTS(SELECT 1 FROM feedbag WHERE screenName = f.name AND name = ? AND classID = 3)
-		-- Don't include buddy if screen name blocked them
-		AND NOT EXISTS(SELECT 1 FROM feedbag WHERE screenName = ? AND name = f.name AND classID = 3)
+		INSERT INTO buddyListMode (screenName, clientSidePDMode) VALUES(?, ?)
+		ON CONFLICT (screenName) DO NOTHING
 	`
-
-	rows, err := f.db.Query(q, screenName.String(), screenName.String(), screenName.String())
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var items []IdentScreenName
-	for rows.Next() {
-		var sn string
-		if err := rows.Scan(&sn); err != nil {
-			return nil, err
-		}
-		items = append(items, NewIdentScreenName(sn))
-	}
-
-	return items, nil
+	_, err := f.db.Exec(q, user.String(), wire.FeedbagPDModePermitAll)
+	return err
 }
 
-// BlockedState returns the BlockedState between two users.
-func (f SQLiteUserStore) BlockedState(screenName1, screenName2 IdentScreenName) (BlockedState, error) {
+// UnregisterBuddyList makes my buddy list invisible to other buddy lists.
+func (f SQLiteUserStore) UnregisterBuddyList(user IdentScreenName) error {
+	if _, err := f.db.Exec(`DELETE FROM buddyListMode WHERE screenName = ?`, user.String()); err != nil {
+		return err
+	}
+	if _, err := f.db.Exec(`DELETE FROM clientSideBuddyList WHERE me = ?`, user.String()); err != nil {
+		return err
+	}
+	return nil
+}
+
+// UseFeedbag sets the current session to use the server-side buddy list
+// instead of the default client-side buddy list.
+func (f SQLiteUserStore) UseFeedbag(user IdentScreenName) error {
 	q := `
-		SELECT EXISTS(SELECT 1
-					  FROM feedbag f
-					  WHERE f.classID = 3
-						AND f.screenName = ?
-						AND f.name = ?)
-		UNION ALL
-		SELECT EXISTS(SELECT 1
-					  FROM feedbag f
-					  WHERE f.classID = 3
-						AND f.screenName = ?
-						AND f.name = ?)
+		INSERT INTO buddyListMode (screenName, useFeedbag)
+		VALUES (?, ?)
+		ON CONFLICT (screenName)
+			DO UPDATE SET clientSidePDMode = false,
+						  useFeedbag       = true
 	`
-	row, err := f.db.Query(q, screenName1.String(), screenName2.String(), screenName2.String(), screenName1.String())
+	_, err := f.db.Exec(q, user.String(), true)
+	return err
+}
+
+// SetPDMode sets my current client-side permit/deny mode. It clears any
+// existing permit/deny records.
+func (f SQLiteUserStore) SetPDMode(me IdentScreenName, pdMode wire.FeedbagPDMode) error {
+	tx, err := f.db.Begin()
 	if err != nil {
-		return BlockedNo, err
-	}
-	defer row.Close()
-
-	var blockedA bool
-	if row.Next() {
-		if err := row.Scan(&blockedA); err != nil {
-			return BlockedNo, err
-		}
+		return err
 	}
 
-	var blockedB bool
-	if row.Next() {
-		if err := row.Scan(&blockedB); err != nil {
-			return BlockedNo, err
-		}
+	defer tx.Rollback()
+
+	q := `
+		INSERT INTO buddyListMode (screenName, clientSidePDMode) VALUES(?, ?)
+		ON CONFLICT (screenName)
+			DO UPDATE SET clientSidePDMode = excluded.clientSidePDMode
+	`
+	_, err = tx.Exec(q, me.String(), pdMode)
+	if err != nil {
+		return err
 	}
 
-	switch {
-	case blockedA:
-		return BlockedA, nil
-	case blockedB:
-		return BlockedB, nil
-	default:
-		return BlockedNo, nil
+	q = `
+		DELETE FROM clientSideBuddyList
+		WHERE isBuddy IS FALSE AND me = ?
+	`
+	_, err = tx.Exec(q, me.String(), pdMode)
+	if err != nil {
+		return err
 	}
+
+	q = `
+		UPDATE clientSideBuddyList
+		SET isDeny = false, isPermit = false
+		WHERE me = ?
+	`
+	_, err = tx.Exec(q, me.String(), pdMode)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
+// AddBuddy adds a buddy to my client-side buddy list.
+func (f SQLiteUserStore) AddBuddy(me IdentScreenName, them IdentScreenName) error {
+	q := `
+		INSERT INTO clientSideBuddyList (me, them, isBuddy)
+		VALUES (?, ?, true)
+		ON CONFLICT (me, them) DO UPDATE SET isBuddy = true
+	`
+	_, err := f.db.Exec(q, me.String(), them.String())
+	return err
+}
+
+// RemoveBuddy removes a buddy from my client-side buddy list.
+func (f SQLiteUserStore) RemoveBuddy(me IdentScreenName, them IdentScreenName) error {
+	q := `
+		UPDATE clientSideBuddyList
+		SET isBuddy = false
+		WHERE me = ?
+		  AND them = ?
+	`
+	_, err := f.db.Exec(q, me.String(), them.String())
+	return err
+}
+
+// DenyBuddy adds a buddy to my client-side deny list.
+func (f SQLiteUserStore) DenyBuddy(me IdentScreenName, them IdentScreenName) error {
+	q := `
+		INSERT INTO clientSideBuddyList (me, them, isDeny)
+		VALUES (?, ?, 1)
+		ON CONFLICT (me, them) DO UPDATE SET isDeny = 1
+	`
+	_, err := f.db.Exec(q, me.String(), them.String())
+	return err
+}
+
+// RemoveDenyBuddy removes a buddy from my client-side deny list.
+func (f SQLiteUserStore) RemoveDenyBuddy(me IdentScreenName, them IdentScreenName) error {
+	q := `
+		UPDATE clientSideBuddyList
+		SET isDeny = false
+		WHERE me = ?
+		  AND them = ?
+	`
+	_, err := f.db.Exec(q, me.String(), them.String())
+	return err
+}
+
+// PermitBuddy adds a buddy to my client-side permit list.
+func (f SQLiteUserStore) PermitBuddy(me IdentScreenName, them IdentScreenName) error {
+	q := `
+		INSERT INTO clientSideBuddyList (me, them, isPermit)
+		VALUES (?, ?, 1)
+		ON CONFLICT (me, them) DO UPDATE SET isPermit = 1
+	`
+	_, err := f.db.Exec(q, me.String(), them.String())
+	return err
+}
+
+// RemovePermitBuddy removes a buddy from my client-side permit list.
+func (f SQLiteUserStore) RemovePermitBuddy(me IdentScreenName, them IdentScreenName) error {
+	q := `
+		UPDATE clientSideBuddyList
+		SET isPermit = false
+		WHERE me = ?
+		  AND them = ?
+	`
+	_, err := f.db.Exec(q, me.String(), them.String())
+	return err
 }
 
 // Profile fetches a user profile. Return empty string if the user

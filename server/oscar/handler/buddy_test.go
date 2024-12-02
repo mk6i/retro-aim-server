@@ -108,7 +108,8 @@ func TestBuddyHandler_DelBuddies(t *testing.T) {
 
 	svc := newMockBuddyService(t)
 	svc.EXPECT().
-		DelBuddies(mock.Anything, mock.Anything, input.Body)
+		DelBuddies(mock.Anything, mock.Anything, input.Body).
+		Return(nil)
 
 	h := NewBuddyHandler(slog.Default(), svc)
 

@@ -233,168 +233,6 @@ func TestProfileNonExistent(t *testing.T) {
 	assert.Empty(t, prof)
 }
 
-func TestAdjacentUsers(t *testing.T) {
-
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
-
-	f, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
-
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',0,13852,3,'userB',NULL,1691286176)`)
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
-
-	users, err := f.AdjacentUsers(NewIdentScreenName("userA"))
-	if len(users) != 0 {
-		t.Fatalf("expected no interested users, got %v", users)
-	}
-
-	users, err = f.AdjacentUsers(NewIdentScreenName("userB"))
-	if len(users) != 0 {
-		t.Fatalf("expected no interested users, got %v", users)
-	}
-}
-
-func TestUserStoreBuddiesBlockedUser(t *testing.T) {
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
-
-	f, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
-
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',0,13852,3,'userB',NULL,1691286176)`)
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
-
-	users, err := f.Buddies(NewIdentScreenName("userA"))
-	if len(users) != 0 {
-		t.Fatalf("expected no buddies, got %v", users)
-	}
-
-	users, err = f.Buddies(NewIdentScreenName("userB"))
-	if len(users) != 0 {
-		t.Fatalf("expected no buddies, got %v", users)
-	}
-}
-
-func TestUserStoreBlockedA(t *testing.T) {
-
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
-
-	f, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
-
-	sn1 := NewIdentScreenName("userA")
-	sn2 := NewIdentScreenName("userB")
-
-	err = f.FeedbagUpsert(sn1, []wire.FeedbagItem{
-		{
-			GroupID: 0,
-			ItemID:  13852,
-			ClassID: 3,
-			Name:    "userB",
-		},
-		{
-			GroupID: 27631,
-			ItemID:  4016,
-			ClassID: 0,
-			Name:    "userB",
-		},
-	})
-	assert.NoError(t, err)
-
-	err = f.FeedbagUpsert(sn2, []wire.FeedbagItem{
-		{
-			GroupID: 28330,
-			ItemID:  8120,
-			ClassID: 0,
-			Name:    "userA",
-		},
-	})
-	assert.NoError(t, err)
-
-	blocked, err := f.BlockedState(sn1, sn2)
-	if err != nil {
-		t.Fatalf("db err: %s", err.Error())
-	}
-	if blocked != BlockedA {
-		t.Fatalf("expected A to be blocker")
-	}
-}
-
-func TestUserStoreBlockedB(t *testing.T) {
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
-
-	f, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
-
-	sn1 := NewIdentScreenName("userA")
-	sn2 := NewIdentScreenName("userB")
-
-	err = f.FeedbagUpsert(sn1, []wire.FeedbagItem{
-		{
-			GroupID: 27631,
-			ItemID:  4016,
-			ClassID: 0,
-			Name:    "userB",
-		},
-	})
-	assert.NoError(t, err)
-
-	err = f.FeedbagUpsert(sn2, []wire.FeedbagItem{
-		{
-			GroupID: 0,
-			ItemID:  13852,
-			ClassID: 3,
-			Name:    "userA",
-		},
-		{
-			GroupID: 28330,
-			ItemID:  8120,
-			ClassID: 0,
-			Name:    "userA",
-		},
-	})
-	assert.NoError(t, err)
-
-	blocked, err := f.BlockedState(sn1, sn2)
-	if err != nil {
-		t.Fatalf("db err: %s", err.Error())
-	}
-	if blocked != BlockedB {
-		t.Fatalf("expected B to be blocker")
-	}
-}
-
-func TestUserStoreBlockedNoBlocked(t *testing.T) {
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
-
-	f, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
-
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userA',27631,4016,0,'userB',NULL,1690508233)`)
-	f.db.Exec(`INSERT INTO "feedbag" VALUES('userB',28330,8120,0,'userA',NULL,1691180328)`)
-
-	sn1 := NewIdentScreenName("userA")
-	sn2 := NewIdentScreenName("userB")
-	blocked, err := f.BlockedState(sn1, sn2)
-	if err != nil {
-		t.Fatalf("db err: %s", err.Error())
-	}
-	if blocked != BlockedNo {
-		t.Fatalf("expected no blocker")
-	}
-}
-
 func TestGetUser(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
@@ -543,40 +381,6 @@ func TestSQLiteUserStore_DeleteUser_DeleteNonExistentUser(t *testing.T) {
 	assert.ErrorIs(t, ErrNoUser, err)
 }
 
-func TestSQLiteUserStore_Buddies(t *testing.T) {
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
-
-	feedbagStore, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
-
-	assert.NoError(t, feedbagStore.FeedbagUpsert(
-		NewIdentScreenName("userA"),
-		[]wire.FeedbagItem{
-			{Name: "userB", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
-			{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
-			{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
-		}))
-	assert.NoError(t, feedbagStore.FeedbagUpsert(
-		NewIdentScreenName("userB"),
-		[]wire.FeedbagItem{
-			{Name: "userA", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
-			{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
-			{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
-		}))
-
-	have, err := feedbagStore.Buddies(NewIdentScreenName("userA"))
-	assert.NoError(t, err)
-
-	want := []IdentScreenName{
-		NewIdentScreenName("userB"),
-		NewIdentScreenName("userC"),
-		NewIdentScreenName("userD"),
-	}
-	assert.Equal(t, want, have)
-}
-
 func TestNewStubUser(t *testing.T) {
 	have, err := NewStubUser("userA")
 	assert.NoError(t, err)
@@ -591,44 +395,24 @@ func TestNewStubUser(t *testing.T) {
 	assert.Equal(t, want, have)
 }
 
-func TestSQLiteUserStore_AdjacentUsers(t *testing.T) {
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
-
-	feedbagStore, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
-
-	assert.NoError(t, feedbagStore.FeedbagUpsert(
-		NewIdentScreenName("userA"),
-		[]wire.FeedbagItem{
-			{Name: "userB", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
-			{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
-			{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
-		}))
-	assert.NoError(t, feedbagStore.FeedbagUpsert(
-		NewIdentScreenName("userB"),
-		[]wire.FeedbagItem{
-			{Name: "userA", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
-			{Name: "userC", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
-			{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
-		}))
-	assert.NoError(t, feedbagStore.FeedbagUpsert(
-		NewIdentScreenName("userC"),
-		[]wire.FeedbagItem{
-			{Name: "userA", ItemID: 1, ClassID: wire.FeedbagClassIdBuddy},
-			{Name: "userB", ItemID: 2, ClassID: wire.FeedbagClassIdBuddy},
-			{Name: "userD", ItemID: 3, ClassID: wire.FeedbagClassIdBuddy},
-		}))
-
-	want := []IdentScreenName{
-		NewIdentScreenName("userB"),
-		NewIdentScreenName("userC"),
+func newFeedbagItem(classID uint16, itemID uint16, name string) wire.FeedbagItem {
+	return wire.FeedbagItem{
+		ClassID: classID,
+		ItemID:  itemID,
+		Name:    name,
 	}
-	have, err := feedbagStore.AdjacentUsers(NewIdentScreenName("userA"))
-	assert.NoError(t, err)
+}
 
-	assert.Equal(t, want, have)
+func pdInfoItem(itemID uint16, pdMode wire.FeedbagPDMode) wire.FeedbagItem {
+	return wire.FeedbagItem{
+		ClassID: wire.FeedbagClassIdPdinfo,
+		ItemID:  itemID,
+		TLVLBlock: wire.TLVLBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(wire.FeedbagAttributesPdMode, uint8(pdMode)),
+			},
+		},
+	}
 }
 
 func TestSQLiteUserStore_BARTUpsertAndRetrieve(t *testing.T) {
@@ -2818,4 +2602,476 @@ func TestSQLiteUserStore_KeywordsByCategory(t *testing.T) {
 		assert.Empty(t, keywords)
 		assert.ErrorIs(t, err, ErrKeywordCategoryNotFound)
 	})
+}
+
+func TestSQLiteUserStore_UnregisterBuddyList(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	users := []IdentScreenName{
+		NewIdentScreenName("user1"),
+		NewIdentScreenName("user2"),
+		NewIdentScreenName("user3"),
+	}
+
+	for _, me := range users {
+		err = f.RegisterBuddyList(me)
+		assert.NoError(t, err)
+		for _, them := range users {
+			if me == them {
+				continue
+			}
+			err = f.AddBuddy(me, them)
+			assert.NoError(t, err)
+		}
+	}
+
+	relationships, err := f.AllRelationships(users[0], nil)
+	assert.NoError(t, err)
+
+	expect := []Relationship{
+		{
+			User:          NewIdentScreenName("user2"),
+			IsOnTheirList: true,
+			IsOnYourList:  true,
+		},
+		{
+			User:          NewIdentScreenName("user3"),
+			IsOnTheirList: true,
+			IsOnYourList:  true,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+
+	err = f.UnregisterBuddyList(users[2])
+	assert.NoError(t, err)
+
+	relationships, err = f.AllRelationships(users[0], nil)
+	expect = []Relationship{
+		{
+			User:          NewIdentScreenName("user2"),
+			IsOnTheirList: true,
+			IsOnYourList:  true,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+}
+
+func TestSQLiteUserStore_ClearBuddyListRegistry(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	users := []IdentScreenName{
+		NewIdentScreenName("user1"),
+		NewIdentScreenName("user2"),
+		NewIdentScreenName("user3"),
+	}
+
+	for _, me := range users {
+		err = f.RegisterBuddyList(me)
+		assert.NoError(t, err)
+		for _, them := range users {
+			if me == them {
+				continue
+			}
+			err = f.AddBuddy(me, them)
+			assert.NoError(t, err)
+		}
+	}
+
+	for _, me := range users {
+		var relationships []Relationship
+		relationships, err = f.AllRelationships(me, nil)
+		assert.NoError(t, err)
+		assert.Len(t, relationships, 2)
+	}
+
+	err = f.ClearBuddyListRegistry()
+	assert.NoError(t, err)
+
+	for _, me := range users {
+		var relationships []Relationship
+		relationships, err = f.AllRelationships(me, nil)
+		assert.NoError(t, err)
+		assert.Empty(t, relationships)
+	}
+}
+
+func TestSQLiteUserStore_RemoveBuddy(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	me := NewIdentScreenName("me")
+	err = f.RegisterBuddyList(me)
+	assert.NoError(t, err)
+
+	them := NewIdentScreenName("them")
+	err = f.RegisterBuddyList(them)
+	assert.NoError(t, err)
+
+	err = f.AddBuddy(me, them)
+	assert.NoError(t, err)
+
+	relationships, err := f.AllRelationships(me, nil)
+	assert.NoError(t, err)
+
+	expect := []Relationship{
+		{
+			User:          them,
+			IsOnTheirList: false,
+			IsOnYourList:  true,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+
+	err = f.RemoveBuddy(me, them)
+	assert.NoError(t, err)
+
+	relationships, err = f.AllRelationships(me, nil)
+	assert.NoError(t, err)
+
+	expect = []Relationship{
+		{
+			User:          them,
+			IsOnTheirList: false,
+			IsOnYourList:  false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+}
+
+func TestSQLiteUserStore_RemoveDenyBuddy(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	me := NewIdentScreenName("me")
+	err = f.RegisterBuddyList(me)
+	assert.NoError(t, err)
+	err = f.SetPDMode(me, wire.FeedbagPDModeDenySome)
+	assert.NoError(t, err)
+
+	them := NewIdentScreenName("them")
+	err = f.RegisterBuddyList(them)
+	assert.NoError(t, err)
+
+	err = f.DenyBuddy(me, them)
+	assert.NoError(t, err)
+
+	relationships, err := f.AllRelationships(me, nil)
+	assert.NoError(t, err)
+
+	expect := []Relationship{
+		{
+			User:          them,
+			IsOnTheirList: false,
+			IsOnYourList:  false,
+			YouBlock:      true,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+
+	err = f.RemoveDenyBuddy(me, them)
+	assert.NoError(t, err)
+
+	relationships, err = f.AllRelationships(me, nil)
+	assert.NoError(t, err)
+
+	expect = []Relationship{
+		{
+			User:          them,
+			IsOnTheirList: false,
+			IsOnYourList:  false,
+			YouBlock:      false,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+}
+
+func TestSQLiteUserStore_RemovePermitBuddy(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	me := NewIdentScreenName("me")
+	err = f.RegisterBuddyList(me)
+	assert.NoError(t, err)
+	err = f.SetPDMode(me, wire.FeedbagPDModePermitSome)
+	assert.NoError(t, err)
+
+	them := NewIdentScreenName("them")
+	err = f.RegisterBuddyList(them)
+	assert.NoError(t, err)
+
+	err = f.PermitBuddy(me, them)
+	assert.NoError(t, err)
+
+	relationships, err := f.AllRelationships(me, nil)
+	assert.NoError(t, err)
+
+	expect := []Relationship{
+		{
+			User:          them,
+			IsOnTheirList: false,
+			IsOnYourList:  false,
+			YouBlock:      false,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+
+	err = f.RemovePermitBuddy(me, them)
+	assert.NoError(t, err)
+
+	relationships, err = f.AllRelationships(me, nil)
+	assert.NoError(t, err)
+
+	expect = []Relationship{
+		{
+			User:          them,
+			IsOnTheirList: false,
+			IsOnYourList:  false,
+			YouBlock:      true,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+}
+
+// Ensure that transitioning between all the PD modes works.
+func TestSQLiteUserStore_PermitDenyTransitionIntegration(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	users := []IdentScreenName{
+		NewIdentScreenName("me"),
+		NewIdentScreenName("them1"),
+		NewIdentScreenName("them2"),
+		NewIdentScreenName("them3"),
+	}
+	for _, user := range users {
+		err = f.RegisterBuddyList(user)
+		assert.NoError(t, err)
+	}
+
+	// add them1 to buddy list
+	assert.NoError(t, f.AddBuddy(users[0], users[1]))
+
+	// permit them2
+	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitSome))
+	assert.NoError(t, f.PermitBuddy(users[0], users[2]))
+
+	relationships, err := f.AllRelationships(users[0], nil)
+	assert.NoError(t, err)
+
+	// make sure them1 is blocked and them2 is permitted
+	expect := []Relationship{
+		{
+			User:          users[1],
+			IsOnTheirList: false,
+			IsOnYourList:  true,
+			YouBlock:      true,
+			BlocksYou:     false,
+		},
+		{
+			User:          users[2],
+			IsOnTheirList: false,
+			IsOnYourList:  false,
+			YouBlock:      false,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+
+	// allow everyone
+	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitAll))
+
+	relationships, err = f.AllRelationships(users[0], nil)
+	assert.NoError(t, err)
+
+	// make sure buddy1 is on your buddy list and permitted
+	expect = []Relationship{
+		{
+			User:          users[1],
+			IsOnTheirList: false,
+			IsOnYourList:  true,
+			YouBlock:      false,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+
+	// permit them3
+	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitSome))
+	assert.NoError(t, f.PermitBuddy(users[0], users[3]))
+
+	relationships, err = f.AllRelationships(users[0], nil)
+	assert.NoError(t, err)
+
+	// make sure them1 is blocked them3 is permitted
+	expect = []Relationship{
+		{
+			User:          users[1],
+			IsOnTheirList: false,
+			IsOnYourList:  true,
+			YouBlock:      true,
+			BlocksYou:     false,
+		},
+		{
+			User:          users[3],
+			IsOnTheirList: false,
+			IsOnYourList:  false,
+			YouBlock:      false,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+
+	// only allow on buddy list
+	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitOnList))
+
+	relationships, err = f.AllRelationships(users[0], nil)
+	assert.NoError(t, err)
+
+	// make sure buddy1 is on your buddy list and permitted
+	expect = []Relationship{
+		{
+			User:          users[1],
+			IsOnTheirList: false,
+			IsOnYourList:  true,
+			YouBlock:      false,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+
+	// deny them2
+	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModeDenySome))
+	assert.NoError(t, f.DenyBuddy(users[0], users[2]))
+
+	relationships, err = f.AllRelationships(users[0], nil)
+	assert.NoError(t, err)
+
+	// make sure them1 is allowed and them2 is blocked
+	expect = []Relationship{
+		{
+			User:          users[1],
+			IsOnTheirList: false,
+			IsOnYourList:  true,
+			YouBlock:      false,
+			BlocksYou:     false,
+		},
+		{
+			User:          users[2],
+			IsOnTheirList: false,
+			IsOnYourList:  false,
+			YouBlock:      true,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+
+	// allow everyone
+	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitAll))
+
+	relationships, err = f.AllRelationships(users[0], nil)
+	assert.NoError(t, err)
+
+	// make sure buddy1 is on your buddy list and permitted
+	expect = []Relationship{
+		{
+			User:          users[1],
+			IsOnTheirList: false,
+			IsOnYourList:  true,
+			YouBlock:      false,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+
+	// deny them3
+	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModeDenySome))
+	assert.NoError(t, f.DenyBuddy(users[0], users[3]))
+
+	relationships, err = f.AllRelationships(users[0], nil)
+	assert.NoError(t, err)
+
+	// make sure them1 is allowed and them3 is blocked
+	expect = []Relationship{
+		{
+			User:          users[1],
+			IsOnTheirList: false,
+			IsOnYourList:  true,
+			YouBlock:      false,
+			BlocksYou:     false,
+		},
+		{
+			User:          users[3],
+			IsOnTheirList: false,
+			IsOnYourList:  false,
+			YouBlock:      true,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+
+	// deny everyone
+	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModeDenyAll))
+
+	relationships, err = f.AllRelationships(users[0], nil)
+	assert.NoError(t, err)
+
+	// make sure them1 is blocked
+	expect = []Relationship{
+		{
+			User:          users[1],
+			IsOnTheirList: false,
+			IsOnYourList:  true,
+			YouBlock:      true,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
+
+	// allow everyone
+	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitAll))
+
+	relationships, err = f.AllRelationships(users[0], nil)
+	assert.NoError(t, err)
+
+	// make sure them1 is on your buddy list and permitted
+	expect = []Relationship{
+		{
+			User:          users[1],
+			IsOnTheirList: false,
+			IsOnYourList:  true,
+			YouBlock:      false,
+			BlocksYou:     false,
+		},
+	}
+	assert.ElementsMatch(t, relationships, expect)
 }

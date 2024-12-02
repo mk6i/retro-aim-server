@@ -14,9 +14,6 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-// BlockedState represents the blocked status between two users
-type BlockedState int
-
 var (
 	// ErrDupUser indicates that a user already exists.
 	ErrDupUser = errors.New("user already exists")
@@ -24,15 +21,6 @@ var (
 	ErrNoUser = errors.New("user does not exist")
 	// ErrNoEmail indicates that a user has not set an email address.
 	ErrNoEmailAddress = errors.New("user has no email address")
-)
-
-const (
-	// BlockedNo indicates that neither user blocks the other.
-	BlockedNo BlockedState = iota
-	// BlockedA indicates that user A blocks user B.
-	BlockedA
-	// BlockedB indicates that user B blocks user A.
-	BlockedB
 )
 
 // IdentScreenName struct stores the normalized version of a user's screen name.

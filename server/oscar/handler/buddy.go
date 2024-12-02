@@ -14,7 +14,7 @@ import (
 type BuddyService interface {
 	RightsQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 	AddBuddies(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x04_BuddyAddBuddies) error
-	DelBuddies(_ context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies)
+	DelBuddies(_ context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies) error
 }
 
 func NewBuddyHandler(logger *slog.Logger, buddyService BuddyService) BuddyHandler {
@@ -56,6 +56,5 @@ func (rt BuddyHandler) DelBuddies(ctx context.Context, sess *state.Session, inFr
 		return err
 	}
 	rt.LogRequest(ctx, inFrame, inSNAC)
-	rt.BuddyService.DelBuddies(ctx, sess, inSNAC)
-	return nil
+	return rt.BuddyService.DelBuddies(ctx, sess, inSNAC)
 }

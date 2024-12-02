@@ -2,6 +2,7 @@ package foodgroup
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -10,25 +11,20 @@ import (
 // NewBuddyService creates a new instance of BuddyService.
 func NewBuddyService(
 	messageRelayer MessageRelayer,
-	feedbagManager FeedbagManager,
-	legacyBuddyListManager LegacyBuddyListManager,
+	localBuddyListManager LocalBuddyListManager,
+	buddyListRetriever BuddyListRetriever,
+	sessionRetriever SessionRetriever,
 ) *BuddyService {
 	return &BuddyService{
-		feedbagManager:         feedbagManager,
-		legacyBuddyListManager: legacyBuddyListManager,
-		messageRelayer:         messageRelayer,
+		buddyBroadcaster:      newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		localBuddyListManager: localBuddyListManager,
 	}
 }
 
-// BuddyService provides functionality for the Buddy food group, which sends
-// clients notifications about the state of users on their buddy list. The food
-// group is used by old versions of AIM not currently supported by Retro Aim
-// Server. BuddyService just exists to satisfy AIM 5.x's buddy rights requests.
-// It may be expanded in the future to support older versions of AIM.
+// BuddyService provides functionality for the Buddy food group.
 type BuddyService struct {
-	feedbagManager         FeedbagManager
-	legacyBuddyListManager LegacyBuddyListManager
-	messageRelayer         MessageRelayer
+	localBuddyListManager LocalBuddyListManager
+	buddyBroadcaster      buddyBroadcaster
 }
 
 // RightsQuery returns buddy list service parameters.
@@ -52,79 +48,102 @@ func (s BuddyService) RightsQuery(_ context.Context, frameIn wire.SNACFrame) wir
 	}
 }
 
-func (s BuddyService) AddBuddies(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x04_BuddyAddBuddies) error {
+// AddBuddies adds buddies to my client-side buddy list.
+func (s BuddyService) AddBuddies(
+	ctx context.Context,
+	sess *state.Session,
+	inBody wire.SNAC_0x03_0x04_BuddyAddBuddies,
+) error {
+
 	for _, entry := range inBody.Buddies {
-		s.legacyBuddyListManager.AddBuddy(sess.IdentScreenName(), state.NewIdentScreenName(entry.ScreenName))
-		if !sess.SignonComplete() {
-			// client has not completed sign-on sequence, so any arrival
-			// messages sent at this point would be ignored by the client.
-			continue
-		}
-		buddy := s.messageRelayer.RetrieveByScreenName(state.NewIdentScreenName(entry.ScreenName))
-		if buddy == nil || buddy.Invisible() {
-			continue
-		}
-		// notify that buddy is online
-		if err := s.UnicastBuddyArrived(ctx, buddy, sess); err != nil {
+		sn := state.NewIdentScreenName(entry.ScreenName)
+		if err := s.localBuddyListManager.AddBuddy(sess.IdentScreenName(), sn); err != nil {
 			return err
 		}
 	}
-	return nil
-}
 
-func (s BuddyService) DelBuddies(_ context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies) {
+	if !sess.SignonComplete() {
+		// client has not completed sign-on sequence, so any arrival
+		// messages sent at this point would be ignored by the client.
+		return nil
+	}
+
+	var toNotify []state.IdentScreenName
 	for _, entry := range inBody.Buddies {
-		s.legacyBuddyListManager.DeleteBuddy(sess.IdentScreenName(), state.NewIdentScreenName(entry.ScreenName))
+		toNotify = append(toNotify, state.NewIdentScreenName(entry.ScreenName))
+	}
+	if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, toNotify); err != nil {
+		return fmt.Errorf("buddyBroadcaster.BroadcastVisibility: %w", err)
+	}
+
+	return nil
+}
+
+// DelBuddies deletes buddies from my client-side buddy list.
+func (s BuddyService) DelBuddies(
+	ctx context.Context,
+	sess *state.Session,
+	inBody wire.SNAC_0x03_0x05_BuddyDelBuddies,
+) error {
+
+	var toNotify []state.IdentScreenName
+
+	for _, entry := range inBody.Buddies {
+		sn := state.NewIdentScreenName(entry.ScreenName)
+		if err := s.localBuddyListManager.RemoveBuddy(sess.IdentScreenName(), sn); err != nil {
+			return err
+		}
+		toNotify = append(toNotify, sn)
+	}
+
+	if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, toNotify); err != nil {
+		return fmt.Errorf("buddyBroadcaster.BroadcastVisibility: %w", err)
+	}
+
+	return nil
+}
+
+func newBuddyNotifier(
+	buddyListRetriever BuddyListRetriever,
+	messageRelayer MessageRelayer,
+	sessionRetriever SessionRetriever,
+) buddyNotifier {
+	return buddyNotifier{
+		buddyListRetriever: buddyListRetriever,
+		messageRelayer:     messageRelayer,
+		sessionRetriever:   sessionRetriever,
 	}
 }
 
-// UnicastBuddyArrived sends the latest user info to a particular user.
-// While updates are sent via the wire.BuddyArrived SNAC, the message is not
-// only used to indicate the user coming online. It can also notify changes to
-// buddy icons, warning levels, invisibility status, etc.
-func (s BuddyService) UnicastBuddyArrived(ctx context.Context, from *state.Session, to *state.Session) error {
-	userInfo := from.TLVUserInfo()
-	icon, err := s.feedbagManager.BuddyIconRefByName(from.IdentScreenName())
-	switch {
-	case err != nil:
-		return err
-	case icon != nil:
-		userInfo.Append(wire.NewTLVBE(wire.OServiceUserInfoBARTInfo, *icon))
-	}
-	s.messageRelayer.RelayToScreenName(ctx, to.IdentScreenName(), wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Buddy,
-			SubGroup:  wire.BuddyArrived,
-		},
-		Body: wire.SNAC_0x03_0x0B_BuddyArrived{
-			TLVUserInfo: userInfo,
-		},
-	})
-	return nil
+// buddyNotifier centralizes logic for sending buddy arrival and departure
+// notifications.
+type buddyNotifier struct {
+	buddyListRetriever BuddyListRetriever
+	messageRelayer     MessageRelayer
+	sessionRetriever   SessionRetriever
 }
 
 // BroadcastBuddyArrived sends the latest user info to the user's adjacent users.
 // While updates are sent via the wire.BuddyArrived SNAC, the message is not
 // only used to indicate the user coming online. It can also notify changes to
 // buddy icons, warning levels, invisibility status, etc.
-func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error {
-	// find users who have this user on their server-side buddy list
-	recipients, err := s.feedbagManager.AdjacentUsers(sess.IdentScreenName())
+func (s buddyNotifier) BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error {
+	users, err := s.buddyListRetriever.AllRelationships(sess.IdentScreenName(), nil)
 	if err != nil {
 		return err
 	}
 
-	// find users who have this user on their client-side buddy list
-	legacyUsers := s.legacyBuddyListManager.WhoAddedUser(sess.IdentScreenName())
-	recipients = append(recipients, legacyUsers...)
+	var recipients []state.IdentScreenName
+	for _, user := range users {
+		if user.YouBlock || user.BlocksYou || !user.IsOnTheirList {
+			continue
+		}
+		recipients = append(recipients, user.User)
+	}
 
 	userInfo := sess.TLVUserInfo()
-	icon, err := s.feedbagManager.BuddyIconRefByName(sess.IdentScreenName())
-	switch {
-	case err != nil:
-		return err
-	case icon != nil:
-		userInfo.Append(wire.NewTLVBE(wire.OServiceUserInfoBARTInfo, *icon))
+	if err := s.setBuddyIcon(sess.IdentScreenName(), &userInfo); err != nil {
+		return fmt.Errorf("failed to set buddy icon for %s: %w", sess.IdentScreenName().String(), err)
 	}
 
 	s.messageRelayer.RelayToScreenNames(ctx, recipients, wire.SNACMessage{
@@ -140,14 +159,19 @@ func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, sess *state.Ses
 	return nil
 }
 
-func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error {
-	recipients, err := s.feedbagManager.AdjacentUsers(sess.IdentScreenName())
+func (s buddyNotifier) BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error {
+	users, err := s.buddyListRetriever.AllRelationships(sess.IdentScreenName(), nil)
 	if err != nil {
 		return err
 	}
 
-	legacyUsers := s.legacyBuddyListManager.WhoAddedUser(sess.IdentScreenName())
-	recipients = append(recipients, legacyUsers...)
+	var recipients []state.IdentScreenName
+	for _, user := range users {
+		if user.YouBlock || user.BlocksYou || !user.IsOnTheirList {
+			continue
+		}
+		recipients = append(recipients, user.User)
+	}
 
 	s.messageRelayer.RelayToScreenNames(ctx, recipients, wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -174,8 +198,95 @@ func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Se
 	return nil
 }
 
-func (s BuddyService) UnicastBuddyDeparted(ctx context.Context, from *state.Session, to *state.Session) {
-	s.messageRelayer.RelayToScreenName(ctx, to.IdentScreenName(), wire.SNACMessage{
+// BroadcastVisibility sends you and related users arrival/departure
+// notifications that reflect your buddy list and privacy preferences.
+//
+// Behavior:
+//   - Sends you arrival notifications for users on your buddy list that I do
+//     not block.
+//   - Sends arrival notifications to users that you block who have you on
+//     their buddy lists.
+//   - Sends you departure notifications for users on your buddy list that you
+//     block.
+//   - Sends departure notifications to users that you block who have you on
+//     their buddy lists.
+//   - Don't send notifications for any user that blocks you.
+//
+// This method is called when your visibility settings change, ensuring that
+// all relevant users are notified of your arrival or departure status.
+func (s buddyNotifier) BroadcastVisibility(
+	ctx context.Context,
+	you *state.Session,
+	filter []state.IdentScreenName,
+) error {
+
+	relationships, err := s.buddyListRetriever.AllRelationships(you.IdentScreenName(), filter)
+	if err != nil {
+		return fmt.Errorf("retrieving relationships: %w", err)
+	}
+
+	buddyIconSet := false
+	yourTLVInfo := you.TLVUserInfo()
+
+	for _, relationship := range relationships {
+		if relationship.BlocksYou {
+			continue // they block you, don't send them notifications
+		}
+
+		theirSess := s.sessionRetriever.RetrieveSession(relationship.User)
+		if theirSess == nil {
+			continue // they are offline
+		}
+
+		if !relationship.YouBlock {
+			if relationship.IsOnTheirList {
+				if !buddyIconSet {
+					// lazy load your buddy icon
+					if err := s.setBuddyIcon(you.IdentScreenName(), &yourTLVInfo); err != nil {
+						return fmt.Errorf("failed to set buddy icon for %s: %w", you.IdentScreenName().String(), err)
+					}
+					buddyIconSet = true
+				}
+				// tell them you're online
+				s.unicastBuddyArrived(ctx, yourTLVInfo, theirSess.IdentScreenName())
+			}
+			if relationship.IsOnYourList {
+				theirInfo := theirSess.TLVUserInfo()
+				if err := s.setBuddyIcon(theirSess.IdentScreenName(), &theirInfo); err != nil {
+					return fmt.Errorf("failed to set buddy icon for %s: %w", you.IdentScreenName().String(), err)
+				}
+				// tell you they're online
+				s.unicastBuddyArrived(ctx, theirInfo, you.IdentScreenName())
+			}
+		} else {
+			if relationship.IsOnTheirList {
+				// tell them you're offline
+				s.unicastBuddyDeparted(ctx, you, theirSess.IdentScreenName())
+			}
+			if relationship.IsOnYourList {
+				// tell you they're offline
+				s.unicastBuddyDeparted(ctx, theirSess, you.IdentScreenName())
+			}
+		}
+	}
+
+	return nil
+}
+
+// setBuddyIcon adds buddy icon metadata to TLV user info
+func (s buddyNotifier) setBuddyIcon(you state.IdentScreenName, myInfo *wire.TLVUserInfo) error {
+	icon, err := s.buddyListRetriever.BuddyIconRefByName(you)
+	if err != nil {
+		return fmt.Errorf("retrieve buddy icon ref: %v", err)
+	}
+	if icon != nil {
+		myInfo.Append(wire.NewTLVBE(wire.OServiceUserInfoBARTInfo, *icon))
+	}
+	return nil
+}
+
+func (s buddyNotifier) unicastBuddyDeparted(ctx context.Context, from *state.Session, to state.IdentScreenName) {
+	s.messageRelayer.RelayToScreenName(ctx, to, wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyDeparted,
@@ -187,6 +298,22 @@ func (s BuddyService) UnicastBuddyDeparted(ctx context.Context, from *state.Sess
 				ScreenName:   from.IdentScreenName().String(),
 				WarningLevel: from.Warning(),
 			},
+		},
+	})
+}
+
+// unicastBuddyArrived sends the latest user info to a particular user.
+// While updates are sent via the wire.BuddyArrived SNAC, the message is not
+// only used to indicate the user coming online. It can also notify changes to
+// buddy icons, warning levels, invisibility status, etc.
+func (s buddyNotifier) unicastBuddyArrived(ctx context.Context, userInfo wire.TLVUserInfo, to state.IdentScreenName) {
+	s.messageRelayer.RelayToScreenName(ctx, to, wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.Buddy,
+			SubGroup:  wire.BuddyArrived,
+		},
+		Body: wire.SNAC_0x03_0x0B_BuddyArrived{
+			TLVUserInfo: userInfo,
 		},
 	})
 }

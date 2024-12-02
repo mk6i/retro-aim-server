@@ -168,7 +168,7 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			sessionManager := newMockSessionManager(t)
+			messageRelayer := newMockMessageRelayer(t)
 			accountManager := newMockAccountManager(t)
 			buddyBroadcaster := newMockbuddyBroadcaster(t)
 
@@ -193,9 +193,9 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 					Return(params.err)
 			}
 			svc := AdminService{
-				sessionManager:         sessionManager,
-				accountManager:         accountManager,
-				buddyUpdateBroadcaster: buddyBroadcaster,
+				messageRelayer:   messageRelayer,
+				accountManager:   accountManager,
+				buddyBroadcaster: buddyBroadcaster,
 			}
 			outputSNAC, err := svc.ConfirmRequest(nil, tc.userSession, tc.inputSNAC.Frame)
 			assert.ErrorIs(t, err, tc.expectErr)
@@ -419,7 +419,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			sessionManager := newMockSessionManager(t)
+			messageRelayer := newMockMessageRelayer(t)
 			accountManager := newMockAccountManager(t)
 			buddyBroadcaster := newMockbuddyBroadcaster(t)
 
@@ -436,9 +436,9 @@ func TestAdminService_InfoQuery(t *testing.T) {
 			}
 
 			svc := AdminService{
-				sessionManager:         sessionManager,
-				accountManager:         accountManager,
-				buddyUpdateBroadcaster: buddyBroadcaster,
+				messageRelayer:   messageRelayer,
+				accountManager:   accountManager,
+				buddyBroadcaster: buddyBroadcaster,
 			}
 			outputSNAC, err := svc.InfoQuery(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x02_AdminInfoQuery))
 			assert.ErrorIs(t, err, tc.expectErr)
@@ -636,10 +636,9 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			sessionManager := newMockSessionManager(t)
-			accountManager := newMockAccountManager(t)
-			buddyBroadcaster := newMockbuddyBroadcaster(t)
 			messageRelayer := newMockMessageRelayer(t)
+			accountManager := newMockAccountManager(t)
+			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
 
 			for _, params := range tc.mockParams.accountManagerParams.accountManagerUpdateDisplayScreenNameParams {
 				accountManager.EXPECT().
@@ -648,12 +647,9 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 			}
 
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
-				p := params
-				buddyBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.IdentScreenName() == p.screenName
-					})).
-					Return(p.err)
+				mockBuddyBroadcaster.EXPECT().
+					BroadcastBuddyArrived(mock.Anything, matchSession(params.screenName)).
+					Return(params.err)
 			}
 
 			for _, params := range tc.mockParams.messageRelayerParams.relayToScreenNameParams {
@@ -663,10 +659,9 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 			}
 
 			svc := AdminService{
-				sessionManager:         sessionManager,
-				accountManager:         accountManager,
-				buddyUpdateBroadcaster: buddyBroadcaster,
-				messageRelayer:         messageRelayer,
+				accountManager:   accountManager,
+				buddyBroadcaster: mockBuddyBroadcaster,
+				messageRelayer:   messageRelayer,
 			}
 			outputSNAC, err := svc.InfoChangeRequest(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
 			assert.ErrorIs(t, err, tc.expectErr)
@@ -819,10 +814,9 @@ func TestAdminService_InfoChangeRequest_EmailAddress(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			sessionManager := newMockSessionManager(t)
+			messageRelayer := newMockMessageRelayer(t)
 			accountManager := newMockAccountManager(t)
 			buddyBroadcaster := newMockbuddyBroadcaster(t)
-			messageRelayer := newMockMessageRelayer(t)
 
 			for _, params := range tc.mockParams.accountManagerParams.accountManagerUpdateEmailAddressParams {
 				accountManager.EXPECT().
@@ -831,10 +825,9 @@ func TestAdminService_InfoChangeRequest_EmailAddress(t *testing.T) {
 			}
 
 			svc := AdminService{
-				sessionManager:         sessionManager,
-				accountManager:         accountManager,
-				buddyUpdateBroadcaster: buddyBroadcaster,
-				messageRelayer:         messageRelayer,
+				accountManager:   accountManager,
+				buddyBroadcaster: buddyBroadcaster,
+				messageRelayer:   messageRelayer,
 			}
 			outputSNAC, err := svc.InfoChangeRequest(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
 			assert.ErrorIs(t, err, tc.expectErr)
@@ -945,10 +938,9 @@ func TestAdminService_InfoChangeRequest_RegStatus(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			sessionManager := newMockSessionManager(t)
+			messageRelayer := newMockMessageRelayer(t)
 			accountManager := newMockAccountManager(t)
 			buddyBroadcaster := newMockbuddyBroadcaster(t)
-			messageRelayer := newMockMessageRelayer(t)
 
 			for _, params := range tc.mockParams.accountManagerParams.accountManagerUpdateRegStatusParams {
 				accountManager.EXPECT().
@@ -957,10 +949,9 @@ func TestAdminService_InfoChangeRequest_RegStatus(t *testing.T) {
 			}
 
 			svc := AdminService{
-				sessionManager:         sessionManager,
-				accountManager:         accountManager,
-				buddyUpdateBroadcaster: buddyBroadcaster,
-				messageRelayer:         messageRelayer,
+				accountManager:   accountManager,
+				buddyBroadcaster: buddyBroadcaster,
+				messageRelayer:   messageRelayer,
 			}
 			outputSNAC, err := svc.InfoChangeRequest(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
 			assert.ErrorIs(t, err, tc.expectErr)

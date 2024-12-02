@@ -6,12 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/mk6i/retro-aim-server/config"
-
-	"github.com/stretchr/testify/assert"
-
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
@@ -40,7 +38,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 	}{
 		{
 			name:        "request info for ICBM service, return invalid SNAC err",
-			userSession: newTestSession("user_screen_name"),
+			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -66,7 +64,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				OSCARHost:   "127.0.0.1",
 				ChatNavPort: "1234",
 			},
-			userSession: newTestSession("user_screen_name"),
+			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -98,7 +96,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: []byte{
-								0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
+								0x02, 'm', 'e',
 								0x0, // no client ID
 							},
 							cookieOut: []byte("the-cookie"),
@@ -113,7 +111,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				AlertPort: "1234",
 			},
-			userSession: newTestSession("user_screen_name"),
+			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -145,7 +143,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: []byte{
-								0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
+								0x02, 'm', 'e',
 								0x0, // no client ID
 							},
 							cookieOut: []byte("the-cookie"),
@@ -160,7 +158,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				AdminPort: "1234",
 			},
-			userSession: newTestSession("user_screen_name"),
+			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -192,7 +190,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: []byte{
-								0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
+								0x02, 'm', 'e',
 								0x0, // no client ID
 							},
 							cookieOut: []byte("the-cookie"),
@@ -207,7 +205,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				ChatPort:  "1234",
 			},
-			userSession: newTestSession("user_screen_name"),
+			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -258,7 +256,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 							{
 								dataIn: []byte{
 									0x11, '4', '-', '0', '-', 't', 'h', 'e', '-', 'c', 'h', 'a', 't', '-', 'r', 'o', 'o', 'm',
-									0x10, 'u', 's', 'e', 'r', '_', 's', 'c', 'r', 'e', 'e', 'n', '_', 'n', 'a', 'm', 'e',
+									0x02, 'm', 'e',
 								},
 								cookieOut: []byte("the-auth-cookie"),
 							},
@@ -273,7 +271,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 				OSCARHost: "127.0.0.1",
 				ChatPort:  "1234",
 			},
-			userSession: newTestSession("user_screen_name"),
+			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -325,7 +323,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			svc := NewOServiceServiceForBOS(tc.cfg, nil, nil, slog.Default(), cookieIssuer, nil, chatRoomManager)
+			svc := NewOServiceServiceForBOS(tc.cfg, nil, slog.Default(), cookieIssuer, chatRoomManager, nil, nil)
 
 			outputSNAC, err := svc.ServiceRequest(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x01_0x04_OServiceServiceRequest))
@@ -368,7 +366,7 @@ func TestSetUserInfoFields(t *testing.T) {
 	}{
 		{
 			name:        "set user status to visible",
-			userSession: newTestSession("user_screen_name"),
+			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -388,14 +386,14 @@ func TestSetUserInfoFields(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-					TLVUserInfo: newTestSession("user_screen_name").TLVUserInfo(),
+					TLVUserInfo: newTestSession("me").TLVUserInfo(),
 				},
 			},
 			mockParams: mockParams{
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: state.NewIdentScreenName("user_screen_name"),
+							screenName: state.NewIdentScreenName("me"),
 						},
 					},
 				},
@@ -403,7 +401,7 @@ func TestSetUserInfoFields(t *testing.T) {
 		},
 		{
 			name:        "set user status to invisible",
-			userSession: newTestSession("user_screen_name"),
+			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -423,14 +421,14 @@ func TestSetUserInfoFields(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-					TLVUserInfo: newTestSession("user_screen_name", sessOptInvisible).TLVUserInfo(),
+					TLVUserInfo: newTestSession("me", sessOptInvisible).TLVUserInfo(),
 				},
 			},
 			mockParams: mockParams{
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyDepartedParams: broadcastBuddyDepartedParams{
 						{
-							screenName: state.NewIdentScreenName("user_screen_name"),
+							screenName: state.NewIdentScreenName("me"),
 						},
 					},
 				},
@@ -442,25 +440,19 @@ func TestSetUserInfoFields(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
-				p := params
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.IdentScreenName() == p.screenName
-					})).
-					Return(nil)
+					BroadcastBuddyArrived(mock.Anything, matchSession(params.screenName)).
+					Return(params.err)
 			}
 			for _, params := range tc.mockParams.broadcastBuddyDepartedParams {
-				p := params
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastBuddyDeparted(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.IdentScreenName() == p.screenName
-					})).
-					Return(nil)
+					BroadcastBuddyDeparted(mock.Anything, matchSession(params.screenName)).
+					Return(params.err)
 			}
 			svc := OServiceService{
-				cfg:                    config.Config{},
-				logger:                 slog.Default(),
-				buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+				cfg:              config.Config{},
+				logger:           slog.Default(),
+				buddyBroadcaster: buddyUpdateBroadcaster,
 			}
 			outputSNAC, err := svc.SetUserInfoFields(nil, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields))
@@ -1456,7 +1448,7 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 	}{
 		{
 			name:        "get rate limits for non-AIM 1.x client",
-			userSession: newTestSession("user_screen_name"),
+			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{RequestID: 1234},
 			},
@@ -1505,7 +1497,7 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 		},
 		{
 			name:        "get rate limits for AIM 1.x client",
-			userSession: newTestSession("user_screen_name", sessClientID("AOL Instant Messenger (TM), version 1.")),
+			userSession: newTestSession("me", sessClientID("AOL Instant Messenger (TM), version 1.")),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{RequestID: 1234},
 			},
@@ -1561,7 +1553,7 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 
 func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 	cookieIssuer := newMockCookieBaker(t)
-	svc := NewOServiceServiceForBOS(config.Config{}, nil, nil, slog.Default(), cookieIssuer, nil, nil)
+	svc := NewOServiceServiceForBOS(config.Config{}, nil, slog.Default(), cookieIssuer, nil, nil, nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1639,7 +1631,7 @@ func TestOServiceService_UserInfoQuery(t *testing.T) {
 		cfg:    config.Config{},
 		logger: slog.Default(),
 	}
-	sess := newTestSession("test-user")
+	sess := newTestSession("me")
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1669,7 +1661,7 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 	}{
 		{
 			name: "set idle from active",
-			sess: newTestSession("test-user"),
+			sess: newTestSession("me"),
 			bodyIn: wire.SNAC_0x01_0x11_OServiceIdleNotification{
 				IdleTime: 90,
 			},
@@ -1677,7 +1669,7 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: state.NewIdentScreenName("test-user"),
+							screenName: state.NewIdentScreenName("me"),
 						},
 					},
 				},
@@ -1685,7 +1677,7 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 		},
 		{
 			name: "set active from idle",
-			sess: newTestSession("test-user", sessOptIdle(90*time.Second)),
+			sess: newTestSession("me", sessOptIdle(90*time.Second)),
 			bodyIn: wire.SNAC_0x01_0x11_OServiceIdleNotification{
 				IdleTime: 0,
 			},
@@ -1693,7 +1685,7 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: state.NewIdentScreenName("test-user"),
+							screenName: state.NewIdentScreenName("me"),
 						},
 					},
 				},
@@ -1704,17 +1696,14 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tt.mockParams.broadcastBuddyArrivedParams {
-				p := params
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.IdentScreenName() == p.screenName
-					})).
-					Return(nil)
+					BroadcastBuddyArrived(mock.Anything, matchSession(params.screenName)).
+					Return(params.err)
 			}
 			svc := OServiceService{
-				cfg:                    config.Config{},
-				logger:                 slog.Default(),
-				buddyUpdateBroadcaster: buddyUpdateBroadcaster,
+				cfg:              config.Config{},
+				logger:           slog.Default(),
+				buddyBroadcaster: buddyUpdateBroadcaster,
 			}
 			haveErr := svc.IdleNotification(nil, tt.sess, tt.bodyIn)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
@@ -1731,145 +1720,45 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 		// bodyIn is the SNAC body sent from the arriving user's client to the
 		// server
 		bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline
-		// retrieveByScreenNameParams contains params for looking up the
-		// session for each of the arriving user's buddies
-		retrieveByScreenNameParams retrieveByScreenNameParams
-		wantErr                    error
+		// wantErr is the expected error from the handler
+		wantErr error
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
+		// wantSess is the expected session state after the method is called
+		wantSess *state.Session
 	}{
 		{
-			name:   "notify feedbag + client-side buddies that user is online, populate client-side buddy list",
-			sess:   newTestSession("test-user"),
+			name:   "notify that user is online",
+			sess:   newTestSession("me", sessOptCannedSignonTime),
 			bodyIn: wire.SNAC_0x01_0x02_OServiceClientOnline{},
 			mockParams: mockParams{
-				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
-					legacyBuddiesParams: legacyBuddiesParams{
-						{
-							userScreenName: state.NewIdentScreenName("test-user"),
-							result: []state.IdentScreenName{
-								state.NewIdentScreenName("buddy1"),
-								state.NewIdentScreenName("buddy2"),
-							},
-						},
-					},
-				},
-				messageRelayerParams: messageRelayerParams{
-					retrieveByScreenNameParams: retrieveByScreenNameParams{
-						{
-							screenName: state.NewIdentScreenName("buddy1"),
-							sess:       newTestSession("buddy1", sessOptCannedSignonTime),
-						},
-						{
-							screenName: state.NewIdentScreenName("buddy2"),
-							sess:       newTestSession("buddy2", sessOptCannedSignonTime),
-						},
-					},
-				},
 				buddyBroadcasterParams: buddyBroadcasterParams{
-					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{
 						{
-							screenName: state.NewIdentScreenName("test-user"),
-						},
-					},
-					unicastBuddyArrivedParams: unicastBuddyArrivedParams{
-						{
-							from: state.NewIdentScreenName("buddy1"),
-							to:   state.NewIdentScreenName("test-user"),
-						},
-						{
-							from: state.NewIdentScreenName("buddy2"),
-							to:   state.NewIdentScreenName("test-user"),
+							from:   state.NewIdentScreenName("me"),
+							filter: nil,
 						},
 					},
 				},
 			},
-		},
-		{
-			name:   "notify feedbag + client-side buddies that user is online, don't send invisible buddy arrival",
-			sess:   newTestSession("test-user"),
-			bodyIn: wire.SNAC_0x01_0x02_OServiceClientOnline{},
-			mockParams: mockParams{
-				legacyBuddyListManagerParams: legacyBuddyListManagerParams{
-					legacyBuddiesParams: legacyBuddiesParams{
-						{
-							userScreenName: state.NewIdentScreenName("test-user"),
-							result: []state.IdentScreenName{
-								state.NewIdentScreenName("buddy1"),
-								state.NewIdentScreenName("buddy2"),
-							},
-						},
-					},
-				},
-				messageRelayerParams: messageRelayerParams{
-					retrieveByScreenNameParams: retrieveByScreenNameParams{
-						{
-							screenName: state.NewIdentScreenName("buddy1"),
-							sess:       newTestSession("buddy1", sessOptCannedSignonTime, sessOptInvisible),
-						},
-						{
-							screenName: state.NewIdentScreenName("buddy2"),
-							sess:       newTestSession("buddy2", sessOptCannedSignonTime),
-						},
-					},
-				},
-				buddyBroadcasterParams: buddyBroadcasterParams{
-					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
-						{
-							screenName: state.NewIdentScreenName("test-user"),
-						},
-					},
-					unicastBuddyArrivedParams: unicastBuddyArrivedParams{
-						{
-							from: state.NewIdentScreenName("buddy2"),
-							to:   state.NewIdentScreenName("test-user"),
-						},
-					},
-				},
-			},
+			wantSess: newTestSession("me", sessOptCannedSignonTime, sessOptSignonComplete),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			messageRelayer := newMockMessageRelayer(t)
-			for _, params := range tt.mockParams.retrieveByScreenNameParams {
-				messageRelayer.EXPECT().
-					RetrieveByScreenName(params.screenName).
-					Return(params.sess)
-			}
-			legacyBuddyListManager := newMockLegacyBuddyListManager(t)
-			for _, params := range tt.mockParams.legacyBuddiesParams {
-				legacyBuddyListManager.EXPECT().
-					Buddies(params.userScreenName).
-					Return(params.result)
-			}
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
-			for _, params := range tt.mockParams.broadcastBuddyArrivedParams {
-				p := params
+			for _, params := range tt.mockParams.broadcastVisibilityParams {
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.IdentScreenName() == p.screenName
-					})).
-					Return(nil)
-			}
-			for _, params := range tt.mockParams.unicastBuddyArrivedParams {
-				p := params
-				buddyUpdateBroadcaster.EXPECT().
-					UnicastBuddyArrived(mock.Anything,
-						mock.MatchedBy(func(s *state.Session) bool {
-							return s.IdentScreenName() == p.from
-						}),
-						mock.MatchedBy(func(s *state.Session) bool {
-							return s.IdentScreenName() == p.to
-						})).
-					Return(p.err)
+					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter).
+					Return(params.err)
 			}
 
-			svc := NewOServiceServiceForBOS(config.Config{}, messageRelayer, legacyBuddyListManager, slog.Default(), nil, nil, nil)
-			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
+			svc := NewOServiceServiceForBOS(config.Config{}, nil, slog.Default(), nil, nil, nil, nil)
+			svc.buddyBroadcaster = buddyUpdateBroadcaster
 			haveErr := svc.ClientOnline(nil, tt.bodyIn, tt.sess)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
+			assert.Equal(t, tt.wantSess.SignonComplete(), tt.sess.SignonComplete())
 		})
 	}
 }
@@ -1996,7 +1885,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 					RelayToScreenName(mock.Anything, params.cookie, params.screenName, params.message)
 			}
 
-			svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, nil, nil, chatRoomManager, chatMessageRelayer)
+			svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, chatRoomManager, chatMessageRelayer, nil, nil)
 
 			haveErr := svc.ClientOnline(nil, wire.SNAC_0x01_0x02_OServiceClientOnline{}, tt.joiningChatter)
 			assert.ErrorIs(t, tt.wantErr, haveErr)

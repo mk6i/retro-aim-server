@@ -23,15 +23,15 @@ var omitCaps = map[[16]byte]bool{
 // NewLocateService creates a new instance of LocateService.
 func NewLocateService(
 	messageRelayer MessageRelayer,
-	feedbagManager FeedbagManager,
 	profileManager ProfileManager,
-	legacyBuddyListManager LegacyBuddyListManager,
+	buddyListRetriever BuddyListRetriever,
+	sessionRetriever SessionRetriever,
 ) LocateService {
 	return LocateService{
-		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
-		feedbagManager:         feedbagManager,
-		profileManager:         profileManager,
-		sessionManager:         messageRelayer,
+		buddyBroadcaster:   newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		buddyListRetriever: buddyListRetriever,
+		profileManager:     profileManager,
+		sessionRetriever:   sessionRetriever,
 	}
 }
 
@@ -39,10 +39,10 @@ func NewLocateService(
 // responsible for user profiles, user info lookups, directory information, and
 // keyword lookups.
 type LocateService struct {
-	buddyUpdateBroadcaster buddyBroadcaster
-	feedbagManager         FeedbagManager
-	profileManager         ProfileManager
-	sessionManager         MessageRelayer
+	buddyBroadcaster   buddyBroadcaster
+	buddyListRetriever BuddyListRetriever
+	profileManager     ProfileManager
+	sessionRetriever   SessionRetriever
 }
 
 // RightsQuery returns SNAC wire.LocateRightsReply, which contains Locate food
@@ -82,8 +82,10 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 	// broadcast away message change to buddies
 	if awayMsg, hasAwayMsg := inBody.String(wire.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
 		sess.SetAwayMessage(awayMsg)
-		if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
-			return err
+		if sess.SignonComplete() {
+			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -107,6 +109,19 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 	return nil
 }
 
+func newLocateErr(requestID uint32, errCode uint16) wire.SNACMessage {
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.Locate,
+			SubGroup:  wire.LocateErr,
+			RequestID: requestID,
+		},
+		Body: wire.SNACError{
+			Code: errCode,
+		},
+	}
+}
+
 // UserInfoQuery fetches display information about an arbitrary user (not the
 // current user). It returns wire.LocateUserInfoReply, which contains the
 // profile, if requested, and/or the away message, if requested. This is a v2
@@ -114,35 +129,19 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 func (s LocateService) UserInfoQuery(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery) (wire.SNACMessage, error) {
 	identScreenName := state.NewIdentScreenName(inBody.ScreenName)
 
-	blocked, err := s.feedbagManager.BlockedState(sess.IdentScreenName(), identScreenName)
-	switch {
-	case err != nil:
+	rel, err := s.buddyListRetriever.Relationship(sess.IdentScreenName(), identScreenName)
+	if err != nil {
 		return wire.SNACMessage{}, err
-	case blocked != state.BlockedNo:
-		return wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.Locate,
-				SubGroup:  wire.LocateErr,
-				RequestID: inFrame.RequestID,
-			},
-			Body: wire.SNACError{
-				Code: wire.ErrorCodeNotLoggedOn,
-			},
-		}, nil
 	}
 
-	buddySess := s.sessionManager.RetrieveByScreenName(identScreenName)
+	if rel.YouBlock || rel.BlocksYou {
+		return newLocateErr(inFrame.RequestID, wire.ErrorCodeNotLoggedOn), nil
+	}
+
+	buddySess := s.sessionRetriever.RetrieveSession(identScreenName)
 	if buddySess == nil {
-		return wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.Locate,
-				SubGroup:  wire.LocateErr,
-				RequestID: inFrame.RequestID,
-			},
-			Body: wire.SNACError{
-				Code: wire.ErrorCodeNotLoggedOn,
-			},
-		}, nil
+		// user is offline
+		return newLocateErr(inFrame.RequestID, wire.ErrorCodeNotLoggedOn), nil
 	}
 
 	var list wire.TLVList

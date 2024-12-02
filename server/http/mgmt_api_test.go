@@ -158,7 +158,7 @@ func TestSessionHandlerScreenname_GET(t *testing.T) {
 			sessionRetriever := newMockSessionRetriever(t)
 			for _, params := range tc.mockParams.sessionRetrieverParams.retrieveSessionByNameParams {
 				sessionRetriever.EXPECT().
-					RetrieveByScreenName(params.screenName).
+					RetrieveSession(params.screenName).
 					Return(params.result)
 			}
 

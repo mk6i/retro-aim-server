@@ -73,8 +73,21 @@ func (_c *mockBuddyService_AddBuddies_Call) RunAndReturn(run func(context.Contex
 }
 
 // DelBuddies provides a mock function with given fields: _a0, sess, inBody
-func (_m *mockBuddyService) DelBuddies(_a0 context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies) {
-	_m.Called(_a0, sess, inBody)
+func (_m *mockBuddyService) DelBuddies(_a0 context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies) error {
+	ret := _m.Called(_a0, sess, inBody)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DelBuddies")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNAC_0x03_0x05_BuddyDelBuddies) error); ok {
+		r0 = rf(_a0, sess, inBody)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // mockBuddyService_DelBuddies_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DelBuddies'
@@ -97,12 +110,12 @@ func (_c *mockBuddyService_DelBuddies_Call) Run(run func(_a0 context.Context, se
 	return _c
 }
 
-func (_c *mockBuddyService_DelBuddies_Call) Return() *mockBuddyService_DelBuddies_Call {
-	_c.Call.Return()
+func (_c *mockBuddyService_DelBuddies_Call) Return(_a0 error) *mockBuddyService_DelBuddies_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockBuddyService_DelBuddies_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNAC_0x03_0x05_BuddyDelBuddies)) *mockBuddyService_DelBuddies_Call {
+func (_c *mockBuddyService_DelBuddies_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNAC_0x03_0x05_BuddyDelBuddies) error) *mockBuddyService_DelBuddies_Call {
 	_c.Call.Return(run)
 	return _c
 }

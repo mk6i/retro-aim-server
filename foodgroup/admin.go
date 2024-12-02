@@ -11,16 +11,15 @@ import (
 
 // NewAdminService creates an instance of AdminService.
 func NewAdminService(
-	sessionManager SessionManager,
 	accountManager AccountManager,
-	buddyUpdateBroadcaster buddyBroadcaster,
+	buddyListRetriever BuddyListRetriever,
 	messageRelayer MessageRelayer,
+	sessionRetriever SessionRetriever,
 ) *AdminService {
 	return &AdminService{
-		sessionManager:         sessionManager,
-		accountManager:         accountManager,
-		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
-		messageRelayer:         messageRelayer,
+		accountManager:   accountManager,
+		buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		messageRelayer:   messageRelayer,
 	}
 }
 
@@ -28,10 +27,9 @@ func NewAdminService(
 // The Admin food group is used for client control of passwords, screen name formatting,
 // email address, and account confirmation.
 type AdminService struct {
-	sessionManager         SessionManager
-	accountManager         AccountManager
-	buddyUpdateBroadcaster buddyBroadcaster
-	messageRelayer         MessageRelayer
+	accountManager   AccountManager
+	buddyBroadcaster buddyBroadcaster
+	messageRelayer   MessageRelayer
 }
 
 // ConfirmRequest will mark the user account as confirmed if the user has an email address set
@@ -68,7 +66,7 @@ func (s AdminService) ConfirmRequest(ctx context.Context, sess *state.Session, f
 		return wire.SNACMessage{}, err
 	}
 	sess.ClearUserInfoFlag(wire.OServiceUserFlagUnconfirmed)
-	if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+	if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
 		return wire.SNACMessage{}, err
 	}
 	return getAdminConfirmReply(wire.AdminAcctConfirmStatusEmailSent), nil
@@ -207,7 +205,7 @@ func (s AdminService) InfoChangeRequest(ctx context.Context, sess *state.Session
 			return wire.SNACMessage{}, err
 		}
 		sess.SetDisplayScreenName(proposedName)
-		if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+		if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
 			return wire.SNACMessage{}, err
 		}
 		s.messageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), wire.SNACMessage{

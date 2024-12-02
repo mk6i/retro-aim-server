@@ -28,20 +28,26 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 		{
 			name: "request user info, expect user info response",
 			mockParams: mockParams{
-				feedbagManagerParams: feedbagManagerParams{
-					blockedStateParams: blockedStateParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
 						{
-							screenName1: state.NewIdentScreenName("user_screen_name"),
-							screenName2: state.NewIdentScreenName("requested-user"),
-							result:      state.BlockedNo,
+							me:   state.NewIdentScreenName("user_screen_name"),
+							them: state.NewIdentScreenName("requested-user"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("requested-user"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnYourList:  true,
+								IsOnTheirList: true,
+							},
 						},
 					},
 				},
-				messageRelayerParams: messageRelayerParams{
-					retrieveByScreenNameParams: retrieveByScreenNameParams{
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams: retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("requested-user"),
-							sess: newTestSession("requested-user",
+							result: newTestSession("requested-user",
 								sessOptCannedSignonTime,
 								sessOptCannedAwayMessage),
 						},
@@ -76,20 +82,26 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 		{
 			name: "request user info + profile, expect user info response + profile",
 			mockParams: mockParams{
-				feedbagManagerParams: feedbagManagerParams{
-					blockedStateParams: blockedStateParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
 						{
-							screenName1: state.NewIdentScreenName("user_screen_name"),
-							screenName2: state.NewIdentScreenName("requested-user"),
-							result:      state.BlockedNo,
+							me:   state.NewIdentScreenName("user_screen_name"),
+							them: state.NewIdentScreenName("requested-user"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("requested-user"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnYourList:  true,
+								IsOnTheirList: true,
+							},
 						},
 					},
 				},
-				messageRelayerParams: messageRelayerParams{
-					retrieveByScreenNameParams: retrieveByScreenNameParams{
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams: retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("requested-user"),
-							sess: newTestSession("requested-user",
+							result: newTestSession("requested-user",
 								sessOptCannedSignonTime,
 								sessOptCannedAwayMessage),
 						},
@@ -138,20 +150,26 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 		{
 			name: "request user info + profile, expect user info response + profile",
 			mockParams: mockParams{
-				feedbagManagerParams: feedbagManagerParams{
-					blockedStateParams: blockedStateParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
 						{
-							screenName1: state.NewIdentScreenName("user_screen_name"),
-							screenName2: state.NewIdentScreenName("requested-user"),
-							result:      state.BlockedNo,
+							me:   state.NewIdentScreenName("user_screen_name"),
+							them: state.NewIdentScreenName("requested-user"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("requested-user"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnYourList:  true,
+								IsOnTheirList: true,
+							},
 						},
 					},
 				},
-				messageRelayerParams: messageRelayerParams{
-					retrieveByScreenNameParams: retrieveByScreenNameParams{
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams: retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("requested-user"),
-							sess: newTestSession("requested-user",
+							result: newTestSession("requested-user",
 								sessOptCannedSignonTime,
 								sessOptCannedAwayMessage),
 						},
@@ -200,20 +218,26 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 		{
 			name: "request user info + away message, expect user info response + away message",
 			mockParams: mockParams{
-				feedbagManagerParams: feedbagManagerParams{
-					blockedStateParams: blockedStateParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
 						{
-							screenName1: state.NewIdentScreenName("user_screen_name"),
-							screenName2: state.NewIdentScreenName("requested-user"),
-							result:      state.BlockedNo,
+							me:   state.NewIdentScreenName("user_screen_name"),
+							them: state.NewIdentScreenName("requested-user"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("requested-user"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnYourList:  true,
+								IsOnTheirList: true,
+							},
 						},
 					},
 				},
-				messageRelayerParams: messageRelayerParams{
-					retrieveByScreenNameParams: retrieveByScreenNameParams{
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams: retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("requested-user"),
-							sess: newTestSession("requested-user",
+							result: newTestSession("requested-user",
 								sessOptCannedSignonTime,
 								sessOptCannedAwayMessage),
 						},
@@ -254,12 +278,18 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 		{
 			name: "request user info of user who blocked requester, expect not logged in error",
 			mockParams: mockParams{
-				feedbagManagerParams: feedbagManagerParams{
-					blockedStateParams: blockedStateParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
 						{
-							screenName1: state.NewIdentScreenName("user_screen_name"),
-							screenName2: state.NewIdentScreenName("requested-user"),
-							result:      state.BlockedB,
+							me:   state.NewIdentScreenName("user_screen_name"),
+							them: state.NewIdentScreenName("requested-user"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("requested-user"),
+								BlocksYou:     true,
+								YouBlock:      false,
+								IsOnYourList:  true,
+								IsOnTheirList: true,
+							},
 						},
 					},
 				},
@@ -287,20 +317,26 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 		{
 			name: "request user info of user who does not exist, expect not logged in error",
 			mockParams: mockParams{
-				feedbagManagerParams: feedbagManagerParams{
-					blockedStateParams: blockedStateParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
 						{
-							screenName1: state.NewIdentScreenName("user_screen_name"),
-							screenName2: state.NewIdentScreenName("non_existent_requested_user"),
-							result:      state.BlockedNo,
+							me:   state.NewIdentScreenName("user_screen_name"),
+							them: state.NewIdentScreenName("non_existent_requested_user"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("non_existent_requested_user"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnYourList:  true,
+								IsOnTheirList: true,
+							},
 						},
 					},
 				},
-				messageRelayerParams: messageRelayerParams{
-					retrieveByScreenNameParams: retrieveByScreenNameParams{
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams: retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("non_existent_requested_user"),
-							sess:       nil,
+							result:     nil,
 						},
 					},
 				},
@@ -329,17 +365,17 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tc.mockParams.blockedStateParams {
-				feedbagManager.EXPECT().
-					BlockedState(params.screenName1, params.screenName2).
-					Return(params.result, nil)
+			buddyListRetriever := newMockBuddyListRetriever(t)
+			for _, params := range tc.mockParams.buddyListRetrieverParams.relationshipParams {
+				buddyListRetriever.EXPECT().
+					Relationship(params.me, params.them).
+					Return(params.result, params.err)
 			}
-			messageRelayer := newMockMessageRelayer(t)
-			for _, val := range tc.mockParams.retrieveByScreenNameParams {
-				messageRelayer.EXPECT().
-					RetrieveByScreenName(val.screenName).
-					Return(val.sess)
+			sessionRetriever := newMockSessionRetriever(t)
+			for _, val := range tc.mockParams.retrieveSessionParams {
+				sessionRetriever.EXPECT().
+					RetrieveSession(val.screenName).
+					Return(val.result)
 			}
 			profileManager := newMockProfileManager(t)
 			for _, val := range tc.mockParams.retrieveProfileParams {
@@ -347,13 +383,11 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 					Profile(val.screenName).
 					Return(val.result, val.err)
 			}
-			legacyBuddyListManager := newMockLegacyBuddyListManager(t)
-			for _, params := range tc.mockParams.whoAddedUserParams {
-				legacyBuddyListManager.EXPECT().
-					WhoAddedUser(params.userScreenName).
-					Return(params.result)
+			svc := LocateService{
+				buddyListRetriever: buddyListRetriever,
+				sessionRetriever:   sessionRetriever,
+				profileManager:     profileManager,
 			}
-			svc := NewLocateService(messageRelayer, feedbagManager, profileManager, nil)
 			outputSNAC, err := svc.UserInfoQuery(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x02_0x05_LocateUserInfoQuery))
 			assert.NoError(t, err)
@@ -530,7 +564,7 @@ func TestLocateService_SetKeywordInfo(t *testing.T) {
 					SetKeywords(params.screenName, params.keywords).
 					Return(params.err)
 			}
-			svc := NewLocateService(nil, nil, profileManager, nil)
+			svc := NewLocateService(nil, profileManager, nil, nil)
 			outputSNAC, err := svc.SetKeywordInfo(nil, tt.userSession, tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x02_0x0F_LocateSetKeywordInfo))
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectOutput, outputSNAC)
@@ -619,7 +653,7 @@ func TestLocateService_SetDirInfo(t *testing.T) {
 					SetDirectoryInfo(params.screenName, params.info).
 					Return(nil)
 			}
-			svc := NewLocateService(nil, nil, profileManager, nil)
+			svc := NewLocateService(nil, profileManager, nil, nil)
 			outputSNAC, err := svc.SetDirInfo(nil, tt.userSession, tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x02_0x09_LocateSetDirInfo))
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectOutput, outputSNAC)
@@ -662,8 +696,24 @@ func TestLocateService_SetInfo(t *testing.T) {
 			},
 		},
 		{
-			name:        "set away message",
+			name:        "set away message during sign on flow",
 			userSession: newTestSession("user_screen_name"),
+			inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableData, "this is my away message!"),
+					},
+				},
+			},
+			mockParams: mockParams{
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{},
+				},
+			},
+		},
+		{
+			name:        "set away message after sign on flow",
+			userSession: newTestSession("user_screen_name", sessOptSignonComplete),
 			inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
@@ -692,15 +742,12 @@ func TestLocateService_SetInfo(t *testing.T) {
 			}
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tt.mockParams.broadcastBuddyArrivedParams {
-				p := params
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.IdentScreenName() == p.screenName
-					})).
-					Return(nil)
+					BroadcastBuddyArrived(mock.Anything, matchSession(params.screenName)).
+					Return(params.err)
 			}
-			svc := NewLocateService(nil, nil, profileManager, nil)
-			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
+			svc := NewLocateService(nil, profileManager, nil, nil)
+			svc.buddyBroadcaster = buddyUpdateBroadcaster
 			assert.Equal(t, tt.wantErr, svc.SetInfo(nil, tt.userSession, tt.inBody))
 		})
 	}
@@ -884,7 +931,7 @@ func TestLocateService_DirInfo(t *testing.T) {
 					User(params.screenName).
 					Return(params.result, params.err)
 			}
-			svc := NewLocateService(nil, nil, profileManager, nil)
+			svc := NewLocateService(nil, profileManager, nil, nil)
 			outputSNAC, err := svc.DirInfo(nil, tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x02_0x0B_LocateGetDirInfo))
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectOutput, outputSNAC)

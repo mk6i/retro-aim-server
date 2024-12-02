@@ -18,10 +18,10 @@ import (
 // OServiceService provides functionality for the OService food group, which
 // provides an assortment of services useful across multiple food groups.
 type OServiceService struct {
-	buddyUpdateBroadcaster buddyBroadcaster
-	cfg                    config.Config
-	logger                 *slog.Logger
-	foodGroups             []uint16
+	buddyBroadcaster buddyBroadcaster
+	cfg              config.Config
+	logger           *slog.Logger
+	foodGroups       []uint16
 }
 
 // ClientVersions informs the server what food group versions the client
@@ -507,11 +507,11 @@ func (s OServiceService) SetUserInfoFields(ctx context.Context, sess *state.Sess
 	if status, hasStatus := inBody.Uint32BE(wire.OServiceUserInfoStatus); hasStatus {
 		sess.SetUserStatusBitmask(status)
 		if sess.Invisible() {
-			if err := s.buddyUpdateBroadcaster.BroadcastBuddyDeparted(ctx, sess); err != nil {
+			if err := s.buddyBroadcaster.BroadcastBuddyDeparted(ctx, sess); err != nil {
 				return wire.SNACMessage{}, err
 			}
 		} else {
-			if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
 				return wire.SNACMessage{}, err
 			}
 
@@ -538,7 +538,7 @@ func (s OServiceService) IdleNotification(ctx context.Context, sess *state.Sessi
 	} else {
 		sess.SetIdle(time.Duration(bodyIn.IdleTime) * time.Second)
 	}
-	return s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess)
+	return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess)
 }
 
 // SetPrivacyFlags sets client privacy settings. Currently, there's no action
@@ -603,21 +603,20 @@ func (s OServiceService) HostOnline() wire.SNACMessage {
 func NewOServiceServiceForBOS(
 	cfg config.Config,
 	messageRelayer MessageRelayer,
-	legacyBuddyListManager LegacyBuddyListManager,
 	logger *slog.Logger,
 	cookieIssuer CookieBaker,
-	feedbagManager FeedbagManager,
 	chatRoomManager ChatRoomRegistry,
+	buddyListRetriever BuddyListRetriever,
+	sessionRetriever SessionRetriever,
 ) *OServiceServiceForBOS {
 	return &OServiceServiceForBOS{
-		chatRoomManager:        chatRoomManager,
-		cookieIssuer:           cookieIssuer,
-		legacyBuddyListManager: legacyBuddyListManager,
-		messageRelayer:         messageRelayer,
+		chatRoomManager: chatRoomManager,
+		cookieIssuer:    cookieIssuer,
+		messageRelayer:  messageRelayer,
 		OServiceService: OServiceService{
-			buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
-			cfg:                    cfg,
-			logger:                 logger,
+			buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+			cfg:              cfg,
+			logger:           logger,
 			foodGroups: []uint16{
 				wire.Alert,
 				wire.BART,
@@ -638,10 +637,9 @@ func NewOServiceServiceForBOS(
 // running on the BOS server.
 type OServiceServiceForBOS struct {
 	OServiceService
-	chatRoomManager        ChatRoomRegistry
-	cookieIssuer           CookieBaker
-	legacyBuddyListManager LegacyBuddyListManager
-	messageRelayer         MessageRelayer
+	chatRoomManager ChatRoomRegistry
+	cookieIssuer    CookieBaker
+	messageRelayer  MessageRelayer
 }
 
 // chatLoginCookie represents credentials used to authenticate a user chat
@@ -851,21 +849,10 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
 	sess.SetSignonComplete()
 
-	if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
-		return err
+	if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, nil); err != nil {
+		return fmt.Errorf("unable to transition users: %w", err)
 	}
 
-	// send buddy arrival events to client-side buddy list
-	buddies := s.legacyBuddyListManager.Buddies(sess.IdentScreenName())
-	for _, buddy := range buddies {
-		buddySess := s.messageRelayer.RetrieveByScreenName(buddy)
-		if buddySess == nil || buddySess.Invisible() {
-			continue
-		}
-		if err := s.buddyUpdateBroadcaster.UnicastBuddyArrived(ctx, buddySess, sess); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -874,16 +861,16 @@ func NewOServiceServiceForChat(
 	cfg config.Config,
 	logger *slog.Logger,
 	messageRelayer MessageRelayer,
-	legacyBuddyListManager LegacyBuddyListManager,
-	feedbagManager FeedbagManager,
 	chatRoomManager ChatRoomRegistry,
 	chatMessageRelayer ChatMessageRelayer,
+	buddyListRetriever BuddyListRetriever,
+	sessionRetriever SessionRetriever,
 ) *OServiceServiceForChat {
 	return &OServiceServiceForChat{
 		OServiceService: OServiceService{
-			buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
-			cfg:                    cfg,
-			logger:                 logger,
+			buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+			cfg:              cfg,
+			logger:           logger,
 			foodGroups: []uint16{
 				wire.OService,
 				wire.Chat,
@@ -929,13 +916,13 @@ func NewOServiceServiceForChatNav(
 	cfg config.Config,
 	logger *slog.Logger,
 	messageRelayer MessageRelayer,
-	legacyBuddyListManager LegacyBuddyListManager,
-	feedbagManager FeedbagManager,
+	buddyListRetriever BuddyListRetriever,
+	sessionRetriever SessionRetriever,
 ) *OServiceService {
 	return &OServiceService{
-		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
-		cfg:                    cfg,
-		logger:                 logger,
+		buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		cfg:              cfg,
+		logger:           logger,
 		foodGroups: []uint16{
 			wire.ChatNav,
 			wire.OService,
@@ -949,13 +936,13 @@ func NewOServiceServiceForAlert(
 	cfg config.Config,
 	logger *slog.Logger,
 	messageRelayer MessageRelayer,
-	legacyBuddyListManager LegacyBuddyListManager,
-	feedbagManager FeedbagManager,
+	buddyListRetriever BuddyListRetriever,
+	sessionRetriever SessionRetriever,
 ) *OServiceService {
 	return &OServiceService{
-		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
-		cfg:                    cfg,
-		logger:                 logger,
+		buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		cfg:              cfg,
+		logger:           logger,
 		foodGroups: []uint16{
 			wire.Alert,
 			wire.OService,
@@ -977,11 +964,17 @@ func NewOServiceServiceForODir(cfg config.Config, logger *slog.Logger) *OService
 }
 
 // NewOServiceServiceForAdmin creates a new instance of OServiceService for Admin server.
-func NewOServiceServiceForAdmin(cfg config.Config, logger *slog.Logger, buddyUpdateBroadcaster buddyBroadcaster) *OServiceService {
+func NewOServiceServiceForAdmin(
+	cfg config.Config,
+	logger *slog.Logger,
+	messageRelayer MessageRelayer,
+	buddyListRetriever BuddyListRetriever,
+	sessionRetriever SessionRetriever,
+) *OServiceService {
 	return &OServiceService{
-		buddyUpdateBroadcaster: buddyUpdateBroadcaster,
-		cfg:                    cfg,
-		logger:                 logger,
+		buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		cfg:              cfg,
+		logger:           logger,
 		foodGroups: []uint16{
 			wire.OService,
 			wire.Admin,
@@ -995,13 +988,13 @@ func NewOServiceServiceForBART(
 	cfg config.Config,
 	logger *slog.Logger,
 	messageRelayer MessageRelayer,
-	legacyBuddyListManager LegacyBuddyListManager,
-	feedbagManager FeedbagManager,
+	buddyListRetriever BuddyListRetriever,
+	sessionRetriever SessionRetriever,
 ) *OServiceService {
 	return &OServiceService{
-		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
-		cfg:                    cfg,
-		logger:                 logger,
+		buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		cfg:              cfg,
+		logger:           logger,
 		foodGroups: []uint16{
 			wire.BART,
 			wire.OService,

@@ -18,7 +18,6 @@ import (
 
 // Container groups together common dependencies.
 type Container struct {
-	adjListBuddyListStore  *state.AdjListBuddyListStore
 	cfg                    config.Config
 	chatSessionManager     *state.InMemoryChatSessionManager
 	hmacCookieBaker        state.HMACCookieBaker
@@ -49,7 +48,6 @@ func MakeCommonDeps() (Container, error) {
 	c.logger = middleware.NewLogger(c.cfg)
 	c.inMemorySessionManager = state.NewInMemorySessionManager(c.logger)
 	c.chatSessionManager = state.NewInMemoryChatSessionManager(c.logger)
-	c.adjListBuddyListStore = state.NewAdjListBuddyListStore()
 
 	return c, nil
 }
@@ -58,12 +56,15 @@ func MakeCommonDeps() (Container, error) {
 func Admin(deps Container) oscar.AdminServer {
 	logger := deps.logger.With("svc", "ADMIN")
 
-	buddyService := foodgroup.NewBuddyService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.adjListBuddyListStore)
-	adminService := foodgroup.NewAdminService(deps.inMemorySessionManager, deps.sqLiteUserStore, buddyService, deps.inMemorySessionManager)
-	authService := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.chatSessionManager,
-		deps.sqLiteUserStore, deps.adjListBuddyListStore, deps.hmacCookieBaker, deps.inMemorySessionManager,
-		deps.sqLiteUserStore, deps.chatSessionManager, deps.sqLiteUserStore)
-	oServiceService := foodgroup.NewOServiceServiceForAdmin(deps.cfg, logger, buddyService)
+	adminService := foodgroup.NewAdminService(deps.sqLiteUserStore, deps.sqLiteUserStore, deps.inMemorySessionManager, deps.inMemorySessionManager)
+	authService := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.inMemorySessionManager)
+	oServiceService := foodgroup.NewOServiceServiceForAdmin(
+		deps.cfg,
+		logger,
+		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
+		deps.inMemorySessionManager,
+	)
 
 	return oscar.AdminServer{
 		AuthService: authService,
@@ -83,9 +84,8 @@ func Alert(deps Container) oscar.BOSServer {
 	logger := deps.logger.With("svc", "ALERT")
 
 	sessionManager := state.NewInMemorySessionManager(logger)
-	authService := foodgroup.NewAuthService(deps.cfg, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore,
-		deps.adjListBuddyListStore, deps.hmacCookieBaker, sessionManager, deps.sqLiteUserStore, deps.chatSessionManager, deps.sqLiteUserStore)
-	oServiceService := foodgroup.NewOServiceServiceForAlert(deps.cfg, logger, sessionManager, deps.adjListBuddyListStore, deps.sqLiteUserStore)
+	authService := foodgroup.NewAuthService(deps.cfg, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, nil)
+	oServiceService := foodgroup.NewOServiceServiceForAlert(deps.cfg, logger, sessionManager, deps.sqLiteUserStore, sessionManager)
 
 	return oscar.BOSServer{
 		AuthService: authService,
@@ -104,8 +104,7 @@ func Alert(deps Container) oscar.BOSServer {
 func Auth(deps Container) oscar.AuthServer {
 	logger := deps.logger.With("svc", "AUTH")
 
-	authHandler := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.chatSessionManager,
-		deps.sqLiteUserStore, deps.adjListBuddyListStore, deps.hmacCookieBaker, nil, nil, deps.chatSessionManager, deps.sqLiteUserStore)
+	authHandler := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, nil, deps.chatSessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, nil)
 
 	return oscar.AuthServer{
 		AuthService: authHandler,
@@ -119,10 +118,9 @@ func BART(deps Container) oscar.BOSServer {
 	logger := deps.logger.With("svc", "BART")
 
 	sessionManager := state.NewInMemorySessionManager(logger)
-	bartService := foodgroup.NewBARTService(logger, deps.sqLiteUserStore, sessionManager, deps.sqLiteUserStore, deps.adjListBuddyListStore)
-	authService := foodgroup.NewAuthService(deps.cfg, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore,
-		deps.adjListBuddyListStore, deps.hmacCookieBaker, sessionManager, deps.sqLiteUserStore, deps.chatSessionManager, deps.sqLiteUserStore)
-	oServiceService := foodgroup.NewOServiceServiceForBART(deps.cfg, logger, sessionManager, deps.adjListBuddyListStore, deps.sqLiteUserStore)
+	bartService := foodgroup.NewBARTService(logger, deps.sqLiteUserStore, sessionManager, deps.sqLiteUserStore, sessionManager)
+	authService := foodgroup.NewAuthService(deps.cfg, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, nil)
+	oServiceService := foodgroup.NewOServiceServiceForBART(deps.cfg, logger, sessionManager, deps.sqLiteUserStore, sessionManager)
 
 	return oscar.BOSServer{
 		AuthService: authService,
@@ -141,29 +139,49 @@ func BART(deps Container) oscar.BOSServer {
 func BOS(deps Container) oscar.BOSServer {
 	logger := deps.logger.With("svc", "BOS")
 
-	authService := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.chatSessionManager,
-		deps.sqLiteUserStore, deps.adjListBuddyListStore, deps.hmacCookieBaker, deps.inMemorySessionManager,
-		deps.sqLiteUserStore, deps.chatSessionManager, deps.sqLiteUserStore)
-	bartService := foodgroup.NewBARTService(logger, deps.sqLiteUserStore, deps.inMemorySessionManager,
-		deps.sqLiteUserStore, deps.adjListBuddyListStore)
-	buddyService := foodgroup.NewBuddyService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.adjListBuddyListStore)
+	authService := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, nil)
+	bartService := foodgroup.NewBARTService(
+		logger,
+		deps.sqLiteUserStore,
+		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
+		deps.inMemorySessionManager,
+	)
+	buddyService := foodgroup.NewBuddyService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.inMemorySessionManager)
 	chatNavService := foodgroup.NewChatNavService(logger, deps.sqLiteUserStore)
-	feedbagService := foodgroup.NewFeedbagService(logger, deps.inMemorySessionManager, deps.sqLiteUserStore,
-		deps.sqLiteUserStore, deps.adjListBuddyListStore)
-	permitDenyService := foodgroup.NewPermitDenyService()
-	icbmService := foodgroup.NewICBMService(deps.inMemorySessionManager, deps.sqLiteUserStore,
-		deps.adjListBuddyListStore, deps.sqLiteUserStore)
+	feedbagService := foodgroup.NewFeedbagService(
+		logger,
+		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
+		deps.sqLiteUserStore,
+		deps.sqLiteUserStore,
+		deps.inMemorySessionManager,
+	)
+	permitDenyService := foodgroup.NewPermitDenyService(
+		deps.sqLiteUserStore,
+		deps.sqLiteUserStore,
+		deps.inMemorySessionManager,
+		deps.inMemorySessionManager,
+	)
+	icbmService := foodgroup.NewICBMService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.inMemorySessionManager)
 	icqService := foodgroup.NewICQService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore,
 		logger, deps.inMemorySessionManager, deps.sqLiteUserStore)
-	locateService := foodgroup.NewLocateService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore,
-		deps.adjListBuddyListStore)
-	oServiceService := foodgroup.NewOServiceServiceForBOS(deps.cfg, deps.inMemorySessionManager,
-		deps.adjListBuddyListStore, logger, deps.hmacCookieBaker, deps.sqLiteUserStore, deps.sqLiteUserStore)
+	locateService := foodgroup.NewLocateService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.inMemorySessionManager)
+	oServiceService := foodgroup.NewOServiceServiceForBOS(
+		deps.cfg,
+		deps.inMemorySessionManager,
+		logger,
+		deps.hmacCookieBaker,
+		deps.sqLiteUserStore,
+		deps.sqLiteUserStore,
+		deps.inMemorySessionManager,
+	)
 	userLookupService := foodgroup.NewUserLookupService(deps.sqLiteUserStore)
 
 	return oscar.BOSServer{
-		AuthService: authService,
-		Config:      deps.cfg,
+		AuthService:       authService,
+		BuddyListRegistry: deps.sqLiteUserStore,
+		Config:            deps.cfg,
 		Handler: handler.NewBOSRouter(handler.Handlers{
 			AlertHandler:      handler.NewAlertHandler(logger),
 			BARTHandler:       handler.NewBARTHandler(logger, bartService),
@@ -188,11 +206,17 @@ func Chat(deps Container) oscar.ChatServer {
 	logger := deps.logger.With("svc", "CHAT")
 
 	sessionManager := state.NewInMemorySessionManager(logger)
-	authService := foodgroup.NewAuthService(deps.cfg, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore,
-		deps.adjListBuddyListStore, deps.hmacCookieBaker, sessionManager, deps.sqLiteUserStore, deps.chatSessionManager, deps.sqLiteUserStore)
+	authService := foodgroup.NewAuthService(deps.cfg, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, nil)
 	chatService := foodgroup.NewChatService(deps.chatSessionManager)
-	oServiceService := foodgroup.NewOServiceServiceForChat(deps.cfg, logger, sessionManager, deps.adjListBuddyListStore,
-		deps.sqLiteUserStore, deps.sqLiteUserStore, deps.chatSessionManager)
+	oServiceService := foodgroup.NewOServiceServiceForChat(
+		deps.cfg,
+		logger,
+		sessionManager,
+		deps.sqLiteUserStore,
+		deps.chatSessionManager,
+		deps.sqLiteUserStore,
+		sessionManager,
+	)
 
 	return oscar.ChatServer{
 		AuthService: authService,
@@ -211,11 +235,9 @@ func ChatNav(deps Container) oscar.BOSServer {
 	logger := deps.logger.With("svc", "CHAT_NAV")
 
 	sessionManager := state.NewInMemorySessionManager(logger)
-	authService := foodgroup.NewAuthService(deps.cfg, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore,
-		deps.adjListBuddyListStore, deps.hmacCookieBaker, sessionManager, deps.sqLiteUserStore, deps.chatSessionManager,
-		deps.sqLiteUserStore)
+	authService := foodgroup.NewAuthService(deps.cfg, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, nil)
 	chatNavService := foodgroup.NewChatNavService(logger, deps.sqLiteUserStore)
-	oServiceService := foodgroup.NewOServiceServiceForChatNav(deps.cfg, logger, sessionManager, deps.adjListBuddyListStore, deps.sqLiteUserStore)
+	oServiceService := foodgroup.NewOServiceServiceForChatNav(deps.cfg, logger, sessionManager, deps.sqLiteUserStore, sessionManager)
 
 	return oscar.BOSServer{
 		AuthService: authService,
@@ -247,9 +269,7 @@ func ODir(deps Container) oscar.BOSServer {
 	logger := deps.logger.With("svc", "ODIR")
 
 	sessionManager := state.NewInMemorySessionManager(logger)
-	authService := foodgroup.NewAuthService(deps.cfg, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore,
-		deps.adjListBuddyListStore, deps.hmacCookieBaker, sessionManager, deps.sqLiteUserStore, deps.chatSessionManager,
-		deps.sqLiteUserStore)
+	authService := foodgroup.NewAuthService(deps.cfg, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, sessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, nil)
 	oServiceService := foodgroup.NewOServiceServiceForODir(deps.cfg, logger)
 	oDirService := foodgroup.NewODirService(logger, deps.sqLiteUserStore)
 

@@ -1,7 +1,7 @@
-with-expecter: True
+with-expecter: true
 dir: "{{.InterfaceDir}}"
 mockname: "mock{{.InterfaceName}}"
-inpackage: True
+inpackage: true
 packages:
   github.com/mk6i/retro-aim-server/server/oscar:
     interfaces:
@@ -11,129 +11,150 @@ packages:
       Handler:
         config:
           filename: "mock_handler_test.go"
-      UserManager:
-        config:
-          filename: "mock_user_manager_test.go"
       OnlineNotifier:
         config:
           filename: "mock_online_notifier_test.go"
-  github.com/mk6i/retro-aim-server/server/http:
-    interfaces:
+      ResponseWriter:
+        config:
+          inpackage: False
+          filename: "mock_response_writer_test.go"
+          dir: "./server/oscar/handler"
+          outpkg: "handler"
       UserManager:
         config:
           filename: "mock_user_manager_test.go"
-      SessionRetriever:
+  github.com/mk6i/retro-aim-server/server/http:
+    interfaces:
+      AccountRetriever:
         config:
-          filename: "mock_session_retriever_test.go"
-      ChatRoomRetriever:
+          filename: "mock_chat_account_retriever_test.go"
+      BARTRetriever:
         config:
-          filename: "mock_chat_room_retriever_test.go"
+          filename: "mock_bart_retriever_test.go"
       ChatRoomCreator:
         config:
           filename: "mock_chat_room_creator_test.go"
+      ChatRoomRetriever:
+        config:
+          filename: "mock_chat_room_retriever_test.go"
       ChatSessionRetriever:
         config:
           filename: "mock_chat_session_retriever_test.go"
-      MessageRelayer:
-        config:
-          filename: "mock_message_relayer_test.go"
       DirectoryManager:
         config:
           filename: "mock_directory_manager_test.go"
+      FeedBagRetriever:
+        config:
+          filename: "mock_feedbag_retriever_test.go"
+      MessageRelayer:
+        config:
+          filename: "mock_message_relayer_test.go"
+      ProfileRetriever:
+        config:
+          filename: "mock_profile_retriever_test.go"
+      SessionRetriever:
+        config:
+          filename: "mock_session_retriever_test.go"
+      UserManager:
+        config:
+          filename: "mock_user_manager_test.go"
   github.com/mk6i/retro-aim-server/server/oscar/handler:
     interfaces:
-      ResponseWriter:
+      AdminService:
         config:
-          filename: "mock_response_writer_test.go"
-      ChatService:
+          filename: "mock_admin_test.go"
+      BARTService:
         config:
-          filename: "mock_chat_test.go"
+          filename: "mock_bart_test.go"
+      BuddyService:
+        config:
+          filename: "mock_buddy_test.go"
       ChatNavService:
         config:
           filename: "mock_chat_nav_test.go"
+      ChatService:
+        config:
+          filename: "mock_chat_test.go"
       FeedbagService:
         config:
           filename: "mock_feedbag_test.go"
       ICBMService:
         config:
           filename: "mock_icbm_test.go"
-      OServiceService:
-        config:
-          filename: "mock_oservice_test.go"
-      LocateService:
-        config:
-          filename: "mock_locate_test.go"
-      BuddyService:
-        config:
-          filename: "mock_buddy_test.go"
-      BARTService:
-        config:
-          filename: "mock_bart_test.go"
-      PermitDenyService:
-        config:
-          filename: "mock_permit_deny_test.go"
-      AdminService:
-        config:
-          filename: "mock_admin_test.go"
       ICQService:
         config:
           filename: "mock_icq_service_test.go"
+      LocateService:
+        config:
+          filename: "mock_locate_test.go"
       ODirService:
         config:
           filename: "mock_odir_service_test.go"
+      OServiceService:
+        config:
+          filename: "mock_oservice_test.go"
+      PermitDenyService:
+        config:
+          filename: "mock_permit_deny_test.go"
       UserLookupService:
         config:
           filename: "mock_user_lookup_service_test.go"
   github.com/mk6i/retro-aim-server/foodgroup:
     interfaces:
-      FeedbagManager:
+      AccountManager:
         config:
-          filename: "mock_feedbag_manager_test.go"
-      UserManager:
+          filename: "mock_account_manager_test.go"
+      BARTManager:
         config:
-          filename: "mock_user_manager_manager_test.go"
-      ProfileManager:
+          filename: "mock_bart_manager_test.go"
+      buddyBroadcaster:
         config:
-          filename: "mock_profile_manager_test.go"
-      ChatSessionRegistry:
+          filename: "mock_buddy_broadcaster_test.go"
+      BuddyListRetriever:
         config:
-          filename: "mock_chat_session_registry_test.go"
-      SessionManager:
-        config:
-          filename: "mock_session_manager_test.go"
-      MessageRelayer:
-        config:
-          filename: "mock_message_relayer_test.go"
+          filename: "mock_buddy_list_retriever_test.go"
       ChatMessageRelayer:
         config:
           filename: "mock_chat_message_relayer_test.go"
       ChatRoomRegistry:
         config:
           filename: "mock_chat_room_registry_test.go"
-      BARTManager:
+      ChatSessionRegistry:
         config:
-          filename: "mock_bart_manager_test.go"
-      LegacyBuddyListManager:
-        config:
-          filename: "mock_legacy_buddy_list_manager_test.go"
+          filename: "mock_chat_session_registry_test.go"
       CookieBaker:
         config:
           filename: "mock_cookie_baker_test.go"
-      buddyBroadcaster:
+      FeedbagManager:
         config:
-          filename: "mock_buddy_broadcaster_test.go"
-      AccountManager:
-        config:
-          filename: "mock_account_manager_test.go"
+          filename: "mock_feedbag_manager_test.go"
       ICQUserFinder:
         config:
           filename: "mock_icq_user_finder_test.go"
       ICQUserUpdater:
         config:
           filename: "mock_icq_user_updater_test.go"
-      SessionRetriever:
+      LegacyBuddyListManager:
         config:
-          filename: "mock_session_retriever_test.go"
+          filename: "mock_legacy_buddy_list_manager_test.go"
+      LocalBuddyListManager:
+        config:
+          filename: "mock_local_buddy_list_manager_test.go"
+      MessageRelayer:
+        config:
+          filename: "mock_message_relayer_test.go"
       OfflineMessageManager:
         config:
           filename: "mock_offline_message_manager_test.go"
+      ProfileManager:
+        config:
+          filename: "mock_profile_manager_test.go"
+      SessionRegistry:
+        config:
+          filename: "mock_session_registry_test.go"
+      SessionRetriever:
+        config:
+          filename: "mock_session_retriever_test.go"
+      UserManager:
+        config:
+          filename: "mock_user_manager_manager_test.go"

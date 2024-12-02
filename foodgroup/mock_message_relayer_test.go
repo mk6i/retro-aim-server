@@ -94,54 +94,6 @@ func (_c *mockMessageRelayer_RelayToScreenNames_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// RetrieveByScreenName provides a mock function with given fields: screenName
-func (_m *mockMessageRelayer) RetrieveByScreenName(screenName state.IdentScreenName) *state.Session {
-	ret := _m.Called(screenName)
-
-	if len(ret) == 0 {
-		panic("no return value specified for RetrieveByScreenName")
-	}
-
-	var r0 *state.Session
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *state.Session); ok {
-		r0 = rf(screenName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*state.Session)
-		}
-	}
-
-	return r0
-}
-
-// mockMessageRelayer_RetrieveByScreenName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RetrieveByScreenName'
-type mockMessageRelayer_RetrieveByScreenName_Call struct {
-	*mock.Call
-}
-
-// RetrieveByScreenName is a helper method to define mock.On call
-//   - screenName state.IdentScreenName
-func (_e *mockMessageRelayer_Expecter) RetrieveByScreenName(screenName interface{}) *mockMessageRelayer_RetrieveByScreenName_Call {
-	return &mockMessageRelayer_RetrieveByScreenName_Call{Call: _e.mock.On("RetrieveByScreenName", screenName)}
-}
-
-func (_c *mockMessageRelayer_RetrieveByScreenName_Call) Run(run func(screenName state.IdentScreenName)) *mockMessageRelayer_RetrieveByScreenName_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
-	})
-	return _c
-}
-
-func (_c *mockMessageRelayer_RetrieveByScreenName_Call) Return(_a0 *state.Session) *mockMessageRelayer_RetrieveByScreenName_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockMessageRelayer_RetrieveByScreenName_Call) RunAndReturn(run func(state.IdentScreenName) *state.Session) *mockMessageRelayer_RetrieveByScreenName_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // newMockMessageRelayer creates a new instance of mockMessageRelayer. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func newMockMessageRelayer(t interface {

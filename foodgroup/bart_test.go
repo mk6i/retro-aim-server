@@ -84,12 +84,9 @@ func TestBARTService_UpsertItem(t *testing.T) {
 			}
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
-				p := params
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(s *state.Session) bool {
-						return s.IdentScreenName() == p.screenName
-					})).
-					Return(nil)
+					BroadcastBuddyArrived(mock.Anything, matchSession(params.screenName)).
+					Return(params.err)
 			}
 			svc := NewBARTService(slog.Default(), bartManager, nil, nil, nil)
 			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster

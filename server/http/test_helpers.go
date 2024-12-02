@@ -1,7 +1,6 @@
 package http
 
 import (
-	"context"
 	"net/mail"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -11,12 +10,10 @@ import (
 type mockParams struct {
 	accountRetrieverParams
 	bartRetrieverParams
-	chatRoomCreatorParams
 	chatRoomRetrieverParams
 	chatSessionRetrieverParams
 	directoryManagerParams
 	feedBagRetrieverParams
-	messageRelayerParams
 	profileRetrieverParams
 	sessionRetrieverParams
 	userManagerParams
@@ -65,19 +62,6 @@ type bartRetrieverParams struct {
 type bartRetrieveParams []struct {
 	itemHash []byte
 	result   []byte
-	err      error
-}
-
-// chatRoomCreatorParams is a helper struct that contains mock parameters for
-// ChatRoomCreator methods
-type chatRoomCreatorParams struct {
-	createChatRoomParams
-}
-
-// createChatRoomParams is the list of parameters passed at the mock
-// ChatRoomCreator.CreateChatRoom call site
-type createChatRoomParams []struct {
-	chatRoom *state.ChatRoom
 	err      error
 }
 
@@ -175,20 +159,6 @@ type buddyIconRefByNameParams []struct {
 	screenName state.IdentScreenName
 	result     *wire.BARTID
 	err        error
-}
-
-// messageRelayerParams is a helper struct that contains mock parameters for
-// MessageRelayer methods
-type messageRelayerParams struct {
-	relayToScreenNameParams
-}
-
-// relayToScreenNameParams is the list of parameters passed at the mock
-// MessageRelayer.RelayToScreenNameParams call site
-type relayToScreenNameParams []struct {
-	ctx        context.Context
-	screenName state.IdentScreenName
-	msg        wire.SNACMessage
 }
 
 // profileRetrieverParams is a helper struct that contains mock parameters for

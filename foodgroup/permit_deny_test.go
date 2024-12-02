@@ -1,15 +1,17 @@
 package foodgroup
 
 import (
+	"context"
 	"testing"
 
+	"github.com/mk6i/retro-aim-server/state"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
 func TestPermitDenyService_RightsQuery(t *testing.T) {
-	svc := NewPermitDenyService()
+	svc := NewPermitDenyService(nil, nil, nil, nil)
 
 	have := svc.RightsQuery(nil, wire.SNACFrame{RequestID: 1234})
 	want := wire.SNACMessage{
@@ -30,4 +32,608 @@ func TestPermitDenyService_RightsQuery(t *testing.T) {
 	}
 
 	assert.Equal(t, want, have)
+}
+
+func TestPermitDenyService_AddDenyListEntries(t *testing.T) {
+	tests := []struct {
+		// name is the name of the test
+		name string
+		// sess is the client session
+		sess *state.Session
+		// bodyIn is the input SNAC
+		bodyIn wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries
+		// expectOutput is the expected return SNAC value
+		expectOutput *wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// wantErr is the expected error
+		wantErr error
+	}{
+		{
+			name: "set FeedbagPDModePermitAll",
+			sess: newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{ScreenName: "me"},
+				},
+			},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					setPDModeParams: setPDModeParams{
+						{
+							userScreenName: state.NewIdentScreenName("me"),
+							pdMode:         wire.FeedbagPDModePermitAll,
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{
+						{
+							from:   state.NewIdentScreenName("me"),
+							filter: nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "set FeedbagPDModeDenySome - 0 users",
+			sess: newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{},
+			},
+		},
+		{
+			name: "set FeedbagPDModeDenySome - 1 user",
+			sess: newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{ScreenName: "them"},
+				},
+			},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					setPDModeParams: setPDModeParams{
+						{
+							userScreenName: state.NewIdentScreenName("me"),
+							pdMode:         wire.FeedbagPDModeDenySome,
+						},
+					},
+					denyBuddyParams: denyBuddyParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them"),
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{
+						{
+							from:   state.NewIdentScreenName("me"),
+							filter: nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "set FeedbagPDModeDenySome sign on incomplete - 1 user",
+			sess: newTestSession("me"),
+			bodyIn: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{ScreenName: "them"},
+				},
+			},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					setPDModeParams: setPDModeParams{
+						{
+							userScreenName: state.NewIdentScreenName("me"),
+							pdMode:         wire.FeedbagPDModeDenySome,
+						},
+					},
+					denyBuddyParams: denyBuddyParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them"),
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{},
+				},
+			},
+		},
+		{
+			name: "set FeedbagPDModeDenySome - 2 users",
+			sess: newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{ScreenName: "them1"},
+					{ScreenName: "them2"},
+				},
+			},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					setPDModeParams: setPDModeParams{
+						{
+							userScreenName: state.NewIdentScreenName("me"),
+							pdMode:         wire.FeedbagPDModeDenySome,
+						},
+					},
+					denyBuddyParams: denyBuddyParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them1"),
+						},
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them2"),
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{
+						{
+							from:   state.NewIdentScreenName("me"),
+							filter: nil,
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			localBuddyListManager := newMockLocalBuddyListManager(t)
+			for _, item := range tt.mockParams.setPDModeParams {
+				localBuddyListManager.EXPECT().
+					SetPDMode(item.userScreenName, item.pdMode).
+					Return(item.err)
+			}
+			for _, item := range tt.mockParams.denyBuddyParams {
+				localBuddyListManager.EXPECT().
+					DenyBuddy(item.me, item.them).
+					Return(item.err)
+			}
+			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
+			for _, item := range tt.mockParams.broadcastVisibilityParams {
+				mockBuddyBroadcaster.EXPECT().
+					BroadcastVisibility(context.TODO(), matchSession(item.from), item.filter).
+					Return(item.err)
+			}
+
+			svc := PermitDenyService{
+				buddyBroadcaster:      mockBuddyBroadcaster,
+				localBuddyListManager: localBuddyListManager,
+			}
+			err := svc.AddDenyListEntries(context.TODO(), tt.sess, tt.bodyIn)
+			assert.Equal(t, tt.wantErr, err)
+		})
+	}
+}
+
+func TestPermitDenyService_AddPermListEntries(t *testing.T) {
+	tests := []struct {
+		// name is the name of the test
+		name string
+		// sess is the client session
+		sess *state.Session
+		// bodyIn is the input SNAC
+		bodyIn wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries
+		// expectOutput is the expected return SNAC value
+		expectOutput *wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// wantErr is the expected error
+		wantErr error
+	}{
+		{
+			name: "set FeedbagPDModeDenyAll",
+			sess: newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{ScreenName: "me"},
+				},
+			},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					setPDModeParams: setPDModeParams{
+						{
+							userScreenName: state.NewIdentScreenName("me"),
+							pdMode:         wire.FeedbagPDModeDenyAll,
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{
+						{
+							from:   state.NewIdentScreenName("me"),
+							filter: nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "set FeedbagPDModePermitSome - 0 users",
+			sess: newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{},
+			},
+		},
+		{
+			name: "set FeedbagPDModePermitSome - 1 user",
+			sess: newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{ScreenName: "them"},
+				},
+			},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					setPDModeParams: setPDModeParams{
+						{
+							userScreenName: state.NewIdentScreenName("me"),
+							pdMode:         wire.FeedbagPDModePermitSome,
+						},
+					},
+					permitBuddyParams: permitBuddyParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them"),
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{
+						{
+							from:   state.NewIdentScreenName("me"),
+							filter: nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "set FeedbagPDModePermitSome sign on incomplete - 1 user",
+			sess: newTestSession("me"),
+			bodyIn: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{ScreenName: "them"},
+				},
+			},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					setPDModeParams: setPDModeParams{
+						{
+							userScreenName: state.NewIdentScreenName("me"),
+							pdMode:         wire.FeedbagPDModePermitSome,
+						},
+					},
+					permitBuddyParams: permitBuddyParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them"),
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{},
+				},
+			},
+		},
+		{
+			name: "set FeedbagPDModePermitSome - 2 users",
+			sess: newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{ScreenName: "them1"},
+					{ScreenName: "them2"},
+				},
+			},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					setPDModeParams: setPDModeParams{
+						{
+							userScreenName: state.NewIdentScreenName("me"),
+							pdMode:         wire.FeedbagPDModePermitSome,
+						},
+					},
+					permitBuddyParams: permitBuddyParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them1"),
+						},
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them2"),
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{
+						{
+							from:   state.NewIdentScreenName("me"),
+							filter: nil,
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			localBuddyListManager := newMockLocalBuddyListManager(t)
+			for _, item := range tt.mockParams.setPDModeParams {
+				localBuddyListManager.EXPECT().
+					SetPDMode(item.userScreenName, item.pdMode).
+					Return(item.err)
+			}
+			for _, item := range tt.mockParams.permitBuddyParams {
+				localBuddyListManager.EXPECT().
+					PermitBuddy(item.me, item.them).
+					Return(item.err)
+			}
+			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
+			for _, item := range tt.mockParams.broadcastVisibilityParams {
+				mockBuddyBroadcaster.EXPECT().
+					BroadcastVisibility(context.TODO(), matchSession(item.from), item.filter).
+					Return(item.err)
+			}
+
+			svc := PermitDenyService{
+				buddyBroadcaster:      mockBuddyBroadcaster,
+				localBuddyListManager: localBuddyListManager,
+			}
+			err := svc.AddPermListEntries(context.TODO(), tt.sess, tt.bodyIn)
+			assert.Equal(t, tt.wantErr, err)
+		})
+	}
+}
+
+func TestPermitDenyService_DelDenyListEntries(t *testing.T) {
+	tests := []struct {
+		// name is the name of the test
+		name string
+		// sess is the client session
+		sess *state.Session
+		// bodyIn is the input SNAC
+		bodyIn wire.SNAC_0x09_0x08_PermitDenyDelDenyListEntries
+		// expectOutput is the expected return SNAC value
+		expectOutput *wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// wantErr is the expected error
+		wantErr error
+	}{
+		{
+			name: "remove 0 deny list entries",
+			sess: newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x08_PermitDenyDelDenyListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{},
+			},
+		},
+		{
+			name: "sign on incomplete remove 1 deny list entries",
+			sess: newTestSession("me"),
+			bodyIn: wire.SNAC_0x09_0x08_PermitDenyDelDenyListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{ScreenName: "them1"},
+				},
+			},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					removeDenyBuddyParams: removeDenyBuddyParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them1"),
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{},
+				},
+			},
+		},
+		{
+			name: "remove 2 deny list entries",
+			sess: newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x08_PermitDenyDelDenyListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{ScreenName: "them1"},
+					{ScreenName: "them2"},
+				},
+			},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					removeDenyBuddyParams: removeDenyBuddyParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them1"),
+						},
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them2"),
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{
+						{
+							from: state.NewIdentScreenName("me"),
+							filter: []state.IdentScreenName{
+								state.NewIdentScreenName("them1"),
+								state.NewIdentScreenName("them2"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			localBuddyListManager := newMockLocalBuddyListManager(t)
+			for _, item := range tt.mockParams.removeDenyBuddyParams {
+				localBuddyListManager.EXPECT().
+					RemoveDenyBuddy(item.me, item.them).
+					Return(item.err)
+			}
+			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
+			for _, item := range tt.mockParams.broadcastVisibilityParams {
+				mockBuddyBroadcaster.EXPECT().
+					BroadcastVisibility(context.TODO(), matchSession(item.from), item.filter).
+					Return(item.err)
+			}
+
+			svc := PermitDenyService{
+				buddyBroadcaster:      mockBuddyBroadcaster,
+				localBuddyListManager: localBuddyListManager,
+			}
+			err := svc.DelDenyListEntries(context.TODO(), tt.sess, tt.bodyIn)
+			assert.Equal(t, tt.wantErr, err)
+		})
+	}
+}
+
+func TestPermitDenyService_DelPermListEntries(t *testing.T) {
+	tests := []struct {
+		// name is the name of the test
+		name string
+		// sess is the client session
+		sess *state.Session
+		// bodyIn is the input SNAC
+		bodyIn wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries
+		// expectOutput is the expected return SNAC value
+		expectOutput *wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// wantErr is the expected error
+		wantErr error
+	}{
+		{
+			name: "remove 0 deny list entries",
+			sess: newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{},
+			},
+		},
+		{
+			name: "sign on incomplete remove 1 deny list entries",
+			sess: newTestSession("me"),
+			bodyIn: wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{ScreenName: "them1"},
+				},
+			},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					removePermitBuddyParams: removePermitBuddyParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them1"),
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{},
+				},
+			},
+		},
+		{
+			name: "remove 2 deny list entries",
+			sess: newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{ScreenName: "them1"},
+					{ScreenName: "them2"},
+				},
+			},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					removePermitBuddyParams: removePermitBuddyParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them1"),
+						},
+						{
+							me:   state.NewIdentScreenName("me"),
+							them: state.NewIdentScreenName("them2"),
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{
+						{
+							from: state.NewIdentScreenName("me"),
+							filter: []state.IdentScreenName{
+								state.NewIdentScreenName("them1"),
+								state.NewIdentScreenName("them2"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			localBuddyListManager := newMockLocalBuddyListManager(t)
+			for _, item := range tt.mockParams.removePermitBuddyParams {
+				localBuddyListManager.EXPECT().
+					RemovePermitBuddy(item.me, item.them).
+					Return(item.err)
+			}
+			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
+			for _, item := range tt.mockParams.broadcastVisibilityParams {
+				mockBuddyBroadcaster.EXPECT().
+					BroadcastVisibility(context.TODO(), matchSession(item.from), item.filter).
+					Return(item.err)
+			}
+
+			svc := PermitDenyService{
+				buddyBroadcaster:      mockBuddyBroadcaster,
+				localBuddyListManager: localBuddyListManager,
+			}
+			err := svc.DelPermListEntries(context.TODO(), tt.sess, tt.bodyIn)
+			assert.Equal(t, tt.wantErr, err)
+		})
+	}
 }

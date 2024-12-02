@@ -18,10 +18,16 @@ var blankGIF = []byte{
 	0x32, 0x00, 0x32, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3b,
 }
 
-func NewBARTService(logger *slog.Logger, bartManager BARTManager, messageRelayer MessageRelayer, feedbagManager FeedbagManager, legacyBuddyListManager LegacyBuddyListManager) BARTService {
+func NewBARTService(
+	logger *slog.Logger,
+	bartManager BARTManager,
+	messageRelayer MessageRelayer,
+	buddyListRetriever BuddyListRetriever,
+	sessionRetriever SessionRetriever,
+) BARTService {
 	return BARTService{
 		bartManager:            bartManager,
-		buddyUpdateBroadcaster: NewBuddyService(messageRelayer, feedbagManager, legacyBuddyListManager),
+		buddyUpdateBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
 		logger:                 logger,
 	}
 }

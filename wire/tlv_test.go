@@ -191,6 +191,32 @@ func TestTLVList_Getters(t *testing.T) {
 			found:  false,
 		},
 		{
+			name: "given a TLV of uint8, expect found value",
+			given: []TLV{
+				NewTLVLE(0, uint8(12)),
+				NewTLVLE(1, uint8(34)),
+				NewTLVLE(2, uint8(56)),
+			},
+			lookup: func(l TLVList) (any, bool) {
+				return l.Uint8(1)
+			},
+			expect: uint8(34),
+			found:  true,
+		},
+		{
+			name: "given a TLV of uint8, expect not found value",
+			given: []TLV{
+				NewTLVLE(0, uint8(12)),
+				NewTLVLE(1, uint8(34)),
+				NewTLVLE(2, uint8(56)),
+			},
+			lookup: func(l TLVList) (any, bool) {
+				return l.Uint8(3)
+			},
+			expect: uint8(0),
+			found:  false,
+		},
+		{
 			name: "given a TLV of string, expect found value",
 			given: []TLV{
 				NewTLVBE(0, "12"),

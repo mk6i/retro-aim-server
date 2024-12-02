@@ -34,8 +34,8 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.Alert, wire.AlertNotifyCapabilities, h.AlertHandler.NotifyCapabilities)
 	router.Register(wire.Alert, wire.AlertNotifyDisplayCapabilities, h.AlertHandler.NotifyDisplayCapabilities)
 
-	router.Register(wire.BART, wire.BARTUploadQuery, h.BARTHandler.UploadQuery)
 	router.Register(wire.BART, wire.BARTDownloadQuery, h.BARTHandler.DownloadQuery)
+	router.Register(wire.BART, wire.BARTUploadQuery, h.BARTHandler.UploadQuery)
 
 	router.Register(wire.Buddy, wire.BuddyAddBuddies, h.BuddyHandler.AddBuddies)
 	router.Register(wire.Buddy, wire.BuddyDelBuddies, h.BuddyHandler.DelBuddies)
@@ -51,11 +51,11 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.Feedbag, wire.FeedbagInsertItem, h.FeedbagHandler.InsertItem)
 	router.Register(wire.Feedbag, wire.FeedbagQuery, h.FeedbagHandler.Query)
 	router.Register(wire.Feedbag, wire.FeedbagQueryIfModified, h.FeedbagHandler.QueryIfModified)
+	router.Register(wire.Feedbag, wire.FeedbagRespondAuthorizeToHost, h.FeedbagHandler.RespondAuthorizeToHost)
 	router.Register(wire.Feedbag, wire.FeedbagRightsQuery, h.FeedbagHandler.RightsQuery)
 	router.Register(wire.Feedbag, wire.FeedbagStartCluster, h.FeedbagHandler.StartCluster)
 	router.Register(wire.Feedbag, wire.FeedbagUpdateItem, h.FeedbagHandler.UpdateItem)
 	router.Register(wire.Feedbag, wire.FeedbagUse, h.FeedbagHandler.Use)
-	router.Register(wire.Feedbag, wire.FeedbagRespondAuthorizeToHost, h.FeedbagHandler.RespondAuthorizeToHost)
 
 	router.Register(wire.ICQ, wire.ICQDBQuery, h.ICQHandler.DBQuery)
 
@@ -81,12 +81,15 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
 	router.Register(wire.OService, wire.OServiceServiceRequest, h.OServiceHandler.ServiceRequest)
+	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
 	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceHandler.SetUserInfoFields)
 	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceHandler.UserInfoQuery)
-	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
 
-	router.Register(wire.PermitDeny, wire.PermitDenyRightsQuery, h.PermitDenyHandler.RightsQuery)
+	router.Register(wire.PermitDeny, wire.PermitDenyAddDenyListEntries, h.PermitDenyHandler.AddDenyListEntries)
 	router.Register(wire.PermitDeny, wire.PermitDenyAddPermListEntries, h.PermitDenyHandler.AddPermListEntries)
+	router.Register(wire.PermitDeny, wire.PermitDenyDelDenyListEntries, h.PermitDenyHandler.DelDenyListEntries)
+	router.Register(wire.PermitDeny, wire.PermitDenyDelPermListEntries, h.PermitDenyHandler.DelPermListEntries)
+	router.Register(wire.PermitDeny, wire.PermitDenyRightsQuery, h.PermitDenyHandler.RightsQuery)
 	router.Register(wire.PermitDeny, wire.PermitDenySetGroupPermitMask, h.PermitDenyHandler.SetGroupPermitMask)
 
 	router.Register(wire.UserLookup, wire.UserLookupFindByEmail, h.UserLookupHandler.FindByEmail)
@@ -129,9 +132,9 @@ func NewChatNavRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceHandler.IdleNotification)
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
+	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
 	router.Register(wire.OService, wire.OServiceSetUserInfoFields, h.OServiceHandler.SetUserInfoFields)
 	router.Register(wire.OService, wire.OServiceUserInfoQuery, h.OServiceHandler.UserInfoQuery)
-	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
 
 	return router
 }
@@ -154,8 +157,8 @@ func NewAlertRouter(h Handlers) oscar.Router {
 func NewBARTRouter(h Handlers) oscar.Router {
 	router := oscar.NewRouter()
 
-	router.Register(wire.BART, wire.BARTUploadQuery, h.BARTHandler.UploadQuery)
 	router.Register(wire.BART, wire.BARTDownloadQuery, h.BARTHandler.DownloadQuery)
+	router.Register(wire.BART, wire.BARTUploadQuery, h.BARTHandler.UploadQuery)
 
 	router.Register(wire.OService, wire.OServiceClientOnline, h.ClientOnline)
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
@@ -172,10 +175,11 @@ func NewAdminRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
+	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
 
 	router.Register(wire.Admin, wire.AdminAcctConfirmRequest, h.AdminHandler.ConfirmRequest)
-	router.Register(wire.Admin, wire.AdminInfoQuery, h.AdminHandler.InfoQuery)
 	router.Register(wire.Admin, wire.AdminInfoChangeRequest, h.AdminHandler.InfoChangeRequest)
+	router.Register(wire.Admin, wire.AdminInfoQuery, h.AdminHandler.InfoQuery)
 
 	return router
 }
