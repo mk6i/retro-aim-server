@@ -803,7 +803,7 @@ func (f SQLiteUserStore) UseFeedbag(user IdentScreenName) error {
 		INSERT INTO buddyListMode (screenName, useFeedbag)
 		VALUES (?, ?)
 		ON CONFLICT (screenName)
-			DO UPDATE SET clientSidePDMode = false,
+			DO UPDATE SET clientSidePDMode = 0,
 						  useFeedbag       = true
 	`
 	_, err := f.db.Exec(q, user.String(), true)
@@ -813,47 +813,94 @@ func (f SQLiteUserStore) UseFeedbag(user IdentScreenName) error {
 // SetPDMode sets my current client-side permit/deny mode. It clears any
 // existing permit/deny records.
 func (f SQLiteUserStore) SetPDMode(me IdentScreenName, pdMode wire.FeedbagPDMode) error {
+	alreadySet, err := f.isPDModeEqual(me, pdMode)
+	if err != nil {
+		return fmt.Errorf("isPDModeEqual: %w", err)
+	}
+	if alreadySet {
+		return nil
+	}
+
 	tx, err := f.db.Begin()
 	if err != nil {
 		return err
 	}
 
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
+	if err := setClientSidePDMode(tx, me, pdMode); err != nil {
+		return fmt.Errorf("setClientSidePDMode: %w", err)
+	}
+
+	if err := clearClientSidePDFlags(tx, me, pdMode); err != nil {
+		return fmt.Errorf("clearClientSidePDFlags: %w", err)
+	}
+
+	if err := clearBlankClientSideBuddies(tx, me, pdMode); err != nil {
+		return fmt.Errorf("clearBlankClientSideBuddies: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	return nil
+}
+
+// isPDModeEqual indicates whether the current permit/deny mode is already set
+// to pdMode.
+func (f SQLiteUserStore) isPDModeEqual(me IdentScreenName, pdMode wire.FeedbagPDMode) (bool, error) {
+	q := `
+		SELECT true
+		FROM buddyListMode
+		WHERE screenName = ? AND clientSidePDMode = ?
+	`
+	var isEqual bool
+	err := f.db.QueryRow(q, me.String(), pdMode).Scan(&isEqual)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return false, err
+	}
+	return isEqual, nil
+}
+
+// setClientSidePDMode sets the permit/deny mode for my client-side buddy list.
+func setClientSidePDMode(tx *sql.Tx, me IdentScreenName, pdMode wire.FeedbagPDMode) error {
 	q := `
 		INSERT INTO buddyListMode (screenName, clientSidePDMode) VALUES(?, ?)
 		ON CONFLICT (screenName)
 			DO UPDATE SET clientSidePDMode = excluded.clientSidePDMode
 	`
-	_, err = tx.Exec(q, me.String(), pdMode)
+	_, err := tx.Exec(q, me.String(), pdMode)
 	if err != nil {
 		return err
 	}
+	return nil
+}
 
-	q = `
+// clearBlankClientSideBuddies removes client-side buddy where all flags
+// (isBuddy, isPermit, isDeny) are false.
+func clearBlankClientSideBuddies(tx *sql.Tx, me IdentScreenName, pdMode wire.FeedbagPDMode) error {
+	q := `
 		DELETE FROM clientSideBuddyList
-		WHERE isBuddy IS FALSE AND me = ?
+		WHERE isBuddy IS FALSE
+		  AND isPermit IS FALSE
+		  AND isDeny IS FALSE
+		  AND me = ?
 	`
-	_, err = tx.Exec(q, me.String(), pdMode)
-	if err != nil {
-		return err
-	}
+	_, err := tx.Exec(q, me.String(), pdMode)
+	return err
+}
 
-	q = `
+// clearClientSidePDFlags clears permit/deny flags.
+func clearClientSidePDFlags(tx *sql.Tx, me IdentScreenName, pdMode wire.FeedbagPDMode) error {
+	q := `
 		UPDATE clientSideBuddyList
 		SET isDeny = false, isPermit = false
 		WHERE me = ?
 	`
-	_, err = tx.Exec(q, me.String(), pdMode)
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-
+	_, err := tx.Exec(q, me.String(), pdMode)
 	return err
 }
 

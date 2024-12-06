@@ -2858,6 +2858,70 @@ func TestSQLiteUserStore_RemovePermitBuddy(t *testing.T) {
 	assert.ElementsMatch(t, relationships, expect)
 }
 
+func TestSQLiteUserStore_SetPDMode(t *testing.T) {
+	t.Run("Ensure idempotency", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		users := []IdentScreenName{
+			NewIdentScreenName("me"),
+			NewIdentScreenName("them1"),
+		}
+		for _, user := range users {
+			err = f.RegisterBuddyList(user)
+			assert.NoError(t, err)
+		}
+
+		assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitSome))
+		assert.NoError(t, f.PermitBuddy(users[0], users[1]))
+		assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitSome))
+
+		relationships, err := f.AllRelationships(users[0], nil)
+		assert.NoError(t, err)
+
+		expect := []Relationship{
+			{
+				User:          users[1],
+				IsOnTheirList: false,
+				IsOnYourList:  false,
+				YouBlock:      false,
+				BlocksYou:     false,
+			},
+		}
+		assert.ElementsMatch(t, relationships, expect)
+	})
+
+	t.Run("Ensure transition from one mode to another clears previously set flags", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		users := []IdentScreenName{
+			NewIdentScreenName("me"),
+			NewIdentScreenName("them1"),
+		}
+		for _, user := range users {
+			err = f.RegisterBuddyList(user)
+			assert.NoError(t, err)
+		}
+
+		assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitSome))
+		assert.NoError(t, f.PermitBuddy(users[0], users[1]))
+		assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModeDenySome))
+
+		relationships, err := f.AllRelationships(users[0], nil)
+		assert.NoError(t, err)
+		assert.Empty(t, relationships)
+	})
+}
+
 // Ensure that transitioning between all the PD modes works.
 func TestSQLiteUserStore_PermitDenyTransitionIntegration(t *testing.T) {
 	defer func() {
