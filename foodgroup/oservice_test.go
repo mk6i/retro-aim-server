@@ -1734,10 +1734,9 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 			bodyIn: wire.SNAC_0x01_0x02_OServiceClientOnline{},
 			mockParams: mockParams{
 				buddyBroadcasterParams: buddyBroadcasterParams{
-					broadcastVisibilityParams: broadcastVisibilityParams{
+					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							from:   state.NewIdentScreenName("me"),
-							filter: nil,
+							screenName: state.NewIdentScreenName("me"),
 						},
 					},
 				},
@@ -1748,9 +1747,9 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
-			for _, params := range tt.mockParams.broadcastVisibilityParams {
+			for _, params := range tt.mockParams.broadcastBuddyArrivedParams {
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter).
+					BroadcastBuddyArrived(mock.Anything, matchSession(params.screenName)).
 					Return(params.err)
 			}
 
