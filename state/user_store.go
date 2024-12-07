@@ -745,7 +745,8 @@ func (f SQLiteUserStore) FeedbagUpsert(screenName IdentScreenName, items []wire.
 			var hasMode bool
 			pdMode, hasMode = item.Uint8(wire.FeedbagAttributesPdMode)
 			if !hasMode {
-				return fmt.Errorf("pd info doesn't have mode")
+				// by default, QIP sends a PD info item entry with no mode
+				pdMode = uint8(wire.FeedbagPDModePermitAll)
 			}
 		}
 		_, err := f.db.Exec(q,

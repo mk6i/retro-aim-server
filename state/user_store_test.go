@@ -16,44 +16,113 @@ import (
 
 const testFile string = "aim_test.db"
 
-func TestUserStore(t *testing.T) {
+func TestSQLiteUserStore_FeedbagUpsert(t *testing.T) {
+	t.Run("buddy screen name is converted to ident screen name", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
 
-	screenName := NewIdentScreenName("sn2day")
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
 
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
+		given := []wire.FeedbagItem{
+			{
+				GroupID:   0,
+				ItemID:    1805,
+				ClassID:   wire.FeedbagClassIdBuddy,
+				Name:      "my Friend Bill",
+				TLVLBlock: wire.TLVLBlock{},
+			},
+			{
+				GroupID: 0x0A,
+				ItemID:  0,
+				ClassID: wire.FeedbagClassIdGroup,
+				Name:    "Friends",
+			},
+		}
+		expect := []wire.FeedbagItem{
+			{
+				GroupID:   0,
+				ItemID:    1805,
+				ClassID:   wire.FeedbagClassIdBuddy,
+				Name:      "myfriendbill",
+				TLVLBlock: wire.TLVLBlock{},
+			},
+			{
+				GroupID: 0x0A,
+				ItemID:  0,
+				ClassID: wire.FeedbagClassIdGroup,
+				Name:    "Friends",
+			},
+		}
 
-	f, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
+		me := NewIdentScreenName("me")
+		if err := f.FeedbagUpsert(me, given); err != nil {
+			t.Fatalf("failed to upsert: %s", err.Error())
+		}
 
-	itemsIn := []wire.FeedbagItem{
-		{
-			GroupID:   0,
-			ItemID:    1805,
-			ClassID:   3,
-			Name:      "spimmer1234",
-			TLVLBlock: wire.TLVLBlock{},
-		},
-		{
-			GroupID: 0x0A,
-			ItemID:  0,
-			ClassID: 1,
-			Name:    "Friends",
-		},
-	}
-	if err := f.FeedbagUpsert(screenName, itemsIn); err != nil {
-		t.Fatalf("failed to upsert: %s", err.Error())
-	}
+		have, err := f.Feedbag(me)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, expect, have)
+	})
 
-	itemsOut, err := f.Feedbag(screenName)
-	if err != nil {
-		t.Fatalf("failed to retrieve: %s", err.Error())
-	}
+	t.Run("upsert PD info with mode", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
 
-	if !reflect.DeepEqual(itemsIn, itemsOut) {
-		t.Fatalf("items did not match:\n in: %v\n out: %v", itemsIn, itemsOut)
-	}
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		given := []wire.FeedbagItem{
+			{
+				GroupID: 0x0A,
+				ItemID:  0,
+				ClassID: wire.FeedbagClassIdPdinfo,
+				TLVLBlock: wire.TLVLBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.FeedbagAttributesPdMode, wire.FeedbagPDModePermitSome),
+					},
+				},
+			},
+		}
+
+		me := NewIdentScreenName("me")
+		err = f.FeedbagUpsert(me, given)
+		assert.NoError(t, err)
+
+		var pdMode uint8
+		err = f.db.QueryRow(`SELECT pdMode from feedbag WHERE screenName = ?`, me.String()).Scan(&pdMode)
+		assert.NoError(t, err)
+		assert.Equal(t, wire.FeedbagPDMode(pdMode), wire.FeedbagPDModePermitSome)
+	})
+
+	t.Run("upsert PD info without mode (QIP behavior)", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		given := []wire.FeedbagItem{
+			{
+				GroupID:   0x0A,
+				ItemID:    0,
+				ClassID:   wire.FeedbagClassIdPdinfo,
+				TLVLBlock: wire.TLVLBlock{},
+			},
+		}
+
+		me := NewIdentScreenName("me")
+		err = f.FeedbagUpsert(me, given)
+		assert.NoError(t, err)
+
+		var pdMode uint8
+		err = f.db.QueryRow(`SELECT pdMode from feedbag WHERE screenName = ?`, me.String()).Scan(&pdMode)
+		assert.NoError(t, err)
+		assert.Equal(t, wire.FeedbagPDMode(pdMode), wire.FeedbagPDModePermitAll)
+	})
 }
 
 func TestFeedbagDelete(t *testing.T) {
