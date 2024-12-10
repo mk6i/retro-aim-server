@@ -30,7 +30,7 @@ The following features are supported:
 - [x] Instant Messaging
 - [x] User Profiles
 - [x] Blocking (v3.5+)
-- [x] Visibility Toggle / Idle Notification
+- [x] Privacy (allow or block specific users)
 - [x] Warning
 - [x] User Directory Search
 
