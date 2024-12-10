@@ -72,7 +72,7 @@ func (s BuddyService) AddBuddies(
 	for _, entry := range inBody.Buddies {
 		toNotify = append(toNotify, state.NewIdentScreenName(entry.ScreenName))
 	}
-	if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, toNotify); err != nil {
+	if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, toNotify, true); err != nil {
 		return fmt.Errorf("buddyBroadcaster.BroadcastVisibility: %w", err)
 	}
 
@@ -96,7 +96,7 @@ func (s BuddyService) DelBuddies(
 		toNotify = append(toNotify, sn)
 	}
 
-	if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, toNotify); err != nil {
+	if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, toNotify, true); err != nil {
 		return fmt.Errorf("buddyBroadcaster.BroadcastVisibility: %w", err)
 	}
 
@@ -207,9 +207,9 @@ func (s buddyNotifier) BroadcastBuddyDeparted(ctx context.Context, sess *state.S
 //   - Sends arrival notifications to users that you block who have you on
 //     their buddy lists.
 //   - Sends you departure notifications for users on your buddy list that you
-//     block.
+//     block  (if doSendDepartures is true).
 //   - Sends departure notifications to users that you block who have you on
-//     their buddy lists.
+//     their buddy lists (if doSendDepartures is true).
 //   - Don't send notifications for any user that blocks you.
 //
 // This method is called when your visibility settings change, ensuring that
@@ -218,6 +218,7 @@ func (s buddyNotifier) BroadcastVisibility(
 	ctx context.Context,
 	you *state.Session,
 	filter []state.IdentScreenName,
+	doSendDepartures bool,
 ) error {
 
 	relationships, err := s.buddyListRetriever.AllRelationships(you.IdentScreenName(), filter)
@@ -258,7 +259,7 @@ func (s buddyNotifier) BroadcastVisibility(
 				// tell you they're online
 				s.unicastBuddyArrived(ctx, theirInfo, you.IdentScreenName())
 			}
-		} else {
+		} else if relationship.YouBlock && doSendDepartures {
 			if relationship.IsOnTheirList {
 				// tell them you're offline
 				s.unicastBuddyDeparted(ctx, you, theirSess.IdentScreenName())

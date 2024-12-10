@@ -638,9 +638,10 @@ type buddyBroadcasterParams struct {
 // broadcastVisibilityParams is the list of parameters passed at the mock
 // buddyBroadcaster.BroadcastVisibility call site
 type broadcastVisibilityParams []struct {
-	from   state.IdentScreenName
-	filter []state.IdentScreenName
-	err    error
+	from             state.IdentScreenName
+	filter           []state.IdentScreenName
+	doSendDepartures bool
+	err              error
 }
 
 // broadcastBuddyArrivedParams is the list of parameters passed at the mock

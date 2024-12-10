@@ -210,7 +210,7 @@ func TestPermitDenyService_AddDenyListEntries(t *testing.T) {
 			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
 			for _, item := range tt.mockParams.broadcastVisibilityParams {
 				mockBuddyBroadcaster.EXPECT().
-					BroadcastVisibility(context.TODO(), matchSession(item.from), item.filter).
+					BroadcastVisibility(context.TODO(), matchSession(item.from), item.filter, true).
 					Return(item.err)
 			}
 
@@ -400,7 +400,7 @@ func TestPermitDenyService_AddPermListEntries(t *testing.T) {
 			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
 			for _, item := range tt.mockParams.broadcastVisibilityParams {
 				mockBuddyBroadcaster.EXPECT().
-					BroadcastVisibility(context.TODO(), matchSession(item.from), item.filter).
+					BroadcastVisibility(context.TODO(), matchSession(item.from), item.filter, true).
 					Return(item.err)
 			}
 
@@ -512,7 +512,7 @@ func TestPermitDenyService_DelDenyListEntries(t *testing.T) {
 			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
 			for _, item := range tt.mockParams.broadcastVisibilityParams {
 				mockBuddyBroadcaster.EXPECT().
-					BroadcastVisibility(context.TODO(), matchSession(item.from), item.filter).
+					BroadcastVisibility(context.TODO(), matchSession(item.from), item.filter, true).
 					Return(item.err)
 			}
 
@@ -624,7 +624,7 @@ func TestPermitDenyService_DelPermListEntries(t *testing.T) {
 			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
 			for _, item := range tt.mockParams.broadcastVisibilityParams {
 				mockBuddyBroadcaster.EXPECT().
-					BroadcastVisibility(context.TODO(), matchSession(item.from), item.filter).
+					BroadcastVisibility(context.TODO(), matchSession(item.from), item.filter, true).
 					Return(item.err)
 			}
 

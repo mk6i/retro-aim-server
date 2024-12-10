@@ -116,17 +116,17 @@ func (_c *mockbuddyBroadcaster_BroadcastBuddyDeparted_Call) RunAndReturn(run fun
 	return _c
 }
 
-// BroadcastVisibility provides a mock function with given fields: ctx, from, filter
-func (_m *mockbuddyBroadcaster) BroadcastVisibility(ctx context.Context, from *state.Session, filter []state.IdentScreenName) error {
-	ret := _m.Called(ctx, from, filter)
+// BroadcastVisibility provides a mock function with given fields: ctx, you, filter, sendDepartures
+func (_m *mockbuddyBroadcaster) BroadcastVisibility(ctx context.Context, you *state.Session, filter []state.IdentScreenName, sendDepartures bool) error {
+	ret := _m.Called(ctx, you, filter, sendDepartures)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BroadcastVisibility")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, []state.IdentScreenName) error); ok {
-		r0 = rf(ctx, from, filter)
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, []state.IdentScreenName, bool) error); ok {
+		r0 = rf(ctx, you, filter, sendDepartures)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -141,15 +141,16 @@ type mockbuddyBroadcaster_BroadcastVisibility_Call struct {
 
 // BroadcastVisibility is a helper method to define mock.On call
 //   - ctx context.Context
-//   - from *state.Session
+//   - you *state.Session
 //   - filter []state.IdentScreenName
-func (_e *mockbuddyBroadcaster_Expecter) BroadcastVisibility(ctx interface{}, from interface{}, filter interface{}) *mockbuddyBroadcaster_BroadcastVisibility_Call {
-	return &mockbuddyBroadcaster_BroadcastVisibility_Call{Call: _e.mock.On("BroadcastVisibility", ctx, from, filter)}
+//   - sendDepartures bool
+func (_e *mockbuddyBroadcaster_Expecter) BroadcastVisibility(ctx interface{}, you interface{}, filter interface{}, sendDepartures interface{}) *mockbuddyBroadcaster_BroadcastVisibility_Call {
+	return &mockbuddyBroadcaster_BroadcastVisibility_Call{Call: _e.mock.On("BroadcastVisibility", ctx, you, filter, sendDepartures)}
 }
 
-func (_c *mockbuddyBroadcaster_BroadcastVisibility_Call) Run(run func(ctx context.Context, from *state.Session, filter []state.IdentScreenName)) *mockbuddyBroadcaster_BroadcastVisibility_Call {
+func (_c *mockbuddyBroadcaster_BroadcastVisibility_Call) Run(run func(ctx context.Context, you *state.Session, filter []state.IdentScreenName, sendDepartures bool)) *mockbuddyBroadcaster_BroadcastVisibility_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session), args[2].([]state.IdentScreenName))
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].([]state.IdentScreenName), args[3].(bool))
 	})
 	return _c
 }
@@ -159,7 +160,7 @@ func (_c *mockbuddyBroadcaster_BroadcastVisibility_Call) Return(_a0 error) *mock
 	return _c
 }
 
-func (_c *mockbuddyBroadcaster_BroadcastVisibility_Call) RunAndReturn(run func(context.Context, *state.Session, []state.IdentScreenName) error) *mockbuddyBroadcaster_BroadcastVisibility_Call {
+func (_c *mockbuddyBroadcaster_BroadcastVisibility_Call) RunAndReturn(run func(context.Context, *state.Session, []state.IdentScreenName, bool) error) *mockbuddyBroadcaster_BroadcastVisibility_Call {
 	_c.Call.Return(run)
 	return _c
 }

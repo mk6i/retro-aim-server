@@ -133,7 +133,7 @@ func TestBuddyService_AddBuddies(t *testing.T) {
 			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tt.mockParams.broadcastVisibilityParams {
 				mockBuddyBroadcaster.EXPECT().
-					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter).
+					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter, true).
 					Return(params.err)
 			}
 
@@ -209,7 +209,7 @@ func TestBuddyService_DelBuddies(t *testing.T) {
 			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tt.mockParams.broadcastVisibilityParams {
 				mockBuddyBroadcaster.EXPECT().
-					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter).
+					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter, true).
 					Return(params.err)
 			}
 			localBuddyListManager := newMockLocalBuddyListManager(t)
@@ -484,6 +484,8 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 		userSession *state.Session
 		// filter limits specific users that can be notified
 		filter []state.IdentScreenName
+		// doSendDepartures indicates whether departure messages should be sent
+		doSendDepartures bool
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -641,6 +643,106 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 					},
 				},
 			},
+			doSendDepartures: true,
+		},
+		{
+			name:        "don't send departure notifications",
+			userSession: newTestSession("me"),
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					allRelationshipsParams: allRelationshipsParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							filter:     nil,
+							result: []state.Relationship{
+								{
+									User:          state.NewIdentScreenName("friend2-visible-on-their-list"),
+									BlocksYou:     false,
+									YouBlock:      false,
+									IsOnYourList:  false,
+									IsOnTheirList: true,
+								},
+								{
+									User:          state.NewIdentScreenName("friend3-visible-on-your-list"),
+									BlocksYou:     false,
+									YouBlock:      false,
+									IsOnYourList:  true,
+									IsOnTheirList: false,
+								},
+								{
+									User:          state.NewIdentScreenName("friend4-visible-on-both-lists"),
+									BlocksYou:     false,
+									YouBlock:      false,
+									IsOnYourList:  true,
+									IsOnTheirList: true,
+								},
+								{
+									User:          state.NewIdentScreenName("friend7-visible-offline"),
+									BlocksYou:     false,
+									YouBlock:      false,
+									IsOnYourList:  true,
+									IsOnTheirList: true,
+								},
+							},
+						},
+					},
+					buddyIconRefByNameParams: buddyIconRefByNameParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							result:     nil,
+						},
+						{
+							screenName: state.NewIdentScreenName("friend3-visible-on-your-list"),
+							result:     nil,
+						},
+						{
+							screenName: state.NewIdentScreenName("friend4-visible-on-both-lists"),
+							result:     nil,
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("friend2-visible-on-their-list"),
+							message:    newBuddyArrivedNotif(newTestSession("me").TLVUserInfo()),
+						},
+						{
+							screenName: state.NewIdentScreenName("me"),
+							message:    newBuddyArrivedNotif(newTestSession("friend3-visible-on-your-list").TLVUserInfo()),
+						},
+						{
+							screenName: state.NewIdentScreenName("friend4-visible-on-both-lists"),
+							message:    newBuddyArrivedNotif(newTestSession("me").TLVUserInfo()),
+						},
+						{
+							screenName: state.NewIdentScreenName("me"),
+							message:    newBuddyArrivedNotif(newTestSession("friend4-visible-on-both-lists").TLVUserInfo()),
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams: retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("friend2-visible-on-their-list"),
+							result:     newTestSession("friend2-visible-on-their-list"),
+						},
+						{
+							screenName: state.NewIdentScreenName("friend3-visible-on-your-list"),
+							result:     newTestSession("friend3-visible-on-your-list"),
+						},
+						{
+							screenName: state.NewIdentScreenName("friend4-visible-on-both-lists"),
+							result:     newTestSession("friend4-visible-on-both-lists"),
+						},
+						{
+							screenName: state.NewIdentScreenName("friend7-visible-offline"),
+							result:     nil,
+						},
+					},
+				},
+			},
+			doSendDepartures: false,
 		},
 		{
 			name:        "users have buddy icons",
@@ -724,6 +826,7 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 					},
 				},
 			},
+			doSendDepartures: true,
 		},
 	}
 
@@ -758,7 +861,7 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 				sessionRetriever:   sessionRetriever,
 			}
 
-			err := svc.BroadcastVisibility(nil, tc.userSession, tc.filter)
+			err := svc.BroadcastVisibility(nil, tc.userSession, tc.filter, tc.doSendDepartures)
 			assert.NoError(t, err)
 		})
 	}

@@ -849,7 +849,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
 	sess.SetSignonComplete()
 
-	if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+	if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, nil, false); err != nil {
 		return fmt.Errorf("unable to send buddy arrival notification: %w", err)
 	}
 

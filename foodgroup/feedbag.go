@@ -212,7 +212,7 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 	}
 
 	if alertAll || len(filter) > 0 {
-		if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, filter); err != nil {
+		if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, filter, true); err != nil {
 			return wire.SNACMessage{}, err
 		}
 	}
@@ -306,7 +306,7 @@ func (s FeedbagService) DeleteItem(ctx context.Context, sess *state.Session, inF
 		}
 	}
 
-	if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, filter); err != nil {
+	if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, filter, true); err != nil {
 		return wire.SNACMessage{}, err
 	}
 

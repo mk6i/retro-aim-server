@@ -166,7 +166,7 @@ func (s PermitDenyService) maybeBroadcastVisibility(ctx context.Context, sess *s
 			filter = append(filter, state.NewIdentScreenName(user.ScreenName))
 		}
 	}
-	return s.buddyBroadcaster.BroadcastVisibility(ctx, sess, filter)
+	return s.buddyBroadcaster.BroadcastVisibility(ctx, sess, filter, true)
 }
 
 // RightsQuery returns settings for the PermitDeny food group. It returns SNAC

@@ -907,7 +907,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 			}
 			for _, params := range tc.mockParams.broadcastVisibilityParams {
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter).
+					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter, true).
 					Return(params.err)
 			}
 			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, bartManager, nil, nil)
@@ -1016,7 +1016,7 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 			buddyUpdateBroadcast := newMockbuddyBroadcaster(t)
 			for _, params := range tc.mockParams.broadcastVisibilityParams {
 				buddyUpdateBroadcast.EXPECT().
-					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter).
+					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter, true).
 					Return(params.err)
 			}
 

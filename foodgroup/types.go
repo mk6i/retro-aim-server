@@ -60,7 +60,7 @@ type BARTManager interface {
 type buddyBroadcaster interface {
 	BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error
 	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
-	BroadcastVisibility(ctx context.Context, from *state.Session, filter []state.IdentScreenName) error
+	BroadcastVisibility(ctx context.Context, you *state.Session, filter []state.IdentScreenName, sendDepartures bool) error
 }
 
 type BuddyListRetriever interface {
