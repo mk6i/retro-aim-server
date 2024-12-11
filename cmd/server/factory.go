@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/kelseyhightower/envconfig"
+	"github.com/mk6i/retro-aim-server/server/toc"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/foodgroup"
@@ -400,5 +401,15 @@ func ODir(deps Container) oscar.BOSServer {
 		Logger:         logger,
 		OnlineNotifier: oServiceService,
 		ListenAddr:     net.JoinHostPort("", deps.cfg.ODirPort),
+	}
+}
+
+// TOC creates a TOC server.
+func TOC(deps Container) toc.Server {
+	logger := deps.logger.With("svc", "TOC")
+
+	return toc.Server{
+		Logger:     logger,
+		ListenAddr: net.JoinHostPort("", deps.cfg.TOCPort),
 	}
 }
