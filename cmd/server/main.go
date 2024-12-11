@@ -73,6 +73,7 @@ func main() {
 	start(ChatNav(deps))
 	start(MgmtAPI(deps))
 	start(ODir(deps))
+	start(TOC(deps))
 
 	if err := g.Wait(); err != nil {
 		fmt.Println(err.Error())
