@@ -184,6 +184,21 @@ func (f *FlapClient) SendSNAC(frame SNACFrame, body any) error {
 	return nil
 }
 
+func (f *FlapClient) SendDataFrame(payload []byte) error {
+	flap := FLAPFrame{
+		StartMarker: 42,
+		FrameType:   FLAPFrameData,
+		Sequence:    uint16(f.sequence),
+		Payload:     payload,
+	}
+	if err := MarshalBE(flap, f.w); err != nil {
+		return err
+	}
+
+	f.sequence++
+	return nil
+}
+
 // ReceiveSNAC receives a SNAC message wrapped in a FLAP frame.
 func (f *FlapClient) ReceiveSNAC(frame *SNACFrame, body any) error {
 	flap := FLAPFrame{}

@@ -1,0 +1,2 @@
+ALTER TABLE users
+	ADD COLUMN tocConfig TEXT NOT NULL DEFAULT '';

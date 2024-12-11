@@ -43,3 +43,15 @@ func RoastPassword(roastedPass []byte) []byte {
 	}
 	return clearPass
 }
+
+// RoastPassword toggles password obfuscation using a roasting algorithm for
+// AIM v1.0-v3.0 auth. The first call obfuscates the password, and the second
+// call de-obfuscates the password, and so on.
+func RoastTOCPassword(roastedPass []byte) []byte {
+	var roastTable = []byte("Tic/Toc")
+	clearPass := make([]byte, len(roastedPass))
+	for i := range roastedPass {
+		clearPass[i] = roastedPass[i] ^ roastTable[i%len(roastTable)]
+	}
+	return clearPass
+}

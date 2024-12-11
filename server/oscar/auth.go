@@ -22,7 +22,7 @@ type AuthService interface {
 	FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error)
 	RegisterBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	RetrieveBOSSession(authCookie []byte) (*state.Session, error)
-	RegisterChatSession(authCookie []byte) (*state.Session, error)
+	RegisterChatSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	Signout(ctx context.Context, sess *state.Session)
 	SignoutChat(ctx context.Context, sess *state.Session)
 }

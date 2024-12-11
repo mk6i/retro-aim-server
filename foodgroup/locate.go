@@ -104,6 +104,11 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 			caps = append(caps, c)
 		}
 		sess.SetCaps(caps)
+		if sess.SignonComplete() {
+			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -124,8 +129,7 @@ func newLocateErr(requestID uint32, errCode uint16) wire.SNACMessage {
 
 // UserInfoQuery fetches display information about an arbitrary user (not the
 // current user). It returns wire.LocateUserInfoReply, which contains the
-// profile, if requested, and/or the away message, if requested. This is a v2
-// of UserInfoQuery.
+// profile, if requested, and/or the away message, if requested.
 func (s LocateService) UserInfoQuery(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery) (wire.SNACMessage, error) {
 	identScreenName := state.NewIdentScreenName(inBody.ScreenName)
 
@@ -243,7 +247,7 @@ func (s LocateService) DirInfo(ctx context.Context, inFrame wire.SNACFrame, body
 		},
 	}
 
-	user, err := s.profileManager.User(state.NewIdentScreenName(body.WatcherScreenNames))
+	user, err := s.profileManager.User(state.NewIdentScreenName(body.ScreenName))
 	if err != nil {
 		return wire.SNACMessage{}, fmt.Errorf("User: %w", err)
 	}

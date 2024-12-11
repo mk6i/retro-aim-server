@@ -18,7 +18,7 @@ func TestLocateHandler_GetDirInfo(t *testing.T) {
 			SubGroup:  wire.LocateGetDirInfo,
 		},
 		Body: wire.SNAC_0x02_0x0B_LocateGetDirInfo{
-			WatcherScreenNames: "screen-name",
+			ScreenName: "screen-name",
 		},
 	}
 	output := wire.SNACMessage{

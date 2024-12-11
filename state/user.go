@@ -196,9 +196,11 @@ type User struct {
 	ICQNotes ICQUserNotes
 	// ICQWorkInfo contains the user's professional information, including
 	// their workplace address and job-related details.
-	ICQWorkInfo ICQWorkInfo
-
+	ICQWorkInfo      ICQWorkInfo
 	AIMDirectoryInfo AIMNameAndAddr
+	// TOCConfig is the user's saved server-side info (buddy list, etc) for
+	// on the TOC service.
+	TOCConfig string
 }
 
 // AIMNameAndAddr holds name and address AIM directory information.
@@ -400,6 +402,15 @@ func (u *User) ValidateHash(md5Hash []byte) bool {
 // form of the real password, intended to add a simple layer of security.
 func (u *User) ValidateRoastedPass(roastedPass []byte) bool {
 	clearPass := wire.RoastPassword(roastedPass)
+	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey) // todo remove string conversion
+	return bytes.Equal(u.WeakMD5Pass, md5Hash)
+}
+
+// ValidateRoastedTOCPass checks if the provided roasted password matches the MD5
+// hash of the user's actual password. A roasted password is a XOR-obfuscated
+// form of the real password, intended to add a simple layer of security. // todo toc description
+func (u *User) ValidateRoastedTOCPass(roastedPass []byte) bool {
+	clearPass := wire.RoastTOCPassword(roastedPass)
 	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey) // todo remove string conversion
 	return bytes.Equal(u.WeakMD5Pass, md5Hash)
 }

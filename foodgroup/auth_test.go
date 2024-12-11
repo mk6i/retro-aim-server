@@ -1102,7 +1102,7 @@ func TestAuthService_RegisterChatSession_HappyPath(t *testing.T) {
 
 	svc := NewAuthService(config.Config{}, nil, chatSessionRegistry, nil, cookieBaker, nil, nil, nil)
 
-	have, err := svc.RegisterChatSession(authCookie)
+	have, err := svc.RegisterChatSession(context.Background(), authCookie)
 	assert.NoError(t, err)
 	assert.Equal(t, sess, have)
 }

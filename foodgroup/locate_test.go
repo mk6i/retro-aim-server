@@ -836,7 +836,7 @@ func TestLocateService_DirInfo(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x02_0x0B_LocateGetDirInfo{
-					WatcherScreenNames: "test-user",
+					ScreenName: "test-user",
 				},
 			},
 			expectOutput: wire.SNACMessage{
@@ -895,7 +895,7 @@ func TestLocateService_DirInfo(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x02_0x0B_LocateGetDirInfo{
-					WatcherScreenNames: "test-user",
+					ScreenName: "test-user",
 				},
 			},
 			expectOutput: wire.SNACMessage{

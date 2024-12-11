@@ -59,7 +59,7 @@ func TestChatService_handleNewConnection(t *testing.T) {
 
 	authService := newMockAuthService(t)
 	authService.EXPECT().
-		RegisterChatSession([]byte(`the-chat-login-cookie`)).
+		RegisterChatSession(mock.Anything, []byte(`the-chat-login-cookie`)).
 		Return(sess, nil)
 	authService.EXPECT().
 		SignoutChat(mock.Anything, sess)

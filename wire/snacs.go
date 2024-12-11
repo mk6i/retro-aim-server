@@ -88,6 +88,7 @@ const (
 	LoginTLVTagsAuthorizationCookie uint16 = 0x06
 	LoginTLVTagsErrorSubcode        uint16 = 0x08
 	LoginTLVTagsPasswordHash        uint16 = 0x25
+	LoginTLVTagsRoastedTOCPassword  uint16 = 0x1337
 )
 
 const (
@@ -399,7 +400,7 @@ type SNAC_0x02_0x0A_LocateSetDirReply struct {
 }
 
 type SNAC_0x02_0x0B_LocateGetDirInfo struct {
-	WatcherScreenNames string `oscar:"len_prefix=uint8"`
+	ScreenName string `oscar:"len_prefix=uint8"`
 }
 
 type SNAC_0x02_0x0C_LocateGetDirReply struct {
@@ -581,6 +582,33 @@ const (
 	ICBMMsgTypeAutoNA   uint8 = 0xEA // Auto not available message
 	ICBMMsgTypeAutoDND  uint8 = 0xEB // Auto do not disturb message
 	ICBMMsgTypeAutoFFC  uint8 = 0xEC // Auto free for chat message
+
+	ICBMRdvTLVTagsRdvChan             uint16 = 0x0001 //	uint16 (word)	ICBM channel on which the rendezvous is to occur
+	ICBMRdvTLVTagsRdvIP               uint16 = 0x0002 //	uint32 (dword)	IP address proposed for the rendezvous
+	ICBMRdvTLVTagsRequesterIP         uint16 = 0x0003 //	uint32 (dword)	IP address of the proposing client
+	ICBMRdvTLVTagsVerifiedIP          uint16 = 0x0004 //	uint32 (dword)	IP address of the proposing client as seen by server; NOTE - this TLV may only be added by the server
+	ICBMRdvTLVTagsPort                uint16 = 0x0005 //	uint16 (word)	Port value of the client for rendezvous
+	ICBMRdvTLVTagsDownloadURL         uint16 = 0x0006 //	string	URL for downloading software to support the service
+	ICBMRdvTLVTagsDownloadURL2        uint16 = 0x0007 //	string	NOT CURRENTLY DOCUMENTED
+	ICBMRdvTLVTagsVerifiedDownloadURL uint16 = 0x0008 //	string	Same as DOWNLOAD_URL, but added by server if the service is well known; Note - this TLV may only be added by the server
+	ICBMRdvTLVTagsSeqNum              uint16 = 0x000A // uint16 (word)	Identifies which proposal this is in the rendezvous conversation; the initial proposal has sequence_num 1; NOTE - this tag is required in *all* rendezvous *proposal* payloads and may only occur in proposal payloads; each proposal applying to a given rendezvous cookie increments the sequence_num by one
+	ICBMRdvTLVTagsCancelReason        uint16 = 0x000B // uint16 (word)	[Class: ICBM__RENDEZVOUS_CANCEL_REASONS] Reason for cancelling a rendezvous; this tag must be present in all RENDEZVOUS_CANCEL payloads.
+	ICBMRdvTLVTagsInvitation          uint16 = 0x000C // string	Text inviting the other player to join
+	ICBMRdvTLVTagsInviteMIMECharset   uint16 = 0x000D // string	Charset used by the data
+	ICBMRdvTLVTagsInviteMIMELang      uint16 = 0x000E // string	Language used by the data
+	ICBMRdvTLVTagsRequestHostChk      uint16 = 0x000F // empty	Requests that the server check caps for recipient
+	ICBMRdvTLVTagsUseARS              uint16 = 0x0010 // empty	Requests that the Rendezvous Server be used as a transport for the data
+	ICBMRdvTLVTagsRequestSecure       uint16 = 0x0011 // empty	Requests that SSL be used for the connection
+	ICBMRdvTLVTagsMaxProtoVersion     uint16 = 0x0012 // uint16 (word)	Maximum application protocol version supported
+	ICBMRdvTLVTagsMinProtoVersion     uint16 = 0x0013 // uint16 (word)	Minimum application protocol version supported
+	ICBMRdvTLVTagsCounterReason       uint16 = 0x0014 // uint16 (word)	Reason for a counter proposal
+	ICBMRdvTLVTagsInviteMIMEType      uint16 = 0x0015 // string	Content-type used by the data
+	ICBMRdvTLVTagsIPXOR               uint16 = 0x0016 // uint32 (dword)	Contains IP_ADDR ^ 0xFFFFFFFF - Used with recent clients to ensure that the IP_ADDR tlv is not tampered with or modified by a NAT since some NATs will change the IP_ADDR tlv when the proposal is sent
+	ICBMRdvTLVTagsPortXOR             uint16 = 0x0017 // uint16 (word)	PORT ^ 0xFFFF - Used with recent clients to ensure that the PORT tlv is not tampered with or modified by a NAT since some NATs will change the PORT tlv when the proposal is sent
+	ICBMRdvTLVTagsAddrList            uint16 = 0x0018 // Array of string08	List of "IP port" pairs to try
+	ICBMRdvTLVTagsSessID              uint16 = 0x0019 // string	Identifier for session
+	ICBMRdvTLVTagsRolloverID          uint16 = 0x001A // string	Identifier of session to rollover
+	ICBMRdvTLVTagsSvcData             uint16 = 0x2711 //	blob	Service specific data
 )
 
 // ICBMCh1Fragment represents an ICBM channel 1 (instant message) message
@@ -589,6 +617,19 @@ type ICBMCh1Fragment struct {
 	ID      uint8
 	Version uint8
 	Payload []byte `oscar:"len_prefix=uint16"`
+}
+
+type ICBMCh2Fragment struct {
+	Type       uint16
+	Cookie     uint64
+	Capability [16]byte
+	TLVRestBlock
+}
+
+type ICBMRoomInfo struct {
+	Exchange uint16
+	Cookie   string `oscar:"len_prefix=uint8"`
+	Instance uint16
 }
 
 // ICBMCh1Message represents the text component of an ICBM channel 1 (instant
@@ -1045,6 +1086,22 @@ type SNAC_0x0E_0x06_ChatChannelMsgToClient struct {
 	Cookie  uint64
 	Channel uint16
 	TLVRestBlock
+}
+
+// UnmarshalChatMessageText extracts message text from a chat message. Param b
+// is a slice from TLV wire.ChatTLVMessageInfo.
+func UnmarshalChatMessageText(b []byte) (string, error) {
+	block := TLVRestBlock{}
+	if err := UnmarshalBE(&block, bytes.NewReader(b)); err != nil {
+		return "", fmt.Errorf("UnmarshalBE: %w", err)
+	}
+
+	b, hasMsg := block.Bytes(ChatTLVMessageInfoText)
+	if !hasMsg {
+		return "", errors.New("SNAC(0x0E,0x05) has no chat msg text TLV")
+	}
+
+	return string(b), nil
 }
 
 //
@@ -1993,6 +2050,11 @@ type TLVUserInfo struct {
 	ScreenName   string `oscar:"len_prefix=uint8"`
 	WarningLevel uint16
 	TLVBlock
+}
+
+func (t TLVUserInfo) IsAway() bool {
+	flags, _ := t.Uint16BE(OServiceUserInfoUserFlags)
+	return flags&OServiceUserFlagUnavailable == OServiceUserFlagUnavailable
 }
 
 type FeedbagItem struct {

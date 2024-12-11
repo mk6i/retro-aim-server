@@ -14,6 +14,7 @@ import (
 	"github.com/mk6i/retro-aim-server/server/oscar"
 	"github.com/mk6i/retro-aim-server/server/oscar/handler"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
+	"github.com/mk6i/retro-aim-server/server/toc"
 	"github.com/mk6i/retro-aim-server/state"
 )
 
@@ -407,5 +408,76 @@ func ODir(deps Container) oscar.BOSServer {
 		Logger:         logger,
 		OnlineNotifier: oServiceService,
 		ListenAddr:     net.JoinHostPort("", deps.cfg.ODirPort),
+	}
+}
+
+// TOC creates a TOC server.
+func TOC(deps Container) toc.Server {
+	logger := deps.logger.With("svc", "TOC")
+	sessionManager := state.NewInMemorySessionManager(logger)
+	return toc.Server{
+		Logger:     logger,
+		ListenAddr: net.JoinHostPort(deps.cfg.TOCHost, deps.cfg.TOCPort),
+		BOSProxy: toc.OSCARProxy{
+			AuthService: foodgroup.NewAuthService(
+				deps.cfg,
+				deps.inMemorySessionManager,
+				deps.chatSessionManager,
+				deps.sqLiteUserStore,
+				deps.hmacCookieBaker,
+				deps.chatSessionManager,
+				deps.sqLiteUserStore,
+				nil,
+			),
+			BuddyListRegistry: deps.sqLiteUserStore,
+			BuddyService: foodgroup.NewBuddyService(
+				deps.inMemorySessionManager,
+				deps.sqLiteUserStore,
+				deps.sqLiteUserStore,
+				deps.inMemorySessionManager,
+			),
+			CookieBaker:      deps.hmacCookieBaker,
+			DirSearchService: foodgroup.NewODirService(logger, deps.sqLiteUserStore),
+			ICBMService: foodgroup.NewICBMService(
+				deps.inMemorySessionManager,
+				deps.sqLiteUserStore,
+				deps.sqLiteUserStore,
+				deps.inMemorySessionManager,
+			),
+			LocateService: foodgroup.NewLocateService(
+				deps.inMemorySessionManager,
+				deps.sqLiteUserStore,
+				deps.sqLiteUserStore,
+				deps.inMemorySessionManager,
+			),
+			Logger: logger,
+			OServiceServiceBOS: foodgroup.NewOServiceServiceForBOS(
+				deps.cfg,
+				deps.inMemorySessionManager,
+				logger,
+				deps.hmacCookieBaker,
+				deps.sqLiteUserStore,
+				deps.sqLiteUserStore,
+				deps.inMemorySessionManager,
+			),
+			PermitDenyService: foodgroup.NewPermitDenyService(
+				deps.sqLiteUserStore,
+				deps.sqLiteUserStore,
+				deps.inMemorySessionManager,
+				deps.inMemorySessionManager,
+			),
+			TOCConfigStore: deps.sqLiteUserStore,
+			ChatService:    foodgroup.NewChatService(deps.chatSessionManager),
+			OServiceServiceChat: foodgroup.NewOServiceServiceForChat(
+				deps.cfg,
+				logger,
+				sessionManager,
+				deps.sqLiteUserStore,
+				deps.chatSessionManager,
+				deps.sqLiteUserStore,
+				sessionManager,
+			),
+			ChatNavService: foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
+		},
 	}
 }
