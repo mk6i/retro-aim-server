@@ -1995,6 +1995,11 @@ type TLVUserInfo struct {
 	TLVBlock
 }
 
+func (t TLVUserInfo) IsAway() bool {
+	flags, _ := t.Uint16BE(OServiceUserInfoUserFlags)
+	return flags&OServiceUserFlagUnavailable == OServiceUserFlagUnavailable
+}
+
 type FeedbagItem struct {
 	Name    string `oscar:"len_prefix=uint16"`
 	GroupID uint16
