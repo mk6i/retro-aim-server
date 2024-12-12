@@ -267,49 +267,30 @@ func (rt Server) receiveFromServer(serverFlap, clientFlap *wire.FlapClient) erro
 			case wire.Buddy:
 				switch inFrame.SubGroup {
 				case wire.BuddyArrived:
-					sn := wire.SNAC_0x03_0x0B_BuddyArrived{}
+					sn := wire.TOCBuddyArrived{}
 					if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
 						return fmt.Errorf("unmarshal buddy arrived: %w", err)
 					}
-					online, _ := sn.Uint32BE(wire.OServiceUserInfoSignonTOD)
-					idle, _ := sn.Uint16BE(wire.OServiceUserInfoIdleTime)
-					unavailable := ""
-					if _, hasAwayMsg := sn.String(wire.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
-						unavailable = "U"
-					}
-					b := []byte(fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s%s", sn.ScreenName, "T", sn.WarningLevel, online, idle, " O", unavailable))
-					if err := clientFlap.SendDataFrame(b); err != nil {
+					if err := clientFlap.SendDataFrame([]byte(sn.String())); err != nil {
 						return fmt.Errorf("sending im to client failed: %w", err)
 					}
 				case wire.BuddyDeparted:
-					sn := wire.SNAC_0x03_0x0C_BuddyDeparted{}
+					sn := wire.TOCBuddyDeparted{}
 					if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
 						return fmt.Errorf("unmarshal buddy arrived: %w", err)
 					}
-					online, _ := sn.TLVList.Uint32BE(wire.OServiceUserInfoSignonTOD)
-					idle, _ := sn.TLVList.Uint16BE(wire.OServiceUserInfoIdleTime)
-					b := []byte(fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", sn.ScreenName, "F", sn.WarningLevel, online, idle, " O"))
-					if err := clientFlap.SendDataFrame(b); err != nil {
+					if err := clientFlap.SendDataFrame([]byte(sn.String())); err != nil {
 						return fmt.Errorf("sending im to client failed: %w", err)
 					}
 				}
 			case wire.ICBM:
 				switch inFrame.SubGroup {
 				case wire.ICBMChannelMsgToClient:
-					sn := wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{}
+					sn := wire.TOCIMIN{}
 					if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
 						return fmt.Errorf("unmarshal ICBM channel message failed: %w", err)
 					}
-					b, ok := sn.Bytes(wire.ICBMTLVAOLIMData)
-					if !ok {
-						return fmt.Errorf("ICBM does not contain message data")
-					}
-					txt, err := wire.UnmarshalICBMMessageText(b)
-					if err != nil {
-						return fmt.Errorf("unmarshal ICBM message text: %w", err)
-					}
-
-					if err := clientFlap.SendDataFrame([]byte(fmt.Sprintf("IM_IN:%s:F:%s", sn.ScreenName, txt))); err != nil {
+					if err := clientFlap.SendDataFrame([]byte(sn.String())); err != nil {
 						return fmt.Errorf("sending im to client failed: %w", err)
 					}
 				default:
