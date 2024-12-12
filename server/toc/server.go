@@ -11,6 +11,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -71,15 +72,15 @@ func (rt Server) Start(ctx context.Context) error {
 	return nil
 }
 
-func (rt Server) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) error {
+func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWriteCloser) error {
 
 	go func() {
 		<-ctx.Done()
-		rwc.Close()
+		clientConn.Close()
 	}()
-	reader := bufio.NewReader(rwc)
+	reader := bufio.NewReader(clientConn)
 
-	flap := wire.NewFlapClient(0, rwc, rwc)
+	clientFlap := wire.NewFlapClient(0, clientConn, clientConn)
 
 	line, _, err := reader.ReadLine()
 	if err != nil {
@@ -93,37 +94,54 @@ func (rt Server) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser
 
 	fmt.Printf("sending signon frame\n")
 
-	if err := flap.SendSignonFrame(nil); err != nil {
+	if err := clientFlap.SendSignonFrame(nil); err != nil {
 		return fmt.Errorf("send flapon signal failed: %w", err)
 	}
 
-	signonFrame, err := flap.ReceiveSignonFrame()
+	signonFrame, err := clientFlap.ReceiveSignonFrame()
 	if err != nil {
 		return fmt.Errorf("send flapon signal failed: %w", err)
 	}
 
 	fmt.Printf("received signon frame: %v\n", signonFrame)
 
+	var serverFlap *wire.FlapClient
+	var serverConn net.Conn
+
+	defer func() {
+		if serverConn != nil {
+			serverConn.Close()
+		}
+	}()
 	for {
-		frame, err := flap.ReceiveFLAP()
+		clientFrame, err := clientFlap.ReceiveFLAP()
 		if err != nil {
 			return fmt.Errorf("send flapon signal failed: %w", err)
 		}
 
-		elems, err := receiveCmd(frame.Payload)
+		if clientFrame.FrameType == wire.FLAPFrameSignoff {
+			break // client disconnected
+		}
+		if clientFrame.FrameType == wire.FLAPFrameKeepAlive {
+			continue // keep alive heartbeat
+		}
+		if clientFrame.FrameType != wire.FLAPFrameData {
+			return fmt.Errorf("unexpected clientFlap clientFrame type: %s", clientFrame.FrameType)
+		}
+
+		elems, err := receiveCmd(clientFrame.Payload)
 		if err != nil {
-			return fmt.Errorf("receive cmd failed: %w %s", err, frame.Payload)
+			return fmt.Errorf("receive cmd failed: %w %s", err, clientFrame.Payload)
 		}
 
 		if len(elems) == 0 {
 			return errors.New("no cmd in flapon signal")
 		}
 
-		fmt.Printf("client: %v (%s)\n", elems, frame.Payload)
+		fmt.Printf("client: %+v\n", elems)
 
 		switch elems[0] {
 		case "toc_signon":
-
 			username := elems[3]
 			passwordHash, err := hex.DecodeString(elems[4][2:])
 			if err != nil {
@@ -131,25 +149,224 @@ func (rt Server) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser
 			}
 			unroasted := wire.RoastTOCPassword(passwordHash)
 
-			host, port, err := rt.signon(username, unroasted)
+			host, cookie, err := rt.signon(username, unroasted)
 			if err != nil {
 				return fmt.Errorf("signon failed: %w", err)
 			}
 
-			fmt.Printf("signon: %s %s\n", host, port)
+			fmt.Printf("signon: %s %s\n", host, cookie)
 
-			if err := flap.SendDataFrame([]byte("SIGN_ON:1")); err != nil {
+			serverConn, err = net.Dial("tcp", host)
+			if err != nil {
+				return fmt.Errorf("dial failed: %w", err)
+			}
+
+			rt.Logger.Info("connected to BOS server", "host", host)
+
+			serverFlap = wire.NewFlapClient(0, serverConn, serverConn)
+
+			if _, err := serverFlap.ReceiveSignonFrame(); err != nil {
+				return err
+			}
+
+			tlv := []wire.TLV{
+				wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte(cookie)),
+			}
+			if err := serverFlap.SendSignonFrame(tlv); err != nil {
+				return err
+			}
+
+			hostOnlineFrame := wire.SNACFrame{}
+			hostOnlineSNAC := wire.SNAC_0x01_0x03_OServiceHostOnline{}
+			if err := serverFlap.ReceiveSNAC(&hostOnlineFrame, &hostOnlineSNAC); err != nil {
+				return err
+			}
+			if err := clientFlap.SendDataFrame([]byte("SIGN_ON:1")); err != nil {
 				return fmt.Errorf("send signon signal failed: %w", err)
 			}
 
+			go func() {
+				if err := rt.receiveFromServer(serverFlap, clientFlap); err != nil {
+					panic("receiveFromServer err: " + err.Error())
+				}
+			}()
+		case "toc_send_im":
+			recip := elems[1]
+			msg := elems[2]
+			snac, err := sendMessageSNAC(0, recip, msg)
+			if err != nil {
+				return fmt.Errorf("getting message snac failed failed: %w", err)
+			}
+			err = serverFlap.SendSNAC(snac.Frame, snac.Body)
+			if err != nil {
+				return fmt.Errorf("send snac failed failed: %w", err)
+			}
+		case "toc_init_done":
+			frame := wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceClientOnline,
+			}
+			snac := wire.SNAC_0x01_0x02_OServiceClientOnline{}
+			if err := serverFlap.SendSNAC(frame, snac); err != nil {
+				return err
+			}
+		case "toc_add_buddy":
+			frame := wire.SNACFrame{
+				FoodGroup: wire.Buddy,
+				SubGroup:  wire.BuddyAddBuddies,
+			}
+			snac := wire.SNAC_0x03_0x04_BuddyAddBuddies{
+				Buddies: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: elems[1],
+					},
+				},
+			}
+			if err := serverFlap.SendSNAC(frame, snac); err != nil {
+				return err
+			}
+		case "toc_set_away":
+			frame := wire.SNACFrame{
+				FoodGroup: wire.Locate,
+				SubGroup:  wire.LocateSetInfo,
+			}
+			snac := wire.SNAC_0x02_0x04_LocateSetInfo{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableData, elems[1]),
+					},
+				},
+			}
+			if err := serverFlap.SendSNAC(frame, snac); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
+func (rt Server) receiveFromServer(serverFlap, clientFlap *wire.FlapClient) error {
+	for {
+		flap, err := serverFlap.ReceiveFLAP()
+		if err != nil {
+			return fmt.Errorf("receive flap failed: %w", err)
+		}
+
+		switch flap.FrameType {
+		case wire.FLAPFrameData:
+			flapBuf := bytes.NewBuffer(flap.Payload)
+
+			inFrame := wire.SNACFrame{}
+			if err := wire.UnmarshalBE(&inFrame, flapBuf); err != nil {
+				return err
+			}
+
+			switch inFrame.FoodGroup {
+			case wire.Buddy:
+				switch inFrame.SubGroup {
+				case wire.BuddyArrived:
+					sn := wire.SNAC_0x03_0x0B_BuddyArrived{}
+					if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
+						return fmt.Errorf("unmarshal buddy arrived: %w", err)
+					}
+					online, _ := sn.Uint32BE(wire.OServiceUserInfoSignonTOD)
+					idle, _ := sn.Uint16BE(wire.OServiceUserInfoIdleTime)
+					unavailable := ""
+					if _, hasAwayMsg := sn.String(wire.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
+						unavailable = "U"
+					}
+					b := []byte(fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s%s", sn.ScreenName, "T", sn.WarningLevel, online, idle, " O", unavailable))
+					if err := clientFlap.SendDataFrame(b); err != nil {
+						return fmt.Errorf("sending im to client failed: %w", err)
+					}
+				case wire.BuddyDeparted:
+					sn := wire.SNAC_0x03_0x0C_BuddyDeparted{}
+					if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
+						return fmt.Errorf("unmarshal buddy arrived: %w", err)
+					}
+					online, _ := sn.TLVList.Uint32BE(wire.OServiceUserInfoSignonTOD)
+					idle, _ := sn.TLVList.Uint16BE(wire.OServiceUserInfoIdleTime)
+					b := []byte(fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", sn.ScreenName, "F", sn.WarningLevel, online, idle, " O"))
+					if err := clientFlap.SendDataFrame(b); err != nil {
+						return fmt.Errorf("sending im to client failed: %w", err)
+					}
+				}
+			case wire.ICBM:
+				switch inFrame.SubGroup {
+				case wire.ICBMChannelMsgToClient:
+					sn := wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{}
+					if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
+						return fmt.Errorf("unmarshal ICBM channel message failed: %w", err)
+					}
+					b, ok := sn.Bytes(wire.ICBMTLVAOLIMData)
+					if !ok {
+						return fmt.Errorf("ICBM does not contain message data")
+					}
+					txt, err := wire.UnmarshalICBMMessageText(b)
+					if err != nil {
+						return fmt.Errorf("unmarshal ICBM message text: %w", err)
+					}
+
+					if err := clientFlap.SendDataFrame([]byte(fmt.Sprintf("IM_IN:%s:F:%s", sn.ScreenName, txt))); err != nil {
+						return fmt.Errorf("sending im to client failed: %w", err)
+					}
+				default:
+					rt.Logger.Info("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
+				}
+			default:
+				rt.Logger.Info("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
+			}
+		default:
+
+		}
+	}
+	return nil
+}
+func sendMessageSNAC(cookie uint64, screenName string, response string) (wire.SNACMessage, error) {
+	msgFrame := wire.SNACFrame{
+		FoodGroup: wire.ICBM,
+		SubGroup:  wire.ICBMChannelMsgToHost,
+	}
+
+	// build the response message
+	response = strings.ReplaceAll("@MsgContent@", "@MsgContent@", response)
+
+	frags, err := wire.ICBMFragmentList(response)
+	if err != nil {
+		return wire.SNACMessage{}, fmt.Errorf("unable to create ICBM fragment list: %w", err)
+	}
+
+	return wire.SNACMessage{
+		Frame: msgFrame,
+		Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+			Cookie:     cookie,
+			ChannelID:  1,
+			ScreenName: screenName,
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLVBE(wire.ICBMTLVAOLIMData, frags),
+				},
+			},
+		},
+	}, nil
+}
+
 func receiveCmd(b []byte) ([]string, error) {
 	if b[len(b)-1] == '\x00' {
 		b = b[:len(b)-1]
+	}
+	if bytes.HasPrefix(b, []byte("toc_set_config")) {
+		// gaim uses braces instead of quotes for some reason
+		first := bytes.IndexByte(b, '{')
+		if first != -1 {
+			b[first] = '"'
+		}
+		last := bytes.LastIndexByte(b, '}')
+		if last != -1 {
+			b[last] = '"'
+		}
 	}
 	reader := csv.NewReader(bytes.NewReader(b))
 	reader.Comma = ' '
