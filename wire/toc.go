@@ -7,7 +7,6 @@ type TOCBuddyArrived struct {
 }
 
 func (t TOCBuddyArrived) String() string {
-	fmt.Println("Arrived...")
 	online, _ := t.Uint32BE(OServiceUserInfoSignonTOD)
 	idle, _ := t.Uint16BE(OServiceUserInfoIdleTime)
 	unavailable := ""
@@ -25,9 +24,6 @@ func (t TOCBuddyDeparted) String() string {
 	online, _ := t.Uint32BE(OServiceUserInfoSignonTOD)
 	idle, _ := t.Uint16BE(OServiceUserInfoIdleTime)
 	unavailable := ""
-	if _, hasAwayMsg := t.TLVUserInfo.String(LocateTLVTagsInfoUnavailableData); hasAwayMsg {
-		unavailable = "U"
-	}
 	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s%s", t.ScreenName, "F", t.WarningLevel, online, idle, " O", unavailable)
 }
 
