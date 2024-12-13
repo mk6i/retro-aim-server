@@ -104,6 +104,11 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 			caps = append(caps, c)
 		}
 		sess.SetCaps(caps)
+		if sess.SignonComplete() {
+			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

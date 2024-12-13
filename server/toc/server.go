@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
@@ -187,7 +188,10 @@ func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWrit
 
 			go func() {
 				if err := rt.receiveFromServer(serverFlap, clientFlap); err != nil {
-					panic("receiveFromServer err: " + err.Error())
+					fmt.Sprintf("%w\n", err)
+					//if err != io.EOF {
+					//	panic("receiveFromServer err: " + err.Error())
+					return
 				}
 			}()
 		case "toc_send_im":
@@ -215,14 +219,57 @@ func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWrit
 				FoodGroup: wire.Buddy,
 				SubGroup:  wire.BuddyAddBuddies,
 			}
-			snac := wire.SNAC_0x03_0x04_BuddyAddBuddies{
-				Buddies: []struct {
+			snac := wire.SNAC_0x03_0x04_BuddyAddBuddies{}
+			elems = elems[1:]
+			for _, sn := range elems {
+				snac.Buddies = append(snac.Buddies, struct {
 					ScreenName string `oscar:"len_prefix=uint8"`
-				}{
-					{
-						ScreenName: elems[1],
-					},
-				},
+				}{ScreenName: sn})
+			}
+			if err := serverFlap.SendSNAC(frame, snac); err != nil {
+				return err
+			}
+		case "toc_remove_buddy":
+			frame := wire.SNACFrame{
+				FoodGroup: wire.Buddy,
+				SubGroup:  wire.BuddyDelBuddies,
+			}
+			snac := wire.SNAC_0x03_0x05_BuddyDelBuddies{}
+			elems = elems[1:]
+			for _, sn := range elems {
+				snac.Buddies = append(snac.Buddies, struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{ScreenName: sn})
+			}
+			if err := serverFlap.SendSNAC(frame, snac); err != nil {
+				return err
+			}
+		case "toc_add_permit":
+			frame := wire.SNACFrame{
+				FoodGroup: wire.PermitDeny,
+				SubGroup:  wire.PermitDenyAddPermListEntries,
+			}
+			snac := wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{}
+			elems = elems[1:]
+			for _, sn := range elems {
+				snac.Users = append(snac.Users, struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{ScreenName: sn})
+			}
+			if err := serverFlap.SendSNAC(frame, snac); err != nil {
+				return err
+			}
+		case "toc_add_deny":
+			frame := wire.SNACFrame{
+				FoodGroup: wire.PermitDeny,
+				SubGroup:  wire.PermitDenyAddDenyListEntries,
+			}
+			snac := wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{}
+			elems = elems[1:]
+			for _, sn := range elems {
+				snac.Users = append(snac.Users, struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{ScreenName: sn})
 			}
 			if err := serverFlap.SendSNAC(frame, snac); err != nil {
 				return err
@@ -242,6 +289,61 @@ func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWrit
 			if err := serverFlap.SendSNAC(frame, snac); err != nil {
 				return err
 			}
+		case "toc_set_caps":
+			elems = elems[1:]
+			caps := make([]uuid.UUID, 0, len(elems))
+			for _, capStr := range elems {
+				uid, err := uuid.Parse(capStr)
+				if err != nil {
+					return fmt.Errorf("parse caps failed: %w", err)
+				}
+				caps = append(caps, uid)
+			}
+
+			frame := wire.SNACFrame{
+				FoodGroup: wire.Locate,
+				SubGroup:  wire.LocateSetInfo,
+			}
+			snac := wire.SNAC_0x02_0x04_LocateSetInfo{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.LocateTLVTagsInfoCapabilities, caps),
+					},
+				},
+			}
+			if err := serverFlap.SendSNAC(frame, snac); err != nil {
+				return err
+			}
+		case "toc_evil":
+			frame := wire.SNACFrame{
+				FoodGroup: wire.ICBM,
+				SubGroup:  wire.ICBMEvilRequest,
+			}
+			snac := wire.SNAC_0x04_0x08_ICBMEvilRequest{
+				SendAs:     0,
+				ScreenName: elems[1],
+			}
+			if elems[2] == "anon" {
+				snac.SendAs = 1
+			}
+			if err := serverFlap.SendSNAC(frame, snac); err != nil {
+				return err
+			}
+		case "toc_get_info":
+			//frame := wire.SNACFrame{
+			//	FoodGroup: wire.Locate,
+			//	SubGroup:  wire.LocateUserInfoQuery,
+			//}
+			//snac := wire.SNAC_0x02_0x05_LocateUserInfoQuery{
+			//	Type: uint16(wire.LocateTypeSig),
+			//	ScreenName: elems[1],
+			//}
+			//if err := serverFlap.SendSNAC(frame, snac); err != nil {
+			//	return err
+			//}
+			if err := clientFlap.SendDataFrame([]byte("GOTO_URL:hello:http://frogfind.com:80")); err != nil {
+				return fmt.Errorf("send info signal failed: %w", err)
+			}
 		}
 	}
 	return nil
@@ -251,6 +353,9 @@ func (rt Server) receiveFromServer(serverFlap, clientFlap *wire.FlapClient) erro
 	for {
 		flap, err := serverFlap.ReceiveFLAP()
 		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
 			return fmt.Errorf("receive flap failed: %w", err)
 		}
 

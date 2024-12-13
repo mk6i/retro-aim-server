@@ -96,14 +96,6 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 				return fmt.Errorf("got unknown FLAP frame type. flap: %v", flap)
 			}
 		case m := <-sess.ReceiveMessage():
-			fmt.Printf("receiving message. %s %s\n", sess.IdentScreenName().String(), sess.DisplayScreenName().String())
-			if m.Frame.FoodGroup == wire.Buddy && m.Frame.SubGroup == wire.BuddyArrived {
-				if m.Body.(wire.SNAC_0x03_0x0B_BuddyArrived).IsAway() {
-					fmt.Printf("is away: %+v\n", m.Body)
-				} else {
-					fmt.Printf("is not away: %+v\n", m.Body)
-				}
-			}
 			// forward a notification sent from another client to this client
 			if err := flapc.SendSNAC(m.Frame, m.Body); err != nil {
 				middleware.LogRequestError(ctx, logger, m.Frame, err)
