@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
@@ -91,6 +92,7 @@ func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWrit
 	clientCh := make(chan any)
 	bosCh := make(chan wire.SNACMessage)
 	chatNavCh := make(chan wire.SNACMessage)
+	chatCh := make(chan wire.SNACMessage)
 
 	defer func() {
 		close(clientCh)
@@ -98,7 +100,7 @@ func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWrit
 	}()
 
 	go func() {
-		if err := rt.sendToClient(ctx, clientCh, clientFlap, chatNavCh); err != nil {
+		if err := rt.sendToClient(ctx, clientCh, clientFlap, chatNavCh, bosCh, chatCh); err != nil {
 			rt.Logger.Error("failed to receive from server", "err", err.Error())
 			return
 		}
@@ -402,6 +404,7 @@ func (rt Server) initBOS(ctx context.Context, elems []string, clientCh chan<- an
 			case msg := <-ch:
 				if err := serverFlap.SendSNAC(msg.Frame, msg.Body); err != nil {
 					rt.Logger.Error("send snac failed", "err", err)
+					return
 				}
 			}
 		}
@@ -410,10 +413,10 @@ func (rt Server) initBOS(ctx context.Context, elems []string, clientCh chan<- an
 		for {
 			flap, err := serverFlap.ReceiveFLAP()
 			if err != nil {
-				if err == io.EOF {
-					return
+				if err != io.EOF {
+					rt.Logger.Error("receive signon frame failed", "err", err)
 				}
-				rt.Logger.Error("receive signon frame failed", "err", err)
+				return
 			}
 			clientCh <- flap
 		}
@@ -461,6 +464,7 @@ func (rt Server) initChatNav(ctx context.Context, host string, cookie []byte, cl
 			case msg := <-navCh:
 				if err := serverFlap.SendSNAC(msg.Frame, msg.Body); err != nil {
 					rt.Logger.Error("send snac failed", "err", err)
+					return
 				}
 			}
 		}
@@ -469,10 +473,10 @@ func (rt Server) initChatNav(ctx context.Context, host string, cookie []byte, cl
 		for {
 			flap, err := serverFlap.ReceiveFLAP()
 			if err != nil {
-				if err == io.EOF {
-					return
+				if err != io.EOF {
+					rt.Logger.Error("receive signon frame failed", "err", err)
 				}
-				rt.Logger.Error("receive signon frame failed", "err", err)
+				return
 			}
 			clientCh <- flap
 		}
@@ -480,7 +484,69 @@ func (rt Server) initChatNav(ctx context.Context, host string, cookie []byte, cl
 	return nil
 }
 
-func (rt Server) sendToClient(ctx context.Context, clientCh chan any, clientFlap *wire.FlapClient, navCh chan wire.SNACMessage) error {
+func (rt Server) initChatRoom(ctx context.Context, host string, cookie []byte, clientCh chan<- any, navCh <-chan wire.SNACMessage) error {
+	serverConn, err := net.Dial("tcp", host)
+	if err != nil {
+		return fmt.Errorf("dial failed: %w", err)
+	}
+
+	go func() {
+		defer serverConn.Close()
+		<-ctx.Done()
+	}()
+
+	rt.Logger.Info("connected to BOS server", "host", host)
+
+	serverFlap := wire.NewFlapClient(0, serverConn, serverConn)
+
+	if _, err := serverFlap.ReceiveSignonFrame(); err != nil {
+		return err
+	}
+
+	tlv := []wire.TLV{
+		wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
+	}
+	if err := serverFlap.SendSignonFrame(tlv); err != nil {
+		return err
+	}
+
+	hostOnlineFrame := wire.SNACFrame{}
+	hostOnlineSNAC := wire.SNAC_0x01_0x03_OServiceHostOnline{}
+	if err := serverFlap.ReceiveSNAC(&hostOnlineFrame, &hostOnlineSNAC); err != nil {
+		return err
+	}
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case msg := <-navCh:
+				if err := serverFlap.SendSNAC(msg.Frame, msg.Body); err != nil {
+					rt.Logger.Error("send snac failed", "err", err)
+					return
+				}
+			}
+		}
+	}()
+	go func() {
+		for {
+			flap, err := serverFlap.ReceiveFLAP()
+			if err != nil {
+				if err != io.EOF {
+					rt.Logger.Error("receive signon frame failed", "err", err)
+				}
+				return
+			}
+			clientCh <- flap
+		}
+	}()
+	return nil
+}
+
+func (rt Server) sendToClient(ctx context.Context, clientCh chan any, clientFlap *wire.FlapClient, navCh chan wire.SNACMessage, bosCh chan wire.SNACMessage, chatCh chan wire.SNACMessage) error {
+
+	var chatID string
 	for {
 		select {
 		case <-ctx.Done():
@@ -517,6 +583,25 @@ func (rt Server) sendToClient(ctx context.Context, clientCh chan any, clientFlap
 								return fmt.Errorf("sending im to client failed: %w", err)
 							}
 						}
+					case wire.Chat:
+						switch inFrame.SubGroup {
+						case wire.ChatRoomInfoUpdate:
+							sn := wire.TOCChatJoin{}
+							if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
+								return fmt.Errorf("unmarshal buddy arrived: %w", err)
+							}
+							if err := clientFlap.SendDataFrame([]byte(sn.String())); err != nil {
+								return fmt.Errorf("sending im to client failed: %w", err)
+							}
+						case wire.ChatUsersJoined:
+							sn := wire.TOCChatUsersJoined{}
+							if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
+								return fmt.Errorf("unmarshal buddy arrived: %w", err)
+							}
+							if err := clientFlap.SendDataFrame([]byte(sn.String(chatID))); err != nil {
+								return fmt.Errorf("sending im to client failed: %w", err)
+							}
+						}
 					case wire.ICBM:
 						switch inFrame.SubGroup {
 						case wire.ICBMChannelMsgToClient:
@@ -537,14 +622,25 @@ func (rt Server) sendToClient(ctx context.Context, clientCh chan any, clientFlap
 							if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
 								return fmt.Errorf("unmarshal ICBM channel message failed: %w", err)
 							}
+
+							group, _ := sn.Uint16BE(wire.OServiceTLVTagsGroupID)
 							host, _ := sn.String(wire.OServiceTLVTagsReconnectHere)
 							cookie, _ := sn.Bytes(wire.OServiceTLVTagsLoginCookie)
-							group, _ := sn.Uint16BE(wire.OServiceTLVTagsGroupID)
-
 							switch group {
 							case wire.ChatNav:
 								if err := rt.initChatNav(ctx, host, cookie, clientCh, navCh); err != nil {
 									return fmt.Errorf("initChatNav failed: %w", err)
+								}
+							case wire.Chat:
+								if err := rt.initChatRoom(ctx, host, cookie, clientCh, chatCh); err != nil {
+									return fmt.Errorf("initChatNav failed: %w", err)
+								}
+								chatCh <- wire.SNACMessage{
+									Frame: wire.SNACFrame{
+										FoodGroup: wire.OService,
+										SubGroup:  wire.OServiceClientOnline,
+									},
+									Body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
 								}
 							default:
 								return fmt.Errorf("unsupported oservice response. group: %d", group)
@@ -560,9 +656,37 @@ func (rt Server) sendToClient(ctx context.Context, clientCh chan any, clientFlap
 							if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
 								return fmt.Errorf("unmarshal ICBM channel message failed: %w", err)
 							}
-							host, _ := sn.String(wire.OServiceTLVTagsReconnectHere)
-							cookie, _ := sn.Bytes(wire.OServiceTLVTagsLoginCookie)
-							group, _ := sn.Uint16BE(wire.OServiceTLVTagsGroupID)
+
+							b, hasInfo := sn.TLVRestBlock.Bytes(wire.ChatNavTLVRoomInfo)
+							if !hasInfo {
+								return fmt.Errorf("error getting room info from room info payload")
+							}
+
+							roomInfo := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
+							if err := wire.UnmarshalBE(&roomInfo, bytes.NewBuffer(b)); err != nil {
+								return fmt.Errorf("error unmarshalling room info: %w", err)
+							}
+
+							fmt.Printf("got room info: %+v\n", roomInfo)
+
+							chatID = roomInfo.Cookie
+
+							bosCh <- wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.OService,
+									SubGroup:  wire.OServiceServiceRequest,
+								},
+								Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+									FoodGroup: wire.Chat,
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
+												Cookie: roomInfo.Cookie,
+											}),
+										},
+									},
+								},
+							}
 
 						default:
 							rt.Logger.Info("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
