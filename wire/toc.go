@@ -1,6 +1,9 @@
 package wire
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type TOCBuddyArrived struct {
 	SNAC_0x03_0x0B_BuddyArrived
@@ -41,6 +44,27 @@ func (t TOCIMIN) String() string {
 		return ""
 	}
 	return fmt.Sprintf("IM_IN:%s:F:%s", t.ScreenName, txt)
+}
+
+type TOCChatJoin struct {
+	SNAC_0x0E_0x02_ChatRoomInfoUpdate
+}
+
+func (t TOCChatJoin) String() string {
+	name, _ := t.Bytes(ChatRoomTLVRoomName)
+	return fmt.Sprintf("CHAT_JOIN:%s:%s", t.Cookie, name)
+}
+
+type TOCChatUsersJoined struct {
+	SNAC_0x0E_0x03_ChatUsersJoined
+}
+
+func (t TOCChatUsersJoined) String(chatID string) string {
+	users := make([]string, 0, len(t.Users))
+	for _, u := range t.Users {
+		users = append(users, u.ScreenName)
+	}
+	return fmt.Sprintf("CHAT_UPDATE_BUDDY:%s:T:%s", chatID, strings.Join(users, ":"))
 }
 
 type TOC struct {
