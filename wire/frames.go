@@ -186,6 +186,7 @@ func (f *FlapClient) SendSNAC(frame SNACFrame, body any) error {
 
 // SendSNAC sends a SNAC message wrapped in a FLAP frame.
 func (f *FlapClient) SendDataFrame(payload []byte) error {
+	fmt.Printf("> server: %s\n", payload)
 	flap := FLAPFrame{
 		StartMarker: 42,
 		FrameType:   FLAPFrameData,
