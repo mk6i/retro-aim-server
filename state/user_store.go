@@ -1855,19 +1855,19 @@ func (f SQLiteUserStore) DeleteKeyword(id uint8) error {
 // Categories
 //
 //	ID: The category ID
-//	Name: The category name
+//	Cookie: The category name
 //	Type: [wire.ODirKeywordCategory]
 //
 // Keywords
 //
 //	ID: The parent category ID
-//	Name: The keyword name
+//	Cookie: The keyword name
 //	Type: [wire.ODirKeyword]
 //
 // Top-level Keywords
 //
 //	ID: 0 (does not have a parent category)
-//	Name: The keyword name
+//	Cookie: The keyword name
 //	Type: [wire.ODirKeyword]
 //
 // Keywords are grouped contiguously by category and preceded by the category

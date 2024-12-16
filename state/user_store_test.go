@@ -1477,7 +1477,7 @@ func TestSQLiteUserStore_FindByICQName(t *testing.T) {
 		return false
 	}
 
-	t.Run("Find Users by First Name", func(t *testing.T) {
+	t.Run("Find Users by First Cookie", func(t *testing.T) {
 		// Search for users with the first name "John"
 		users, err := f.FindByICQName("John", "", "")
 		assert.NoError(t, err)
@@ -1488,7 +1488,7 @@ func TestSQLiteUserStore_FindByICQName(t *testing.T) {
 		assert.True(t, containsUserWithScreenName(users, user3.IdentScreenName))
 	})
 
-	t.Run("Find Users by Last Name", func(t *testing.T) {
+	t.Run("Find Users by Last Cookie", func(t *testing.T) {
 		// Search for users with the last name "Smith"
 		users, err := f.FindByICQName("", "Smith", "")
 		assert.NoError(t, err)
@@ -1590,7 +1590,7 @@ func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
 		return false
 	}
 
-	t.Run("Find Users by First Name", func(t *testing.T) {
+	t.Run("Find Users by First Cookie", func(t *testing.T) {
 		// Search for users with the first name "John"
 		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{FirstName: "John"})
 		assert.NoError(t, err)
@@ -1601,7 +1601,7 @@ func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
 		assert.True(t, containsUserWithScreenName(users, user3.IdentScreenName))
 	})
 
-	t.Run("Find Users by Last Name", func(t *testing.T) {
+	t.Run("Find Users by Last Cookie", func(t *testing.T) {
 		// Search for users with the last name "Smith"
 		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{LastName: "Smith"})
 		assert.NoError(t, err)
@@ -2206,7 +2206,7 @@ func TestSQLiteUserStore_CreateCategory(t *testing.T) {
 		}
 	})
 
-	t.Run("Duplicate Category Name", func(t *testing.T) {
+	t.Run("Duplicate Category Cookie", func(t *testing.T) {
 		defer func() {
 			assert.NoError(t, os.Remove(testFile))
 		}()
@@ -2403,7 +2403,7 @@ func TestSQLiteUserStore_CreateKeyword(t *testing.T) {
 		assert.ErrorIs(t, err, ErrKeywordCategoryNotFound)
 	})
 
-	t.Run("Duplicate Keyword Name", func(t *testing.T) {
+	t.Run("Duplicate Keyword Cookie", func(t *testing.T) {
 		defer func() {
 			assert.NoError(t, os.Remove(testFile))
 		}()

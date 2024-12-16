@@ -591,6 +591,20 @@ type ICBMCh1Fragment struct {
 	Payload []byte `oscar:"len_prefix=uint16"`
 }
 
+type ICBMCh2Fragment struct {
+	Type     uint16
+	Cookie   uint64
+	Service1 uint64
+	Service2 uint64
+	TLVRestBlock
+}
+
+type ICBMRoomInfo struct {
+	Exchange uint16
+	Cookie   string `oscar:"len_prefix=uint8"`
+	Instance uint16
+}
+
 // ICBMCh1Message represents the text component of an ICBM channel 1 (instant
 // message) message.
 type ICBMCh1Message struct {

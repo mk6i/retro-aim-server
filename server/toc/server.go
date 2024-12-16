@@ -244,6 +244,12 @@ func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWrit
 				caps = append(caps, uid)
 			}
 
+			chatuid, err := uuid.Parse("748F2420-6287-11D1-8222-444553540000")
+			if err != nil {
+				return fmt.Errorf("parse caps failed: %w", err)
+			}
+			caps = append(caps, chatuid)
+
 			bosCh <- wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					FoodGroup: wire.Locate,
@@ -340,6 +346,35 @@ func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWrit
 					Channel:      3,
 					TLVRestBlock: block,
 				},
+			}
+		case "toc_chat_accept":
+			bosCh <- wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceRequest,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.ChatNav,
+				},
+			}
+			chatNavCh <- wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ChatNav,
+					SubGroup:  wire.ChatNavCreateRoom,
+				},
+				Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+					Exchange: 4,
+					Cookie:   "create",
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ChatRoomTLVRoomName, "haha"),
+						},
+					},
+				},
+			}
+
+			if err := clientFlap.SendDataFrame([]byte(fmt.Sprintf("CHAT_JOIN:%s:%s", "10", "haha"))); err != nil {
+				return fmt.Errorf("send sign on data frame failed: %w", err)
 			}
 		}
 	}
@@ -787,7 +822,7 @@ func receiveCmd(b []byte) ([]string, error) {
 	}
 	reader := csv.NewReader(bytes.NewReader(b))
 	reader.Comma = ' '
-	reader.LazyQuotes = false
+	reader.LazyQuotes = true
 	reader.TrimLeadingSpace = true
 	return reader.Read()
 }
