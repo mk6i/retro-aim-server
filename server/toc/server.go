@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mk6i/retro-aim-server/state"
 
 	"github.com/mk6i/retro-aim-server/wire"
 )
@@ -131,7 +132,7 @@ func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWrit
 			return errors.New("no cmd in flapon signal")
 		}
 
-		fmt.Printf("client: %+v\n", elems)
+		fmt.Printf("< client: %+v\n", elems)
 
 		switch elems[0] {
 		case "toc_signon":
@@ -313,6 +314,33 @@ func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWrit
 					},
 				},
 			}
+		case "toc_chat_send":
+			sess := state.NewSession()
+			sess.SetIdentScreenName(state.NewIdentScreenName("mike"))
+			sess.SetDisplayScreenName("mike")
+
+			block := wire.TLVRestBlock{}
+			// the order of these TLVs matters for AIM 2.x. if out of order, screen
+			// names do not appear with each chat message.
+			block.Append(wire.NewTLVBE(wire.ChatTLVEnableReflectionFlag, uint8(1)))
+			block.Append(wire.NewTLVBE(wire.ChatTLVSenderInformation, sess.TLVUserInfo()))
+			block.Append(wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}))
+			block.Append(wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLVBE(wire.ChatTLVMessageInfoText, elems[2]),
+				},
+			}))
+
+			chatCh <- wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Chat,
+					SubGroup:  wire.ChatChannelMsgToHost,
+				},
+				Body: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+					Channel:      3,
+					TLVRestBlock: block,
+				},
+			}
 		}
 	}
 	return nil
@@ -484,7 +512,7 @@ func (rt Server) initChatNav(ctx context.Context, host string, cookie []byte, cl
 	return nil
 }
 
-func (rt Server) initChatRoom(ctx context.Context, host string, cookie []byte, clientCh chan<- any, navCh <-chan wire.SNACMessage) error {
+func (rt Server) initChatRoom(ctx context.Context, host string, cookie []byte, clientCh chan<- any, chatCh <-chan wire.SNACMessage) error {
 	serverConn, err := net.Dial("tcp", host)
 	if err != nil {
 		return fmt.Errorf("dial failed: %w", err)
@@ -521,7 +549,7 @@ func (rt Server) initChatRoom(ctx context.Context, host string, cookie []byte, c
 			select {
 			case <-ctx.Done():
 				return
-			case msg := <-navCh:
+			case msg := <-chatCh:
 				if err := serverFlap.SendSNAC(msg.Frame, msg.Body); err != nil {
 					rt.Logger.Error("send snac failed", "err", err)
 					return
@@ -562,7 +590,6 @@ func (rt Server) sendToClient(ctx context.Context, clientCh chan any, clientFlap
 					if err := wire.UnmarshalBE(&inFrame, flapBuf); err != nil {
 						return err
 					}
-
 					switch inFrame.FoodGroup {
 					case wire.Buddy:
 						switch inFrame.SubGroup {
@@ -582,6 +609,8 @@ func (rt Server) sendToClient(ctx context.Context, clientCh chan any, clientFlap
 							if err := clientFlap.SendDataFrame([]byte(sn.String())); err != nil {
 								return fmt.Errorf("sending im to client failed: %w", err)
 							}
+						default:
+							rt.Logger.Info("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
 						}
 					case wire.Chat:
 						switch inFrame.SubGroup {
@@ -590,7 +619,7 @@ func (rt Server) sendToClient(ctx context.Context, clientCh chan any, clientFlap
 							if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
 								return fmt.Errorf("unmarshal buddy arrived: %w", err)
 							}
-							if err := clientFlap.SendDataFrame([]byte(sn.String())); err != nil {
+							if err := clientFlap.SendDataFrame([]byte(sn.String(chatID))); err != nil {
 								return fmt.Errorf("sending im to client failed: %w", err)
 							}
 						case wire.ChatUsersJoined:
@@ -601,6 +630,16 @@ func (rt Server) sendToClient(ctx context.Context, clientCh chan any, clientFlap
 							if err := clientFlap.SendDataFrame([]byte(sn.String(chatID))); err != nil {
 								return fmt.Errorf("sending im to client failed: %w", err)
 							}
+						case wire.ChatChannelMsgToClient:
+							sn := wire.TOCChatIn{}
+							if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
+								return fmt.Errorf("unmarshal buddy arrived: %w", err)
+							}
+							if err := clientFlap.SendDataFrame([]byte(sn.String(chatID))); err != nil {
+								return fmt.Errorf("sending im to client failed: %w", err)
+							}
+						default:
+							rt.Logger.Info("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
 						}
 					case wire.ICBM:
 						switch inFrame.SubGroup {
