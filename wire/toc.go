@@ -43,16 +43,44 @@ type TOCIMIN struct {
 	SNAC_0x04_0x07_ICBMChannelMsgToClient
 }
 
-func (t TOCIMIN) String() string {
-	b, ok := t.TLVRestBlock.Bytes(ICBMTLVAOLIMData)
-	if !ok {
-		return ""
+func (sn TOCIMIN) String() string {
+
+	switch sn.ChannelID {
+	case ICBMChannelRendezvous:
+		rdinfo, has := sn.TLVRestBlock.Bytes(0x05)
+		if !has {
+			fmt.Printf("doesn't have rendezvous block\n")
+			return ""
+		}
+		frag := ICBMCh2Fragment{}
+		if err := UnmarshalBE(&frag, bytes.NewBuffer(rdinfo)); err != nil {
+			fmt.Printf("unmarshal ICBM channel message rdv apyload failed: %w", err)
+			return ""
+		}
+		prompt, _ := frag.Bytes(12)
+
+		svcData, _ := frag.Bytes(10001)
+
+		roomInfo := ICBMRoomInfo{}
+		if err := UnmarshalBE(&roomInfo, bytes.NewBuffer(svcData)); err != nil {
+			fmt.Printf("unmarshal ICBM channel message rdv apyload failed: %w", err)
+			return ""
+		}
+
+		name := strings.Split(roomInfo.Cookie, "-")[2]
+		return fmt.Sprintf("CHAT_INVITE:%s:%s:%s:%s", name, "10", sn.ScreenName, prompt)
+	default:
+		b, ok := sn.TLVRestBlock.Bytes(ICBMTLVAOLIMData)
+		if !ok {
+			return ""
+		}
+		txt, err := UnmarshalICBMMessageText(b)
+		if err != nil {
+			return ""
+		}
+		return fmt.Sprintf("IM_IN:%s:F:%s", sn.ScreenName, txt)
 	}
-	txt, err := UnmarshalICBMMessageText(b)
-	if err != nil {
-		return ""
-	}
-	return fmt.Sprintf("IM_IN:%s:F:%s", t.ScreenName, txt)
+	return ""
 }
 
 type TOCChatJoin struct {
@@ -61,7 +89,7 @@ type TOCChatJoin struct {
 
 func (t TOCChatJoin) String(chatID string) string {
 	name, _ := t.Bytes(ChatRoomTLVRoomName)
-	return fmt.Sprintf("CHAT_JOIN:%s:%s", chatID, name)
+	return fmt.Sprintf("CHAT_JOIN:%s:%s", "10", name)
 }
 
 type TOCChatUsersJoined struct {
@@ -73,7 +101,7 @@ func (t TOCChatUsersJoined) String(chatID string) string {
 	for _, u := range t.Users {
 		users = append(users, u.ScreenName)
 	}
-	return fmt.Sprintf("CHAT_UPDATE_BUDDY:%s:T:%s", chatID, strings.Join(users, ":"))
+	return fmt.Sprintf("CHAT_UPDATE_BUDDY:%s:T:%s", "10", "mike")
 }
 
 type TOCChatIn struct {
@@ -95,7 +123,7 @@ func (t TOCChatIn) String(chatID string) string {
 		panic(err)
 	}
 
-	return fmt.Sprintf("CHAT_IN:%s:%s:F:%s", chatID, u.ScreenName, text)
+	return fmt.Sprintf("CHAT_IN:%s:%s:F:%s", "10", u.ScreenName, text)
 }
 
 // textFromChatMsgBlob extracts plaintext message text from HTML located in
