@@ -376,6 +376,10 @@ func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWrit
 			if err := clientFlap.SendDataFrame([]byte(fmt.Sprintf("CHAT_JOIN:%s:%s", "10", "haha"))); err != nil {
 				return fmt.Errorf("send sign on data frame failed: %w", err)
 			}
+		case "toc_chat_leave":
+			if err := clientFlap.SendDataFrame([]byte(fmt.Sprintf("CHAT_LEFT:%s", "10"))); err != nil {
+				return fmt.Errorf("send sign on data frame failed: %w", err)
+			}
 		}
 	}
 	return nil
