@@ -11,6 +11,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,6 +22,27 @@ import (
 
 	"github.com/mk6i/retro-aim-server/wire"
 )
+
+type bufferedConn struct {
+	r        *bufio.Reader
+	net.Conn // So that most methods are embedded
+}
+
+func newBufferedConn(c net.Conn) bufferedConn {
+	return bufferedConn{bufio.NewReader(c), c}
+}
+
+func newBufferedConnSize(c net.Conn, n int) bufferedConn {
+	return bufferedConn{bufio.NewReaderSize(c, n), c}
+}
+
+func (b bufferedConn) Peek(n int) ([]byte, error) {
+	return b.r.Peek(n)
+}
+
+func (b bufferedConn) Read(p []byte) (int, error) {
+	return b.r.Read(p)
+}
 
 // Server provides client connection lifecycle management for the BOS
 // service.
@@ -64,9 +86,55 @@ func (rt Server) Start(ctx context.Context) error {
 		go func() {
 			defer wg.Done()
 			connCtx := context.WithValue(ctx, "ip", conn.RemoteAddr().String())
-			//rt.Logger.DebugContext(connCtx, "accepted connection")
-			if err := rt.handleNewConnection(connCtx, conn); err != nil {
-				rt.Logger.Info("user session failed", "err", err.Error())
+
+			defer conn.Close()
+
+			bufCon := newBufferedConn(conn)
+			b, err := bufCon.Peek(6)
+			if err != nil {
+				rt.Logger.Error("peek failed", "err", err.Error())
+			}
+			switch {
+			case string(b) == "FLAPON":
+				if err := rt.handleTOCOverFlap(connCtx, bufCon); err != nil {
+					rt.Logger.Info("user session failed", "err", err.Error())
+				}
+			case strings.HasPrefix(string(b), "GET /"):
+				bufReader := bufio.NewReader(bufCon)
+				request, err := http.ReadRequest(bufReader)
+				if err != nil {
+					fmt.Println("Error reading HTTP request:", err)
+					return
+				}
+
+				switch request.URL.Path {
+				case "/info":
+					myProfile := "hello this is my profile"
+
+					response := http.Response{
+						Status:        http.StatusText(http.StatusOK),
+						StatusCode:    http.StatusOK,
+						Proto:         "HTTP/1.0",
+						ProtoMajor:    1,
+						ProtoMinor:    0,
+						Header:        make(http.Header),
+						Body:          nil,
+						ContentLength: int64(len(myProfile)),
+						Close:         true,
+					}
+
+					response.Header.Set("Content-Type", "text/plain")
+					response.Header.Set("Content-Length", fmt.Sprintf("%d", len(myProfile)))
+
+					if err := response.Write(conn); err != nil {
+						fmt.Println("Error writing response:", err)
+						return
+					}
+
+					if _, err = conn.Write([]byte(myProfile)); err != nil {
+						fmt.Println("Error writing myProfile:", err)
+					}
+				}
 			}
 		}()
 	}
@@ -80,7 +148,7 @@ func (rt Server) Start(ctx context.Context) error {
 	return nil
 }
 
-func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWriter) error {
+func (rt Server) handleTOCOverFlap(ctx context.Context, clientConn io.ReadWriter) error {
 	if err := rt.TOCHandshake(clientConn); err != nil {
 		return fmt.Errorf("handshake failed: %w", err)
 	}
@@ -279,18 +347,9 @@ func (rt Server) handleNewConnection(ctx context.Context, clientConn io.ReadWrit
 				Body: snac,
 			}
 		case "toc_get_info":
-			//frame := wire.SNACFrame{
-			//	FoodGroup: wire.Locate,
-			//	SubGroup:  wire.LocateUserInfoQuery,
-			//}
-			//snac := wire.SNAC_0x02_0x05_LocateUserInfoQuery{
-			//	Type: uint16(wire.LocateTypeSig),
-			//	ScreenName: elems[1],
-			//}
-			//if err := serverFlap.SendSNAC(frame, snac); err != nil {
-			//	return err
-			//}
-			clientCh <- []byte("GOTO_URL:hello:http://frogfind.com:80")
+			if err := clientFlap.SendDataFrame([]byte("GOTO_URL:profile:info")); err != nil {
+				return fmt.Errorf("send sign on data frame failed: %w", err)
+			}
 		case "toc_chat_join":
 			exchange, err := strconv.Atoi(elems[1])
 			if err != nil {
