@@ -290,9 +290,10 @@ func ODir(deps Container) oscar.BOSServer {
 // TOC creates a TOC server.
 func TOC(deps Container) toc.Server {
 	logger := deps.logger.With("svc", "TOC")
-
+	locateService := foodgroup.NewLocateService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.inMemorySessionManager)
 	return toc.Server{
-		Logger:     logger,
-		ListenAddr: net.JoinHostPort("", deps.cfg.TOCPort),
+		LocateService: locateService,
+		Logger:        logger,
+		ListenAddr:    net.JoinHostPort("", deps.cfg.TOCPort),
 	}
 }
