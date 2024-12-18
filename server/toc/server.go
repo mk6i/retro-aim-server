@@ -47,8 +47,9 @@ func (b bufferedConn) Read(p []byte) (int, error) {
 // Server provides client connection lifecycle management for the BOS
 // service.
 type Server struct {
-	ListenAddr string
-	Logger     *slog.Logger
+	ListenAddr    string
+	Logger        *slog.Logger
+	LocateService LocateService
 }
 
 // Start starts a TCP server and listens for connections. The initial
@@ -109,8 +110,38 @@ func (rt Server) Start(ctx context.Context) error {
 
 				switch request.URL.Path {
 				case "/info":
-					myProfile := "hello this is my profile"
+					from := request.URL.Query().Get("from")
+					if from == "" {
+						rt.Logger.Error("no from query parameter")
+					}
+					user := request.URL.Query().Get("user")
+					if user == "" {
+						rt.Logger.Error("no user query parameter")
+					}
 
+					sess := state.NewSession()
+					sess.SetIdentScreenName(state.NewIdentScreenName(from))
+					inBody := wire.SNAC_0x02_0x05_LocateUserInfoQuery{
+						Type:       uint16(wire.LocateTypeSig),
+						ScreenName: user,
+					}
+
+					info, err := rt.LocateService.UserInfoQuery(ctx, sess, wire.SNACFrame{}, inBody)
+					if err != nil {
+						rt.Logger.Error("user session failed", "err", err.Error())
+						return
+					}
+					if !(info.Frame.FoodGroup == wire.Locate && info.Frame.SubGroup == wire.LocateUserInfoReply) {
+						rt.Logger.Error("didn't get expected locate response")
+						return
+					}
+
+					locateInfoReply := info.Body.(wire.SNAC_0x02_0x06_LocateUserInfoReply)
+					profile, hasProf := locateInfoReply.LocateInfo.Bytes(wire.LocateTLVTagsInfoSigData)
+					if !hasProf {
+						rt.Logger.Error("didn't get expected location info")
+						return
+					}
 					response := http.Response{
 						Status:        http.StatusText(http.StatusOK),
 						StatusCode:    http.StatusOK,
@@ -119,19 +150,19 @@ func (rt Server) Start(ctx context.Context) error {
 						ProtoMinor:    0,
 						Header:        make(http.Header),
 						Body:          nil,
-						ContentLength: int64(len(myProfile)),
+						ContentLength: int64(len(profile)),
 						Close:         true,
 					}
 
 					response.Header.Set("Content-Type", "text/plain")
-					response.Header.Set("Content-Length", fmt.Sprintf("%d", len(myProfile)))
+					response.Header.Set("Content-Length", fmt.Sprintf("%d", len(profile)))
 
 					if err := response.Write(conn); err != nil {
 						fmt.Println("Error writing response:", err)
 						return
 					}
 
-					if _, err = conn.Write([]byte(myProfile)); err != nil {
+					if _, err = conn.Write([]byte(profile)); err != nil {
 						fmt.Println("Error writing myProfile:", err)
 					}
 				}
@@ -347,8 +378,8 @@ func (rt Server) handleTOCOverFlap(ctx context.Context, clientConn io.ReadWriter
 				Body: snac,
 			}
 		case "toc_get_info":
-			if err := clientFlap.SendDataFrame([]byte("GOTO_URL:profile:info")); err != nil {
-				return fmt.Errorf("send sign on data frame failed: %w", err)
+			if err := clientFlap.SendDataFrame([]byte(fmt.Sprintf("GOTO_URL:profile:info?from=%s&user=%s", "mike", elems[1]))); err != nil {
+				return fmt.Errorf("send toc_get_info failed: %w", err)
 			}
 		case "toc_chat_join":
 			exchange, err := strconv.Atoi(elems[1])
@@ -438,6 +469,41 @@ func (rt Server) handleTOCOverFlap(ctx context.Context, clientConn io.ReadWriter
 		case "toc_chat_leave":
 			if err := clientFlap.SendDataFrame([]byte(fmt.Sprintf("CHAT_LEFT:%s", "10"))); err != nil {
 				return fmt.Errorf("send sign on data frame failed: %w", err)
+			}
+		case "toc_set_info":
+			bosCh <- wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateSetInfo,
+				},
+				Body: wire.SNAC_0x02_0x04_LocateSetInfo{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, elems[1]),
+						},
+					},
+				},
+			}
+		case "toc_set_dir":
+			params := strings.Split(elems[1], ":")
+			bosCh <- wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateSetDirInfo,
+				},
+				Body: wire.SNAC_0x02_0x09_LocateSetDirInfo{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ODirTLVFirstName, params[0]),
+							wire.NewTLVBE(wire.ODirTLVMiddleName, params[1]),
+							wire.NewTLVBE(wire.ODirTLVLastName, params[2]),
+							wire.NewTLVBE(wire.ODirTLVMaidenName, params[3]),
+							wire.NewTLVBE(wire.ODirTLVCountry, params[6]),
+							wire.NewTLVBE(wire.ODirTLVState, params[5]),
+							wire.NewTLVBE(wire.ODirTLVCity, params[4]),
+						},
+					},
+				},
 			}
 		}
 	}
@@ -749,6 +815,14 @@ func (rt Server) sendToClient(ctx context.Context, clientCh chan any, clientFlap
 							if err := clientFlap.SendDataFrame([]byte(sn.String())); err != nil {
 								return fmt.Errorf("sending im to client failed: %w", err)
 							}
+						case wire.ICBMEvilReply:
+							sn := wire.TOCEvilReply{}
+							if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
+								return fmt.Errorf("unmarshal ICBM evil repl channel message failed: %w", err)
+							}
+							if err := clientFlap.SendDataFrame([]byte(sn.String())); err != nil {
+								return fmt.Errorf("sending im to client failed: %w", err)
+							}
 						default:
 							rt.Logger.Info("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
 						}
@@ -782,7 +856,14 @@ func (rt Server) sendToClient(ctx context.Context, clientCh chan any, clientFlap
 							default:
 								return fmt.Errorf("unsupported oservice response. group: %d", group)
 							}
-
+						case wire.OServiceEvilNotification:
+							sn := wire.TOCReceivedWarning{}
+							if err := wire.UnmarshalBE(&sn, flapBuf); err != nil {
+								return fmt.Errorf("unmarshal ICBM evil repl channel message failed: %w", err)
+							}
+							if err := clientFlap.SendDataFrame([]byte(sn.String())); err != nil {
+								return fmt.Errorf("sending im to client failed: %w", err)
+							}
 						default:
 							rt.Logger.Info("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
 						}

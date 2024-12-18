@@ -36,7 +36,7 @@ func (t TOCBuddyDeparted) String() string {
 		uc[2] = "U"
 	}
 	class := strings.Join(uc[:], "")
-	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", t.ScreenName, "T", t.WarningLevel, online, idle, class)
+	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", t.ScreenName, "F", t.WarningLevel, online, idle, class)
 }
 
 type TOCIMIN struct {
@@ -152,6 +152,26 @@ func textFromChatMsgBlob(msg []byte) ([]byte, error) {
 			return nil, err
 		}
 	}
+}
+
+type TOCEvilReply struct {
+	SNAC_0x04_0x09_ICBMEvilReply
+}
+
+func (t TOCEvilReply) String() string {
+	return fmt.Sprintf("EVILED:%d:jon", t.UpdatedEvilValue)
+}
+
+type TOCReceivedWarning struct {
+	SNAC_0x01_0x10_OServiceEvilNotification
+}
+
+func (t TOCReceivedWarning) String() string {
+	who := ""
+	if t.Snitcher != nil {
+		who = t.Snitcher.ScreenName
+	}
+	return fmt.Sprintf("EVILED:%d:%s", t.NewEvil, who)
 }
 
 type TOC struct {
