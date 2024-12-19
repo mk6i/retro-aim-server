@@ -295,5 +295,27 @@ func TOC(deps Container) toc.Server {
 		LocateService: locateService,
 		Logger:        logger,
 		ListenAddr:    net.JoinHostPort("", deps.cfg.TOCPort),
+		BOSProxy: toc.BOSProxy{
+			AuthService:   foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, nil),
+			BuddyService:  foodgroup.NewBuddyService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.inMemorySessionManager),
+			ICBMService:   foodgroup.NewICBMService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.inMemorySessionManager),
+			LocateService: locateService,
+			Logger:        logger,
+			OServiceService: foodgroup.NewOServiceServiceForBOS(
+				deps.cfg,
+				deps.inMemorySessionManager,
+				logger,
+				deps.hmacCookieBaker,
+				deps.sqLiteUserStore,
+				deps.sqLiteUserStore,
+				deps.inMemorySessionManager,
+			),
+			PermitDenyService: foodgroup.NewPermitDenyService(
+				deps.sqLiteUserStore,
+				deps.sqLiteUserStore,
+				deps.inMemorySessionManager,
+				deps.inMemorySessionManager,
+			),
+		},
 	}
 }
