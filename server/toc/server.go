@@ -29,10 +29,6 @@ func newBufferedConn(c net.Conn) bufferedConn {
 	return bufferedConn{bufio.NewReader(c), c}
 }
 
-func newBufferedConnSize(c net.Conn, n int) bufferedConn {
-	return bufferedConn{bufio.NewReaderSize(c, n), c}
-}
-
 func (b bufferedConn) Peek(n int) ([]byte, error) {
 	return b.r.Peek(n)
 }
@@ -41,18 +37,52 @@ func (b bufferedConn) Read(p []byte) (int, error) {
 	return b.r.Read(p)
 }
 
-// Server provides client connection lifecycle management for the BOS
-// service.
-type Server struct {
-	ListenAddr    string
-	Logger        *slog.Logger
-	LocateService LocateService
-	BOSProxy      BOSProxy
+type ChatRegistry struct {
+	lookup   map[int]string
+	sessions map[int]*state.Session
+	nextID   int
+	m        sync.RWMutex
 }
 
-// Start starts a TCP server and listens for connections. The initial
-// authentication handshake sequences are handled by this method. The remaining
-// requests are relayed to BOSRouter.
+func (c *ChatRegistry) Add(cookie string) int {
+	c.m.Lock()
+	defer c.m.Unlock()
+	for k, v := range c.lookup {
+		if v == cookie {
+			return k
+		}
+	}
+	id := c.nextID
+	c.lookup[id] = cookie
+	c.nextID++
+	return id
+}
+
+func (c *ChatRegistry) Lookup(chatID int) string {
+	c.m.RLock()
+	defer c.m.RUnlock()
+	return c.lookup[chatID]
+}
+
+func (c *ChatRegistry) Register(chatID int, sess *state.Session) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	c.sessions[chatID] = sess
+}
+
+func (c *ChatRegistry) Retrieve(chatID int) *state.Session {
+	c.m.RLock()
+	defer c.m.RUnlock()
+	return c.sessions[chatID]
+}
+
+type Server struct {
+	BOSProxy   BOSProxy
+	ChatProxy  ChatProxy
+	ListenAddr string
+	Logger     *slog.Logger
+}
+
 func (rt Server) Start(ctx context.Context) error {
 	listener, err := net.Listen("tcp", rt.ListenAddr)
 	if err != nil {
@@ -76,17 +106,17 @@ func (rt Server) Start(ctx context.Context) error {
 			rt.Logger.Error("accept failed", "err", err.Error())
 			continue
 		}
-		go func() {
-			<-ctx.Done()
-			conn.Close()
-		}()
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			connCtx := context.WithValue(ctx, "ip", conn.RemoteAddr().String())
+			thisCtx := context.WithValue(ctx, "ip", conn.RemoteAddr().String())
+			thisCtx, cancel := context.WithCancel(thisCtx)
 
-			defer conn.Close()
+			defer func() {
+				cancel()
+				conn.Close()
+			}()
 
 			bufCon := newBufferedConn(conn)
 			b, err := bufCon.Peek(6)
@@ -95,74 +125,12 @@ func (rt Server) Start(ctx context.Context) error {
 			}
 			switch {
 			case string(b) == "FLAPON":
-				if err := rt.handleTOCOverFlap(connCtx, bufCon); err != nil {
-					rt.Logger.Info("user session failed", "err", err.Error())
+				if err := rt.handleTOCOverFlap(thisCtx, bufCon); err != nil {
+					rt.Logger.Info("handleTOCOverFlap error", "err", err.Error())
 				}
 			case strings.HasPrefix(string(b), "GET /"):
-				bufReader := bufio.NewReader(bufCon)
-				request, err := http.ReadRequest(bufReader)
-				if err != nil {
-					fmt.Println("Error reading HTTP request:", err)
-					return
-				}
-
-				switch request.URL.Path {
-				case "/info":
-					from := request.URL.Query().Get("from")
-					if from == "" {
-						rt.Logger.Error("no from query parameter")
-					}
-					user := request.URL.Query().Get("user")
-					if user == "" {
-						rt.Logger.Error("no user query parameter")
-					}
-
-					sess := state.NewSession()
-					sess.SetIdentScreenName(state.NewIdentScreenName(from))
-					inBody := wire.SNAC_0x02_0x05_LocateUserInfoQuery{
-						Type:       uint16(wire.LocateTypeSig),
-						ScreenName: user,
-					}
-
-					info, err := rt.LocateService.UserInfoQuery(ctx, sess, wire.SNACFrame{}, inBody)
-					if err != nil {
-						rt.Logger.Error("user session failed", "err", err.Error())
-						return
-					}
-					if !(info.Frame.FoodGroup == wire.Locate && info.Frame.SubGroup == wire.LocateUserInfoReply) {
-						rt.Logger.Error("didn't get expected locate response")
-						return
-					}
-
-					locateInfoReply := info.Body.(wire.SNAC_0x02_0x06_LocateUserInfoReply)
-					profile, hasProf := locateInfoReply.LocateInfo.Bytes(wire.LocateTLVTagsInfoSigData)
-					if !hasProf {
-						rt.Logger.Error("didn't get expected location info")
-						return
-					}
-					response := http.Response{
-						Status:        http.StatusText(http.StatusOK),
-						StatusCode:    http.StatusOK,
-						Proto:         "HTTP/1.0",
-						ProtoMajor:    1,
-						ProtoMinor:    0,
-						Header:        make(http.Header),
-						Body:          nil,
-						ContentLength: int64(len(profile)),
-						Close:         true,
-					}
-
-					response.Header.Set("Content-Type", "text/plain")
-					response.Header.Set("Content-Length", fmt.Sprintf("%d", len(profile)))
-
-					if err := response.Write(conn); err != nil {
-						fmt.Println("Error writing response:", err)
-						return
-					}
-
-					if _, err = conn.Write([]byte(profile)); err != nil {
-						fmt.Println("Error writing myProfile:", err)
-					}
+				if err := rt.handleTOCOverHTTP(bufCon, thisCtx, conn); err != nil {
+					rt.Logger.Info("handleTOCOverHTTP error", "err", err.Error())
 				}
 			}
 		}()
@@ -174,6 +142,54 @@ func (rt Server) Start(ctx context.Context) error {
 		rt.Logger.Info("shutdown complete")
 	}
 
+	return nil
+}
+
+func (rt Server) handleTOCOverHTTP(bufCon bufferedConn, thisCtx context.Context, conn net.Conn) error {
+	bufReader := bufio.NewReader(bufCon)
+	request, err := http.ReadRequest(bufReader)
+	if err != nil {
+		return errors.New("failed to read HTTP request: " + err.Error())
+	}
+
+	switch request.URL.Path {
+	case "/info":
+		from := request.URL.Query().Get("from")
+		if from == "" {
+			return errors.New("no from query parameter")
+		}
+		user := request.URL.Query().Get("user")
+		if user == "" {
+			return errors.New("no user query parameter")
+		}
+
+		prof, err := rt.BOSProxy.Profile(thisCtx, from, user)
+		if err != nil {
+			return fmt.Errorf("BOSProfile failed: %w", err)
+		}
+		response := http.Response{
+			Status:        http.StatusText(http.StatusOK),
+			StatusCode:    http.StatusOK,
+			Proto:         "HTTP/1.0",
+			ProtoMajor:    1,
+			ProtoMinor:    0,
+			Header:        make(http.Header),
+			Body:          nil,
+			ContentLength: int64(len(prof)),
+			Close:         true,
+		}
+
+		response.Header.Set("Content-Type", "text/plain")
+		response.Header.Set("Content-Length", fmt.Sprintf("%d", len(prof)))
+
+		if err := response.Write(conn); err != nil {
+			return fmt.Errorf("failed to write response: %w", err)
+		}
+
+		if _, err = conn.Write([]byte(prof)); err != nil {
+			return fmt.Errorf("failed to write response: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -189,26 +205,30 @@ func (rt Server) handleTOCOverFlap(ctx context.Context, clientConn io.ReadWriter
 
 	clientCh := make(chan []byte)
 
-	defer func() {
-		close(clientCh)
-	}()
-
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
 				rt.Logger.Info("closing client writer")
 				return
-			case msg := <-clientCh:
+			case msg, ok := <-clientCh:
+				if !ok {
+					return
+				}
 				if err := clientFlap.SendDataFrame(msg); err != nil {
 					rt.Logger.Error("failed to send data frame", "err", err.Error())
+					return
 				}
 			}
 		}
 	}()
 
 	var sessBOS *state.Session
-	var sessChat *state.Session
+	chatRegistry := &ChatRegistry{
+		lookup:   make(map[int]string),
+		sessions: make(map[int]*state.Session),
+		m:        sync.RWMutex{},
+	}
 
 	for {
 		clientFrame, err := clientFlap.ReceiveFLAP()
@@ -246,8 +266,7 @@ func (rt Server) handleTOCOverFlap(ctx context.Context, clientConn io.ReadWriter
 
 			clientCh <- []byte("SIGN_ON:1")
 
-			go rt.BOSProxy.ConsumeIncoming(ctx, sessBOS, clientCh)
-
+			go rt.BOSProxy.ConsumeIncoming(ctx, sessBOS, chatRegistry, clientCh)
 		case "toc_send_im":
 			if rt.BOSProxy.SendIM(ctx, sessBOS, elems); err != nil {
 				return fmt.Errorf("send IM failed: %w", err)
@@ -281,92 +300,46 @@ func (rt Server) handleTOCOverFlap(ctx context.Context, clientConn io.ReadWriter
 				return fmt.Errorf("set caps failed: %w", err)
 			}
 		case "toc_evil":
-			response, err := rt.BOSProxy.Evil(ctx, sessBOS, elems)
+			reply, err := rt.BOSProxy.Evil(ctx, sessBOS, elems)
 			if err != nil {
 				return fmt.Errorf("evil failed: %w", err)
 			}
-			clientCh <- []byte(response)
+			clientCh <- []byte(reply)
 		case "toc_get_info":
 			if err := clientFlap.SendDataFrame([]byte(fmt.Sprintf("GOTO_URL:profile:info?from=%s&user=%s", "mike", elems[1]))); err != nil {
 				return fmt.Errorf("send toc_get_info failed: %w", err)
 			}
-		//case "toc_chat_join":
-		//	exchange, err := strconv.Atoi(elems[1])
-		//	if err != nil {
-		//		return fmt.Errorf("parse exchange failed: %w", err)
-		//	}
-		//	bosCh <- wire.SNACMessage{
-		//		Frame: wire.SNACFrame{
-		//			FoodGroup: wire.OService,
-		//			SubGroup:  wire.OServiceServiceRequest,
-		//		},
-		//		Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
-		//			FoodGroup: wire.ChatNav,
-		//		},
-		//	}
-		//	chatNavCh <- wire.SNACMessage{
-		//		Frame: wire.SNACFrame{
-		//			FoodGroup: wire.ChatNav,
-		//			SubGroup:  wire.ChatNavCreateRoom,
-		//		},
-		//		Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-		//			Exchange: uint16(exchange),
-		//			Cookie:   "create",
-		//			TLVBlock: wire.TLVBlock{
-		//				TLVList: wire.TLVList{
-		//					wire.NewTLVBE(wire.ChatRoomTLVRoomName, elems[2]),
-		//				},
-		//			},
-		//		},
-		//	}
-		case "toc_chat_send":
-			if err := rt.BOSProxy.SetCaps(ctx, sessChat, elems); err != nil {
-				return fmt.Errorf("set caps failed: %w", err)
+		case "toc_chat_join":
+			if err := rt.ChatProxy.ChatJoin(ctx, sessBOS, chatRegistry, elems, clientCh); err != nil {
+				return fmt.Errorf("ChatJoin: %w", err)
 			}
-		//case "toc_chat_accept":
-		//	bosCh <- wire.SNACMessage{
-		//		Frame: wire.SNACFrame{
-		//			FoodGroup: wire.OService,
-		//			SubGroup:  wire.OServiceServiceRequest,
-		//		},
-		//		Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
-		//			FoodGroup: wire.ChatNav,
-		//		},
-		//	}
-		//	chatNavCh <- wire.SNACMessage{
-		//		Frame: wire.SNACFrame{
-		//			FoodGroup: wire.ChatNav,
-		//			SubGroup:  wire.ChatNavCreateRoom,
-		//		},
-		//		Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-		//			Exchange: 4,
-		//			Cookie:   "create",
-		//			TLVBlock: wire.TLVBlock{
-		//				TLVList: wire.TLVList{
-		//					wire.NewTLVBE(wire.ChatRoomTLVRoomName, "haha"),
-		//				},
-		//			},
-		//		},
-		//	}
-		//
-		//	if err := clientFlap.SendDataFrame([]byte(fmt.Sprintf("CHAT_JOIN:%s:%s", "10", "haha"))); err != nil {
-		//		return fmt.Errorf("send sign on data frame failed: %w", err)
-		//	}
-		//case "toc_chat_leave":
-		//	if err := clientFlap.SendDataFrame([]byte(fmt.Sprintf("CHAT_LEFT:%s", "10"))); err != nil {
-		//		return fmt.Errorf("send sign on data frame failed: %w", err)
-		//	}
+		case "toc_chat_send":
+			reply, err := rt.ChatProxy.ChatSend(ctx, chatRegistry, elems)
+			if err != nil {
+				return fmt.Errorf("ChatSend: %w", err)
+			}
+			clientCh <- []byte(reply)
+		case "toc_chat_accept":
+			if err := rt.ChatProxy.ChatAccept(ctx, sessBOS, chatRegistry, elems, clientCh); err != nil {
+				return fmt.Errorf("ChatAccept: %w", err)
+			}
+		case "toc_chat_leave":
+			reply, err := rt.ChatProxy.ChatLeave(ctx, chatRegistry, elems)
+			if err != nil {
+				return fmt.Errorf("ChatLeave: %w", err)
+			}
+			clientCh <- []byte(reply)
 		case "toc_set_info":
 			if err := rt.BOSProxy.SetInfo(ctx, sessBOS, elems); err != nil {
-				return fmt.Errorf("set info failed: %w", err)
+				return fmt.Errorf("SetInfo: %w", err)
 			}
 		case "toc_set_dir":
 			if err := rt.BOSProxy.SetDir(ctx, sessBOS, elems); err != nil {
-				return fmt.Errorf("set info failed: %w", err)
+				return fmt.Errorf("SetDir: %w", err)
 			}
 		case "toc_set_idle":
 			if err := rt.BOSProxy.SetIdle(ctx, sessBOS, elems); err != nil {
-				return fmt.Errorf("set info failed: %w", err)
+				return fmt.Errorf("SetIdle: %w", err)
 			}
 		}
 	}
@@ -403,126 +376,6 @@ func (rt Server) initFLAP(clientConn io.ReadWriter) (*wire.FlapClient, error) {
 
 	fmt.Printf("received signon frame: %v\n", signonFrame)
 	return clientFlap, nil
-}
-
-func (rt Server) initChatNav(ctx context.Context, host string, cookie []byte, clientCh chan<- any, navCh <-chan wire.SNACMessage) error {
-	serverConn, err := net.Dial("tcp", host)
-	if err != nil {
-		return fmt.Errorf("dial failed: %w", err)
-	}
-
-	go func() {
-		defer serverConn.Close()
-		<-ctx.Done()
-	}()
-
-	rt.Logger.Info("connected to BOS server", "host", host)
-
-	serverFlap := wire.NewFlapClient(0, serverConn, serverConn)
-
-	if _, err := serverFlap.ReceiveSignonFrame(); err != nil {
-		return err
-	}
-
-	tlv := []wire.TLV{
-		wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
-	}
-	if err := serverFlap.SendSignonFrame(tlv); err != nil {
-		return err
-	}
-
-	hostOnlineFrame := wire.SNACFrame{}
-	hostOnlineSNAC := wire.SNAC_0x01_0x03_OServiceHostOnline{}
-	if err := serverFlap.ReceiveSNAC(&hostOnlineFrame, &hostOnlineSNAC); err != nil {
-		return err
-	}
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case msg := <-navCh:
-				if err := serverFlap.SendSNAC(msg.Frame, msg.Body); err != nil {
-					rt.Logger.Error("send snac failed", "err", err)
-					return
-				}
-			}
-		}
-	}()
-	go func() {
-		for {
-			flap, err := serverFlap.ReceiveFLAP()
-			if err != nil {
-				if err != io.EOF {
-					rt.Logger.Error("receive signon frame failed", "err", err)
-				}
-				return
-			}
-			clientCh <- flap
-		}
-	}()
-	return nil
-}
-
-func (rt Server) initChatRoom(ctx context.Context, host string, cookie []byte, clientCh chan<- any, chatCh <-chan wire.SNACMessage) error {
-	serverConn, err := net.Dial("tcp", host)
-	if err != nil {
-		return fmt.Errorf("dial failed: %w", err)
-	}
-
-	go func() {
-		defer serverConn.Close()
-		<-ctx.Done()
-	}()
-
-	rt.Logger.Info("connected to BOS server", "host", host)
-
-	serverFlap := wire.NewFlapClient(0, serverConn, serverConn)
-
-	if _, err := serverFlap.ReceiveSignonFrame(); err != nil {
-		return err
-	}
-
-	tlv := []wire.TLV{
-		wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
-	}
-	if err := serverFlap.SendSignonFrame(tlv); err != nil {
-		return err
-	}
-
-	hostOnlineFrame := wire.SNACFrame{}
-	hostOnlineSNAC := wire.SNAC_0x01_0x03_OServiceHostOnline{}
-	if err := serverFlap.ReceiveSNAC(&hostOnlineFrame, &hostOnlineSNAC); err != nil {
-		return err
-	}
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case msg := <-chatCh:
-				if err := serverFlap.SendSNAC(msg.Frame, msg.Body); err != nil {
-					rt.Logger.Error("send snac failed", "err", err)
-					return
-				}
-			}
-		}
-	}()
-	go func() {
-		for {
-			flap, err := serverFlap.ReceiveFLAP()
-			if err != nil {
-				if err != io.EOF {
-					rt.Logger.Error("receive signon frame failed", "err", err)
-				}
-				return
-			}
-			clientCh <- flap
-		}
-	}()
-	return nil
 }
 
 func receiveCmd(b []byte) ([]string, error) {

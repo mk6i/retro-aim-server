@@ -20,6 +20,7 @@ import (
 type BOSProxy struct {
 	AuthService       AuthService
 	BuddyService      BuddyService
+	ChatNavService    ChatNavService
 	ICBMService       ICBMService
 	LocateService     LocateService
 	Logger            *slog.Logger
@@ -27,10 +28,12 @@ type BOSProxy struct {
 	PermitDenyService PermitDenyService
 }
 
-func (b BOSProxy) ConsumeIncoming(ctx context.Context, me *state.Session, ch chan []byte) {
+func (b BOSProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, ch chan []byte) {
 	for {
 		select {
 		case <-ctx.Done():
+			return
+		case <-me.Closed():
 			return
 		case snac := <-me.ReceiveMessage():
 			inFrame := snac.Frame
@@ -39,23 +42,39 @@ func (b BOSProxy) ConsumeIncoming(ctx context.Context, me *state.Session, ch cha
 				switch inFrame.SubGroup {
 				case wire.BuddyArrived:
 					// todo make these type assertions safe?
-					ch <- []byte(b.UpdateBuddyArrival(snac.Body.(wire.SNAC_0x03_0x0B_BuddyArrived)))
+					select {
+					case ch <- []byte(b.UpdateBuddyArrival(snac.Body.(wire.SNAC_0x03_0x0B_BuddyArrived))):
+					case <-ctx.Done():
+						return
+					}
 				case wire.BuddyDeparted:
-					ch <- []byte(b.UpdateBuddyDeparted(snac.Body.(wire.SNAC_0x03_0x0C_BuddyDeparted)))
+					select {
+					case ch <- []byte(b.UpdateBuddyDeparted(snac.Body.(wire.SNAC_0x03_0x0C_BuddyDeparted))):
+					case <-ctx.Done():
+						return
+					}
 				default:
 					b.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
 				}
 			case wire.ICBM:
 				switch inFrame.SubGroup {
 				case wire.ICBMChannelMsgToClient:
-					ch <- []byte(b.IMIn(snac.Body.(wire.SNAC_0x04_0x07_ICBMChannelMsgToClient)))
+					select {
+					case ch <- []byte(b.IMIn(chatRegistry, snac.Body.(wire.SNAC_0x04_0x07_ICBMChannelMsgToClient))):
+					case <-ctx.Done():
+						return
+					}
 				default:
 					b.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
 				}
 			case wire.OService:
 				switch inFrame.SubGroup {
 				case wire.OServiceEvilNotification:
-					ch <- []byte(b.Eviled(snac.Body.(wire.SNAC_0x01_0x10_OServiceEvilNotification)))
+					select {
+					case ch <- []byte(b.Eviled(snac.Body.(wire.SNAC_0x01_0x10_OServiceEvilNotification))):
+					case <-ctx.Done():
+						return
+					}
 				default:
 					b.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
 				}
@@ -107,9 +126,35 @@ func (b BOSProxy) ClientReady(ctx context.Context, sess *state.Session) error {
 	return nil
 }
 
-func (b BOSProxy) SendIM(ctx context.Context, me *state.Session, params []string) error {
-	//message = strings.ReplaceAll("@MsgContent@", "@MsgContent@", message)
+func (b BOSProxy) Profile(thisCtx context.Context, from, user string) (string, error) {
+	sess := state.NewSession()
+	sess.SetIdentScreenName(state.NewIdentScreenName(from))
+	inBody := wire.SNAC_0x02_0x05_LocateUserInfoQuery{
+		Type:       uint16(wire.LocateTypeSig),
+		ScreenName: user,
+	}
 
+	info, err := b.LocateService.UserInfoQuery(thisCtx, sess, wire.SNACFrame{}, inBody)
+	if err != nil {
+		b.Logger.Error("user session failed", "err", err.Error())
+		return "", nil
+	}
+	if !(info.Frame.FoodGroup == wire.Locate && info.Frame.SubGroup == wire.LocateUserInfoReply) {
+		b.Logger.Error("didn't get expected locate response")
+		return "", nil
+	}
+
+	locateInfoReply := info.Body.(wire.SNAC_0x02_0x06_LocateUserInfoReply)
+	profile, hasProf := locateInfoReply.LocateInfo.Bytes(wire.LocateTLVTagsInfoSigData)
+	if !hasProf {
+		b.Logger.Error("didn't get expected location info")
+		return "", nil
+	}
+
+	return string(profile), nil
+}
+
+func (b BOSProxy) SendIM(ctx context.Context, me *state.Session, params []string) error {
 	frags, err := wire.ICBMFragmentList(params[2])
 	if err != nil {
 		return fmt.Errorf("unable to create ICBM fragment list: %w", err)
@@ -345,7 +390,34 @@ func (b BOSProxy) UpdateBuddyDeparted(snac wire.SNAC_0x03_0x0C_BuddyDeparted) st
 	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "F", snac.WarningLevel, online, idle, class)
 }
 
-func (b BOSProxy) IMIn(snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient) string {
+func (b BOSProxy) IMIn(chatRegistry *ChatRegistry, snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient) string {
+	if snac.ChannelID == wire.ICBMChannelRendezvous {
+		rdinfo, has := snac.TLVRestBlock.Bytes(0x05)
+		if !has {
+			fmt.Printf("doesn't have rendezvous block\n")
+			return ""
+		}
+		frag := wire.ICBMCh2Fragment{}
+		if err := wire.UnmarshalBE(&frag, bytes.NewBuffer(rdinfo)); err != nil {
+			fmt.Printf("unmarshal ICBM channel message rdv apyload failed: %w", err)
+			return ""
+		}
+		prompt, _ := frag.Bytes(12)
+
+		svcData, _ := frag.Bytes(10001)
+
+		roomInfo := wire.ICBMRoomInfo{}
+		if err := wire.UnmarshalBE(&roomInfo, bytes.NewBuffer(svcData)); err != nil {
+			fmt.Printf("unmarshal ICBM channel message rdv apyload failed: %w", err)
+			return ""
+		}
+
+		name := strings.Split(roomInfo.Cookie, "-")[2]
+
+		chatID := chatRegistry.Add(roomInfo.Cookie)
+		return fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", name, chatID, snac.ScreenName, prompt)
+	}
+
 	buf, ok := snac.TLVRestBlock.Bytes(wire.ICBMTLVAOLIMData)
 	if !ok {
 		return ""
@@ -366,49 +438,217 @@ func (b BOSProxy) Eviled(snac wire.SNAC_0x01_0x10_OServiceEvilNotification) stri
 }
 
 type ChatProxy struct {
-	//AuthService       AuthService
-	//BuddyService      BuddyService
-	//ICBMService       ICBMService
-	//LocateService     LocateService
-	ChatNavService  ChatNavService
-	Logger          *slog.Logger
-	ChatService     ChatService
-	OServiceService OServiceService
-	//PermitDenyService PermitDenyService
+	AuthService         AuthService
+	ChatNavService      ChatNavService
+	Logger              *slog.Logger
+	ChatService         ChatService
+	OServiceServiceBOS  OServiceService
+	OServiceServiceChat OServiceService
 }
 
-func (c ChatProxy) ConsumeIncoming(ctx context.Context, me *state.Session, ch chan []byte) {
+func (s ChatProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatID int, ch chan []byte) {
 	for {
 		select {
 		case <-ctx.Done():
+			return
+		case <-me.Closed():
 			return
 		case snac := <-me.ReceiveMessage():
 			inFrame := snac.Frame
 			switch inFrame.FoodGroup {
 			case wire.Chat:
 				switch inFrame.SubGroup {
+				case wire.ChatUsersLeft:
+					select {
+					case <-ctx.Done():
+						return
+					case ch <- []byte(s.ChatUpdateBuddyLeft(snac.Body.(wire.SNAC_0x0E_0x04_ChatUsersLeft), chatID)):
+					}
 				case wire.ChatUsersJoined:
-					ch <- []byte(c.ChatUpdateBuddy(snac.Body.(wire.SNAC_0x0E_0x03_ChatUsersJoined)))
+					select {
+					case <-ctx.Done():
+						return
+					case ch <- []byte(s.ChatUpdateBuddyArrived(snac.Body.(wire.SNAC_0x0E_0x03_ChatUsersJoined), chatID)):
+					}
 				case wire.ChatChannelMsgToClient:
-					ch <- []byte(c.ChatIn(snac.Body.(wire.SNAC_0x0E_0x06_ChatChannelMsgToClient)))
+					select {
+					case <-ctx.Done():
+						return
+					case ch <- []byte(s.ChatIn(snac.Body.(wire.SNAC_0x0E_0x06_ChatChannelMsgToClient), chatID)):
+					}
 				default:
-					c.Logger.Info("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
+					s.Logger.Info("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
 				}
 			default:
-				c.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
+				s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
 			}
 		}
 	}
 }
 
-func (c ChatProxy) ClientReady(ctx context.Context, sess *state.Session) error {
-	if err := c.OServiceService.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
+func (s ChatProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, clientCh chan []byte) error {
+	exchange, err := strconv.Atoi(params[1])
+	if err != nil {
+		return fmt.Errorf("parse exchange failed: %w", err)
+	}
+
+	snac := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+		Exchange: uint16(exchange),
+		Cookie:   "create",
+		TLVBlock: wire.TLVBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(wire.ChatRoomTLVRoomName, params[2]),
+			},
+		},
+	}
+
+	reply, err := s.ChatNavService.CreateRoom(ctx, me, wire.SNACFrame{}, snac)
+	if err != nil {
+		return fmt.Errorf("chat send failed: %v", err)
+	}
+
+	chatSNAC := reply.Body.(wire.SNAC_0x0D_0x09_ChatNavNavInfo)
+	buf, ok := chatSNAC.Bytes(wire.ChatNavTLVRoomInfo)
+	if !ok {
+		return fmt.Errorf("retrieve chat s update: %v", err)
+	}
+
+	inBody := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
+	if err := wire.UnmarshalBE(&inBody, bytes.NewBuffer(buf)); err != nil {
+		return err
+	}
+
+	snac2 := wire.SNAC_0x01_0x04_OServiceServiceRequest{
+		FoodGroup: wire.Chat,
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
+					Cookie: inBody.Cookie,
+				}),
+			},
+		},
+	}
+	rep, err := s.OServiceServiceBOS.ServiceRequest(ctx, me, wire.SNACFrame{}, snac2)
+	if err != nil {
+		return fmt.Errorf("service request failed: %v", err)
+	}
+
+	chatResp := rep.Body.(wire.SNAC_0x01_0x05_OServiceServiceResponse)
+
+	cookie, hasCookie := chatResp.Bytes(wire.OServiceTLVTagsLoginCookie)
+	if !hasCookie {
+		return fmt.Errorf("retrieve chat s update: %v", err)
+	}
+
+	sess, err := s.AuthService.RegisterChatSession(cookie)
+	if err != nil {
+		return fmt.Errorf("register chat session failed: %v", err)
+	}
+
+	chatID := chatRegistry.Add(inBody.Cookie)
+	chatRegistry.Register(chatID, sess)
+
+	go s.ConsumeIncoming(ctx, sess, chatID, clientCh)
+
+	clientCh <- []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, params[2]))
+
+	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
 		return fmt.Errorf("client online failed: %v", err)
 	}
+
 	return nil
 }
 
-func (c ChatProxy) ChatSend(ctx context.Context, me *state.Session, params []string) error {
+func (s ChatProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, clientCh chan []byte) error {
+	chatID, err := strconv.Atoi(params[1])
+	if err != nil {
+		return fmt.Errorf("ChatSend string to int: %w", err)
+	}
+
+	cookie := chatRegistry.Lookup(chatID)
+	if cookie == "" {
+		return fmt.Errorf("chat not found: %d", chatID)
+	}
+
+	snac := wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
+		Cookie:   cookie,
+		Exchange: 4, // todo put this in session lookup
+	}
+
+	// begin
+	info, err := s.ChatNavService.RequestRoomInfo(ctx, wire.SNACFrame{}, snac)
+	if err != nil {
+		return fmt.Errorf("chat request room info failed: %v", err)
+	}
+
+	infoSNAC := info.Body.(wire.SNAC_0x0D_0x09_ChatNavNavInfo)
+	b, hasInfo := infoSNAC.Bytes(wire.ChatNavTLVRoomInfo)
+	if !hasInfo {
+		return fmt.Errorf("error getting room info from room info payload")
+	}
+
+	roomInfo := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
+	if err := wire.UnmarshalBE(&roomInfo, bytes.NewBuffer(b)); err != nil {
+		return fmt.Errorf("error unmarshalling room info: %w", err)
+	}
+
+	name, hasName := roomInfo.Bytes(wire.ChatRoomTLVRoomName)
+	if !hasName {
+		return fmt.Errorf("error getting room name from room info payload")
+	}
+
+	//end
+	snac2 := wire.SNAC_0x01_0x04_OServiceServiceRequest{
+		FoodGroup: wire.Chat,
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
+					Cookie: cookie,
+				}),
+			},
+		},
+	}
+	rep, err := s.OServiceServiceBOS.ServiceRequest(ctx, me, wire.SNACFrame{}, snac2)
+	if err != nil {
+		return fmt.Errorf("service request failed: %v", err)
+	}
+
+	chatResp := rep.Body.(wire.SNAC_0x01_0x05_OServiceServiceResponse)
+
+	sessionCookie, hasCookie := chatResp.Bytes(wire.OServiceTLVTagsLoginCookie)
+	if !hasCookie {
+		return fmt.Errorf("retrieve chat b update: %v", err)
+	}
+
+	sess, err := s.AuthService.RegisterChatSession(sessionCookie)
+	if err != nil {
+		return fmt.Errorf("register chat session failed: %v", err)
+	}
+
+	go s.ConsumeIncoming(ctx, sess, chatID, clientCh)
+
+	chatRegistry.Register(chatID, sess)
+
+	clientCh <- []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, name))
+
+	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
+		return fmt.Errorf("client online failed: %v", err)
+	}
+
+	return nil
+}
+
+func (s ChatProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, params []string) (string, error) {
+	chatID, err := strconv.Atoi(params[1])
+	if err != nil {
+		return "", fmt.Errorf("ChatSend string to int: %w", err)
+	}
+
+	me := chatRegistry.Retrieve(chatID)
+	if me == nil {
+		return "", fmt.Errorf("ChatSend session not found: %d", chatID)
+	}
+
 	block := wire.TLVRestBlock{}
 	// the order of these TLVs matters for AIM 2.x. if out of order, screen
 	// names do not appear with each chat message.
@@ -425,63 +665,30 @@ func (c ChatProxy) ChatSend(ctx context.Context, me *state.Session, params []str
 		Channel:      3,
 		TLVRestBlock: block,
 	}
-	if _, err := c.ChatService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac); err != nil {
-		return fmt.Errorf("chat send failed: %v", err)
-	}
-
-	return nil
-}
-
-func (c ChatProxy) ChatJoin(ctx context.Context, me *state.Session, roomName string) (string, error) {
-	snac := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-		Exchange: 4, // todo
-		Cookie:   "create",
-		TLVBlock: wire.TLVBlock{
-			TLVList: wire.TLVList{
-				wire.NewTLVBE(wire.ChatRoomTLVRoomName, roomName),
-			},
-		},
-	}
-
-	reply, err := c.ChatNavService.CreateRoom(ctx, me, wire.SNACFrame{}, snac)
-	if err != nil {
+	if _, err := s.ChatService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac); err != nil {
 		return "", fmt.Errorf("chat send failed: %v", err)
 	}
 
-	snac2 := wire.SNAC_0x01_0x04_OServiceServiceRequest{
-		FoodGroup: wire.Chat,
-		TLVRestBlock: wire.TLVRestBlock{
-			TLVList: wire.TLVList{
-				wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
-					Cookie: roomInfo.Cookie,
-				}),
-			},
-		},
-	}
-	rep, err := c.OServiceService.ServiceRequest(ctx, me, wire.SNACFrame{}, snac2)
-
-	//	chatNavCh <- wire.SNACMessage{
-	//		Frame: wire.SNACFrame{
-	//			FoodGroup: wire.ChatNav,
-	//			SubGroup:  wire.ChatNavCreateRoom,
-	//		},
-	//		Body: ,
-	//	}
-	//
-	//	if err := clientFlap.SendDataFrame([]byte(fmt.Sprintf("CHAT_JOIN:%s:%s", "10", "haha"))); err != nil {
-	//		return fmt.Errorf("send sign on data frame failed: %w", err)
-	//	}
+	return fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, me.DisplayScreenName(), params[2]), nil
 }
 
-func (c ChatProxy) ChatUpdateBuddy(snac wire.SNAC_0x0E_0x03_ChatUsersJoined) string {
+func (s ChatProxy) ChatUpdateBuddyArrived(snac wire.SNAC_0x0E_0x03_ChatUsersJoined, chatID int) string {
 	users := make([]string, 0, len(snac.Users))
 	for _, u := range snac.Users {
 		users = append(users, u.ScreenName)
 	}
-	return fmt.Sprintf("CHAT_UPDATE_BUDDY:%s:T:%s", "10", "mike")
+	return fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:T:%s", chatID, strings.Join(users, ":"))
 }
 
-func (c ChatProxy) ChatIn(snac wire.SNAC_0x0E_0x06_ChatChannelMsgToClient) string {
+func (s ChatProxy) ChatUpdateBuddyLeft(snac wire.SNAC_0x0E_0x04_ChatUsersLeft, chatID int) string {
+	users := make([]string, 0, len(snac.Users))
+	for _, u := range snac.Users {
+		users = append(users, u.ScreenName)
+	}
+	return fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:F:%s", chatID, strings.Join(users, ":"))
+}
+
+func (s ChatProxy) ChatIn(snac wire.SNAC_0x0E_0x06_ChatChannelMsgToClient, chatID int) string {
 	b, _ := snac.Bytes(wire.ChatTLVSenderInformation)
 
 	u := wire.TLVUserInfo{}
@@ -496,7 +703,24 @@ func (c ChatProxy) ChatIn(snac wire.SNAC_0x0E_0x06_ChatChannelMsgToClient) strin
 		panic(err)
 	}
 
-	return fmt.Sprintf("CHAT_IN:%s:%s:F:%s", "10", u.ScreenName, text)
+	return fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, u.ScreenName, text)
+}
+
+func (s ChatProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, params []string) (string, error) {
+	chatID, err := strconv.Atoi(params[1])
+	if err != nil {
+		return "", fmt.Errorf("ChatSend string to int: %w", err)
+	}
+
+	me := chatRegistry.Retrieve(chatID)
+	if me == nil {
+		return "", fmt.Errorf("ChatSend session not found: %d", chatID)
+	}
+
+	s.AuthService.SignoutChat(ctx, me)
+	me.Close()
+
+	return fmt.Sprintf("CHAT_LEFT:%d", chatID), nil
 }
 
 // textFromChatMsgBlob extracts plaintext message text from HTML located in
