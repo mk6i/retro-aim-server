@@ -505,6 +505,20 @@ func (rt Server) handleTOCOverFlap(ctx context.Context, clientConn io.ReadWriter
 					},
 				},
 			}
+		case "toc_set_idle":
+			time, err := strconv.Atoi(elems[1])
+			if err != nil {
+				return err
+			}
+			bosCh <- wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceIdleNotification,
+				},
+				Body: wire.SNAC_0x01_0x11_OServiceIdleNotification{
+					IdleTime: uint32(time),
+				},
+			}
 		}
 	}
 	return nil
