@@ -265,6 +265,7 @@ func (rt Server) handleTOCOverFlap(ctx context.Context, clientConn io.ReadWriter
 			}
 
 			clientCh <- []byte("SIGN_ON:1")
+			clientCh <- []byte("CONFIG:")
 
 			go rt.BOSProxy.ConsumeIncoming(ctx, sessBOS, chatRegistry, clientCh)
 		case "toc_send_im":
@@ -341,6 +342,10 @@ func (rt Server) handleTOCOverFlap(ctx context.Context, clientConn io.ReadWriter
 			if err := rt.BOSProxy.SetIdle(ctx, sessBOS, elems); err != nil {
 				return fmt.Errorf("SetIdle: %w", err)
 			}
+		case "toc_set_config":
+			if err := rt.BOSProxy.SetConfig(ctx, sessBOS, elems); err != nil {
+				return fmt.Errorf("SetConfig: %w", err)
+			}
 		}
 	}
 	return nil
@@ -353,10 +358,12 @@ func (rt Server) TOCHandshake(clientConn io.ReadWriter) error {
 	if err != nil {
 		return fmt.Errorf("read line failed: %w", err)
 	}
-	line = bytes.TrimSpace(line)
-
 	if string(line) != "FLAPON" {
 		return fmt.Errorf("unexpected line: %s", string(line))
+	}
+	line, _, err = reader.ReadLine()
+	if err != nil {
+		return fmt.Errorf("read line failed: %w", err)
 	}
 	return nil
 }
