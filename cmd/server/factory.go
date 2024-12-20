@@ -439,6 +439,7 @@ func TOC(deps Container) toc.Server {
 				deps.sqLiteUserStore,
 				nil,
 			),
+			BuddyListRegistry: deps.sqLiteUserStore,
 			BuddyService: foodgroup.NewBuddyService(
 				deps.inMemorySessionManager,
 				deps.sqLiteUserStore,

@@ -19,6 +19,7 @@ import (
 
 type BOSProxy struct {
 	AuthService       AuthService
+	BuddyListRegistry BuddyListRegistry
 	BuddyService      BuddyService
 	ChatNavService    ChatNavService
 	ICBMService       ICBMService
@@ -114,6 +115,10 @@ func (b BOSProxy) Login(elems []string) (*state.Session, error) {
 	}
 	if sess == nil {
 		return nil, errors.New("BOS session not found")
+	}
+
+	if err := b.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
+		return nil, fmt.Errorf("unable to init buddy list: %w", err)
 	}
 
 	return sess, nil
@@ -435,6 +440,36 @@ func (b BOSProxy) Eviled(snac wire.SNAC_0x01_0x10_OServiceEvilNotification) stri
 		who = snac.Snitcher.ScreenName
 	}
 	return fmt.Sprintf("EVILED:%d:%s", snac.NewEvil, who)
+}
+
+func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []string) error {
+	//config := strings.Split(params[1], "\n")
+	//
+	//var buddies []string
+	//for _, item := range config {
+	//	parts := strings.Split(item, " ")
+	//	if len(parts) != 2 {
+	//		return fmt.Errorf("SetConfig: invalid config item: %s", item)
+	//	}
+	//	switch parts[0] {
+	//	case "b":
+	//		buddies = append(buddies, parts[1])
+	//	}
+	//}
+	//
+	//snac := wire.SNAC_0x03_0x04_BuddyAddBuddies{}
+	//
+	//for _, buddy := range buddies {
+	//	snac.Buddies = append(snac.Buddies, struct {
+	//		ScreenName string `oscar:"len_prefix=uint8"`
+	//	}{ScreenName: buddy})
+	//}
+	//
+	//if err := b.BuddyService.AddBuddies(ctx, me, snac); err != nil {
+	//	return fmt.Errorf("AddBuddies: %w", err)
+	//}
+
+	return nil
 }
 
 type ChatProxy struct {

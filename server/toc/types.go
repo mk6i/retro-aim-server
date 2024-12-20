@@ -66,3 +66,10 @@ type PermitDenyService interface {
 	DelPermListEntries(ctx context.Context, sess *state.Session, body wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries) error
 	RightsQuery(_ context.Context, frame wire.SNACFrame) wire.SNACMessage
 }
+
+// BuddyListRegistry is the interface for keeping track of users with active
+// buddy lists. Once registered, a user becomes visible to other users' buddy
+// lists and vice versa.
+type BuddyListRegistry interface {
+	RegisterBuddyList(user state.IdentScreenName) error
+}
