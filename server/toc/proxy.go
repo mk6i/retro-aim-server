@@ -443,31 +443,105 @@ func (b BOSProxy) Eviled(snac wire.SNAC_0x01_0x10_OServiceEvilNotification) stri
 }
 
 func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []string) error {
-	//config := strings.Split(params[1], "\n")
-	//
-	//var buddies []string
-	//for _, item := range config {
-	//	parts := strings.Split(item, " ")
-	//	if len(parts) != 2 {
-	//		return fmt.Errorf("SetConfig: invalid config item: %s", item)
-	//	}
-	//	switch parts[0] {
-	//	case "b":
-	//		buddies = append(buddies, parts[1])
-	//	}
-	//}
-	//
-	//snac := wire.SNAC_0x03_0x04_BuddyAddBuddies{}
-	//
-	//for _, buddy := range buddies {
-	//	snac.Buddies = append(snac.Buddies, struct {
-	//		ScreenName string `oscar:"len_prefix=uint8"`
-	//	}{ScreenName: buddy})
-	//}
-	//
-	//if err := b.BuddyService.AddBuddies(ctx, me, snac); err != nil {
-	//	return fmt.Errorf("AddBuddies: %w", err)
-	//}
+	config := strings.Split(strings.TrimSpace(params[1]), "\n")
+
+	var cfg [][2]string
+	for _, item := range config {
+		parts := strings.Split(item, " ")
+		if len(parts) != 2 {
+			b.Logger.Info("invalid config item", "item", item, "user", me.DisplayScreenName())
+			continue
+		}
+		cfg = append(cfg, [2]string{parts[0], parts[1]})
+	}
+
+	mode := wire.FeedbagPDModePermitAll
+	for _, c := range cfg {
+		if c[0] != "m" {
+			continue
+		}
+		switch c[1] {
+		case "1":
+			mode = wire.FeedbagPDModePermitAll
+		case "2":
+			mode = wire.FeedbagPDModeDenyAll
+		case "3":
+			mode = wire.FeedbagPDModePermitSome
+		case "4":
+			mode = wire.FeedbagPDModeDenySome
+		default:
+			b.Logger.Info("config: invalid mode", "val", c[1], "user", me.DisplayScreenName())
+		}
+	}
+
+	switch mode {
+	case wire.FeedbagPDModePermitAll:
+		snac := wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
+			Users: []struct {
+				ScreenName string `oscar:"len_prefix=uint8"`
+			}{
+				{
+					ScreenName: me.IdentScreenName().String(),
+				},
+			},
+		}
+		if err := b.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
+			return fmt.Errorf("AddDenyListEntries: %w", err)
+		}
+	case wire.FeedbagPDModeDenyAll:
+		snac := wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
+			Users: []struct {
+				ScreenName string `oscar:"len_prefix=uint8"`
+			}{
+				{
+					ScreenName: me.IdentScreenName().String(),
+				},
+			},
+		}
+		if err := b.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
+			return fmt.Errorf("AddPermListEntries: %w", err)
+		}
+	case wire.FeedbagPDModePermitSome:
+		snac := wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{}
+		for _, c := range cfg {
+			if c[0] != "p" {
+				continue
+			}
+			snac.Users = append(snac.Users, struct {
+				ScreenName string `oscar:"len_prefix=uint8"`
+			}{ScreenName: c[1]})
+		}
+		if err := b.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
+			return fmt.Errorf("AddPermListEntries: %w", err)
+		}
+	case wire.FeedbagPDModeDenySome:
+		snac := wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{}
+		for _, c := range cfg {
+			if c[0] != "d" {
+				continue
+			}
+			snac.Users = append(snac.Users, struct {
+				ScreenName string `oscar:"len_prefix=uint8"`
+			}{ScreenName: c[1]})
+		}
+		if err := b.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
+			return fmt.Errorf("AddDenyListEntries: %w", err)
+		}
+	}
+
+	snac := wire.SNAC_0x03_0x04_BuddyAddBuddies{}
+	for _, c := range cfg {
+		if c[0] != "b" {
+			continue
+		}
+		snac.Buddies = append(snac.Buddies, struct {
+			ScreenName string `oscar:"len_prefix=uint8"`
+		}{ScreenName: c[1]})
+	}
+
+	if err := b.BuddyService.AddBuddies(ctx, me, snac); err != nil {
+		return fmt.Errorf("AddBuddies: %w", err)
+	}
 
 	return nil
 }
