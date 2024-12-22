@@ -80,12 +80,26 @@ func TestPermitDenyService_AddDenyListEntries(t *testing.T) {
 			},
 		},
 		{
-			name: "set FeedbagPDModeDenySome - 0 users",
-			sess: newTestSession("me", sessOptSignonComplete),
-			bodyIn: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
-				Users: []struct {
-					ScreenName string `oscar:"len_prefix=uint8"`
-				}{},
+			name:   "set FeedbagPDModeDenySome - 0 users",
+			sess:   newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					setPDModeParams: setPDModeParams{
+						{
+							userScreenName: state.NewIdentScreenName("me"),
+							pdMode:         wire.FeedbagPDModeDenySome,
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{
+						{
+							from:   state.NewIdentScreenName("me"),
+							filter: nil,
+						},
+					},
+				},
 			},
 		},
 		{
@@ -270,12 +284,26 @@ func TestPermitDenyService_AddPermListEntries(t *testing.T) {
 			},
 		},
 		{
-			name: "set FeedbagPDModePermitSome - 0 users",
-			sess: newTestSession("me", sessOptSignonComplete),
-			bodyIn: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
-				Users: []struct {
-					ScreenName string `oscar:"len_prefix=uint8"`
-				}{},
+			name:   "set FeedbagPDModePermitSome - 0 users",
+			sess:   newTestSession("me", sessOptSignonComplete),
+			bodyIn: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{},
+			mockParams: mockParams{
+				localBuddyListManagerParams: localBuddyListManagerParams{
+					setPDModeParams: setPDModeParams{
+						{
+							userScreenName: state.NewIdentScreenName("me"),
+							pdMode:         wire.FeedbagPDModePermitSome,
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastVisibilityParams: broadcastVisibilityParams{
+						{
+							from:   state.NewIdentScreenName("me"),
+							filter: nil,
+						},
+					},
+				},
 			},
 		},
 		{

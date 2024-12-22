@@ -38,10 +38,6 @@ func (s PermitDenyService) AddDenyListEntries(
 	sess *state.Session,
 	body wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries,
 ) error {
-	if len(body.Users) == 0 {
-		return nil
-	}
-
 	if len(body.Users) == 1 {
 		sn := state.NewIdentScreenName(body.Users[0].ScreenName)
 		if sn.String() == sess.IdentScreenName().String() {
@@ -78,10 +74,6 @@ func (s PermitDenyService) AddPermListEntries(
 	sess *state.Session,
 	body wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries,
 ) error {
-	if len(body.Users) == 0 {
-		return nil
-	}
-
 	if len(body.Users) == 1 {
 		sn := state.NewIdentScreenName(body.Users[0].ScreenName)
 		if sn.String() == sess.IdentScreenName().String() {
