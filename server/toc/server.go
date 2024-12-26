@@ -264,12 +264,12 @@ func (rt Server) handleTOCOverFlap(ctx context.Context, clientConn io.ReadWriter
 				return fmt.Errorf("init BOS failed: %w", err)
 			}
 
-			clientCh <- []byte("SIGN_ON:1")
+			clientCh <- []byte("SIGN_ON:TOC1.0")
 			clientCh <- []byte("CONFIG:")
 
 			go rt.BOSProxy.ConsumeIncoming(ctx, sessBOS, chatRegistry, clientCh)
 		case "toc_send_im":
-			if rt.BOSProxy.SendIM(ctx, sessBOS, elems); err != nil {
+			if err := rt.BOSProxy.SendIM(ctx, sessBOS, elems); err != nil {
 				return fmt.Errorf("send IM failed: %w", err)
 			}
 		case "toc_init_done":
@@ -344,6 +344,10 @@ func (rt Server) handleTOCOverFlap(ctx context.Context, clientConn io.ReadWriter
 			}
 		case "toc_set_config":
 			if err := rt.BOSProxy.SetConfig(ctx, sessBOS, elems); err != nil {
+				return fmt.Errorf("SetConfig: %w", err)
+			}
+		case "toc_chat_invite":
+			if err := rt.BOSProxy.ChatInvite(ctx, sessBOS, chatRegistry, elems); err != nil {
 				return fmt.Errorf("SetConfig: %w", err)
 			}
 		}

@@ -12,9 +12,10 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"golang.org/x/net/html"
+
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
-	"golang.org/x/net/html"
 )
 
 type BOSProxy struct {
@@ -116,6 +117,13 @@ func (b BOSProxy) Login(elems []string) (*state.Session, error) {
 	if sess == nil {
 		return nil, errors.New("BOS session not found")
 	}
+
+	// set chat capability so that... tk
+	chatuid, err := uuid.Parse("748F2420-6287-11D1-8222-444553540000")
+	if err != nil {
+		return nil, fmt.Errorf("parse caps failed: %w", err)
+	}
+	sess.SetCaps([][16]byte{chatuid})
 
 	if err := b.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
 		return nil, fmt.Errorf("unable to init buddy list: %w", err)
@@ -541,6 +549,50 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 
 	if err := b.BuddyService.AddBuddies(ctx, me, snac); err != nil {
 		return fmt.Errorf("AddBuddies: %w", err)
+	}
+
+	return nil
+}
+
+func (b BOSProxy) ChatInvite(ctx context.Context, bos *state.Session, chatRegistry *ChatRegistry, params []string) error {
+	chatID, err := strconv.Atoi(params[1])
+	if err != nil {
+		return fmt.Errorf("ChatSend string to int: %w", err)
+	}
+
+	cookie := chatRegistry.Lookup(chatID)
+	if cookie == "" {
+		return fmt.Errorf("chat not found: %d", chatID)
+	}
+
+	snac := wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+		ChannelID:  wire.ICBMChannelRendezvous,
+		ScreenName: params[3],
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(0x05, wire.ICBMCh2Fragment{
+					Type:     0,
+					Service1: 8398971551579836881, // todo support marshalling arrays
+					Service2: 9377132438680240128,
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(10, uint16(1)),
+							wire.NewTLVBE(12, params[2]),
+							wire.NewTLVBE(13, "us-ascii"),
+							wire.NewTLVBE(14, "en"),
+							wire.NewTLVBE(10001, wire.ICBMRoomInfo{
+								Exchange: 4, // todo add this to chat registry
+								Cookie:   cookie,
+							}),
+						},
+					},
+				}),
+			},
+		},
+	}
+
+	if _, err := b.ICBMService.ChannelMsgToHost(ctx, bos, wire.SNACFrame{}, snac); err != nil {
+		return fmt.Errorf("ChannelMsgToHost: %w", err)
 	}
 
 	return nil
