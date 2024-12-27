@@ -31,11 +31,16 @@ type BOSProxy struct {
 }
 
 func (b BOSProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, ch chan []byte) {
+	defer func() {
+		fmt.Println("closing BOS ConsumeIncoming")
+	}()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-me.Closed():
+			close(ch)
+			fmt.Println("I got signed off")
 			return
 		case snac := <-me.ReceiveMessage():
 			inFrame := snac.Frame
@@ -608,6 +613,9 @@ type ChatProxy struct {
 }
 
 func (s ChatProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatID int, ch chan []byte) {
+	defer func() {
+		fmt.Println("closing chat ConsumeIncoming")
+	}()
 	for {
 		select {
 		case <-ctx.Done():
