@@ -20,10 +20,10 @@ type AuthService interface {
 	BUCPChallenge(bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
 	BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
 	FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error)
-	RegisterBOSSession(authCookie []byte) (*state.Session, error)
+	RegisterBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	RetrieveBOSSession(authCookie []byte) (*state.Session, error)
 	RegisterChatSession(authCookie []byte) (*state.Session, error)
-	Signout(ctx context.Context, sess *state.Session) error
+	Signout(ctx context.Context, sess *state.Session)
 	SignoutChat(ctx context.Context, sess *state.Session)
 }
 

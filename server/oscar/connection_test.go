@@ -18,7 +18,7 @@ import (
 func TestHandleChatConnection_MessageRelay(t *testing.T) {
 	sessionManager := state.NewInMemorySessionManager(slog.Default())
 	// add a user to session that will receive relayed messages
-	sess := sessionManager.AddSession("bob")
+	sess, _ := sessionManager.AddSession(nil, "bob")
 
 	// start the server connection handler in the background
 	serverReader, _ := io.Pipe()
@@ -90,7 +90,7 @@ func TestHandleChatConnection_MessageRelay(t *testing.T) {
 func TestHandleChatConnection_ClientRequest(t *testing.T) {
 	sessionManager := state.NewInMemorySessionManager(slog.Default())
 	// add session so that the function can terminate upon closure
-	sess := sessionManager.AddSession("bob")
+	sess, _ := sessionManager.AddSession(nil, "bob")
 
 	inboundMsgs := []wire.SNACMessage{
 		{

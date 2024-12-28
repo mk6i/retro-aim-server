@@ -2,17 +2,26 @@ package state
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
 
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
+type sessionSlot struct {
+	sess    *Session
+	removed chan bool
+}
+
+var errSessConflict = errors.New("session conflict: another session was created concurrently for this user")
+
 // InMemorySessionManager handles the lifecycle of a user session and provides
 // synchronized message relay between sessions in the session pool. An
 // InMemorySessionManager is safe for concurrent use by multiple goroutines.
 type InMemorySessionManager struct {
-	store    map[IdentScreenName]*Session
+	store    map[IdentScreenName]*sessionSlot
 	mapMutex sync.RWMutex
 	logger   *slog.Logger
 }
@@ -21,7 +30,7 @@ type InMemorySessionManager struct {
 func NewInMemorySessionManager(logger *slog.Logger) *InMemorySessionManager {
 	return &InMemorySessionManager{
 		logger: logger,
-		store:  make(map[IdentScreenName]*Session),
+		store:  make(map[IdentScreenName]*sessionSlot),
 	}
 }
 
@@ -29,8 +38,8 @@ func NewInMemorySessionManager(logger *slog.Logger) *InMemorySessionManager {
 func (s *InMemorySessionManager) RelayToAll(ctx context.Context, msg wire.SNACMessage) {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
-	for _, sess := range s.store {
-		s.maybeRelayMessage(ctx, msg, sess)
+	for _, rec := range s.store {
+		s.maybeRelayMessage(ctx, msg, rec.sess)
 	}
 }
 
@@ -61,42 +70,69 @@ func (s *InMemorySessionManager) maybeRelayMessage(ctx context.Context, msg wire
 	}
 }
 
-// AddSession adds a new session to the pool. It replaces an existing session
-// with a matching screen name, ensuring that each screen name is unique in the
-// pool. This method does not return a nil session value. It's possible to add
-// a non-existent user to the session. Callers should ensure that the account
-// represented by displayScreenName is valid.
-func (s *InMemorySessionManager) AddSession(displayScreenName DisplayScreenName) *Session {
+// AddSession adds a new session to the pool, ensuring only one session exists
+// for a given screen name. If a session with the same screen name is already
+// active, the call blocks until the active session is terminated by
+// [InMemorySessionManager.RemoveSession] or the context is canceled. When
+// concurrent calls are made for the same screen name, only one call succeeds
+// and the others return an error.
+func (s *InMemorySessionManager) AddSession(ctx context.Context, screenName DisplayScreenName) (*Session, error) {
 	s.mapMutex.Lock()
+
+	active := s.findRec(screenName.IdentScreenName())
+	if active != nil {
+		// there's an active session that needs to be removed. don't hold the
+		// lock while we wait.
+		s.mapMutex.Unlock()
+
+		// signal to callers that this session has to go
+		active.sess.Close()
+
+		select {
+		case <-active.removed: // wait for RemoveSession to be called
+		case <-ctx.Done():
+			return nil, fmt.Errorf("waiting for previous session to terminate: %w", ctx.Err())
+		}
+
+		// the session has been removed, let's try to replace it
+		s.mapMutex.Lock()
+	}
+
 	defer s.mapMutex.Unlock()
 
-	identScreenName := NewIdentScreenName(string(displayScreenName))
-	// Only allow one session at a time per screen name. A session may already
-	// exist because:
-	// 1) the user is signing on using an already logged-on screen name.
-	// 2) the session might be orphaned due to an undetected client
-	// disconnection.
-	for _, sess := range s.store {
-		if identScreenName == sess.IdentScreenName() {
-			sess.Close()
-			delete(s.store, identScreenName)
-			break
-		}
+	// make sure a concurrent call didn't already add a session
+	if active != nil && s.findRec(screenName.IdentScreenName()) != nil {
+		return nil, errSessConflict
 	}
 
 	sess := NewSession()
-	sess.SetIdentScreenName(identScreenName)
-	sess.SetDisplayScreenName(displayScreenName)
-	s.store[identScreenName] = sess
-	return sess
+	sess.SetIdentScreenName(screenName.IdentScreenName())
+	sess.SetDisplayScreenName(screenName)
+
+	s.store[sess.IdentScreenName()] = &sessionSlot{
+		sess:    sess,
+		removed: make(chan bool),
+	}
+
+	return sess, nil
+}
+
+func (s *InMemorySessionManager) findRec(identScreenName IdentScreenName) *sessionSlot {
+	for _, rec := range s.store {
+		if identScreenName == rec.sess.IdentScreenName() {
+			return rec
+		}
+	}
+	return nil
 }
 
 // RemoveSession takes a session out of the session pool.
 func (s *InMemorySessionManager) RemoveSession(sess *Session) {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
-	if sess == s.store[sess.IdentScreenName()] {
+	if rec, ok := s.store[sess.IdentScreenName()]; ok && rec.sess == sess {
 		delete(s.store, sess.IdentScreenName())
+		close(rec.removed)
 	}
 }
 
@@ -105,7 +141,10 @@ func (s *InMemorySessionManager) RemoveSession(sess *Session) {
 func (s *InMemorySessionManager) RetrieveSession(screenName IdentScreenName) *Session {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
-	return s.store[screenName]
+	if rec, ok := s.store[screenName]; ok {
+		return rec.sess
+	}
+	return nil
 }
 
 func (s *InMemorySessionManager) retrieveByScreenNames(screenNames []IdentScreenName) []*Session {
@@ -113,9 +152,9 @@ func (s *InMemorySessionManager) retrieveByScreenNames(screenNames []IdentScreen
 	defer s.mapMutex.RUnlock()
 	var ret []*Session
 	for _, sn := range screenNames {
-		for _, sess := range s.store {
-			if sn == sess.IdentScreenName() {
-				ret = append(ret, sess)
+		for _, rec := range s.store {
+			if sn == rec.sess.IdentScreenName() {
+				ret = append(ret, rec.sess)
 			}
 		}
 	}
@@ -134,8 +173,8 @@ func (s *InMemorySessionManager) AllSessions() []*Session {
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	var sessions []*Session
-	for _, sess := range s.store {
-		sessions = append(sessions, sess)
+	for _, rec := range s.store {
+		sessions = append(sessions, rec.sess)
 	}
 	return sessions
 }
@@ -159,8 +198,8 @@ type InMemoryChatSessionManager struct {
 }
 
 // AddSession adds a user to a chat room. If screenName already exists, the old
-// session is closed replaced by a new one.
-func (s *InMemoryChatSessionManager) AddSession(chatCookie string, screenName DisplayScreenName) *Session {
+// session is replaced by a new one.
+func (s *InMemoryChatSessionManager) AddSession(ctx context.Context, chatCookie string, screenName DisplayScreenName) (*Session, error) {
 	s.mapMutex.Lock()
 	defer s.mapMutex.Unlock()
 
@@ -170,10 +209,14 @@ func (s *InMemoryChatSessionManager) AddSession(chatCookie string, screenName Di
 
 	sessionManager := s.store[chatCookie]
 
-	sess := sessionManager.AddSession(screenName)
+	sess, err := sessionManager.AddSession(ctx, screenName)
+	if err != nil {
+		return nil, fmt.Errorf("AddSession: %w", err)
+	}
+
 	sess.SetChatRoomCookie(chatCookie)
 
-	return sess
+	return sess, nil
 }
 
 // RemoveSession removes a user session from a chat room. It panics if you

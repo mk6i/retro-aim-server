@@ -276,6 +276,7 @@ type sessionRegistryParams struct {
 type addSessionParams []struct {
 	screenName state.DisplayScreenName
 	result     *state.Session
+	err        error
 }
 
 // removeSessionParams is the list of parameters passed at the mock

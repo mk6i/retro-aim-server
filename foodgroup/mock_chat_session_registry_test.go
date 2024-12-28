@@ -3,6 +3,8 @@
 package foodgroup
 
 import (
+	context "context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,24 +22,34 @@ func (_m *mockChatSessionRegistry) EXPECT() *mockChatSessionRegistry_Expecter {
 	return &mockChatSessionRegistry_Expecter{mock: &_m.Mock}
 }
 
-// AddSession provides a mock function with given fields: chatCookie, screenName
-func (_m *mockChatSessionRegistry) AddSession(chatCookie string, screenName state.DisplayScreenName) *state.Session {
-	ret := _m.Called(chatCookie, screenName)
+// AddSession provides a mock function with given fields: ctx, chatCookie, screenName
+func (_m *mockChatSessionRegistry) AddSession(ctx context.Context, chatCookie string, screenName state.DisplayScreenName) (*state.Session, error) {
+	ret := _m.Called(ctx, chatCookie, screenName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddSession")
 	}
 
 	var r0 *state.Session
-	if rf, ok := ret.Get(0).(func(string, state.DisplayScreenName) *state.Session); ok {
-		r0 = rf(chatCookie, screenName)
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, state.DisplayScreenName) (*state.Session, error)); ok {
+		return rf(ctx, chatCookie, screenName)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, state.DisplayScreenName) *state.Session); ok {
+		r0 = rf(ctx, chatCookie, screenName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*state.Session)
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, string, state.DisplayScreenName) error); ok {
+		r1 = rf(ctx, chatCookie, screenName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // mockChatSessionRegistry_AddSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddSession'
@@ -46,25 +58,26 @@ type mockChatSessionRegistry_AddSession_Call struct {
 }
 
 // AddSession is a helper method to define mock.On call
+//   - ctx context.Context
 //   - chatCookie string
 //   - screenName state.DisplayScreenName
-func (_e *mockChatSessionRegistry_Expecter) AddSession(chatCookie interface{}, screenName interface{}) *mockChatSessionRegistry_AddSession_Call {
-	return &mockChatSessionRegistry_AddSession_Call{Call: _e.mock.On("AddSession", chatCookie, screenName)}
+func (_e *mockChatSessionRegistry_Expecter) AddSession(ctx interface{}, chatCookie interface{}, screenName interface{}) *mockChatSessionRegistry_AddSession_Call {
+	return &mockChatSessionRegistry_AddSession_Call{Call: _e.mock.On("AddSession", ctx, chatCookie, screenName)}
 }
 
-func (_c *mockChatSessionRegistry_AddSession_Call) Run(run func(chatCookie string, screenName state.DisplayScreenName)) *mockChatSessionRegistry_AddSession_Call {
+func (_c *mockChatSessionRegistry_AddSession_Call) Run(run func(ctx context.Context, chatCookie string, screenName state.DisplayScreenName)) *mockChatSessionRegistry_AddSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(state.DisplayScreenName))
+		run(args[0].(context.Context), args[1].(string), args[2].(state.DisplayScreenName))
 	})
 	return _c
 }
 
-func (_c *mockChatSessionRegistry_AddSession_Call) Return(_a0 *state.Session) *mockChatSessionRegistry_AddSession_Call {
-	_c.Call.Return(_a0)
+func (_c *mockChatSessionRegistry_AddSession_Call) Return(_a0 *state.Session, _a1 error) *mockChatSessionRegistry_AddSession_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockChatSessionRegistry_AddSession_Call) RunAndReturn(run func(string, state.DisplayScreenName) *state.Session) *mockChatSessionRegistry_AddSession_Call {
+func (_c *mockChatSessionRegistry_AddSession_Call) RunAndReturn(run func(context.Context, string, state.DisplayScreenName) (*state.Session, error)) *mockChatSessionRegistry_AddSession_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -31,11 +31,18 @@ type BuddyListRegistry interface {
 	UnregisterBuddyList(user state.IdentScreenName) error
 }
 
+// DepartureNotifier is the interface for sending buddy departure notifications
+// when a client disconnects.
+type DepartureNotifier interface {
+	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
+}
+
 // BOSServer provides client connection lifecycle management for the BOS
 // service.
 type BOSServer struct {
 	AuthService
 	BuddyListRegistry
+	DepartureNotifier
 	Handler
 	ListenAddr string
 	Logger     *slog.Logger
@@ -132,7 +139,7 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 		return errors.New("unable to get session id from payload")
 	}
 
-	sess, err := rt.RegisterBOSSession(authCookie)
+	sess, err := rt.RegisterBOSSession(ctx, authCookie)
 	if err != nil {
 		return err
 	}
@@ -149,14 +156,20 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 	defer func() {
 		sess.Close()
 		rwc.Close()
-		if err := rt.Signout(ctx, sess); err != nil {
-			rt.Logger.ErrorContext(ctx, "error notifying departure", "err", err.Error())
+		if rt.DepartureNotifier != nil {
+			if err := rt.DepartureNotifier.BroadcastBuddyDeparted(ctx, sess); err != nil {
+				rt.Logger.ErrorContext(ctx, "error sending buddy departure notifications", "err", err.Error())
+			}
 		}
 		if rt.BuddyListRegistry != nil { // nil check is a hack until server refactor
+			// buddy list must be cleared before session is closed, otherwise
+			// there will be a race condition that could cause the buddy list
+			// be prematurely deleted.
 			if err := rt.BuddyListRegistry.UnregisterBuddyList(sess.IdentScreenName()); err != nil {
 				rt.Logger.ErrorContext(ctx, "error removing buddy list entry", "err", err.Error())
 			}
 		}
+		rt.Signout(ctx, sess)
 	}()
 
 	ctx = context.WithValue(ctx, "screenName", sess.IdentScreenName())

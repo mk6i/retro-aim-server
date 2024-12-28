@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"testing"
 
 	"github.com/mk6i/retro-aim-server/wire"
@@ -13,25 +14,71 @@ import (
 func TestInMemorySessionManager_AddSession(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	want1 := sm.AddSession("user-screen-name")
-	have1 := sm.RetrieveSession(NewIdentScreenName("user-screen-name"))
-	assert.Same(t, want1, have1)
+	ctx := context.Background()
+	sess1, err := sm.AddSession(ctx, "user-screen-name")
+	assert.NoError(t, err)
 
-	want2 := sm.AddSession("user-screen-name")
-	have2 := sm.RetrieveSession(NewIdentScreenName("user-screen-name"))
-	assert.Same(t, want2, have2)
+	go func() {
+		<-sess1.Closed()
+		sm.RemoveSession(sess1)
+	}()
 
-	// ensure that the second session created with the same screen name as the
-	// first session clobbers the previous session in the session manager store
-	assert.NotSame(t, have1, have2)
+	sess2, err := sm.AddSession(ctx, "user-screen-name")
+	assert.NoError(t, err)
+
+	assert.NotSame(t, sess1, sess2)
+	assert.Contains(t, sm.AllSessions(), sess2)
+}
+
+func TestInMemorySessionManager_AddSession_Timeout(t *testing.T) {
+	sm := NewInMemorySessionManager(slog.Default())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	sess1, err := sm.AddSession(ctx, "user-screen-name")
+	assert.NoError(t, err)
+
+	go func() {
+		<-sess1.Closed()
+		cancel()
+	}()
+
+	sess2, err := sm.AddSession(ctx, "user-screen-name")
+	assert.Nil(t, sess2)
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
+func TestInMemorySessionManager_AddSession_SessionConflict(t *testing.T) {
+	sm := NewInMemorySessionManager(slog.Default())
+
+	ctx := context.Background()
+	sess1, err := sm.AddSession(ctx, "user-screen-name")
+	assert.NoError(t, err)
+
+	go func() {
+		<-sess1.Closed()
+		rec, ok := sm.store[NewIdentScreenName("user-screen-name")]
+		if assert.True(t, ok) {
+			close(rec.removed)
+		}
+	}()
+
+	sess2, err := sm.AddSession(ctx, "user-screen-name")
+	assert.Nil(t, sess2)
+	assert.ErrorIs(t, err, errSessConflict)
 }
 
 func TestInMemorySessionManager_Remove_Existing(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1Old := sm.AddSession("user-screen-name-1")
-	user1New := sm.AddSession("user-screen-name-1")
-	user2 := sm.AddSession("user-screen-name-2")
+	user1Old, err := sm.AddSession(context.Background(), "user-screen-name-1")
+	assert.NoError(t, err)
+	sm.RemoveSession(user1Old)
+
+	user1New, err := sm.AddSession(context.Background(), "user-screen-name-1")
+	assert.NoError(t, err)
+
+	user2, err := sm.AddSession(context.Background(), "user-screen-name-2")
+	assert.NoError(t, err)
 
 	sm.RemoveSession(user1New)
 
@@ -45,9 +92,15 @@ func TestInMemorySessionManager_Remove_Existing(t *testing.T) {
 func TestInMemorySessionManager_Remove_MissingSameScreenName(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1Old := sm.AddSession("user-screen-name-1")
-	user1New := sm.AddSession("user-screen-name-1")
-	user2 := sm.AddSession("user-screen-name-2")
+	user1Old, err := sm.AddSession(context.Background(), "user-screen-name-1")
+	assert.NoError(t, err)
+	sm.RemoveSession(user1Old)
+
+	user1New, err := sm.AddSession(context.Background(), "user-screen-name-1")
+	assert.NoError(t, err)
+
+	user2, err := sm.AddSession(context.Background(), "user-screen-name-2")
+	assert.NoError(t, err)
 
 	sm.RemoveSession(user1Old)
 
@@ -82,7 +135,8 @@ func TestInMemorySessionManager_Empty(t *testing.T) {
 			sm := NewInMemorySessionManager(slog.Default())
 
 			for _, screenName := range tt.given {
-				sm.AddSession(screenName)
+				_, err := sm.AddSession(context.Background(), screenName)
+				assert.NoError(t, err)
 			}
 
 			have := sm.Empty()
@@ -119,7 +173,8 @@ func TestInMemorySessionManager_Retrieve(t *testing.T) {
 			sm := NewInMemorySessionManager(slog.Default())
 
 			for _, screenName := range tt.given {
-				sm.AddSession(screenName)
+				_, err := sm.AddSession(context.Background(), screenName)
+				assert.NoError(t, err)
 			}
 
 			have := sm.RetrieveSession(tt.lookupScreenName)
@@ -135,9 +190,12 @@ func TestInMemorySessionManager_Retrieve(t *testing.T) {
 func TestInMemorySessionManager_RelayToScreenNames(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("user-screen-name-1")
-	user2 := sm.AddSession("user-screen-name-2")
-	user3 := sm.AddSession("user-screen-name-3")
+	user1, err := sm.AddSession(context.Background(), "user-screen-name-1")
+	assert.NoError(t, err)
+	user2, err := sm.AddSession(context.Background(), "user-screen-name-2")
+	assert.NoError(t, err)
+	user3, err := sm.AddSession(context.Background(), "user-screen-name-3")
+	assert.NoError(t, err)
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
@@ -167,8 +225,10 @@ func TestInMemorySessionManager_RelayToScreenNames(t *testing.T) {
 func TestInMemorySessionManager_Broadcast(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("user-screen-name-1")
-	user2 := sm.AddSession("user-screen-name-2")
+	user1, err := sm.AddSession(context.Background(), "user-screen-name-1")
+	assert.NoError(t, err)
+	user2, err := sm.AddSession(context.Background(), "user-screen-name-2")
+	assert.NoError(t, err)
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
@@ -188,8 +248,10 @@ func TestInMemorySessionManager_Broadcast(t *testing.T) {
 func TestInMemorySessionManager_Broadcast_SkipClosedSession(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("user-screen-name-1")
-	user2 := sm.AddSession("user-screen-name-2")
+	user1, err := sm.AddSession(context.Background(), "user-screen-name-1")
+	assert.NoError(t, err)
+	user2, err := sm.AddSession(context.Background(), "user-screen-name-2")
+	assert.NoError(t, err)
 	user2.Close()
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
@@ -211,8 +273,10 @@ func TestInMemorySessionManager_Broadcast_SkipClosedSession(t *testing.T) {
 func TestInMemorySessionManager_RelayToScreenName_SessionExists(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("user-screen-name-1")
-	user2 := sm.AddSession("user-screen-name-2")
+	user1, err := sm.AddSession(context.Background(), "user-screen-name-1")
+	assert.NoError(t, err)
+	user2, err := sm.AddSession(context.Background(), "user-screen-name-2")
+	assert.NoError(t, err)
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
@@ -234,7 +298,8 @@ func TestInMemorySessionManager_RelayToScreenName_SessionExists(t *testing.T) {
 func TestInMemorySessionManager_RelayToScreenName_SessionNotExist(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("user-screen-name-1")
+	user1, err := sm.AddSession(context.Background(), "user-screen-name-1")
+	assert.NoError(t, err)
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
@@ -251,7 +316,8 @@ func TestInMemorySessionManager_RelayToScreenName_SessionNotExist(t *testing.T) 
 func TestInMemorySessionManager_RelayToScreenName_SkipFullSession(t *testing.T) {
 	sm := NewInMemorySessionManager(slog.Default())
 
-	user1 := sm.AddSession("user-screen-name-1")
+	user1, err := sm.AddSession(context.Background(), "user-screen-name-1")
+	assert.NoError(t, err)
 	msg := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
 	wantCount := 0
@@ -283,9 +349,12 @@ func TestInMemoryChatSessionManager_RelayToAllExcept_HappyPath(t *testing.T) {
 	sm := NewInMemoryChatSessionManager(slog.Default())
 
 	cookie := "the-cookie"
-	user1 := sm.AddSession(cookie, "user-screen-name-1")
-	user2 := sm.AddSession(cookie, "user-screen-name-2")
-	user3 := sm.AddSession(cookie, "user-screen-name-3")
+	user1, err := sm.AddSession(context.Background(), cookie, "user-screen-name-1")
+	assert.NoError(t, err)
+	user2, err := sm.AddSession(context.Background(), cookie, "user-screen-name-2")
+	assert.NoError(t, err)
+	user3, err := sm.AddSession(context.Background(), cookie, "user-screen-name-3")
+	assert.NoError(t, err)
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
@@ -311,8 +380,10 @@ func TestInMemoryChatSessionManager_RelayToAllExcept_HappyPath(t *testing.T) {
 func TestInMemoryChatSessionManager_AllSessions_RoomExists(t *testing.T) {
 	sm := NewInMemoryChatSessionManager(slog.Default())
 
-	user1 := sm.AddSession("the-cookie", "user-screen-name-1")
-	user2 := sm.AddSession("the-cookie", "user-screen-name-2")
+	user1, err := sm.AddSession(context.Background(), "the-cookie", "user-screen-name-1")
+	assert.NoError(t, err)
+	user2, err := sm.AddSession(context.Background(), "the-cookie", "user-screen-name-2")
+	assert.NoError(t, err)
 
 	sessions := sm.AllSessions("the-cookie")
 	assert.Len(t, sessions, 2)
@@ -329,8 +400,10 @@ func TestInMemoryChatSessionManager_AllSessions_RoomExists(t *testing.T) {
 func TestInMemoryChatSessionManager_RelayToScreenName_SessionAndChatRoomExist(t *testing.T) {
 	sm := NewInMemoryChatSessionManager(slog.Default())
 
-	user1 := sm.AddSession("chat-room-1", "user-screen-name-1")
-	user2 := sm.AddSession("chat-room-1", "user-screen-name-2")
+	user1, err := sm.AddSession(context.Background(), "chat-room-1", "user-screen-name-1")
+	assert.NoError(t, err)
+	user2, err := sm.AddSession(context.Background(), "chat-room-1", "user-screen-name-2")
+	assert.NoError(t, err)
 
 	want := wire.SNACMessage{Frame: wire.SNACFrame{FoodGroup: wire.ICBM}}
 
@@ -352,8 +425,10 @@ func TestInMemoryChatSessionManager_RelayToScreenName_SessionAndChatRoomExist(t 
 func TestInMemoryChatSessionManager_RemoveSession(t *testing.T) {
 	sm := NewInMemoryChatSessionManager(slog.Default())
 
-	user1 := sm.AddSession("chat-room-1", "user-screen-name-1")
-	user2 := sm.AddSession("chat-room-1", "user-screen-name-2")
+	user1, err := sm.AddSession(context.Background(), "chat-room-1", "user-screen-name-1")
+	assert.NoError(t, err)
+	user2, err := sm.AddSession(context.Background(), "chat-room-1", "user-screen-name-2")
+	assert.NoError(t, err)
 
 	assert.Len(t, sm.AllSessions("chat-room-1"), 2)
 
@@ -366,14 +441,20 @@ func TestInMemoryChatSessionManager_RemoveSession(t *testing.T) {
 func TestInMemoryChatSessionManager_RemoveSession_DoubleLogin(t *testing.T) {
 	sm := NewInMemoryChatSessionManager(slog.Default())
 
-	user1 := sm.AddSession("chat-room-1", "user-screen-name-1")
-	user2 := sm.AddSession("chat-room-1", "user-screen-name-1")
-	assert.NotSame(t, user1, user2)
+	user1, err := sm.AddSession(context.Background(), "chat-room-1", "user-screen-name-1")
+	assert.NoError(t, err)
 
-	assert.Len(t, sm.AllSessions("chat-room-1"), 1)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		user2, err := sm.AddSession(context.Background(), "chat-room-1", "user-screen-name-1")
+		assert.NoError(t, err)
+		assert.NotSame(t, user1, user2)
+	}()
 
 	sm.RemoveSession(user1)
-	sm.RemoveSession(user2)
+	wg.Wait()
 
-	assert.Empty(t, sm.AllSessions("chat-room-1"))
+	assert.Len(t, sm.AllSessions("chat-room-1"), 1)
 }
