@@ -85,7 +85,7 @@ func (rt ChatServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 		return errors.New("unable to get login cookie from payload")
 	}
 
-	chatSess, err := rt.RegisterChatSession(authCookie)
+	chatSess, err := rt.RegisterChatSession(ctx, authCookie)
 	if err != nil {
 		return err
 	}

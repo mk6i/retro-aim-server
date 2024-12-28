@@ -61,7 +61,7 @@ type AuthService struct {
 // This method does not verify that the user and chat room exist because it
 // implicitly trusts the contents of the token signed by
 // {{OServiceService.ServiceRequest}}.
-func (s AuthService) RegisterChatSession(authCookie []byte) (*state.Session, error) {
+func (s AuthService) RegisterChatSession(ctx context.Context, authCookie []byte) (*state.Session, error) {
 	token, err := s.cookieBaker.Crack(authCookie)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (s AuthService) RegisterChatSession(authCookie []byte) (*state.Session, err
 	if err := wire.UnmarshalBE(&c, bytes.NewBuffer(token)); err != nil {
 		return nil, err
 	}
-	sess, err := s.chatSessionRegistry.AddSession(nil, c.ChatCookie, c.ScreenName)
+	sess, err := s.chatSessionRegistry.AddSession(ctx, c.ChatCookie, c.ScreenName)
 	if err != nil {
 		return nil, fmt.Errorf("AddSession: %w", err)
 	}

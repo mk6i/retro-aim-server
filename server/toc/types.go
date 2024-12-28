@@ -4,14 +4,16 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
 type BuddyService interface {
-	RightsQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 	AddBuddies(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x04_BuddyAddBuddies) error
+	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
 	DelBuddies(_ context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies) error
+	RightsQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 }
 
 type ChatService interface {
@@ -43,19 +45,16 @@ type AuthService interface {
 	BUCPChallenge(bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
 	BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
 	FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error)
-	RegisterBOSSession(authCookie []byte) (*state.Session, error)
+	RegisterBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	RetrieveBOSSession(authCookie []byte) (*state.Session, error)
-	RegisterChatSession(authCookie []byte) (*state.Session, error)
-	Signout(ctx context.Context, sess *state.Session) error
+	RegisterChatSession(ctx context.Context, authCookie []byte) (*state.Session, error)
+	Signout(ctx context.Context, sess *state.Session)
 	SignoutChat(ctx context.Context, sess *state.Session)
 }
 
 type LocateService interface {
-	//DirInfo(ctx context.Context, frame wire.SNACFrame, body wire.SNAC_0x02_0x0B_LocateGetDirInfo) (wire.SNACMessage, error)
-	//RightsQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 	SetDirInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x09_LocateSetDirInfo) (wire.SNACMessage, error)
 	SetInfo(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x02_0x04_LocateSetInfo) error
-	//SetKeywordInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, body wire.SNAC_0x02_0x0F_LocateSetKeywordInfo) (wire.SNACMessage, error)
 	UserInfoQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery) (wire.SNACMessage, error)
 }
 
@@ -72,4 +71,5 @@ type PermitDenyService interface {
 // lists and vice versa.
 type BuddyListRegistry interface {
 	RegisterBuddyList(user state.IdentScreenName) error
+	UnregisterBuddyList(user state.IdentScreenName) error
 }

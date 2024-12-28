@@ -124,6 +124,10 @@ func waitForShutdown(wg *sync.WaitGroup) bool {
 }
 
 func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) error {
+	defer func() {
+		rwc.Close()
+	}()
+
 	flapc := wire.NewFlapClient(100, rwc, rwc)
 
 	if err := flapc.SendSignonFrame(nil); err != nil {
@@ -148,6 +152,7 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 	}
 
 	if rt.BuddyListRegistry != nil { // nil check is a hack until server refactor
+		// todo should this check be below defer()?
 		if err := rt.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
 			return fmt.Errorf("unable to init buddy list: %w", err)
 		}
@@ -155,7 +160,6 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 
 	defer func() {
 		sess.Close()
-		rwc.Close()
 		if rt.DepartureNotifier != nil {
 			if err := rt.DepartureNotifier.BroadcastBuddyDeparted(ctx, sess); err != nil {
 				rt.Logger.ErrorContext(ctx, "error sending buddy departure notifications", "err", err.Error())

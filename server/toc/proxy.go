@@ -92,7 +92,7 @@ func (b BOSProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatRe
 	}
 }
 
-func (b BOSProxy) Login(elems []string) (*state.Session, error) {
+func (b BOSProxy) Login(ctx context.Context, elems []string) (*state.Session, error) {
 	username := elems[3]
 	passwordHash, err := hex.DecodeString(elems[4][2:])
 	if err != nil {
@@ -115,7 +115,7 @@ func (b BOSProxy) Login(elems []string) (*state.Session, error) {
 		return nil, errors.New("unable to get session id from payload")
 	}
 
-	sess, err := b.AuthService.RegisterBOSSession(authCookie)
+	sess, err := b.AuthService.RegisterBOSSession(ctx, authCookie)
 	if err != nil {
 		return nil, fmt.Errorf("register BOS session failed: %v", err)
 	}
@@ -485,6 +485,7 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 		default:
 			b.Logger.Info("config: invalid mode", "val", c[1], "user", me.DisplayScreenName())
 		}
+		//break todo add
 	}
 
 	switch mode {
@@ -557,6 +558,14 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 	}
 
 	return nil
+}
+
+func (b BOSProxy) Signout(ctx context.Context, me *state.Session) {
+	b.BuddyService.BroadcastBuddyDeparted(ctx, me)
+	if err := b.BuddyListRegistry.UnregisterBuddyList(me.IdentScreenName()); err != nil {
+		b.Logger.ErrorContext(ctx, "error removing buddy list entry", "err", err.Error())
+	}
+	b.AuthService.Signout(ctx, me)
 }
 
 func (b BOSProxy) ChatInvite(ctx context.Context, bos *state.Session, chatRegistry *ChatRegistry, params []string) error {
@@ -709,7 +718,7 @@ func (s ChatProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry
 		return fmt.Errorf("retrieve chat s update: %v", err)
 	}
 
-	sess, err := s.AuthService.RegisterChatSession(cookie)
+	sess, err := s.AuthService.RegisterChatSession(ctx, cookie)
 	if err != nil {
 		return fmt.Errorf("register chat session failed: %v", err)
 	}
@@ -789,7 +798,7 @@ func (s ChatProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegist
 		return fmt.Errorf("retrieve chat b update: %v", err)
 	}
 
-	sess, err := s.AuthService.RegisterChatSession(sessionCookie)
+	sess, err := s.AuthService.RegisterChatSession(ctx, sessionCookie)
 	if err != nil {
 		return fmt.Errorf("register chat session failed: %v", err)
 	}

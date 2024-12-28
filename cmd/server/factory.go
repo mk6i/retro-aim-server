@@ -6,7 +6,6 @@ import (
 	"net"
 
 	"github.com/kelseyhightower/envconfig"
-	"github.com/mk6i/retro-aim-server/server/toc"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/foodgroup"
@@ -14,6 +13,7 @@ import (
 	"github.com/mk6i/retro-aim-server/server/oscar"
 	"github.com/mk6i/retro-aim-server/server/oscar/handler"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
+	"github.com/mk6i/retro-aim-server/server/toc"
 	"github.com/mk6i/retro-aim-server/state"
 )
 

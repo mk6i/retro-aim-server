@@ -244,7 +244,7 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 				continue // keep alive heartbeat
 			}
 			if clientFrame.FrameType != wire.FLAPFrameData {
-				errCh <- fmt.Errorf("unexpected clientFlap clientFrame type: %s", clientFrame.FrameType)
+				errCh <- fmt.Errorf("unexpected clientFlap clientFrame type: %d", clientFrame.FrameType)
 				return
 			}
 			msgCh <- clientFrame
@@ -263,6 +263,7 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 		fmt.Println("closing handleTOCOverFLAP")
 		if sessBOS != nil {
 			sessBOS.Close()
+			rt.BOSProxy.Signout(ctx, sessBOS)
 		}
 		chatRegistry.Close()
 	}()
@@ -297,7 +298,7 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 
 			switch elems[0] {
 			case "toc_signon":
-				sessBOS, err = rt.BOSProxy.Login(elems)
+				sessBOS, err = rt.BOSProxy.Login(ctx, elems)
 				if err != nil {
 					return fmt.Errorf("init BOS failed: %w", err)
 				}
