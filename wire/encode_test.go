@@ -198,7 +198,7 @@ func TestMarshal(t *testing.T) {
 				Val: []byte(`hello`),
 			},
 			want: append(
-				[]byte{0x05}, /* len prefix */
+				[]byte{0x05},                             /* len prefix */
 				[]byte{0x68, 0x65, 0x6c, 0x6c, 0x6f}...), /* slice val */
 		},
 		{
@@ -220,7 +220,7 @@ func TestMarshal(t *testing.T) {
 				Val: []byte(`hello`),
 			},
 			want: append(
-				[]byte{0x00, 0x05}, /* len prefix */
+				[]byte{0x00, 0x05},                       /* len prefix */
 				[]byte{0x68, 0x65, 0x6c, 0x6c, 0x6f}...), /* slice val */
 		},
 		{
