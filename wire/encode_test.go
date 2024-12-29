@@ -198,7 +198,7 @@ func TestMarshal(t *testing.T) {
 				Val: []byte(`hello`),
 			},
 			want: append(
-				[]byte{0x05},                             /* len prefix */
+				[]byte{0x05}, /* len prefix */
 				[]byte{0x68, 0x65, 0x6c, 0x6c, 0x6f}...), /* slice val */
 		},
 		{
@@ -220,7 +220,7 @@ func TestMarshal(t *testing.T) {
 				Val: []byte(`hello`),
 			},
 			want: append(
-				[]byte{0x00, 0x05},                       /* len prefix */
+				[]byte{0x00, 0x05}, /* len prefix */
 				[]byte{0x68, 0x65, 0x6c, 0x6c, 0x6f}...), /* slice val */
 		},
 		{
@@ -686,6 +686,52 @@ func TestMarshal(t *testing.T) {
 				0x2, 0x0, // Val2 len
 				0x34, 0x12, // Val2.Message.Val3
 			},
+		},
+		{
+			name: "byte array",
+			w:    &bytes.Buffer{},
+			given: struct {
+				Val [5]byte
+			}{
+				Val: [5]byte{'h', 'e', 'l', 'l', 'o'},
+			},
+			want: []byte{0x68, 0x65, 0x6c, 0x6c, 0x6f},
+		},
+		{
+			name: "byte array with error",
+			w:    errWriter{},
+			given: struct {
+				Val [5]byte
+			}{
+				Val: [5]byte{'h', 'e', 'l', 'l', 'o'},
+			},
+			wantErr: io.EOF,
+		},
+		{
+			name: "struct array",
+			w:    &bytes.Buffer{},
+			given: struct {
+				Val [2]TLV
+			}{
+				Val: [2]TLV{
+					NewTLVBE(10, uint16(1234)),
+					NewTLVBE(20, uint16(1234)),
+				},
+			},
+			want: []byte{0x0, 0xa, 0x0, 0x2, 0x4, 0xd2, 0x0, 0x14, 0x0, 0x2, 0x4, 0xd2},
+		},
+		{
+			name: "struct array with error",
+			w:    errWriter{},
+			given: struct {
+				Val [2]TLV
+			}{
+				Val: [2]TLV{
+					NewTLVBE(10, uint16(1234)),
+					NewTLVBE(20, uint16(1234)),
+				},
+			},
+			wantErr: io.EOF,
 		},
 	}
 	for _, tt := range tests {

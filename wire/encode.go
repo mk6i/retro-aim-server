@@ -58,6 +58,8 @@ func marshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, w io.Writer
 	}
 
 	switch t.Kind() {
+	case reflect.Array:
+		return marshalArray(t, v, w, order)
 	case reflect.Slice:
 		return marshalSlice(t, v, oscTag, w, order)
 	case reflect.String:
@@ -80,6 +82,21 @@ func marshalInterface(v reflect.Value, w io.Writer, tag oscarTag, order binary.B
 	}
 
 	return marshalStruct(elem.Type(), elem, tag, w, order)
+}
+
+func marshalArray(t reflect.Type, v reflect.Value, w io.Writer, order binary.ByteOrder) error {
+	if t.Elem().Kind() == reflect.Struct {
+		for j := 0; j < v.Len(); j++ {
+			if err := marshalStruct(t.Elem(), v.Index(j), oscarTag{}, w, order); err != nil {
+				return fmt.Errorf("error marshalling %s: %w", t.Elem().Kind(), err)
+			}
+		}
+	} else {
+		if err := binary.Write(w, order, v.Interface()); err != nil {
+			return fmt.Errorf("error marshalling %s: %w", t.Elem().Kind(), err)
+		}
+	}
+	return nil
 }
 
 func marshalSlice(t reflect.Type, v reflect.Value, oscTag oscarTag, w io.Writer, order binary.ByteOrder) error {

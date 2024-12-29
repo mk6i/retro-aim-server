@@ -641,6 +641,41 @@ func TestUnmarshal(t *testing.T) {
 			},
 			wantErr: errNonOptionalPointer,
 		},
+		{
+			name: "byte array",
+			prototype: &struct {
+				Val [5]byte
+			}{},
+			want: &struct {
+				Val [5]byte
+			}{
+				Val: [5]byte{'h', 'e', 'l', 'l', 'o'},
+			},
+			given: []byte{0x68, 0x65, 0x6c, 0x6c, 0x6f},
+		},
+		{
+			name: "array of invalid type",
+			prototype: &struct {
+				Val [5]int
+			}{},
+			wantErr: ErrUnmarshalFailure,
+			given:   []byte{1, 2, 3, 4, 5},
+		},
+		{
+			name: "struct array",
+			prototype: &struct {
+				Val [2]TLV
+			}{},
+			want: &struct {
+				Val [2]TLV
+			}{
+				Val: [2]TLV{
+					NewTLVBE(10, uint16(1234)),
+					NewTLVBE(20, uint16(1234)),
+				},
+			},
+			given: []byte{0x0, 0xa, 0x0, 0x2, 0x4, 0xd2, 0x0, 0x14, 0x0, 0x2, 0x4, 0xd2},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

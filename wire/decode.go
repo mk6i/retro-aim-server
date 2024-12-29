@@ -51,6 +51,8 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 	}
 
 	switch v.Kind() {
+	case reflect.Array:
+		return unmarshalArray(v, r, order)
 	case reflect.Slice:
 		return unmarshalSlice(v, oscTag, r, order)
 	case reflect.String:
@@ -88,6 +90,21 @@ func unmarshal(t reflect.Type, v reflect.Value, tag reflect.StructTag, r io.Read
 	default:
 		return fmt.Errorf("unsupported type %v", t.Kind())
 	}
+}
+
+func unmarshalArray(v reflect.Value, r io.Reader, order binary.ByteOrder) error {
+	arrLen := v.Len()
+	arrType := v.Type().Elem()
+
+	for i := 0; i < arrLen; i++ {
+		elem := reflect.New(arrType).Elem()
+		if err := unmarshal(arrType, elem, "", r, order); err != nil {
+			return err
+		}
+		v.Index(i).Set(elem)
+	}
+
+	return nil
 }
 
 func unmarshalSlice(v reflect.Value, oscTag oscarTag, r io.Reader, order binary.ByteOrder) error {
