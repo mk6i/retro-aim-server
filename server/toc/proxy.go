@@ -18,6 +18,8 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
+var capChat = uuid.MustParse("748F2420-6287-11D1-8222-444553540000")
+
 type BOSProxy struct {
 	AuthService       AuthService
 	BuddyListRegistry BuddyListRegistry
@@ -124,11 +126,7 @@ func (b BOSProxy) Login(ctx context.Context, elems []string) (*state.Session, er
 	}
 
 	// set chat capability so that... tk
-	chatuid, err := uuid.Parse("748F2420-6287-11D1-8222-444553540000")
-	if err != nil {
-		return nil, fmt.Errorf("parse caps failed: %w", err)
-	}
-	sess.SetCaps([][16]byte{chatuid})
+	sess.SetCaps([][16]byte{capChat})
 
 	if err := b.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
 		return nil, fmt.Errorf("unable to init buddy list: %w", err)
@@ -279,12 +277,7 @@ func (b BOSProxy) SetCaps(ctx context.Context, me *state.Session, params []strin
 		}
 		caps = append(caps, uid)
 	}
-
-	chatuid, err := uuid.Parse("748F2420-6287-11D1-8222-444553540000")
-	if err != nil {
-		return fmt.Errorf("parse caps failed: %w", err)
-	}
-	caps = append(caps, chatuid)
+	caps = append(caps, capChat)
 
 	snac := wire.SNAC_0x02_0x04_LocateSetInfo{
 		TLVRestBlock: wire.TLVRestBlock{
@@ -585,9 +578,8 @@ func (b BOSProxy) ChatInvite(ctx context.Context, bos *state.Session, chatRegist
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
 				wire.NewTLVBE(0x05, wire.ICBMCh2Fragment{
-					Type:     0,
-					Service1: 8398971551579836881, // todo support marshalling arrays
-					Service2: 9377132438680240128,
+					Type:       0,
+					Capability: capChat,
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
 							wire.NewTLVBE(10, uint16(1)),

@@ -592,10 +592,9 @@ type ICBMCh1Fragment struct {
 }
 
 type ICBMCh2Fragment struct {
-	Type     uint16
-	Cookie   uint64
-	Service1 uint64
-	Service2 uint64
+	Type       uint16
+	Cookie     uint64
+	Capability [16]byte
 	TLVRestBlock
 }
 
