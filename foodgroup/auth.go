@@ -282,6 +282,7 @@ type loginProperties struct {
 	screenName   state.DisplayScreenName
 	clientID     string
 	isBUCPAuth   bool
+	isTOCAuth    bool
 	passwordHash []byte
 	roastedPass  []byte
 }
@@ -313,6 +314,12 @@ func (l *loginProperties) fromTLV(list wire.TLVList) error {
 	// extract roasted password for FLAP login
 	if roastedPass, found := list.Bytes(wire.LoginTLVTagsRoastedPassword); found {
 		l.roastedPass = roastedPass
+	}
+
+	// extract roasted password for TOC FLAP login
+	if roastedPass, found := list.Bytes(wire.LoginTLVTagsRoastedTOCPassword); found {
+		l.roastedPass = roastedPass
+		l.isTOCAuth = true
 	}
 
 	return nil
@@ -358,11 +365,15 @@ func (s AuthService) login(
 	}
 
 	var loginOK bool
-	if props.isBUCPAuth {
+	switch {
+	case props.isBUCPAuth:
 		loginOK = user.ValidateHash(props.passwordHash)
-	} else {
+	case props.isTOCAuth:
+		loginOK = user.ValidateRoastedTOCPass(props.roastedPass)
+	default:
 		loginOK = user.ValidateRoastedPass(props.roastedPass)
 	}
+
 	if !loginOK {
 		return loginFailureResponse(props, wire.LoginErrInvalidPassword), nil
 	}

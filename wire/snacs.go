@@ -88,6 +88,7 @@ const (
 	LoginTLVTagsAuthorizationCookie uint16 = 0x06
 	LoginTLVTagsErrorSubcode        uint16 = 0x08
 	LoginTLVTagsPasswordHash        uint16 = 0x25
+	LoginTLVTagsRoastedTOCPassword  uint16 = 0x1337
 )
 
 const (

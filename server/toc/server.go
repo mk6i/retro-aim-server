@@ -259,12 +259,38 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 		m:        sync.RWMutex{},
 	}
 
+	select {
+	case <-ctx.Done():
+		return nil
+	case clientFrame, ok := <-msgCh:
+		if !ok {
+			return nil
+		}
+		elems, err := receiveCmd(clientFrame.Payload)
+		if err != nil {
+			return fmt.Errorf("receive cmd failed: %w %s", err, clientFrame.Payload)
+		}
+		if len(elems) == 0 || elems[0] != "toc_signon" {
+			return errors.New("expected toc_signon as first message")
+		}
+
+		var reply []string
+		sessBOS, reply = rt.BOSProxy.Login(ctx, elems, chatRegistry, clientCh)
+		for _, m := range reply {
+			if err := clientFlap.SendDataFrame([]byte(m)); err != nil {
+				return fmt.Errorf("failed to send data frame %w", err)
+			}
+		}
+		if sessBOS == nil {
+			return nil
+		}
+		fmt.Printf("< client: %+v\n", elems)
+	}
+
 	defer func() {
 		fmt.Println("closing handleTOCOverFLAP")
-		if sessBOS != nil {
-			sessBOS.Close()
-			rt.BOSProxy.Signout(ctx, sessBOS)
-		}
+		sessBOS.Close()
+		rt.BOSProxy.Signout(ctx, sessBOS)
 		chatRegistry.Close()
 	}()
 
@@ -297,16 +323,6 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 			fmt.Printf("< client: %+v\n", elems)
 
 			switch elems[0] {
-			case "toc_signon":
-				sessBOS, err = rt.BOSProxy.Login(ctx, elems)
-				if err != nil {
-					return fmt.Errorf("init BOS failed: %w", err)
-				}
-
-				clientCh <- []byte("SIGN_ON:TOC1.0")
-				clientCh <- []byte("CONFIG:")
-
-				go rt.BOSProxy.ConsumeIncoming(ctx, sessBOS, chatRegistry, clientCh)
 			case "toc_send_im":
 				if err := rt.BOSProxy.SendIM(ctx, sessBOS, elems); err != nil {
 					return fmt.Errorf("send IM failed: %w", err)

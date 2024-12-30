@@ -94,45 +94,52 @@ func (b BOSProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatRe
 	}
 }
 
-func (b BOSProxy) Login(ctx context.Context, elems []string) (*state.Session, error) {
+func (b BOSProxy) Login(ctx context.Context, elems []string, registry *ChatRegistry, ch chan []byte) (*state.Session, []string) {
 	username := elems[3]
 	passwordHash, err := hex.DecodeString(elems[4][2:])
 	if err != nil {
-		return nil, fmt.Errorf("decode password hash failed: %w", err)
+		b.Logger.Error("decode password hash failed", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
 	}
-
-	passwordHash = wire.RoastTOCPassword(passwordHash)
 
 	signonFrame := wire.FLAPSignonFrame{}
 	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsScreenName, username))
-	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, passwordHash))
+	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, passwordHash))
 
 	block, err := b.AuthService.FLAPLogin(signonFrame, state.NewStubUser)
 	if err != nil {
-		return nil, fmt.Errorf("FLAP login failed: %v", err)
+		b.Logger.Error("FLAP login failed", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	if block.HasTag(wire.LoginTLVTagsErrorSubcode) {
+		b.Logger.Debug("login failed")
+		return nil, []string{"ERROR:980"} // bad username/password
 	}
 
 	authCookie, ok := block.Bytes(wire.OServiceTLVTagsLoginCookie)
 	if !ok {
-		return nil, errors.New("unable to get session id from payload")
+		b.Logger.Error("unable to get session id from payload")
+		return nil, []string{"ERROR:989:internal server error"}
 	}
 
 	sess, err := b.AuthService.RegisterBOSSession(ctx, authCookie)
 	if err != nil {
-		return nil, fmt.Errorf("register BOS session failed: %v", err)
-	}
-	if sess == nil {
-		return nil, errors.New("BOS session not found")
+		b.Logger.Error("register BOS session failed", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
 	}
 
 	// set chat capability so that... tk
 	sess.SetCaps([][16]byte{capChat})
 
 	if err := b.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
-		return nil, fmt.Errorf("unable to init buddy list: %w", err)
+		b.Logger.Error("unable to init buddy list", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
 	}
 
-	return sess, nil
+	go b.ConsumeIncoming(ctx, sess, registry, ch)
+
+	return sess, []string{"SIGN_ON:TOC1.0", "CONFIG:"}
 }
 
 func (b BOSProxy) ClientReady(ctx context.Context, sess *state.Session) error {
