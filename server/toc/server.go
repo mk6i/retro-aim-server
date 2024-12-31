@@ -292,18 +292,29 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 		chatRegistry.Close()
 	}()
 
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case msg, ok := <-toClient:
+				if !ok {
+					fmt.Println("Closing client connections?")
+					return
+				}
+				if err := clientFlap.SendDataFrame(msg); err != nil {
+					// todo how to cancel everything?
+					rt.Logger.Error("failed to send data frame", "err", err.Error())
+					return
+				}
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case msg, ok := <-toClient:
-			if !ok {
-				fmt.Println("Closing client connections?")
-				return nil
-			}
-			if err := clientFlap.SendDataFrame(msg); err != nil {
-				return fmt.Errorf("failed to send data frame %w", err)
-			}
 		case clientFrame, ok := <-msgCh:
 			if !ok {
 				fmt.Println("Closing server connections?")
