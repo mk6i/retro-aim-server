@@ -18,7 +18,10 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-var capChat = uuid.MustParse("748F2420-6287-11D1-8222-444553540000")
+var (
+	cmdInternalSvcErr = []byte("ERROR:989:internal server error")
+	capChat           = uuid.MustParse("748F2420-6287-11D1-8222-444553540000")
+)
 
 type BOSProxy struct {
 	AuthService       AuthService
@@ -51,39 +54,23 @@ func (b BOSProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatRe
 				switch inFrame.SubGroup {
 				case wire.BuddyArrived:
 					// todo make these type assertions safe?
-					select {
-					case ch <- []byte(b.UpdateBuddyArrival(snac.Body.(wire.SNAC_0x03_0x0B_BuddyArrived))):
-					case <-ctx.Done():
-						return
-					}
+					b.UpdateBuddyArrival(snac.Body.(wire.SNAC_0x03_0x0B_BuddyArrived), ch)
 				case wire.BuddyDeparted:
-					select {
-					case ch <- []byte(b.UpdateBuddyDeparted(snac.Body.(wire.SNAC_0x03_0x0C_BuddyDeparted))):
-					case <-ctx.Done():
-						return
-					}
+					b.UpdateBuddyDeparted(snac.Body.(wire.SNAC_0x03_0x0C_BuddyDeparted), ch)
 				default:
 					b.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
 				}
 			case wire.ICBM:
 				switch inFrame.SubGroup {
 				case wire.ICBMChannelMsgToClient:
-					select {
-					case ch <- []byte(b.IMIn(chatRegistry, snac.Body.(wire.SNAC_0x04_0x07_ICBMChannelMsgToClient))):
-					case <-ctx.Done():
-						return
-					}
+					b.IMIn(ctx, chatRegistry, snac.Body.(wire.SNAC_0x04_0x07_ICBMChannelMsgToClient), ch)
 				default:
 					b.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
 				}
 			case wire.OService:
 				switch inFrame.SubGroup {
 				case wire.OServiceEvilNotification:
-					select {
-					case ch <- []byte(b.Eviled(snac.Body.(wire.SNAC_0x01_0x10_OServiceEvilNotification))):
-					case <-ctx.Done():
-						return
-					}
+					b.Eviled(snac.Body.(wire.SNAC_0x01_0x10_OServiceEvilNotification), ch)
 				default:
 					b.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
 				}
@@ -142,14 +129,15 @@ func (b BOSProxy) Login(ctx context.Context, elems []string, registry *ChatRegis
 	return sess, []string{"SIGN_ON:TOC1.0", "CONFIG:"}
 }
 
-func (b BOSProxy) ClientReady(ctx context.Context, sess *state.Session) error {
+func (b BOSProxy) ClientReady(ctx context.Context, sess *state.Session, ch chan<- []byte) {
 	if err := b.OServiceService.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
-		return fmt.Errorf("client online failed: %v", err)
+		logErr(ctx, b.Logger, fmt.Errorf("OServiceService.ClientOnliney: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
-	return nil
 }
 
-func (b BOSProxy) Profile(thisCtx context.Context, from, user string) (string, error) {
+func (b BOSProxy) Profile(ctx context.Context, from, user string) string {
 	sess := state.NewSession()
 	sess.SetIdentScreenName(state.NewIdentScreenName(from))
 	inBody := wire.SNAC_0x02_0x05_LocateUserInfoQuery{
@@ -157,30 +145,40 @@ func (b BOSProxy) Profile(thisCtx context.Context, from, user string) (string, e
 		ScreenName: user,
 	}
 
-	info, err := b.LocateService.UserInfoQuery(thisCtx, sess, wire.SNACFrame{}, inBody)
+	info, err := b.LocateService.UserInfoQuery(ctx, sess, wire.SNACFrame{}, inBody)
 	if err != nil {
-		b.Logger.Error("user session failed", "err", err.Error())
-		return "", nil
+		logErr(ctx, b.Logger, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
+		//ch <- cmdInternalSvcErr
+		return ""
 	}
 	if !(info.Frame.FoodGroup == wire.Locate && info.Frame.SubGroup == wire.LocateUserInfoReply) {
-		b.Logger.Error("didn't get expected locate response")
-		return "", nil
+		logErr(ctx, b.Logger, fmt.Errorf("LocateService.UserInfoQuery: expected response SNAC(%d,%d), got SNAC(%d,%d)",
+			wire.Locate, wire.LocateUserInfoReply, info.Frame.FoodGroup, info.Frame.SubGroup))
+		//ch <- cmdInternalSvcErr
+		return ""
 	}
 
 	locateInfoReply := info.Body.(wire.SNAC_0x02_0x06_LocateUserInfoReply)
 	profile, hasProf := locateInfoReply.LocateInfo.Bytes(wire.LocateTLVTagsInfoSigData)
 	if !hasProf {
-		b.Logger.Error("didn't get expected location info")
-		return "", nil
+		logErr(ctx, b.Logger, errors.New("LocateInfo.Bytes: missing wire.LocateTLVTagsInfoSigData"))
+		//ch <- cmdInternalSvcErr
+		return ""
 	}
 
-	return string(profile), nil
+	return string(profile)
 }
 
-func (b BOSProxy) SendIM(ctx context.Context, me *state.Session, params []string) error {
+func logErr(ctx context.Context, logger *slog.Logger, err error) {
+	logger.ErrorContext(ctx, "internal service error", "err", err.Error())
+}
+
+func (b BOSProxy) SendIM(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	frags, err := wire.ICBMFragmentList(params[2])
 	if err != nil {
-		return fmt.Errorf("unable to create ICBM fragment list: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("wire.ICBMFragmentList: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
 
 	frame := wire.SNACFrame{
@@ -199,13 +197,13 @@ func (b BOSProxy) SendIM(ctx context.Context, me *state.Session, params []string
 	}
 
 	if _, err := b.ICBMService.ChannelMsgToHost(ctx, me, frame, snac); err != nil {
-		return fmt.Errorf("ChannelMsgToHost: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
-
-	return nil
 }
 
-func (b BOSProxy) AddBuddy(ctx context.Context, me *state.Session, params []string) error {
+func (b BOSProxy) AddBuddy(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	buddies := params[1:]
 
 	snac := wire.SNAC_0x03_0x04_BuddyAddBuddies{}
@@ -216,13 +214,13 @@ func (b BOSProxy) AddBuddy(ctx context.Context, me *state.Session, params []stri
 	}
 
 	if err := b.BuddyService.AddBuddies(ctx, me, snac); err != nil {
-		return fmt.Errorf("BuddyService add buddies: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("BuddyService.AddBuddies: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
-
-	return nil
 }
 
-func (b BOSProxy) RemoveBuddy(ctx context.Context, me *state.Session, params []string) error {
+func (b BOSProxy) RemoveBuddy(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	buddies := params[1:]
 
 	snac := wire.SNAC_0x03_0x05_BuddyDelBuddies{}
@@ -233,13 +231,13 @@ func (b BOSProxy) RemoveBuddy(ctx context.Context, me *state.Session, params []s
 	}
 
 	if err := b.BuddyService.DelBuddies(ctx, me, snac); err != nil {
-		return fmt.Errorf("BuddyService add buddies: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("BuddyService.DelBuddies: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
-
-	return nil
 }
 
-func (b BOSProxy) AddPermit(ctx context.Context, me *state.Session, params []string) error {
+func (b BOSProxy) AddPermit(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	buddies := params[1:]
 
 	snac := wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{}
@@ -250,13 +248,13 @@ func (b BOSProxy) AddPermit(ctx context.Context, me *state.Session, params []str
 	}
 
 	if err := b.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
-		return fmt.Errorf("BuddyService add buddies: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("PermitDenyService.AddPermListEntries: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
-
-	return nil
 }
 
-func (b BOSProxy) AddDeny(ctx context.Context, me *state.Session, params []string) error {
+func (b BOSProxy) AddDeny(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	buddies := params[1:]
 
 	snac := wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{}
@@ -267,20 +265,22 @@ func (b BOSProxy) AddDeny(ctx context.Context, me *state.Session, params []strin
 	}
 
 	if err := b.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
-		return fmt.Errorf("BuddyService add buddies: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
-
-	return nil
 }
 
-func (b BOSProxy) SetCaps(ctx context.Context, me *state.Session, params []string) error {
+func (b BOSProxy) SetCaps(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	params = params[1:]
 
 	caps := make([]uuid.UUID, 0, len(params))
 	for _, capStr := range params {
 		uid, err := uuid.Parse(capStr)
 		if err != nil {
-			return fmt.Errorf("parse caps failed: %w", err)
+			logErr(ctx, b.Logger, fmt.Errorf("UUID.Parse: %w", err))
+			ch <- cmdInternalSvcErr
+			return
 		}
 		caps = append(caps, uid)
 	}
@@ -295,13 +295,13 @@ func (b BOSProxy) SetCaps(ctx context.Context, me *state.Session, params []strin
 	}
 
 	if err := b.LocateService.SetInfo(ctx, me, snac); err != nil {
-		return fmt.Errorf("SetInfo: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("LocateService.SetInfo: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
-
-	return nil
 }
 
-func (b BOSProxy) SetAway(ctx context.Context, me *state.Session, awayMessage string) error {
+func (b BOSProxy) SetAway(ctx context.Context, me *state.Session, awayMessage string, ch chan<- []byte) {
 	snac := wire.SNAC_0x02_0x04_LocateSetInfo{
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
@@ -311,13 +311,13 @@ func (b BOSProxy) SetAway(ctx context.Context, me *state.Session, awayMessage st
 	}
 
 	if err := b.LocateService.SetInfo(ctx, me, snac); err != nil {
-		return fmt.Errorf("SetInfo: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("LocateService.SetInfo: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
-
-	return nil
 }
 
-func (b BOSProxy) Evil(ctx context.Context, me *state.Session, params []string) (string, error) {
+func (b BOSProxy) Evil(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	snac := wire.SNAC_0x04_0x08_ICBMEvilRequest{
 		SendAs:     0,
 		ScreenName: params[1],
@@ -327,13 +327,15 @@ func (b BOSProxy) Evil(ctx context.Context, me *state.Session, params []string) 
 	}
 	response, err := b.ICBMService.EvilRequest(ctx, me, wire.SNACFrame{}, snac)
 	if err != nil {
-		return "", fmt.Errorf("EvilRequest: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("ICBMService.EvilRequest: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
 
-	return fmt.Sprintf("EVILED:%d:jon", response.Body.(wire.SNAC_0x04_0x09_ICBMEvilReply).UpdatedEvilValue), nil
+	ch <- []byte(fmt.Sprintf("EVILED:%d:%s", response.Body.(wire.SNAC_0x04_0x09_ICBMEvilReply).UpdatedEvilValue, params[1]))
 }
 
-func (b BOSProxy) SetInfo(ctx context.Context, me *state.Session, params []string) error {
+func (b BOSProxy) SetInfo(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	snac := wire.SNAC_0x02_0x04_LocateSetInfo{
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
@@ -342,13 +344,13 @@ func (b BOSProxy) SetInfo(ctx context.Context, me *state.Session, params []strin
 		},
 	}
 	if err := b.LocateService.SetInfo(ctx, me, snac); err != nil {
-		return fmt.Errorf("SetInfo: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("LocateService.SetInfo: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
-
-	return nil
 }
 
-func (b BOSProxy) SetDir(ctx context.Context, me *state.Session, params []string) error {
+func (b BOSProxy) SetDir(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	info := strings.Split(params[1], ":")
 
 	snac := wire.SNAC_0x02_0x09_LocateSetDirInfo{
@@ -365,39 +367,41 @@ func (b BOSProxy) SetDir(ctx context.Context, me *state.Session, params []string
 		},
 	}
 	if _, err := b.LocateService.SetDirInfo(ctx, me, wire.SNACFrame{}, snac); err != nil {
-		return fmt.Errorf("SetDirInfo: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("LocateService.SetDirInfo: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
-
-	return nil
 }
 
-func (b BOSProxy) SetIdle(ctx context.Context, me *state.Session, params []string) error {
+func (b BOSProxy) SetIdle(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	time, err := strconv.Atoi(params[1])
 	if err != nil {
-		return fmt.Errorf("SetIdle string to int: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("strconv.Atoi: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
 
 	snac := wire.SNAC_0x01_0x11_OServiceIdleNotification{
 		IdleTime: uint32(time),
 	}
 	if err := b.OServiceService.IdleNotification(ctx, me, snac); err != nil {
-		return fmt.Errorf("SetIdle: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("OServiceService.IdleNotification: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
-
-	return nil
 }
 
-func (b BOSProxy) UpdateBuddyArrival(snac wire.SNAC_0x03_0x0B_BuddyArrived) string {
+func (b BOSProxy) UpdateBuddyArrival(snac wire.SNAC_0x03_0x0B_BuddyArrived, ch chan<- []byte) {
 	online, _ := snac.Uint32BE(wire.OServiceUserInfoSignonTOD)
 	idle, _ := snac.Uint16BE(wire.OServiceUserInfoIdleTime)
 	uc := [3]string{" ", "O", " "}
 	if snac.IsAway() {
 		uc[2] = "U"
 	}
-	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "T", snac.WarningLevel, online, idle, uc)
+	ch <- []byte(fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "T", snac.WarningLevel, online, idle, uc))
 }
 
-func (b BOSProxy) UpdateBuddyDeparted(snac wire.SNAC_0x03_0x0C_BuddyDeparted) string {
+func (b BOSProxy) UpdateBuddyDeparted(snac wire.SNAC_0x03_0x0C_BuddyDeparted, ch chan<- []byte) {
 	online, _ := snac.Uint32BE(wire.OServiceUserInfoSignonTOD)
 	idle, _ := snac.Uint16BE(wire.OServiceUserInfoIdleTime)
 	uc := [3]string{" ", "O", " "}
@@ -405,57 +409,74 @@ func (b BOSProxy) UpdateBuddyDeparted(snac wire.SNAC_0x03_0x0C_BuddyDeparted) st
 		uc[2] = "U"
 	}
 	class := strings.Join(uc[:], "")
-	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "F", snac.WarningLevel, online, idle, class)
+	ch <- []byte(fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "F", snac.WarningLevel, online, idle, class))
 }
 
-func (b BOSProxy) IMIn(chatRegistry *ChatRegistry, snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient) string {
+func (b BOSProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient, ch chan<- []byte) {
 	if snac.ChannelID == wire.ICBMChannelRendezvous {
 		rdinfo, has := snac.TLVRestBlock.Bytes(0x05)
 		if !has {
-			fmt.Printf("doesn't have rendezvous block\n")
-			return ""
+			logErr(ctx, b.Logger, errors.New("TLVRestBlock.Bytes: missing rendezvous block"))
+			ch <- cmdInternalSvcErr
+			return
 		}
 		frag := wire.ICBMCh2Fragment{}
 		if err := wire.UnmarshalBE(&frag, bytes.NewBuffer(rdinfo)); err != nil {
-			fmt.Printf("unmarshal ICBM channel message rdv apyload failed: %w", err)
-			return ""
+			logErr(ctx, b.Logger, fmt.Errorf("wire.UnmarshalBE: %w", err))
+			ch <- cmdInternalSvcErr
+			return
 		}
-		prompt, _ := frag.Bytes(12)
+		prompt, ok := frag.Bytes(12)
+		if !ok {
+			logErr(ctx, b.Logger, errors.New("frag.Bytes: missing prompt"))
+			ch <- cmdInternalSvcErr
+			return
+		}
 
-		svcData, _ := frag.Bytes(10001)
+		svcData, ok := frag.Bytes(10001)
+		if !ok {
+			logErr(ctx, b.Logger, errors.New("frag.Bytes: missing room info"))
+			ch <- cmdInternalSvcErr
+			return
+		}
 
 		roomInfo := wire.ICBMRoomInfo{}
 		if err := wire.UnmarshalBE(&roomInfo, bytes.NewBuffer(svcData)); err != nil {
-			fmt.Printf("unmarshal ICBM channel message rdv apyload failed: %w", err)
-			return ""
+			logErr(ctx, b.Logger, fmt.Errorf("wire.UnmarshalBE: %w", err))
+			ch <- cmdInternalSvcErr
+			return
 		}
 
 		name := strings.Split(roomInfo.Cookie, "-")[2]
 
 		chatID := chatRegistry.Add(roomInfo.Cookie)
-		return fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", name, chatID, snac.ScreenName, prompt)
+		ch <- []byte(fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", name, chatID, snac.ScreenName, prompt))
+		return
 	}
 
 	buf, ok := snac.TLVRestBlock.Bytes(wire.ICBMTLVAOLIMData)
 	if !ok {
-		return ""
+		logErr(ctx, b.Logger, errors.New("TLVRestBlock.Bytes: missing wire.ICBMTLVAOLIMData"))
+		return
 	}
 	txt, err := wire.UnmarshalICBMMessageText(buf)
 	if err != nil {
-		return ""
+		logErr(ctx, b.Logger, fmt.Errorf("wire.UnmarshalICBMMessageText: %w", err))
+		return
 	}
-	return fmt.Sprintf("IM_IN:%s:F:%s", snac.ScreenName, txt)
+	ch <- []byte(fmt.Sprintf("IM_IN:%s:F:%s", snac.ScreenName, txt))
+	return
 }
 
-func (b BOSProxy) Eviled(snac wire.SNAC_0x01_0x10_OServiceEvilNotification) string {
+func (b BOSProxy) Eviled(snac wire.SNAC_0x01_0x10_OServiceEvilNotification, ch chan<- []byte) {
 	who := ""
 	if snac.Snitcher != nil {
 		who = snac.Snitcher.ScreenName
 	}
-	return fmt.Sprintf("EVILED:%d:%s", snac.NewEvil, who)
+	ch <- []byte(fmt.Sprintf("EVILED:%d:%s", snac.NewEvil, who))
 }
 
-func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []string) error {
+func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	config := strings.Split(strings.TrimSpace(params[1]), "\n")
 
 	var cfg [][2]string
@@ -500,7 +521,9 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 			},
 		}
 		if err := b.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
-			return fmt.Errorf("AddDenyListEntries: %w", err)
+			logErr(ctx, b.Logger, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
+			ch <- cmdInternalSvcErr
+			return
 		}
 	case wire.FeedbagPDModeDenyAll:
 		snac := wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
@@ -513,7 +536,9 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 			},
 		}
 		if err := b.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
-			return fmt.Errorf("AddPermListEntries: %w", err)
+			logErr(ctx, b.Logger, fmt.Errorf("PermitDenyService.AddPermListEntrie: %w", err))
+			ch <- cmdInternalSvcErr
+			return
 		}
 	case wire.FeedbagPDModePermitSome:
 		snac := wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{}
@@ -526,7 +551,9 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 			}{ScreenName: c[1]})
 		}
 		if err := b.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
-			return fmt.Errorf("AddPermListEntries: %w", err)
+			logErr(ctx, b.Logger, fmt.Errorf("PermitDenyService.AddPermListEntrie: %w", err))
+			ch <- cmdInternalSvcErr
+			return
 		}
 	case wire.FeedbagPDModeDenySome:
 		snac := wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{}
@@ -539,7 +566,9 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 			}{ScreenName: c[1]})
 		}
 		if err := b.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
-			return fmt.Errorf("AddDenyListEntries: %w", err)
+			logErr(ctx, b.Logger, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
+			ch <- cmdInternalSvcErr
+			return
 		}
 	}
 
@@ -554,29 +583,35 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 	}
 
 	if err := b.BuddyService.AddBuddies(ctx, me, snac); err != nil {
-		return fmt.Errorf("AddBuddies: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("BuddyService.AddBuddies: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
-
-	return nil
 }
 
 func (b BOSProxy) Signout(ctx context.Context, me *state.Session) {
-	b.BuddyService.BroadcastBuddyDeparted(ctx, me)
+	if err := b.BuddyService.BroadcastBuddyDeparted(ctx, me); err != nil {
+		b.Logger.ErrorContext(ctx, "error sending departure notifications", "err", err.Error())
+	}
 	if err := b.BuddyListRegistry.UnregisterBuddyList(me.IdentScreenName()); err != nil {
 		b.Logger.ErrorContext(ctx, "error removing buddy list entry", "err", err.Error())
 	}
 	b.AuthService.Signout(ctx, me)
 }
 
-func (b BOSProxy) ChatInvite(ctx context.Context, bos *state.Session, chatRegistry *ChatRegistry, params []string) error {
+func (b BOSProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, ch chan<- []byte) {
 	chatID, err := strconv.Atoi(params[1])
 	if err != nil {
-		return fmt.Errorf("ChatSend string to int: %w", err)
+		logErr(ctx, b.Logger, fmt.Errorf("strconv.Atoi: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
 
 	cookie := chatRegistry.Lookup(chatID)
 	if cookie == "" {
-		return fmt.Errorf("chat not found: %d", chatID)
+		logErr(ctx, b.Logger, fmt.Errorf("chatRegistry.Lookup: chat ID `%d` not found", chatID))
+		ch <- cmdInternalSvcErr
+		return
 	}
 
 	snac := wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
@@ -604,11 +639,15 @@ func (b BOSProxy) ChatInvite(ctx context.Context, bos *state.Session, chatRegist
 		},
 	}
 
-	if _, err := b.ICBMService.ChannelMsgToHost(ctx, bos, wire.SNACFrame{}, snac); err != nil {
-		return fmt.Errorf("ChannelMsgToHost: %w", err)
+	if _, err := b.ICBMService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac); err != nil {
+		logErr(ctx, b.Logger, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
+}
 
-	return nil
+func (b BOSProxy) GetInfo(bos *state.Session, elems []string, ch chan<- []byte) {
+	ch <- []byte(fmt.Sprintf("GOTO_URL:profile:info?from=%s&user=%s", bos.IdentScreenName().String(), elems[1]))
 }
 
 type ChatProxy struct {
@@ -620,7 +659,7 @@ type ChatProxy struct {
 	OServiceServiceChat OServiceService
 }
 
-func (s ChatProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatID int, ch chan []byte) {
+func (s ChatProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatID int, ch chan<- []byte) {
 	defer func() {
 		fmt.Println("closing chat ConsumeIncoming")
 	}()
@@ -636,23 +675,11 @@ func (s ChatProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatI
 			case wire.Chat:
 				switch inFrame.SubGroup {
 				case wire.ChatUsersLeft:
-					select {
-					case <-ctx.Done():
-						return
-					case ch <- []byte(s.ChatUpdateBuddyLeft(snac.Body.(wire.SNAC_0x0E_0x04_ChatUsersLeft), chatID)):
-					}
+					s.ChatUpdateBuddyLeft(snac.Body.(wire.SNAC_0x0E_0x04_ChatUsersLeft), chatID, ch)
 				case wire.ChatUsersJoined:
-					select {
-					case <-ctx.Done():
-						return
-					case ch <- []byte(s.ChatUpdateBuddyArrived(snac.Body.(wire.SNAC_0x0E_0x03_ChatUsersJoined), chatID)):
-					}
+					s.ChatUpdateBuddyArrived(snac.Body.(wire.SNAC_0x0E_0x03_ChatUsersJoined), chatID, ch)
 				case wire.ChatChannelMsgToClient:
-					select {
-					case <-ctx.Done():
-						return
-					case ch <- []byte(s.ChatIn(snac.Body.(wire.SNAC_0x0E_0x06_ChatChannelMsgToClient), chatID)):
-					}
+					s.ChatIn(ctx, snac.Body.(wire.SNAC_0x0E_0x06_ChatChannelMsgToClient), chatID, ch)
 				default:
 					s.Logger.Info("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
 				}
@@ -663,10 +690,12 @@ func (s ChatProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatI
 	}
 }
 
-func (s ChatProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, clientCh chan []byte) error {
+func (s ChatProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, ch chan []byte) bool {
 	exchange, err := strconv.Atoi(params[1])
 	if err != nil {
-		return fmt.Errorf("parse exchange failed: %w", err)
+		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	snac := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
@@ -681,18 +710,24 @@ func (s ChatProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry
 
 	reply, err := s.ChatNavService.CreateRoom(ctx, me, wire.SNACFrame{}, snac)
 	if err != nil {
-		return fmt.Errorf("chat send failed: %v", err)
+		logErr(ctx, s.Logger, fmt.Errorf("ChatNavService.CreateRoom: %w", err))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	chatSNAC := reply.Body.(wire.SNAC_0x0D_0x09_ChatNavNavInfo)
 	buf, ok := chatSNAC.Bytes(wire.ChatNavTLVRoomInfo)
 	if !ok {
-		return fmt.Errorf("retrieve chat s update: %v", err)
+		logErr(ctx, s.Logger, errors.New("chatSNAC.Bytes: missing wire.ChatNavTLVRoomInfo"))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	inBody := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
 	if err := wire.UnmarshalBE(&inBody, bytes.NewBuffer(buf)); err != nil {
-		return err
+		logErr(ctx, s.Logger, fmt.Errorf("wire.UnmarshalBE: %w", err))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	snac2 := wire.SNAC_0x01_0x04_OServiceServiceRequest{
@@ -707,44 +742,56 @@ func (s ChatProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry
 	}
 	rep, err := s.OServiceServiceBOS.ServiceRequest(ctx, me, wire.SNACFrame{}, snac2)
 	if err != nil {
-		return fmt.Errorf("service request failed: %v", err)
+		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceBOS.ServiceRequest: %w", err))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	chatResp := rep.Body.(wire.SNAC_0x01_0x05_OServiceServiceResponse)
 
 	cookie, hasCookie := chatResp.Bytes(wire.OServiceTLVTagsLoginCookie)
 	if !hasCookie {
-		return fmt.Errorf("retrieve chat s update: %v", err)
+		logErr(ctx, s.Logger, errors.New("chatResp.Bytes: missing wire.OServiceTLVTagsLoginCookie"))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	sess, err := s.AuthService.RegisterChatSession(ctx, cookie)
 	if err != nil {
-		return fmt.Errorf("register chat session failed: %v", err)
+		logErr(ctx, s.Logger, fmt.Errorf("AuthService.RegisterChatSession: %w", err))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	chatID := chatRegistry.Add(inBody.Cookie)
 	chatRegistry.Register(chatID, sess)
 
-	go s.ConsumeIncoming(ctx, sess, chatID, clientCh)
+	go s.ConsumeIncoming(ctx, sess, chatID, ch)
 
-	clientCh <- []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, params[2]))
+	ch <- []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, params[2]))
 
 	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
-		return fmt.Errorf("client online failed: %v", err)
+		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceChat.ClientOnline: %w", err))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
-	return nil
+	return true
 }
 
-func (s ChatProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, clientCh chan []byte) error {
+func (s ChatProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, ch chan []byte) bool {
 	chatID, err := strconv.Atoi(params[1])
 	if err != nil {
-		return fmt.Errorf("ChatSend string to int: %w", err)
+		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	cookie := chatRegistry.Lookup(chatID)
 	if cookie == "" {
-		return fmt.Errorf("chat not found: %d", chatID)
+		logErr(ctx, s.Logger, errors.New("chatRegistry.Lookup: no chat found"))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	snac := wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
@@ -755,23 +802,31 @@ func (s ChatProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegist
 	// begin
 	info, err := s.ChatNavService.RequestRoomInfo(ctx, wire.SNACFrame{}, snac)
 	if err != nil {
-		return fmt.Errorf("chat request room info failed: %v", err)
+		logErr(ctx, s.Logger, fmt.Errorf("ChatNavService.RequestRoomInfo: %w", err))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	infoSNAC := info.Body.(wire.SNAC_0x0D_0x09_ChatNavNavInfo)
 	b, hasInfo := infoSNAC.Bytes(wire.ChatNavTLVRoomInfo)
 	if !hasInfo {
-		return fmt.Errorf("error getting room info from room info payload")
+		logErr(ctx, s.Logger, errors.New("infoSNAC.Bytes: missing wire.ChatNavTLVRoomInfo"))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	roomInfo := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
 	if err := wire.UnmarshalBE(&roomInfo, bytes.NewBuffer(b)); err != nil {
-		return fmt.Errorf("error unmarshalling room info: %w", err)
+		logErr(ctx, s.Logger, fmt.Errorf("wire.UnmarshalBE: %w", err))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	name, hasName := roomInfo.Bytes(wire.ChatRoomTLVRoomName)
 	if !hasName {
-		return fmt.Errorf("error getting room name from room info payload")
+		logErr(ctx, s.Logger, errors.New("roomInfo.Bytes: missing wire.ChatRoomTLVRoomName"))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	//end
@@ -787,43 +842,63 @@ func (s ChatProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegist
 	}
 	rep, err := s.OServiceServiceBOS.ServiceRequest(ctx, me, wire.SNACFrame{}, snac2)
 	if err != nil {
-		return fmt.Errorf("service request failed: %v", err)
+		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceBOS.ServiceRequest: %w", err))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	chatResp := rep.Body.(wire.SNAC_0x01_0x05_OServiceServiceResponse)
 
 	sessionCookie, hasCookie := chatResp.Bytes(wire.OServiceTLVTagsLoginCookie)
 	if !hasCookie {
-		return fmt.Errorf("retrieve chat b update: %v", err)
+		logErr(ctx, s.Logger, errors.New("missing wire.OServiceTLVTagsLoginCookie"))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
 	sess, err := s.AuthService.RegisterChatSession(ctx, sessionCookie)
 	if err != nil {
-		return fmt.Errorf("register chat session failed: %v", err)
+		logErr(ctx, s.Logger, fmt.Errorf("AuthService.RegisterChatSession: %w", err))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
-	go s.ConsumeIncoming(ctx, sess, chatID, clientCh)
+	go s.ConsumeIncoming(ctx, sess, chatID, ch)
 
 	chatRegistry.Register(chatID, sess)
 
-	clientCh <- []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, name))
+	ch <- []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, name))
 
 	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
-		return fmt.Errorf("client online failed: %v", err)
+		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceChat.ClientOnline: %w", err))
+		ch <- cmdInternalSvcErr
+		return false
 	}
 
-	return nil
+	return true
 }
 
-func (s ChatProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, params []string) (string, error) {
+func (s ChatProxy) ClientReady(ctx context.Context, me *state.Session) bool {
+	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, me); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceChat.ClientOnline: %w", err))
+		return false
+	}
+	return true
+}
+
+func (s ChatProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, params []string, ch chan []byte) {
 	chatID, err := strconv.Atoi(params[1])
 	if err != nil {
-		return "", fmt.Errorf("ChatSend string to int: %w", err)
+		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
 
 	me := chatRegistry.Retrieve(chatID)
 	if me == nil {
-		return "", fmt.Errorf("ChatSend session not found: %d", chatID)
+		logErr(ctx, s.Logger, fmt.Errorf("chatRegistry.Retrieve: chat session `%d` not found", chatID))
+		ch <- cmdInternalSvcErr
+		return
 	}
 
 	block := wire.TLVRestBlock{}
@@ -843,61 +918,82 @@ func (s ChatProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, par
 		TLVRestBlock: block,
 	}
 	if _, err := s.ChatService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac); err != nil {
-		return "", fmt.Errorf("chat send failed: %v", err)
+		logErr(ctx, s.Logger, fmt.Errorf("ChatService.ChannelMsgToHost: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
 
-	return fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, me.DisplayScreenName(), params[2]), nil
+	ch <- []byte(fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, me.DisplayScreenName(), params[2]))
 }
 
-func (s ChatProxy) ChatUpdateBuddyArrived(snac wire.SNAC_0x0E_0x03_ChatUsersJoined, chatID int) string {
+func (s ChatProxy) ChatUpdateBuddyArrived(snac wire.SNAC_0x0E_0x03_ChatUsersJoined, chatID int, ch chan<- []byte) {
 	users := make([]string, 0, len(snac.Users))
 	for _, u := range snac.Users {
 		users = append(users, u.ScreenName)
 	}
-	return fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:T:%s", chatID, strings.Join(users, ":"))
+	ch <- []byte(fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:T:%s", chatID, strings.Join(users, ":")))
 }
 
-func (s ChatProxy) ChatUpdateBuddyLeft(snac wire.SNAC_0x0E_0x04_ChatUsersLeft, chatID int) string {
+func (s ChatProxy) ChatUpdateBuddyLeft(snac wire.SNAC_0x0E_0x04_ChatUsersLeft, chatID int, ch chan<- []byte) {
 	users := make([]string, 0, len(snac.Users))
 	for _, u := range snac.Users {
 		users = append(users, u.ScreenName)
 	}
-	return fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:F:%s", chatID, strings.Join(users, ":"))
+	ch <- []byte(fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:F:%s", chatID, strings.Join(users, ":")))
 }
 
-func (s ChatProxy) ChatIn(snac wire.SNAC_0x0E_0x06_ChatChannelMsgToClient, chatID int) string {
-	b, _ := snac.Bytes(wire.ChatTLVSenderInformation)
+func (s ChatProxy) ChatIn(ctx context.Context, snac wire.SNAC_0x0E_0x06_ChatChannelMsgToClient, chatID int, ch chan<- []byte) {
+	b, ok := snac.Bytes(wire.ChatTLVSenderInformation)
+	if !ok {
+		logErr(ctx, s.Logger, errors.New("snac.Bytes: missing wire.ChatTLVSenderInformation"))
+		ch <- cmdInternalSvcErr
+		return
+	}
 
 	u := wire.TLVUserInfo{}
 	err := wire.UnmarshalBE(&u, bytes.NewBuffer(b))
 	if err != nil {
-		panic(err)
+		logErr(ctx, s.Logger, fmt.Errorf("wire.UnmarshalBE: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
 
-	b, _ = snac.Bytes(wire.ChatTLVMessageInfo)
+	b, ok = snac.Bytes(wire.ChatTLVMessageInfo)
+	if !ok {
+		logErr(ctx, s.Logger, errors.New("snac.Bytes: missing wire.ChatTLVMessageInfo"))
+		ch <- cmdInternalSvcErr
+		return
+	}
+
 	text, err := textFromChatMsgBlob(b)
 	if err != nil {
-		panic(err)
+		logErr(ctx, s.Logger, fmt.Errorf("textFromChatMsgBlob: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
 
-	return fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, u.ScreenName, text)
+	ch <- []byte(fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, u.ScreenName, text))
 }
 
-func (s ChatProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, params []string) (string, error) {
+func (s ChatProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, params []string, ch chan<- []byte) {
 	chatID, err := strconv.Atoi(params[1])
 	if err != nil {
-		return "", fmt.Errorf("ChatSend string to int: %w", err)
+		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
+		ch <- cmdInternalSvcErr
+		return
 	}
 
 	me := chatRegistry.Retrieve(chatID)
 	if me == nil {
-		return "", fmt.Errorf("ChatSend session not found: %d", chatID)
+		logErr(ctx, s.Logger, fmt.Errorf("chatRegistry.Retrieve: chat session `%d` not found", chatID))
+		ch <- cmdInternalSvcErr
+		return
 	}
 
 	s.AuthService.SignoutChat(ctx, me)
 	me.Close()
 
-	return fmt.Sprintf("CHAT_LEFT:%d", chatID), nil
+	ch <- []byte(fmt.Sprintf("CHAT_LEFT:%d", chatID))
 }
 
 // textFromChatMsgBlob extracts plaintext message text from HTML located in

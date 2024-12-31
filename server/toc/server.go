@@ -176,10 +176,8 @@ func (rt Server) handleTOCOverHTTP(bufCon bufferedConn, thisCtx context.Context,
 			return errors.New("no user query parameter")
 		}
 
-		prof, err := rt.BOSProxy.Profile(thisCtx, from, user)
-		if err != nil {
-			return fmt.Errorf("BOSProfile failed: %w", err)
-		}
+		reply := rt.BOSProxy.Profile(thisCtx, from, user) // todo handle error codes
+
 		response := http.Response{
 			Status:        http.StatusText(http.StatusOK),
 			StatusCode:    http.StatusOK,
@@ -188,18 +186,18 @@ func (rt Server) handleTOCOverHTTP(bufCon bufferedConn, thisCtx context.Context,
 			ProtoMinor:    0,
 			Header:        make(http.Header),
 			Body:          nil,
-			ContentLength: int64(len(prof)),
+			ContentLength: int64(len(reply)),
 			Close:         true,
 		}
 
 		response.Header.Set("Content-Type", "text/plain")
-		response.Header.Set("Content-Length", fmt.Sprintf("%d", len(prof)))
+		response.Header.Set("Content-Length", fmt.Sprintf("%d", len(reply)))
 
 		if err := response.Write(conn); err != nil {
 			return fmt.Errorf("failed to write response: %w", err)
 		}
 
-		if _, err = conn.Write([]byte(prof)); err != nil {
+		if _, err = conn.Write([]byte(reply)); err != nil {
 			return fmt.Errorf("failed to write response: %w", err)
 		}
 	}
@@ -218,7 +216,7 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 
 	// buffered so that the go routine has room to exit
 	msgCh := make(chan wire.FLAPFrame, 1)
-	errCh := make(chan error, 1)
+	errCh := make(chan error, 1) // todo handle this
 
 	go func() {
 		defer func() {
@@ -250,7 +248,7 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 			msgCh <- clientFrame
 		}
 	}()
-	clientCh := make(chan []byte, 2)
+	toClient := make(chan []byte, 2)
 
 	var sessBOS *state.Session
 	chatRegistry := &ChatRegistry{
@@ -275,7 +273,7 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 		}
 
 		var reply []string
-		sessBOS, reply = rt.BOSProxy.Login(ctx, elems, chatRegistry, clientCh)
+		sessBOS, reply = rt.BOSProxy.Login(ctx, elems, chatRegistry, toClient)
 		for _, m := range reply {
 			if err := clientFlap.SendDataFrame([]byte(m)); err != nil {
 				return fmt.Errorf("failed to send data frame %w", err)
@@ -298,7 +296,7 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 		select {
 		case <-ctx.Done():
 			return nil
-		case msg, ok := <-clientCh:
+		case msg, ok := <-toClient:
 			if !ok {
 				fmt.Println("Closing client connections?")
 				return nil
@@ -324,87 +322,47 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 
 			switch elems[0] {
 			case "toc_send_im":
-				if err := rt.BOSProxy.SendIM(ctx, sessBOS, elems); err != nil {
-					return fmt.Errorf("send IM failed: %w", err)
-				}
+				rt.BOSProxy.SendIM(ctx, sessBOS, elems, toClient)
 			case "toc_init_done":
-				if err := rt.BOSProxy.ClientReady(ctx, sessBOS); err != nil {
-					return fmt.Errorf("client ready notification failed: %w", err)
-				}
+				rt.BOSProxy.ClientReady(ctx, sessBOS, toClient)
 			case "toc_add_buddy":
-				if err := rt.BOSProxy.AddBuddy(ctx, sessBOS, elems); err != nil {
-					return fmt.Errorf("add buddy failed: %w", err)
-				}
+				rt.BOSProxy.AddBuddy(ctx, sessBOS, elems, toClient)
 			case "toc_remove_buddy":
-				if err := rt.BOSProxy.RemoveBuddy(ctx, sessBOS, elems); err != nil {
-					return fmt.Errorf("add buddy failed: %w", err)
-				}
+				rt.BOSProxy.RemoveBuddy(ctx, sessBOS, elems, toClient)
 			case "toc_add_permit":
-				if err := rt.BOSProxy.AddPermit(ctx, sessBOS, elems); err != nil {
-					return fmt.Errorf("add buddy failed: %w", err)
-				}
+				rt.BOSProxy.AddPermit(ctx, sessBOS, elems, toClient)
 			case "toc_add_deny":
-				if err := rt.BOSProxy.AddDeny(ctx, sessBOS, elems); err != nil {
-					return fmt.Errorf("add buddy failed: %w", err)
-				}
+				rt.BOSProxy.AddDeny(ctx, sessBOS, elems, toClient)
 			case "toc_set_away":
-				if err := rt.BOSProxy.SetAway(ctx, sessBOS, elems[1]); err != nil {
-					return fmt.Errorf("set away failed: %w", err)
-				}
+				rt.BOSProxy.SetAway(ctx, sessBOS, elems[1], toClient)
 			case "toc_set_caps":
-				if err := rt.BOSProxy.SetCaps(ctx, sessBOS, elems); err != nil {
-					return fmt.Errorf("set caps failed: %w", err)
-				}
+				rt.BOSProxy.SetCaps(ctx, sessBOS, elems, toClient)
 			case "toc_evil":
-				reply, err := rt.BOSProxy.Evil(ctx, sessBOS, elems)
-				if err != nil {
-					return fmt.Errorf("evil failed: %w", err)
-				}
-				clientCh <- []byte(reply)
+				rt.BOSProxy.Evil(ctx, sessBOS, elems, toClient)
 			case "toc_get_info":
-				if err := clientFlap.SendDataFrame([]byte(fmt.Sprintf("GOTO_URL:profile:info?from=%s&user=%s", "mike", elems[1]))); err != nil {
-					return fmt.Errorf("send toc_get_info failed: %w", err)
-				}
+				rt.BOSProxy.GetInfo(sessBOS, elems, toClient)
 			case "toc_chat_join":
-				if err := rt.ChatProxy.ChatJoin(ctx, sessBOS, chatRegistry, elems, clientCh); err != nil {
-					return fmt.Errorf("ChatJoin: %w", err)
+				if !rt.ChatProxy.ChatJoin(ctx, sessBOS, chatRegistry, elems, toClient) {
+					return nil
 				}
 			case "toc_chat_send":
-				reply, err := rt.ChatProxy.ChatSend(ctx, chatRegistry, elems)
-				if err != nil {
-					return fmt.Errorf("ChatSend: %w", err)
-				}
-				clientCh <- []byte(reply)
+				rt.ChatProxy.ChatSend(ctx, chatRegistry, elems, toClient)
 			case "toc_chat_accept":
-				if err := rt.ChatProxy.ChatAccept(ctx, sessBOS, chatRegistry, elems, clientCh); err != nil {
-					return fmt.Errorf("ChatAccept: %w", err)
+				if !rt.ChatProxy.ChatAccept(ctx, sessBOS, chatRegistry, elems, toClient) {
+					return nil
 				}
 			case "toc_chat_leave":
-				reply, err := rt.ChatProxy.ChatLeave(ctx, chatRegistry, elems)
-				if err != nil {
-					return fmt.Errorf("ChatLeave: %w", err)
-				}
-				clientCh <- []byte(reply)
+				rt.ChatProxy.ChatLeave(ctx, chatRegistry, elems, toClient)
 			case "toc_set_info":
-				if err := rt.BOSProxy.SetInfo(ctx, sessBOS, elems); err != nil {
-					return fmt.Errorf("SetInfo: %w", err)
-				}
+				rt.BOSProxy.SetInfo(ctx, sessBOS, elems, toClient)
 			case "toc_set_dir":
-				if err := rt.BOSProxy.SetDir(ctx, sessBOS, elems); err != nil {
-					return fmt.Errorf("SetDir: %w", err)
-				}
+				rt.BOSProxy.SetDir(ctx, sessBOS, elems, toClient)
 			case "toc_set_idle":
-				if err := rt.BOSProxy.SetIdle(ctx, sessBOS, elems); err != nil {
-					return fmt.Errorf("SetIdle: %w", err)
-				}
+				rt.BOSProxy.SetIdle(ctx, sessBOS, elems, toClient)
 			case "toc_set_config":
-				if err := rt.BOSProxy.SetConfig(ctx, sessBOS, elems); err != nil {
-					return fmt.Errorf("SetConfig: %w", err)
-				}
+				rt.BOSProxy.SetConfig(ctx, sessBOS, elems, toClient)
 			case "toc_chat_invite":
-				if err := rt.BOSProxy.ChatInvite(ctx, sessBOS, chatRegistry, elems); err != nil {
-					return fmt.Errorf("SetConfig: %w", err)
-				}
+				rt.BOSProxy.ChatInvite(ctx, sessBOS, chatRegistry, elems, toClient)
 			}
 		}
 	}
