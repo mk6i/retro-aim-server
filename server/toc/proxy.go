@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -137,7 +138,18 @@ func (b BOSProxy) ClientReady(ctx context.Context, sess *state.Session, ch chan<
 	}
 }
 
-func (b BOSProxy) Profile(ctx context.Context, from, user string) string {
+func (b BOSProxy) Profile(ctx context.Context, request *http.Request, w http.ResponseWriter) {
+	from := request.URL.Query().Get("from")
+	if from == "" {
+		http.Error(w, "user does not exist", http.StatusBadRequest)
+		return
+	}
+	user := request.URL.Query().Get("user")
+	if user == "" {
+		http.Error(w, "user does not exist", http.StatusBadRequest)
+		return
+	}
+
 	sess := state.NewSession()
 	sess.SetIdentScreenName(state.NewIdentScreenName(from))
 	inBody := wire.SNAC_0x02_0x05_LocateUserInfoQuery{
@@ -148,25 +160,27 @@ func (b BOSProxy) Profile(ctx context.Context, from, user string) string {
 	info, err := b.LocateService.UserInfoQuery(ctx, sess, wire.SNACFrame{}, inBody)
 	if err != nil {
 		logErr(ctx, b.Logger, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
-		//ch <- cmdInternalSvcErr
-		return ""
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
 	}
 	if !(info.Frame.FoodGroup == wire.Locate && info.Frame.SubGroup == wire.LocateUserInfoReply) {
 		logErr(ctx, b.Logger, fmt.Errorf("LocateService.UserInfoQuery: expected response SNAC(%d,%d), got SNAC(%d,%d)",
 			wire.Locate, wire.LocateUserInfoReply, info.Frame.FoodGroup, info.Frame.SubGroup))
-		//ch <- cmdInternalSvcErr
-		return ""
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
 	}
 
 	locateInfoReply := info.Body.(wire.SNAC_0x02_0x06_LocateUserInfoReply)
 	profile, hasProf := locateInfoReply.LocateInfo.Bytes(wire.LocateTLVTagsInfoSigData)
 	if !hasProf {
 		logErr(ctx, b.Logger, errors.New("LocateInfo.Bytes: missing wire.LocateTLVTagsInfoSigData"))
-		//ch <- cmdInternalSvcErr
-		return ""
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
 	}
 
-	return string(profile)
+	if _, err = w.Write(profile); err != nil {
+		b.Logger.Error("error writing response", "err", err.Error())
+	}
 }
 
 func logErr(ctx context.Context, logger *slog.Logger, err error) {

@@ -158,6 +158,36 @@ func (rt Server) handleNewConnection(conn net.Conn, ctx context.Context) error {
 	return nil
 }
 
+type readWriter struct {
+	http.Response
+	w           io.Writer
+	wroteHeader bool
+}
+
+func (r *readWriter) Header() http.Header {
+	return r.Response.Header
+}
+
+func (r *readWriter) Write(i []byte) (int, error) {
+	if !r.wroteHeader {
+		r.Response.StatusCode = 200
+		r.Response.ContentLength = int64(len(i))
+		if err := r.Response.Write(r.w); err != nil {
+			return 0, err
+		}
+	}
+	return r.w.Write(i)
+}
+
+func (r *readWriter) WriteHeader(statusCode int) {
+	r.Response.StatusCode = statusCode
+	if err := r.Response.Write(r.w); err != nil {
+		fmt.Println("error?")
+		return
+	}
+	r.wroteHeader = true
+}
+
 func (rt Server) handleTOCOverHTTP(bufCon bufferedConn, thisCtx context.Context, conn net.Conn) error {
 	bufReader := bufio.NewReader(bufCon)
 	request, err := http.ReadRequest(bufReader)
@@ -167,39 +197,20 @@ func (rt Server) handleTOCOverHTTP(bufCon bufferedConn, thisCtx context.Context,
 
 	switch request.URL.Path {
 	case "/info":
-		from := request.URL.Query().Get("from")
-		if from == "" {
-			return errors.New("no from query parameter")
+		rw := &readWriter{
+			w: conn,
+			Response: http.Response{
+				ContentLength: -1, // disables content-length header, which works for hTTP 1.0
+				Proto:         "HTTP/1.0",
+				ProtoMajor:    1,
+				ProtoMinor:    0,
+				Header: http.Header{
+					"Connection": []string{"close"},
+				},
+				Close: false,
+			},
 		}
-		user := request.URL.Query().Get("user")
-		if user == "" {
-			return errors.New("no user query parameter")
-		}
-
-		reply := rt.BOSProxy.Profile(thisCtx, from, user) // todo handle error codes
-
-		response := http.Response{
-			Status:        http.StatusText(http.StatusOK),
-			StatusCode:    http.StatusOK,
-			Proto:         "HTTP/1.0",
-			ProtoMajor:    1,
-			ProtoMinor:    0,
-			Header:        make(http.Header),
-			Body:          nil,
-			ContentLength: int64(len(reply)),
-			Close:         true,
-		}
-
-		response.Header.Set("Content-Type", "text/plain")
-		response.Header.Set("Content-Length", fmt.Sprintf("%d", len(reply)))
-
-		if err := response.Write(conn); err != nil {
-			return fmt.Errorf("failed to write response: %w", err)
-		}
-
-		if _, err = conn.Write([]byte(reply)); err != nil {
-			return fmt.Errorf("failed to write response: %w", err)
-		}
+		rt.BOSProxy.Profile(thisCtx, request, rw) // todo handle error codes
 	}
 	return nil
 }
