@@ -457,6 +457,7 @@ func TOC(deps Container) toc.Server {
 				deps.inMemorySessionManager,
 				deps.inMemorySessionManager,
 			),
+			TOCConfigStore: deps.sqLiteUserStore,
 		},
 		ChatProxy: toc.ChatProxy{
 			AuthService: foodgroup.NewAuthService(

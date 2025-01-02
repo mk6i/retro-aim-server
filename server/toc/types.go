@@ -73,3 +73,8 @@ type BuddyListRegistry interface {
 	RegisterBuddyList(user state.IdentScreenName) error
 	UnregisterBuddyList(user state.IdentScreenName) error
 }
+
+type TOCConfigStore interface {
+	SetTOCConfig(user state.IdentScreenName, config string) error
+	User(screenName state.IdentScreenName) (*state.User, error)
+}

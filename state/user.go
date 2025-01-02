@@ -196,9 +196,11 @@ type User struct {
 	ICQNotes ICQUserNotes
 	// ICQWorkInfo contains the user's professional information, including
 	// their workplace address and job-related details.
-	ICQWorkInfo ICQWorkInfo
-
+	ICQWorkInfo      ICQWorkInfo
 	AIMDirectoryInfo AIMNameAndAddr
+	// TOCConfig is the user's saved server-side info (buddy list, etc) for
+	// on the TOC service.
+	TOCConfig string
 }
 
 // AIMNameAndAddr holds name and address AIM directory information.

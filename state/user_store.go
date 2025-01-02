@@ -422,7 +422,8 @@ func (f SQLiteUserStore) queryUsers(whereClause string, queryParams []any) ([]Us
 			aim_city,
 			aim_nickName,
 			aim_zipCode,
-			aim_address
+			aim_address,
+			tocConfig
 		FROM users
 		WHERE %s
 	`
@@ -513,6 +514,7 @@ func (f SQLiteUserStore) queryUsers(whereClause string, queryParams []any) ([]Us
 			&u.AIMDirectoryInfo.NickName,
 			&u.AIMDirectoryInfo.ZIPCode,
 			&u.AIMDirectoryInfo.Address,
+			&u.TOCConfig,
 		)
 		if err != nil {
 			return nil, err
@@ -1943,4 +1945,30 @@ func (f SQLiteUserStore) InterestList() ([]wire.ODirKeywordListItem, error) {
 	}
 
 	return list, nil
+}
+
+// SetTOCConfig sets the user's TOC config. The TOC config is the server-side
+// buddy list functionality for TOC. This configuration is not available to
+// OSCAR clients.
+func (f SQLiteUserStore) SetTOCConfig(user IdentScreenName, config string) error {
+	q := `
+		UPDATE users
+		SET tocConfig = ?
+		WHERE identScreenName = ?
+	`
+	res, err := f.db.Exec(q,
+		config,
+		user.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+	c, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if c == 0 {
+		return ErrNoUser
+	}
+	return nil
 }

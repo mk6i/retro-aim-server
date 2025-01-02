@@ -34,6 +34,7 @@ type BOSProxy struct {
 	Logger            *slog.Logger
 	OServiceService   OServiceService
 	PermitDenyService PermitDenyService
+	TOCConfigStore    TOCConfigStore
 }
 
 func (b BOSProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, ch chan []byte) {
@@ -127,7 +128,19 @@ func (b BOSProxy) Login(ctx context.Context, elems []string, registry *ChatRegis
 
 	go b.ConsumeIncoming(ctx, sess, registry, ch)
 
-	return sess, []string{"SIGN_ON:TOC1.0", "CONFIG:"}
+	u, err := b.TOCConfigStore.User(sess.IdentScreenName())
+	if err != nil {
+		b.Logger.Error("TOCConfigStore.User retrieval error", "err", err.Error())
+	}
+
+	var cfg string
+	if u != nil {
+		cfg = u.TOCConfig
+	} else {
+		b.Logger.Error("TOCConfigStore.User: user not found")
+	}
+
+	return sess, []string{"SIGN_ON:TOC1.0", fmt.Sprintf("CONFIG:%s", cfg)}
 }
 
 func (b BOSProxy) ClientReady(ctx context.Context, sess *state.Session, ch chan<- []byte) {
@@ -491,6 +504,7 @@ func (b BOSProxy) Eviled(snac wire.SNAC_0x01_0x10_OServiceEvilNotification, ch c
 }
 
 func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+	params[1] = strings.TrimSpace(params[1])
 	config := strings.Split(strings.TrimSpace(params[1]), "\n")
 
 	var cfg [][2]string
@@ -598,6 +612,12 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 
 	if err := b.BuddyService.AddBuddies(ctx, me, snac); err != nil {
 		logErr(ctx, b.Logger, fmt.Errorf("BuddyService.AddBuddies: %w", err))
+		ch <- cmdInternalSvcErr
+		return
+	}
+
+	if err := b.TOCConfigStore.SetTOCConfig(me.IdentScreenName(), params[1]); err != nil {
+		logErr(ctx, b.Logger, fmt.Errorf("TOCConfigStore.SaveTOCConfig: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}

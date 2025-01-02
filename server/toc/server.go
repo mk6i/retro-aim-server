@@ -385,6 +385,8 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 				rt.BOSProxy.SetConfig(ctx, sessBOS, elems, toClient)
 			case "toc_chat_invite":
 				rt.BOSProxy.ChatInvite(ctx, sessBOS, chatRegistry, elems, toClient)
+			default:
+				rt.Logger.Error(fmt.Sprintf("unsupported TOC command %s", elems[0]))
 			}
 		}
 	}
