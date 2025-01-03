@@ -400,7 +400,7 @@ type SNAC_0x02_0x0A_LocateSetDirReply struct {
 }
 
 type SNAC_0x02_0x0B_LocateGetDirInfo struct {
-	WatcherScreenNames string `oscar:"len_prefix=uint8"`
+	ScreenName string `oscar:"len_prefix=uint8"`
 }
 
 type SNAC_0x02_0x0C_LocateGetDirReply struct {

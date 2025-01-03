@@ -210,7 +210,37 @@ func (rt Server) handleTOCOverHTTP(bufCon bufferedConn, thisCtx context.Context,
 				Close: false,
 			},
 		}
-		rt.BOSProxy.Profile(thisCtx, request, rw) // todo handle error codes
+		rt.BOSProxy.Profile(thisCtx, request, rw)
+	case "/dir_info":
+		rw := &readWriter{
+			w: conn,
+			Response: http.Response{
+				ContentLength: -1, // disables content-length header, which works for hTTP 1.0
+				Proto:         "HTTP/1.0",
+				ProtoMajor:    1,
+				ProtoMinor:    0,
+				Header: http.Header{
+					"Connection": []string{"close"},
+				},
+				Close: false,
+			},
+		}
+		rt.BOSProxy.DirInfoHTTP(thisCtx, request, rw)
+	case "/dir_search":
+		rw := &readWriter{
+			w: conn,
+			Response: http.Response{
+				ContentLength: -1, // disables content-length header, which works for hTTP 1.0
+				Proto:         "HTTP/1.0",
+				ProtoMajor:    1,
+				ProtoMinor:    0,
+				Header: http.Header{
+					"Connection": []string{"close"},
+				},
+				Close: false,
+			},
+		}
+		rt.BOSProxy.DirSearchHTTP(thisCtx, request, rw)
 	}
 	return nil
 }
@@ -362,7 +392,7 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 			case "toc_evil":
 				rt.BOSProxy.Evil(ctx, sessBOS, elems, toClient)
 			case "toc_get_info":
-				rt.BOSProxy.GetInfo(sessBOS, elems, toClient)
+				rt.BOSProxy.GetInfoURL(sessBOS, elems, toClient)
 			case "toc_chat_join":
 				if !rt.ChatProxy.ChatJoin(ctx, sessBOS, chatRegistry, elems, toClient) {
 					return nil
@@ -385,6 +415,10 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 				rt.BOSProxy.SetConfig(ctx, sessBOS, elems, toClient)
 			case "toc_chat_invite":
 				rt.BOSProxy.ChatInvite(ctx, sessBOS, chatRegistry, elems, toClient)
+			case "toc_dir_search":
+				rt.BOSProxy.GetDirSearchURL(elems, toClient)
+			case "toc_get_dir":
+				rt.BOSProxy.GetDirURL(elems, toClient)
 			default:
 				rt.Logger.Error(fmt.Sprintf("unsupported TOC command %s", elems[0]))
 			}

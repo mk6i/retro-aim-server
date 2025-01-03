@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -400,6 +401,35 @@ func (b BOSProxy) SetDir(ctx context.Context, me *state.Session, params []string
 	}
 }
 
+func (b BOSProxy) GetDirURL(params []string, ch chan<- []byte) {
+	ch <- []byte(fmt.Sprintf("GOTO_URL:directory info:dir_info?user=%s", params[1]))
+}
+
+func (b BOSProxy) GetDirSearchURL(params []string, ch chan<- []byte) {
+	// Mike:Haha:::::
+	params = strings.Split(params[1], ":")
+	labels := []string{
+		"first_name",
+		"middle_name",
+		"last_name",
+		"maiden_name",
+		"city",
+		"state",
+		"country",
+		"email",
+	}
+
+	queryParams := url.Values{}
+	i := 0
+	for i < len(params) && i < len(labels) {
+		if len(params[i]) > 0 {
+			queryParams.Add(labels[i], params[i])
+		}
+		i++
+	}
+	ch <- []byte(fmt.Sprintf("GOTO_URL:search results:dir_search?user=%s", queryParams.Encode()))
+}
+
 func (b BOSProxy) SetIdle(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	time, err := strconv.Atoi(params[1])
 	if err != nil {
@@ -680,8 +710,154 @@ func (b BOSProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegistr
 	}
 }
 
-func (b BOSProxy) GetInfo(bos *state.Session, elems []string, ch chan<- []byte) {
+func (b BOSProxy) GetInfoURL(bos *state.Session, elems []string, ch chan<- []byte) {
 	ch <- []byte(fmt.Sprintf("GOTO_URL:profile:info?from=%s&user=%s", bos.IdentScreenName().String(), elems[1]))
+}
+
+func (b BOSProxy) DirInfoHTTP(ctx context.Context, request *http.Request, w *readWriter) {
+	user := request.URL.Query().Get("user")
+	if user == "" {
+		http.Error(w, "user does not exist", http.StatusBadRequest)
+		return
+	}
+
+	inBody := wire.SNAC_0x02_0x0B_LocateGetDirInfo{
+		ScreenName: user,
+	}
+
+	info, err := b.LocateService.DirInfo(ctx, wire.SNACFrame{}, inBody)
+	if err != nil {
+		logErr(ctx, b.Logger, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if !(info.Frame.FoodGroup == wire.Locate && info.Frame.SubGroup == wire.LocateGetDirReply) {
+		logErr(ctx, b.Logger, fmt.Errorf("LocateService.DirInfo: expected response SNAC(%d,%d), got SNAC(%d,%d)",
+			wire.Locate, wire.LocateGetDirReply, info.Frame.FoodGroup, info.Frame.SubGroup))
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	locateInfoReply := info.Body.(wire.SNAC_0x02_0x0C_LocateGetDirReply)
+
+	if len(locateInfoReply.TLVList) == 0 {
+		if _, err = w.Write([]byte("no user directory info")); err != nil {
+			b.Logger.Error("error writing response", "err", err.Error())
+		}
+		return
+	}
+
+	out := []byte("<html><body><table>")
+	if firstName, ok := locateInfoReply.String(wire.ODirTLVFirstName); ok {
+		out = append(out, "<tr><td>First Name</td><td>"+firstName+"</td></tr>"...)
+	}
+	if lastName, ok := locateInfoReply.String(wire.ODirTLVLastName); ok {
+		out = append(out, "<tr><td>Last Name</td><td>"+lastName+"</td></tr>"...)
+	}
+	if middleName, ok := locateInfoReply.String(wire.ODirTLVMiddleName); ok {
+		out = append(out, "<tr><td>Middle Name</td><td>"+middleName+"</td></tr>"...)
+	}
+	if maidName, ok := locateInfoReply.String(wire.ODirTLVMaidenName); ok {
+		out = append(out, "<tr><td>Maiden Name</td><td>"+maidName+"</td></tr>"...)
+	}
+	if country, ok := locateInfoReply.String(wire.ODirTLVCountry); ok {
+		out = append(out, "<tr><td>Country</td><td>"+country+"</td></tr>"...)
+	}
+	if state, ok := locateInfoReply.String(wire.ODirTLVState); ok {
+		out = append(out, "<tr><td>State</td><td>"+state+"</td></tr>"...)
+	}
+	if city, ok := locateInfoReply.String(wire.ODirTLVCity); ok {
+		out = append(out, "<tr><td>City</td><td>"+city+"</td></tr>"...)
+	}
+	if nickName, ok := locateInfoReply.String(wire.ODirTLVNickName); ok {
+		out = append(out, "<tr><td>Nick Name</td><td>"+nickName+"</td></tr>"...)
+	}
+	if zip, ok := locateInfoReply.String(wire.ODirTLVZIP); ok {
+		out = append(out, "<tr><td>ZIP Code</td><td>"+zip+"</td></tr>"...)
+	}
+	if addr, ok := locateInfoReply.String(wire.ODirTLVAddress); ok {
+		out = append(out, "<tr><td>Address</td><td>"+addr+"</td></tr>"...)
+	}
+	out = append(out, "</table></body></html>"...)
+
+	if _, err = w.Write(out); err != nil {
+		b.Logger.Error("error writing response", "err", err.Error())
+	}
+}
+
+func (b BOSProxy) GetInfoURL(bos *state.Session, elems []string, ch chan<- []byte) {
+	ch <- []byte(fmt.Sprintf("GOTO_URL:profile:info?from=%s&user=%s", bos.IdentScreenName().String(), elems[1]))
+}
+
+func (b BOSProxy) DirSearchHTTP(ctx context.Context, request *http.Request, w *readWriter) {
+	user := request.URL.Query().Get("user")
+	if user == "" {
+		http.Error(w, "user does not exist", http.StatusBadRequest)
+		return
+	}
+
+	inBody := wire.SNAC_0x02_0x0B_LocateGetDirInfo{
+		ScreenName: user,
+	}
+
+	info, err := b.LocateService.DirInfo(ctx, wire.SNACFrame{}, inBody)
+	if err != nil {
+		logErr(ctx, b.Logger, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if !(info.Frame.FoodGroup == wire.Locate && info.Frame.SubGroup == wire.LocateGetDirReply) {
+		logErr(ctx, b.Logger, fmt.Errorf("LocateService.DirInfo: expected response SNAC(%d,%d), got SNAC(%d,%d)",
+			wire.Locate, wire.LocateGetDirReply, info.Frame.FoodGroup, info.Frame.SubGroup))
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	locateInfoReply := info.Body.(wire.SNAC_0x02_0x0C_LocateGetDirReply)
+
+	if len(locateInfoReply.TLVList) == 0 {
+		if _, err = w.Write([]byte("no user directory info")); err != nil {
+			b.Logger.Error("error writing response", "err", err.Error())
+		}
+		return
+	}
+
+	out := []byte("<html><body><table>")
+	if firstName, ok := locateInfoReply.String(wire.ODirTLVFirstName); ok {
+		out = append(out, "<tr><td>First Name</td><td>"+firstName+"</td></tr>"...)
+	}
+	if lastName, ok := locateInfoReply.String(wire.ODirTLVLastName); ok {
+		out = append(out, "<tr><td>Last Name</td><td>"+lastName+"</td></tr>"...)
+	}
+	if middleName, ok := locateInfoReply.String(wire.ODirTLVMiddleName); ok {
+		out = append(out, "<tr><td>Middle Name</td><td>"+middleName+"</td></tr>"...)
+	}
+	if maidName, ok := locateInfoReply.String(wire.ODirTLVMaidenName); ok {
+		out = append(out, "<tr><td>Maiden Name</td><td>"+maidName+"</td></tr>"...)
+	}
+	if country, ok := locateInfoReply.String(wire.ODirTLVCountry); ok {
+		out = append(out, "<tr><td>Country</td><td>"+country+"</td></tr>"...)
+	}
+	if state, ok := locateInfoReply.String(wire.ODirTLVState); ok {
+		out = append(out, "<tr><td>State</td><td>"+state+"</td></tr>"...)
+	}
+	if city, ok := locateInfoReply.String(wire.ODirTLVCity); ok {
+		out = append(out, "<tr><td>City</td><td>"+city+"</td></tr>"...)
+	}
+	if nickName, ok := locateInfoReply.String(wire.ODirTLVNickName); ok {
+		out = append(out, "<tr><td>Nick Name</td><td>"+nickName+"</td></tr>"...)
+	}
+	if zip, ok := locateInfoReply.String(wire.ODirTLVZIP); ok {
+		out = append(out, "<tr><td>ZIP Code</td><td>"+zip+"</td></tr>"...)
+	}
+	if addr, ok := locateInfoReply.String(wire.ODirTLVAddress); ok {
+		out = append(out, "<tr><td>Address</td><td>"+addr+"</td></tr>"...)
+	}
+	out = append(out, "</table></body></html>"...)
+
+	if _, err = w.Write(out); err != nil {
+		b.Logger.Error("error writing response", "err", err.Error())
+	}
 }
 
 type ChatProxy struct {
