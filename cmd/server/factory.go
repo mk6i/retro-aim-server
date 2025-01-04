@@ -429,6 +429,7 @@ func TOC(deps Container) toc.Server {
 				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
 			),
+			DirSearchService: foodgroup.NewODirService(logger, deps.sqLiteUserStore),
 			ICBMService: foodgroup.NewICBMService(
 				deps.inMemorySessionManager,
 				deps.sqLiteUserStore,
