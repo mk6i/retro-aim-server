@@ -27,23 +27,25 @@ var (
 	capChat           = uuid.MustParse("748F2420-6287-11D1-8222-444553540000")
 )
 
-type BOSProxy struct {
-	AuthService       AuthService
-	BuddyListRegistry BuddyListRegistry
-	BuddyService      BuddyService
-	ChatNavService    ChatNavService
-	DirSearchService  DirSearchService
-	ICBMService       ICBMService
-	LocateService     LocateService
-	Logger            *slog.Logger
-	OServiceService   OServiceService
-	PermitDenyService PermitDenyService
-	TOCConfigStore    TOCConfigStore
+type OSCARProxy struct {
+	AuthService         AuthService
+	BuddyListRegistry   BuddyListRegistry
+	BuddyService        BuddyService
+	ChatNavService      ChatNavService
+	ChatService         ChatService
+	DirSearchService    DirSearchService
+	ICBMService         ICBMService
+	LocateService       LocateService
+	Logger              *slog.Logger
+	OServiceServiceBOS  OServiceService
+	OServiceServiceChat OServiceService
+	PermitDenyService   PermitDenyService
+	TOCConfigStore      TOCConfigStore
 }
 
-func (b BOSProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, ch chan []byte) {
+func (s OSCARProxy) ConsumeIncomingBOS(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, ch chan []byte) {
 	defer func() {
-		fmt.Println("closing BOS ConsumeIncoming")
+		fmt.Println("closing BOS ConsumeIncomingChat")
 	}()
 	for {
 		select {
@@ -60,38 +62,38 @@ func (b BOSProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatRe
 				switch inFrame.SubGroup {
 				case wire.BuddyArrived:
 					// todo make these type assertions safe?
-					b.UpdateBuddyArrival(snac.Body.(wire.SNAC_0x03_0x0B_BuddyArrived), ch)
+					s.UpdateBuddyArrival(snac.Body.(wire.SNAC_0x03_0x0B_BuddyArrived), ch)
 				case wire.BuddyDeparted:
-					b.UpdateBuddyDeparted(snac.Body.(wire.SNAC_0x03_0x0C_BuddyDeparted), ch)
+					s.UpdateBuddyDeparted(snac.Body.(wire.SNAC_0x03_0x0C_BuddyDeparted), ch)
 				default:
-					b.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
+					s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
 				}
 			case wire.ICBM:
 				switch inFrame.SubGroup {
 				case wire.ICBMChannelMsgToClient:
-					b.IMIn(ctx, chatRegistry, snac.Body.(wire.SNAC_0x04_0x07_ICBMChannelMsgToClient), ch)
+					s.IMIn(ctx, chatRegistry, snac.Body.(wire.SNAC_0x04_0x07_ICBMChannelMsgToClient), ch)
 				default:
-					b.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
+					s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
 				}
 			case wire.OService:
 				switch inFrame.SubGroup {
 				case wire.OServiceEvilNotification:
-					b.Eviled(snac.Body.(wire.SNAC_0x01_0x10_OServiceEvilNotification), ch)
+					s.Eviled(snac.Body.(wire.SNAC_0x01_0x10_OServiceEvilNotification), ch)
 				default:
-					b.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
+					s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
 				}
 			default:
-				b.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
+				s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
 			}
 		}
 	}
 }
 
-func (b BOSProxy) Login(ctx context.Context, elems []string, registry *ChatRegistry, ch chan []byte) (*state.Session, []string) {
+func (s OSCARProxy) Login(ctx context.Context, elems []string, registry *ChatRegistry, ch chan []byte) (*state.Session, []string) {
 	username := elems[3]
 	passwordHash, err := hex.DecodeString(elems[4][2:])
 	if err != nil {
-		b.Logger.Error("decode password hash failed", "err", err.Error())
+		s.Logger.Error("decode password hash failed", "err", err.Error())
 		return nil, []string{"ERROR:989:internal server error"}
 	}
 
@@ -99,63 +101,63 @@ func (b BOSProxy) Login(ctx context.Context, elems []string, registry *ChatRegis
 	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsScreenName, username))
 	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, passwordHash))
 
-	block, err := b.AuthService.FLAPLogin(signonFrame, state.NewStubUser)
+	block, err := s.AuthService.FLAPLogin(signonFrame, state.NewStubUser)
 	if err != nil {
-		b.Logger.Error("FLAP login failed", "err", err.Error())
+		s.Logger.Error("FLAP login failed", "err", err.Error())
 		return nil, []string{"ERROR:989:internal server error"}
 	}
 
 	if block.HasTag(wire.LoginTLVTagsErrorSubcode) {
-		b.Logger.Debug("login failed")
+		s.Logger.Debug("login failed")
 		return nil, []string{"ERROR:980"} // bad username/password
 	}
 
 	authCookie, ok := block.Bytes(wire.OServiceTLVTagsLoginCookie)
 	if !ok {
-		b.Logger.Error("unable to get session id from payload")
+		s.Logger.Error("unable to get session id from payload")
 		return nil, []string{"ERROR:989:internal server error"}
 	}
 
-	sess, err := b.AuthService.RegisterBOSSession(ctx, authCookie)
+	sess, err := s.AuthService.RegisterBOSSession(ctx, authCookie)
 	if err != nil {
-		b.Logger.Error("register BOS session failed", "err", err.Error())
+		s.Logger.Error("register BOS session failed", "err", err.Error())
 		return nil, []string{"ERROR:989:internal server error"}
 	}
 
 	// set chat capability so that... tk
 	sess.SetCaps([][16]byte{capChat})
 
-	if err := b.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
-		b.Logger.Error("unable to init buddy list", "err", err.Error())
+	if err := s.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
+		s.Logger.Error("unable to init buddy list", "err", err.Error())
 		return nil, []string{"ERROR:989:internal server error"}
 	}
 
-	go b.ConsumeIncoming(ctx, sess, registry, ch)
+	go s.ConsumeIncomingBOS(ctx, sess, registry, ch)
 
-	u, err := b.TOCConfigStore.User(sess.IdentScreenName())
+	u, err := s.TOCConfigStore.User(sess.IdentScreenName())
 	if err != nil {
-		b.Logger.Error("TOCConfigStore.User retrieval error", "err", err.Error())
+		s.Logger.Error("TOCConfigStore.User retrieval error", "err", err.Error())
 	}
 
 	var cfg string
 	if u != nil {
 		cfg = u.TOCConfig
 	} else {
-		b.Logger.Error("TOCConfigStore.User: user not found")
+		s.Logger.Error("TOCConfigStore.User: user not found")
 	}
 
 	return sess, []string{"SIGN_ON:TOC1.0", fmt.Sprintf("CONFIG:%s", cfg)}
 }
 
-func (b BOSProxy) ClientReady(ctx context.Context, sess *state.Session, ch chan<- []byte) {
-	if err := b.OServiceService.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("OServiceService.ClientOnliney: %w", err))
+func (s OSCARProxy) BOSReady(ctx context.Context, sess *state.Session, ch chan<- []byte) {
+	if err := s.OServiceServiceBOS.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceBOS.ClientOnliney: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) Profile(ctx context.Context, request *http.Request, w http.ResponseWriter) {
+func (s OSCARProxy) Profile(ctx context.Context, request *http.Request, w http.ResponseWriter) {
 	from := request.URL.Query().Get("from")
 	if from == "" {
 		http.Error(w, "user does not exist", http.StatusBadRequest)
@@ -174,14 +176,14 @@ func (b BOSProxy) Profile(ctx context.Context, request *http.Request, w http.Res
 		ScreenName: user,
 	}
 
-	info, err := b.LocateService.UserInfoQuery(ctx, sess, wire.SNACFrame{}, inBody)
+	info, err := s.LocateService.UserInfoQuery(ctx, sess, wire.SNACFrame{}, inBody)
 	if err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
+		logErr(ctx, s.Logger, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if !(info.Frame.FoodGroup == wire.Locate && info.Frame.SubGroup == wire.LocateUserInfoReply) {
-		logErr(ctx, b.Logger, fmt.Errorf("LocateService.UserInfoQuery: expected response SNAC(%d,%d), got SNAC(%d,%d)",
+		logErr(ctx, s.Logger, fmt.Errorf("LocateService.UserInfoQuery: expected response SNAC(%d,%d), got SNAC(%d,%d)",
 			wire.Locate, wire.LocateUserInfoReply, info.Frame.FoodGroup, info.Frame.SubGroup))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -190,24 +192,20 @@ func (b BOSProxy) Profile(ctx context.Context, request *http.Request, w http.Res
 	locateInfoReply := info.Body.(wire.SNAC_0x02_0x06_LocateUserInfoReply)
 	profile, hasProf := locateInfoReply.LocateInfo.Bytes(wire.LocateTLVTagsInfoSigData)
 	if !hasProf {
-		logErr(ctx, b.Logger, errors.New("LocateInfo.Bytes: missing wire.LocateTLVTagsInfoSigData"))
+		logErr(ctx, s.Logger, errors.New("LocateInfo.Bytes: missing wire.LocateTLVTagsInfoSigData"))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	if _, err = w.Write(profile); err != nil {
-		b.Logger.Error("error writing response", "err", err.Error())
+		s.Logger.Error("error writing response", "err", err.Error())
 	}
 }
 
-func logErr(ctx context.Context, logger *slog.Logger, err error) {
-	logger.ErrorContext(ctx, "internal service error", "err", err.Error())
-}
-
-func (b BOSProxy) SendIM(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) SendIM(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	frags, err := wire.ICBMFragmentList(params[2])
 	if err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("wire.ICBMFragmentList: %w", err))
+		logErr(ctx, s.Logger, fmt.Errorf("wire.ICBMFragmentList: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
@@ -227,14 +225,14 @@ func (b BOSProxy) SendIM(ctx context.Context, me *state.Session, params []string
 		},
 	}
 
-	if _, err := b.ICBMService.ChannelMsgToHost(ctx, me, frame, snac); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
+	if _, err := s.ICBMService.ChannelMsgToHost(ctx, me, frame, snac); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) AddBuddy(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	buddies := params[1:]
 
 	snac := wire.SNAC_0x03_0x04_BuddyAddBuddies{}
@@ -244,14 +242,14 @@ func (b BOSProxy) AddBuddy(ctx context.Context, me *state.Session, params []stri
 		}{ScreenName: sn})
 	}
 
-	if err := b.BuddyService.AddBuddies(ctx, me, snac); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("BuddyService.AddBuddies: %w", err))
+	if err := s.BuddyService.AddBuddies(ctx, me, snac); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("BuddyService.AddBuddies: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) RemoveBuddy(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	buddies := params[1:]
 
 	snac := wire.SNAC_0x03_0x05_BuddyDelBuddies{}
@@ -261,14 +259,14 @@ func (b BOSProxy) RemoveBuddy(ctx context.Context, me *state.Session, params []s
 		}{ScreenName: sn})
 	}
 
-	if err := b.BuddyService.DelBuddies(ctx, me, snac); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("BuddyService.DelBuddies: %w", err))
+	if err := s.BuddyService.DelBuddies(ctx, me, snac); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("BuddyService.DelBuddies: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) AddPermit(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	buddies := params[1:]
 
 	snac := wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{}
@@ -278,14 +276,14 @@ func (b BOSProxy) AddPermit(ctx context.Context, me *state.Session, params []str
 		}{ScreenName: sn})
 	}
 
-	if err := b.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("PermitDenyService.AddPermListEntries: %w", err))
+	if err := s.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("PermitDenyService.AddPermListEntries: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) AddDeny(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	buddies := params[1:]
 
 	snac := wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{}
@@ -295,21 +293,21 @@ func (b BOSProxy) AddDeny(ctx context.Context, me *state.Session, params []strin
 		}{ScreenName: sn})
 	}
 
-	if err := b.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
+	if err := s.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) SetCaps(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	params = params[1:]
 
 	caps := make([]uuid.UUID, 0, len(params))
 	for _, capStr := range params {
 		uid, err := uuid.Parse(capStr)
 		if err != nil {
-			logErr(ctx, b.Logger, fmt.Errorf("UUID.Parse: %w", err))
+			logErr(ctx, s.Logger, fmt.Errorf("UUID.Parse: %w", err))
 			ch <- cmdInternalSvcErr
 			return
 		}
@@ -325,14 +323,14 @@ func (b BOSProxy) SetCaps(ctx context.Context, me *state.Session, params []strin
 		},
 	}
 
-	if err := b.LocateService.SetInfo(ctx, me, snac); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("LocateService.SetInfo: %w", err))
+	if err := s.LocateService.SetInfo(ctx, me, snac); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("LocateService.SetInfo: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) SetAway(ctx context.Context, me *state.Session, awayMessage string, ch chan<- []byte) {
+func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, awayMessage string, ch chan<- []byte) {
 	snac := wire.SNAC_0x02_0x04_LocateSetInfo{
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
@@ -341,14 +339,14 @@ func (b BOSProxy) SetAway(ctx context.Context, me *state.Session, awayMessage st
 		},
 	}
 
-	if err := b.LocateService.SetInfo(ctx, me, snac); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("LocateService.SetInfo: %w", err))
+	if err := s.LocateService.SetInfo(ctx, me, snac); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("LocateService.SetInfo: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) Evil(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	snac := wire.SNAC_0x04_0x08_ICBMEvilRequest{
 		SendAs:     0,
 		ScreenName: params[1],
@@ -356,9 +354,9 @@ func (b BOSProxy) Evil(ctx context.Context, me *state.Session, params []string, 
 	if params[2] == "anon" {
 		snac.SendAs = 1
 	}
-	response, err := b.ICBMService.EvilRequest(ctx, me, wire.SNACFrame{}, snac)
+	response, err := s.ICBMService.EvilRequest(ctx, me, wire.SNACFrame{}, snac)
 	if err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("ICBMService.EvilRequest: %w", err))
+		logErr(ctx, s.Logger, fmt.Errorf("ICBMService.EvilRequest: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
@@ -366,7 +364,7 @@ func (b BOSProxy) Evil(ctx context.Context, me *state.Session, params []string, 
 	ch <- []byte(fmt.Sprintf("EVILED:%d:%s", response.Body.(wire.SNAC_0x04_0x09_ICBMEvilReply).UpdatedEvilValue, params[1]))
 }
 
-func (b BOSProxy) SetInfo(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) SetInfo(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	snac := wire.SNAC_0x02_0x04_LocateSetInfo{
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
@@ -374,14 +372,14 @@ func (b BOSProxy) SetInfo(ctx context.Context, me *state.Session, params []strin
 			},
 		},
 	}
-	if err := b.LocateService.SetInfo(ctx, me, snac); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("LocateService.SetInfo: %w", err))
+	if err := s.LocateService.SetInfo(ctx, me, snac); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("LocateService.SetInfo: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) SetDir(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	info := strings.Split(params[1], ":")
 
 	snac := wire.SNAC_0x02_0x09_LocateSetDirInfo{
@@ -397,18 +395,18 @@ func (b BOSProxy) SetDir(ctx context.Context, me *state.Session, params []string
 			},
 		},
 	}
-	if _, err := b.LocateService.SetDirInfo(ctx, me, wire.SNACFrame{}, snac); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("LocateService.SetDirInfo: %w", err))
+	if _, err := s.LocateService.SetDirInfo(ctx, me, wire.SNACFrame{}, snac); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("LocateService.SetDirInfo: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) GetDirURL(params []string, ch chan<- []byte) {
+func (s OSCARProxy) GetDirURL(params []string, ch chan<- []byte) {
 	ch <- []byte(fmt.Sprintf("GOTO_URL:directory info:dir_info?user=%s", params[1]))
 }
 
-func (b BOSProxy) GetDirSearchURL(params []string, ch chan<- []byte) {
+func (s OSCARProxy) GetDirSearchURL(params []string, ch chan<- []byte) {
 	params = strings.Split(params[1], ":")
 	labels := []string{
 		"first_name",
@@ -419,6 +417,9 @@ func (b BOSProxy) GetDirSearchURL(params []string, ch chan<- []byte) {
 		"state",
 		"country",
 		"email",
+		"nop", // unused placeholder
+		"nop",
+		"keyword",
 	}
 
 	queryParams := url.Values{}
@@ -432,10 +433,10 @@ func (b BOSProxy) GetDirSearchURL(params []string, ch chan<- []byte) {
 	ch <- []byte(fmt.Sprintf("GOTO_URL:search results:dir_search?%s", queryParams.Encode()))
 }
 
-func (b BOSProxy) SetIdle(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) SetIdle(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	time, err := strconv.Atoi(params[1])
 	if err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("strconv.Atoi: %w", err))
+		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
@@ -443,14 +444,14 @@ func (b BOSProxy) SetIdle(ctx context.Context, me *state.Session, params []strin
 	snac := wire.SNAC_0x01_0x11_OServiceIdleNotification{
 		IdleTime: uint32(time),
 	}
-	if err := b.OServiceService.IdleNotification(ctx, me, snac); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("OServiceService.IdleNotification: %w", err))
+	if err := s.OServiceServiceBOS.IdleNotification(ctx, me, snac); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceBOS.IdleNotification: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) UpdateBuddyArrival(snac wire.SNAC_0x03_0x0B_BuddyArrived, ch chan<- []byte) {
+func (s OSCARProxy) UpdateBuddyArrival(snac wire.SNAC_0x03_0x0B_BuddyArrived, ch chan<- []byte) {
 	online, _ := snac.Uint32BE(wire.OServiceUserInfoSignonTOD)
 	idle, _ := snac.Uint16BE(wire.OServiceUserInfoIdleTime)
 	uc := [3]string{" ", "O", " "}
@@ -460,7 +461,7 @@ func (b BOSProxy) UpdateBuddyArrival(snac wire.SNAC_0x03_0x0B_BuddyArrived, ch c
 	ch <- []byte(fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "T", snac.WarningLevel, online, idle, uc))
 }
 
-func (b BOSProxy) UpdateBuddyDeparted(snac wire.SNAC_0x03_0x0C_BuddyDeparted, ch chan<- []byte) {
+func (s OSCARProxy) UpdateBuddyDeparted(snac wire.SNAC_0x03_0x0C_BuddyDeparted, ch chan<- []byte) {
 	online, _ := snac.Uint32BE(wire.OServiceUserInfoSignonTOD)
 	idle, _ := snac.Uint16BE(wire.OServiceUserInfoIdleTime)
 	uc := [3]string{" ", "O", " "}
@@ -471,37 +472,37 @@ func (b BOSProxy) UpdateBuddyDeparted(snac wire.SNAC_0x03_0x0C_BuddyDeparted, ch
 	ch <- []byte(fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "F", snac.WarningLevel, online, idle, class))
 }
 
-func (b BOSProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient, ch chan<- []byte) {
+func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient, ch chan<- []byte) {
 	if snac.ChannelID == wire.ICBMChannelRendezvous {
 		rdinfo, has := snac.TLVRestBlock.Bytes(0x05)
 		if !has {
-			logErr(ctx, b.Logger, errors.New("TLVRestBlock.Bytes: missing rendezvous block"))
+			logErr(ctx, s.Logger, errors.New("TLVRestBlock.Bytes: missing rendezvous block"))
 			ch <- cmdInternalSvcErr
 			return
 		}
 		frag := wire.ICBMCh2Fragment{}
 		if err := wire.UnmarshalBE(&frag, bytes.NewBuffer(rdinfo)); err != nil {
-			logErr(ctx, b.Logger, fmt.Errorf("wire.UnmarshalBE: %w", err))
+			logErr(ctx, s.Logger, fmt.Errorf("wire.UnmarshalBE: %w", err))
 			ch <- cmdInternalSvcErr
 			return
 		}
 		prompt, ok := frag.Bytes(12)
 		if !ok {
-			logErr(ctx, b.Logger, errors.New("frag.Bytes: missing prompt"))
+			logErr(ctx, s.Logger, errors.New("frag.Bytes: missing prompt"))
 			ch <- cmdInternalSvcErr
 			return
 		}
 
 		svcData, ok := frag.Bytes(10001)
 		if !ok {
-			logErr(ctx, b.Logger, errors.New("frag.Bytes: missing room info"))
+			logErr(ctx, s.Logger, errors.New("frag.Bytes: missing room info"))
 			ch <- cmdInternalSvcErr
 			return
 		}
 
 		roomInfo := wire.ICBMRoomInfo{}
 		if err := wire.UnmarshalBE(&roomInfo, bytes.NewBuffer(svcData)); err != nil {
-			logErr(ctx, b.Logger, fmt.Errorf("wire.UnmarshalBE: %w", err))
+			logErr(ctx, s.Logger, fmt.Errorf("wire.UnmarshalBE: %w", err))
 			ch <- cmdInternalSvcErr
 			return
 		}
@@ -515,19 +516,19 @@ func (b BOSProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac wir
 
 	buf, ok := snac.TLVRestBlock.Bytes(wire.ICBMTLVAOLIMData)
 	if !ok {
-		logErr(ctx, b.Logger, errors.New("TLVRestBlock.Bytes: missing wire.ICBMTLVAOLIMData"))
+		logErr(ctx, s.Logger, errors.New("TLVRestBlock.Bytes: missing wire.ICBMTLVAOLIMData"))
 		return
 	}
 	txt, err := wire.UnmarshalICBMMessageText(buf)
 	if err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("wire.UnmarshalICBMMessageText: %w", err))
+		logErr(ctx, s.Logger, fmt.Errorf("wire.UnmarshalICBMMessageText: %w", err))
 		return
 	}
 	ch <- []byte(fmt.Sprintf("IM_IN:%s:F:%s", snac.ScreenName, txt))
 	return
 }
 
-func (b BOSProxy) Eviled(snac wire.SNAC_0x01_0x10_OServiceEvilNotification, ch chan<- []byte) {
+func (s OSCARProxy) Eviled(snac wire.SNAC_0x01_0x10_OServiceEvilNotification, ch chan<- []byte) {
 	who := ""
 	if snac.Snitcher != nil {
 		who = snac.Snitcher.ScreenName
@@ -535,7 +536,7 @@ func (b BOSProxy) Eviled(snac wire.SNAC_0x01_0x10_OServiceEvilNotification, ch c
 	ch <- []byte(fmt.Sprintf("EVILED:%d:%s", snac.NewEvil, who))
 }
 
-func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	params[1] = strings.TrimSpace(params[1])
 	config := strings.Split(strings.TrimSpace(params[1]), "\n")
 
@@ -543,7 +544,7 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 	for _, item := range config {
 		parts := strings.Split(item, " ")
 		if len(parts) != 2 {
-			b.Logger.Info("invalid config item", "item", item, "user", me.DisplayScreenName())
+			s.Logger.Info("invalid config item", "item", item, "user", me.DisplayScreenName())
 			continue
 		}
 		cfg = append(cfg, [2]string{parts[0], parts[1]})
@@ -564,7 +565,7 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 		case "4":
 			mode = wire.FeedbagPDModeDenySome
 		default:
-			b.Logger.Info("config: invalid mode", "val", c[1], "user", me.DisplayScreenName())
+			s.Logger.Info("config: invalid mode", "val", c[1], "user", me.DisplayScreenName())
 		}
 		//break todo add
 	}
@@ -580,8 +581,8 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 				},
 			},
 		}
-		if err := b.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
-			logErr(ctx, b.Logger, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
+		if err := s.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
+			logErr(ctx, s.Logger, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
 			ch <- cmdInternalSvcErr
 			return
 		}
@@ -595,8 +596,8 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 				},
 			},
 		}
-		if err := b.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
-			logErr(ctx, b.Logger, fmt.Errorf("PermitDenyService.AddPermListEntrie: %w", err))
+		if err := s.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
+			logErr(ctx, s.Logger, fmt.Errorf("PermitDenyService.AddPermListEntrie: %w", err))
 			ch <- cmdInternalSvcErr
 			return
 		}
@@ -610,8 +611,8 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 				ScreenName string `oscar:"len_prefix=uint8"`
 			}{ScreenName: c[1]})
 		}
-		if err := b.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
-			logErr(ctx, b.Logger, fmt.Errorf("PermitDenyService.AddPermListEntrie: %w", err))
+		if err := s.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
+			logErr(ctx, s.Logger, fmt.Errorf("PermitDenyService.AddPermListEntrie: %w", err))
 			ch <- cmdInternalSvcErr
 			return
 		}
@@ -625,8 +626,8 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 				ScreenName string `oscar:"len_prefix=uint8"`
 			}{ScreenName: c[1]})
 		}
-		if err := b.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
-			logErr(ctx, b.Logger, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
+		if err := s.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
+			logErr(ctx, s.Logger, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
 			ch <- cmdInternalSvcErr
 			return
 		}
@@ -642,40 +643,40 @@ func (b BOSProxy) SetConfig(ctx context.Context, me *state.Session, params []str
 		}{ScreenName: c[1]})
 	}
 
-	if err := b.BuddyService.AddBuddies(ctx, me, snac); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("BuddyService.AddBuddies: %w", err))
+	if err := s.BuddyService.AddBuddies(ctx, me, snac); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("BuddyService.AddBuddies: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 
-	if err := b.TOCConfigStore.SetTOCConfig(me.IdentScreenName(), params[1]); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("TOCConfigStore.SaveTOCConfig: %w", err))
+	if err := s.TOCConfigStore.SetTOCConfig(me.IdentScreenName(), params[1]); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("TOCConfigStore.SaveTOCConfig: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) Signout(ctx context.Context, me *state.Session) {
-	if err := b.BuddyService.BroadcastBuddyDeparted(ctx, me); err != nil {
-		b.Logger.ErrorContext(ctx, "error sending departure notifications", "err", err.Error())
+func (s OSCARProxy) Signout(ctx context.Context, me *state.Session) {
+	if err := s.BuddyService.BroadcastBuddyDeparted(ctx, me); err != nil {
+		s.Logger.ErrorContext(ctx, "error sending departure notifications", "err", err.Error())
 	}
-	if err := b.BuddyListRegistry.UnregisterBuddyList(me.IdentScreenName()); err != nil {
-		b.Logger.ErrorContext(ctx, "error removing buddy list entry", "err", err.Error())
+	if err := s.BuddyListRegistry.UnregisterBuddyList(me.IdentScreenName()); err != nil {
+		s.Logger.ErrorContext(ctx, "error removing buddy list entry", "err", err.Error())
 	}
-	b.AuthService.Signout(ctx, me)
+	s.AuthService.Signout(ctx, me)
 }
 
-func (b BOSProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, ch chan<- []byte) {
+func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, ch chan<- []byte) {
 	chatID, err := strconv.Atoi(params[1])
 	if err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("strconv.Atoi: %w", err))
+		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 
 	cookie := chatRegistry.Lookup(chatID)
 	if cookie == "" {
-		logErr(ctx, b.Logger, fmt.Errorf("chatRegistry.Lookup: chat ID `%d` not found", chatID))
+		logErr(ctx, s.Logger, fmt.Errorf("chatRegistry.Lookup: chat ID `%d` not found", chatID))
 		ch <- cmdInternalSvcErr
 		return
 	}
@@ -705,18 +706,18 @@ func (b BOSProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegistr
 		},
 	}
 
-	if _, err := b.ICBMService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac); err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
+	if _, err := s.ICBMService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
 		ch <- cmdInternalSvcErr
 		return
 	}
 }
 
-func (b BOSProxy) GetInfoURL(bos *state.Session, elems []string, ch chan<- []byte) {
+func (s OSCARProxy) GetInfoURL(bos *state.Session, elems []string, ch chan<- []byte) {
 	ch <- []byte(fmt.Sprintf("GOTO_URL:profile:info?from=%s&user=%s", bos.IdentScreenName().String(), elems[1]))
 }
 
-func (b BOSProxy) DirInfoHTTP(ctx context.Context, request *http.Request, w *readWriter) {
+func (s OSCARProxy) DirInfoHTTP(ctx context.Context, request *http.Request, w *readWriter) {
 	user := request.URL.Query().Get("user")
 	if user == "" {
 		http.Error(w, "user does not exist", http.StatusBadRequest)
@@ -727,14 +728,14 @@ func (b BOSProxy) DirInfoHTTP(ctx context.Context, request *http.Request, w *rea
 		ScreenName: user,
 	}
 
-	info, err := b.LocateService.DirInfo(ctx, wire.SNACFrame{}, inBody)
+	info, err := s.LocateService.DirInfo(ctx, wire.SNACFrame{}, inBody)
 	if err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
+		logErr(ctx, s.Logger, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if !(info.Frame.FoodGroup == wire.Locate && info.Frame.SubGroup == wire.LocateGetDirReply) {
-		logErr(ctx, b.Logger, fmt.Errorf("LocateService.DirInfo: expected response SNAC(%d,%d), got SNAC(%d,%d)",
+		logErr(ctx, s.Logger, fmt.Errorf("LocateService.DirInfo: expected response SNAC(%d,%d), got SNAC(%d,%d)",
 			wire.Locate, wire.LocateGetDirReply, info.Frame.FoodGroup, info.Frame.SubGroup))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -744,104 +745,55 @@ func (b BOSProxy) DirInfoHTTP(ctx context.Context, request *http.Request, w *rea
 
 	if len(locateInfoReply.TLVList) == 0 {
 		if _, err = w.Write([]byte("no user directory info")); err != nil {
-			b.Logger.Error("error writing response", "err", err.Error())
+			s.Logger.Error("error writing response", "err", err.Error())
 		}
 		return
 	}
 
-	out := []byte("<html><body><table>")
-	if firstName, ok := locateInfoReply.String(wire.ODirTLVFirstName); ok {
-		out = append(out, "<tr><td>First Name "+firstName+"</td></tr>"...)
-	}
-	if lastName, ok := locateInfoReply.String(wire.ODirTLVLastName); ok {
-		out = append(out, "<tr><td>Last Name "+lastName+"</td></tr>"...)
-	}
-	if middleName, ok := locateInfoReply.String(wire.ODirTLVMiddleName); ok {
-		out = append(out, "<tr><td>Middle Name "+middleName+"</td></tr>"...)
-	}
-	if maidName, ok := locateInfoReply.String(wire.ODirTLVMaidenName); ok {
-		out = append(out, "<tr><td>Maiden Name "+maidName+"</td></tr>"...)
-	}
-	if country, ok := locateInfoReply.String(wire.ODirTLVCountry); ok {
-		out = append(out, "<tr><td>Country "+country+"</td></tr>"...)
-	}
-	if state, ok := locateInfoReply.String(wire.ODirTLVState); ok {
-		out = append(out, "<tr><td>State "+state+"</td></tr>"...)
-	}
-	if city, ok := locateInfoReply.String(wire.ODirTLVCity); ok {
-		out = append(out, "<tr><td>City "+city+"</td></tr>"...)
-	}
-	if nickName, ok := locateInfoReply.String(wire.ODirTLVNickName); ok {
-		out = append(out, "<tr><td>Nick Name "+nickName+"</td></tr>"...)
-	}
-	if zip, ok := locateInfoReply.String(wire.ODirTLVZIP); ok {
-		out = append(out, "<tr><td>ZIP Code "+zip+"</td></tr>"...)
-	}
-	if addr, ok := locateInfoReply.String(wire.ODirTLVAddress); ok {
-		out = append(out, "<tr><td>Address "+addr+"</td></tr>"...)
-	}
-	out = append(out, "</table></body></html>"...)
-
-	if _, err = w.Write(out); err != nil {
-		b.Logger.Error("error writing response", "err", err.Error())
-	}
+	outputSearchResults(w, s.Logger, locateInfoReply.TLVBlock)
 }
 
-const tmpl = `
-<HTML><HEAD><TITLE>Retro AIM Server</TITLE></HEAD><BODY><H3>Dir Results</H3><TABLE>
-{{- range .Results -}}
-<TR><TD>
-{{- if .FirstName}}<B>First Name:</B> {{.FirstName}}<BR>{{- end -}}
-{{- if .MiddleName}}<B>Middle Name:</B> {{.MiddleName}}<BR>{{- end -}}
-{{- if .LastName}}<B>Last Name:</B> {{.LastName}}<BR>{{- end -}}
-{{- if .MaidenName}}<B>Maiden Name:</B> {{.MaidenName}}<BR>{{- end -}}
-{{- if .Country}}<B>Country:</B> {{.Country}}<BR>{{- end -}}
-{{- if .State}}<B>State:</B> {{.State}}<BR>{{- end -}}
-{{- if .City}}<B>City:</B> {{.City}}<BR>{{- end -}}
-{{- if .NickName}}<B>Nick Name:</B> {{.NickName}}<BR>{{- end -}}
-{{- if .ZIP}}<B>ZIP Code:</B> {{.ZIP}}<BR>{{- end -}}
-{{- if .Address}}<B>Address :</B> {{.Address}}<BR>{{- end -}}
-</TD></TR>
-{{- end -}}
-</TABLE></BODY></HTML>
-`
-
-func (b BOSProxy) DirSearchHTTP(ctx context.Context, request *http.Request, w *readWriter) {
+func (s OSCARProxy) DirSearchHTTP(ctx context.Context, req *http.Request, w *readWriter) {
 	inBody := wire.SNAC_0x0F_0x02_InfoQuery{}
 
-	if val := request.URL.Query().Get("first_name"); val != "" {
-		inBody.Append(wire.NewTLVBE(wire.ODirTLVFirstName, val))
-	}
-	if val := request.URL.Query().Get("middle_name"); val != "" {
-		inBody.Append(wire.NewTLVBE(wire.ODirTLVMiddleName, val))
-	}
-	if val := request.URL.Query().Get("last_name"); val != "" {
-		inBody.Append(wire.NewTLVBE(wire.ODirTLVLastName, val))
-	}
-	if val := request.URL.Query().Get("maiden_name"); val != "" {
-		inBody.Append(wire.NewTLVBE(wire.ODirTLVMaidenName, val))
-	}
-	if val := request.URL.Query().Get("city"); val != "" {
-		inBody.Append(wire.NewTLVBE(wire.ODirTLVCity, val))
-	}
-	if val := request.URL.Query().Get("state"); val != "" {
-		inBody.Append(wire.NewTLVBE(wire.ODirTLVState, val))
-	}
-	if val := request.URL.Query().Get("country"); val != "" {
-		inBody.Append(wire.NewTLVBE(wire.ODirTLVCountry, val))
-	}
-	if val := request.URL.Query().Get("email"); val != "" {
-		inBody.Append(wire.NewTLVBE(wire.ODirTLVEmailAddress, val))
+	q := req.URL.Query()
+	switch {
+	case q.Has("first_name") || q.Has("last_name"):
+		if val := q.Get("first_name"); val != "" {
+			inBody.Append(wire.NewTLVBE(wire.ODirTLVFirstName, val))
+		}
+		if val := q.Get("middle_name"); val != "" {
+			inBody.Append(wire.NewTLVBE(wire.ODirTLVMiddleName, val))
+		}
+		if val := q.Get("last_name"); val != "" {
+			inBody.Append(wire.NewTLVBE(wire.ODirTLVLastName, val))
+		}
+		if val := q.Get("maiden_name"); val != "" {
+			inBody.Append(wire.NewTLVBE(wire.ODirTLVMaidenName, val))
+		}
+		if val := q.Get("city"); val != "" {
+			inBody.Append(wire.NewTLVBE(wire.ODirTLVCity, val))
+		}
+		if val := q.Get("state"); val != "" {
+			inBody.Append(wire.NewTLVBE(wire.ODirTLVState, val))
+		}
+		if val := q.Get("country"); val != "" {
+			inBody.Append(wire.NewTLVBE(wire.ODirTLVCountry, val))
+		}
+	case q.Has("email"):
+		inBody.Append(wire.NewTLVBE(wire.ODirTLVEmailAddress, q.Get("email")))
+	case q.Has("keyword"):
+		inBody.Append(wire.NewTLVBE(wire.ODirTLVInterest, q.Get("keyword")))
 	}
 
-	info, err := b.DirSearchService.InfoQuery(ctx, wire.SNACFrame{}, inBody)
+	info, err := s.DirSearchService.InfoQuery(ctx, wire.SNACFrame{}, inBody)
 	if err != nil {
-		logErr(ctx, b.Logger, fmt.Errorf("DirSearchService.InfoQuery: %w", err))
+		logErr(ctx, s.Logger, fmt.Errorf("DirSearchService.InfoQuery: %w", err))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if !(info.Frame.FoodGroup == wire.ODir && info.Frame.SubGroup == wire.ODirInfoReply) {
-		logErr(ctx, b.Logger, fmt.Errorf("DirSearchService.InfoQuery: expected response SNAC(%d,%d), got SNAC(%d,%d)",
+		logErr(ctx, s.Logger, fmt.Errorf("DirSearchService.InfoQuery: expected response SNAC(%d,%d), got SNAC(%d,%d)",
 			wire.ODir, wire.ODirInfoReply, info.Frame.FoodGroup, info.Frame.SubGroup))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -852,85 +804,27 @@ func (b BOSProxy) DirSearchHTTP(ctx context.Context, request *http.Request, w *r
 	switch {
 	case locateInfoReply.Status == wire.ODirSearchResponseNameMissing:
 		if _, err = w.Write([]byte("search must contain first or last name")); err != nil {
-			b.Logger.Error("error writing response", "err", err.Error())
+			s.Logger.Error("error writing response", "err", err.Error())
 		}
 		return
 	case locateInfoReply.Status != wire.ODirSearchResponseOK:
 		if _, err = w.Write([]byte("search failed")); err != nil {
-			b.Logger.Error("error writing response", "err", err.Error())
+			s.Logger.Error("error writing response", "err", err.Error())
 		}
 		return
 	case len(locateInfoReply.Results.List) == 0:
 		if _, err = w.Write([]byte("no search results found")); err != nil {
-			b.Logger.Error("error writing response", "err", err.Error())
+			s.Logger.Error("error writing response", "err", err.Error())
 		}
 		return
 	}
 
-	type DirSearchResult struct {
-		FirstName  string
-		MiddleName string
-		LastName   string
-		MaidenName string
-		Country    string
-		State      string
-		City       string
-		NickName   string
-		ZIP        string
-		Address    string
-	}
-	type PageData struct {
-		Results []DirSearchResult
-	}
-
-	results := make([]DirSearchResult, 0, len(locateInfoReply.Results.List))
-	for _, result := range locateInfoReply.Results.List {
-		rec := DirSearchResult{}
-		rec.FirstName, _ = result.String(wire.ODirTLVFirstName)
-		rec.MiddleName, _ = result.String(wire.ODirTLVMiddleName)
-		rec.LastName, _ = result.String(wire.ODirTLVLastName)
-		rec.MaidenName, _ = result.String(wire.ODirTLVMaidenName)
-		rec.Country, _ = result.String(wire.ODirTLVCountry)
-		rec.State, _ = result.String(wire.ODirTLVState)
-		rec.City, _ = result.String(wire.ODirTLVCity)
-		rec.NickName, _ = result.String(wire.ODirTLVNickName)
-		rec.ZIP, _ = result.String(wire.ODirTLVZIP)
-		rec.Address, _ = result.String(wire.ODirTLVAddress)
-		results = append(results, rec)
-	}
-
-	t, err := template.New("results").Parse(tmpl)
-	if err != nil {
-		log.Printf("Error parsing template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	buf := &bytes.Buffer{}
-	if err := t.Execute(buf, PageData{Results: results}); err != nil {
-		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	if _, err = w.Write(buf.Bytes()); err != nil {
-		b.Logger.Error("error writing response", "err", err.Error())
-	}
-
+	outputSearchResults(w, s.Logger, locateInfoReply.Results.List...)
 }
 
-type ChatProxy struct {
-	AuthService         AuthService
-	ChatNavService      ChatNavService
-	Logger              *slog.Logger
-	ChatService         ChatService
-	OServiceServiceBOS  OServiceService
-	OServiceServiceChat OServiceService
-}
-
-func (s ChatProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatID int, ch chan<- []byte) {
+func (s OSCARProxy) ConsumeIncomingChat(ctx context.Context, me *state.Session, chatID int, ch chan<- []byte) {
 	defer func() {
-		fmt.Println("closing chat ConsumeIncoming")
+		fmt.Println("closing chat ConsumeIncomingChat")
 	}()
 	for {
 		select {
@@ -959,7 +853,7 @@ func (s ChatProxy) ConsumeIncoming(ctx context.Context, me *state.Session, chatI
 	}
 }
 
-func (s ChatProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, ch chan []byte) bool {
+func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, ch chan []byte) bool {
 	exchange, err := strconv.Atoi(params[1])
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
@@ -1035,7 +929,7 @@ func (s ChatProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry
 	chatID := chatRegistry.Add(inBody.Cookie)
 	chatRegistry.Register(chatID, sess)
 
-	go s.ConsumeIncoming(ctx, sess, chatID, ch)
+	go s.ConsumeIncomingChat(ctx, sess, chatID, ch)
 
 	ch <- []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, params[2]))
 
@@ -1048,7 +942,7 @@ func (s ChatProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry
 	return true
 }
 
-func (s ChatProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, ch chan []byte) bool {
+func (s OSCARProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, ch chan []byte) bool {
 	chatID, err := strconv.Atoi(params[1])
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
@@ -1132,7 +1026,7 @@ func (s ChatProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegist
 		return false
 	}
 
-	go s.ConsumeIncoming(ctx, sess, chatID, ch)
+	go s.ConsumeIncomingChat(ctx, sess, chatID, ch)
 
 	chatRegistry.Register(chatID, sess)
 
@@ -1147,7 +1041,7 @@ func (s ChatProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegist
 	return true
 }
 
-func (s ChatProxy) ClientReady(ctx context.Context, me *state.Session) bool {
+func (s OSCARProxy) ChatReady(ctx context.Context, me *state.Session) bool {
 	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, me); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceChat.ClientOnline: %w", err))
 		return false
@@ -1155,7 +1049,7 @@ func (s ChatProxy) ClientReady(ctx context.Context, me *state.Session) bool {
 	return true
 }
 
-func (s ChatProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, params []string, ch chan []byte) {
+func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, params []string, ch chan []byte) {
 	chatID, err := strconv.Atoi(params[1])
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
@@ -1195,7 +1089,7 @@ func (s ChatProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, par
 	ch <- []byte(fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, me.DisplayScreenName(), params[2]))
 }
 
-func (s ChatProxy) ChatUpdateBuddyArrived(snac wire.SNAC_0x0E_0x03_ChatUsersJoined, chatID int, ch chan<- []byte) {
+func (s OSCARProxy) ChatUpdateBuddyArrived(snac wire.SNAC_0x0E_0x03_ChatUsersJoined, chatID int, ch chan<- []byte) {
 	users := make([]string, 0, len(snac.Users))
 	for _, u := range snac.Users {
 		users = append(users, u.ScreenName)
@@ -1203,7 +1097,7 @@ func (s ChatProxy) ChatUpdateBuddyArrived(snac wire.SNAC_0x0E_0x03_ChatUsersJoin
 	ch <- []byte(fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:T:%s", chatID, strings.Join(users, ":")))
 }
 
-func (s ChatProxy) ChatUpdateBuddyLeft(snac wire.SNAC_0x0E_0x04_ChatUsersLeft, chatID int, ch chan<- []byte) {
+func (s OSCARProxy) ChatUpdateBuddyLeft(snac wire.SNAC_0x0E_0x04_ChatUsersLeft, chatID int, ch chan<- []byte) {
 	users := make([]string, 0, len(snac.Users))
 	for _, u := range snac.Users {
 		users = append(users, u.ScreenName)
@@ -1211,7 +1105,7 @@ func (s ChatProxy) ChatUpdateBuddyLeft(snac wire.SNAC_0x0E_0x04_ChatUsersLeft, c
 	ch <- []byte(fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:F:%s", chatID, strings.Join(users, ":")))
 }
 
-func (s ChatProxy) ChatIn(ctx context.Context, snac wire.SNAC_0x0E_0x06_ChatChannelMsgToClient, chatID int, ch chan<- []byte) {
+func (s OSCARProxy) ChatIn(ctx context.Context, snac wire.SNAC_0x0E_0x06_ChatChannelMsgToClient, chatID int, ch chan<- []byte) {
 	b, ok := snac.Bytes(wire.ChatTLVSenderInformation)
 	if !ok {
 		logErr(ctx, s.Logger, errors.New("snac.Bytes: missing wire.ChatTLVSenderInformation"))
@@ -1244,7 +1138,7 @@ func (s ChatProxy) ChatIn(ctx context.Context, snac wire.SNAC_0x0E_0x06_ChatChan
 	ch <- []byte(fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, u.ScreenName, text))
 }
 
-func (s ChatProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, params []string, ch chan<- []byte) {
+func (s OSCARProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, params []string, ch chan<- []byte) {
 	chatID, err := strconv.Atoi(params[1])
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
@@ -1263,6 +1157,77 @@ func (s ChatProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, pa
 	me.Close()
 
 	ch <- []byte(fmt.Sprintf("CHAT_LEFT:%d", chatID))
+}
+
+const tmpl = `
+<HTML><HEAD><TITLE>Retro AIM Server</TITLE></HEAD><BODY><H3>Dir Results</H3><TABLE>
+{{- range .Results -}}
+<TR><TD>
+{{- if .FirstName}}<B>First Name:</B> {{.FirstName}}<BR>{{- end -}}
+{{- if .MiddleName}}<B>Middle Name:</B> {{.MiddleName}}<BR>{{- end -}}
+{{- if .LastName}}<B>Last Name:</B> {{.LastName}}<BR>{{- end -}}
+{{- if .MaidenName}}<B>Maiden Name:</B> {{.MaidenName}}<BR>{{- end -}}
+{{- if .Country}}<B>Country:</B> {{.Country}}<BR>{{- end -}}
+{{- if .State}}<B>State:</B> {{.State}}<BR>{{- end -}}
+{{- if .City}}<B>City:</B> {{.City}}<BR>{{- end -}}
+{{- if .NickName}}<B>Nick Name:</B> {{.NickName}}<BR>{{- end -}}
+{{- if .ZIP}}<B>ZIP Code:</B> {{.ZIP}}<BR>{{- end -}}
+{{- if .Address}}<B>Address :</B> {{.Address}}<BR>{{- end -}}
+</TD></TR>
+{{- end -}}
+</TABLE></BODY></HTML>
+`
+
+func outputSearchResults(w *readWriter, logger *slog.Logger, users ...wire.TLVBlock) {
+	type DirSearchResult struct {
+		FirstName  string
+		MiddleName string
+		LastName   string
+		MaidenName string
+		Country    string
+		State      string
+		City       string
+		NickName   string
+		ZIP        string
+		Address    string
+	}
+	type PageData struct {
+		Results []DirSearchResult
+	}
+
+	results := make([]DirSearchResult, 0, len(users))
+	for _, result := range users {
+		rec := DirSearchResult{}
+		rec.FirstName, _ = result.String(wire.ODirTLVFirstName)
+		rec.MiddleName, _ = result.String(wire.ODirTLVMiddleName)
+		rec.LastName, _ = result.String(wire.ODirTLVLastName)
+		rec.MaidenName, _ = result.String(wire.ODirTLVMaidenName)
+		rec.Country, _ = result.String(wire.ODirTLVCountry)
+		rec.State, _ = result.String(wire.ODirTLVState)
+		rec.City, _ = result.String(wire.ODirTLVCity)
+		rec.NickName, _ = result.String(wire.ODirTLVNickName)
+		rec.ZIP, _ = result.String(wire.ODirTLVZIP)
+		rec.Address, _ = result.String(wire.ODirTLVAddress)
+		results = append(results, rec)
+	}
+
+	t, err := template.New("results").Parse(tmpl)
+	if err != nil {
+		log.Printf("Error parsing template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	buf := &bytes.Buffer{}
+	if err := t.Execute(buf, PageData{Results: results}); err != nil {
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	if _, err = w.Write(buf.Bytes()); err != nil {
+		logger.Error("error writing response", "err", err.Error())
+	}
 }
 
 // textFromChatMsgBlob extracts plaintext message text from HTML located in
@@ -1291,4 +1256,8 @@ func textFromChatMsgBlob(msg []byte) ([]byte, error) {
 			return nil, err
 		}
 	}
+}
+
+func logErr(ctx context.Context, logger *slog.Logger, err error) {
+	logger.ErrorContext(ctx, "internal service error", "err", err.Error())
 }

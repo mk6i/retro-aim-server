@@ -85,8 +85,7 @@ func (c *ChatRegistry) Close() {
 }
 
 type Server struct {
-	BOSProxy   BOSProxy
-	ChatProxy  ChatProxy
+	BOSProxy   OSCARProxy
 	ListenAddr string
 	Logger     *slog.Logger
 }
@@ -376,7 +375,7 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 			case "toc_send_im":
 				rt.BOSProxy.SendIM(ctx, sessBOS, elems, toClient)
 			case "toc_init_done":
-				rt.BOSProxy.ClientReady(ctx, sessBOS, toClient)
+				rt.BOSProxy.BOSReady(ctx, sessBOS, toClient)
 			case "toc_add_buddy":
 				rt.BOSProxy.AddBuddy(ctx, sessBOS, elems, toClient)
 			case "toc_remove_buddy":
@@ -394,17 +393,17 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 			case "toc_get_info":
 				rt.BOSProxy.GetInfoURL(sessBOS, elems, toClient)
 			case "toc_chat_join":
-				if !rt.ChatProxy.ChatJoin(ctx, sessBOS, chatRegistry, elems, toClient) {
+				if !rt.BOSProxy.ChatJoin(ctx, sessBOS, chatRegistry, elems, toClient) {
 					return nil
 				}
 			case "toc_chat_send":
-				rt.ChatProxy.ChatSend(ctx, chatRegistry, elems, toClient)
+				rt.BOSProxy.ChatSend(ctx, chatRegistry, elems, toClient)
 			case "toc_chat_accept":
-				if !rt.ChatProxy.ChatAccept(ctx, sessBOS, chatRegistry, elems, toClient) {
+				if !rt.BOSProxy.ChatAccept(ctx, sessBOS, chatRegistry, elems, toClient) {
 					return nil
 				}
 			case "toc_chat_leave":
-				rt.ChatProxy.ChatLeave(ctx, chatRegistry, elems, toClient)
+				rt.BOSProxy.ChatLeave(ctx, chatRegistry, elems, toClient)
 			case "toc_set_info":
 				rt.BOSProxy.SetInfo(ctx, sessBOS, elems, toClient)
 			case "toc_set_dir":

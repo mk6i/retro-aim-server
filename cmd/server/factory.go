@@ -411,7 +411,7 @@ func TOC(deps Container) toc.Server {
 	return toc.Server{
 		Logger:     logger,
 		ListenAddr: net.JoinHostPort("", deps.cfg.TOCPort),
-		BOSProxy: toc.BOSProxy{
+		BOSProxy: toc.OSCARProxy{
 			AuthService: foodgroup.NewAuthService(
 				deps.cfg,
 				deps.inMemorySessionManager,
@@ -443,7 +443,7 @@ func TOC(deps Container) toc.Server {
 				deps.inMemorySessionManager,
 			),
 			Logger: logger,
-			OServiceService: foodgroup.NewOServiceServiceForBOS(
+			OServiceServiceBOS: foodgroup.NewOServiceServiceForBOS(
 				deps.cfg,
 				deps.inMemorySessionManager,
 				logger,
@@ -459,20 +459,6 @@ func TOC(deps Container) toc.Server {
 				deps.inMemorySessionManager,
 			),
 			TOCConfigStore: deps.sqLiteUserStore,
-		},
-		ChatProxy: toc.ChatProxy{
-			AuthService: foodgroup.NewAuthService(
-				deps.cfg,
-				deps.inMemorySessionManager,
-				deps.chatSessionManager,
-				deps.sqLiteUserStore,
-				deps.hmacCookieBaker,
-				deps.chatSessionManager,
-				deps.sqLiteUserStore,
-				nil,
-			),
-			ChatNavService: foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
-			Logger:         logger,
 			ChatService:    foodgroup.NewChatService(deps.chatSessionManager),
 			OServiceServiceChat: foodgroup.NewOServiceServiceForChat(
 				deps.cfg,
@@ -483,15 +469,7 @@ func TOC(deps Container) toc.Server {
 				deps.sqLiteUserStore,
 				sessionManager,
 			),
-			OServiceServiceBOS: foodgroup.NewOServiceServiceForBOS(
-				deps.cfg,
-				deps.inMemorySessionManager,
-				logger,
-				deps.hmacCookieBaker,
-				deps.sqLiteUserStore,
-				deps.sqLiteUserStore,
-				deps.inMemorySessionManager,
-			),
+			ChatNavService: foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
 		},
 	}
 }
