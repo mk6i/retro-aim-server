@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/mk6i/retro-aim-server/state"
 
 	"github.com/mk6i/retro-aim-server/wire"
@@ -245,7 +247,7 @@ func (rt Server) handleTOCOverHTTP(bufCon bufferedConn, thisCtx context.Context,
 }
 
 func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter) error {
-	if err := rt.TOCHandshake(clientConn); err != nil {
+	if err := rt.handshake(clientConn); err != nil {
 		return fmt.Errorf("handshake failed: %w", err)
 	}
 
@@ -254,76 +256,22 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 		return err
 	}
 
-	// buffered so that the go routine has room to exit
-	msgCh := make(chan wire.FLAPFrame, 1)
-	errCh := make(chan error, 1) // todo handle this
-
-	go func() {
-		defer func() {
-			fmt.Println("closing handleTOCOverFLAP async function")
-		}()
-		defer close(msgCh)
-		defer close(errCh)
-
-		for {
-			clientFrame, err := clientFlap.ReceiveFLAP()
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				errCh <- fmt.Errorf("ReceiveFLAP: %w", err)
-				return
-			}
-
-			if clientFrame.FrameType == wire.FLAPFrameSignoff {
-				break // client disconnected
-			}
-			if clientFrame.FrameType == wire.FLAPFrameKeepAlive {
-				continue // keep alive heartbeat
-			}
-			if clientFrame.FrameType != wire.FLAPFrameData {
-				errCh <- fmt.Errorf("unexpected clientFlap clientFrame type: %d", clientFrame.FrameType)
-				return
-			}
-			msgCh <- clientFrame
-		}
-	}()
 	toClient := make(chan []byte, 2)
 
-	var sessBOS *state.Session
-	chatRegistry := &ChatRegistry{
-		lookup:   make(map[int]string),
-		sessions: make(map[int]*state.Session),
-		m:        sync.RWMutex{},
+	sessBOS, chatRegistry, err := rt.login(ctx, toClient, clientFlap)
+	if err != nil {
+		return fmt.Errorf("rt.login: %w", err)
 	}
-
-	select {
-	case <-ctx.Done():
+	if sessBOS == nil {
 		return nil
-	case clientFrame, ok := <-msgCh:
-		if !ok {
-			return nil
-		}
-		elems, err := receiveCmd(clientFrame.Payload)
-		if err != nil {
-			return fmt.Errorf("receive cmd failed: %w %s", err, clientFrame.Payload)
-		}
-		if len(elems) == 0 || elems[0] != "toc_signon" {
-			return errors.New("expected toc_signon as first message")
-		}
-
-		var reply []string
-		sessBOS, reply = rt.BOSProxy.Login(ctx, elems, chatRegistry, toClient)
-		for _, m := range reply {
-			if err := clientFlap.SendDataFrame([]byte(m)); err != nil {
-				return fmt.Errorf("failed to send data frame %w", err)
-			}
-		}
-		if sessBOS == nil {
-			return nil
-		}
-		fmt.Printf("< client: %+v\n", elems)
 	}
+
+	var g errgroup.Group
+
+	// buffered so that the go routine has room to exit
+	msgCh := make(chan wire.FLAPFrame, 1)
+
+	go rt.readFromClient(msgCh, clientFlap)
 
 	defer func() {
 		fmt.Println("closing handleTOCOverFLAP")
@@ -332,25 +280,20 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 		chatRegistry.Close()
 	}()
 
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case msg, ok := <-toClient:
-				if !ok {
-					fmt.Println("Closing client connections?")
-					return
-				}
-				if err := clientFlap.SendDataFrame(msg); err != nil {
-					// todo how to cancel everything?
-					rt.Logger.Error("failed to send data frame", "err", err.Error())
-					return
-				}
-			}
-		}
-	}()
+	g.Go(func() error {
+		return rt.sendToClient(ctx, toClient, clientFlap)
+	})
 
+	g.Go(func() error {
+		rt.processCommands(ctx, msgCh, sessBOS, toClient, chatRegistry)
+		fmt.Println("Closing processCommands")
+		return nil
+	})
+
+	return g.Wait()
+}
+
+func (rt Server) processCommands(ctx context.Context, msgCh chan wire.FLAPFrame, sessBOS *state.Session, toClient chan []byte, chatRegistry *ChatRegistry) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -362,7 +305,7 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 			}
 			elems, err := receiveCmd(clientFrame.Payload)
 			if err != nil {
-				return fmt.Errorf("receive cmd failed: %w %s", err, clientFrame.Payload)
+				return fmt.Errorf("receiveCmd: %w", err)
 			}
 
 			if len(elems) == 0 {
@@ -423,11 +366,91 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 			}
 		}
 	}
-
 	return nil
 }
 
-func (rt Server) TOCHandshake(clientConn io.ReadWriter) error {
+func (rt Server) sendToClient(ctx context.Context, toClient chan []byte, clientFlap *wire.FlapClient) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case msg, ok := <-toClient:
+			if !ok {
+				fmt.Println("Closing client connections?")
+				return nil
+			}
+			if err := clientFlap.SendDataFrame(msg); err != nil {
+				return fmt.Errorf("clientFlap.SendDataFrame: %w", err)
+			}
+		}
+	}
+}
+
+func (rt Server) login(ctx context.Context, toClient chan []byte, clientFlap *wire.FlapClient) (*state.Session, *ChatRegistry, error) {
+	clientFrame, err := clientFlap.ReceiveFLAP()
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil, nil, nil
+		}
+		return nil, nil, fmt.Errorf("clientFlap.ReceiveFLAP: %w", err)
+	}
+
+	elems, err := receiveCmd(clientFrame.Payload)
+	if err != nil {
+		return nil, nil, fmt.Errorf("receiveCmd: %w", err)
+	}
+	if len(elems) == 0 || elems[0] != "toc_signon" {
+		return nil, nil, errors.New("expected toc_signon as first message")
+	}
+
+	chatRegistry := &ChatRegistry{
+		lookup:   make(map[int]string),
+		sessions: make(map[int]*state.Session),
+		m:        sync.RWMutex{},
+	}
+
+	sessBOS, reply := rt.BOSProxy.Login(ctx, elems, chatRegistry, toClient)
+	for _, m := range reply {
+		if err := clientFlap.SendDataFrame([]byte(m)); err != nil {
+			return nil, nil, fmt.Errorf("clientFlap.SendDataFrame: %w", err)
+		}
+	}
+
+	fmt.Printf("< client: %+v\n", elems)
+	return sessBOS, chatRegistry, nil
+}
+
+func (rt Server) readFromClient(msgCh chan wire.FLAPFrame, clientFlap *wire.FlapClient) {
+	defer func() {
+		fmt.Println("closing handleTOCOverFLAP async function")
+	}()
+	defer close(msgCh)
+
+	for {
+		clientFrame, err := clientFlap.ReceiveFLAP()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			rt.Logger.Error("ReceiveFLAP error", "err", err.Error())
+			return
+		}
+
+		if clientFrame.FrameType == wire.FLAPFrameSignoff {
+			break // client disconnected
+		}
+		if clientFrame.FrameType == wire.FLAPFrameKeepAlive {
+			continue // keep alive heartbeat
+		}
+		if clientFrame.FrameType != wire.FLAPFrameData {
+			rt.Logger.Error("unexpected clientFlap clientFrame type", "type", clientFrame.FrameType)
+			return
+		}
+		msgCh <- clientFrame
+	}
+}
+
+func (rt Server) handshake(clientConn io.ReadWriter) error {
 	reader := bufio.NewReader(clientConn)
 
 	line, _, err := reader.ReadLine()
