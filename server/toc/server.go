@@ -18,7 +18,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/mk6i/retro-aim-server/state"
-
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
@@ -76,14 +75,6 @@ func (c *ChatRegistry) Retrieve(chatID int) *state.Session {
 	c.m.RLock()
 	defer c.m.RUnlock()
 	return c.sessions[chatID]
-}
-
-func (c *ChatRegistry) Close() {
-	c.m.Lock()
-	defer c.m.Unlock()
-	for _, sess := range c.sessions {
-		sess.Close()
-	}
 }
 
 type Server struct {
@@ -256,52 +247,62 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter
 		return err
 	}
 
-	toClient := make(chan []byte, 2)
-
-	sessBOS, chatRegistry, err := rt.login(ctx, toClient, clientFlap)
+	sessBOS, chatRegistry, err := rt.login(ctx, clientFlap)
 	if err != nil {
 		return fmt.Errorf("rt.login: %w", err)
 	}
 	if sessBOS == nil {
-		return nil
+		return nil // user not found
 	}
 
-	var g errgroup.Group
+	defer rt.BOSProxy.Signout(ctx, sessBOS)
 
-	// buffered so that the go routine has room to exit
-	msgCh := make(chan wire.FLAPFrame, 1)
+	// messages from TOC client
+	fromCh := make(chan wire.FLAPFrame, 1)
+	// messages to TOC client
+	toCh := make(chan []byte, 2)
 
-	go rt.readFromClient(msgCh, clientFlap)
+	// read in messages from client. when client disconnects, it closes fromCh.
+	go rt.readFromClient(fromCh, clientFlap)
 
-	defer func() {
-		fmt.Println("closing handleTOCOverFLAP")
-		sessBOS.Close()
-		rt.BOSProxy.Signout(ctx, sessBOS)
-		chatRegistry.Close()
-	}()
+	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		return rt.sendToClient(ctx, toClient, clientFlap)
+		return rt.BOSProxy.ConsumeIncomingBOS(gCtx, sessBOS, chatRegistry, toCh)
 	})
-
 	g.Go(func() error {
-		rt.processCommands(ctx, msgCh, sessBOS, toClient, chatRegistry)
-		fmt.Println("Closing processCommands")
-		return nil
+		return rt.sendToClient(gCtx, toCh, clientFlap)
+	})
+	g.Go(func() error {
+		return rt.processCommands(gCtx, g.Go, sessBOS, chatRegistry, fromCh, toCh)
 	})
 
-	return g.Wait()
+	err = g.Wait()
+	if errors.Is(err, errDisconnect) {
+		err = nil
+	}
+	return err
 }
 
-func (rt Server) processCommands(ctx context.Context, msgCh chan wire.FLAPFrame, sessBOS *state.Session, toClient chan []byte, chatRegistry *ChatRegistry) error {
+func (rt Server) processCommands(
+	ctx context.Context,
+	doAsync func(f func() error),
+	sessBOS *state.Session,
+	chatRegistry *ChatRegistry,
+	fromCh <-chan wire.FLAPFrame,
+	toCh chan<- []byte,
+) error {
+	defer func() {
+		fmt.Println("closing processCommands")
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case clientFrame, ok := <-msgCh:
+		case clientFrame, ok := <-fromCh:
 			if !ok {
-				fmt.Println("Closing server connections?")
-				return nil
+				return errDisconnect
 			}
 			elems, err := receiveCmd(clientFrame.Payload)
 			if err != nil {
@@ -316,51 +317,58 @@ func (rt Server) processCommands(ctx context.Context, msgCh chan wire.FLAPFrame,
 
 			switch elems[0] {
 			case "toc_send_im":
-				rt.BOSProxy.SendIM(ctx, sessBOS, elems, toClient)
+				rt.BOSProxy.SendIM(ctx, sessBOS, elems, toCh)
 			case "toc_init_done":
-				rt.BOSProxy.BOSReady(ctx, sessBOS, toClient)
+				rt.BOSProxy.BOSReady(ctx, sessBOS, toCh)
 			case "toc_add_buddy":
-				rt.BOSProxy.AddBuddy(ctx, sessBOS, elems, toClient)
+				rt.BOSProxy.AddBuddy(ctx, sessBOS, elems, toCh)
 			case "toc_remove_buddy":
-				rt.BOSProxy.RemoveBuddy(ctx, sessBOS, elems, toClient)
+				rt.BOSProxy.RemoveBuddy(ctx, sessBOS, elems, toCh)
 			case "toc_add_permit":
-				rt.BOSProxy.AddPermit(ctx, sessBOS, elems, toClient)
+				rt.BOSProxy.AddPermit(ctx, sessBOS, elems, toCh)
 			case "toc_add_deny":
-				rt.BOSProxy.AddDeny(ctx, sessBOS, elems, toClient)
+				rt.BOSProxy.AddDeny(ctx, sessBOS, elems, toCh)
 			case "toc_set_away":
-				rt.BOSProxy.SetAway(ctx, sessBOS, elems[1], toClient)
+				rt.BOSProxy.SetAway(ctx, sessBOS, elems[1], toCh)
 			case "toc_set_caps":
-				rt.BOSProxy.SetCaps(ctx, sessBOS, elems, toClient)
+				rt.BOSProxy.SetCaps(ctx, sessBOS, elems, toCh)
 			case "toc_evil":
-				rt.BOSProxy.Evil(ctx, sessBOS, elems, toClient)
+				rt.BOSProxy.Evil(ctx, sessBOS, elems, toCh)
 			case "toc_get_info":
-				rt.BOSProxy.GetInfoURL(sessBOS, elems, toClient)
-			case "toc_chat_join":
-				if !rt.BOSProxy.ChatJoin(ctx, sessBOS, chatRegistry, elems, toClient) {
-					return nil
+				rt.BOSProxy.GetInfoURL(ctx, sessBOS, elems, toCh)
+			case "toc_chat_join", "toc_chat_accept":
+				var chatID int
+				var joinOK bool
+				if elems[0] == "toc_chat_join" {
+					chatID, joinOK = rt.BOSProxy.ChatJoin(ctx, sessBOS, chatRegistry, elems, toCh)
+				} else {
+					chatID, joinOK = rt.BOSProxy.ChatAccept(ctx, sessBOS, chatRegistry, elems, toCh)
+				}
+				if joinOK {
+					doAsync(func() error {
+						sess := chatRegistry.Retrieve(chatID)
+						rt.BOSProxy.ConsumeIncomingChat(ctx, sess, chatID, toCh)
+						return nil
+					})
 				}
 			case "toc_chat_send":
-				rt.BOSProxy.ChatSend(ctx, chatRegistry, elems, toClient)
-			case "toc_chat_accept":
-				if !rt.BOSProxy.ChatAccept(ctx, sessBOS, chatRegistry, elems, toClient) {
-					return nil
-				}
+				rt.BOSProxy.ChatSend(ctx, chatRegistry, elems, toCh)
 			case "toc_chat_leave":
-				rt.BOSProxy.ChatLeave(ctx, chatRegistry, elems, toClient)
+				rt.BOSProxy.ChatLeave(ctx, chatRegistry, elems, toCh)
 			case "toc_set_info":
-				rt.BOSProxy.SetInfo(ctx, sessBOS, elems, toClient)
+				rt.BOSProxy.SetInfo(ctx, sessBOS, elems, toCh)
 			case "toc_set_dir":
-				rt.BOSProxy.SetDir(ctx, sessBOS, elems, toClient)
+				rt.BOSProxy.SetDir(ctx, sessBOS, elems, toCh)
 			case "toc_set_idle":
-				rt.BOSProxy.SetIdle(ctx, sessBOS, elems, toClient)
+				rt.BOSProxy.SetIdle(ctx, sessBOS, elems, toCh)
 			case "toc_set_config":
-				rt.BOSProxy.SetConfig(ctx, sessBOS, elems, toClient)
+				rt.BOSProxy.SetConfig(ctx, sessBOS, elems, toCh)
 			case "toc_chat_invite":
-				rt.BOSProxy.ChatInvite(ctx, sessBOS, chatRegistry, elems, toClient)
+				rt.BOSProxy.ChatInvite(ctx, sessBOS, chatRegistry, elems, toCh)
 			case "toc_dir_search":
-				rt.BOSProxy.GetDirSearchURL(elems, toClient)
+				rt.BOSProxy.GetDirSearchURL(ctx, elems, toCh)
 			case "toc_get_dir":
-				rt.BOSProxy.GetDirURL(elems, toClient)
+				rt.BOSProxy.GetDirURL(ctx, elems, toCh)
 			default:
 				rt.Logger.Error(fmt.Sprintf("unsupported TOC command %s", elems[0]))
 			}
@@ -369,16 +377,15 @@ func (rt Server) processCommands(ctx context.Context, msgCh chan wire.FLAPFrame,
 	return nil
 }
 
-func (rt Server) sendToClient(ctx context.Context, toClient chan []byte, clientFlap *wire.FlapClient) error {
+func (rt Server) sendToClient(ctx context.Context, toClient <-chan []byte, clientFlap *wire.FlapClient) error {
+	defer func() {
+		fmt.Println("closing sendToClient")
+	}()
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case msg, ok := <-toClient:
-			if !ok {
-				fmt.Println("Closing client connections?")
-				return nil
-			}
+		case msg := <-toClient:
 			if err := clientFlap.SendDataFrame(msg); err != nil {
 				return fmt.Errorf("clientFlap.SendDataFrame: %w", err)
 			}
@@ -386,7 +393,7 @@ func (rt Server) sendToClient(ctx context.Context, toClient chan []byte, clientF
 	}
 }
 
-func (rt Server) login(ctx context.Context, toClient chan []byte, clientFlap *wire.FlapClient) (*state.Session, *ChatRegistry, error) {
+func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state.Session, *ChatRegistry, error) {
 	clientFrame, err := clientFlap.ReceiveFLAP()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
@@ -409,7 +416,7 @@ func (rt Server) login(ctx context.Context, toClient chan []byte, clientFlap *wi
 		m:        sync.RWMutex{},
 	}
 
-	sessBOS, reply := rt.BOSProxy.Login(ctx, elems, chatRegistry, toClient)
+	sessBOS, reply := rt.BOSProxy.Login(ctx, elems)
 	for _, m := range reply {
 		if err := clientFlap.SendDataFrame([]byte(m)); err != nil {
 			return nil, nil, fmt.Errorf("clientFlap.SendDataFrame: %w", err)
@@ -420,20 +427,19 @@ func (rt Server) login(ctx context.Context, toClient chan []byte, clientFlap *wi
 	return sessBOS, chatRegistry, nil
 }
 
-func (rt Server) readFromClient(msgCh chan wire.FLAPFrame, clientFlap *wire.FlapClient) {
+func (rt Server) readFromClient(msgCh chan<- wire.FLAPFrame, clientFlap *wire.FlapClient) {
 	defer func() {
-		fmt.Println("closing handleTOCOverFLAP async function")
+		fmt.Println("closing readFromClient")
 	}()
 	defer close(msgCh)
 
 	for {
 		clientFrame, err := clientFlap.ReceiveFLAP()
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
+			if !(errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed)) {
+				rt.Logger.Error("ReceiveFLAP error", "err", err.Error())
 			}
-			rt.Logger.Error("ReceiveFLAP error", "err", err.Error())
-			return
+			break
 		}
 
 		if clientFrame.FrameType == wire.FLAPFrameSignoff {
@@ -444,7 +450,7 @@ func (rt Server) readFromClient(msgCh chan wire.FLAPFrame, clientFlap *wire.Flap
 		}
 		if clientFrame.FrameType != wire.FLAPFrameData {
 			rt.Logger.Error("unexpected clientFlap clientFrame type", "type", clientFrame.FrameType)
-			return
+			break
 		}
 		msgCh <- clientFrame
 	}
