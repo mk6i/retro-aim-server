@@ -77,6 +77,26 @@ func (c *ChatRegistry) Retrieve(chatID int) *state.Session {
 	return c.sessions[chatID]
 }
 
+type channelListener struct {
+	ch chan net.Conn
+}
+
+func (l *channelListener) Accept() (net.Conn, error) {
+	ch, ok := <-l.ch
+	if !ok {
+		return nil, io.EOF
+	}
+	return ch, nil
+}
+
+func (l *channelListener) Close() error {
+	return nil
+}
+
+func (l *channelListener) Addr() net.Addr {
+	return nil
+}
+
 type Server struct {
 	BOSProxy   OSCARProxy
 	ListenAddr string
@@ -96,6 +116,25 @@ func (rt Server) Start(ctx context.Context) error {
 		listener.Close()
 	}()
 
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /info", rt.BOSProxy.Profile)
+	mux.HandleFunc("GET /dir_info", rt.BOSProxy.DirInfoHTTP)
+	mux.HandleFunc("GET /dir_search", rt.BOSProxy.DirSearchHTTP)
+
+	httpServer := &http.Server{
+		Handler: mux,
+		BaseContext: func(net.Listener) context.Context {
+			return ctx
+		},
+	}
+
+	httpCh := make(chan net.Conn)
+	defer close(httpCh)
+
+	go func() {
+		_ = httpServer.Serve(&channelListener{ch: httpCh})
+	}()
+
 	wg := sync.WaitGroup{}
 	for {
 		conn, err := listener.Accept()
@@ -110,9 +149,26 @@ func (rt Server) Start(ctx context.Context) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			connCtx := context.WithValue(ctx, "ip", conn.RemoteAddr().String())
-			if err := rt.handleNewConnection(conn, connCtx); err != nil {
-				rt.Logger.Info("user session failed", "err", err.Error())
+			bufCon := newBufferedConn(conn)
+			b, err := bufCon.Peek(6)
+			if err != nil {
+				rt.Logger.Error("peek failed", "err", err.Error())
+				return
+			}
+			switch {
+			case string(b) == "FLAPON":
+				ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
+				if err := rt.handleTOCOverFLAP(ctx, bufCon); err != nil {
+					rt.Logger.Error("handleTOCOverFLAP failed", "err", err.Error())
+					return
+				}
+			case strings.HasPrefix(string(b), "GET /"):
+				select {
+				case httpCh <- bufCon:
+					fmt.Println("Sent off connection")
+				case <-ctx.Done():
+					return
+				}
 			}
 		}()
 	}
@@ -126,123 +182,16 @@ func (rt Server) Start(ctx context.Context) error {
 	return nil
 }
 
-func (rt Server) handleNewConnection(conn net.Conn, ctx context.Context) error {
+func (rt Server) handleTOCOverFLAP(ctx context.Context, conn io.ReadWriteCloser) error {
 	defer func() {
 		conn.Close()
 	}()
 
-	bufCon := newBufferedConn(conn)
-	b, err := bufCon.Peek(6)
-	if err != nil {
-		return fmt.Errorf("Peek: %w", err)
-	}
-	switch {
-	case string(b) == "FLAPON":
-		if err := rt.handleTOCOverFLAP(ctx, bufCon); err != nil {
-			return fmt.Errorf("handleTOCOverFLAP: %w", err)
-		}
-	case strings.HasPrefix(string(b), "GET /"):
-		if err := rt.handleTOCOverHTTP(bufCon, ctx, conn); err != nil {
-			return fmt.Errorf("handleTOCOverHTTP: %w", err)
-		}
-	}
-
-	return nil
-}
-
-type readWriter struct {
-	http.Response
-	w           io.Writer
-	wroteHeader bool
-}
-
-func (r *readWriter) Header() http.Header {
-	return r.Response.Header
-}
-
-func (r *readWriter) Write(i []byte) (int, error) {
-	if !r.wroteHeader {
-		r.Response.StatusCode = 200
-		r.Response.ContentLength = int64(len(i))
-		if err := r.Response.Write(r.w); err != nil {
-			return 0, err
-		}
-	}
-	return r.w.Write(i)
-}
-
-func (r *readWriter) WriteHeader(statusCode int) {
-	r.Response.StatusCode = statusCode
-	if err := r.Response.Write(r.w); err != nil {
-		fmt.Println("error?")
-		return
-	}
-	r.wroteHeader = true
-}
-
-func (rt Server) handleTOCOverHTTP(bufCon bufferedConn, thisCtx context.Context, conn net.Conn) error {
-	bufReader := bufio.NewReader(bufCon)
-	request, err := http.ReadRequest(bufReader)
-	if err != nil {
-		return errors.New("failed to read HTTP request: " + err.Error())
-	}
-
-	switch request.URL.Path {
-	case "/info":
-		rw := &readWriter{
-			w: conn,
-			Response: http.Response{
-				ContentLength: -1, // disables content-length header, which works for hTTP 1.0
-				Proto:         "HTTP/1.0",
-				ProtoMajor:    1,
-				ProtoMinor:    0,
-				Header: http.Header{
-					"Connection": []string{"close"},
-				},
-				Close: false,
-			},
-		}
-		rt.BOSProxy.Profile(thisCtx, request, rw)
-	case "/dir_info":
-		rw := &readWriter{
-			w: conn,
-			Response: http.Response{
-				ContentLength: -1, // disables content-length header, which works for hTTP 1.0
-				Proto:         "HTTP/1.0",
-				ProtoMajor:    1,
-				ProtoMinor:    0,
-				Header: http.Header{
-					"Connection": []string{"close"},
-				},
-				Close: false,
-			},
-		}
-		rt.BOSProxy.DirInfoHTTP(thisCtx, request, rw)
-	case "/dir_search":
-		rw := &readWriter{
-			w: conn,
-			Response: http.Response{
-				ContentLength: -1, // disables content-length header, which works for hTTP 1.0
-				Proto:         "HTTP/1.0",
-				ProtoMajor:    1,
-				ProtoMinor:    0,
-				Header: http.Header{
-					"Connection": []string{"close"},
-				},
-				Close: false,
-			},
-		}
-		rt.BOSProxy.DirSearchHTTP(thisCtx, request, rw)
-	}
-	return nil
-}
-
-func (rt Server) handleTOCOverFLAP(ctx context.Context, clientConn io.ReadWriter) error {
-	if err := rt.handshake(clientConn); err != nil {
+	if err := rt.handshake(conn); err != nil {
 		return fmt.Errorf("handshake failed: %w", err)
 	}
 
-	clientFlap, err := rt.initFLAP(clientConn)
+	clientFlap, err := rt.initFLAP(conn)
 	if err != nil {
 		return err
 	}

@@ -159,13 +159,13 @@ func (s OSCARProxy) BOSReady(ctx context.Context, sess *state.Session, ch chan<-
 	}
 }
 
-func (s OSCARProxy) Profile(ctx context.Context, request *http.Request, w http.ResponseWriter) {
-	from := request.URL.Query().Get("from")
+func (s OSCARProxy) Profile(w http.ResponseWriter, r *http.Request) {
+	from := r.URL.Query().Get("from")
 	if from == "" {
 		http.Error(w, "user does not exist", http.StatusBadRequest)
 		return
 	}
-	user := request.URL.Query().Get("user")
+	user := r.URL.Query().Get("user")
 	if user == "" {
 		http.Error(w, "user does not exist", http.StatusBadRequest)
 		return
@@ -178,6 +178,7 @@ func (s OSCARProxy) Profile(ctx context.Context, request *http.Request, w http.R
 		ScreenName: user,
 	}
 
+	ctx := r.Context()
 	info, err := s.LocateService.UserInfoQuery(ctx, sess, wire.SNACFrame{}, inBody)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
@@ -719,7 +720,7 @@ func (s OSCARProxy) GetInfoURL(ctx context.Context, bos *state.Session, elems []
 	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("GOTO_URL:profile:info?from=%s&user=%s", bos.IdentScreenName().String(), elems[1])))
 }
 
-func (s OSCARProxy) DirInfoHTTP(ctx context.Context, request *http.Request, w *readWriter) {
+func (s OSCARProxy) DirInfoHTTP(w http.ResponseWriter, request *http.Request) {
 	user := request.URL.Query().Get("user")
 	if user == "" {
 		http.Error(w, "user does not exist", http.StatusBadRequest)
@@ -730,6 +731,7 @@ func (s OSCARProxy) DirInfoHTTP(ctx context.Context, request *http.Request, w *r
 		ScreenName: user,
 	}
 
+	ctx := request.Context()
 	info, err := s.LocateService.DirInfo(ctx, wire.SNACFrame{}, inBody)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
@@ -755,10 +757,10 @@ func (s OSCARProxy) DirInfoHTTP(ctx context.Context, request *http.Request, w *r
 	outputSearchResults(w, s.Logger, locateInfoReply.TLVBlock)
 }
 
-func (s OSCARProxy) DirSearchHTTP(ctx context.Context, req *http.Request, w *readWriter) {
+func (s OSCARProxy) DirSearchHTTP(w http.ResponseWriter, r *http.Request) {
 	inBody := wire.SNAC_0x0F_0x02_InfoQuery{}
 
-	q := req.URL.Query()
+	q := r.URL.Query()
 	switch {
 	case q.Has("first_name") || q.Has("last_name"):
 		if val := q.Get("first_name"); val != "" {
@@ -788,6 +790,7 @@ func (s OSCARProxy) DirSearchHTTP(ctx context.Context, req *http.Request, w *rea
 		inBody.Append(wire.NewTLVBE(wire.ODirTLVInterest, q.Get("keyword")))
 	}
 
+	ctx := r.Context()
 	info, err := s.DirSearchService.InfoQuery(ctx, wire.SNACFrame{}, inBody)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("DirSearchService.InfoQuery: %w", err))
@@ -1176,7 +1179,7 @@ const tmpl = `
 </TABLE></BODY></HTML>
 `
 
-func outputSearchResults(w *readWriter, logger *slog.Logger, users ...wire.TLVBlock) {
+func outputSearchResults(w http.ResponseWriter, logger *slog.Logger, users ...wire.TLVBlock) {
 	type DirSearchResult struct {
 		FirstName  string
 		MiddleName string
