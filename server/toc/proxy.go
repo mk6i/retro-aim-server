@@ -3,6 +3,7 @@ package toc
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -41,6 +42,7 @@ type OSCARProxy struct {
 	OServiceServiceChat OServiceService
 	PermitDenyService   PermitDenyService
 	TOCConfigStore      TOCConfigStore
+	CookieBaker         state.HMACCookieBaker
 }
 
 var errDisconnect = errors.New("got booted by another session")
@@ -159,6 +161,29 @@ func (s OSCARProxy) BOSReady(ctx context.Context, sess *state.Session, ch chan<-
 	}
 }
 
+func (s OSCARProxy) AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := url.QueryUnescape(r.URL.Query().Get("cookie"))
+		if err != nil {
+			http.Error(w, "unable to read auth cookie", http.StatusBadRequest)
+			return
+		}
+
+		data, err := base64.StdEncoding.DecodeString(cookie)
+		if err != nil {
+			http.Error(w, "unable to read auth cookie", http.StatusBadRequest)
+			return
+		}
+
+		if _, err = s.CookieBaker.Crack(data); err != nil {
+			http.Error(w, "unable to crack auth cookie", http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s OSCARProxy) Profile(w http.ResponseWriter, r *http.Request) {
 	from := r.URL.Query().Get("from")
 	if from == "" {
@@ -185,23 +210,27 @@ func (s OSCARProxy) Profile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	if !(info.Frame.FoodGroup == wire.Locate && info.Frame.SubGroup == wire.LocateUserInfoReply) {
-		logErr(ctx, s.Logger, fmt.Errorf("LocateService.UserInfoQuery: expected response SNAC(%d,%d), got SNAC(%d,%d)",
-			wire.Locate, wire.LocateUserInfoReply, info.Frame.FoodGroup, info.Frame.SubGroup))
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
 
-	locateInfoReply := info.Body.(wire.SNAC_0x02_0x06_LocateUserInfoReply)
-	profile, hasProf := locateInfoReply.LocateInfo.Bytes(wire.LocateTLVTagsInfoSigData)
-	if !hasProf {
-		logErr(ctx, s.Logger, errors.New("LocateInfo.Bytes: missing wire.LocateTLVTagsInfoSigData"))
+	switch v := info.Body.(type) {
+	case wire.SNACError:
+		if v.Code == wire.ErrorCodeNotLoggedOn {
+			if _, err = w.Write([]byte("user is unavailable")); err != nil {
+				s.Logger.Error("error writing response", "err", err.Error())
+			}
+		}
+	case wire.SNAC_0x02_0x06_LocateUserInfoReply:
+		profile, hasProf := v.LocateInfo.Bytes(wire.LocateTLVTagsInfoSigData)
+		if !hasProf {
+			logErr(ctx, s.Logger, errors.New("LocateInfo.Bytes: missing wire.LocateTLVTagsInfoSigData"))
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if _, err = w.Write(profile); err != nil {
+			s.Logger.Error("error writing response", "err", err.Error())
+		}
+	default:
+		logErr(ctx, s.Logger, fmt.Errorf("unknown response type: %T", v))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	if _, err = w.Write(profile); err != nil {
-		s.Logger.Error("error writing response", "err", err.Error())
 	}
 }
 
@@ -405,11 +434,20 @@ func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, params []stri
 	}
 }
 
-func (s OSCARProxy) GetDirURL(ctx context.Context, params []string, ch chan<- []byte) {
-	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("GOTO_URL:directory info:dir_info?user=%s", params[1])))
+func (s OSCARProxy) GetDirURL(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+	p := url.Values{}
+	p.Add("user", params[1])
+
+	if err := s.addCookie(me, p); err != nil {
+		s.Logger.Error("unable to generate cookie", "err", err.Error())
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
+	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("GOTO_URL:directory info:dir_info?%s", p.Encode())))
 }
 
-func (s OSCARProxy) GetDirSearchURL(ctx context.Context, params []string, ch chan<- []byte) {
+func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
 	params = strings.Split(params[1], ":")
 	labels := []string{
 		"first_name",
@@ -425,15 +463,22 @@ func (s OSCARProxy) GetDirSearchURL(ctx context.Context, params []string, ch cha
 		"keyword",
 	}
 
-	queryParams := url.Values{}
+	p := url.Values{}
 	i := 0
 	for i < len(params) && i < len(labels) {
 		if len(params[i]) > 0 {
-			queryParams.Add(labels[i], params[i])
+			p.Add(labels[i], params[i])
 		}
 		i++
 	}
-	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("GOTO_URL:search results:dir_search?%s", queryParams.Encode())))
+
+	if err := s.addCookie(me, p); err != nil {
+		s.Logger.Error("unable to generate cookie", "err", err.Error())
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
+	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("GOTO_URL:search results:dir_search?%s", p.Encode())))
 }
 
 func (s OSCARProxy) SetIdle(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
@@ -716,8 +761,27 @@ func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegis
 	}
 }
 
-func (s OSCARProxy) GetInfoURL(ctx context.Context, bos *state.Session, elems []string, ch chan<- []byte) {
-	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("GOTO_URL:profile:info?from=%s&user=%s", bos.IdentScreenName().String(), elems[1])))
+func (s OSCARProxy) GetInfoURL(ctx context.Context, me *state.Session, elems []string, ch chan<- []byte) {
+	p := url.Values{}
+	p.Add("from", me.IdentScreenName().String())
+	p.Add("user", elems[1])
+
+	if err := s.addCookie(me, p); err != nil {
+		s.Logger.Error("unable to generate cookie", "err", err.Error())
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
+	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("GOTO_URL:profile:info?%s", p.Encode())))
+}
+
+func (s OSCARProxy) addCookie(me *state.Session, p url.Values) error {
+	cookie, err := s.CookieBaker.Issue([]byte(me.IdentScreenName().String()))
+	if err != nil {
+		return err
+	}
+	p.Add("cookie", url.QueryEscape(base64.StdEncoding.EncodeToString(cookie)))
+	return nil
 }
 
 func (s OSCARProxy) DirInfoHTTP(w http.ResponseWriter, request *http.Request) {

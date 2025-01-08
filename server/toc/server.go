@@ -117,9 +117,9 @@ func (rt Server) Start(ctx context.Context) error {
 	}()
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /info", rt.BOSProxy.Profile)
-	mux.HandleFunc("GET /dir_info", rt.BOSProxy.DirInfoHTTP)
-	mux.HandleFunc("GET /dir_search", rt.BOSProxy.DirSearchHTTP)
+	mux.Handle("GET /info", rt.BOSProxy.AuthMiddleware(http.HandlerFunc(rt.BOSProxy.Profile)))
+	mux.Handle("GET /dir_info", rt.BOSProxy.AuthMiddleware(http.HandlerFunc(rt.BOSProxy.DirInfoHTTP)))
+	mux.Handle("GET /dir_search", rt.BOSProxy.AuthMiddleware(http.HandlerFunc(rt.BOSProxy.DirSearchHTTP)))
 
 	httpServer := &http.Server{
 		Handler: mux,
@@ -315,9 +315,9 @@ func (rt Server) processCommands(
 			case "toc_chat_invite":
 				rt.BOSProxy.ChatInvite(ctx, sessBOS, chatRegistry, elems, toCh)
 			case "toc_dir_search":
-				rt.BOSProxy.GetDirSearchURL(ctx, elems, toCh)
+				rt.BOSProxy.GetDirSearchURL(ctx, sessBOS, elems, toCh)
 			case "toc_get_dir":
-				rt.BOSProxy.GetDirURL(ctx, elems, toCh)
+				rt.BOSProxy.GetDirURL(ctx, sessBOS, elems, toCh)
 			default:
 				rt.Logger.Error(fmt.Sprintf("unsupported TOC command %s", elems[0]))
 			}
