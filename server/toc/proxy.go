@@ -95,16 +95,22 @@ func (s OSCARProxy) ConsumeIncomingBOS(ctx context.Context, me *state.Session, c
 	return nil
 }
 
-func (s OSCARProxy) Login(ctx context.Context, elems []string) (*state.Session, []string) {
-	username := elems[3]
-	passwordHash, err := hex.DecodeString(elems[4][2:])
+func (s OSCARProxy) Login(ctx context.Context, cmd []byte) (*state.Session, []string) {
+	var userName, password string
+
+	if _, err := parseArgs(cmd, "toc_signon", nil, nil, &userName, &password); err != nil {
+		s.Logger.Error("parseArgs filed", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	passwordHash, err := hex.DecodeString(password[2:])
 	if err != nil {
 		s.Logger.Error("decode password hash failed", "err", err.Error())
 		return nil, []string{"ERROR:989:internal server error"}
 	}
 
 	signonFrame := wire.FLAPSignonFrame{}
-	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsScreenName, username))
+	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsScreenName, userName))
 	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, passwordHash))
 
 	block, err := s.AuthService.FLAPLogin(signonFrame, state.NewStubUser)
@@ -298,8 +304,17 @@ func extractBodyContent(htmlContent []byte) string {
 	return ""
 }
 
-func (s OSCARProxy) SendIM(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
-	frags, err := wire.ICBMFragmentList(params[2])
+func (s OSCARProxy) SendIM(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	var recip, msg string
+
+	_, err := parseArgs(cmd, "toc_send_im", &recip, &msg) // todo handle "auto"
+	if err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
+	frags, err := wire.ICBMFragmentList(msg)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("wire.ICBMFragmentList: %w", err))
 		sendOrCancel(ctx, ch, cmdInternalSvcErr)
@@ -313,7 +328,7 @@ func (s OSCARProxy) SendIM(ctx context.Context, me *state.Session, params []stri
 	snac := wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 		Cookie:     0,
 		ChannelID:  1,
-		ScreenName: params[1],
+		ScreenName: recip,
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
 				wire.NewTLVBE(wire.ICBMTLVAOLIMData, frags),
@@ -328,11 +343,16 @@ func (s OSCARProxy) SendIM(ctx context.Context, me *state.Session, params []stri
 	}
 }
 
-func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
-	buddies := params[1:]
+func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	users, err := parseArgs(cmd, "toc_add_buddy")
+	if err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
 
 	snac := wire.SNAC_0x03_0x04_BuddyAddBuddies{}
-	for _, sn := range buddies {
+	for _, sn := range users {
 		snac.Buddies = append(snac.Buddies, struct {
 			ScreenName string `oscar:"len_prefix=uint8"`
 		}{ScreenName: sn})
@@ -345,11 +365,16 @@ func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, params []st
 	}
 }
 
-func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
-	buddies := params[1:]
+func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	users, err := parseArgs(cmd, "toc_remove_buddy")
+	if err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
 
 	snac := wire.SNAC_0x03_0x05_BuddyDelBuddies{}
-	for _, sn := range buddies {
+	for _, sn := range users {
 		snac.Buddies = append(snac.Buddies, struct {
 			ScreenName string `oscar:"len_prefix=uint8"`
 		}{ScreenName: sn})
@@ -362,11 +387,16 @@ func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, params [
 	}
 }
 
-func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
-	buddies := params[1:]
+func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	users, err := parseArgs(cmd, "toc_add_permit")
+	if err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
 
 	snac := wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{}
-	for _, sn := range buddies {
+	for _, sn := range users {
 		snac.Users = append(snac.Users, struct {
 			ScreenName string `oscar:"len_prefix=uint8"`
 		}{ScreenName: sn})
@@ -379,11 +409,16 @@ func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, params []s
 	}
 }
 
-func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
-	buddies := params[1:]
+func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	users, err := parseArgs(cmd, "toc_add_deny")
+	if err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
 
 	snac := wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{}
-	for _, sn := range buddies {
+	for _, sn := range users {
 		snac.Users = append(snac.Users, struct {
 			ScreenName string `oscar:"len_prefix=uint8"`
 		}{ScreenName: sn})
@@ -396,8 +431,13 @@ func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, params []str
 	}
 }
 
-func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
-	params = params[1:]
+func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	params, err := parseArgs(cmd, "toc_set_caps")
+	if err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
 
 	caps := make([]uuid.UUID, 0, len(params))
 	for _, capStr := range params {
@@ -426,11 +466,23 @@ func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, params []str
 	}
 }
 
-func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, awayMessage string, ch chan<- []byte) {
+func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	maybeMsg, err := parseArgs(cmd, "toc_set_away")
+	if err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
+	var msg string
+	if len(maybeMsg) > 0 {
+		msg = maybeMsg[0]
+	}
+
 	snac := wire.SNAC_0x02_0x04_LocateSetInfo{
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
-				wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableData, awayMessage),
+				wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableData, msg),
 			},
 		},
 	}
@@ -442,12 +494,20 @@ func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, awayMessage 
 	}
 }
 
-func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	var user, scope string
+
+	if _, err := parseArgs(cmd, "toc_evil", &user, &scope); err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
 	snac := wire.SNAC_0x04_0x08_ICBMEvilRequest{
 		SendAs:     0,
-		ScreenName: params[1],
+		ScreenName: user,
 	}
-	if params[2] == "anon" {
+	if scope == "anon" {
 		snac.SendAs = 1
 	}
 	response, err := s.ICBMService.EvilRequest(ctx, me, wire.SNACFrame{}, snac)
@@ -457,14 +517,22 @@ func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, params []string
 		return
 	}
 
-	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("EVILED:%d:%s", response.Body.(wire.SNAC_0x04_0x09_ICBMEvilReply).UpdatedEvilValue, params[1])))
+	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("EVILED:%d:%s", response.Body.(wire.SNAC_0x04_0x09_ICBMEvilReply).UpdatedEvilValue, user)))
 }
 
-func (s OSCARProxy) SetInfo(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) SetInfo(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	var info string
+
+	if _, err := parseArgs(cmd, "toc_set_info", &info); err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
 	snac := wire.SNAC_0x02_0x04_LocateSetInfo{
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
-				wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, params[1]),
+				wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, info),
 			},
 		},
 	}
@@ -475,19 +543,32 @@ func (s OSCARProxy) SetInfo(ctx context.Context, me *state.Session, params []str
 	}
 }
 
-func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
-	info := strings.Split(params[1], ":")
+func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	var info string
+
+	if _, err := parseArgs(cmd, "toc_set_dir", &info); err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
+	attrs := strings.Split(info, ":")
+	if len(attrs) != 7 {
+		logErr(ctx, s.Logger, fmt.Errorf("expected 7 params, got %d", len(attrs)))
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
 
 	snac := wire.SNAC_0x02_0x09_LocateSetDirInfo{
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
-				wire.NewTLVBE(wire.ODirTLVFirstName, info[0]),
-				wire.NewTLVBE(wire.ODirTLVMiddleName, info[1]),
-				wire.NewTLVBE(wire.ODirTLVLastName, info[2]),
-				wire.NewTLVBE(wire.ODirTLVMaidenName, info[3]),
-				wire.NewTLVBE(wire.ODirTLVCountry, info[6]),
-				wire.NewTLVBE(wire.ODirTLVState, info[5]),
-				wire.NewTLVBE(wire.ODirTLVCity, info[4]),
+				wire.NewTLVBE(wire.ODirTLVFirstName, attrs[0]),
+				wire.NewTLVBE(wire.ODirTLVMiddleName, attrs[1]),
+				wire.NewTLVBE(wire.ODirTLVLastName, attrs[2]),
+				wire.NewTLVBE(wire.ODirTLVMaidenName, attrs[3]),
+				wire.NewTLVBE(wire.ODirTLVCountry, attrs[6]),
+				wire.NewTLVBE(wire.ODirTLVState, attrs[5]),
+				wire.NewTLVBE(wire.ODirTLVCity, attrs[4]),
 			},
 		},
 	}
@@ -498,9 +579,17 @@ func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, params []stri
 	}
 }
 
-func (s OSCARProxy) GetDirURL(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
+func (s OSCARProxy) GetDirURL(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	var user string
+
+	if _, err := parseArgs(cmd, "toc_get_dir", &user); err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
 	p := url.Values{}
-	p.Add("user", params[1])
+	p.Add("user", user)
 
 	if err := s.addCookie(me, p); err != nil {
 		s.Logger.Error("unable to generate cookie", "err", err.Error())
@@ -511,8 +600,16 @@ func (s OSCARProxy) GetDirURL(ctx context.Context, me *state.Session, params []s
 	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("GOTO_URL:directory info:dir_info?%s", p.Encode())))
 }
 
-func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
-	params = strings.Split(params[1], ":")
+func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	var info string
+
+	if _, err := parseArgs(cmd, "toc_dir_search", &info); err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
+	params := strings.Split(info, ":")
 	labels := []string{
 		"first_name",
 		"middle_name",
@@ -545,8 +642,16 @@ func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, para
 	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("GOTO_URL:search results:dir_search?%s", p.Encode())))
 }
 
-func (s OSCARProxy) SetIdle(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
-	time, err := strconv.Atoi(params[1])
+func (s OSCARProxy) SetIdle(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	var idleTimeStr string
+
+	if _, err := parseArgs(cmd, "toc_set_idle", &idleTimeStr); err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
+	time, err := strconv.Atoi(idleTimeStr)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
 		sendOrCancel(ctx, ch, cmdInternalSvcErr)
@@ -648,9 +753,21 @@ func (s OSCARProxy) Eviled(ctx context.Context, snac wire.SNAC_0x01_0x10_OServic
 	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("EVILED:%d:%s", snac.NewEvil, who)))
 }
 
-func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
-	params[1] = strings.TrimSpace(params[1])
-	config := strings.Split(strings.TrimSpace(params[1]), "\n")
+func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	var info string
+
+	if _, err := parseArgs(cmd, "toc_set_config", &info); err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
+	// gaim uses braces instead of quotes for some reason
+	info = strings.Replace(info, "{", "\"", 1)
+	info = strings.Replace(info, "}", "\"", 1)
+	info = strings.TrimSpace(info)
+
+	config := strings.Split(info, "\n")
 
 	var cfg [][2]string
 	for _, item := range config {
@@ -761,7 +878,7 @@ func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, params []s
 		return
 	}
 
-	if err := s.TOCConfigStore.SetTOCConfig(me.IdentScreenName(), params[1]); err != nil {
+	if err := s.TOCConfigStore.SetTOCConfig(me.IdentScreenName(), info); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("TOCConfigStore.SaveTOCConfig: %w", err))
 		sendOrCancel(ctx, ch, cmdInternalSvcErr)
 		return
@@ -778,8 +895,17 @@ func (s OSCARProxy) Signout(ctx context.Context, me *state.Session) {
 	s.AuthService.Signout(ctx, me)
 }
 
-func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, ch chan<- []byte) {
-	chatID, err := strconv.Atoi(params[1])
+func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, cmd []byte, ch chan<- []byte) {
+	var chatRoomIDStr, msg string
+
+	users, err := parseArgs(cmd, "toc_chat_invite", &chatRoomIDStr, &msg)
+	if err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
+	chatID, err := strconv.Atoi(chatRoomIDStr)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
 		sendOrCancel(ctx, ch, cmdInternalSvcErr)
@@ -793,42 +919,51 @@ func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegis
 		return
 	}
 
-	snac := wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
-		ChannelID:  wire.ICBMChannelRendezvous,
-		ScreenName: params[3],
-		TLVRestBlock: wire.TLVRestBlock{
-			TLVList: wire.TLVList{
-				wire.NewTLVBE(0x05, wire.ICBMCh2Fragment{
-					Type:       0,
-					Capability: capChat,
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							wire.NewTLVBE(10, uint16(1)),
-							wire.NewTLVBE(12, params[2]),
-							wire.NewTLVBE(13, "us-ascii"),
-							wire.NewTLVBE(14, "en"),
-							wire.NewTLVBE(10001, wire.ICBMRoomInfo{
-								Exchange: 4, // todo add this to chat registry
-								Cookie:   cookie,
-							}),
+	for _, guest := range users {
+		snac := wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+			ChannelID:  wire.ICBMChannelRendezvous,
+			ScreenName: guest,
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLVBE(0x05, wire.ICBMCh2Fragment{
+						Type:       0,
+						Capability: capChat,
+						TLVRestBlock: wire.TLVRestBlock{
+							TLVList: wire.TLVList{
+								wire.NewTLVBE(10, uint16(1)),
+								wire.NewTLVBE(12, msg),
+								wire.NewTLVBE(13, "us-ascii"),
+								wire.NewTLVBE(14, "en"),
+								wire.NewTLVBE(10001, wire.ICBMRoomInfo{
+									Exchange: 4, // todo add this to chat registry
+									Cookie:   cookie,
+								}),
+							},
 						},
-					},
-				}),
+					}),
+				},
 			},
-		},
-	}
+		}
 
-	if _, err := s.ICBMService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac); err != nil {
-		logErr(ctx, s.Logger, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		if _, err := s.ICBMService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac); err != nil {
+			logErr(ctx, s.Logger, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
+			sendOrCancel(ctx, ch, cmdInternalSvcErr)
+			return
+		}
 	}
 }
 
-func (s OSCARProxy) GetInfoURL(ctx context.Context, me *state.Session, elems []string, ch chan<- []byte) {
+func (s OSCARProxy) GetInfoURL(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+	var user string
+	if _, err := parseArgs(cmd, "toc_get_info", &user); err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
 	p := url.Values{}
 	p.Add("from", me.IdentScreenName().String())
-	p.Add("user", elems[1])
+	p.Add("user", user)
 
 	if err := s.addCookie(me, p); err != nil {
 		s.Logger.Error("unable to generate cookie", "err", err.Error())
@@ -981,8 +1116,16 @@ func (s OSCARProxy) ConsumeIncomingChat(ctx context.Context, me *state.Session, 
 	}
 }
 
-func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, ch chan<- []byte) (int, bool) {
-	exchange, err := strconv.Atoi(params[1])
+func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, cmd []byte, ch chan<- []byte) (int, bool) {
+	var exchangeStr, roomName string
+
+	if _, err := parseArgs(cmd, "toc_chat_join", &exchangeStr, &roomName); err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return 0, false
+	}
+
+	exchange, err := strconv.Atoi(exchangeStr)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
 		sendOrCancel(ctx, ch, cmdInternalSvcErr)
@@ -994,7 +1137,7 @@ func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistr
 		Cookie:   "create",
 		TLVBlock: wire.TLVBlock{
 			TLVList: wire.TLVList{
-				wire.NewTLVBE(wire.ChatRoomTLVRoomName, params[2]),
+				wire.NewTLVBE(wire.ChatRoomTLVRoomName, roomName),
 			},
 		},
 	}
@@ -1057,7 +1200,7 @@ func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistr
 	chatID := chatRegistry.Add(inBody.Cookie)
 	chatRegistry.Register(chatID, sess)
 
-	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, params[2])))
+	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, roomName)))
 
 	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceChat.ClientOnline: %w", err))
@@ -1068,8 +1211,16 @@ func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistr
 	return chatID, true
 }
 
-func (s OSCARProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, params []string, ch chan<- []byte) (int, bool) {
-	chatID, err := strconv.Atoi(params[1])
+func (s OSCARProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, cmd []byte, ch chan<- []byte) (int, bool) {
+	var chatIDStr string
+
+	if _, err := parseArgs(cmd, "toc_chat_accept", &chatIDStr); err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return 0, false
+	}
+
+	chatID, err := strconv.Atoi(chatIDStr)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
 		sendOrCancel(ctx, ch, cmdInternalSvcErr)
@@ -1173,8 +1324,16 @@ func (s OSCARProxy) ChatReady(ctx context.Context, me *state.Session) bool {
 	return true
 }
 
-func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, params []string, ch chan<- []byte) {
-	chatID, err := strconv.Atoi(params[1])
+func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, cmd []byte, ch chan<- []byte) {
+	var chatIDStr, msg string
+
+	if _, err := parseArgs(cmd, "toc_chat_send", &chatIDStr, &msg); err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
+	chatID, err := strconv.Atoi(chatIDStr)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
 		sendOrCancel(ctx, ch, cmdInternalSvcErr)
@@ -1196,7 +1355,7 @@ func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, pa
 	block.Append(wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}))
 	block.Append(wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
 		TLVList: wire.TLVList{
-			wire.NewTLVBE(wire.ChatTLVMessageInfoText, params[2]),
+			wire.NewTLVBE(wire.ChatTLVMessageInfoText, msg),
 		},
 	}))
 
@@ -1210,7 +1369,7 @@ func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, pa
 		return
 	}
 
-	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, me.DisplayScreenName(), params[2])))
+	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, me.DisplayScreenName(), msg))) // todo do we reflect this?
 }
 
 func (s OSCARProxy) ChatUpdateBuddyArrived(ctx context.Context, snac wire.SNAC_0x0E_0x03_ChatUsersJoined, chatID int, ch chan<- []byte) {
@@ -1262,8 +1421,16 @@ func (s OSCARProxy) ChatIn(ctx context.Context, snac wire.SNAC_0x0E_0x06_ChatCha
 	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, u.ScreenName, text)))
 }
 
-func (s OSCARProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, params []string, ch chan<- []byte) {
-	chatID, err := strconv.Atoi(params[1])
+func (s OSCARProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, cmd []byte, ch chan<- []byte) {
+	var chatIDStr string
+
+	if _, err := parseArgs(cmd, "toc_chat_leave", &chatIDStr); err != nil {
+		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
+		sendOrCancel(ctx, ch, cmdInternalSvcErr)
+		return
+	}
+
+	chatID, err := strconv.Atoi(chatIDStr)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
 		sendOrCancel(ctx, ch, cmdInternalSvcErr)
