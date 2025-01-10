@@ -253,45 +253,42 @@ func (rt Server) processCommands(
 			if !ok {
 				return errDisconnect
 			}
-			elems, err := receiveCmd(clientFrame.Payload)
-			if err != nil {
-				return fmt.Errorf("receiveCmd: %w", err)
-			}
+			clientFrame.Payload = bytes.TrimRight(clientFrame.Payload, "\x00") // trim null terminator
+			fmt.Printf("< client: %s\n", clientFrame.Payload)
 
-			if len(elems) == 0 {
+			cmd := bytes.SplitN(clientFrame.Payload, []byte(" "), 1)
+			if len(cmd) == 0 {
 				return errors.New("no cmd in flapon signal")
 			}
 
-			fmt.Printf("< client: %+v\n", elems)
-
-			switch elems[0] {
+			switch string(cmd[0]) {
 			case "toc_send_im":
-				rt.BOSProxy.SendIM(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.SendIM(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_init_done":
 				rt.BOSProxy.BOSReady(ctx, sessBOS, toCh)
 			case "toc_add_buddy":
-				rt.BOSProxy.AddBuddy(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.AddBuddy(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_remove_buddy":
-				rt.BOSProxy.RemoveBuddy(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.RemoveBuddy(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_add_permit":
-				rt.BOSProxy.AddPermit(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.AddPermit(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_add_deny":
-				rt.BOSProxy.AddDeny(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.AddDeny(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_set_away":
-				rt.BOSProxy.SetAway(ctx, sessBOS, elems[1], toCh)
+				rt.BOSProxy.SetAway(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_set_caps":
-				rt.BOSProxy.SetCaps(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.SetCaps(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_evil":
-				rt.BOSProxy.Evil(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.Evil(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_get_info":
-				rt.BOSProxy.GetInfoURL(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.GetInfoURL(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_chat_join", "toc_chat_accept":
 				var chatID int
 				var joinOK bool
-				if elems[0] == "toc_chat_join" {
-					chatID, joinOK = rt.BOSProxy.ChatJoin(ctx, sessBOS, chatRegistry, elems, toCh)
+				if string(cmd[0]) == "toc_chat_join" {
+					chatID, joinOK = rt.BOSProxy.ChatJoin(ctx, sessBOS, chatRegistry, clientFrame.Payload, toCh)
 				} else {
-					chatID, joinOK = rt.BOSProxy.ChatAccept(ctx, sessBOS, chatRegistry, elems, toCh)
+					chatID, joinOK = rt.BOSProxy.ChatAccept(ctx, sessBOS, chatRegistry, clientFrame.Payload, toCh)
 				}
 				if joinOK {
 					doAsync(func() error {
@@ -301,25 +298,25 @@ func (rt Server) processCommands(
 					})
 				}
 			case "toc_chat_send":
-				rt.BOSProxy.ChatSend(ctx, chatRegistry, elems, toCh)
+				rt.BOSProxy.ChatSend(ctx, chatRegistry, clientFrame.Payload, toCh)
 			case "toc_chat_leave":
-				rt.BOSProxy.ChatLeave(ctx, chatRegistry, elems, toCh)
+				rt.BOSProxy.ChatLeave(ctx, chatRegistry, clientFrame.Payload, toCh)
 			case "toc_set_info":
-				rt.BOSProxy.SetInfo(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.SetInfo(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_set_dir":
-				rt.BOSProxy.SetDir(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.SetDir(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_set_idle":
-				rt.BOSProxy.SetIdle(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.SetIdle(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_set_config":
-				rt.BOSProxy.SetConfig(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.SetConfig(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_chat_invite":
-				rt.BOSProxy.ChatInvite(ctx, sessBOS, chatRegistry, elems, toCh)
+				rt.BOSProxy.ChatInvite(ctx, sessBOS, chatRegistry, clientFrame.Payload, toCh)
 			case "toc_dir_search":
-				rt.BOSProxy.GetDirSearchURL(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.GetDirSearchURL(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_get_dir":
-				rt.BOSProxy.GetDirURL(ctx, sessBOS, elems, toCh)
+				rt.BOSProxy.GetDirURL(ctx, sessBOS, clientFrame.Payload, toCh)
 			default:
-				rt.Logger.Error(fmt.Sprintf("unsupported TOC command %s", elems[0]))
+				rt.Logger.Error(fmt.Sprintf("unsupported TOC command %s", cmd[0]))
 			}
 		}
 	}
@@ -351,28 +348,20 @@ func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state
 		return nil, nil, fmt.Errorf("clientFlap.ReceiveFLAP: %w", err)
 	}
 
-	elems, err := receiveCmd(clientFrame.Payload)
-	if err != nil {
-		return nil, nil, fmt.Errorf("receiveCmd: %w", err)
-	}
-	if len(elems) == 0 || elems[0] != "toc_signon" {
-		return nil, nil, errors.New("expected toc_signon as first message")
-	}
-
 	chatRegistry := &ChatRegistry{
 		lookup:   make(map[int]string),
 		sessions: make(map[int]*state.Session),
 		m:        sync.RWMutex{},
 	}
 
-	sessBOS, reply := rt.BOSProxy.Login(ctx, elems)
+	sessBOS, reply := rt.BOSProxy.Login(ctx, clientFrame.Payload)
 	for _, m := range reply {
 		if err := clientFlap.SendDataFrame([]byte(m)); err != nil {
 			return nil, nil, fmt.Errorf("clientFlap.SendDataFrame: %w", err)
 		}
 	}
 
-	fmt.Printf("< client: %+v\n", elems)
+	fmt.Printf("< client: %+v\n", clientFrame.Payload)
 	return sessBOS, chatRegistry, nil
 }
 
@@ -439,26 +428,36 @@ func (rt Server) initFLAP(clientConn io.ReadWriter) (*wire.FlapClient, error) {
 	return clientFlap, nil
 }
 
-func receiveCmd(b []byte) ([]string, error) {
-	if b[len(b)-1] == '\x00' {
-		b = b[:len(b)-1]
-	}
-	if bytes.HasPrefix(b, []byte("toc_set_config")) {
-		// gaim uses braces instead of quotes for some reason
-		first := bytes.IndexByte(b, '{')
-		if first != -1 {
-			b[first] = '"'
-		}
-		last := bytes.LastIndexByte(b, '}')
-		if last != -1 {
-			b[last] = '"'
-		}
-	}
-	reader := csv.NewReader(bytes.NewReader(b))
+func parseParams(payload []byte, cmd string, params ...*string) error {
+	reader := csv.NewReader(bytes.NewReader(payload))
 	reader.Comma = ' '
 	reader.LazyQuotes = true
 	reader.TrimLeadingSpace = true
-	return reader.Read()
+
+	segs, err := reader.Read()
+
+	switch {
+	case err != nil:
+		return fmt.Errorf("failed to parse TOC command: %w", err)
+	case len(segs) == 0:
+		return fmt.Errorf("failed to parse TOC command: no segments found")
+	case segs[0] != cmd:
+		return fmt.Errorf("failed to parse TOC command: expected %s, got %s", cmd, segs[0])
+	}
+
+	params = params[1:]
+	if len(segs) < len(params) {
+		return fmt.Errorf("expected at least %d parameters, got %d", len(params), len(segs)-1)
+	}
+
+	for i, param := range params {
+		if param == nil {
+			continue
+		}
+		*param = strings.TrimSpace(segs[i])
+	}
+
+	return nil
 }
 
 func (rt Server) respond(s string, rwc io.ReadWriteCloser) error {
