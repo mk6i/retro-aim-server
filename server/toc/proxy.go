@@ -184,6 +184,12 @@ func (s OSCARProxy) AuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+const profileTpl = `
+<HTML><HEAD><TITLE>Profile Lookup</TITLE></HEAD><BODY>
+Username : <B>{{- .ScreenName -}}</B><BR><BR>
+{{ .Profile }}
+</BODY></HTML>`
+
 func (s OSCARProxy) Profile(w http.ResponseWriter, r *http.Request) {
 	from := r.URL.Query().Get("from")
 	if from == "" {
@@ -217,7 +223,9 @@ func (s OSCARProxy) Profile(w http.ResponseWriter, r *http.Request) {
 			if _, err = w.Write([]byte("user is unavailable")); err != nil {
 				s.Logger.Error("error writing response", "err", err.Error())
 			}
+			return
 		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	case wire.SNAC_0x02_0x06_LocateUserInfoReply:
 		profile, hasProf := v.LocateInfo.Bytes(wire.LocateTLVTagsInfoSigData)
 		if !hasProf {
@@ -225,13 +233,69 @@ func (s OSCARProxy) Profile(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		if _, err = w.Write(profile); err != nil {
+
+		t, err := template.New("results").Parse(profileTpl)
+		if err != nil {
+			log.Printf("Error parsing template: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		pd := struct {
+			ScreenName string
+			Profile    string
+		}{
+			ScreenName: user,
+			Profile:    extractBodyContent(profile),
+		}
+
+		buf := &bytes.Buffer{}
+		if err := t.Execute(buf, pd); err != nil {
+			log.Printf("Error executing template: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		if _, err = w.Write(buf.Bytes()); err != nil {
 			s.Logger.Error("error writing response", "err", err.Error())
 		}
 	default:
 		logErr(ctx, s.Logger, fmt.Errorf("unknown response type: %T", v))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
+}
+
+// extractBodyContent parses an HTML string and extracts the content within <BODY>...</BODY> tags.
+func extractBodyContent(htmlContent []byte) string {
+	tokenizer := html.NewTokenizer(bytes.NewReader(htmlContent))
+	var bodyContent bytes.Buffer
+	inBody := false
+
+	for {
+		switch tokenizer.Next() {
+		case html.ErrorToken:
+			if err := tokenizer.Err(); err != nil && err != io.EOF {
+				return "unable to read profile"
+			}
+			return bodyContent.String()
+		case html.StartTagToken:
+			token := tokenizer.Token()
+			if token.Data == "body" {
+				inBody = true
+			}
+		case html.EndTagToken:
+			token := tokenizer.Token()
+			if token.Data == "body" {
+				inBody = false
+			}
+		case html.TextToken:
+			if inBody {
+				bodyContent.Write(tokenizer.Text())
+			}
+		}
+	}
+
+	return ""
 }
 
 func (s OSCARProxy) SendIM(ctx context.Context, me *state.Session, params []string, ch chan<- []byte) {
@@ -881,11 +945,6 @@ func (s OSCARProxy) DirSearchHTTP(w http.ResponseWriter, r *http.Request) {
 			s.Logger.Error("error writing response", "err", err.Error())
 		}
 		return
-	case len(locateInfoReply.Results.List) == 0:
-		if _, err = w.Write([]byte("no search results found")); err != nil {
-			s.Logger.Error("error writing response", "err", err.Error())
-		}
-		return
 	}
 
 	outputSearchResults(w, s.Logger, locateInfoReply.Results.List...)
@@ -1224,8 +1283,10 @@ func (s OSCARProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, p
 	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("CHAT_LEFT:%d", chatID)))
 }
 
-const tmpl = `
-<HTML><HEAD><TITLE>Retro AIM Server</TITLE></HEAD><BODY><H3>Dir Results</H3><TABLE>
+const directoryTpl = `
+<HTML><HEAD><TITLE>Retro AIM Server</TITLE></HEAD><BODY><H3>Dir Results</H3>
+{{- if .Results -}}
+<TABLE>
 {{- range .Results -}}
 <TR><TD>
 {{- if .FirstName}}<B>First Name:</B> {{.FirstName}}<BR>{{- end -}}
@@ -1240,8 +1301,11 @@ const tmpl = `
 {{- if .Address}}<B>Address :</B> {{.Address}}<BR>{{- end -}}
 </TD></TR>
 {{- end -}}
-</TABLE></BODY></HTML>
-`
+</TABLE>
+{{- else -}}
+<BR>No results found.
+{{- end -}}
+</BODY></HTML>`
 
 func outputSearchResults(w http.ResponseWriter, logger *slog.Logger, users ...wire.TLVBlock) {
 	type DirSearchResult struct {
@@ -1276,7 +1340,7 @@ func outputSearchResults(w http.ResponseWriter, logger *slog.Logger, users ...wi
 		results = append(results, rec)
 	}
 
-	t, err := template.New("results").Parse(tmpl)
+	t, err := template.New("results").Parse(directoryTpl)
 	if err != nil {
 		log.Printf("Error parsing template: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
