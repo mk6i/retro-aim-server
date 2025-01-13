@@ -304,30 +304,26 @@ func extractBodyContent(htmlContent []byte) string {
 	return ""
 }
 
-func (s OSCARProxy) SendIM(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+// SendIM handles the toc_send_im TOC command, which sends instant messages.
+//
+// Command syntax: toc_send_im <Destination User> <Message> [auto]
+func (s OSCARProxy) SendIM(ctx context.Context, sender *state.Session, cmd []byte) []byte {
 	var recip, msg string
 
-	_, err := parseArgs(cmd, "toc_send_im", &recip, &msg) // todo handle "auto"
+	autoReply, err := parseArgs(cmd, "toc_send_im", &recip, &msg)
 	if err != nil {
-		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
+		return cmdInternalSvcErr
 	}
 
 	frags, err := wire.ICBMFragmentList(msg)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("wire.ICBMFragmentList: %w", err))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		return cmdInternalSvcErr
 	}
 
-	frame := wire.SNACFrame{
-		FoodGroup: wire.ICBM,
-		SubGroup:  wire.ICBMChannelMsgToHost,
-	}
 	snac := wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
-		Cookie:     0,
-		ChannelID:  1,
+		ChannelID:  wire.ICBMChannelIM,
 		ScreenName: recip,
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
@@ -336,11 +332,19 @@ func (s OSCARProxy) SendIM(ctx context.Context, me *state.Session, cmd []byte, c
 		},
 	}
 
-	if _, err := s.ICBMService.ChannelMsgToHost(ctx, me, frame, snac); err != nil {
-		logErr(ctx, s.Logger, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+	if len(autoReply) > 0 && autoReply[0] == "auto" {
+		snac.Append(wire.NewTLVBE(wire.ICBMTLVAutoResponse, []byte{}))
 	}
+
+	// send message and ignore response since there is no TOC error code to
+	// handle errors such as "user is offline", etc.
+	_, err = s.ICBMService.ChannelMsgToHost(ctx, sender, wire.SNACFrame{}, snac)
+	if err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
+		return cmdInternalSvcErr
+	}
+
+	return nil
 }
 
 func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {

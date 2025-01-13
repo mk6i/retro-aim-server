@@ -265,9 +265,20 @@ func (rt Server) processCommands(
 				cmd = clientFrame.Payload[:idx]
 			}
 
+			send := func(msg []byte) {
+				if len(msg) == 0 {
+					return
+				}
+				select {
+				case toCh <- msg:
+				case <-ctx.Done():
+					return
+				}
+			}
+
 			switch string(cmd) {
 			case "toc_send_im":
-				rt.BOSProxy.SendIM(ctx, sessBOS, clientFrame.Payload, toCh)
+				send(rt.BOSProxy.SendIM(ctx, sessBOS, clientFrame.Payload))
 			case "toc_init_done":
 				rt.BOSProxy.BOSReady(ctx, sessBOS, toCh)
 			case "toc_add_buddy":

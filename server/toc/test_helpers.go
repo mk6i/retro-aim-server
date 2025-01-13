@@ -1,0 +1,360 @@
+package toc
+
+import (
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
+
+	"github.com/mk6i/retro-aim-server/state"
+	"github.com/mk6i/retro-aim-server/wire"
+)
+
+type addBuddiesParams []struct {
+	sess   *state.Session
+	inBody wire.SNAC_0x03_0x04_BuddyAddBuddies
+	err    error
+}
+
+type broadcastBuddyDepartedParams []struct {
+	sess *state.Session
+	err  error
+}
+
+type delBuddiesParams []struct {
+	sess   *state.Session
+	inBody wire.SNAC_0x03_0x05_BuddyDelBuddies
+	err    error
+}
+
+type rightsQueryParams []struct {
+	inFrame wire.SNACFrame
+	msg     wire.SNACMessage
+}
+
+type buddyParams struct {
+	addBuddiesParams
+	broadcastBuddyDepartedParams
+	delBuddiesParams
+	rightsQueryParams
+}
+
+type chatParams struct {
+	channelMsgToHostParamsChat
+}
+
+type createRoomParams []struct {
+	sess    *state.Session
+	inFrame wire.SNACFrame
+	inBody  wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate
+	msg     wire.SNACMessage
+	err     error
+}
+
+type exchangeInfoParams []struct {
+	inFrame wire.SNACFrame
+	inBody  wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo
+	msg     wire.SNACMessage
+	err     error
+}
+
+type requestChatRightsParams []struct {
+	inFrame wire.SNACFrame
+	msg     wire.SNACMessage
+}
+
+type requestRoomInfoParams []struct {
+	inFrame wire.SNACFrame
+	inBody  wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo
+	msg     wire.SNACMessage
+	err     error
+}
+
+type chatNavParams struct {
+	createRoomParams
+	exchangeInfoParams
+	requestChatRightsParams
+	requestRoomInfoParams
+}
+
+type channelMsgToHostParamsChat []struct {
+	sender  state.IdentScreenName
+	inFrame wire.SNACFrame
+	inBody  wire.SNAC_0x0E_0x05_ChatChannelMsgToHost
+	result  *wire.SNACMessage
+	err     error
+}
+
+type channelMsgToHostParamsICBM []struct {
+	sender  state.IdentScreenName
+	inFrame wire.SNACFrame
+	inBody  wire.SNAC_0x04_0x06_ICBMChannelMsgToHost
+	result  *wire.SNACMessage
+	err     error
+}
+
+type clientEventParams []struct {
+	sess    *state.Session
+	inFrame wire.SNACFrame
+	inBody  wire.SNAC_0x04_0x14_ICBMClientEvent
+	err     error
+}
+
+type evilRequestParams []struct {
+	sess    *state.Session
+	inFrame wire.SNACFrame
+	inBody  wire.SNAC_0x04_0x08_ICBMEvilRequest
+	msg     wire.SNACMessage
+	err     error
+}
+
+type parameterQueryParams []struct {
+	inFrame wire.SNACFrame
+	msg     wire.SNACMessage
+}
+
+type clientErrParams []struct {
+	sess  *state.Session
+	frame wire.SNACFrame
+	body  wire.SNAC_0x04_0x0B_ICBMClientErr
+	err   error
+}
+
+type icbmParams struct {
+	channelMsgToHostParamsICBM
+	clientEventParams
+	evilRequestParams
+	parameterQueryParams
+	clientErrParams
+}
+
+type clientOnlineParams []struct {
+	body wire.SNAC_0x01_0x02_OServiceClientOnline
+	sess *state.Session
+	err  error
+}
+
+type idleNotificationParams []struct {
+	sess   *state.Session
+	bodyIn wire.SNAC_0x01_0x11_OServiceIdleNotification
+	err    error
+}
+
+type serviceRequestParams []struct {
+	sess   *state.Session
+	frame  wire.SNACFrame
+	bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest
+	msg    wire.SNACMessage
+	err    error
+}
+
+type oServiceParams struct {
+	clientOnlineParams
+	idleNotificationParams
+	serviceRequestParams
+}
+
+type bucpChallengeParams []struct {
+	bodyIn  wire.SNAC_0x17_0x06_BUCPChallengeRequest
+	newUUID func() uuid.UUID
+	msg     wire.SNACMessage
+	err     error
+}
+
+type bucpLoginParams []struct {
+	bodyIn    wire.SNAC_0x17_0x02_BUCPLoginRequest
+	newUserFn func(screenName state.DisplayScreenName) (state.User, error)
+	msg       wire.SNACMessage
+	err       error
+}
+
+type flapLoginParams []struct {
+	frame     wire.FLAPSignonFrame
+	newUserFn func(screenName state.DisplayScreenName) (state.User, error)
+	tlv       wire.TLVRestBlock
+	err       error
+}
+
+type registerBOSSessionParams []struct {
+	authCookie []byte
+	sess       *state.Session
+	err        error
+}
+
+type retrieveBOSSessionParams []struct {
+	authCookie []byte
+	sess       *state.Session
+	err        error
+}
+
+type registerChatSessionParams []struct {
+	authCookie []byte
+	sess       *state.Session
+	err        error
+}
+
+type signoutParams []struct {
+	sess *state.Session
+}
+
+type signoutChatParams []struct {
+	sess *state.Session
+}
+
+type authParams struct {
+	bucpChallengeParams
+	bucpLoginParams
+	flapLoginParams
+	registerBOSSessionParams
+	retrieveBOSSessionParams
+	registerChatSessionParams
+	signoutParams
+	signoutChatParams
+}
+
+type setDirInfoParams []struct {
+	sess    *state.Session
+	inFrame wire.SNACFrame
+	inBody  wire.SNAC_0x02_0x09_LocateSetDirInfo
+	msg     wire.SNACMessage
+	err     error
+}
+
+type setInfoParams []struct {
+	sess   *state.Session
+	inBody wire.SNAC_0x02_0x04_LocateSetInfo
+	err    error
+}
+
+type userInfoQueryParams []struct {
+	sess    *state.Session
+	inFrame wire.SNACFrame
+	inBody  wire.SNAC_0x02_0x05_LocateUserInfoQuery
+	msg     wire.SNACMessage
+	err     error
+}
+
+type dirInfoParams []struct {
+	inFrame wire.SNACFrame
+	body    wire.SNAC_0x02_0x0B_LocateGetDirInfo
+	msg     wire.SNACMessage
+	err     error
+}
+
+type locateParams struct {
+	setDirInfoParams
+	setInfoParams
+	userInfoQueryParams
+	dirInfoParams
+}
+
+type infoQueryParams []struct {
+	inFrame wire.SNACFrame
+	inBody  wire.SNAC_0x0F_0x02_InfoQuery
+	msg     wire.SNACMessage
+	err     error
+}
+
+type dirSearchParams struct {
+	infoQueryParams
+}
+
+type addDenyListEntriesParams []struct {
+	sess *state.Session
+	body wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries
+	err  error
+}
+
+type addPermListEntriesParams []struct {
+	sess *state.Session
+	body wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries
+	err  error
+}
+
+type delDenyListEntriesParams []struct {
+	sess *state.Session
+	body wire.SNAC_0x09_0x08_PermitDenyDelDenyListEntries
+	err  error
+}
+
+type delPermListEntriesParams []struct {
+	sess *state.Session
+	body wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries
+	err  error
+}
+
+type rightsQueryParamsPermitDeny []struct {
+	frame wire.SNACFrame
+	msg   wire.SNACMessage
+}
+
+type permitDenyParams struct {
+	addDenyListEntriesParams
+	addPermListEntriesParams
+	delDenyListEntriesParams
+	delPermListEntriesParams
+	rightsQueryParamsPermitDeny
+}
+
+type registerBuddyListParams []struct {
+	user state.IdentScreenName
+	err  error
+}
+
+type unregisterBuddyListParams []struct {
+	user state.IdentScreenName
+	err  error
+}
+
+type buddyListRegistryParams struct {
+	registerBuddyListParams
+	unregisterBuddyListParams
+}
+
+type setTOCConfigParams []struct {
+	user   state.IdentScreenName
+	config string
+	err    error
+}
+
+type userParams []struct {
+	screenName   state.IdentScreenName
+	returnedUser *state.User
+	err          error
+}
+
+type tocConfigParams struct {
+	setTOCConfigParams
+	userParams
+}
+
+type mockParams struct {
+	buddyParams
+	chatParams
+	chatNavParams
+	icbmParams
+	oServiceParams
+	authParams
+	locateParams
+	dirSearchParams
+	permitDenyParams
+	buddyListRegistryParams
+	tocConfigParams
+}
+
+// matchSession matches a mock call based session ident screen name.
+func matchSession(mustMatch state.IdentScreenName) interface{} {
+	return mock.MatchedBy(func(s *state.Session) bool {
+		return mustMatch == s.IdentScreenName()
+	})
+}
+
+// newTestSession creates a session object with 0 or more functional options
+// applied
+func newTestSession(screenName state.DisplayScreenName, options ...func(session *state.Session)) *state.Session {
+	s := state.NewSession()
+	s.SetIdentScreenName(screenName.IdentScreenName())
+	s.SetDisplayScreenName(screenName)
+	for _, op := range options {
+		op(s)
+	}
+	return s
+}
