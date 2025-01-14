@@ -204,6 +204,8 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, conn io.ReadWriteCloser)
 		return nil // user not found
 	}
 
+	ctx = context.WithValue(ctx, "screenName", sessBOS.IdentScreenName())
+
 	defer rt.BOSProxy.Signout(ctx, sessBOS)
 
 	// messages from TOC client
@@ -254,7 +256,6 @@ func (rt Server) processCommands(
 				return errDisconnect
 			}
 			clientFrame.Payload = bytes.TrimRight(clientFrame.Payload, "\x00") // trim null terminator
-			fmt.Printf("< client: %s\n", clientFrame.Payload)
 
 			if len(clientFrame.Payload) == 0 {
 				return errors.New("no givenPayload in flapon signal")
@@ -265,7 +266,9 @@ func (rt Server) processCommands(
 				cmd = clientFrame.Payload[:idx]
 			}
 
-			send := func(msg []byte) {
+			rt.logClientCommand(ctx, clientFrame, cmd)
+
+			reply := func(msg []byte) {
 				if len(msg) == 0 {
 					return
 				}
@@ -278,17 +281,17 @@ func (rt Server) processCommands(
 
 			switch string(cmd) {
 			case "toc_send_im":
-				send(rt.BOSProxy.SendIM(ctx, sessBOS, clientFrame.Payload))
+				reply(rt.BOSProxy.SendIM(ctx, sessBOS, clientFrame.Payload))
 			case "toc_init_done":
 				rt.BOSProxy.BOSReady(ctx, sessBOS, toCh)
 			case "toc_add_buddy":
-				rt.BOSProxy.AddBuddy(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.AddBuddy(ctx, sessBOS, clientFrame.Payload))
 			case "toc_remove_buddy":
-				rt.BOSProxy.RemoveBuddy(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.RemoveBuddy(ctx, sessBOS, clientFrame.Payload))
 			case "toc_add_permit":
-				rt.BOSProxy.AddPermit(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.AddPermit(ctx, sessBOS, clientFrame.Payload))
 			case "toc_add_deny":
-				rt.BOSProxy.AddDeny(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.AddDeny(ctx, sessBOS, clientFrame.Payload))
 			case "toc_set_away":
 				rt.BOSProxy.SetAway(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_set_caps":
@@ -338,6 +341,14 @@ func (rt Server) processCommands(
 	return nil
 }
 
+func (rt Server) logClientCommand(ctx context.Context, clientFrame wire.FLAPFrame, cmd []byte) {
+	if rt.Logger.Enabled(ctx, slog.LevelDebug) {
+		rt.Logger.InfoContext(ctx, "client request", "command", clientFrame.Payload)
+	} else {
+		rt.Logger.InfoContext(ctx, "client request", "command", cmd)
+	}
+}
+
 func (rt Server) sendToClient(ctx context.Context, toClient <-chan []byte, clientFlap *wire.FlapClient) error {
 	defer func() {
 		fmt.Println("closing sendToClient")
@@ -350,7 +361,21 @@ func (rt Server) sendToClient(ctx context.Context, toClient <-chan []byte, clien
 			if err := clientFlap.SendDataFrame(msg); err != nil {
 				return fmt.Errorf("clientFlap.SendDataFrame: %w", err)
 			}
+			rt.logServerResponse(ctx, msg)
 		}
+	}
+}
+
+func (rt Server) logServerResponse(ctx context.Context, msg []byte) {
+	if rt.Logger.Enabled(ctx, slog.LevelDebug) {
+		rt.Logger.DebugContext(ctx, "server response", "command", msg)
+	} else {
+		// just log the command, omit params
+		idx := len(msg)
+		if col := bytes.IndexByte(msg, ':'); col > -1 {
+			idx = col
+		}
+		rt.Logger.InfoContext(ctx, "server response", "command", msg[0:idx])
 	}
 }
 

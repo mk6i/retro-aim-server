@@ -410,7 +410,7 @@ func TOC(deps Container) toc.Server {
 	sessionManager := state.NewInMemorySessionManager(logger)
 	return toc.Server{
 		Logger:     logger,
-		ListenAddr: net.JoinHostPort("", deps.cfg.TOCPort),
+		ListenAddr: net.JoinHostPort(deps.cfg.TOCHost, deps.cfg.TOCPort),
 		BOSProxy: toc.OSCARProxy{
 			AuthService: foodgroup.NewAuthService(
 				deps.cfg,

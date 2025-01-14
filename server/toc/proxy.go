@@ -304,7 +304,8 @@ func extractBodyContent(htmlContent []byte) string {
 	return ""
 }
 
-// SendIM handles the toc_send_im TOC command, which sends instant messages.
+// SendIM handles the toc_send_im TOC command, which sends instant messages. It
+// returns a TOC internal error if there's a problem performing the operation.
 //
 // Command syntax: toc_send_im <Destination User> <Message> [auto]
 func (s OSCARProxy) SendIM(ctx context.Context, sender *state.Session, cmd []byte) []byte {
@@ -347,12 +348,16 @@ func (s OSCARProxy) SendIM(ctx context.Context, sender *state.Session, cmd []byt
 	return nil
 }
 
-func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+// AddBuddy handles the toc_add_buddy TOC command, which adds buddies to your
+// buddy list. It returns a TOC internal error if there's a problem performing
+// the operation.
+//
+// Command syntax: toc_add_buddy <Buddy User 1> [<Buddy User2> [<Buddy User 3> [...]]]
+func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, cmd []byte) []byte {
 	users, err := parseArgs(cmd, "toc_add_buddy")
 	if err != nil {
-		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
+		return cmdInternalSvcErr
 	}
 
 	snac := wire.SNAC_0x03_0x04_BuddyAddBuddies{}
@@ -364,17 +369,22 @@ func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, cmd []byte,
 
 	if err := s.BuddyService.AddBuddies(ctx, me, snac); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("BuddyService.AddBuddies: %w", err))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		return cmdInternalSvcErr
 	}
+
+	return nil
 }
 
-func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+// RemoveBuddy handles the toc_remove_buddy TOC command, which removes buddies
+// from your buddy list. It returns a TOC internal error if there's a problem
+// performing the operation.
+//
+// Command syntax: toc_remove_buddy <Buddy User 1> [<Buddy User2> [<Buddy User 3> [...]]]
+func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, cmd []byte) []byte {
 	users, err := parseArgs(cmd, "toc_remove_buddy")
 	if err != nil {
-		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
+		return cmdInternalSvcErr
 	}
 
 	snac := wire.SNAC_0x03_0x05_BuddyDelBuddies{}
@@ -386,17 +396,21 @@ func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, cmd []by
 
 	if err := s.BuddyService.DelBuddies(ctx, me, snac); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("BuddyService.DelBuddies: %w", err))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		return cmdInternalSvcErr
 	}
+	return nil
 }
 
-func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+// AddPermit handles the toc_add_permit TOC command, which adds buddies to your
+// list of allowed buddies. It returns a TOC internal error if there's a
+// problem performing the operation.
+//
+// Command syntax: toc_add_permit [ <User 1> [<User 2> [...]]]
+func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, cmd []byte) []byte {
 	users, err := parseArgs(cmd, "toc_add_permit")
 	if err != nil {
-		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
+		return cmdInternalSvcErr
 	}
 
 	snac := wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{}
@@ -408,17 +422,21 @@ func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, cmd []byte
 
 	if err := s.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("PermitDenyService.AddPermListEntries: %w", err))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		return cmdInternalSvcErr
 	}
+	return nil
 }
 
-func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+// AddDeny handles the toc_add_deny TOC command, which adds buddies to your
+// list of denied buddies. It returns a TOC internal error if there's a problem
+// performing the operation.
+//
+// Command syntax: toc_add_deny [ <User 1> [<User 2> [...]]]
+func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, cmd []byte) []byte {
 	users, err := parseArgs(cmd, "toc_add_deny")
 	if err != nil {
-		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
+		return cmdInternalSvcErr
 	}
 
 	snac := wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{}
@@ -430,9 +448,9 @@ func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, cmd []byte, 
 
 	if err := s.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		return cmdInternalSvcErr
 	}
+	return nil
 }
 
 func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {

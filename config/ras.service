@@ -7,8 +7,8 @@ User=ras
 Group=ras
 Environment="ADMIN_PORT=5196"
 Environment="ALERT_PORT=5194"
-Environment="AUTH_PORT=5190"
 Environment="API_PORT=8080"
+Environment="AUTH_PORT=5190"
 Environment="BART_PORT=5195"
 Environment="BOS_PORT=5191"
 Environment="CHAT_NAV_PORT=5193"
@@ -18,6 +18,8 @@ Environment="DISABLE_AUTH=true"
 Environment="LOG_LEVEL=info"
 Environment="ODIR_PORT=5197"
 Environment="OSCAR_HOST=127.0.0.1"
+Environment="TOC_HOST=127.0.0.1"
+Environment="TOC_PORT=9898"
 ExecStart=/opt/ras/retro_aim_server
 Restart=on-failure
 

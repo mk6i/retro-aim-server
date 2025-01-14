@@ -9,7 +9,7 @@ import (
 )
 
 type addBuddiesParams []struct {
-	sess   *state.Session
+	me     state.IdentScreenName
 	inBody wire.SNAC_0x03_0x04_BuddyAddBuddies
 	err    error
 }
@@ -20,7 +20,7 @@ type broadcastBuddyDepartedParams []struct {
 }
 
 type delBuddiesParams []struct {
-	sess   *state.Session
+	me     state.IdentScreenName
 	inBody wire.SNAC_0x03_0x05_BuddyDelBuddies
 	err    error
 }
@@ -258,25 +258,25 @@ type dirSearchParams struct {
 }
 
 type addDenyListEntriesParams []struct {
-	sess *state.Session
+	me   state.IdentScreenName
 	body wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries
 	err  error
 }
 
 type addPermListEntriesParams []struct {
-	sess *state.Session
+	me   state.IdentScreenName
 	body wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries
 	err  error
 }
 
 type delDenyListEntriesParams []struct {
-	sess *state.Session
+	me   state.IdentScreenName
 	body wire.SNAC_0x09_0x08_PermitDenyDelDenyListEntries
 	err  error
 }
 
 type delPermListEntriesParams []struct {
-	sess *state.Session
+	me   state.IdentScreenName
 	body wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries
 	err  error
 }
