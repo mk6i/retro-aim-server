@@ -453,21 +453,24 @@ func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, cmd []byte) 
 	return nil
 }
 
-func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+// SetCaps handles the toc_set_caps TOC command, which informs the server which
+// capabilities the client supports. It returns a TOC internal error if there's
+// a problem performing the operation.
+//
+// Command syntax: toc_set_caps [ <Capability 1> [<Capability 2> [...]]]
+func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, cmd []byte) []byte {
 	params, err := parseArgs(cmd, "toc_set_caps")
 	if err != nil {
 		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		return cmdInternalSvcErr
 	}
 
-	caps := make([]uuid.UUID, 0, len(params))
+	caps := make([]uuid.UUID, 0, 16*(len(params)+1))
 	for _, capStr := range params {
 		uid, err := uuid.Parse(capStr)
 		if err != nil {
 			logErr(ctx, s.Logger, fmt.Errorf("UUID.Parse: %w", err))
-			sendOrCancel(ctx, ch, cmdInternalSvcErr)
-			return
+			return cmdInternalSvcErr
 		}
 		caps = append(caps, uid)
 	}
@@ -483,17 +486,23 @@ func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, cmd []byte, 
 
 	if err := s.LocateService.SetInfo(ctx, me, snac); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("LocateService.SetInfo: %w", err))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		return cmdInternalSvcErr
 	}
+
+	return nil
 }
 
-func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {
+// SetAway handles the toc_set_away TOC command, which sets an away message. If
+// the message parameter is present, set the user as away, otherwise clear away
+// status. It returns a TOC internal error if there's a problem performing the
+// operation.
+//
+// Command syntax: toc_set_away [<away message>]
+func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, cmd []byte) []byte {
 	maybeMsg, err := parseArgs(cmd, "toc_set_away")
 	if err != nil {
 		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		return cmdInternalSvcErr
 	}
 
 	var msg string
@@ -511,9 +520,10 @@ func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, cmd []byte, 
 
 	if err := s.LocateService.SetInfo(ctx, me, snac); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("LocateService.SetInfo: %w", err))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		return cmdInternalSvcErr
 	}
+
+	return nil
 }
 
 func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, cmd []byte, ch chan<- []byte) {

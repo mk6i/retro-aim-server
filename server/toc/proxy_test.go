@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -522,6 +523,214 @@ func TestOSCARProxy_AddDeny(t *testing.T) {
 				PermitDenyService: pdSvc,
 			}
 			msg := svc.AddDeny(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
+func TestOSCARProxy_SetAway(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully set away with message",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_away "I'm away from my computer right now."`),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					setInfoParams: setInfoParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableData, "I'm away from my computer right now."),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "successfully set away without message",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_away`),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					setInfoParams: setInfoParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableData, ""),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "set away message, receive error from locate service",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_away "I'm away from my computer right now."`),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					setInfoParams: setInfoParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableData, "I'm away from my computer right now."),
+									},
+								},
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_set_away_bad`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			locateSvc := newMockLocateService(t)
+			for _, params := range tc.mockParams.setInfoParams {
+				locateSvc.EXPECT().
+					SetInfo(ctx, matchSession(params.me), params.inBody).
+					Return(params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:        slog.Default(),
+				LocateService: locateSvc,
+			}
+			msg := svc.SetAway(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
+func TestOSCARProxy_SetCaps(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully set capabilities",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_caps 09460000-4C7F-11D1-8222-444553540000 09460001-4C7F-11D1-8222-444553540000`),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					setInfoParams: setInfoParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LocateTLVTagsInfoCapabilities, []uuid.UUID{
+											uuid.MustParse("09460000-4C7F-11D1-8222-444553540000"),
+											uuid.MustParse("09460001-4C7F-11D1-8222-444553540000"),
+											capChat,
+										}),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "set capability, receive error from locate service",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_caps 09460000-4C7F-11D1-8222-444553540000`),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					setInfoParams: setInfoParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LocateTLVTagsInfoCapabilities, []uuid.UUID{
+											uuid.MustParse("09460000-4C7F-11D1-8222-444553540000"),
+											capChat,
+										}),
+									},
+								},
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "set malformed capability UUID",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_caps 09460000-`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_set_caps_bad`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			locateSvc := newMockLocateService(t)
+			for _, params := range tc.mockParams.setInfoParams {
+				locateSvc.EXPECT().
+					SetInfo(ctx, matchSession(params.me), params.inBody).
+					Return(params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:        slog.Default(),
+				LocateService: locateSvc,
+			}
+			msg := svc.SetCaps(ctx, tc.me, tc.givenCmd)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})

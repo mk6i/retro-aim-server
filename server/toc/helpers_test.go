@@ -219,7 +219,7 @@ type setDirInfoParams []struct {
 }
 
 type setInfoParams []struct {
-	sess   *state.Session
+	me     state.IdentScreenName
 	inBody wire.SNAC_0x02_0x04_LocateSetInfo
 	err    error
 }

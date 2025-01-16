@@ -293,9 +293,9 @@ func (rt Server) processCommands(
 			case "toc_add_deny":
 				reply(rt.BOSProxy.AddDeny(ctx, sessBOS, clientFrame.Payload))
 			case "toc_set_away":
-				rt.BOSProxy.SetAway(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.SetAway(ctx, sessBOS, clientFrame.Payload))
 			case "toc_set_caps":
-				rt.BOSProxy.SetCaps(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.SetCaps(ctx, sessBOS, clientFrame.Payload))
 			case "toc_evil":
 				rt.BOSProxy.Evil(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_get_info":
