@@ -99,11 +99,10 @@ type clientEventParams []struct {
 }
 
 type evilRequestParams []struct {
-	sess    *state.Session
-	inFrame wire.SNACFrame
-	inBody  wire.SNAC_0x04_0x08_ICBMEvilRequest
-	msg     wire.SNACMessage
-	err     error
+	me     state.IdentScreenName
+	inBody wire.SNAC_0x04_0x08_ICBMEvilRequest
+	msg    wire.SNACMessage
+	err    error
 }
 
 type parameterQueryParams []struct {
@@ -327,17 +326,38 @@ type tocConfigParams struct {
 }
 
 type mockParams struct {
-	buddyParams
-	chatParams
-	chatNavParams
-	icbmParams
-	oServiceParams
 	authParams
-	locateParams
-	dirSearchParams
-	permitDenyParams
 	buddyListRegistryParams
+	buddyParams
+	chatNavParams
+	chatParams
+	cookieBakerParams
+	dirSearchParams
+	icbmParams
+	locateParams
+	oServiceParams
+	permitDenyParams
 	tocConfigParams
+}
+
+// crackParams holds multiple scenarios for the Crack method.
+type crackParams []struct {
+	data       []byte
+	returnData []byte
+	returnErr  error
+}
+
+// issueParams holds multiple scenarios for the Issue method.
+type issueParams []struct {
+	data       []byte
+	returnData []byte
+	returnErr  error
+}
+
+// cookieBakerParams groups the method scenarios for a CookieBaker.
+type cookieBakerParams struct {
+	crackParams crackParams
+	issueParams issueParams
 }
 
 // matchSession matches a mock call based session ident screen name.

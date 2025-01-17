@@ -193,3 +193,6 @@ packages:
       TOCConfigStore:
         config:
           filename: "mock_toc_config_store_test.go"
+      CookieBaker:
+        config:
+          filename: "mock_cookie_baker_test.go"

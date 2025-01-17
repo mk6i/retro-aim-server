@@ -83,3 +83,8 @@ type TOCConfigStore interface {
 	SetTOCConfig(user state.IdentScreenName, config string) error
 	User(screenName state.IdentScreenName) (*state.User, error)
 }
+
+type CookieBaker interface {
+	Crack(data []byte) ([]byte, error)
+	Issue(data []byte) ([]byte, error)
+}

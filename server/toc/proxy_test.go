@@ -2,6 +2,7 @@ package toc
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"testing"
@@ -732,6 +733,236 @@ func TestOSCARProxy_SetCaps(t *testing.T) {
 			}
 			msg := svc.SetCaps(ctx, tc.me, tc.givenCmd)
 
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
+func TestOSCARProxy_Evil(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully warn normally",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_evil them norm`),
+			mockParams: mockParams{
+				icbmParams: icbmParams{
+					evilRequestParams: evilRequestParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+								SendAs:     0,
+								ScreenName: "them",
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNAC_0x04_0x09_ICBMEvilReply{},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "successfully warn anonymously",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_evil them anon`),
+			mockParams: mockParams{
+				icbmParams: icbmParams{
+					evilRequestParams: evilRequestParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+								SendAs:     1,
+								ScreenName: "them",
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNAC_0x04_0x09_ICBMEvilReply{},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "warn, receive error from ICBM service",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_evil them anon`),
+			mockParams: mockParams{
+				icbmParams: icbmParams{
+					evilRequestParams: evilRequestParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+								SendAs:     1,
+								ScreenName: "them",
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "warn, receive snac err",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_evil them anon`),
+			mockParams: mockParams{
+				icbmParams: icbmParams{
+					evilRequestParams: evilRequestParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+								SendAs:     1,
+								ScreenName: "them",
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNACError{},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "warn, ICBM svc returns unexpected snac type",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_evil them anon`),
+			mockParams: mockParams{
+				icbmParams: icbmParams{
+					evilRequestParams: evilRequestParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+								SendAs:     1,
+								ScreenName: "them",
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{},
+							},
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "warn with incorrect type",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_evil them blah`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_evil`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			icbmSvc := newMockICBMService(t)
+			for _, params := range tc.mockParams.evilRequestParams {
+				icbmSvc.EXPECT().
+					EvilRequest(ctx, matchSession(params.me), wire.SNACFrame{}, params.inBody).
+					Return(params.msg, params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:      slog.Default(),
+				ICBMService: icbmSvc,
+			}
+			msg := svc.Evil(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
+func TestOSCARProxy_GetInfoURL(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully request user info",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_get_info them`),
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					issueParams: issueParams{
+						{
+							data:       []byte("me"),
+							returnData: []byte("monster"),
+						},
+					},
+				},
+			},
+			wantMsg: []byte("GOTO_URL:profile:info?cookie=bW9uc3Rlcg%253D%253D&from=me&user=them"),
+		},
+		{
+			name:     "request user info, get cookie issue error",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_get_info them`),
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					issueParams: issueParams{
+						{
+							data:      []byte("me"),
+							returnErr: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_get_info`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			cookieBaker := newMockCookieBaker(t)
+			for _, params := range tc.mockParams.issueParams {
+				cookieBaker.EXPECT().
+					Issue(params.data).
+					Return(params.returnData, params.returnErr)
+			}
+
+			svc := OSCARProxy{
+				Logger:      slog.Default(),
+				CookieBaker: cookieBaker,
+			}
+			msg := svc.GetInfoURL(ctx, tc.me, tc.givenCmd)
+
+			fmt.Println(string(msg))
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}

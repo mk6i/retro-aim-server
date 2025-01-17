@@ -39,30 +39,31 @@ func (b bufferedConn) Read(p []byte) (int, error) {
 }
 
 type ChatRegistry struct {
-	lookup   map[int]string
+	lookup   map[int]wire.ICBMRoomInfo
 	sessions map[int]*state.Session
 	nextID   int
 	m        sync.RWMutex
 }
 
-func (c *ChatRegistry) Add(cookie string) int {
+func (c *ChatRegistry) Add(room wire.ICBMRoomInfo) int {
 	c.m.Lock()
 	defer c.m.Unlock()
-	for k, v := range c.lookup {
-		if v == cookie {
-			return k
+	for chatID, r := range c.lookup {
+		if r == room {
+			return chatID
 		}
 	}
 	id := c.nextID
-	c.lookup[id] = cookie
+	c.lookup[id] = room
 	c.nextID++
 	return id
 }
 
-func (c *ChatRegistry) Lookup(chatID int) string {
+func (c *ChatRegistry) Lookup(chatID int) (wire.ICBMRoomInfo, bool) {
 	c.m.RLock()
 	defer c.m.RUnlock()
-	return c.lookup[chatID]
+	room, found := c.lookup[chatID]
+	return room, found
 }
 
 func (c *ChatRegistry) Register(chatID int, sess *state.Session) {
@@ -297,24 +298,29 @@ func (rt Server) processCommands(
 			case "toc_set_caps":
 				reply(rt.BOSProxy.SetCaps(ctx, sessBOS, clientFrame.Payload))
 			case "toc_evil":
-				rt.BOSProxy.Evil(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.Evil(ctx, sessBOS, clientFrame.Payload))
 			case "toc_get_info":
-				rt.BOSProxy.GetInfoURL(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.GetInfoURL(ctx, sessBOS, clientFrame.Payload))
 			case "toc_chat_join", "toc_chat_accept":
 				var chatID int
-				var joinOK bool
+				var msg []byte
+
 				if string(cmd) == "toc_chat_join" {
-					chatID, joinOK = rt.BOSProxy.ChatJoin(ctx, sessBOS, chatRegistry, clientFrame.Payload, toCh)
+					chatID, msg = rt.BOSProxy.ChatJoin(ctx, sessBOS, chatRegistry, clientFrame.Payload)
 				} else {
-					chatID, joinOK = rt.BOSProxy.ChatAccept(ctx, sessBOS, chatRegistry, clientFrame.Payload, toCh)
+					chatID, msg = rt.BOSProxy.ChatAccept(ctx, sessBOS, chatRegistry, clientFrame.Payload)
 				}
-				if joinOK {
-					doAsync(func() error {
-						sess := chatRegistry.Retrieve(chatID)
-						rt.BOSProxy.ConsumeIncomingChat(ctx, sess, chatID, toCh)
-						return nil
-					})
+				reply(msg)
+
+				if bytes.Equal(msg, cmdInternalSvcErr) {
+					return nil
 				}
+
+				doAsync(func() error {
+					sess := chatRegistry.Retrieve(chatID)
+					rt.BOSProxy.ConsumeIncomingChat(ctx, sess, chatID, toCh)
+					return nil
+				})
 			case "toc_chat_send":
 				rt.BOSProxy.ChatSend(ctx, chatRegistry, clientFrame.Payload, toCh)
 			case "toc_chat_leave":
@@ -389,7 +395,7 @@ func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state
 	}
 
 	chatRegistry := &ChatRegistry{
-		lookup:   make(map[int]string),
+		lookup:   make(map[int]wire.ICBMRoomInfo),
 		sessions: make(map[int]*state.Session),
 		m:        sync.RWMutex{},
 	}
