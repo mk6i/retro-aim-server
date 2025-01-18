@@ -68,20 +68,20 @@ func (c *ChatRegistry) Add(room wire.ICBMRoomInfo) int {
 	return id
 }
 
-func (c *ChatRegistry) Lookup(chatID int) (wire.ICBMRoomInfo, bool) {
+func (c *ChatRegistry) LookupRoom(chatID int) (wire.ICBMRoomInfo, bool) {
 	c.m.RLock()
 	defer c.m.RUnlock()
 	room, found := c.lookup[chatID]
 	return room, found
 }
 
-func (c *ChatRegistry) Register(chatID int, sess *state.Session) {
+func (c *ChatRegistry) RegisterSess(chatID int, sess *state.Session) {
 	c.m.Lock()
 	defer c.m.Unlock()
 	c.sessions[chatID] = sess
 }
 
-func (c *ChatRegistry) Retrieve(chatID int) *state.Session {
+func (c *ChatRegistry) RetrieveSess(chatID int) *state.Session {
 	c.m.RLock()
 	defer c.m.RUnlock()
 	return c.sessions[chatID]
@@ -326,14 +326,14 @@ func (rt Server) processCommands(
 				}
 
 				doAsync(func() error {
-					sess := chatRegistry.Retrieve(chatID)
+					sess := chatRegistry.RetrieveSess(chatID)
 					rt.BOSProxy.ConsumeIncomingChat(ctx, sess, chatID, toCh)
 					return nil
 				})
 			case "toc_chat_send":
-				rt.BOSProxy.ChatSend(ctx, chatRegistry, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.ChatSend(ctx, chatRegistry, clientFrame.Payload))
 			case "toc_chat_leave":
-				rt.BOSProxy.ChatLeave(ctx, chatRegistry, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.ChatLeave(ctx, chatRegistry, clientFrame.Payload))
 			case "toc_set_info":
 				rt.BOSProxy.SetInfo(ctx, sessBOS, clientFrame.Payload, toCh)
 			case "toc_set_dir":

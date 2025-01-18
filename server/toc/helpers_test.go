@@ -61,10 +61,9 @@ type requestChatRightsParams []struct {
 }
 
 type requestRoomInfoParams []struct {
-	inFrame wire.SNACFrame
-	inBody  wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo
-	msg     wire.SNACMessage
-	err     error
+	inBody wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo
+	msg    wire.SNACMessage
+	err    error
 }
 
 type chatNavParams struct {
@@ -75,11 +74,10 @@ type chatNavParams struct {
 }
 
 type channelMsgToHostParamsChat []struct {
-	sender  state.IdentScreenName
-	inFrame wire.SNACFrame
-	inBody  wire.SNAC_0x0E_0x05_ChatChannelMsgToHost
-	result  *wire.SNACMessage
-	err     error
+	sender state.IdentScreenName
+	inBody wire.SNAC_0x0E_0x05_ChatChannelMsgToHost
+	result *wire.SNACMessage
+	err    error
 }
 
 type channelMsgToHostParamsICBM []struct {
@@ -193,7 +191,7 @@ type signoutParams []struct {
 }
 
 type signoutChatParams []struct {
-	sess *state.Session
+	me state.IdentScreenName
 }
 
 type authParams struct {

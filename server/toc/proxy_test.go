@@ -967,6 +967,106 @@ func TestOSCARProxy_GetInfoURL(t *testing.T) {
 }
 
 func TestOSCARProxy_ChatJoin(t *testing.T) {
+	fnNewChatNavParams := func(err error) chatNavParams {
+		ret := chatNavParams{
+			createRoomParams: createRoomParams{
+				{
+					me: state.NewIdentScreenName("me"),
+					inBody: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+						Exchange: 4,
+						Cookie:   "create",
+						TLVBlock: wire.TLVBlock{
+							TLVList: wire.TLVList{
+								wire.NewTLVBE(wire.ChatRoomTLVRoomName, "cool room"),
+							},
+						},
+					},
+				},
+			},
+		}
+		if err != nil {
+			ret.createRoomParams[0].err = err
+		} else {
+			ret.createRoomParams[0].msg = wire.SNACMessage{
+				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+								Cookie: "the-cookie",
+							}),
+						},
+					},
+				},
+			}
+		}
+		return ret
+	}
+
+	fnNewOServiceBOSParams := func(err error) oServiceParams {
+		ret := oServiceParams{
+			serviceRequestParams: serviceRequestParams{
+				{
+					me: state.NewIdentScreenName("me"),
+					bodyIn: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+						FoodGroup: wire.Chat,
+						TLVRestBlock: wire.TLVRestBlock{
+							TLVList: wire.TLVList{
+								wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
+									Cookie: "the-cookie",
+								}),
+							},
+						},
+					},
+				},
+			},
+		}
+		if err != nil {
+			ret.serviceRequestParams[0].err = err
+		} else {
+			ret.serviceRequestParams[0].msg = wire.SNACMessage{
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, "chat-auth-cookie"),
+						},
+					},
+				},
+			}
+		}
+		return ret
+	}
+
+	fnNewAuthParams := func(err error) authParams {
+		ret := authParams{
+			registerChatSessionParams: registerChatSessionParams{
+				{
+					authCookie: []byte("chat-auth-cookie"),
+				},
+			},
+		}
+		if err != nil {
+			ret.registerChatSessionParams[0].err = err
+		} else {
+			ret.registerChatSessionParams[0].sess = newTestSession("me-chat")
+		}
+		return ret
+	}
+
+	fnNewOServiceChatParams := func(err error) oServiceParams {
+		ret := oServiceParams{
+			clientOnlineParams: clientOnlineParams{
+				{
+					body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+					me:   state.NewIdentScreenName("me-chat"),
+				},
+			},
+		}
+		if err != nil {
+			ret.clientOnlineParams[0].err = err
+		}
+		return ret
+	}
+
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -990,77 +1090,58 @@ func TestOSCARProxy_ChatJoin(t *testing.T) {
 			givenCmd:          []byte(`toc_chat_join 4 "cool room"`),
 			givenChatRegistry: newChatRegistry(),
 			mockParams: mockParams{
-				chatNavParams: chatNavParams{
-					createRoomParams: createRoomParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							inBody: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-								Exchange: 4,
-								Cookie:   "create",
-								TLVBlock: wire.TLVBlock{
-									TLVList: wire.TLVList{
-										wire.NewTLVBE(wire.ChatRoomTLVRoomName, "cool room"),
-									},
-								},
-							},
-							msg: wire.SNACMessage{
-								Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
-									TLVRestBlock: wire.TLVRestBlock{
-										TLVList: wire.TLVList{
-											wire.NewTLVBE(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-												Cookie: "the-cookie",
-											}),
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				oServiceBOSParams: oServiceParams{
-					serviceRequestParams: serviceRequestParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							bodyIn: wire.SNAC_0x01_0x04_OServiceServiceRequest{
-								FoodGroup: wire.Chat,
-								TLVRestBlock: wire.TLVRestBlock{
-									TLVList: wire.TLVList{
-										wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
-											Cookie: "the-cookie",
-										}),
-									},
-								},
-							},
-							msg: wire.SNACMessage{
-								Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
-									TLVRestBlock: wire.TLVRestBlock{
-										TLVList: wire.TLVList{
-											wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, "chat-auth-cookie"),
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				authParams: authParams{
-					registerChatSessionParams: registerChatSessionParams{
-						{
-							authCookie: []byte("chat-auth-cookie"),
-							sess:       newTestSession("me-chat"),
-						},
-					},
-				},
-				oServiceChatParams: oServiceParams{
-					clientOnlineParams: clientOnlineParams{
-						{
-							body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
-							me:   state.NewIdentScreenName("me-chat"),
-						},
-					},
-				},
+				chatNavParams:      fnNewChatNavParams(nil),
+				oServiceBOSParams:  fnNewOServiceBOSParams(nil),
+				authParams:         fnNewAuthParams(nil),
+				oServiceChatParams: fnNewOServiceChatParams(nil),
 			},
 			wantMsg: []byte("CHAT_JOIN:0:cool room"),
+		},
+		{
+			name:              "join chat, receive error from chat oservice svc",
+			me:                newTestSession("me"),
+			givenCmd:          []byte(`toc_chat_join 4 "cool room"`),
+			givenChatRegistry: newChatRegistry(),
+			mockParams: mockParams{
+				chatNavParams:      fnNewChatNavParams(nil),
+				oServiceBOSParams:  fnNewOServiceBOSParams(nil),
+				authParams:         fnNewAuthParams(nil),
+				oServiceChatParams: fnNewOServiceChatParams(io.EOF),
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:              "join chat, receive error from auth svc",
+			me:                newTestSession("me"),
+			givenCmd:          []byte(`toc_chat_join 4 "cool room"`),
+			givenChatRegistry: newChatRegistry(),
+			mockParams: mockParams{
+				chatNavParams:     fnNewChatNavParams(nil),
+				oServiceBOSParams: fnNewOServiceBOSParams(nil),
+				authParams:        fnNewAuthParams(io.EOF),
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:              "join chat, receive error from BOS oservice svc",
+			me:                newTestSession("me"),
+			givenCmd:          []byte(`toc_chat_join 4 "cool room"`),
+			givenChatRegistry: newChatRegistry(),
+			mockParams: mockParams{
+				chatNavParams:     fnNewChatNavParams(nil),
+				oServiceBOSParams: fnNewOServiceBOSParams(io.EOF),
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:              "join chat, receive error from chat nav svc",
+			me:                newTestSession("me"),
+			givenCmd:          []byte(`toc_chat_join 4 "cool room"`),
+			givenChatRegistry: newChatRegistry(),
+			mockParams: mockParams{
+				chatNavParams: fnNewChatNavParams(io.EOF),
+			},
+			wantMsg: cmdInternalSvcErr,
 		},
 		{
 			name:     "bad command",
@@ -1114,6 +1195,486 @@ func TestOSCARProxy_ChatJoin(t *testing.T) {
 
 			assert.Equal(t, tc.wantMsg, msg)
 			assert.Equal(t, tc.wantChatID, chatID)
+		})
+	}
+}
+
+func TestOSCARProxy_ChatAccept(t *testing.T) {
+	fnNewChatNavParams := func(err error) chatNavParams {
+		ret := chatNavParams{
+			requestRoomInfoParams: requestRoomInfoParams{
+				{
+					inBody: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
+						Cookie:         "the-cookie",
+						Exchange:       4,
+						InstanceNumber: 0,
+					},
+				},
+			},
+		}
+		if err != nil {
+			ret.requestRoomInfoParams[0].err = err
+		} else {
+			ret.requestRoomInfoParams[0].msg = wire.SNACMessage{
+				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+								Cookie: "the-cookie",
+								TLVBlock: wire.TLVBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ChatRoomTLVRoomName, "cool room"),
+									},
+								},
+							}),
+						},
+					},
+				},
+			}
+		}
+		return ret
+	}
+
+	fnNewOServiceBOSParams := func(err error) oServiceParams {
+		ret := oServiceParams{
+			serviceRequestParams: serviceRequestParams{
+				{
+					me: state.NewIdentScreenName("me"),
+					bodyIn: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+						FoodGroup: wire.Chat,
+						TLVRestBlock: wire.TLVRestBlock{
+							TLVList: wire.TLVList{
+								wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
+									Cookie: "the-cookie",
+								}),
+							},
+						},
+					},
+				},
+			},
+		}
+		if err != nil {
+			ret.serviceRequestParams[0].err = err
+		} else {
+			ret.serviceRequestParams[0].msg = wire.SNACMessage{
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, "chat-auth-cookie"),
+						},
+					},
+				},
+			}
+		}
+		return ret
+	}
+
+	fnNewAuthParams := func(err error) authParams {
+		ret := authParams{
+			registerChatSessionParams: registerChatSessionParams{
+				{
+					authCookie: []byte("chat-auth-cookie"),
+				},
+			},
+		}
+		if err != nil {
+			ret.registerChatSessionParams[0].err = err
+		} else {
+			ret.registerChatSessionParams[0].sess = newTestSession("me-chat")
+		}
+		return ret
+	}
+
+	fnNewOServiceChatParams := func(err error) oServiceParams {
+		ret := oServiceParams{
+			clientOnlineParams: clientOnlineParams{
+				{
+					body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+					me:   state.NewIdentScreenName("me-chat"),
+				},
+			},
+		}
+		if err != nil {
+			ret.clientOnlineParams[0].err = err
+		}
+		return ret
+	}
+
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// givenChatRegistry is the chat registry passed to the function
+		givenChatRegistry *ChatRegistry
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// wantChatID is the expected chat ID
+		wantChatID int
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully accept chat",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_accept 0`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := newChatRegistry()
+				reg.Add(wire.ICBMRoomInfo{
+					Cookie:   "the-cookie",
+					Exchange: 4,
+					Instance: 0,
+				})
+				return reg
+			}(),
+			mockParams: mockParams{
+				chatNavParams:      fnNewChatNavParams(nil),
+				oServiceBOSParams:  fnNewOServiceBOSParams(nil),
+				authParams:         fnNewAuthParams(nil),
+				oServiceChatParams: fnNewOServiceChatParams(nil),
+			},
+			wantMsg: []byte("CHAT_JOIN:0:cool room"),
+		},
+		{
+			name:     "accept chat, receive error from chat oservice svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_accept 0`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := newChatRegistry()
+				reg.Add(wire.ICBMRoomInfo{
+					Cookie:   "the-cookie",
+					Exchange: 4,
+					Instance: 0,
+				})
+				return reg
+			}(),
+			mockParams: mockParams{
+				chatNavParams:      fnNewChatNavParams(nil),
+				oServiceBOSParams:  fnNewOServiceBOSParams(nil),
+				authParams:         fnNewAuthParams(nil),
+				oServiceChatParams: fnNewOServiceChatParams(io.EOF),
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "accept chat, receive error from auth svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_accept 0`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := newChatRegistry()
+				reg.Add(wire.ICBMRoomInfo{
+					Cookie:   "the-cookie",
+					Exchange: 4,
+					Instance: 0,
+				})
+				return reg
+			}(),
+			mockParams: mockParams{
+				chatNavParams:     fnNewChatNavParams(nil),
+				oServiceBOSParams: fnNewOServiceBOSParams(nil),
+				authParams:        fnNewAuthParams(io.EOF),
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "accept chat, receive error from BOS oservice svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_accept 0`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := newChatRegistry()
+				reg.Add(wire.ICBMRoomInfo{
+					Cookie:   "the-cookie",
+					Exchange: 4,
+					Instance: 0,
+				})
+				return reg
+			}(),
+			mockParams: mockParams{
+				chatNavParams:     fnNewChatNavParams(nil),
+				oServiceBOSParams: fnNewOServiceBOSParams(io.EOF),
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "accept chat, receive error from chat nav svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_accept 0`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := newChatRegistry()
+				reg.Add(wire.ICBMRoomInfo{
+					Cookie:   "the-cookie",
+					Exchange: 4,
+					Instance: 0,
+				})
+				return reg
+			}(),
+			mockParams: mockParams{
+				chatNavParams: fnNewChatNavParams(io.EOF),
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:              "chat doesn't exist",
+			givenCmd:          []byte(`toc_chat_accept 0`),
+			givenChatRegistry: newChatRegistry(),
+			wantMsg:           cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_chat_accept`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+		{
+			name:     "bad exchange number",
+			givenCmd: []byte(`toc_chat_accept four`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			chatNavSvc := newMockChatNavService(t)
+			for _, params := range tc.mockParams.requestRoomInfoParams {
+				chatNavSvc.EXPECT().
+					RequestRoomInfo(ctx, wire.SNACFrame{}, params.inBody).
+					Return(params.msg, params.err)
+			}
+			bosOServiceSvc := newMockOServiceService(t)
+			for _, params := range tc.mockParams.oServiceBOSParams.serviceRequestParams {
+				bosOServiceSvc.EXPECT().
+					ServiceRequest(ctx, matchSession(params.me), wire.SNACFrame{}, params.bodyIn).
+					Return(params.msg, params.err)
+			}
+			chatOServiceSvc := newMockOServiceService(t)
+			for _, params := range tc.mockParams.oServiceChatParams.clientOnlineParams {
+				chatOServiceSvc.EXPECT().
+					ClientOnline(ctx, params.body, matchSession(params.me)).
+					Return(params.err)
+			}
+			authSvc := newMockAuthService(t)
+			for _, params := range tc.mockParams.authParams.registerChatSessionParams {
+				authSvc.EXPECT().
+					RegisterChatSession(ctx, params.authCookie).
+					Return(params.sess, params.err)
+			}
+
+			svc := OSCARProxy{
+				AuthService:         authSvc,
+				ChatNavService:      chatNavSvc,
+				Logger:              slog.Default(),
+				OServiceServiceBOS:  bosOServiceSvc,
+				OServiceServiceChat: chatOServiceSvc,
+			}
+			chatID, msg := svc.ChatAccept(ctx, tc.me, tc.givenChatRegistry, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+			assert.Equal(t, tc.wantChatID, chatID)
+		})
+	}
+}
+
+func TestOSCARProxy_ChatSend(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// givenChatRegistry is the chat registry passed to the function
+		givenChatRegistry *ChatRegistry
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully send chat message",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_send 0 "Hello world!"`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := newChatRegistry()
+				reg.RegisterSess(0, newTestSession("me"))
+				return reg
+			}(),
+			mockParams: mockParams{
+				chatParams: chatParams{
+					channelMsgToHostParamsChat: channelMsgToHostParamsChat{
+						{
+							sender: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+								Channel: wire.ICBMChannelMIME,
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ChatTLVEnableReflectionFlag, uint8(1)),
+										wire.NewTLVBE(wire.ChatTLVSenderInformation, newTestSession("me").TLVUserInfo()),
+										wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}),
+										wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
+											TLVList: wire.TLVList{
+												wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world!"),
+											},
+										}),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantMsg: []byte("CHAT_IN:0:me:F:Hello world!"),
+		},
+		{
+			name:     "send chat message, receive error from chat svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_send 0 "Hello world!"`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := newChatRegistry()
+				reg.RegisterSess(0, newTestSession("me"))
+				return reg
+			}(),
+			mockParams: mockParams{
+				chatParams: chatParams{
+					channelMsgToHostParamsChat: channelMsgToHostParamsChat{
+						{
+							sender: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+								Channel: wire.ICBMChannelMIME,
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ChatTLVEnableReflectionFlag, uint8(1)),
+										wire.NewTLVBE(wire.ChatTLVSenderInformation, newTestSession("me").TLVUserInfo()),
+										wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}),
+										wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
+											TLVList: wire.TLVList{
+												wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world!"),
+											},
+										}),
+									},
+								},
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "chat room ID with invalid format",
+			givenCmd: []byte(`toc_chat_send zero "Hello world!"`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+		{
+			name:              "missing chat session",
+			givenCmd:          []byte(`toc_chat_send 0 "Hello world!"`),
+			givenChatRegistry: newChatRegistry(),
+			wantMsg:           cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_chat_send`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			chatSvc := newMockChatService(t)
+			for _, params := range tc.mockParams.channelMsgToHostParamsChat {
+				chatSvc.EXPECT().
+					ChannelMsgToHost(ctx, matchSession(params.sender), wire.SNACFrame{}, params.inBody).
+					Return(params.result, params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:      slog.Default(),
+				ChatService: chatSvc,
+			}
+			msg := svc.ChatSend(ctx, tc.givenChatRegistry, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
+func TestOSCARProxy_ChatLeave(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// givenChatRegistry is the chat registry passed to the function
+		givenChatRegistry *ChatRegistry
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully leave chat",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_leave 0`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := newChatRegistry()
+				reg.RegisterSess(0, newTestSession("me"))
+				return reg
+			}(),
+			mockParams: mockParams{
+				authParams: authParams{
+					signoutChatParams: signoutChatParams{
+						{
+							me: state.NewIdentScreenName("me"),
+						},
+					},
+				},
+			},
+			wantMsg: []byte("CHAT_LEFT:0"),
+		},
+		{
+			name:     "chat room ID with invalid format",
+			givenCmd: []byte(`toc_chat_leave zero`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+		{
+			name:              "missing chat session",
+			givenCmd:          []byte(`toc_chat_leave 0`),
+			givenChatRegistry: newChatRegistry(),
+			wantMsg:           cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_chat_leave`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			authSvc := newMockAuthService(t)
+			for _, params := range tc.mockParams.signoutChatParams {
+				authSvc.EXPECT().SignoutChat(ctx, matchSession(params.me))
+			}
+
+			svc := OSCARProxy{
+				Logger:      slog.Default(),
+				AuthService: authSvc,
+			}
+			msg := svc.ChatLeave(ctx, tc.givenChatRegistry, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }

@@ -957,9 +957,9 @@ func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegis
 		return
 	}
 
-	roomInfo, found := chatRegistry.Lookup(chatID)
+	roomInfo, found := chatRegistry.LookupRoom(chatID)
 	if !found {
-		logErr(ctx, s.Logger, fmt.Errorf("chatRegistry.Lookup: chat ID `%d` not found", chatID))
+		logErr(ctx, s.Logger, fmt.Errorf("chatRegistry.LookupRoom: chat ID `%d` not found", chatID))
 		sendOrCancel(ctx, ch, cmdInternalSvcErr)
 		return
 	}
@@ -1161,6 +1161,20 @@ func (s OSCARProxy) ConsumeIncomingChat(ctx context.Context, me *state.Session, 
 	}
 }
 
+// ChatJoin handles the toc_chat_join TOC command.
+//
+// From the TiK documentation:
+//
+//	Join a chat room in the given exchange. Exchange is an integer that
+//	represents a group of chat rooms. Different exchanges have different
+//	properties. For example some exchanges might have room replication (ie a
+//	room never fills up, there are just multiple instances.) and some exchanges
+//	might have navigational information. Currently, exchange should always be
+//	4, however this may change in the future. You will either receive an ERROR
+//	if the room couldn't be joined or a CHAT_JOIN message. The Chat Room Name
+//	is case-insensitive and consecutive spaces are removed.
+//
+// Command syntax: toc_chat_join <Exchange> <Chat Room Name>
 func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, cmd []byte) (int, []byte) {
 	var exchangeStr, roomName string
 
@@ -1169,13 +1183,14 @@ func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistr
 		return 0, cmdInternalSvcErr
 	}
 
+	// create room or retrieve the room if it already exists
 	exchange, err := strconv.Atoi(exchangeStr)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
 		return 0, cmdInternalSvcErr
 	}
 
-	snac := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+	mkRoomReq := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 		Exchange: uint16(exchange),
 		Cookie:   "create",
 		TLVBlock: wire.TLVBlock{
@@ -1184,22 +1199,20 @@ func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistr
 			},
 		},
 	}
-
-	reply, err := s.ChatNavService.CreateRoom(ctx, me, wire.SNACFrame{}, snac)
+	mkRoomReply, err := s.ChatNavService.CreateRoom(ctx, me, wire.SNACFrame{}, mkRoomReq)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("ChatNavService.CreateRoom: %w", err))
 		return 0, cmdInternalSvcErr
 	}
 
-	chatSNAC, ok := reply.Body.(wire.SNAC_0x0D_0x09_ChatNavNavInfo)
+	mkRoomReplyBody, ok := mkRoomReply.Body.(wire.SNAC_0x0D_0x09_ChatNavNavInfo)
 	if !ok {
-		logErr(ctx, s.Logger, fmt.Errorf("chatNavService.CreateRoom: unexpected response type %v", chatSNAC))
+		logErr(ctx, s.Logger, fmt.Errorf("chatNavService.CreateRoom: unexpected response type %v", mkRoomReplyBody))
 		return 0, cmdInternalSvcErr
 	}
-
-	buf, ok := chatSNAC.Bytes(wire.ChatNavTLVRoomInfo)
+	buf, ok := mkRoomReplyBody.Bytes(wire.ChatNavTLVRoomInfo)
 	if !ok {
-		logErr(ctx, s.Logger, errors.New("chatSNAC.Bytes: missing wire.ChatNavTLVRoomInfo"))
+		logErr(ctx, s.Logger, errors.New("mkRoomReplyBody.Bytes: missing wire.ChatNavTLVRoomInfo"))
 		return 0, cmdInternalSvcErr
 	}
 
@@ -1209,7 +1222,7 @@ func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistr
 		return 0, cmdInternalSvcErr
 	}
 
-	snac2 := wire.SNAC_0x01_0x04_OServiceServiceRequest{
+	svcReqSNAC := wire.SNAC_0x01_0x04_OServiceServiceRequest{
 		FoodGroup: wire.Chat,
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
@@ -1219,21 +1232,25 @@ func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistr
 			},
 		},
 	}
-	rep, err := s.OServiceServiceBOS.ServiceRequest(ctx, me, wire.SNACFrame{}, snac2)
+	svcReqReply, err := s.OServiceServiceBOS.ServiceRequest(ctx, me, wire.SNACFrame{}, svcReqSNAC)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceBOS.ServiceRequest: %w", err))
 		return 0, cmdInternalSvcErr
 	}
 
-	chatResp := rep.Body.(wire.SNAC_0x01_0x05_OServiceServiceResponse)
-
-	cookie, hasCookie := chatResp.Bytes(wire.OServiceTLVTagsLoginCookie)
-	if !hasCookie {
-		logErr(ctx, s.Logger, errors.New("chatResp.Bytes: missing wire.OServiceTLVTagsLoginCookie"))
+	svcReqReplyBody, ok := svcReqReply.Body.(wire.SNAC_0x01_0x05_OServiceServiceResponse)
+	if !ok {
+		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceBOS.ServiceRequest: unexpected response type %v", svcReqReplyBody))
 		return 0, cmdInternalSvcErr
 	}
 
-	sess, err := s.AuthService.RegisterChatSession(ctx, cookie)
+	loginCookie, hasCookie := svcReqReplyBody.Bytes(wire.OServiceTLVTagsLoginCookie)
+	if !hasCookie {
+		logErr(ctx, s.Logger, errors.New("svcReqReplyBody.Bytes: missing wire.OServiceTLVTagsLoginCookie"))
+		return 0, cmdInternalSvcErr
+	}
+
+	chatSess, err := s.AuthService.RegisterChatSession(ctx, loginCookie)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("AuthService.RegisterChatSession: %w", err))
 		return 0, cmdInternalSvcErr
@@ -1245,9 +1262,9 @@ func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistr
 		Instance: inBody.InstanceNumber,
 	}
 	chatID := chatRegistry.Add(roomInfo)
-	chatRegistry.Register(chatID, sess)
+	chatRegistry.RegisterSess(chatID, chatSess)
 
-	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
+	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, chatSess); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceChat.ClientOnline: %w", err))
 		return 0, cmdInternalSvcErr
 	}
@@ -1255,6 +1272,14 @@ func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistr
 	return chatID, []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, roomName))
 }
 
+// ChatAccept handles the toc_chat_accept TOC command.
+//
+// From the TiK documentation:
+//
+//	Accept a CHAT_INVITE message from TOC. The server will send a CHAT_JOIN in
+//	response.
+//
+// Command syntax: toc_chat_accept <Chat Room ID>
 func (s OSCARProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, cmd []byte) (int, []byte) {
 	var chatIDStr string
 
@@ -1268,29 +1293,31 @@ func (s OSCARProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegis
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
 		return 0, cmdInternalSvcErr
 	}
-
-	chatInfo, found := chatRegistry.Lookup(chatID)
+	chatInfo, found := chatRegistry.LookupRoom(chatID)
 	if !found {
-		logErr(ctx, s.Logger, errors.New("chatRegistry.Lookup: no chat found"))
+		logErr(ctx, s.Logger, fmt.Errorf("chatRegistry.LookupRoom: no chat found for ID %d", chatID))
 		return 0, cmdInternalSvcErr
 	}
 
-	snac := wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
+	reqRoomSNAC := wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
 		Cookie:         chatInfo.Cookie,
 		Exchange:       chatInfo.Exchange,
 		InstanceNumber: chatInfo.Instance,
 	}
-
-	info, err := s.ChatNavService.RequestRoomInfo(ctx, wire.SNACFrame{}, snac)
+	reqRoomReply, err := s.ChatNavService.RequestRoomInfo(ctx, wire.SNACFrame{}, reqRoomSNAC)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("ChatNavService.RequestRoomInfo: %w", err))
 		return 0, cmdInternalSvcErr
 	}
 
-	infoSNAC := info.Body.(wire.SNAC_0x0D_0x09_ChatNavNavInfo)
-	b, hasInfo := infoSNAC.Bytes(wire.ChatNavTLVRoomInfo)
+	reqRoomReplyBody, ok := reqRoomReply.Body.(wire.SNAC_0x0D_0x09_ChatNavNavInfo)
+	if !ok {
+		logErr(ctx, s.Logger, fmt.Errorf("chatNavService.RequestRoomInfo: unexpected response type %v", reqRoomReplyBody))
+		return 0, cmdInternalSvcErr
+	}
+	b, hasInfo := reqRoomReplyBody.Bytes(wire.ChatNavTLVRoomInfo)
 	if !hasInfo {
-		logErr(ctx, s.Logger, errors.New("infoSNAC.Bytes: missing wire.ChatNavTLVRoomInfo"))
+		logErr(ctx, s.Logger, errors.New("reqRoomReplyBody.Bytes: missing wire.ChatNavTLVRoomInfo"))
 		return 0, cmdInternalSvcErr
 	}
 
@@ -1300,13 +1327,13 @@ func (s OSCARProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegis
 		return 0, cmdInternalSvcErr
 	}
 
-	name, hasName := roomInfo.Bytes(wire.ChatRoomTLVRoomName)
+	roomName, hasName := roomInfo.Bytes(wire.ChatRoomTLVRoomName)
 	if !hasName {
 		logErr(ctx, s.Logger, errors.New("roomInfo.Bytes: missing wire.ChatRoomTLVRoomName"))
 		return 0, cmdInternalSvcErr
 	}
 
-	snac2 := wire.SNAC_0x01_0x04_OServiceServiceRequest{
+	svcReqSNAC := wire.SNAC_0x01_0x04_OServiceServiceRequest{
 		FoodGroup: wire.Chat,
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
@@ -1316,65 +1343,68 @@ func (s OSCARProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegis
 			},
 		},
 	}
-	rep, err := s.OServiceServiceBOS.ServiceRequest(ctx, me, wire.SNACFrame{}, snac2)
+	svcReqReply, err := s.OServiceServiceBOS.ServiceRequest(ctx, me, wire.SNACFrame{}, svcReqSNAC)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceBOS.ServiceRequest: %w", err))
 		return 0, cmdInternalSvcErr
 	}
 
-	chatResp := rep.Body.(wire.SNAC_0x01_0x05_OServiceServiceResponse)
+	svcReqReplyBody, ok := svcReqReply.Body.(wire.SNAC_0x01_0x05_OServiceServiceResponse)
+	if !ok {
+		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceBOS.ServiceRequest: unexpected response type %v", svcReqReplyBody))
+		return 0, cmdInternalSvcErr
+	}
 
-	sessionCookie, hasCookie := chatResp.Bytes(wire.OServiceTLVTagsLoginCookie)
+	loginCookie, hasCookie := svcReqReplyBody.Bytes(wire.OServiceTLVTagsLoginCookie)
 	if !hasCookie {
 		logErr(ctx, s.Logger, errors.New("missing wire.OServiceTLVTagsLoginCookie"))
 		return 0, cmdInternalSvcErr
 	}
 
-	sess, err := s.AuthService.RegisterChatSession(ctx, sessionCookie)
+	chatSess, err := s.AuthService.RegisterChatSession(ctx, loginCookie)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("AuthService.RegisterChatSession: %w", err))
 		return 0, cmdInternalSvcErr
 	}
 
-	chatRegistry.Register(chatID, sess)
+	chatRegistry.RegisterSess(chatID, chatSess)
 
-	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
+	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, chatSess); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceChat.ClientOnline: %w", err))
 		return 0, cmdInternalSvcErr
 	}
 
-	return chatID, []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, name))
+	return chatID, []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, roomName))
 }
 
-func (s OSCARProxy) ChatReady(ctx context.Context, me *state.Session) bool {
-	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, me); err != nil {
-		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceChat.ClientOnline: %w", err))
-		return false
-	}
-	return true
-}
-
-func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, cmd []byte, ch chan<- []byte) {
+// ChatSend handles the toc_chat_send TOC command.
+//
+// From the TiK documentation:
+//
+//	Send a message in a chat room using the chat room id from CHAT_JOIN. Since
+//	reflection is always on in TOC, you do not need to add the message to your
+//	chat UI, since you will get a CHAT_IN with the message. Remember to quote
+//	and encode the message.
+//
+// Command syntax: toc_chat_send <Chat Room ID> <Message>
+func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, cmd []byte) []byte {
 	var chatIDStr, msg string
 
 	if _, err := parseArgs(cmd, "toc_chat_send", &chatIDStr, &msg); err != nil {
-		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
+		return cmdInternalSvcErr
 	}
 
 	chatID, err := strconv.Atoi(chatIDStr)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		return cmdInternalSvcErr
 	}
 
-	me := chatRegistry.Retrieve(chatID)
+	me := chatRegistry.RetrieveSess(chatID)
 	if me == nil {
-		logErr(ctx, s.Logger, fmt.Errorf("chatRegistry.Retrieve: chat session `%d` not found", chatID))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		logErr(ctx, s.Logger, fmt.Errorf("chatRegistry.RetrieveSess: session for chat ID `%d` not found", chatID))
+		return cmdInternalSvcErr
 	}
 
 	block := wire.TLVRestBlock{}
@@ -1390,16 +1420,15 @@ func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, cm
 	}))
 
 	snac := wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
-		Channel:      3,
+		Channel:      wire.ICBMChannelMIME,
 		TLVRestBlock: block,
 	}
 	if _, err := s.ChatService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("ChatService.ChannelMsgToHost: %w", err))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		return cmdInternalSvcErr
 	}
 
-	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, me.DisplayScreenName(), msg))) // todo do we reflect this?
+	return []byte(fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, me.DisplayScreenName(), msg))
 }
 
 func (s OSCARProxy) ChatUpdateBuddyArrived(ctx context.Context, snac wire.SNAC_0x0E_0x03_ChatUsersJoined, chatID int, ch chan<- []byte) {
@@ -1451,33 +1480,38 @@ func (s OSCARProxy) ChatIn(ctx context.Context, snac wire.SNAC_0x0E_0x06_ChatCha
 	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, u.ScreenName, text)))
 }
 
-func (s OSCARProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, cmd []byte, ch chan<- []byte) {
+// ChatLeave handles the toc_chat_leave TOC command.
+//
+// From the TiK documentation:
+//
+//	Leave the chat room.
+//
+// Command syntax: toc_chat_leave <Chat Room ID>
+func (s OSCARProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, cmd []byte) []byte {
 	var chatIDStr string
 
 	if _, err := parseArgs(cmd, "toc_chat_leave", &chatIDStr); err != nil {
-		s.Logger.Error("error parsing TOC command", "givenPayload", string(cmd), "err", err)
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
+		return cmdInternalSvcErr
 	}
 
 	chatID, err := strconv.Atoi(chatIDStr)
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("strconv.Atoi: %w", err))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		return cmdInternalSvcErr
 	}
 
-	me := chatRegistry.Retrieve(chatID)
+	me := chatRegistry.RetrieveSess(chatID)
 	if me == nil {
-		logErr(ctx, s.Logger, fmt.Errorf("chatRegistry.Retrieve: chat session `%d` not found", chatID))
-		sendOrCancel(ctx, ch, cmdInternalSvcErr)
-		return
+		logErr(ctx, s.Logger, fmt.Errorf("chatRegistry.RetrieveSess: chat session `%d` not found", chatID))
+		return cmdInternalSvcErr
 	}
 
 	s.AuthService.SignoutChat(ctx, me)
-	me.Close()
 
-	sendOrCancel(ctx, ch, []byte(fmt.Sprintf("CHAT_LEFT:%d", chatID)))
+	me.Close() // stop async server SNAC reply handler for this chat room
+
+	return []byte(fmt.Sprintf("CHAT_LEFT:%d", chatID))
 }
 
 const directoryTpl = `
