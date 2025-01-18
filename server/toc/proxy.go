@@ -1191,7 +1191,12 @@ func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistr
 		return 0, cmdInternalSvcErr
 	}
 
-	chatSNAC := reply.Body.(wire.SNAC_0x0D_0x09_ChatNavNavInfo)
+	chatSNAC, ok := reply.Body.(wire.SNAC_0x0D_0x09_ChatNavNavInfo)
+	if !ok {
+		logErr(ctx, s.Logger, fmt.Errorf("chatNavService.CreateRoom: unexpected response type %v", chatSNAC))
+		return 0, cmdInternalSvcErr
+	}
+
 	buf, ok := chatSNAC.Bytes(wire.ChatNavTLVRoomInfo)
 	if !ok {
 		logErr(ctx, s.Logger, errors.New("chatSNAC.Bytes: missing wire.ChatNavTLVRoomInfo"))

@@ -38,6 +38,15 @@ func (b bufferedConn) Read(p []byte) (int, error) {
 	return b.r.Read(p)
 }
 
+func newChatRegistry() *ChatRegistry {
+	chatRegistry := &ChatRegistry{
+		lookup:   make(map[int]wire.ICBMRoomInfo),
+		sessions: make(map[int]*state.Session),
+		m:        sync.RWMutex{},
+	}
+	return chatRegistry
+}
+
 type ChatRegistry struct {
 	lookup   map[int]wire.ICBMRoomInfo
 	sessions map[int]*state.Session
@@ -394,12 +403,6 @@ func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state
 		return nil, nil, fmt.Errorf("clientFlap.ReceiveFLAP: %w", err)
 	}
 
-	chatRegistry := &ChatRegistry{
-		lookup:   make(map[int]wire.ICBMRoomInfo),
-		sessions: make(map[int]*state.Session),
-		m:        sync.RWMutex{},
-	}
-
 	sessBOS, reply := rt.BOSProxy.Login(ctx, clientFrame.Payload)
 	for _, m := range reply {
 		if err := clientFlap.SendDataFrame([]byte(m)); err != nil {
@@ -408,7 +411,7 @@ func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state
 	}
 
 	fmt.Printf("< client: %+v\n", clientFrame.Payload)
-	return sessBOS, chatRegistry, nil
+	return sessBOS, newChatRegistry(), nil
 }
 
 func (rt Server) readFromClient(msgCh chan<- wire.FLAPFrame, clientFlap *wire.FlapClient) {

@@ -42,11 +42,10 @@ type chatParams struct {
 }
 
 type createRoomParams []struct {
-	sess    *state.Session
-	inFrame wire.SNACFrame
-	inBody  wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate
-	msg     wire.SNACMessage
-	err     error
+	me     state.IdentScreenName
+	inBody wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate
+	msg    wire.SNACMessage
+	err    error
 }
 
 type exchangeInfoParams []struct {
@@ -127,7 +126,7 @@ type icbmParams struct {
 
 type clientOnlineParams []struct {
 	body wire.SNAC_0x01_0x02_OServiceClientOnline
-	sess *state.Session
+	me   state.IdentScreenName
 	err  error
 }
 
@@ -138,8 +137,7 @@ type idleNotificationParams []struct {
 }
 
 type serviceRequestParams []struct {
-	sess   *state.Session
-	frame  wire.SNACFrame
+	me     state.IdentScreenName
 	bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest
 	msg    wire.SNACMessage
 	err    error
@@ -335,7 +333,8 @@ type mockParams struct {
 	dirSearchParams
 	icbmParams
 	locateParams
-	oServiceParams
+	oServiceBOSParams  oServiceParams
+	oServiceChatParams oServiceParams
 	permitDenyParams
 	tocConfigParams
 }

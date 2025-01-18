@@ -2,7 +2,6 @@ package toc
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log/slog"
 	"testing"
@@ -962,8 +961,159 @@ func TestOSCARProxy_GetInfoURL(t *testing.T) {
 			}
 			msg := svc.GetInfoURL(ctx, tc.me, tc.givenCmd)
 
-			fmt.Println(string(msg))
 			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
+func TestOSCARProxy_ChatJoin(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// givenChatRegistry is the chat registry passed to the function
+		givenChatRegistry *ChatRegistry
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// wantChatID is the expected chat ID
+		wantChatID int
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:              "successfully join chat",
+			me:                newTestSession("me"),
+			givenCmd:          []byte(`toc_chat_join 4 "cool room"`),
+			givenChatRegistry: newChatRegistry(),
+			mockParams: mockParams{
+				chatNavParams: chatNavParams{
+					createRoomParams: createRoomParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+								Exchange: 4,
+								Cookie:   "create",
+								TLVBlock: wire.TLVBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ChatRoomTLVRoomName, "cool room"),
+									},
+								},
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+												Cookie: "the-cookie",
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				oServiceBOSParams: oServiceParams{
+					serviceRequestParams: serviceRequestParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							bodyIn: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+								FoodGroup: wire.Chat,
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
+											Cookie: "the-cookie",
+										}),
+									},
+								},
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, "chat-auth-cookie"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				authParams: authParams{
+					registerChatSessionParams: registerChatSessionParams{
+						{
+							authCookie: []byte("chat-auth-cookie"),
+							sess:       newTestSession("me-chat"),
+						},
+					},
+				},
+				oServiceChatParams: oServiceParams{
+					clientOnlineParams: clientOnlineParams{
+						{
+							body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+							me:   state.NewIdentScreenName("me-chat"),
+						},
+					},
+				},
+			},
+			wantMsg: []byte("CHAT_JOIN:0:cool room"),
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_chat_join`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+		{
+			name:     "bad exchange number",
+			givenCmd: []byte(`toc_chat_join four "cool room"`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			chatNavSvc := newMockChatNavService(t)
+			for _, params := range tc.mockParams.createRoomParams {
+				chatNavSvc.EXPECT().
+					CreateRoom(ctx, matchSession(params.me), wire.SNACFrame{}, params.inBody).
+					Return(params.msg, params.err)
+			}
+			bosOServiceSvc := newMockOServiceService(t)
+			for _, params := range tc.mockParams.oServiceBOSParams.serviceRequestParams {
+				bosOServiceSvc.EXPECT().
+					ServiceRequest(ctx, matchSession(params.me), wire.SNACFrame{}, params.bodyIn).
+					Return(params.msg, params.err)
+			}
+			chatOServiceSvc := newMockOServiceService(t)
+			for _, params := range tc.mockParams.oServiceChatParams.clientOnlineParams {
+				chatOServiceSvc.EXPECT().
+					ClientOnline(ctx, params.body, matchSession(params.me)).
+					Return(params.err)
+			}
+			authSvc := newMockAuthService(t)
+			for _, params := range tc.mockParams.authParams.registerChatSessionParams {
+				authSvc.EXPECT().
+					RegisterChatSession(ctx, params.authCookie).
+					Return(params.sess, params.err)
+			}
+
+			svc := OSCARProxy{
+				AuthService:         authSvc,
+				ChatNavService:      chatNavSvc,
+				Logger:              slog.Default(),
+				OServiceServiceBOS:  bosOServiceSvc,
+				OServiceServiceChat: chatOServiceSvc,
+			}
+			chatID, msg := svc.ChatJoin(ctx, tc.me, tc.givenChatRegistry, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+			assert.Equal(t, tc.wantChatID, chatID)
 		})
 	}
 }
