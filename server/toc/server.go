@@ -293,7 +293,7 @@ func (rt Server) processCommands(
 			case "toc_send_im":
 				reply(rt.BOSProxy.SendIM(ctx, sessBOS, clientFrame.Payload))
 			case "toc_init_done":
-				rt.BOSProxy.BOSReady(ctx, sessBOS, toCh)
+				reply(rt.BOSProxy.InitDone(ctx, sessBOS, clientFrame.Payload))
 			case "toc_add_buddy":
 				reply(rt.BOSProxy.AddBuddy(ctx, sessBOS, clientFrame.Payload))
 			case "toc_remove_buddy":
@@ -335,19 +335,19 @@ func (rt Server) processCommands(
 			case "toc_chat_leave":
 				reply(rt.BOSProxy.ChatLeave(ctx, chatRegistry, clientFrame.Payload))
 			case "toc_set_info":
-				rt.BOSProxy.SetInfo(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.SetInfo(ctx, sessBOS, clientFrame.Payload))
 			case "toc_set_dir":
-				rt.BOSProxy.SetDir(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.SetDir(ctx, sessBOS, clientFrame.Payload))
 			case "toc_set_idle":
-				rt.BOSProxy.SetIdle(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.SetIdle(ctx, sessBOS, clientFrame.Payload))
 			case "toc_set_config":
-				rt.BOSProxy.SetConfig(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.SetConfig(ctx, sessBOS, clientFrame.Payload))
 			case "toc_chat_invite":
-				rt.BOSProxy.ChatInvite(ctx, sessBOS, chatRegistry, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.ChatInvite(ctx, sessBOS, chatRegistry, clientFrame.Payload))
 			case "toc_dir_search":
-				rt.BOSProxy.GetDirSearchURL(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.GetDirSearchURL(ctx, sessBOS, clientFrame.Payload))
 			case "toc_get_dir":
-				rt.BOSProxy.GetDirURL(ctx, sessBOS, clientFrame.Payload, toCh)
+				reply(rt.BOSProxy.GetDirURL(ctx, sessBOS, clientFrame.Payload))
 			default:
 				rt.Logger.Error(fmt.Sprintf("unsupported TOC command %s", cmd))
 			}
