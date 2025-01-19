@@ -206,11 +206,10 @@ type authParams struct {
 }
 
 type setDirInfoParams []struct {
-	sess    *state.Session
-	inFrame wire.SNACFrame
-	inBody  wire.SNAC_0x02_0x09_LocateSetDirInfo
-	msg     wire.SNACMessage
-	err     error
+	me     state.IdentScreenName
+	inBody wire.SNAC_0x02_0x09_LocateSetDirInfo
+	msg    wire.SNACMessage
+	err    error
 }
 
 type setInfoParams []struct {

@@ -1678,3 +1678,497 @@ func TestOSCARProxy_ChatLeave(t *testing.T) {
 		})
 	}
 }
+
+func TestOSCARProxy_SetInfo(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully set profile",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_info "my profile!"`),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					setInfoParams: setInfoParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, "my profile!"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "set profile, receive error from locate svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_info "my profile!"`),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					setInfoParams: setInfoParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, "my profile!"),
+									},
+								},
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_set_info`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			locateSvc := newMockLocateService(t)
+			for _, params := range tc.mockParams.setInfoParams {
+				locateSvc.EXPECT().
+					SetInfo(ctx, matchSession(params.me), params.inBody).
+					Return(params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:        slog.Default(),
+				LocateService: locateSvc,
+			}
+			msg := svc.SetInfo(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
+func TestOSCARProxy_SetDir(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully set directory info with quoted fields",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_dir "first name":"middle name":"last name":"maiden name":"city":"state":"country":"email":"allow web searches"`),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					setDirInfoParams: setDirInfoParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x09_LocateSetDirInfo{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ODirTLVFirstName, "first name"),
+										wire.NewTLVBE(wire.ODirTLVMiddleName, "middle name"),
+										wire.NewTLVBE(wire.ODirTLVLastName, "last name"),
+										wire.NewTLVBE(wire.ODirTLVMaidenName, "maiden name"),
+										wire.NewTLVBE(wire.ODirTLVCountry, "country"),
+										wire.NewTLVBE(wire.ODirTLVState, "state"),
+										wire.NewTLVBE(wire.ODirTLVCity, "city"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "successfully set directory info with some blank fields",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_dir "first name"::"last name"::"city":"state":"country":"email":"allow web searches"`),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					setDirInfoParams: setDirInfoParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x09_LocateSetDirInfo{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ODirTLVFirstName, "first name"),
+										wire.NewTLVBE(wire.ODirTLVMiddleName, ""),
+										wire.NewTLVBE(wire.ODirTLVLastName, "last name"),
+										wire.NewTLVBE(wire.ODirTLVMaidenName, ""),
+										wire.NewTLVBE(wire.ODirTLVCountry, "country"),
+										wire.NewTLVBE(wire.ODirTLVState, "state"),
+										wire.NewTLVBE(wire.ODirTLVCity, "city"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "successfully set directory info with last two fields absent",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_dir "first name"::"last name"::"city":"state":"country"`),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					setDirInfoParams: setDirInfoParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x09_LocateSetDirInfo{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ODirTLVFirstName, "first name"),
+										wire.NewTLVBE(wire.ODirTLVMiddleName, ""),
+										wire.NewTLVBE(wire.ODirTLVLastName, "last name"),
+										wire.NewTLVBE(wire.ODirTLVMaidenName, ""),
+										wire.NewTLVBE(wire.ODirTLVCountry, "country"),
+										wire.NewTLVBE(wire.ODirTLVState, "state"),
+										wire.NewTLVBE(wire.ODirTLVCity, "city"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "set directory info, receive error from locate svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_dir "first name":"middle name":"last name":"maiden name":"city":"state":"country":"email":"allow web searches"`),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					setDirInfoParams: setDirInfoParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x09_LocateSetDirInfo{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ODirTLVFirstName, "first name"),
+										wire.NewTLVBE(wire.ODirTLVMiddleName, "middle name"),
+										wire.NewTLVBE(wire.ODirTLVLastName, "last name"),
+										wire.NewTLVBE(wire.ODirTLVMaidenName, "maiden name"),
+										wire.NewTLVBE(wire.ODirTLVCountry, "country"),
+										wire.NewTLVBE(wire.ODirTLVState, "state"),
+										wire.NewTLVBE(wire.ODirTLVCity, "city"),
+									},
+								},
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "set directory with too many fields present",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_dir "first name"::"last name"::"city":"state":"country":"email":"allow web searches":"extra":"extra"`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_set_dir`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			locateSvc := newMockLocateService(t)
+			for _, params := range tc.mockParams.setDirInfoParams {
+				locateSvc.EXPECT().
+					SetDirInfo(ctx, matchSession(params.me), wire.SNACFrame{}, params.inBody).
+					Return(params.msg, params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:        slog.Default(),
+				LocateService: locateSvc,
+			}
+			msg := svc.SetDir(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
+//
+//func TestOSCARProxy_SetIdle(t *testing.T) {
+//	cases := []struct {
+//		// name is the unit test name
+//		name string
+//		// me is the TOC user session
+//		me *state.Session
+//		// givenCmd is the TOC command
+//		givenCmd []byte
+//		// wantMsg is the expected TOC response
+//		wantMsg []byte
+//		// mockParams is the list of params sent to mocks that satisfy this
+//		// method's dependencies
+//		mockParams mockParams
+//	}{
+//		{
+//			name:       "successfully leave chat",
+//			me:         newTestSession("me"),
+//			givenCmd:   []byte(`toc_chat_leave 0`),
+//			mockParams: mockParams{},
+//			wantMsg:    []byte("CHAT_LEFT:0"),
+//		},
+//		{
+//			name:     "bad command",
+//			givenCmd: []byte(`toc_chat_leave`),
+//			wantMsg:  cmdInternalSvcErr,
+//		},
+//	}
+//
+//	for _, tc := range cases {
+//		t.Run(tc.name, func(t *testing.T) {
+//			ctx := context.Background()
+//
+//			authSvc := newMockAuthService(t)
+//			for _, params := range tc.mockParams.signoutChatParams {
+//				authSvc.EXPECT().SignoutChat(ctx, matchSession(params.me))
+//			}
+//
+//			svc := OSCARProxy{
+//				Logger:      slog.Default(),
+//				AuthService: authSvc,
+//			}
+//			msg := svc.ChatLeave(ctx, tc.givenCmd)
+//
+//			assert.Equal(t, tc.wantMsg, msg)
+//		})
+//	}
+//}
+//
+//func TestOSCARProxy_SetConfig(t *testing.T) {
+//	cases := []struct {
+//		// name is the unit test name
+//		name string
+//		// me is the TOC user session
+//		me *state.Session
+//		// givenCmd is the TOC command
+//		givenCmd []byte
+//		// wantMsg is the expected TOC response
+//		wantMsg []byte
+//		// mockParams is the list of params sent to mocks that satisfy this
+//		// method's dependencies
+//		mockParams mockParams
+//	}{
+//		{
+//			name:       "successfully leave chat",
+//			me:         newTestSession("me"),
+//			givenCmd:   []byte(`toc_chat_leave 0`),
+//			mockParams: mockParams{},
+//			wantMsg:    []byte("CHAT_LEFT:0"),
+//		},
+//		{
+//			name:     "bad command",
+//			givenCmd: []byte(`toc_chat_leave`),
+//			wantMsg:  cmdInternalSvcErr,
+//		},
+//	}
+//
+//	for _, tc := range cases {
+//		t.Run(tc.name, func(t *testing.T) {
+//			ctx := context.Background()
+//
+//			authSvc := newMockAuthService(t)
+//			for _, params := range tc.mockParams.signoutChatParams {
+//				authSvc.EXPECT().SignoutChat(ctx, matchSession(params.me))
+//			}
+//
+//			svc := OSCARProxy{
+//				Logger:      slog.Default(),
+//				AuthService: authSvc,
+//			}
+//			msg := svc.ChatLeave(ctx, tc.givenCmd)
+//
+//			assert.Equal(t, tc.wantMsg, msg)
+//		})
+//	}
+//}
+//
+//func TestOSCARProxy_ChatInvite(t *testing.T) {
+//	cases := []struct {
+//		// name is the unit test name
+//		name string
+//		// me is the TOC user session
+//		me *state.Session
+//		// givenCmd is the TOC command
+//		givenCmd []byte
+//		// givenChatRegistry is the chat registry passed to the function
+//		givenChatRegistry *ChatRegistry
+//		// wantMsg is the expected TOC response
+//		wantMsg []byte
+//		// mockParams is the list of params sent to mocks that satisfy this
+//		// method's dependencies
+//		mockParams mockParams
+//	}{
+//		{
+//			name:     "successfully leave chat",
+//			me:       newTestSession("me"),
+//			givenCmd: []byte(`toc_chat_leave 0`),
+//			givenChatRegistry: func() *ChatRegistry {
+//				reg := newChatRegistry()
+//				reg.RegisterSess(0, newTestSession("me"))
+//				return reg
+//			}(),
+//			mockParams: mockParams{},
+//			wantMsg:    []byte("CHAT_LEFT:0"),
+//		},
+//		{
+//			name:     "bad command",
+//			givenCmd: []byte(`toc_chat_leave`),
+//			wantMsg:  cmdInternalSvcErr,
+//		},
+//	}
+//
+//	for _, tc := range cases {
+//		t.Run(tc.name, func(t *testing.T) {
+//			ctx := context.Background()
+//
+//			authSvc := newMockAuthService(t)
+//			for _, params := range tc.mockParams.signoutChatParams {
+//				authSvc.EXPECT().SignoutChat(ctx, matchSession(params.me))
+//			}
+//
+//			svc := OSCARProxy{
+//				Logger:      slog.Default(),
+//				AuthService: authSvc,
+//			}
+//			msg := svc.ChatLeave(ctx, tc.givenChatRegistry, tc.givenCmd)
+//
+//			assert.Equal(t, tc.wantMsg, msg)
+//		})
+//	}
+//}
+//
+//func TestOSCARProxy_GetDirSearchURL(t *testing.T) {
+//	cases := []struct {
+//		// name is the unit test name
+//		name string
+//		// me is the TOC user session
+//		me *state.Session
+//		// givenCmd is the TOC command
+//		givenCmd []byte
+//		// wantMsg is the expected TOC response
+//		wantMsg []byte
+//		// mockParams is the list of params sent to mocks that satisfy this
+//		// method's dependencies
+//		mockParams mockParams
+//	}{
+//		{
+//			name:       "successfully leave chat",
+//			me:         newTestSession("me"),
+//			givenCmd:   []byte(`toc_chat_leave 0`),
+//			mockParams: mockParams{},
+//			wantMsg:    []byte("CHAT_LEFT:0"),
+//		},
+//		{
+//			name:     "bad command",
+//			givenCmd: []byte(`toc_chat_leave`),
+//			wantMsg:  cmdInternalSvcErr,
+//		},
+//	}
+//
+//	for _, tc := range cases {
+//		t.Run(tc.name, func(t *testing.T) {
+//			ctx := context.Background()
+//
+//			authSvc := newMockAuthService(t)
+//			for _, params := range tc.mockParams.signoutChatParams {
+//				authSvc.EXPECT().SignoutChat(ctx, matchSession(params.me))
+//			}
+//
+//			svc := OSCARProxy{
+//				Logger:      slog.Default(),
+//				AuthService: authSvc,
+//			}
+//			msg := svc.ChatLeave(ctx, tc.givenCmd)
+//
+//			assert.Equal(t, tc.wantMsg, msg)
+//		})
+//	}
+//}
+//
+//func TestOSCARProxy_GetDirURL(t *testing.T) {
+//	cases := []struct {
+//		// name is the unit test name
+//		name string
+//		// me is the TOC user session
+//		me *state.Session
+//		// givenCmd is the TOC command
+//		givenCmd []byte
+//		// wantMsg is the expected TOC response
+//		wantMsg []byte
+//		// mockParams is the list of params sent to mocks that satisfy this
+//		// method's dependencies
+//		mockParams mockParams
+//	}{
+//		{
+//			name:       "successfully leave chat",
+//			me:         newTestSession("me"),
+//			givenCmd:   []byte(`toc_chat_leave 0`),
+//			mockParams: mockParams{},
+//			wantMsg:    []byte("CHAT_LEFT:0"),
+//		},
+//		{
+//			name:     "bad command",
+//			givenCmd: []byte(`toc_chat_leave`),
+//			wantMsg:  cmdInternalSvcErr,
+//		},
+//	}
+//
+//	for _, tc := range cases {
+//		t.Run(tc.name, func(t *testing.T) {
+//			ctx := context.Background()
+//
+//			authSvc := newMockAuthService(t)
+//			for _, params := range tc.mockParams.signoutChatParams {
+//				authSvc.EXPECT().SignoutChat(ctx, matchSession(params.me))
+//			}
+//
+//			svc := OSCARProxy{
+//				Logger:      slog.Default(),
+//				AuthService: authSvc,
+//			}
+//			msg := svc.ChatLeave(ctx, tc.givenCmd)
+//
+//			assert.Equal(t, tc.wantMsg, msg)
+//		})
+//	}
+//}

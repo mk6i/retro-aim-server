@@ -668,6 +668,8 @@ func (s OSCARProxy) SetInfo(ctx context.Context, me *state.Session, cmd []byte) 
 //	field allows people to use web-searches to find your directory info.
 //	Otherwise, they'd have to use the client.
 //
+// The fields "email" and "allow web searches" are ignored by this method.
+//
 // Command syntax: toc_set_dir <info information>
 func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, cmd []byte) []byte {
 	var info string
@@ -677,22 +679,28 @@ func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, cmd []byte) [
 		return cmdInternalSvcErr
 	}
 
-	attrs := strings.Split(info, ":")
-	if len(attrs) != 7 {
-		logErr(ctx, s.Logger, fmt.Errorf("expected 7 params, got %d", len(attrs)))
+	rawFields := strings.Split(info, ":")
+
+	var finalFields [9]string
+
+	if len(rawFields) > len(finalFields) {
+		logErr(ctx, s.Logger, fmt.Errorf("expected at most %d params, got %d", len(finalFields), len(rawFields)))
 		return cmdInternalSvcErr
+	}
+	for i, a := range rawFields {
+		finalFields[i] = strings.Trim(a, "\"")
 	}
 
 	snac := wire.SNAC_0x02_0x09_LocateSetDirInfo{
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
-				wire.NewTLVBE(wire.ODirTLVFirstName, attrs[0]),
-				wire.NewTLVBE(wire.ODirTLVMiddleName, attrs[1]),
-				wire.NewTLVBE(wire.ODirTLVLastName, attrs[2]),
-				wire.NewTLVBE(wire.ODirTLVMaidenName, attrs[3]),
-				wire.NewTLVBE(wire.ODirTLVCountry, attrs[6]),
-				wire.NewTLVBE(wire.ODirTLVState, attrs[5]),
-				wire.NewTLVBE(wire.ODirTLVCity, attrs[4]),
+				wire.NewTLVBE(wire.ODirTLVFirstName, finalFields[0]),
+				wire.NewTLVBE(wire.ODirTLVMiddleName, finalFields[1]),
+				wire.NewTLVBE(wire.ODirTLVLastName, finalFields[2]),
+				wire.NewTLVBE(wire.ODirTLVMaidenName, finalFields[3]),
+				wire.NewTLVBE(wire.ODirTLVCountry, finalFields[6]),
+				wire.NewTLVBE(wire.ODirTLVState, finalFields[5]),
+				wire.NewTLVBE(wire.ODirTLVCity, finalFields[4]),
 			},
 		},
 	}
