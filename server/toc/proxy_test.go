@@ -1925,54 +1925,90 @@ func TestOSCARProxy_SetDir(t *testing.T) {
 	}
 }
 
-//
-//func TestOSCARProxy_SetIdle(t *testing.T) {
-//	cases := []struct {
-//		// name is the unit test name
-//		name string
-//		// me is the TOC user session
-//		me *state.Session
-//		// givenCmd is the TOC command
-//		givenCmd []byte
-//		// wantMsg is the expected TOC response
-//		wantMsg []byte
-//		// mockParams is the list of params sent to mocks that satisfy this
-//		// method's dependencies
-//		mockParams mockParams
-//	}{
-//		{
-//			name:       "successfully leave chat",
-//			me:         newTestSession("me"),
-//			givenCmd:   []byte(`toc_chat_leave 0`),
-//			mockParams: mockParams{},
-//			wantMsg:    []byte("CHAT_LEFT:0"),
-//		},
-//		{
-//			name:     "bad command",
-//			givenCmd: []byte(`toc_chat_leave`),
-//			wantMsg:  cmdInternalSvcErr,
-//		},
-//	}
-//
-//	for _, tc := range cases {
-//		t.Run(tc.name, func(t *testing.T) {
-//			ctx := context.Background()
-//
-//			authSvc := newMockAuthService(t)
-//			for _, params := range tc.mockParams.signoutChatParams {
-//				authSvc.EXPECT().SignoutChat(ctx, matchSession(params.me))
-//			}
-//
-//			svc := OSCARProxy{
-//				Logger:      slog.Default(),
-//				AuthService: authSvc,
-//			}
-//			msg := svc.ChatLeave(ctx, tc.givenCmd)
-//
-//			assert.Equal(t, tc.wantMsg, msg)
-//		})
-//	}
-//}
+func TestOSCARProxy_SetIdle(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully set idle status",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_idle 10`),
+			mockParams: mockParams{
+				oServiceBOSParams: oServiceParams{
+					idleNotificationParams: idleNotificationParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							bodyIn: wire.SNAC_0x01_0x11_OServiceIdleNotification{
+								IdleTime: uint32(10),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "set idle status, receive err from BOS oservice svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_idle 10`),
+			mockParams: mockParams{
+				oServiceBOSParams: oServiceParams{
+					idleNotificationParams: idleNotificationParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							bodyIn: wire.SNAC_0x01_0x11_OServiceIdleNotification{
+								IdleTime: uint32(10),
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "bad secs param",
+			givenCmd: []byte(`toc_set_idle zero`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_set_idle`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			oServiceSvc := newMockOServiceService(t)
+			for _, params := range tc.mockParams.oServiceBOSParams.idleNotificationParams {
+				oServiceSvc.EXPECT().
+					IdleNotification(ctx, matchSession(params.me), params.bodyIn).
+					Return(params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:             slog.Default(),
+				OServiceServiceBOS: oServiceSvc,
+			}
+			msg := svc.SetIdle(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
 //
 //func TestOSCARProxy_SetConfig(t *testing.T) {
 //	cases := []struct {
@@ -2076,99 +2112,175 @@ func TestOSCARProxy_SetDir(t *testing.T) {
 //		})
 //	}
 //}
-//
-//func TestOSCARProxy_GetDirSearchURL(t *testing.T) {
-//	cases := []struct {
-//		// name is the unit test name
-//		name string
-//		// me is the TOC user session
-//		me *state.Session
-//		// givenCmd is the TOC command
-//		givenCmd []byte
-//		// wantMsg is the expected TOC response
-//		wantMsg []byte
-//		// mockParams is the list of params sent to mocks that satisfy this
-//		// method's dependencies
-//		mockParams mockParams
-//	}{
-//		{
-//			name:       "successfully leave chat",
-//			me:         newTestSession("me"),
-//			givenCmd:   []byte(`toc_chat_leave 0`),
-//			mockParams: mockParams{},
-//			wantMsg:    []byte("CHAT_LEFT:0"),
-//		},
-//		{
-//			name:     "bad command",
-//			givenCmd: []byte(`toc_chat_leave`),
-//			wantMsg:  cmdInternalSvcErr,
-//		},
-//	}
-//
-//	for _, tc := range cases {
-//		t.Run(tc.name, func(t *testing.T) {
-//			ctx := context.Background()
-//
-//			authSvc := newMockAuthService(t)
-//			for _, params := range tc.mockParams.signoutChatParams {
-//				authSvc.EXPECT().SignoutChat(ctx, matchSession(params.me))
-//			}
-//
-//			svc := OSCARProxy{
-//				Logger:      slog.Default(),
-//				AuthService: authSvc,
-//			}
-//			msg := svc.ChatLeave(ctx, tc.givenCmd)
-//
-//			assert.Equal(t, tc.wantMsg, msg)
-//		})
-//	}
-//}
-//
-//func TestOSCARProxy_GetDirURL(t *testing.T) {
-//	cases := []struct {
-//		// name is the unit test name
-//		name string
-//		// me is the TOC user session
-//		me *state.Session
-//		// givenCmd is the TOC command
-//		givenCmd []byte
-//		// wantMsg is the expected TOC response
-//		wantMsg []byte
-//		// mockParams is the list of params sent to mocks that satisfy this
-//		// method's dependencies
-//		mockParams mockParams
-//	}{
-//		{
-//			name:       "successfully leave chat",
-//			me:         newTestSession("me"),
-//			givenCmd:   []byte(`toc_chat_leave 0`),
-//			mockParams: mockParams{},
-//			wantMsg:    []byte("CHAT_LEFT:0"),
-//		},
-//		{
-//			name:     "bad command",
-//			givenCmd: []byte(`toc_chat_leave`),
-//			wantMsg:  cmdInternalSvcErr,
-//		},
-//	}
-//
-//	for _, tc := range cases {
-//		t.Run(tc.name, func(t *testing.T) {
-//			ctx := context.Background()
-//
-//			authSvc := newMockAuthService(t)
-//			for _, params := range tc.mockParams.signoutChatParams {
-//				authSvc.EXPECT().SignoutChat(ctx, matchSession(params.me))
-//			}
-//
-//			svc := OSCARProxy{
-//				Logger:      slog.Default(),
-//				AuthService: authSvc,
-//			}
-//			msg := svc.ChatLeave(ctx, tc.givenCmd)
-//
-//			assert.Equal(t, tc.wantMsg, msg)
-//		})
-//	}
-//}
+
+func TestOSCARProxy_GetDirSearchURL(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully request user info",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_dir_search "first name":"middle name":"last name":"maiden name":"city":"state":"country":"email"`),
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					issueParams: issueParams{
+						{
+							data:       []byte("me"),
+							returnData: []byte("monster"),
+						},
+					},
+				},
+			},
+			wantMsg: []byte("GOTO_URL:search results:dir_search?city=city&cookie=bW9uc3Rlcg%253D%253D&country=country&email=email&first_name=first+name&last_name=last+name&maiden_name=maiden+name&middle_name=middle+name&state=state"),
+		},
+		{
+			name:     "successfully request user info by keywords",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_dir_search ::::::::::"searchkw"`),
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					issueParams: issueParams{
+						{
+							data:       []byte("me"),
+							returnData: []byte("monster"),
+						},
+					},
+				},
+			},
+			wantMsg: []byte("GOTO_URL:search results:dir_search?cookie=bW9uc3Rlcg%253D%253D&keyword=searchkw"),
+		},
+		{
+			name:     "request user info with too many params",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_dir_search ::::::::::::::::::::"searchkw"`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+		{
+			name:     "request user info, get cookie issue error",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_dir_search them`),
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					issueParams: issueParams{
+						{
+							data:      []byte("me"),
+							returnErr: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_dir_search`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			cookieBaker := newMockCookieBaker(t)
+			for _, params := range tc.mockParams.issueParams {
+				cookieBaker.EXPECT().
+					Issue(params.data).
+					Return(params.returnData, params.returnErr)
+			}
+
+			svc := OSCARProxy{
+				Logger:      slog.Default(),
+				CookieBaker: cookieBaker,
+			}
+			msg := svc.GetDirSearchURL(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
+func TestOSCARProxy_GetDirURL(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully request user dir info",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_get_dir them`),
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					issueParams: issueParams{
+						{
+							data:       []byte("me"),
+							returnData: []byte("monster"),
+						},
+					},
+				},
+			},
+			wantMsg: []byte("GOTO_URL:directory info:dir_info?cookie=bW9uc3Rlcg%253D%253D&user=them"),
+		},
+		{
+			name:     "request user info, get cookie issue error",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_get_dir them`),
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					issueParams: issueParams{
+						{
+							data:      []byte("me"),
+							returnErr: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_get_dir`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			cookieBaker := newMockCookieBaker(t)
+			for _, params := range tc.mockParams.issueParams {
+				cookieBaker.EXPECT().
+					Issue(params.data).
+					Return(params.returnData, params.returnErr)
+			}
+
+			svc := OSCARProxy{
+				Logger:      slog.Default(),
+				CookieBaker: cookieBaker,
+			}
+			msg := svc.GetDirURL(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}

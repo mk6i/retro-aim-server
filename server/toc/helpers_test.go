@@ -129,7 +129,7 @@ type clientOnlineParams []struct {
 }
 
 type idleNotificationParams []struct {
-	sess   *state.Session
+	me     state.IdentScreenName
 	bodyIn wire.SNAC_0x01_0x11_OServiceIdleNotification
 	err    error
 }

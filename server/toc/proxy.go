@@ -731,7 +731,7 @@ func (s OSCARProxy) GetDirURL(ctx context.Context, me *state.Session, cmd []byte
 	p.Add("user", user)
 
 	if err := s.addCookie(me, p); err != nil {
-		s.Logger.Error("unable to generate cookie", "err", err.Error())
+		logErr(ctx, s.Logger, fmt.Errorf("addCookie: %w", err))
 		return cmdInternalSvcErr
 	}
 
@@ -745,6 +745,11 @@ func (s OSCARProxy) GetDirURL(ctx context.Context, me *state.Session, cmd []byte
 //	Perform a search of the Oscar Directory, using colon separated fields as in:
 //
 //		"first name":"middle name":"last name":"maiden name":"city":"state":"country":"email"
+//
+// You can search by keyword by setting search terms in the 11th position (this
+// feature is not in the TiK docs but is present in the code):
+//
+//	::::::::::"search kw"
 //
 //	Returns either a GOTO_URL or ERROR msg.
 //
@@ -776,13 +781,18 @@ func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, cmd 
 	i := 0
 	for i < len(params) && i < len(labels) {
 		if len(params[i]) > 0 {
-			p.Add(labels[i], params[i])
+			p.Add(labels[i], strings.Trim(params[i], "\""))
 		}
 		i++
 	}
 
+	if len(p) == 0 {
+		logErr(ctx, s.Logger, errors.New("no search fields found"))
+		return cmdInternalSvcErr
+	}
+
 	if err := s.addCookie(me, p); err != nil {
-		s.Logger.Error("unable to generate cookie", "err", err.Error())
+		logErr(ctx, s.Logger, fmt.Errorf("addCookie: %w", err))
 		return cmdInternalSvcErr
 	}
 
