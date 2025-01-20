@@ -857,17 +857,20 @@ func (s OSCARProxy) SetIdle(ctx context.Context, me *state.Session, cmd []byte) 
 //
 // Command syntax: toc_set_config <Config Info>
 func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, cmd []byte) []byte {
-	var info string
+	// replace curly braces with quotes so that the string can be properly
+	// split up by the space-delimited reader
+	for i, c := range cmd {
+		if c == '{' || c == '}' {
+			cmd[i] = '"'
+		}
+	}
+	cmd = bytes.TrimSpace(cmd)
 
+	var info string
 	if _, err := parseArgs(cmd, "toc_set_config", &info); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
 		return cmdInternalSvcErr
 	}
-
-	// gaim uses braces instead of quotes for some reason
-	info = strings.Replace(info, "{", "\"", 1)
-	info = strings.Replace(info, "}", "\"", 1)
-	info = strings.TrimSpace(info)
 
 	config := strings.Split(info, "\n")
 
@@ -897,8 +900,8 @@ func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, cmd []byte
 			mode = wire.FeedbagPDModeDenySome
 		default:
 			s.Logger.Info("config: invalid mode", "val", c[1], "user", me.DisplayScreenName())
+			return cmdInternalSvcErr
 		}
-		//break todo add
 	}
 
 	switch mode {

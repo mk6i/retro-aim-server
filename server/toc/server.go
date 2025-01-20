@@ -287,6 +287,7 @@ func (rt Server) processCommands(
 				case <-ctx.Done():
 					return
 				}
+				// todo disconnect when internal svc err
 			}
 
 			switch string(cmd) {
