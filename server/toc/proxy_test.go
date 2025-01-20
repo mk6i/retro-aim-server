@@ -2057,61 +2057,161 @@ func TestOSCARProxy_SetIdle(t *testing.T) {
 //		})
 //	}
 //}
-//
-//func TestOSCARProxy_ChatInvite(t *testing.T) {
-//	cases := []struct {
-//		// name is the unit test name
-//		name string
-//		// me is the TOC user session
-//		me *state.Session
-//		// givenCmd is the TOC command
-//		givenCmd []byte
-//		// givenChatRegistry is the chat registry passed to the function
-//		givenChatRegistry *ChatRegistry
-//		// wantMsg is the expected TOC response
-//		wantMsg []byte
-//		// mockParams is the list of params sent to mocks that satisfy this
-//		// method's dependencies
-//		mockParams mockParams
-//	}{
-//		{
-//			name:     "successfully leave chat",
-//			me:       newTestSession("me"),
-//			givenCmd: []byte(`toc_chat_leave 0`),
-//			givenChatRegistry: func() *ChatRegistry {
-//				reg := newChatRegistry()
-//				reg.RegisterSess(0, newTestSession("me"))
-//				return reg
-//			}(),
-//			mockParams: mockParams{},
-//			wantMsg:    []byte("CHAT_LEFT:0"),
-//		},
-//		{
-//			name:     "bad command",
-//			givenCmd: []byte(`toc_chat_leave`),
-//			wantMsg:  cmdInternalSvcErr,
-//		},
-//	}
-//
-//	for _, tc := range cases {
-//		t.Run(tc.name, func(t *testing.T) {
-//			ctx := context.Background()
-//
-//			authSvc := newMockAuthService(t)
-//			for _, params := range tc.mockParams.signoutChatParams {
-//				authSvc.EXPECT().SignoutChat(ctx, matchSession(params.me))
-//			}
-//
-//			svc := OSCARProxy{
-//				Logger:      slog.Default(),
-//				AuthService: authSvc,
-//			}
-//			msg := svc.ChatLeave(ctx, tc.givenChatRegistry, tc.givenCmd)
-//
-//			assert.Equal(t, tc.wantMsg, msg)
-//		})
-//	}
-//}
+
+func TestOSCARProxy_ChatInvite(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// givenChatRegistry is the chat registry passed to the function
+		givenChatRegistry *ChatRegistry
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully send chat invitation",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_invite 0 "join my chat!" friend1`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := newChatRegistry()
+				reg.Add(wire.ICBMRoomInfo{
+					Exchange: 4,
+					Cookie:   "the-cookie",
+					Instance: 0,
+				})
+				return reg
+			}(),
+			mockParams: mockParams{
+				icbmParams: icbmParams{
+					channelMsgToHostParamsICBM: channelMsgToHostParamsICBM{
+						{
+							sender: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+								ChannelID:  wire.ICBMChannelRendezvous,
+								ScreenName: "friend1",
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(0x05, wire.ICBMCh2Fragment{
+											Type:       0,
+											Capability: capChat,
+											TLVRestBlock: wire.TLVRestBlock{
+												TLVList: wire.TLVList{
+													wire.NewTLVBE(10, uint16(1)),
+													wire.NewTLVBE(12, "join my chat!"),
+													wire.NewTLVBE(13, "us-ascii"),
+													wire.NewTLVBE(14, "en"),
+													wire.NewTLVBE(10001, wire.ICBMRoomInfo{
+														Exchange: 4,
+														Cookie:   "the-cookie",
+														Instance: 0,
+													}),
+												},
+											},
+										}),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "send chat invitation, receive error from ICBM svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_invite 0 "join my chat!" friend1`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := newChatRegistry()
+				reg.Add(wire.ICBMRoomInfo{
+					Exchange: 4,
+					Cookie:   "the-cookie",
+					Instance: 0,
+				})
+				return reg
+			}(),
+			mockParams: mockParams{
+				icbmParams: icbmParams{
+					channelMsgToHostParamsICBM: channelMsgToHostParamsICBM{
+						{
+							sender: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+								ChannelID:  wire.ICBMChannelRendezvous,
+								ScreenName: "friend1",
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(0x05, wire.ICBMCh2Fragment{
+											Type:       0,
+											Capability: capChat,
+											TLVRestBlock: wire.TLVRestBlock{
+												TLVList: wire.TLVList{
+													wire.NewTLVBE(10, uint16(1)),
+													wire.NewTLVBE(12, "join my chat!"),
+													wire.NewTLVBE(13, "us-ascii"),
+													wire.NewTLVBE(14, "en"),
+													wire.NewTLVBE(10001, wire.ICBMRoomInfo{
+														Exchange: 4,
+														Cookie:   "the-cookie",
+														Instance: 0,
+													}),
+												},
+											},
+										}),
+									},
+								},
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:              "send chat invitation to non-existent room",
+			me:                newTestSession("me"),
+			givenCmd:          []byte(`toc_chat_invite 0 "join my chat!" friend1`),
+			givenChatRegistry: newChatRegistry(),
+			wantMsg:           cmdInternalSvcErr,
+		},
+		{
+			name:     "bad chat room ID",
+			givenCmd: []byte(`toc_chat_invite zero "join my chat!" friend1`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_chat_invite`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			icbmSvc := newMockICBMService(t)
+			for _, params := range tc.mockParams.channelMsgToHostParamsICBM {
+				icbmSvc.EXPECT().
+					ChannelMsgToHost(ctx, matchSession(params.sender), wire.SNACFrame{}, params.inBody).
+					Return(nil, params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:      slog.Default(),
+				ICBMService: icbmSvc,
+			}
+			msg := svc.ChatInvite(ctx, tc.me, tc.givenChatRegistry, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
 
 func TestOSCARProxy_GetDirSearchURL(t *testing.T) {
 	cases := []struct {
