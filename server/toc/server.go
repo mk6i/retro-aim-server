@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
@@ -36,55 +35,6 @@ func (b bufferedConn) Peek(n int) ([]byte, error) {
 
 func (b bufferedConn) Read(p []byte) (int, error) {
 	return b.r.Read(p)
-}
-
-func newChatRegistry() *ChatRegistry {
-	chatRegistry := &ChatRegistry{
-		lookup:   make(map[int]wire.ICBMRoomInfo),
-		sessions: make(map[int]*state.Session),
-		m:        sync.RWMutex{},
-	}
-	return chatRegistry
-}
-
-type ChatRegistry struct {
-	lookup   map[int]wire.ICBMRoomInfo
-	sessions map[int]*state.Session
-	nextID   int
-	m        sync.RWMutex
-}
-
-func (c *ChatRegistry) Add(room wire.ICBMRoomInfo) int {
-	c.m.Lock()
-	defer c.m.Unlock()
-	for chatID, r := range c.lookup {
-		if r == room {
-			return chatID
-		}
-	}
-	id := c.nextID
-	c.lookup[id] = room
-	c.nextID++
-	return id
-}
-
-func (c *ChatRegistry) LookupRoom(chatID int) (wire.ICBMRoomInfo, bool) {
-	c.m.RLock()
-	defer c.m.RUnlock()
-	room, found := c.lookup[chatID]
-	return room, found
-}
-
-func (c *ChatRegistry) RegisterSess(chatID int, sess *state.Session) {
-	c.m.Lock()
-	defer c.m.Unlock()
-	c.sessions[chatID] = sess
-}
-
-func (c *ChatRegistry) RetrieveSess(chatID int) *state.Session {
-	c.m.RLock()
-	defer c.m.RUnlock()
-	return c.sessions[chatID]
 }
 
 type channelListener struct {
@@ -206,7 +156,7 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, conn io.ReadWriteCloser)
 		return err
 	}
 
-	sessBOS, chatRegistry, err := rt.login(ctx, clientFlap)
+	sessBOS, err := rt.login(ctx, clientFlap)
 	if err != nil {
 		return fmt.Errorf("rt.login: %w", err)
 	}
@@ -227,6 +177,8 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, conn io.ReadWriteCloser)
 	go rt.readFromClient(fromCh, clientFlap)
 
 	g, gCtx := errgroup.WithContext(ctx)
+
+	chatRegistry := newChatRegistry()
 
 	g.Go(func() error {
 		return rt.BOSProxy.ConsumeIncomingBOS(gCtx, sessBOS, chatRegistry, toCh)
@@ -395,24 +347,24 @@ func (rt Server) logServerResponse(ctx context.Context, msg []byte) {
 	}
 }
 
-func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state.Session, *ChatRegistry, error) {
+func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state.Session, error) {
 	clientFrame, err := clientFlap.ReceiveFLAP()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
-			return nil, nil, nil
+			return nil, nil
 		}
-		return nil, nil, fmt.Errorf("clientFlap.ReceiveFLAP: %w", err)
+		return nil, fmt.Errorf("clientFlap.ReceiveFLAP: %w", err)
 	}
 
 	sessBOS, reply := rt.BOSProxy.Login(ctx, clientFrame.Payload)
 	for _, m := range reply {
 		if err := clientFlap.SendDataFrame([]byte(m)); err != nil {
-			return nil, nil, fmt.Errorf("clientFlap.SendDataFrame: %w", err)
+			return nil, fmt.Errorf("clientFlap.SendDataFrame: %w", err)
 		}
 	}
 
 	fmt.Printf("< client: %+v\n", clientFrame.Payload)
-	return sessBOS, newChatRegistry(), nil
+	return sessBOS, nil
 }
 
 func (rt Server) readFromClient(msgCh chan<- wire.FLAPFrame, clientFlap *wire.FlapClient) {
@@ -476,49 +428,6 @@ func (rt Server) initFLAP(clientConn io.ReadWriter) (*wire.FlapClient, error) {
 
 	fmt.Printf("received signon frame: %v\n", signonFrame)
 	return clientFlap, nil
-}
-
-// parseArgs extracts arguments from a TOC command. Each positional argument is
-// assigned to its corresponding args pointer. It returns the remaining
-// arguments as varargs.
-func parseArgs(payload []byte, cmd string, args ...*string) (varArgs []string, err error) {
-	reader := csv.NewReader(bytes.NewReader(payload))
-	reader.Comma = ' '
-	reader.LazyQuotes = true
-	reader.TrimLeadingSpace = true
-
-	segs, err := reader.Read()
-	if err != nil {
-		return nil, fmt.Errorf("CSV reader error: %w", err)
-	}
-
-	// sanity check the command name
-	if segs[0] != cmd {
-		return nil, fmt.Errorf("command mismatch. expected %s, got %s", cmd, segs[0])
-	}
-
-	// all elements after the command are arguments
-	segs = segs[1:]
-	if len(segs) < len(args) {
-		return nil, fmt.Errorf("command contains fewer arguments than expected")
-	}
-
-	i := 0
-	// populate placeholder pointers with their corresponding values
-	for ; i < len(args); i++ {
-		if args[i] == nil {
-			// ignore argument, don't populate its corresponding pointer
-			continue
-		}
-		*args[i] = strings.TrimSpace(segs[i])
-	}
-
-	// dump remaining arguments as varargs
-	for _, param := range segs[i:] {
-		varArgs = append(varArgs, param)
-	}
-
-	return varArgs, err
 }
 
 func (rt Server) respond(s string, rwc io.ReadWriteCloser) error {
