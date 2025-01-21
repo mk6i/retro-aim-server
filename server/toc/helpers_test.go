@@ -219,11 +219,10 @@ type setInfoParams []struct {
 }
 
 type userInfoQueryParams []struct {
-	sess    *state.Session
-	inFrame wire.SNACFrame
-	inBody  wire.SNAC_0x02_0x05_LocateUserInfoQuery
-	msg     wire.SNACMessage
-	err     error
+	me     state.IdentScreenName
+	inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery
+	msg    wire.SNACMessage
+	err    error
 }
 
 type dirInfoParams []struct {

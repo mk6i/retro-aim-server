@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/csv"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strconv"
 	"strings"
@@ -16,6 +18,23 @@ import (
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
+
+type OSCARProxy struct {
+	AuthService         AuthService
+	BuddyListRegistry   BuddyListRegistry
+	BuddyService        BuddyService
+	ChatNavService      ChatNavService
+	ChatService         ChatService
+	CookieBaker         CookieBaker
+	DirSearchService    DirSearchService
+	ICBMService         ICBMService
+	LocateService       LocateService
+	Logger              *slog.Logger
+	OServiceServiceBOS  OServiceService
+	OServiceServiceChat OServiceService
+	PermitDenyService   PermitDenyService
+	TOCConfigStore      TOCConfigStore
+}
 
 func newChatRegistry() *ChatRegistry {
 	chatRegistry := &ChatRegistry{
@@ -687,6 +706,97 @@ func (s OSCARProxy) GetInfoURL(ctx context.Context, me *state.Session, cmd []byt
 	return []byte(fmt.Sprintf("GOTO_URL:profile:info?%s", p.Encode()))
 }
 
+// InitDone handles the toc_init_done TOC command.
+//
+// From the TiK documentation:
+//
+//	Tells TOC that we are ready to go online. TOC clients should first send TOC
+//	the buddy list and any permit/deny lists. However, toc_init_done must be
+//	called within 30 seconds after toc_signon, or the connection will be
+//	dropped. Remember, it can't be called until after the SIGN_ON message is
+//	received. Calling this before or multiple times after a SIGN_ON will cause
+//	the connection to be dropped.
+//
+// Note: The business logic described in the last 3 sentences are not yet
+// implemented.
+//
+// Command syntax: toc_init_done
+func (s OSCARProxy) InitDone(ctx context.Context, sess *state.Session, cmd []byte) []byte {
+	if _, err := parseArgs(cmd, "toc_init_done"); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
+		return cmdInternalSvcErr
+	}
+	if err := s.OServiceServiceBOS.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
+		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceBOS.ClientOnliney: %w", err))
+		return cmdInternalSvcErr
+	}
+	return nil
+}
+
+func (s OSCARProxy) Login(ctx context.Context, cmd []byte) (*state.Session, []string) {
+	var userName, password string
+
+	if _, err := parseArgs(cmd, "toc_signon", nil, nil, &userName, &password); err != nil {
+		s.Logger.Error("parseArgs filed", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	passwordHash, err := hex.DecodeString(password[2:])
+	if err != nil {
+		s.Logger.Error("decode password hash failed", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	signonFrame := wire.FLAPSignonFrame{}
+	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsScreenName, userName))
+	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, passwordHash))
+
+	block, err := s.AuthService.FLAPLogin(signonFrame, state.NewStubUser)
+	if err != nil {
+		s.Logger.Error("FLAP login failed", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	if block.HasTag(wire.LoginTLVTagsErrorSubcode) {
+		s.Logger.Debug("login failed")
+		return nil, []string{"ERROR:980"} // bad username/password
+	}
+
+	authCookie, ok := block.Bytes(wire.OServiceTLVTagsLoginCookie)
+	if !ok {
+		s.Logger.Error("unable to get session id from payload")
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	sess, err := s.AuthService.RegisterBOSSession(ctx, authCookie)
+	if err != nil {
+		s.Logger.Error("register BOS session failed", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	// set chat capability so that... tk
+	sess.SetCaps([][16]byte{capChat})
+
+	if err := s.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
+		s.Logger.Error("unable to init buddy list", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	u, err := s.TOCConfigStore.User(sess.IdentScreenName())
+	if err != nil {
+		s.Logger.Error("TOCConfigStore.User retrieval error", "err", err.Error())
+	}
+
+	var cfg string
+	if u != nil {
+		cfg = u.TOCConfig
+	} else {
+		s.Logger.Error("TOCConfigStore.User: user not found")
+	}
+
+	return sess, []string{"SIGN_ON:TOC1.0", fmt.Sprintf("CONFIG:%s", cfg)}
+}
+
 // RemoveBuddy handles the toc_remove_buddy TOC command.
 //
 // From the TiK documentation:
@@ -1123,12 +1233,20 @@ func (s OSCARProxy) SetInfo(ctx context.Context, me *state.Session, cmd []byte) 
 
 // addCookie appends an auth cookie to URL params.
 func (s OSCARProxy) addCookie(me *state.Session, p url.Values) error {
-	cookie, err := s.CookieBaker.Issue([]byte(me.IdentScreenName().String()))
+	cookie, err := bakeCookie(s.CookieBaker, me.IdentScreenName())
 	if err != nil {
 		return err
 	}
-	p.Add("cookie", url.QueryEscape(base64.StdEncoding.EncodeToString(cookie)))
+	p.Add("cookie", cookie)
 	return nil
+}
+
+func bakeCookie(cookieBaker CookieBaker, me state.IdentScreenName) (string, error) {
+	cookie, err := cookieBaker.Issue([]byte(me.String()))
+	if err != nil {
+		return "", err
+	}
+	return url.QueryEscape(base64.URLEncoding.EncodeToString(cookie)), nil
 }
 
 // parseArgs extracts arguments from a TOC command. Each positional argument is

@@ -76,13 +76,8 @@ func (rt Server) Start(ctx context.Context) error {
 		listener.Close()
 	}()
 
-	mux := http.NewServeMux()
-	mux.Handle("GET /info", rt.BOSProxy.AuthMiddleware(http.HandlerFunc(rt.BOSProxy.Profile)))
-	mux.Handle("GET /dir_info", rt.BOSProxy.AuthMiddleware(http.HandlerFunc(rt.BOSProxy.DirInfoHTTP)))
-	mux.Handle("GET /dir_search", rt.BOSProxy.AuthMiddleware(http.HandlerFunc(rt.BOSProxy.DirSearchHTTP)))
-
 	httpServer := &http.Server{
-		Handler: mux,
+		Handler: rt.BOSProxy.NewServeMux(),
 		BaseContext: func(net.Listener) context.Context {
 			return ctx
 		},
