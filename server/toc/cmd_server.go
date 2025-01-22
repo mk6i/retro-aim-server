@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	cmdInternalSvcErr = []byte("ERROR:989:internal server error")
+	cmdInternalSvcErr = "ERROR:989:internal server error"
 	capChat           = uuid.MustParse("748F2420-6287-11D1-8222-444553540000")
 )
 
@@ -102,17 +102,17 @@ func (s OSCARProxy) ConsumeIncomingChat(ctx context.Context, me *state.Session, 
 	}
 }
 
-func (s OSCARProxy) UpdateBuddyArrival(ctx context.Context, snac wire.SNAC_0x03_0x0B_BuddyArrived) []byte {
+func (s OSCARProxy) UpdateBuddyArrival(ctx context.Context, snac wire.SNAC_0x03_0x0B_BuddyArrived) string {
 	online, _ := snac.Uint32BE(wire.OServiceUserInfoSignonTOD)
 	idle, _ := snac.Uint16BE(wire.OServiceUserInfoIdleTime)
 	uc := [3]string{" ", "O", " "}
 	if snac.IsAway() {
 		uc[2] = "U"
 	}
-	return []byte(fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "T", snac.WarningLevel, online, idle, uc))
+	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "T", snac.WarningLevel, online, idle, uc)
 }
 
-func (s OSCARProxy) UpdateBuddyDeparted(ctx context.Context, snac wire.SNAC_0x03_0x0C_BuddyDeparted) []byte {
+func (s OSCARProxy) UpdateBuddyDeparted(ctx context.Context, snac wire.SNAC_0x03_0x0C_BuddyDeparted) string {
 	online, _ := snac.Uint32BE(wire.OServiceUserInfoSignonTOD)
 	idle, _ := snac.Uint16BE(wire.OServiceUserInfoIdleTime)
 	uc := [3]string{" ", "O", " "}
@@ -120,10 +120,10 @@ func (s OSCARProxy) UpdateBuddyDeparted(ctx context.Context, snac wire.SNAC_0x03
 		uc[2] = "U"
 	}
 	class := strings.Join(uc[:], "")
-	return []byte(fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "F", snac.WarningLevel, online, idle, class))
+	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "F", snac.WarningLevel, online, idle, class)
 }
 
-func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient) []byte {
+func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient) string {
 	if snac.ChannelID == wire.ICBMChannelRendezvous {
 		rdinfo, has := snac.TLVRestBlock.Bytes(0x05)
 		if !has {
@@ -156,7 +156,7 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 		name := strings.Split(roomInfo.Cookie, "-")[2]
 
 		chatID := chatRegistry.Add(roomInfo)
-		return []byte(fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", name, chatID, snac.ScreenName, prompt))
+		return fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", name, chatID, snac.ScreenName, prompt)
 	}
 
 	buf, ok := snac.TLVRestBlock.Bytes(wire.ICBMTLVAOLIMData)
@@ -170,15 +170,15 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 		return cmdInternalSvcErr
 	}
 
-	return []byte(fmt.Sprintf("IM_IN:%s:F:%s", snac.ScreenName, txt))
+	return fmt.Sprintf("IM_IN:%s:F:%s", snac.ScreenName, txt)
 }
 
-func (s OSCARProxy) Eviled(ctx context.Context, snac wire.SNAC_0x01_0x10_OServiceEvilNotification) []byte {
+func (s OSCARProxy) Eviled(ctx context.Context, snac wire.SNAC_0x01_0x10_OServiceEvilNotification) string {
 	who := ""
 	if snac.Snitcher != nil {
 		who = snac.Snitcher.ScreenName
 	}
-	return []byte(fmt.Sprintf("EVILED:%d:%s", snac.NewEvil, who))
+	return fmt.Sprintf("EVILED:%d:%s", snac.NewEvil, who)
 }
 
 func (s OSCARProxy) Signout(ctx context.Context, me *state.Session) {
@@ -191,23 +191,23 @@ func (s OSCARProxy) Signout(ctx context.Context, me *state.Session) {
 	s.AuthService.Signout(ctx, me)
 }
 
-func (s OSCARProxy) ChatUpdateBuddyArrived(ctx context.Context, snac wire.SNAC_0x0E_0x03_ChatUsersJoined, chatID int) []byte {
+func (s OSCARProxy) ChatUpdateBuddyArrived(ctx context.Context, snac wire.SNAC_0x0E_0x03_ChatUsersJoined, chatID int) string {
 	users := make([]string, 0, len(snac.Users))
 	for _, u := range snac.Users {
 		users = append(users, u.ScreenName)
 	}
-	return []byte(fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:T:%s", chatID, strings.Join(users, ":")))
+	return fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:T:%s", chatID, strings.Join(users, ":"))
 }
 
-func (s OSCARProxy) ChatUpdateBuddyLeft(ctx context.Context, snac wire.SNAC_0x0E_0x04_ChatUsersLeft, chatID int) []byte {
+func (s OSCARProxy) ChatUpdateBuddyLeft(ctx context.Context, snac wire.SNAC_0x0E_0x04_ChatUsersLeft, chatID int) string {
 	users := make([]string, 0, len(snac.Users))
 	for _, u := range snac.Users {
 		users = append(users, u.ScreenName)
 	}
-	return []byte(fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:F:%s", chatID, strings.Join(users, ":")))
+	return fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:F:%s", chatID, strings.Join(users, ":"))
 }
 
-func (s OSCARProxy) ChatIn(ctx context.Context, snac wire.SNAC_0x0E_0x06_ChatChannelMsgToClient, chatID int) []byte {
+func (s OSCARProxy) ChatIn(ctx context.Context, snac wire.SNAC_0x0E_0x06_ChatChannelMsgToClient, chatID int) string {
 	b, ok := snac.Bytes(wire.ChatTLVSenderInformation)
 	if !ok {
 		logErr(ctx, s.Logger, errors.New("snac.Bytes: missing wire.ChatTLVSenderInformation"))
@@ -233,7 +233,7 @@ func (s OSCARProxy) ChatIn(ctx context.Context, snac wire.SNAC_0x0E_0x06_ChatCha
 		return cmdInternalSvcErr
 	}
 
-	return []byte(fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, u.ScreenName, text))
+	return fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, u.ScreenName, text)
 }
 
 // textFromChatMsgBlob extracts plaintext message text from HTML located in
@@ -268,11 +268,11 @@ func logErr(ctx context.Context, logger *slog.Logger, err error) {
 	logger.ErrorContext(ctx, "internal service error", "err", err.Error())
 }
 
-func sendOrCancel(ctx context.Context, ch chan<- []byte, msg []byte) {
+func sendOrCancel(ctx context.Context, ch chan<- []byte, msg string) {
 	select {
 	case <-ctx.Done():
 		return
-	case ch <- msg:
+	case ch <- []byte(msg):
 		return
 	}
 }

@@ -92,7 +92,7 @@ func (c *ChatRegistry) RetrieveSess(chatID int) *state.Session {
 //	Add buddies to your buddy list. This does not change your saved config.
 //
 // Command syntax: toc_add_buddy <Buddy User 1> [<Buddy User2> [<Buddy User 3> [...]]]
-func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, cmd []byte) string {
 	users, err := parseArgs(cmd, "toc_add_buddy")
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
@@ -111,7 +111,7 @@ func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, cmd []byte)
 		return cmdInternalSvcErr
 	}
 
-	return nil
+	return ""
 }
 
 // AddPermit handles the toc_add_permit TOC command.
@@ -124,7 +124,7 @@ func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, cmd []byte)
 //	arguments does nothing and your permit list remains the same.
 //
 // Command syntax: toc_add_permit [ <User 1> [<User 2> [...]]]
-func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, cmd []byte) string {
 	users, err := parseArgs(cmd, "toc_add_permit")
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
@@ -142,7 +142,7 @@ func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, cmd []byte
 		logErr(ctx, s.Logger, fmt.Errorf("PermitDenyService.AddPermListEntries: %w", err))
 		return cmdInternalSvcErr
 	}
-	return nil
+	return ""
 }
 
 // AddDeny handles the toc_chat_join TOC command.
@@ -155,7 +155,7 @@ func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, cmd []byte
 //	does nothing and your deny list remains unchanged.
 //
 // Command syntax: toc_add_deny [ <User 1> [<User 2> [...]]]
-func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, cmd []byte) string {
 	users, err := parseArgs(cmd, "toc_add_deny")
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
@@ -173,7 +173,7 @@ func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, cmd []byte) 
 		logErr(ctx, s.Logger, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
 		return cmdInternalSvcErr
 	}
-	return nil
+	return ""
 }
 
 // ChatAccept handles the toc_chat_accept TOC command.
@@ -184,7 +184,7 @@ func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, cmd []byte) 
 //	response.
 //
 // Command syntax: toc_chat_accept <Chat Room ID>
-func (s OSCARProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, cmd []byte) (int, []byte) {
+func (s OSCARProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, cmd []byte) (int, string) {
 	var chatIDStr string
 
 	if _, err := parseArgs(cmd, "toc_chat_accept", &chatIDStr); err != nil {
@@ -278,7 +278,7 @@ func (s OSCARProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegis
 		return 0, cmdInternalSvcErr
 	}
 
-	return chatID, []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, roomName))
+	return chatID, fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, roomName)
 }
 
 // ChatInvite handles the toc_chat_invite TOC command.
@@ -289,7 +289,7 @@ func (s OSCARProxy) ChatAccept(ctx context.Context, me *state.Session, chatRegis
 //	Remember to quote and encode the invite message.
 //
 // Command syntax: toc_chat_invite <Chat Room ID> <Invite Msg> <buddy1> [<buddy2> [<buddy3> [...]]]
-func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, cmd []byte) []byte {
+func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, cmd []byte) string {
 	var chatRoomIDStr, msg string
 
 	users, err := parseArgs(cmd, "toc_chat_invite", &chatRoomIDStr, &msg)
@@ -339,7 +339,7 @@ func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegis
 		}
 	}
 
-	return nil
+	return ""
 }
 
 // ChatJoin handles the toc_chat_join TOC command.
@@ -356,7 +356,7 @@ func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegis
 //	is case-insensitive and consecutive spaces are removed.
 //
 // Command syntax: toc_chat_join <Exchange> <Chat Room Name>
-func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, cmd []byte) (int, []byte) {
+func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, cmd []byte) (int, string) {
 	var exchangeStr, roomName string
 
 	if _, err := parseArgs(cmd, "toc_chat_join", &exchangeStr, &roomName); err != nil {
@@ -450,7 +450,7 @@ func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistr
 		return 0, cmdInternalSvcErr
 	}
 
-	return chatID, []byte(fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, roomName))
+	return chatID, fmt.Sprintf("CHAT_JOIN:%d:%s", chatID, roomName)
 }
 
 // ChatLeave handles the toc_chat_leave TOC command.
@@ -460,7 +460,7 @@ func (s OSCARProxy) ChatJoin(ctx context.Context, me *state.Session, chatRegistr
 //	Leave the chat room.
 //
 // Command syntax: toc_chat_leave <Chat Room ID>
-func (s OSCARProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, cmd []byte) []byte {
+func (s OSCARProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, cmd []byte) string {
 	var chatIDStr string
 
 	if _, err := parseArgs(cmd, "toc_chat_leave", &chatIDStr); err != nil {
@@ -484,7 +484,7 @@ func (s OSCARProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, c
 
 	me.Close() // stop async server SNAC reply handler for this chat room
 
-	return []byte(fmt.Sprintf("CHAT_LEFT:%d", chatID))
+	return fmt.Sprintf("CHAT_LEFT:%d", chatID)
 }
 
 // ChatSend handles the toc_chat_send TOC command.
@@ -497,7 +497,7 @@ func (s OSCARProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, c
 //	and encode the message.
 //
 // Command syntax: toc_chat_send <Chat Room ID> <Message>
-func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, cmd []byte) []byte {
+func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, cmd []byte) string {
 	var chatIDStr, msg string
 
 	if _, err := parseArgs(cmd, "toc_chat_send", &chatIDStr, &msg); err != nil {
@@ -538,7 +538,7 @@ func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, cm
 		return cmdInternalSvcErr
 	}
 
-	return []byte(fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, me.DisplayScreenName(), msg))
+	return fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, me.DisplayScreenName(), msg)
 }
 
 // Evil handles the toc_evil TOC command.
@@ -551,7 +551,7 @@ func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, cm
 //	slower they can send message.
 //
 // Command syntax: toc_evil <User> <norm|anon>
-func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, cmd []byte) string {
 	var user, scope string
 
 	if _, err := parseArgs(cmd, "toc_evil", &user, &scope); err != nil {
@@ -581,7 +581,7 @@ func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, cmd []byte) []b
 
 	switch v := response.Body.(type) {
 	case wire.SNAC_0x04_0x09_ICBMEvilReply:
-		return nil
+		return ""
 	case wire.SNACError:
 		s.Logger.InfoContext(ctx, "unable to warn user", "code", v.Code)
 	default:
@@ -589,7 +589,7 @@ func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, cmd []byte) []b
 		return cmdInternalSvcErr
 	}
 
-	return nil
+	return ""
 }
 
 // GetDirSearchURL handles the toc_dir_search TOC command.
@@ -608,7 +608,7 @@ func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, cmd []byte) []b
 //	Returns either a GOTO_URL or ERROR msg.
 //
 // Command syntax: toc_dir_search <info information>
-func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, cmd []byte) string {
 	var info string
 
 	if _, err := parseArgs(cmd, "toc_dir_search", &info); err != nil {
@@ -650,7 +650,7 @@ func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, cmd 
 		return cmdInternalSvcErr
 	}
 
-	return []byte(fmt.Sprintf("GOTO_URL:search results:dir_search?%s", p.Encode()))
+	return fmt.Sprintf("GOTO_URL:search results:dir_search?%s", p.Encode())
 }
 
 // GetDirURL handles the toc_get_dir TOC command.
@@ -660,7 +660,7 @@ func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, cmd 
 //	Gets a user's dir info a GOTO_URL or ERROR message will be sent back to the client.
 //
 // Command syntax: toc_get_dir <username>
-func (s OSCARProxy) GetDirURL(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) GetDirURL(ctx context.Context, me *state.Session, cmd []byte) string {
 	var user string
 
 	if _, err := parseArgs(cmd, "toc_get_dir", &user); err != nil {
@@ -676,7 +676,7 @@ func (s OSCARProxy) GetDirURL(ctx context.Context, me *state.Session, cmd []byte
 		return cmdInternalSvcErr
 	}
 
-	return []byte(fmt.Sprintf("GOTO_URL:directory info:dir_info?%s", p.Encode()))
+	return fmt.Sprintf("GOTO_URL:directory info:dir_info?%s", p.Encode())
 }
 
 // GetInfoURL handles the toc_get_info TOC command.
@@ -686,7 +686,7 @@ func (s OSCARProxy) GetDirURL(ctx context.Context, me *state.Session, cmd []byte
 //	Gets a user's info a GOTO_URL or ERROR message will be sent back to the client.
 //
 // Command syntax: toc_get_info <username>
-func (s OSCARProxy) GetInfoURL(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) GetInfoURL(ctx context.Context, me *state.Session, cmd []byte) string {
 	var user string
 
 	if _, err := parseArgs(cmd, "toc_get_info", &user); err != nil {
@@ -703,7 +703,7 @@ func (s OSCARProxy) GetInfoURL(ctx context.Context, me *state.Session, cmd []byt
 		return cmdInternalSvcErr
 	}
 
-	return []byte(fmt.Sprintf("GOTO_URL:profile:info?%s", p.Encode()))
+	return fmt.Sprintf("GOTO_URL:profile:info?%s", p.Encode())
 }
 
 // InitDone handles the toc_init_done TOC command.
@@ -721,7 +721,7 @@ func (s OSCARProxy) GetInfoURL(ctx context.Context, me *state.Session, cmd []byt
 // implemented.
 //
 // Command syntax: toc_init_done
-func (s OSCARProxy) InitDone(ctx context.Context, sess *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) InitDone(ctx context.Context, sess *state.Session, cmd []byte) string {
 	if _, err := parseArgs(cmd, "toc_init_done"); err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
 		return cmdInternalSvcErr
@@ -730,7 +730,7 @@ func (s OSCARProxy) InitDone(ctx context.Context, sess *state.Session, cmd []byt
 		logErr(ctx, s.Logger, fmt.Errorf("OServiceServiceBOS.ClientOnliney: %w", err))
 		return cmdInternalSvcErr
 	}
-	return nil
+	return ""
 }
 
 // RemoveBuddy handles the toc_remove_buddy TOC command.
@@ -740,7 +740,7 @@ func (s OSCARProxy) InitDone(ctx context.Context, sess *state.Session, cmd []byt
 //	Remove buddies from your buddy list. This does not change your saved config.
 //
 // Command syntax:
-func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, cmd []byte) string {
 	users, err := parseArgs(cmd, "toc_remove_buddy")
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
@@ -758,7 +758,7 @@ func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, cmd []by
 		logErr(ctx, s.Logger, fmt.Errorf("BuddyService.DelBuddies: %w", err))
 		return cmdInternalSvcErr
 	}
-	return nil
+	return ""
 }
 
 // SendIM handles the toc_send_im TOC command.
@@ -770,7 +770,7 @@ func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, cmd []by
 //	flag will be turned on for the IM.
 //
 // Command syntax: toc_send_im <Destination User> <Message> [auto]
-func (s OSCARProxy) SendIM(ctx context.Context, sender *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) SendIM(ctx context.Context, sender *state.Session, cmd []byte) string {
 	var recip, msg string
 
 	autoReply, err := parseArgs(cmd, "toc_send_im", &recip, &msg)
@@ -807,7 +807,7 @@ func (s OSCARProxy) SendIM(ctx context.Context, sender *state.Session, cmd []byt
 		return cmdInternalSvcErr
 	}
 
-	return nil
+	return ""
 }
 
 // SetAway handles the toc_chat_join TOC command.
@@ -820,7 +820,7 @@ func (s OSCARProxy) SendIM(ctx context.Context, sender *state.Session, cmd []byt
 //	information.
 //
 // Command syntax: toc_set_away [<away message>]
-func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, cmd []byte) string {
 	maybeMsg, err := parseArgs(cmd, "toc_set_away")
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
@@ -845,7 +845,7 @@ func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, cmd []byte) 
 		return cmdInternalSvcErr
 	}
 
-	return nil
+	return ""
 }
 
 // SetCaps handles the toc_set_caps TOC command.
@@ -860,7 +860,7 @@ func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, cmd []byte) 
 // chat.
 //
 // Command syntax: toc_set_caps [ <Capability 1> [<Capability 2> [...]]]
-func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, cmd []byte) string {
 	params, err := parseArgs(cmd, "toc_set_caps")
 	if err != nil {
 		logErr(ctx, s.Logger, fmt.Errorf("parseArgs: %w", err))
@@ -891,7 +891,7 @@ func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, cmd []byte) 
 		return cmdInternalSvcErr
 	}
 
-	return nil
+	return ""
 }
 
 // SetConfig handles the toc_set_config TOC command.
@@ -916,7 +916,7 @@ func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, cmd []byte) 
 //		- 4 - Deny Some
 //
 // Command syntax: toc_set_config <Config Info>
-func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, cmd []byte) string {
 	// replace curly braces with quotes so that the string can be properly
 	// split up by the space-delimited reader
 	for i, c := range cmd {
@@ -1043,7 +1043,7 @@ func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, cmd []byte
 		return cmdInternalSvcErr
 	}
 
-	return nil
+	return ""
 }
 
 // SetDir handles the toc_set_dir TOC command.
@@ -1061,7 +1061,7 @@ func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, cmd []byte
 // The fields "email" and "allow web searches" are ignored by this method.
 //
 // Command syntax: toc_set_dir <info information>
-func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, cmd []byte) string {
 	var info string
 
 	if _, err := parseArgs(cmd, "toc_set_dir", &info); err != nil {
@@ -1099,7 +1099,7 @@ func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, cmd []byte) [
 		return cmdInternalSvcErr
 	}
 
-	return nil
+	return ""
 }
 
 // SetIdle handles the toc_set_idle TOC command.
@@ -1112,7 +1112,7 @@ func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, cmd []byte) [
 //	incrementing this number, so do not repeatedly call with new idle times.
 //
 // Command syntax: toc_set_idle <idle secs>
-func (s OSCARProxy) SetIdle(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) SetIdle(ctx context.Context, me *state.Session, cmd []byte) string {
 	var idleTimeStr string
 
 	if _, err := parseArgs(cmd, "toc_set_idle", &idleTimeStr); err != nil {
@@ -1134,7 +1134,7 @@ func (s OSCARProxy) SetIdle(ctx context.Context, me *state.Session, cmd []byte) 
 		return cmdInternalSvcErr
 	}
 
-	return nil
+	return ""
 }
 
 // SetInfo handles the toc_set_info TOC command.
@@ -1144,7 +1144,7 @@ func (s OSCARProxy) SetIdle(ctx context.Context, me *state.Session, cmd []byte) 
 //	Set the LOCATE user information. This is basic HTML. Remember to encode the info.
 //
 // Command syntax: toc_set_info <info information>
-func (s OSCARProxy) SetInfo(ctx context.Context, me *state.Session, cmd []byte) []byte {
+func (s OSCARProxy) SetInfo(ctx context.Context, me *state.Session, cmd []byte) string {
 	var info string
 
 	if _, err := parseArgs(cmd, "toc_set_info", &info); err != nil {
@@ -1164,7 +1164,7 @@ func (s OSCARProxy) SetInfo(ctx context.Context, me *state.Session, cmd []byte) 
 		return cmdInternalSvcErr
 	}
 
-	return nil
+	return ""
 }
 
 // Signon handles the toc_signon TOC command.
@@ -1194,13 +1194,13 @@ func (s OSCARProxy) Signon(ctx context.Context, cmd []byte) (*state.Session, []s
 
 	if _, err := parseArgs(cmd, "toc_signon", nil, nil, &userName, &password); err != nil {
 		s.Logger.Error("parseArgs filed", "err", err.Error())
-		return nil, []string{"ERROR:989:internal server error"}
+		return nil, []string{cmdInternalSvcErr}
 	}
 
 	passwordHash, err := hex.DecodeString(password[2:])
 	if err != nil {
 		s.Logger.Error("decode password hash failed", "err", err.Error())
-		return nil, []string{"ERROR:989:internal server error"}
+		return nil, []string{cmdInternalSvcErr}
 	}
 
 	signonFrame := wire.FLAPSignonFrame{}
@@ -1210,7 +1210,7 @@ func (s OSCARProxy) Signon(ctx context.Context, cmd []byte) (*state.Session, []s
 	block, err := s.AuthService.FLAPLogin(signonFrame, state.NewStubUser)
 	if err != nil {
 		s.Logger.Error("FLAP login failed", "err", err.Error())
-		return nil, []string{"ERROR:989:internal server error"}
+		return nil, []string{cmdInternalSvcErr}
 	}
 
 	if block.HasTag(wire.LoginTLVTagsErrorSubcode) {
@@ -1221,13 +1221,13 @@ func (s OSCARProxy) Signon(ctx context.Context, cmd []byte) (*state.Session, []s
 	authCookie, ok := block.Bytes(wire.OServiceTLVTagsLoginCookie)
 	if !ok {
 		s.Logger.Error("unable to get session id from payload")
-		return nil, []string{"ERROR:989:internal server error"}
+		return nil, []string{cmdInternalSvcErr}
 	}
 
 	sess, err := s.AuthService.RegisterBOSSession(ctx, authCookie)
 	if err != nil {
 		s.Logger.Error("register BOS session failed", "err", err.Error())
-		return nil, []string{"ERROR:989:internal server error"}
+		return nil, []string{cmdInternalSvcErr}
 	}
 
 	// set chat capability so that... tk
@@ -1235,17 +1235,17 @@ func (s OSCARProxy) Signon(ctx context.Context, cmd []byte) (*state.Session, []s
 
 	if err := s.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
 		s.Logger.Error("unable to init buddy list", "err", err.Error())
-		return nil, []string{"ERROR:989:internal server error"}
+		return nil, []string{cmdInternalSvcErr}
 	}
 
 	u, err := s.TOCConfigStore.User(sess.IdentScreenName())
 	if err != nil {
 		s.Logger.Error("TOCConfigStore.User retrieval error", "err", err.Error())
-		return nil, []string{"ERROR:989:internal server error"}
+		return nil, []string{cmdInternalSvcErr}
 	}
 	if u == nil {
 		s.Logger.Error("TOCConfigStore.User: user not found")
-		return nil, []string{"ERROR:989:internal server error"}
+		return nil, []string{cmdInternalSvcErr}
 	}
 
 	return sess, []string{"SIGN_ON:TOC1.0", fmt.Sprintf("CONFIG:%s", u.TOCConfig)}

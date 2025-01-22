@@ -24,7 +24,7 @@ func TestOSCARProxy_AddBuddy(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -113,7 +113,7 @@ func TestOSCARProxy_AddPermit(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -202,7 +202,7 @@ func TestOSCARProxy_AddDeny(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -393,7 +393,7 @@ func TestOSCARProxy_ChatAccept(t *testing.T) {
 		// givenChatRegistry is the chat registry passed to the function
 		givenChatRegistry *ChatRegistry
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// wantChatID is the expected chat ID
 		wantChatID int
 		// mockParams is the list of params sent to mocks that satisfy this
@@ -419,7 +419,7 @@ func TestOSCARProxy_ChatAccept(t *testing.T) {
 				authParams:         fnNewAuthParams(nil),
 				oServiceChatParams: fnNewOServiceChatParams(nil),
 			},
-			wantMsg: []byte("CHAT_JOIN:0:cool room"),
+			wantMsg: "CHAT_JOIN:0:cool room",
 		},
 		{
 			name:     "accept chat, receive error from chat oservice svc",
@@ -572,7 +572,7 @@ func TestOSCARProxy_ChatInvite(t *testing.T) {
 		// givenChatRegistry is the chat registry passed to the function
 		givenChatRegistry *ChatRegistry
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -827,7 +827,7 @@ func TestOSCARProxy_ChatJoin(t *testing.T) {
 		// givenChatRegistry is the chat registry passed to the function
 		givenChatRegistry *ChatRegistry
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// wantChatID is the expected chat ID
 		wantChatID int
 		// mockParams is the list of params sent to mocks that satisfy this
@@ -845,7 +845,7 @@ func TestOSCARProxy_ChatJoin(t *testing.T) {
 				authParams:         fnNewAuthParams(nil),
 				oServiceChatParams: fnNewOServiceChatParams(nil),
 			},
-			wantMsg: []byte("CHAT_JOIN:0:cool room"),
+			wantMsg: "CHAT_JOIN:0:cool room",
 		},
 		{
 			name:              "join chat, receive error from chat oservice svc",
@@ -960,7 +960,7 @@ func TestOSCARProxy_ChatLeave(t *testing.T) {
 		// givenChatRegistry is the chat registry passed to the function
 		givenChatRegistry *ChatRegistry
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -983,7 +983,7 @@ func TestOSCARProxy_ChatLeave(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: []byte("CHAT_LEFT:0"),
+			wantMsg: "CHAT_LEFT:0",
 		},
 		{
 			name:     "chat room ID with invalid format",
@@ -1034,7 +1034,7 @@ func TestOSCARProxy_ChatSend(t *testing.T) {
 		// givenChatRegistry is the chat registry passed to the function
 		givenChatRegistry *ChatRegistry
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1072,7 +1072,7 @@ func TestOSCARProxy_ChatSend(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: []byte("CHAT_IN:0:me:F:Hello world!"),
+			wantMsg: "CHAT_IN:0:me:F:Hello world!",
 		},
 		{
 			name:     "send chat message, receive error from chat svc",
@@ -1159,7 +1159,7 @@ func TestOSCARProxy_Evil(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1313,7 +1313,7 @@ func TestOSCARProxy_GetDirSearchURL(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1332,7 +1332,7 @@ func TestOSCARProxy_GetDirSearchURL(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: []byte("GOTO_URL:search results:dir_search?city=city&cookie=bW9uc3Rlcg%253D%253D&country=country&email=email&first_name=first+name&last_name=last+name&maiden_name=maiden+name&middle_name=middle+name&state=state"),
+			wantMsg: "GOTO_URL:search results:dir_search?city=city&cookie=bW9uc3Rlcg%253D%253D&country=country&email=email&first_name=first+name&last_name=last+name&maiden_name=maiden+name&middle_name=middle+name&state=state",
 		},
 		{
 			name:     "successfully request user info by keywords",
@@ -1348,7 +1348,7 @@ func TestOSCARProxy_GetDirSearchURL(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: []byte("GOTO_URL:search results:dir_search?cookie=bW9uc3Rlcg%253D%253D&keyword=searchkw"),
+			wantMsg: "GOTO_URL:search results:dir_search?cookie=bW9uc3Rlcg%253D%253D&keyword=searchkw",
 		},
 		{
 			name:     "request user info with too many params",
@@ -1410,7 +1410,7 @@ func TestOSCARProxy_GetDirURL(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1429,7 +1429,7 @@ func TestOSCARProxy_GetDirURL(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: []byte("GOTO_URL:directory info:dir_info?cookie=bW9uc3Rlcg%253D%253D&user=them"),
+			wantMsg: "GOTO_URL:directory info:dir_info?cookie=bW9uc3Rlcg%253D%253D&user=them",
 		},
 		{
 			name:     "request user info, get cookie issue error",
@@ -1485,7 +1485,7 @@ func TestOSCARProxy_GetInfoURL(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1504,7 +1504,7 @@ func TestOSCARProxy_GetInfoURL(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: []byte("GOTO_URL:profile:info?cookie=bW9uc3Rlcg%253D%253D&from=me&user=them"),
+			wantMsg: "GOTO_URL:profile:info?cookie=bW9uc3Rlcg%253D%253D&from=me&user=them",
 		},
 		{
 			name:     "request user info, get cookie issue error",
@@ -1560,7 +1560,7 @@ func TestOSCARProxy_InitDone(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1635,7 +1635,7 @@ func TestOSCARProxy_RemoveBuddy(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1724,7 +1724,7 @@ func TestOSCARProxy_SendIM(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1884,7 +1884,7 @@ func TestOSCARProxy_SetAway(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1992,7 +1992,7 @@ func TestOSCARProxy_SetCaps(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -2092,7 +2092,7 @@ func TestOSCARProxy_SetConfig(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -2526,7 +2526,7 @@ func TestOSCARProxy_SetDir(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -2685,7 +2685,7 @@ func TestOSCARProxy_SetIdle(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -2769,7 +2769,7 @@ func TestOSCARProxy_SetInfo(t *testing.T) {
 		// givenCmd is the TOC command
 		givenCmd []byte
 		// wantMsg is the expected TOC response
-		wantMsg []byte
+		wantMsg string
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams

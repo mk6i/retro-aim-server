@@ -225,12 +225,12 @@ func (rt Server) processCommands(
 
 			rt.logClientCommand(ctx, clientFrame, cmd)
 
-			reply := func(msg []byte) {
+			reply := func(msg string) {
 				if len(msg) == 0 {
 					return
 				}
 				select {
-				case toCh <- msg:
+				case toCh <- []byte(msg):
 				case <-ctx.Done():
 					return
 				}
@@ -260,7 +260,7 @@ func (rt Server) processCommands(
 				reply(rt.BOSProxy.GetInfoURL(ctx, sessBOS, clientFrame.Payload))
 			case "toc_chat_join", "toc_chat_accept":
 				var chatID int
-				var msg []byte
+				var msg string
 
 				if string(cmd) == "toc_chat_join" {
 					chatID, msg = rt.BOSProxy.ChatJoin(ctx, sessBOS, chatRegistry, clientFrame.Payload)
@@ -269,7 +269,7 @@ func (rt Server) processCommands(
 				}
 				reply(msg)
 
-				if bytes.Equal(msg, cmdInternalSvcErr) {
+				if msg == cmdInternalSvcErr {
 					return nil
 				}
 
