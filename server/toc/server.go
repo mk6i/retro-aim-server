@@ -351,7 +351,7 @@ func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state
 		return nil, fmt.Errorf("clientFlap.ReceiveFLAP: %w", err)
 	}
 
-	sessBOS, reply := rt.BOSProxy.Login(ctx, clientFrame.Payload)
+	sessBOS, reply := rt.BOSProxy.Signon(ctx, clientFrame.Payload)
 	for _, m := range reply {
 		if err := clientFlap.SendDataFrame([]byte(m)); err != nil {
 			return nil, fmt.Errorf("clientFlap.SendDataFrame: %w", err)

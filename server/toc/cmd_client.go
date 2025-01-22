@@ -733,70 +733,6 @@ func (s OSCARProxy) InitDone(ctx context.Context, sess *state.Session, cmd []byt
 	return nil
 }
 
-func (s OSCARProxy) Login(ctx context.Context, cmd []byte) (*state.Session, []string) {
-	var userName, password string
-
-	if _, err := parseArgs(cmd, "toc_signon", nil, nil, &userName, &password); err != nil {
-		s.Logger.Error("parseArgs filed", "err", err.Error())
-		return nil, []string{"ERROR:989:internal server error"}
-	}
-
-	passwordHash, err := hex.DecodeString(password[2:])
-	if err != nil {
-		s.Logger.Error("decode password hash failed", "err", err.Error())
-		return nil, []string{"ERROR:989:internal server error"}
-	}
-
-	signonFrame := wire.FLAPSignonFrame{}
-	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsScreenName, userName))
-	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, passwordHash))
-
-	block, err := s.AuthService.FLAPLogin(signonFrame, state.NewStubUser)
-	if err != nil {
-		s.Logger.Error("FLAP login failed", "err", err.Error())
-		return nil, []string{"ERROR:989:internal server error"}
-	}
-
-	if block.HasTag(wire.LoginTLVTagsErrorSubcode) {
-		s.Logger.Debug("login failed")
-		return nil, []string{"ERROR:980"} // bad username/password
-	}
-
-	authCookie, ok := block.Bytes(wire.OServiceTLVTagsLoginCookie)
-	if !ok {
-		s.Logger.Error("unable to get session id from payload")
-		return nil, []string{"ERROR:989:internal server error"}
-	}
-
-	sess, err := s.AuthService.RegisterBOSSession(ctx, authCookie)
-	if err != nil {
-		s.Logger.Error("register BOS session failed", "err", err.Error())
-		return nil, []string{"ERROR:989:internal server error"}
-	}
-
-	// set chat capability so that... tk
-	sess.SetCaps([][16]byte{capChat})
-
-	if err := s.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
-		s.Logger.Error("unable to init buddy list", "err", err.Error())
-		return nil, []string{"ERROR:989:internal server error"}
-	}
-
-	u, err := s.TOCConfigStore.User(sess.IdentScreenName())
-	if err != nil {
-		s.Logger.Error("TOCConfigStore.User retrieval error", "err", err.Error())
-	}
-
-	var cfg string
-	if u != nil {
-		cfg = u.TOCConfig
-	} else {
-		s.Logger.Error("TOCConfigStore.User: user not found")
-	}
-
-	return sess, []string{"SIGN_ON:TOC1.0", fmt.Sprintf("CONFIG:%s", cfg)}
-}
-
 // RemoveBuddy handles the toc_remove_buddy TOC command.
 //
 // From the TiK documentation:
@@ -1229,6 +1165,90 @@ func (s OSCARProxy) SetInfo(ctx context.Context, me *state.Session, cmd []byte) 
 	}
 
 	return nil
+}
+
+// Signon handles the toc_signon TOC command.
+//
+// From the TiK documentation:
+//
+//	The password needs to be roasted with the Roasting String if coming over a
+//	FLAP connection, CP connections don't use roasted passwords. The language
+//	specified will be used when generating web pages, such as the get info
+//	pages. Currently, the only supported language is "english". If the language
+//	sent isn't found, the default "english" language will be used. The version
+//	string will be used for the client identity, and must be less than 50
+//	characters.
+//
+//	Passwords are roasted when sent to the host. This is done so they aren't
+//	sent in "clear text" over the wire, although they are still trivial to
+//	decode. Roasting is performed by first xoring each byte in the password
+//	with the equivalent modulo byte in the roasting string. The result is then
+//	converted to ascii hex, and prepended with "0x". So for example the
+//	password "password" roasts to "0x2408105c23001130".
+//
+//	The Roasting String is Tic/Toc.
+//
+// Command syntax: toc_signon <authorizer host> <authorizer port> <User Name> <Password> <language> <version>
+func (s OSCARProxy) Signon(ctx context.Context, cmd []byte) (*state.Session, []string) {
+	var userName, password string
+
+	if _, err := parseArgs(cmd, "toc_signon", nil, nil, &userName, &password); err != nil {
+		s.Logger.Error("parseArgs filed", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	passwordHash, err := hex.DecodeString(password[2:])
+	if err != nil {
+		s.Logger.Error("decode password hash failed", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	signonFrame := wire.FLAPSignonFrame{}
+	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsScreenName, userName))
+	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, passwordHash))
+
+	block, err := s.AuthService.FLAPLogin(signonFrame, state.NewStubUser)
+	if err != nil {
+		s.Logger.Error("FLAP login failed", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	if block.HasTag(wire.LoginTLVTagsErrorSubcode) {
+		s.Logger.Debug("login failed")
+		return nil, []string{"ERROR:980"} // bad username/password
+	}
+
+	authCookie, ok := block.Bytes(wire.OServiceTLVTagsLoginCookie)
+	if !ok {
+		s.Logger.Error("unable to get session id from payload")
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	sess, err := s.AuthService.RegisterBOSSession(ctx, authCookie)
+	if err != nil {
+		s.Logger.Error("register BOS session failed", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	// set chat capability so that... tk
+	sess.SetCaps([][16]byte{capChat})
+
+	if err := s.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
+		s.Logger.Error("unable to init buddy list", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	u, err := s.TOCConfigStore.User(sess.IdentScreenName())
+	if err != nil {
+		s.Logger.Error("TOCConfigStore.User retrieval error", "err", err.Error())
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+	if u == nil {
+		s.Logger.Error("TOCConfigStore.User: user not found")
+		return nil, []string{"ERROR:989:internal server error"}
+	}
+
+	return sess, []string{"SIGN_ON:TOC1.0", fmt.Sprintf("CONFIG:%s", u.TOCConfig)}
 }
 
 // addCookie appends an auth cookie to URL params.

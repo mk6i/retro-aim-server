@@ -2,12 +2,14 @@ package toc
 
 import (
 	"context"
+	"encoding/hex"
 	"io"
 	"log/slog"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -1549,6 +1551,81 @@ func TestOSCARProxy_GetInfoURL(t *testing.T) {
 	}
 }
 
+func TestOSCARProxy_InitDone(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg []byte
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully initialize connection",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_init_done`),
+			mockParams: mockParams{
+				oServiceBOSParams: oServiceParams{
+					clientOnlineParams: clientOnlineParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "initialize connection, receive err from BOS oservice svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_init_done`),
+			mockParams: mockParams{
+				oServiceBOSParams: oServiceParams{
+					clientOnlineParams: clientOnlineParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+							err:  io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_init_done_diff`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			oSvc := newMockOServiceService(t)
+			for _, params := range tc.mockParams.oServiceBOSParams.clientOnlineParams {
+				oSvc.EXPECT().
+					ClientOnline(ctx, params.body, matchSession(params.me)).
+					Return(params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:             slog.Default(),
+				OServiceServiceBOS: oSvc,
+			}
+			msg := svc.InitDone(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
 func TestOSCARProxy_RemoveBuddy(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
@@ -2766,6 +2843,349 @@ func TestOSCARProxy_SetInfo(t *testing.T) {
 			msg := svc.SetInfo(ctx, tc.me, tc.givenCmd)
 
 			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
+func TestOSCARProxy_Signon(t *testing.T) {
+	roastedPass := wire.RoastTOCPassword([]byte("thepass"))
+
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg []string
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name: "successfully login",
+			me: newTestSession("me", func(session *state.Session) {
+				session.SetCaps([][16]byte{capChat})
+			}),
+			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			mockParams: mockParams{
+				authParams: authParams{
+					flapLoginParams: flapLoginParams{
+						{
+							frame: wire.FLAPSignonFrame{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LoginTLVTagsScreenName, "me"),
+										wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, roastedPass),
+									},
+								},
+							},
+							newUserFn: state.NewStubUser,
+							tlv: wire.TLVRestBlock{
+								TLVList: wire.TLVList{
+									wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("thecookie")),
+								},
+							},
+						},
+					},
+					registerBOSSessionParams: registerBOSSessionParams{
+						{
+							authCookie: []byte("thecookie"),
+							sess:       newTestSession("me"),
+						},
+					},
+				},
+				buddyListRegistryParams: buddyListRegistryParams{
+					registerBuddyListParams: registerBuddyListParams{
+						{
+							user: state.NewIdentScreenName("me"),
+						},
+					},
+				},
+				tocConfigParams: tocConfigParams{
+					userParams: userParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							returnedUser: &state.User{
+								TOCConfig: "my-toc-config",
+							},
+						},
+					},
+				},
+			},
+			wantMsg: []string{"SIGN_ON:TOC1.0", "CONFIG:my-toc-config"},
+		},
+		{
+			name:     "login, receive error from auth svc FLAP login",
+			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			mockParams: mockParams{
+				authParams: authParams{
+					flapLoginParams: flapLoginParams{
+						{
+							frame: wire.FLAPSignonFrame{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LoginTLVTagsScreenName, "me"),
+										wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, roastedPass),
+									},
+								},
+							},
+							newUserFn: state.NewStubUser,
+							err:       io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: []string{string(cmdInternalSvcErr)},
+		},
+		{
+			name:     "login, receive error from auth svc registration",
+			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			mockParams: mockParams{
+				authParams: authParams{
+					flapLoginParams: flapLoginParams{
+						{
+							frame: wire.FLAPSignonFrame{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LoginTLVTagsScreenName, "me"),
+										wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, roastedPass),
+									},
+								},
+							},
+							newUserFn: state.NewStubUser,
+							tlv: wire.TLVRestBlock{
+								TLVList: wire.TLVList{
+									wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("thecookie")),
+								},
+							},
+						},
+					},
+					registerBOSSessionParams: registerBOSSessionParams{
+						{
+							authCookie: []byte("thecookie"),
+							err:        io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: []string{string(cmdInternalSvcErr)},
+		},
+		{
+			name:     "login, receive error from buddy list registry",
+			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			mockParams: mockParams{
+				authParams: authParams{
+					flapLoginParams: flapLoginParams{
+						{
+							frame: wire.FLAPSignonFrame{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LoginTLVTagsScreenName, "me"),
+										wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, roastedPass),
+									},
+								},
+							},
+							newUserFn: state.NewStubUser,
+							tlv: wire.TLVRestBlock{
+								TLVList: wire.TLVList{
+									wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("thecookie")),
+								},
+							},
+						},
+					},
+					registerBOSSessionParams: registerBOSSessionParams{
+						{
+							authCookie: []byte("thecookie"),
+							sess:       newTestSession("me"),
+						},
+					},
+				},
+				buddyListRegistryParams: buddyListRegistryParams{
+					registerBuddyListParams: registerBuddyListParams{
+						{
+							user: state.NewIdentScreenName("me"),
+							err:  io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: []string{string(cmdInternalSvcErr)},
+		},
+		{
+			name:     "login, receive error from TOC config store",
+			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			mockParams: mockParams{
+				authParams: authParams{
+					flapLoginParams: flapLoginParams{
+						{
+							frame: wire.FLAPSignonFrame{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LoginTLVTagsScreenName, "me"),
+										wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, roastedPass),
+									},
+								},
+							},
+							newUserFn: state.NewStubUser,
+							tlv: wire.TLVRestBlock{
+								TLVList: wire.TLVList{
+									wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("thecookie")),
+								},
+							},
+						},
+					},
+					registerBOSSessionParams: registerBOSSessionParams{
+						{
+							authCookie: []byte("thecookie"),
+							sess:       newTestSession("me"),
+						},
+					},
+				},
+				buddyListRegistryParams: buddyListRegistryParams{
+					registerBuddyListParams: registerBuddyListParams{
+						{
+							user: state.NewIdentScreenName("me"),
+						},
+					},
+				},
+				tocConfigParams: tocConfigParams{
+					userParams: userParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							err:        io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: []string{string(cmdInternalSvcErr)},
+		},
+		{
+			name:     "login, user not found after login",
+			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			mockParams: mockParams{
+				authParams: authParams{
+					flapLoginParams: flapLoginParams{
+						{
+							frame: wire.FLAPSignonFrame{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LoginTLVTagsScreenName, "me"),
+										wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, roastedPass),
+									},
+								},
+							},
+							newUserFn: state.NewStubUser,
+							tlv: wire.TLVRestBlock{
+								TLVList: wire.TLVList{
+									wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("thecookie")),
+								},
+							},
+						},
+					},
+					registerBOSSessionParams: registerBOSSessionParams{
+						{
+							authCookie: []byte("thecookie"),
+							sess:       newTestSession("me"),
+						},
+					},
+				},
+				buddyListRegistryParams: buddyListRegistryParams{
+					registerBuddyListParams: registerBuddyListParams{
+						{
+							user: state.NewIdentScreenName("me"),
+						},
+					},
+				},
+				tocConfigParams: tocConfigParams{
+					userParams: userParams{
+						{
+							screenName:   state.NewIdentScreenName("me"),
+							returnedUser: nil,
+						},
+					},
+				},
+			},
+			wantMsg: []string{string(cmdInternalSvcErr)},
+		},
+		{
+			name:     "login with bad credentials",
+			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			mockParams: mockParams{
+				authParams: authParams{
+					flapLoginParams: flapLoginParams{
+						{
+							frame: wire.FLAPSignonFrame{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LoginTLVTagsScreenName, "me"),
+										wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, roastedPass),
+									},
+								},
+							},
+							newUserFn: state.NewStubUser,
+							tlv: wire.TLVRestBlock{
+								TLVList: wire.TLVList{
+									wire.NewTLVBE(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidUsernameOrPassword),
+								},
+							},
+						},
+					},
+				},
+			},
+			wantMsg: []string{"ERROR:980"},
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_init_done_diff`),
+			wantMsg:  []string{string(cmdInternalSvcErr)},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			authSvc := newMockAuthService(t)
+			for _, params := range tc.mockParams.flapLoginParams {
+				authSvc.EXPECT().
+					FLAPLogin(params.frame, mock.Anything).
+					Return(params.tlv, params.err)
+			}
+			for _, params := range tc.mockParams.registerBOSSessionParams {
+				authSvc.EXPECT().
+					RegisterBOSSession(ctx, params.authCookie).
+					Return(params.sess, params.err)
+			}
+			buddyRegistry := newMockBuddyListRegistry(t)
+			for _, params := range tc.mockParams.registerBuddyListParams {
+				buddyRegistry.EXPECT().
+					RegisterBuddyList(params.user).
+					Return(params.err)
+			}
+			tocCfg := newMockTOCConfigStore(t)
+			for _, params := range tc.mockParams.userParams {
+				tocCfg.EXPECT().
+					User(params.screenName).
+					Return(params.returnedUser, params.err)
+			}
+
+			svc := OSCARProxy{
+				AuthService:       authSvc,
+				BuddyListRegistry: buddyRegistry,
+				Logger:            slog.Default(),
+				TOCConfigStore:    tocCfg,
+			}
+			sess, msg := svc.Signon(ctx, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+			if tc.me == nil {
+				assert.Nil(t, sess)
+			} else if assert.NotNil(t, sess) {
+				assert.Equal(t, tc.me.IdentScreenName(), sess.IdentScreenName())
+				assert.Equal(t, tc.me.Caps(), sess.Caps())
+			}
 		})
 	}
 }
