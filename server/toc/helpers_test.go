@@ -226,10 +226,9 @@ type userInfoQueryParams []struct {
 }
 
 type dirInfoParams []struct {
-	inFrame wire.SNACFrame
-	body    wire.SNAC_0x02_0x0B_LocateGetDirInfo
-	msg     wire.SNACMessage
-	err     error
+	body wire.SNAC_0x02_0x0B_LocateGetDirInfo
+	msg  wire.SNACMessage
+	err  error
 }
 
 type locateParams struct {
@@ -240,10 +239,9 @@ type locateParams struct {
 }
 
 type infoQueryParams []struct {
-	inFrame wire.SNACFrame
-	inBody  wire.SNAC_0x0F_0x02_InfoQuery
-	msg     wire.SNACMessage
-	err     error
+	inBody wire.SNAC_0x0F_0x02_InfoQuery
+	msg    wire.SNACMessage
+	err    error
 }
 
 type dirSearchParams struct {

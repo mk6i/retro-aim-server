@@ -2,19 +2,19 @@ package toc
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"html/template"
 	"io"
-	"log"
-	"log/slog"
 	"net/http"
 	"net/url"
 
+	"golang.org/x/net/html"
+
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
-	"golang.org/x/net/html"
 )
 
 const profileTpl = `
@@ -57,20 +57,31 @@ func (s OSCARProxy) NewServeMux() http.Handler {
 
 func (s OSCARProxy) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := url.QueryUnescape(r.URL.Query().Get("cookie"))
+		ctx := r.Context()
+
+		cookie := r.URL.Query().Get("cookie")
+		if cookie == "" {
+			http.Error(w, "required `cookie` param is missing", http.StatusBadRequest)
+			return
+		}
+
+		cookie, err := url.QueryUnescape(cookie)
 		if err != nil {
-			http.Error(w, "unable to read auth cookie", http.StatusBadRequest)
+			s.Logger.DebugContext(ctx, "error un-escaping auth cookie", "err", err.Error())
+			http.Error(w, "invalid auth cookie", http.StatusBadRequest)
 			return
 		}
 
 		data, err := base64.URLEncoding.DecodeString(cookie)
 		if err != nil {
-			http.Error(w, "unable to read auth cookie", http.StatusBadRequest)
+			s.Logger.DebugContext(ctx, "error base64-decoding auth cookie", "err", err.Error())
+			http.Error(w, "invalid auth cookie", http.StatusBadRequest)
 			return
 		}
 
 		if _, err = s.CookieBaker.Crack(data); err != nil {
-			http.Error(w, "unable to crack auth cookie", http.StatusForbidden)
+			s.Logger.DebugContext(ctx, "error cracking auth cookie", "err", err.Error())
+			http.Error(w, "invalid auth cookie", http.StatusForbidden)
 			return
 		}
 
@@ -81,7 +92,7 @@ func (s OSCARProxy) AuthMiddleware(next http.Handler) http.Handler {
 func (s OSCARProxy) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	from := r.URL.Query().Get("from")
 	if from == "" {
-		http.Error(w, "required `from` param is missing`", http.StatusBadRequest)
+		http.Error(w, "required `from` param is missing", http.StatusBadRequest)
 		return
 	}
 	user := r.URL.Query().Get("user")
@@ -100,8 +111,7 @@ func (s OSCARProxy) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	info, err := s.LocateService.UserInfoQuery(ctx, sess, wire.SNACFrame{}, inBody)
 	if err != nil {
-		logErr(ctx, s.Logger, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		s.logAndReturn500(ctx, w, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
 		return
 	}
 
@@ -110,20 +120,18 @@ func (s OSCARProxy) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		if v.Code == wire.ErrorCodeNotLoggedOn {
 			http.Error(w, "user is unavailable", http.StatusNotFound)
 		} else {
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			s.logAndReturn500(ctx, w, fmt.Errorf("LocateService.UserInfoQuery error code: %d", v.Code))
 		}
 	case wire.SNAC_0x02_0x06_LocateUserInfoReply:
 		profile, hasProf := v.LocateInfo.Bytes(wire.LocateTLVTagsInfoSigData)
 		if !hasProf {
-			logErr(ctx, s.Logger, errors.New("LocateInfo.Bytes: missing wire.LocateTLVTagsInfoSigData"))
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			s.logAndReturn500(ctx, w, errors.New("LocateInfo.Bytes: missing wire.LocateTLVTagsInfoSigData"))
 			return
 		}
 
 		t, err := template.New("results").Parse(profileTpl)
 		if err != nil {
-			logErr(ctx, s.Logger, fmt.Errorf("template.New: %w", err))
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			s.logAndReturn500(ctx, w, fmt.Errorf("template.New: %w", err))
 			return
 		}
 
@@ -136,20 +144,22 @@ func (s OSCARProxy) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := t.Execute(w, pd); err != nil {
-			logErr(ctx, s.Logger, fmt.Errorf("t.Execute: %w", err))
-			http.Error(w, "internal Server Error", http.StatusInternalServerError)
-			return
+			s.logAndReturn500(ctx, w, fmt.Errorf("t.Execute: %w", err))
 		}
 	default:
-		logErr(ctx, s.Logger, fmt.Errorf("unknown response type: %T", v))
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		s.logAndReturn500(ctx, w, fmt.Errorf("unknown response type: %T", v))
 	}
+}
+
+func (s OSCARProxy) logAndReturn500(ctx context.Context, w http.ResponseWriter, err error) {
+	logErr(ctx, s.Logger, errors.New("LocateInfo.Bytes: missing wire.LocateTLVTagsInfoSigData"))
+	http.Error(w, "internal server error", http.StatusInternalServerError)
 }
 
 func (s OSCARProxy) DirInfoHandler(w http.ResponseWriter, request *http.Request) {
 	user := request.URL.Query().Get("user")
 	if user == "" {
-		http.Error(w, "user does not exist", http.StatusBadRequest)
+		http.Error(w, "required `user` param is missing", http.StatusBadRequest)
 		return
 	}
 
@@ -160,27 +170,20 @@ func (s OSCARProxy) DirInfoHandler(w http.ResponseWriter, request *http.Request)
 	ctx := request.Context()
 	info, err := s.LocateService.DirInfo(ctx, wire.SNACFrame{}, inBody)
 	if err != nil {
-		logErr(ctx, s.Logger, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	if !(info.Frame.FoodGroup == wire.Locate && info.Frame.SubGroup == wire.LocateGetDirReply) {
-		logErr(ctx, s.Logger, fmt.Errorf("LocateService.DirInfo: expected response SNAC(%d,%d), got SNAC(%d,%d)",
-			wire.Locate, wire.LocateGetDirReply, info.Frame.FoodGroup, info.Frame.SubGroup))
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		s.logAndReturn500(ctx, w, fmt.Errorf("LocateService.DirInfo: %w", err))
 		return
 	}
 
-	locateInfoReply := info.Body.(wire.SNAC_0x02_0x0C_LocateGetDirReply)
-
-	if len(locateInfoReply.TLVList) == 0 {
-		if _, err = w.Write([]byte("no user directory info")); err != nil {
-			s.Logger.Error("error writing response", "err", err.Error())
+	switch v := info.Body.(type) {
+	case wire.SNAC_0x02_0x0C_LocateGetDirReply:
+		if len(v.TLVList) > 0 {
+			s.outputSearchResults(ctx, w, v.TLVBlock)
+		} else {
+			http.Error(w, "no user directory info found", http.StatusNotFound)
 		}
-		return
+	default:
+		s.logAndReturn500(ctx, w, fmt.Errorf("LocateService.DirInfo: unknown response type: %T", v))
 	}
-
-	outputSearchResults(w, s.Logger, locateInfoReply.TLVBlock)
 }
 
 func (s OSCARProxy) DirSearchHandler(w http.ResponseWriter, r *http.Request) {
@@ -219,36 +222,26 @@ func (s OSCARProxy) DirSearchHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	info, err := s.DirSearchService.InfoQuery(ctx, wire.SNACFrame{}, inBody)
 	if err != nil {
-		logErr(ctx, s.Logger, fmt.Errorf("DirSearchService.InfoQuery: %w", err))
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	if !(info.Frame.FoodGroup == wire.ODir && info.Frame.SubGroup == wire.ODirInfoReply) {
-		logErr(ctx, s.Logger, fmt.Errorf("DirSearchService.InfoQuery: expected response SNAC(%d,%d), got SNAC(%d,%d)",
-			wire.ODir, wire.ODirInfoReply, info.Frame.FoodGroup, info.Frame.SubGroup))
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		s.logAndReturn500(ctx, w, fmt.Errorf("DirSearchService.InfoQuery: %w", err))
 		return
 	}
 
-	locateInfoReply := info.Body.(wire.SNAC_0x0F_0x03_InfoReply)
-
-	switch {
-	case locateInfoReply.Status == wire.ODirSearchResponseNameMissing:
-		if _, err = w.Write([]byte("search must contain first or last name")); err != nil {
-			s.Logger.Error("error writing response", "err", err.Error())
+	switch v := info.Body.(type) {
+	case wire.SNAC_0x0F_0x03_InfoReply:
+		switch v.Status {
+		case wire.ODirSearchResponseNameMissing:
+			http.Error(w, "missing search parameters", http.StatusBadRequest)
+		case wire.ODirSearchResponseOK:
+			s.outputSearchResults(nil, w, v.Results.List...)
+		default:
+			s.logAndReturn500(ctx, w, fmt.Errorf("DirSearchService.InfoQuery unknown status: %d", v.Status))
 		}
-		return
-	case locateInfoReply.Status != wire.ODirSearchResponseOK:
-		if _, err = w.Write([]byte("search failed")); err != nil {
-			s.Logger.Error("error writing response", "err", err.Error())
-		}
-		return
+	default:
+		s.logAndReturn500(ctx, w, fmt.Errorf("DirSearchService.InfoQuery: unknown response type: %T", v))
 	}
-
-	outputSearchResults(w, s.Logger, locateInfoReply.Results.List...)
 }
 
-func outputSearchResults(w http.ResponseWriter, logger *slog.Logger, users ...wire.TLVBlock) {
+func (s OSCARProxy) outputSearchResults(ctx context.Context, w http.ResponseWriter, users ...wire.TLVBlock) {
 	type DirSearchResult struct {
 		FirstName  string
 		MiddleName string
@@ -283,20 +276,12 @@ func outputSearchResults(w http.ResponseWriter, logger *slog.Logger, users ...wi
 
 	t, err := template.New("results").Parse(directoryTpl)
 	if err != nil {
-		log.Printf("Error parsing template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		s.logAndReturn500(ctx, w, fmt.Errorf("template.New: %w", err))
 		return
 	}
 
-	buf := &bytes.Buffer{}
-	if err := t.Execute(buf, PageData{Results: results}); err != nil {
-		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	if _, err = w.Write(buf.Bytes()); err != nil {
-		logger.Error("error writing response", "err", err.Error())
+	if err := t.Execute(w, PageData{Results: results}); err != nil {
+		s.logAndReturn500(ctx, w, fmt.Errorf("t.Execute: %w", err))
 	}
 }
 
