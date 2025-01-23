@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  retro-aim-server:
+    build: .
+    ports:
+      - "8080:8080"
+      - "5194:5194"
+      - "5190:5190"
+      - "5195:5195"
+      - "5191:5191"
+      - "5193:5193"
+      - "5912:5912"
+      - "5196:5196"
+      - "5197:5197"
+    volumes:
+      - ./config/settings.env:/app/config/settings.env
+    environment:
+      - OSCAR_HOST=0.0.0.0
