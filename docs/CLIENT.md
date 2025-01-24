@@ -13,7 +13,7 @@ Windows AIM versions 5.0-5.1.3036 run perfectly well on [Wine](https://www.wineh
 2. Download the AIM installer from [archive.org](https://archive.org/details/aim513036)
 3. Run the installer from the terminal:
    ```shell
-   wine aim324235.exe
+   wine aim513036.exe
    ```
 
 ### macOS (Intel & Apple Silicon)
