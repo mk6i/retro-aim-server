@@ -335,6 +335,86 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "AIM account doesn't exist, authentication is disabled, screen name has bad format, login fails",
+			cfg: config.Config{
+				OSCARHost:   "127.0.0.1",
+				BOSPort:     "1234",
+				DisableAuth: true,
+			},
+			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.LoginTLVTagsScreenName, "2coolforschool"),
+						wire.NewTLVBE(wire.LoginTLVTagsPasswordHash, user.StrongMD5Pass),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("2coolforschool"),
+							result:     nil,
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BUCP,
+					SubGroup:  wire.BUCPLoginResponse,
+				},
+				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.LoginTLVTagsScreenName, state.NewIdentScreenName("2coolforschool")),
+							wire.NewTLVBE(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidUsernameOrPassword),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "ICQ account doesn't exist, authentication is disabled, UIN has bad format, login fails",
+			cfg: config.Config{
+				OSCARHost:   "127.0.0.1",
+				BOSPort:     "1234",
+				DisableAuth: true,
+			},
+			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.LoginTLVTagsScreenName, "99"),
+						wire.NewTLVBE(wire.LoginTLVTagsPasswordHash, user.StrongMD5Pass),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("99"),
+							result:     nil,
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BUCP,
+					SubGroup:  wire.BUCPLoginResponse,
+				},
+				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.LoginTLVTagsScreenName, state.NewIdentScreenName("99")),
+							wire.NewTLVBE(wire.LoginTLVTagsErrorSubcode, wire.LoginErrICQUserErr),
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "account exists, password is invalid, authentication is disabled, login succeeds",
 			cfg: config.Config{
 				OSCARHost:   "127.0.0.1",

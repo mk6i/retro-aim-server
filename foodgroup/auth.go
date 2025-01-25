@@ -338,11 +338,8 @@ func (s AuthService) login(
 	if user == nil {
 		// user not found
 		if s.config.DisableAuth {
-			// auth disabled, create the user and return success
-			if err := s.createUser(props, newUserFn); err != nil {
-				return wire.TLVRestBlock{}, err
-			}
-			return s.loginSuccessResponse(props)
+			// auth disabled, create the user
+			return s.createUser(props, newUserFn)
 		}
 		// auth enabled, return separate login errors for ICQ and AIM
 		loginErr := wire.LoginErrInvalidUsernameOrPassword
@@ -373,23 +370,37 @@ func (s AuthService) login(
 func (s AuthService) createUser(
 	props loginProperties,
 	newUserFn func(screenName state.DisplayScreenName) (state.User, error),
-) error {
+) (wire.TLVRestBlock, error) {
 
-	handleValid := false
+	var err error
 	if props.screenName.IsUIN() {
-		handleValid = props.screenName.ValidateUIN() == nil
+		err = props.screenName.ValidateUIN()
 	} else {
-		handleValid = props.screenName.ValidateAIMHandle() == nil
+		err = props.screenName.ValidateAIMHandle()
 	}
-	if !handleValid {
-		return nil
+
+	if err != nil {
+		switch {
+		case errors.Is(err, state.ErrAIMHandleInvalidFormat) || errors.Is(err, state.ErrAIMHandleLength):
+			return loginFailureResponse(props, wire.LoginErrInvalidUsernameOrPassword), nil
+		case errors.Is(err, state.ErrICQUINInvalidFormat):
+			return loginFailureResponse(props, wire.LoginErrICQUserErr), nil
+		default:
+			return wire.TLVRestBlock{}, err
+		}
 	}
 
 	newUser, err := newUserFn(props.screenName)
 	if err != nil {
-		return err
+		return wire.TLVRestBlock{}, err
 	}
-	return s.userManager.InsertUser(newUser)
+
+	err = s.userManager.InsertUser(newUser)
+	if err != nil {
+		return wire.TLVRestBlock{}, err
+	}
+
+	return s.loginSuccessResponse(props)
 }
 
 func (s AuthService) loginSuccessResponse(props loginProperties) (wire.TLVRestBlock, error) {
