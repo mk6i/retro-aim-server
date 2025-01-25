@@ -19,6 +19,10 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
+var (
+	capChat = uuid.MustParse("748F2420-6287-11D1-8222-444553540000")
+)
+
 type OSCARProxy struct {
 	AuthService         AuthService
 	BuddyListRegistry   BuddyListRegistry

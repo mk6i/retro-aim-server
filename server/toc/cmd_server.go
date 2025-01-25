@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/google/uuid"
 	"golang.org/x/net/html"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -18,14 +17,12 @@ import (
 
 var (
 	cmdInternalSvcErr = "ERROR:989:internal server error"
-	capChat           = uuid.MustParse("748F2420-6287-11D1-8222-444553540000")
+	errDisconnect     = errors.New("got booted by another session")
 )
 
-var errDisconnect = errors.New("got booted by another session")
-
-func (s OSCARProxy) ConsumeIncomingBOS(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, ch chan<- []byte) error {
+func (s OSCARProxy) RecvBOS(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, ch chan<- []byte) error {
 	defer func() {
-		fmt.Println("closing ConsumeIncomingBOS")
+		fmt.Println("closing RecvBOS")
 	}()
 	for {
 		select {
@@ -35,35 +32,19 @@ func (s OSCARProxy) ConsumeIncomingBOS(ctx context.Context, me *state.Session, c
 			fmt.Println("I got signed off")
 			return errDisconnect
 		case snac := <-me.ReceiveMessage():
-			inFrame := snac.Frame
-			switch inFrame.FoodGroup {
-			case wire.Buddy:
-				switch inFrame.SubGroup {
-				case wire.BuddyArrived:
-					// todo make these type assertions safe?
-					sendOrCancel(ctx, ch, s.UpdateBuddyArrival(ctx, snac.Body.(wire.SNAC_0x03_0x0B_BuddyArrived)))
-				case wire.BuddyDeparted:
-					sendOrCancel(ctx, ch, s.UpdateBuddyDeparted(ctx, snac.Body.(wire.SNAC_0x03_0x0C_BuddyDeparted)))
-				default:
-					// don't return error because they could be booted by malicious actor?
-					s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
-				}
-			case wire.ICBM:
-				switch inFrame.SubGroup {
-				case wire.ICBMChannelMsgToClient:
-					sendOrCancel(ctx, ch, s.IMIn(ctx, chatRegistry, snac.Body.(wire.SNAC_0x04_0x07_ICBMChannelMsgToClient)))
-				default:
-					s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
-				}
-			case wire.OService:
-				switch inFrame.SubGroup {
-				case wire.OServiceEvilNotification:
-					sendOrCancel(ctx, ch, s.Eviled(ctx, snac.Body.(wire.SNAC_0x01_0x10_OServiceEvilNotification)))
-				default:
-					s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
-				}
+			switch v := snac.Body.(type) {
+			case wire.SNAC_0x03_0x0B_BuddyArrived:
+				sendOrCancel(ctx, ch, s.UpdateBuddyArrival(v))
+			case wire.SNAC_0x03_0x0C_BuddyDeparted:
+				sendOrCancel(ctx, ch, s.UpdateBuddyDeparted(v))
+			case wire.SNAC_0x04_0x07_ICBMChannelMsgToClient:
+				sendOrCancel(ctx, ch, s.IMIn(ctx, chatRegistry, v))
+			case wire.SNAC_0x01_0x10_OServiceEvilNotification:
+				sendOrCancel(ctx, ch, s.Eviled(ctx, v))
 			default:
-				s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
+				s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s",
+					wire.FoodGroupName(snac.Frame.FoodGroup),
+					wire.SubGroupName(snac.Frame.FoodGroup, snac.Frame.SubGroup)))
 			}
 		}
 	}
@@ -71,9 +52,9 @@ func (s OSCARProxy) ConsumeIncomingBOS(ctx context.Context, me *state.Session, c
 	return nil
 }
 
-func (s OSCARProxy) ConsumeIncomingChat(ctx context.Context, me *state.Session, chatID int, ch chan<- []byte) {
+func (s OSCARProxy) RecvChat(ctx context.Context, me *state.Session, chatID int, ch chan<- []byte) {
 	defer func() {
-		fmt.Println("closing chat ConsumeIncomingChat")
+		fmt.Println("closing chat RecvChat")
 	}()
 	for {
 		select {
@@ -82,27 +63,42 @@ func (s OSCARProxy) ConsumeIncomingChat(ctx context.Context, me *state.Session, 
 		case <-me.Closed():
 			return
 		case snac := <-me.ReceiveMessage():
-			inFrame := snac.Frame
-			switch inFrame.FoodGroup {
-			case wire.Chat:
-				switch inFrame.SubGroup {
-				case wire.ChatUsersLeft:
-					sendOrCancel(ctx, ch, s.ChatUpdateBuddyLeft(ctx, snac.Body.(wire.SNAC_0x0E_0x04_ChatUsersLeft), chatID))
-				case wire.ChatUsersJoined:
-					sendOrCancel(ctx, ch, s.ChatUpdateBuddyArrived(ctx, snac.Body.(wire.SNAC_0x0E_0x03_ChatUsersJoined), chatID))
-				case wire.ChatChannelMsgToClient:
-					sendOrCancel(ctx, ch, s.ChatIn(ctx, snac.Body.(wire.SNAC_0x0E_0x06_ChatChannelMsgToClient), chatID))
-				default:
-					s.Logger.Info("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
-				}
+			switch v := snac.Body.(type) {
+			case wire.SNAC_0x0E_0x04_ChatUsersLeft:
+				sendOrCancel(ctx, ch, s.ChatUpdateBuddyLeft(ctx, v, chatID))
+			case wire.SNAC_0x0E_0x03_ChatUsersJoined:
+				sendOrCancel(ctx, ch, s.ChatUpdateBuddyArrived(ctx, v, chatID))
+			case wire.SNAC_0x0E_0x06_ChatChannelMsgToClient:
+				sendOrCancel(ctx, ch, s.ChatIn(ctx, v, chatID))
 			default:
-				s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s", wire.FoodGroupName(inFrame.FoodGroup), wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup)))
+				s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s",
+					wire.FoodGroupName(snac.Frame.FoodGroup),
+					wire.SubGroupName(snac.Frame.FoodGroup, snac.Frame.SubGroup)))
 			}
 		}
 	}
 }
 
-func (s OSCARProxy) UpdateBuddyArrival(ctx context.Context, snac wire.SNAC_0x03_0x0B_BuddyArrived) string {
+// UpdateBuddyArrival handles the UPDATE_BUDDY TOC command for buddy arrival events.
+//
+// From the TiK documentation:
+//
+//	This one command handles arrival/depart/updates. Evil Amount is a percentage, Signon Time is UNIX epoc, idle time is in minutes, UC (User Class) is a two/three character string.
+//		- uc[0]
+//			- ' ' - Ignore
+//			- 'A' - On AOL
+//		- uc[1]
+//			- ' ' - Ignore
+//			- 'A' - Oscar Admin
+//			- 'U' - Oscar Unconfirmed
+//			- 'O' - Oscar Normal
+//		- uc[2]
+//			- '\0' - Ignore
+//			- ' ' - Ignore
+//			- 'U' - The user has set their unavailable flag.
+//
+// Command syntax: UPDATE_BUDDY:<Buddy User>:<Online? T/F>:<Evil Amount>:<Signon Time>:<IdleTime>:<UC>
+func (s OSCARProxy) UpdateBuddyArrival(snac wire.SNAC_0x03_0x0B_BuddyArrived) string {
 	online, _ := snac.Uint32BE(wire.OServiceUserInfoSignonTOD)
 	idle, _ := snac.Uint16BE(wire.OServiceUserInfoIdleTime)
 	uc := [3]string{" ", "O", " "}
@@ -112,7 +108,28 @@ func (s OSCARProxy) UpdateBuddyArrival(ctx context.Context, snac wire.SNAC_0x03_
 	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "T", snac.WarningLevel, online, idle, uc)
 }
 
-func (s OSCARProxy) UpdateBuddyDeparted(ctx context.Context, snac wire.SNAC_0x03_0x0C_BuddyDeparted) string {
+// UpdateBuddyDeparted handles the UPDATE_BUDDY TOC command for buddy departure events.
+//
+// From the TiK documentation:
+//
+//	This one command handles arrival/depart/updates. Evil Amount is a
+//	percentage, Signon Time is UNIX epoc, idle time is in minutes, UC (User
+//	Class) is a two/three character string.
+//		- uc[0]
+//			- ' ' - Ignore
+//			- 'A' - On AOL
+//		- uc[1]
+//			- ' ' - Ignore
+//			- 'A' - Oscar Admin
+//			- 'U' - Oscar Unconfirmed
+//			- 'O' - Oscar Normal
+//		- uc[2]
+//			- '\0' - Ignore
+//			- ' ' - Ignore
+//			- 'U' - The user has set their unavailable flag.
+//
+// Command syntax: UPDATE_BUDDY:<Buddy User>:<Online? T/F>:<Evil Amount>:<Signon Time>:<IdleTime>:<UC>
+func (s OSCARProxy) UpdateBuddyDeparted(snac wire.SNAC_0x03_0x0C_BuddyDeparted) string {
 	online, _ := snac.Uint32BE(wire.OServiceUserInfoSignonTOD)
 	idle, _ := snac.Uint16BE(wire.OServiceUserInfoIdleTime)
 	uc := [3]string{" ", "O", " "}
@@ -123,6 +140,14 @@ func (s OSCARProxy) UpdateBuddyDeparted(ctx context.Context, snac wire.SNAC_0x03
 	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "F", snac.WarningLevel, online, idle, class)
 }
 
+// IMIn handles the IM_IN TOC command.
+//
+// From the TiK documentation:
+//
+//	Receive an IM from someone. Everything after the third colon is the
+//	incoming message, including other colons.
+//
+// Command syntax: IM_IN:<Source User>:<Auto Response T/F?>:<Message>
 func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient) string {
 	if snac.ChannelID == wire.ICBMChannelRendezvous {
 		rdinfo, has := snac.TLVRestBlock.Bytes(0x05)
@@ -173,6 +198,13 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 	return fmt.Sprintf("IM_IN:%s:F:%s", snac.ScreenName, txt)
 }
 
+// Eviled handles the EVILED TOC command.
+//
+// From the TiK documentation:
+//
+//	The user was just eviled.
+//
+// Command syntax: EVILED:<new evil>:<name of eviler, blank if anonymous>
 func (s OSCARProxy) Eviled(ctx context.Context, snac wire.SNAC_0x01_0x10_OServiceEvilNotification) string {
 	who := ""
 	if snac.Snitcher != nil {
@@ -181,16 +213,16 @@ func (s OSCARProxy) Eviled(ctx context.Context, snac wire.SNAC_0x01_0x10_OServic
 	return fmt.Sprintf("EVILED:%d:%s", snac.NewEvil, who)
 }
 
-func (s OSCARProxy) Signout(ctx context.Context, me *state.Session) {
-	if err := s.BuddyService.BroadcastBuddyDeparted(ctx, me); err != nil {
-		s.Logger.ErrorContext(ctx, "error sending departure notifications", "err", err.Error())
-	}
-	if err := s.BuddyListRegistry.UnregisterBuddyList(me.IdentScreenName()); err != nil {
-		s.Logger.ErrorContext(ctx, "error removing buddy list entry", "err", err.Error())
-	}
-	s.AuthService.Signout(ctx, me)
-}
-
+// ChatUpdateBuddyArrived handles the CHAT_UPDATE_BUDDY TOC command for chat
+// room arrival events.
+//
+// From the TiK documentation:
+//
+//	This one command handles arrival/departs from a chat room. The very first
+//	message of this type for each chat room contains the users already in the
+//	room.
+//
+// Command syntax: CHAT_UPDATE_BUDDY:<Chat Room Id>:<Inside? T/F>:<User 1>:<User 2>...
 func (s OSCARProxy) ChatUpdateBuddyArrived(ctx context.Context, snac wire.SNAC_0x0E_0x03_ChatUsersJoined, chatID int) string {
 	users := make([]string, 0, len(snac.Users))
 	for _, u := range snac.Users {
@@ -199,6 +231,16 @@ func (s OSCARProxy) ChatUpdateBuddyArrived(ctx context.Context, snac wire.SNAC_0
 	return fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:T:%s", chatID, strings.Join(users, ":"))
 }
 
+// ChatUpdateBuddyLeft handles the CHAT_UPDATE_BUDDY TOC command for chat
+// room departure events.
+//
+// From the TiK documentation:
+//
+//	This one command handles arrival/departs from a chat room. The very first
+//	message of this type for each chat room contains the users already in the
+//	room.
+//
+// Command syntax: CHAT_UPDATE_BUDDY:<Chat Room Id>:<Inside? T/F>:<User 1>:<User 2>...
 func (s OSCARProxy) ChatUpdateBuddyLeft(ctx context.Context, snac wire.SNAC_0x0E_0x04_ChatUsersLeft, chatID int) string {
 	users := make([]string, 0, len(snac.Users))
 	for _, u := range snac.Users {
@@ -207,6 +249,13 @@ func (s OSCARProxy) ChatUpdateBuddyLeft(ctx context.Context, snac wire.SNAC_0x0E
 	return fmt.Sprintf("CHAT_UPDATE_BUDDY:%d:F:%s", chatID, strings.Join(users, ":"))
 }
 
+// ChatIn handles the CHAT_IN TOC command.
+//
+// From the TiK documentation:
+//
+//	A chat message was sent in a chat room.
+//
+// Command syntax: CHAT_IN:<Chat Room Id>:<Source User>:<Whisper? T/F>:<Message>
 func (s OSCARProxy) ChatIn(ctx context.Context, snac wire.SNAC_0x0E_0x06_ChatChannelMsgToClient, chatID int) string {
 	b, ok := snac.Bytes(wire.ChatTLVSenderInformation)
 	if !ok {
@@ -234,6 +283,16 @@ func (s OSCARProxy) ChatIn(ctx context.Context, snac wire.SNAC_0x0E_0x06_ChatCha
 	}
 
 	return fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, u.ScreenName, text)
+}
+
+func (s OSCARProxy) Signout(ctx context.Context, me *state.Session) {
+	if err := s.BuddyService.BroadcastBuddyDeparted(ctx, me); err != nil {
+		s.Logger.ErrorContext(ctx, "error sending departure notifications", "err", err.Error())
+	}
+	if err := s.BuddyListRegistry.UnregisterBuddyList(me.IdentScreenName()); err != nil {
+		s.Logger.ErrorContext(ctx, "error removing buddy list entry", "err", err.Error())
+	}
+	s.AuthService.Signout(ctx, me)
 }
 
 // textFromChatMsgBlob extracts plaintext message text from HTML located in

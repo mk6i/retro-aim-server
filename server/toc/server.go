@@ -176,7 +176,7 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, conn io.ReadWriteCloser)
 	chatRegistry := newChatRegistry()
 
 	g.Go(func() error {
-		return rt.BOSProxy.ConsumeIncomingBOS(gCtx, sessBOS, chatRegistry, toCh)
+		return rt.BOSProxy.RecvBOS(gCtx, sessBOS, chatRegistry, toCh)
 	})
 	g.Go(func() error {
 		return rt.sendToClient(gCtx, toCh, clientFlap)
@@ -275,7 +275,7 @@ func (rt Server) processCommands(
 
 				doAsync(func() error {
 					sess := chatRegistry.RetrieveSess(chatID)
-					rt.BOSProxy.ConsumeIncomingChat(ctx, sess, chatID, toCh)
+					rt.BOSProxy.RecvChat(ctx, sess, chatID, toCh)
 					return nil
 				})
 			case "toc_chat_send":
