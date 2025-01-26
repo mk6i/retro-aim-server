@@ -42,7 +42,7 @@ func (s OSCARProxy) RecvBOS(ctx context.Context, me *state.Session, chatRegistry
 			case wire.SNAC_0x01_0x10_OServiceEvilNotification:
 				sendOrCancel(ctx, ch, s.Eviled(ctx, v))
 			default:
-				s.Logger.Info(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s",
+				s.Logger.Debug(fmt.Sprintf("unsupported snac. foodgroup: %s subgroup: %s",
 					wire.FoodGroupName(snac.Frame.FoodGroup),
 					wire.SubGroupName(snac.Frame.FoodGroup, snac.Frame.SubGroup)))
 			}
@@ -105,8 +105,9 @@ func (s OSCARProxy) UpdateBuddyArrival(snac wire.SNAC_0x03_0x0B_BuddyArrived) st
 	if snac.IsAway() {
 		uc[2] = "U"
 	}
+	warning := fmt.Sprintf("%d", snac.WarningLevel/10)
 	class := strings.Join(uc[:], "")
-	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%d:%d:%d:%s", snac.ScreenName, "T", snac.WarningLevel, online, idle, class)
+	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%s:%d:%d:%s", snac.ScreenName, "T", warning, online, idle, class)
 }
 
 // UpdateBuddyDeparted handles the UPDATE_BUDDY TOC command for buddy departure events.
@@ -144,7 +145,7 @@ func (s OSCARProxy) UpdateBuddyDeparted(snac wire.SNAC_0x03_0x0C_BuddyDeparted) 
 // Command syntax: IM_IN:<Source User>:<Auto Response T/F?>:<Message>
 func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient) string {
 	if snac.ChannelID == wire.ICBMChannelRendezvous {
-		rdinfo, has := snac.TLVRestBlock.Bytes(0x05)
+		rdinfo, has := snac.TLVRestBlock.Bytes(wire.ICBMTLVData)
 		if !has {
 			logErr(ctx, s.Logger, errors.New("TLVRestBlock.Bytes: missing rendezvous block"))
 			return cmdInternalSvcErr
@@ -154,13 +155,13 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 			logErr(ctx, s.Logger, fmt.Errorf("wire.UnmarshalBE: %w", err))
 			return cmdInternalSvcErr
 		}
-		prompt, ok := frag.Bytes(12)
+		prompt, ok := frag.Bytes(wire.ICBMRdvTLVTagsInvitation)
 		if !ok {
-			logErr(ctx, s.Logger, errors.New("frag.Bytes: missing prompt"))
+			logErr(ctx, s.Logger, errors.New("frag.Bytes: missing chat invite prompt"))
 			return cmdInternalSvcErr
 		}
 
-		svcData, ok := frag.Bytes(10001)
+		svcData, ok := frag.Bytes(wire.ICBMRdvTLVTagsSvcData)
 		if !ok {
 			logErr(ctx, s.Logger, errors.New("frag.Bytes: missing room info"))
 			return cmdInternalSvcErr
@@ -172,10 +173,16 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 			return cmdInternalSvcErr
 		}
 
-		name := strings.Split(roomInfo.Cookie, "-")[2]
+		cookie := strings.Split(roomInfo.Cookie, "-") // make this safe
+		if len(cookie) < 3 {
+			logErr(ctx, s.Logger, errors.New("roomInfo.Cookie: malformed cookie, could not get room name"))
+			return cmdInternalSvcErr
+		}
 
+		roomName := cookie[2]
 		chatID := chatRegistry.Add(roomInfo)
-		return fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", name, chatID, snac.ScreenName, prompt)
+
+		return fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", roomName, chatID, snac.ScreenName, prompt)
 	}
 
 	buf, ok := snac.TLVRestBlock.Bytes(wire.ICBMTLVAOLIMData)
@@ -189,7 +196,12 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 		return cmdInternalSvcErr
 	}
 
-	return fmt.Sprintf("IM_IN:%s:F:%s", snac.ScreenName, txt)
+	autoResp := "F"
+	if _, isAutoReply := snac.TLVRestBlock.Bytes(wire.ICBMTLVAutoResponse); isAutoReply {
+		autoResp = "T"
+	}
+
+	return fmt.Sprintf("IM_IN:%s:%s:%s", snac.ScreenName, autoResp, txt)
 }
 
 // Eviled handles the EVILED TOC command.
@@ -200,11 +212,12 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 //
 // Command syntax: EVILED:<new evil>:<name of eviler, blank if anonymous>
 func (s OSCARProxy) Eviled(ctx context.Context, snac wire.SNAC_0x01_0x10_OServiceEvilNotification) string {
+	warning := fmt.Sprintf("%d", snac.NewEvil/10)
 	who := ""
 	if snac.Snitcher != nil {
 		who = snac.Snitcher.ScreenName
 	}
-	return fmt.Sprintf("EVILED:%d:%s", snac.NewEvil, who)
+	return fmt.Sprintf("EVILED:%s:%s", warning, who)
 }
 
 // ChatUpdateBuddyArrived handles the CHAT_UPDATE_BUDDY TOC command for chat
