@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+
+	"golang.org/x/net/html"
 )
 
 //
@@ -1086,6 +1089,34 @@ type SNAC_0x0E_0x06_ChatChannelMsgToClient struct {
 	Cookie  uint64
 	Channel uint16
 	TLVRestBlock
+}
+
+// UnmarshalChatMessageText extracts plaintext message from a HTML chat
+// message. Param b is a slice from TLV wire.ChatTLVMessageInfo.
+func UnmarshalChatMessageText(b []byte) (string, error) {
+	block := TLVRestBlock{}
+	if err := UnmarshalBE(&block, bytes.NewReader(b)); err != nil {
+		return "", fmt.Errorf("UnmarshalBE: %w", err)
+	}
+
+	b, hasMsg := block.Bytes(ChatTLVMessageInfoText)
+	if !hasMsg {
+		return "", errors.New("SNAC(0x0E,0x05) has no chat msg text TLV")
+	}
+
+	tok := html.NewTokenizer(bytes.NewReader(b))
+	for {
+		switch tok.Next() {
+		case html.TextToken:
+			return string(tok.Text()), nil
+		case html.ErrorToken:
+			err := tok.Err()
+			if err == io.EOF {
+				err = nil
+			}
+			return "", err
+		}
+	}
 }
 
 //
