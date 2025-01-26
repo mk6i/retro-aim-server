@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -33,6 +34,12 @@ func MakeCommonDeps() (Container, error) {
 	err := envconfig.Process("", &c.cfg)
 	if err != nil {
 		return c, fmt.Errorf("unable to process app config: %s\n", err.Error())
+	}
+
+	if c.cfg.OSCARHost == "0.0.0.0" {
+		return c, errors.New("invalid config: OSCAR_HOST cannot be set to " +
+			"the 'all interfaces' IP (0.0.0.0). it must be a specific IP " +
+			"address or hostname reachable by AIM/ICQ clients")
 	}
 
 	c.sqLiteUserStore, err = state.NewSQLiteUserStore(c.cfg.DBPath)
