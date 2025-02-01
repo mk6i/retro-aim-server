@@ -163,10 +163,6 @@ func (rt Server) handleTOCOverFLAP(ctx context.Context, conn io.ReadWriteCloser)
 		conn.Close()
 	}()
 
-	if err := rt.handshake(conn); err != nil {
-		return fmt.Errorf("handshake failed: %w", err)
-	}
-
 	clientFlap, err := rt.initFLAP(conn)
 	if err != nil {
 		return err
@@ -318,33 +314,29 @@ func (rt Server) readFromClient(ctx context.Context, msgCh chan<- wire.FLAPFrame
 	}
 }
 
-func (rt Server) handshake(clientConn io.ReadWriter) error {
-	reader := bufio.NewReader(clientConn)
+// initFLAP sets up a new FLAP connection. It returns a flap client if the
+// connection successfully initialized.
+func (rt Server) initFLAP(rw io.ReadWriter) (*wire.FlapClient, error) {
+	scanner := bufio.NewScanner(rw)
 
-	line, _, err := reader.ReadLine()
-	if err != nil {
-		return fmt.Errorf("read line failed: %w", err)
+	// read FLAPON\r\n\r\n
+	if !scanner.Scan() {
+		return nil, fmt.Errorf("no line scanned: %w", scanner.Err())
 	}
-	if string(line) != "FLAPON" {
-		return fmt.Errorf("unexpected line: %s", string(line))
+	if scanner.Text() != "FLAPON" {
+		return nil, fmt.Errorf("expected FLAPON, got %s", scanner.Text())
 	}
-	_, _, err = reader.ReadLine()
-	if err != nil {
-		return fmt.Errorf("read line failed: %w", err)
+	if !scanner.Scan() {
+		return nil, fmt.Errorf("no line scanned: %w", scanner.Err())
 	}
-	return nil
-}
 
-func (rt Server) initFLAP(clientConn io.ReadWriter) (*wire.FlapClient, error) {
-	clientFlap := wire.NewFlapClient(0, clientConn, clientConn)
+	clientFlap := wire.NewFlapClient(0, rw, rw)
 
 	if err := clientFlap.SendSignonFrame(nil); err != nil {
-		return nil, fmt.Errorf("send flapon signal failed: %w", err)
+		return nil, fmt.Errorf("clientFlap.SendSignonFrame: %w", err)
 	}
-
-	_, err := clientFlap.ReceiveSignonFrame()
-	if err != nil {
-		return nil, fmt.Errorf("send flapon signal failed: %w", err)
+	if _, err := clientFlap.ReceiveSignonFrame(); err != nil {
+		return nil, fmt.Errorf("clientFlap.ReceiveSignonFrame: %w", err)
 	}
 
 	return clientFlap, nil
