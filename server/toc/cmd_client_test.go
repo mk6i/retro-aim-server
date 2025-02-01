@@ -3336,7 +3336,7 @@ func Test_parseArgs(t *testing.T) {
 			givenPayload: `toc_chat_invite`,
 			givenCmd:     "toc_chat_invite",
 			givenArgs:    nil,
-			wantVarArgs:  nil,
+			wantVarArgs:  []string{},
 		},
 		{
 			name:         "positional args with varargs",
@@ -3359,7 +3359,7 @@ func Test_parseArgs(t *testing.T) {
 			givenPayload: `toc_chat_invite 1234 "Join me!"`,
 			givenCmd:     "toc_chat_invite",
 			givenArgs:    []*string{new(string), new(string)}, // roomID + msg
-			wantVarArgs:  nil,
+			wantVarArgs:  []string{},
 			wantArgs:     []string{"1234", "Join me!"},
 		},
 		{
@@ -3374,7 +3374,7 @@ func Test_parseArgs(t *testing.T) {
 			givenPayload: `toc_chat_invite user1 user2 user3`,
 			givenCmd:     "toc_chat_accept",
 			givenArgs:    nil,
-			wantVarArgs:  nil,
+			wantVarArgs:  []string{},
 			wantErrMsg:   "mismatch",
 		},
 		{
@@ -3382,7 +3382,7 @@ func Test_parseArgs(t *testing.T) {
 			givenPayload: `toc_chat_invite`,
 			givenCmd:     "toc_chat_invite",
 			givenArgs:    []*string{new(string), new(string)},
-			wantVarArgs:  nil,
+			wantVarArgs:  []string{},
 			wantErrMsg:   "command contains fewer arguments than expected",
 		},
 		{
@@ -3390,7 +3390,7 @@ func Test_parseArgs(t *testing.T) {
 			givenPayload: ``,
 			givenCmd:     "toc_chat_invite",
 			givenArgs:    []*string{nil},
-			wantVarArgs:  nil,
+			wantVarArgs:  []string{},
 			wantErrMsg:   "CSV reader error",
 		},
 	}

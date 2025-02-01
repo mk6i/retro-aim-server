@@ -127,7 +127,7 @@ func (rt Server) Start(ctx context.Context) error {
 		go func() {
 			defer wg.Done()
 			bufCon := newBufferedConn(conn)
-			b, err := bufCon.Peek(6)
+			b, err := bufCon.Peek(6) // todo set a read deadline here
 			if err != nil {
 				rt.Logger.ErrorContext(ctx, "peek failed", "err", err.Error())
 				return

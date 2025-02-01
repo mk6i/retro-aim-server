@@ -137,7 +137,7 @@ func (s OSCARProxy) RecvClientCmd(
 	}
 
 	if s.Logger.Enabled(ctx, slog.LevelDebug) {
-		s.Logger.InfoContext(ctx, "client request", "command", payload)
+		s.Logger.DebugContext(ctx, "client request", "command", payload)
 	} else {
 		s.Logger.InfoContext(ctx, "client request", "command", cmd)
 	}
@@ -265,7 +265,7 @@ func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, cmd []byte
 	return ""
 }
 
-// AddDeny handles the toc_chat_join TOC command.
+// AddDeny handles the toc_add_deny TOC command.
 //
 // From the TiK documentation:
 //
@@ -721,12 +721,13 @@ func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, cmd 
 
 	// map labels to param values at their corresponding positions
 	p := url.Values{}
-	i := 0
-	for i < len(params) && i < len(labels) {
-		if len(params[i]) > 0 {
-			p.Add(labels[i], strings.Trim(params[i], "\""))
+	for i, param := range params {
+		if i >= len(labels) {
+			break
 		}
-		i++
+		if param != "" {
+			p.Add(labels[i], strings.Trim(param, "\""))
+		}
 	}
 
 	if len(p) == 0 {
@@ -1338,34 +1339,29 @@ func parseArgs(payload []byte, cmd string, args ...*string) (varArgs []string, e
 
 	segs, err := reader.Read()
 	if err != nil {
-		return nil, fmt.Errorf("CSV reader error: %w", err)
+		return []string{}, fmt.Errorf("CSV reader error: %w", err)
 	}
 
 	// sanity check the command name
 	if segs[0] != cmd {
-		return nil, fmt.Errorf("command mismatch. expected %s, got %s", cmd, segs[0])
+		return []string{}, fmt.Errorf("command mismatch. expected %s, got %s", cmd, segs[0])
 	}
 
 	// all elements after the command are arguments
 	segs = segs[1:]
 	if len(segs) < len(args) {
-		return nil, fmt.Errorf("command contains fewer arguments than expected")
+		return []string{}, fmt.Errorf("command contains fewer arguments than expected")
 	}
 
-	i := 0
 	// populate placeholder pointers with their corresponding values
-	for ; i < len(args); i++ {
-		if args[i] == nil {
-			// ignore argument, don't populate its corresponding pointer
-			continue
+	for i, arg := range args {
+		if arg != nil {
+			*arg = strings.TrimSpace(segs[i])
 		}
-		*args[i] = strings.TrimSpace(segs[i])
 	}
 
 	// dump remaining arguments as varargs
-	varArgs = append(varArgs, segs[i:]...)
-
-	return varArgs, err
+	return segs[len(args):], err
 }
 
 // runtimeErr is a convenience function that logs an error and returns a TOC

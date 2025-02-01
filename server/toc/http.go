@@ -48,6 +48,24 @@ const directoryTpl = `
 {{- end -}}
 </BODY></HTML>`
 
+var (
+	profileTemplate   *template.Template
+	directoryTemplate *template.Template
+)
+
+func init() {
+	var err error
+	profileTemplate, err = template.New("profile").Parse(profileTpl)
+	if err != nil {
+		panic(fmt.Errorf("failed to compile profile template: %w", err))
+	}
+
+	directoryTemplate, err = template.New("directory").Parse(directoryTpl)
+	if err != nil {
+		panic(fmt.Errorf("failed to compile directory template: %w", err))
+	}
+}
+
 // NewServeMux creates and returns an HTTP mux that serves all TOC routes.
 func (s OSCARProxy) NewServeMux() http.Handler {
 	mux := http.NewServeMux()
@@ -143,12 +161,6 @@ func (s OSCARProxy) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		t, err := template.New("results").Parse(profileTpl)
-		if err != nil {
-			s.logAndReturn500(ctx, w, fmt.Errorf("template.New: %w", err))
-			return
-		}
-
 		pd := struct {
 			ScreenName string
 			Profile    string
@@ -157,7 +169,7 @@ func (s OSCARProxy) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 			Profile:    extractBodyContent(profile),
 		}
 
-		if err := t.Execute(w, pd); err != nil {
+		if err := profileTemplate.Execute(w, pd); err != nil {
 			s.logAndReturn500(ctx, w, fmt.Errorf("t.Execute: %w", err))
 		}
 	default:
@@ -310,13 +322,7 @@ func (s OSCARProxy) outputSearchResults(ctx context.Context, w http.ResponseWrit
 		results = append(results, rec)
 	}
 
-	t, err := template.New("results").Parse(directoryTpl)
-	if err != nil {
-		s.logAndReturn500(ctx, w, fmt.Errorf("template.New: %w", err))
-		return
-	}
-
-	if err := t.Execute(w, PageData{Results: results}); err != nil {
+	if err := directoryTemplate.Execute(w, PageData{Results: results}); err != nil {
 		s.logAndReturn500(ctx, w, fmt.Errorf("t.Execute: %w", err))
 	}
 }

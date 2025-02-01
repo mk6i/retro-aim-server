@@ -180,7 +180,7 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 		}
 
 		svcData, ok := frag.Bytes(wire.ICBMRdvTLVTagsSvcData)
-		if !ok {
+		if !ok || svcData == nil {
 			return s.runtimeErr(ctx, errors.New("frag.Bytes: missing room info"))
 		}
 
