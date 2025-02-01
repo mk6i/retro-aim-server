@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )

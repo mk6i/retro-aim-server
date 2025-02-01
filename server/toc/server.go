@@ -95,7 +95,7 @@ func (rt Server) Start(ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		listener.Close()
+		_ = listener.Close()
 	}()
 
 	httpServer := &http.Server{
@@ -160,7 +160,7 @@ func (rt Server) Start(ctx context.Context) error {
 
 func (rt Server) handleTOCOverFLAP(ctx context.Context, conn io.ReadWriteCloser) error {
 	defer func() {
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	clientFlap, err := rt.initFLAP(conn)
@@ -223,12 +223,15 @@ func (rt Server) processCommands(
 			return nil
 		case clientFrame, ok := <-fromCh:
 			if !ok {
-				return errDisconnect
+				return nil
 			}
 			clientFrame.Payload = bytes.TrimRight(clientFrame.Payload, "\x00") // trim null terminator
 
 			if len(clientFrame.Payload) == 0 {
-				return errors.New("no givenPayload in flapon signal")
+				return errors.New("TOC command is empty")
+			}
+			if len(clientFrame.Payload) > 2048 {
+				return errors.New("TOC command exceeds maximum length (2048)")
 			}
 
 			msg, ok := rt.BOSProxy.RecvClientCmd(ctx, sessBOS, chatRegistry, clientFrame.Payload, toCh, doAsync)
