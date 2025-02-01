@@ -268,7 +268,7 @@ func (s OSCARProxy) DirSearchHandler(w http.ResponseWriter, r *http.Request) {
 		case wire.ODirSearchResponseNameMissing:
 			http.Error(w, "missing search parameters", http.StatusBadRequest)
 		case wire.ODirSearchResponseOK:
-			s.outputSearchResults(nil, w, v.Results.List...)
+			s.outputSearchResults(ctx, w, v.Results.List...)
 		default:
 			s.logAndReturn500(ctx, w, fmt.Errorf("DirSearchService.InfoQuery unknown status: %d", v.Status))
 		}
@@ -355,6 +355,4 @@ func extractBodyContent(htmlContent []byte) string {
 			}
 		}
 	}
-
-	return ""
 }

@@ -1363,9 +1363,7 @@ func parseArgs(payload []byte, cmd string, args ...*string) (varArgs []string, e
 	}
 
 	// dump remaining arguments as varargs
-	for _, param := range segs[i:] {
-		varArgs = append(varArgs, param)
-	}
+	varArgs = append(varArgs, segs[i:]...)
 
 	return varArgs, err
 }

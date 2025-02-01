@@ -221,7 +221,6 @@ func (rt Server) processCommands(
 	fromCh <-chan wire.FLAPFrame,
 	toCh chan<- []byte,
 ) error {
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -249,7 +248,6 @@ func (rt Server) processCommands(
 			}
 		}
 	}
-	return nil
 }
 
 func (rt Server) sendToClient(ctx context.Context, toClient <-chan []byte, clientFlap *wire.FlapClient) error {
@@ -330,7 +328,7 @@ func (rt Server) handshake(clientConn io.ReadWriter) error {
 	if string(line) != "FLAPON" {
 		return fmt.Errorf("unexpected line: %s", string(line))
 	}
-	line, _, err = reader.ReadLine()
+	_, _, err = reader.ReadLine()
 	if err != nil {
 		return fmt.Errorf("read line failed: %w", err)
 	}

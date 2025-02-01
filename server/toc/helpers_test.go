@@ -1,7 +1,6 @@
 package toc
 
 import (
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -25,16 +24,10 @@ type delBuddiesParams []struct {
 	err    error
 }
 
-type rightsQueryParams []struct {
-	inFrame wire.SNACFrame
-	msg     wire.SNACMessage
-}
-
 type buddyParams struct {
 	addBuddiesParams
 	broadcastBuddyDepartedParams
 	delBuddiesParams
-	rightsQueryParams
 }
 
 type chatParams struct {
@@ -48,18 +41,6 @@ type createRoomParams []struct {
 	err    error
 }
 
-type exchangeInfoParams []struct {
-	inFrame wire.SNACFrame
-	inBody  wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo
-	msg     wire.SNACMessage
-	err     error
-}
-
-type requestChatRightsParams []struct {
-	inFrame wire.SNACFrame
-	msg     wire.SNACMessage
-}
-
 type requestRoomInfoParams []struct {
 	inBody wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo
 	msg    wire.SNACMessage
@@ -68,8 +49,6 @@ type requestRoomInfoParams []struct {
 
 type chatNavParams struct {
 	createRoomParams
-	exchangeInfoParams
-	requestChatRightsParams
 	requestRoomInfoParams
 }
 
@@ -88,13 +67,6 @@ type channelMsgToHostParamsICBM []struct {
 	err     error
 }
 
-type clientEventParams []struct {
-	sess    *state.Session
-	inFrame wire.SNACFrame
-	inBody  wire.SNAC_0x04_0x14_ICBMClientEvent
-	err     error
-}
-
 type evilRequestParams []struct {
 	me     state.IdentScreenName
 	inBody wire.SNAC_0x04_0x08_ICBMEvilRequest
@@ -102,24 +74,9 @@ type evilRequestParams []struct {
 	err    error
 }
 
-type parameterQueryParams []struct {
-	inFrame wire.SNACFrame
-	msg     wire.SNACMessage
-}
-
-type clientErrParams []struct {
-	sess  *state.Session
-	frame wire.SNACFrame
-	body  wire.SNAC_0x04_0x0B_ICBMClientErr
-	err   error
-}
-
 type icbmParams struct {
 	channelMsgToHostParamsICBM
-	clientEventParams
 	evilRequestParams
-	parameterQueryParams
-	clientErrParams
 }
 
 type clientOnlineParams []struct {
@@ -147,20 +104,6 @@ type oServiceParams struct {
 	serviceRequestParams
 }
 
-type bucpChallengeParams []struct {
-	bodyIn  wire.SNAC_0x17_0x06_BUCPChallengeRequest
-	newUUID func() uuid.UUID
-	msg     wire.SNACMessage
-	err     error
-}
-
-type bucpLoginParams []struct {
-	bodyIn    wire.SNAC_0x17_0x02_BUCPLoginRequest
-	newUserFn func(screenName state.DisplayScreenName) (state.User, error)
-	msg       wire.SNACMessage
-	err       error
-}
-
 type flapLoginParams []struct {
 	frame     wire.FLAPSignonFrame
 	newUserFn func(screenName state.DisplayScreenName) (state.User, error)
@@ -169,12 +112,6 @@ type flapLoginParams []struct {
 }
 
 type registerBOSSessionParams []struct {
-	authCookie []byte
-	sess       *state.Session
-	err        error
-}
-
-type retrieveBOSSessionParams []struct {
 	authCookie []byte
 	sess       *state.Session
 	err        error
@@ -195,11 +132,8 @@ type signoutChatParams []struct {
 }
 
 type authParams struct {
-	bucpChallengeParams
-	bucpLoginParams
 	flapLoginParams
 	registerBOSSessionParams
-	retrieveBOSSessionParams
 	registerChatSessionParams
 	signoutParams
 	signoutChatParams
@@ -260,29 +194,9 @@ type addPermListEntriesParams []struct {
 	err  error
 }
 
-type delDenyListEntriesParams []struct {
-	me   state.IdentScreenName
-	body wire.SNAC_0x09_0x08_PermitDenyDelDenyListEntries
-	err  error
-}
-
-type delPermListEntriesParams []struct {
-	me   state.IdentScreenName
-	body wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries
-	err  error
-}
-
-type rightsQueryParamsPermitDeny []struct {
-	frame wire.SNACFrame
-	msg   wire.SNACMessage
-}
-
 type permitDenyParams struct {
 	addDenyListEntriesParams
 	addPermListEntriesParams
-	delDenyListEntriesParams
-	delPermListEntriesParams
-	rightsQueryParamsPermitDeny
 }
 
 type registerBuddyListParams []struct {
@@ -333,13 +247,6 @@ type mockParams struct {
 	tocConfigParams
 }
 
-// crackParams holds multiple scenarios for the Crack method.
-type crackParams []struct {
-	data       []byte
-	returnData []byte
-	returnErr  error
-}
-
 // issueParams holds multiple scenarios for the Issue method.
 type issueParams []struct {
 	data       []byte
@@ -349,7 +256,6 @@ type issueParams []struct {
 
 // cookieBakerParams groups the method scenarios for a CookieBaker.
 type cookieBakerParams struct {
-	crackParams crackParams
 	issueParams issueParams
 }
 

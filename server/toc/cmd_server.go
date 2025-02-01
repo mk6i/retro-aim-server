@@ -20,15 +20,11 @@ var (
 // corresponding TOC handlers. It ignores any SNAC messages for which there is
 // no TOC response.
 func (s OSCARProxy) RecvBOS(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry, ch chan<- []byte) error {
-	defer func() {
-		fmt.Println("closing RecvBOS")
-	}()
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-me.Closed():
-			fmt.Println("I got signed off")
 			return errDisconnect
 		case snac := <-me.ReceiveMessage():
 			switch v := snac.Body.(type) {
@@ -47,17 +43,12 @@ func (s OSCARProxy) RecvBOS(ctx context.Context, me *state.Session, chatRegistry
 			}
 		}
 	}
-
-	return nil
 }
 
 // RecvChat routes incoming SNAC messages from the chat server to their
 // corresponding TOC handlers. It ignores any SNAC messages for which there is
 // no TOC response.
 func (s OSCARProxy) RecvChat(ctx context.Context, me *state.Session, chatID int, ch chan<- []byte) {
-	defer func() {
-		fmt.Println("closing chat RecvChat")
-	}()
 	for {
 		select {
 		case <-ctx.Done():
