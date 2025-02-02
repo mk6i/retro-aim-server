@@ -320,17 +320,15 @@ func (rt Server) readFromClient(ctx context.Context, msgCh chan<- wire.FLAPFrame
 // initFLAP sets up a new FLAP connection. It returns a flap client if the
 // connection successfully initialized.
 func (rt Server) initFLAP(rw io.ReadWriter) (*wire.FlapClient, error) {
-	scanner := bufio.NewScanner(rw)
+	expected := "FLAPON\r\n\r\n"
+	buf := make([]byte, len(expected))
 
-	// read FLAPON\r\n\r\n
-	if !scanner.Scan() {
-		return nil, fmt.Errorf("no line scanned: %w", scanner.Err())
+	_, err := io.ReadFull(rw, buf)
+	if err != nil {
+		return nil, fmt.Errorf("io.ReadFull: %w", err)
 	}
-	if scanner.Text() != "FLAPON" {
-		return nil, fmt.Errorf("expected FLAPON, got %s", scanner.Text())
-	}
-	if !scanner.Scan() {
-		return nil, fmt.Errorf("no line scanned: %w", scanner.Err())
+	if expected != string(buf) {
+		return nil, fmt.Errorf("expected FLAPON, got %s", buf)
 	}
 
 	clientFlap := wire.NewFlapClient(0, rw, rw)
