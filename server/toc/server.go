@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -126,26 +125,7 @@ func (rt Server) Start(ctx context.Context) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			bufCon := newBufferedConn(conn)
-			b, err := bufCon.Peek(6) // todo set a read deadline here
-			if err != nil {
-				rt.Logger.ErrorContext(ctx, "peek failed", "err", err.Error())
-				return
-			}
-			switch {
-			case string(b) == "FLAPON":
-				ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
-				if err := rt.handleTOCOverFLAP(ctx, bufCon); err != nil {
-					rt.Logger.ErrorContext(ctx, "handleTOCOverFLAP failed", "err", err.Error())
-					return
-				}
-			case strings.HasPrefix(string(b), "GET /"):
-				select {
-				case httpCh <- bufCon:
-				case <-ctx.Done():
-					return
-				}
-			}
+			rt.dispatchConn(conn, ctx, httpCh)
 		}()
 	}
 
@@ -158,10 +138,38 @@ func (rt Server) Start(ctx context.Context) error {
 	return nil
 }
 
-func (rt Server) handleTOCOverFLAP(ctx context.Context, conn io.ReadWriteCloser) error {
+// dispatchConn inspects and routes an incoming connection. If the connection
+// starts with "FLAP", handle as TOC/FLAP; otherwise, dispatch for HTTP
+// processing.
+func (rt Server) dispatchConn(conn net.Conn, ctx context.Context, httpCh chan net.Conn) error {
+	bufCon := newBufferedConn(conn)
+
+	doFlap := "FLAP"
+	buf, err := bufCon.Peek(len(doFlap))
+	if err != nil {
+		return fmt.Errorf("bufCon.Peek: %w", err)
+	}
+
+	if string(buf) == doFlap {
+		if err = rt.dispatchFLAP(ctx, bufCon); err != nil {
+			return fmt.Errorf("dispatchFLAP: %w", err)
+		}
+		return nil
+	}
+
+	select {
+	case httpCh <- bufCon:
+		return nil
+	case <-ctx.Done():
+		return nil
+	}
+}
+
+func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 	defer func() {
 		_ = conn.Close()
 	}()
+	ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 
 	clientFlap, err := rt.initFLAP(conn)
 	if err != nil {
