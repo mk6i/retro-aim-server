@@ -9,8 +9,6 @@ This guide explains how to install and configure **TiK** for Retro AIM Server.
 [TiK](https://en.wikipedia.org/wiki/TiK) is an open source instant messenger developed by AOL in the late 1990s. It
 communicates using TOC, a text-based alternative to the OSCAR protocol.
 
-In order to run TiK, you'll need to install the [Tcl/Tk runtime](https://www.tcl-lang.org/).
-
 Installation guides are available for the following operating systems:
 
 * [Windows](#windows)
@@ -21,68 +19,56 @@ Installation guides are available for the following operating systems:
 
 ### Windows
 
-1. **Download TiK**
-
-   Download TiK from [Sourceforge](https://sourceforge.net/projects/tik/files/tik/) and extract the archive.
-
-    - **[v0.75](https://sourceforge.net/projects/tik/files/tik/0.75/)** → Last official version by AOL.
-    - **[v0.90](https://sourceforge.net/projects/tik/files/tik/0.90/)** → Last community release (**Recommended**).
-
-2. **Install Tcl/Tk 8.x**
+1. **Install Tcl/Tk 8.x**
 
    Download and install the latest 8.x version of the **Magicsplat Tcl/Tk distribution**
-   from [Sourceforge](https://sourceforge.net/projects/magicsplat/files/magicsplat-tcl/).
+   from [Sourceforge](https://sourceforge.net/projects/magicsplat/files/magicsplat-tcl/tcl-8.6.16-installer-1.16.0-x64.msi/download).
 
-3. **Create Config Directory**
+2. **Download TiK**
 
-    - Open `%USERPROFILE%\Documents` in **File Explorer**.
-    - Create a folder called `tik`.
+   Download mk6i's [fork of TiK .90](https://github.com/mk6i/tik/archive/refs/heads/main.zip). The fork contains fixes
+   that smooth out the TiK setup experience on modern systems.
 
-4. **Create File Association**
+3. **Create File Association**
 
-   Ensure `.tcl` files open with the `wish` interpreter from Tcl/Tk.
+   The following instructions show how to make **.tcl** files open with the **wish** interpreter.
 
-    - Open the folder extracted from the TiK archive in Step 1.
-    - Right-click **tik.tcl** → **Open with...** → Click **More apps** → Click **Look for another app on this PC**.
-    - In the **Open with...** dialog, navigate to the following path:
-       ```
-       %USERPROFILE%\AppData\Local\Apps\Tcl86\bin
-       ```
-    - Select **wish.exe** and click **Open**.
+   - Extract the downloaded archive in **File Explorer** and open the TiK folder.
+   - In the file listing, right-click **tik.tcl** → **Open with...** 
+     - **Windows10**: → Click **More apps** → Click **Look for another app on this PC**.
+     - **Windows11**: → Click **Choose an app on your PC**.
+   - In the **Open with...** dialog, navigate to the following path:
+      ```
+      %USERPROFILE%\AppData\Local\Apps\Tcl86\bin
+      ```
+   - Select **wish.exe** and click **Open**.
+   - **Windows11**: Click the **Always** button.
 
-5. **Launch TiK**
+4. **Launch TiK**
 
-   Double-click `tik.tcl` to launch TiK and immediately **close the application**.
+   In the file listing, double-click **tik.tcl** to launch TiK.
 
-6. **Configure Hostname**
+5. **Configure TOC Hostname**
 
-   > This step is a workaround to a bug that makes TiK unable to persist connection settings to the config file.
+   From the login window, click the **Configure** button, which brings up the connection config window.
 
-    - Open `%USERPROFILE%\Documents\tik` in **File Explorer**.
-    - Right-click **tikrc** → **Open with** → **Notepad**.
-    - **Uncomment** the line beginning with `#set TOC(production,host)`.
-    - Change the default hostname value `10.10.10.10` to the AIM server hostname. (If running your own Retro AIM Server,
-      the hostname must correspond to the `TOC_HOST` env variable.)
+   <p align="center">
+      <img width="400" alt="screenshot of TiK connection config window" src="https://github.com/user-attachments/assets/aa89836e-c0a9-40a4-9fb7-1b809bb55ffd">
+   </p>
 
-   ```diff
-   - #set TOC(production,host) "10.10.10.10"  ;# IP of toc.oscar.aol.com
-   + set TOC(production,host) "127.0.0.1"
-   ```
+   Enter the hostname and port of the TOC server you want to connect to in the **TOC Host** and **TOC Port** fields and
+   click *OK*.
 
-7. **Sign on**
+   If running your own server, set the values that correspond to `TOC_HOST` and `TOC_PORT` in the `settings.env` config
+   file.
+
+6. **Sign On**
 
    Relaunch TiK and sign in!
 
 ### Linux
 
-1. **Download TiK**
-
-   Download TiK from [Sourceforge](https://sourceforge.net/projects/tik/files/tik/) and extract the archive.
-
-    - **[v0.75](https://sourceforge.net/projects/tik/files/tik/0.75/)** → Last official version by AOL.
-    - **[v0.90](https://sourceforge.net/projects/tik/files/tik/0.90/)** → Last community release (**Recommended**).
-
-2. **Install Tcl/Tk 8.x**
+1. **Install Tcl/Tk 8.x**
 
    Open a terminal and install Tcl/Tk 8.x. The following example works for Ubuntu. Install the analogous packages for
    your distro of choice.
@@ -91,50 +77,55 @@ Installation guides are available for the following operating systems:
    apt install tcl tk
    ```
 
-3. **Create Config Directory**
+2. **Download TiK**
 
-   > Steps 3-4 are a workaround to a bug that causes the first-time setup wizard to freeze.
+   Download mk6i's [fork of TiK .90](https://github.com/mk6i/tik/archive/refs/heads/main.tar.gz). The fork contains
+   fixes
+   that smooth out the TiK setup experience on modern systems.
+
+3. **Launch TiK**
+
+   Return to the terminal and extract the archive downloaded in the previous step.
 
    ```shell
-   mkdir ~/.tik
+   unzip ~/Downloads/tik-main.zip
+   cd ~/Downloads/tik-main
    ```
 
-4. **Launch TiK**
-
-   In the terminal, navigate to the extracted TiK archive. Launch TiK and immediately **close the application**.
+   Then launch TiK...
 
    ```shell
    ./tik.tcl
    ```
 
-5. **Configure TOC Hostname**
+   A setup prompt and login window appear. Click the **Advanced** button in the setup prompt, which closes the setup
+   window.
 
-   > This step is a workaround to a bug that makes TiK unable to persist connection settings to the config file.
+   <p align="center">
+      <img width="400" alt="screenshot of TiK setup prompt" src="https://github.com/user-attachments/assets/4c709f1b-7299-4567-bfcd-afe715e961b5">
+   </p>
 
-    - Open `~/.tik/tikrc` in your favorite editor.
-    - **Uncomment** the line beginning with `#set TOC(production,host)`.
-    - Change the default hostname value `10.10.10.10` to the AIM server hostname. (If running your own Retro AIM Server,
-      the hostname must correspond to the `TOC_HOST` env variable.)
+4. **Configure TOC Hostname**
 
-   ```diff
-   - #set TOC(production,host) "10.10.10.10"  ;# IP of toc.oscar.aol.com
-   + set TOC(production,host) "127.0.0.1"
-   ```
+   From the login window, click the **Configure** button, which brings up the connection config window.
 
-6. **Sign on**
+   <p align="center">
+      <img width="400" alt="screenshot of TiK connection config window" src="https://github.com/user-attachments/assets/aa89836e-c0a9-40a4-9fb7-1b809bb55ffd">
+   </p>
 
-   Relaunch TiK and sign in!
+   Enter the hostname and port of the TOC server you want to connect to in the **TOC Host** and **TOC Port** fields and
+   click *OK*.
+
+   If running your own server, set the values that correspond to `TOC_HOST` and `TOC_PORT` in the `settings.env` config
+   file.
+
+5. **Sign On**
+
+   Now enter your **Screen Name** and **Password** and sign on to AIM!
 
 ### macOS (Intel & Apple Silicon)
 
-1. **Download TiK**
-
-   Download TiK from [Sourceforge](https://sourceforge.net/projects/tik/files/tik/) and extract the archive.
-
-    - **[v0.75](https://sourceforge.net/projects/tik/files/tik/0.75/)** → Last official version by AOL.
-    - **[v0.90](https://sourceforge.net/projects/tik/files/tik/0.90/)** → Last community release (**Recommended**).
-
-2. **Install Tcl/Tk 8.x**
+1. **Install Tcl/Tk 8.x**
 
    Open a terminal and install Tcl/Tk 8.x using [Homebrew](https://brew.sh/).
 
@@ -142,7 +133,7 @@ Installation guides are available for the following operating systems:
    brew install tcl-tk@8
    ```
 
-3. **Verify Tcl/Tk Version**
+2. **Verify Tcl/Tk Version**
 
    macOS comes by default with a version of Tcl/Tk that does not support TiK. Verify that version 8.x installed in
    the previous step is in your PATH. Run the following command in a new terminal:
@@ -153,36 +144,47 @@ Installation guides are available for the following operating systems:
 
    If the reported version **is not 8.x**, try running `brew link tcl-tk@8` or `brew doctor` to fix the installation.
 
-4. **Create Config Directory**
+3. **Download TiK**
 
-   > Steps 4-5 are a workaround to a bug that causes the first-time setup wizard to freeze.
+   Download mk6i's [fork of TiK .90](https://github.com/mk6i/tik/archive/refs/heads/main.zip). The fork contains fixes
+   that smooth out the TiK setup experience on modern systems.
+
+4. **Launch TiK**
+
+   Return to the terminal and extract the archive downloaded in the previous step.
 
    ```shell
-   mkdir ~/.tik
+   unzip ~/Downloads/tik-main.zip
+   cd ~/Downloads/tik-main
    ```
 
-5. **Launch TiK**
-
-   In the terminal, navigate to the extracted TiK archive. Launch TiK and immediately **close the application**.
+   Then launch TiK...
 
    ```shell
    ./tik.tcl
    ```
 
-6. **Configure TOC Hostname**
+   A setup prompt and login window appear. Click the **Advanced** button in the setup prompt, which closes the setup
+   window.
 
-   > This step is a workaround to a bug that makes TiK unable to persist connection settings to the config file.
+   <p align="center">
+      <img width="400" alt="screenshot of TiK setup prompt" src="https://github.com/user-attachments/assets/4c709f1b-7299-4567-bfcd-afe715e961b5">
+   </p>
 
-    - Open `~/.tik/tikrc` in your favorite editor.
-    - **Uncomment** the line beginning with `#set TOC(production,host)`.
-    - Change the default hostname value `10.10.10.10` to the AIM server hostname. (If running your own Retro AIM Server,
-      the hostname must correspond to the `TOC_HOST` env variable.)
+5. **Configure TOC Hostname**
 
-   ```diff
-   - #set TOC(production,host) "10.10.10.10"  ;# IP of toc.oscar.aol.com
-   + set TOC(production,host) "127.0.0.1"
-   ```
+   From the login window, click the **Configure** button, which brings up the connection config window.
 
-7. **Sign on**
+   <p align="center">
+      <img width="400" alt="screenshot of TiK connection config window" src="https://github.com/user-attachments/assets/aa89836e-c0a9-40a4-9fb7-1b809bb55ffd">
+   </p>
 
-   Relaunch TiK and sign in!
+   Enter the hostname and port of the TOC server you want to connect to in the **TOC Host** and **TOC Port** fields and
+   click *OK*.
+
+   If running your own server, set the values that correspond to `TOC_HOST` and `TOC_PORT` in the `settings.env` config
+   file.
+
+6. **Sign On**
+
+   Now enter your **Screen Name** and **Password** and sign on to AIM!
