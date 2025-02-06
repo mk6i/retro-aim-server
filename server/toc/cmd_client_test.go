@@ -1068,6 +1068,23 @@ func TestOSCARProxy_ChatSend(t *testing.T) {
 									},
 								},
 							},
+							result: &wire.SNACMessage{
+								Body: wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+									Channel: wire.ICBMChannelMIME,
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.ChatTLVSenderInformation,
+												newTestSession("me").TLVUserInfo()),
+											wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}),
+											wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
+												TLVList: wire.TLVList{
+													wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world!"),
+												},
+											}),
+										},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -1104,6 +1121,80 @@ func TestOSCARProxy_ChatSend(t *testing.T) {
 								},
 							},
 							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "send chat message, receive nil response from chat svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_send 0 "Hello world!"`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := NewChatRegistry()
+				reg.RegisterSess(0, newTestSession("me"))
+				return reg
+			}(),
+			mockParams: mockParams{
+				chatParams: chatParams{
+					channelMsgToHostParamsChat: channelMsgToHostParamsChat{
+						{
+							sender: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+								Channel: wire.ICBMChannelMIME,
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ChatTLVEnableReflectionFlag, uint8(1)),
+										wire.NewTLVBE(wire.ChatTLVSenderInformation, newTestSession("me").TLVUserInfo()),
+										wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}),
+										wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
+											TLVList: wire.TLVList{
+												wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world!"),
+											},
+										}),
+									},
+								},
+							},
+							result: nil,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "send chat message, receive unexpected response from chat svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_send 0 "Hello world!"`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := NewChatRegistry()
+				reg.RegisterSess(0, newTestSession("me"))
+				return reg
+			}(),
+			mockParams: mockParams{
+				chatParams: chatParams{
+					channelMsgToHostParamsChat: channelMsgToHostParamsChat{
+						{
+							sender: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+								Channel: wire.ICBMChannelMIME,
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ChatTLVEnableReflectionFlag, uint8(1)),
+										wire.NewTLVBE(wire.ChatTLVSenderInformation, newTestSession("me").TLVUserInfo()),
+										wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}),
+										wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
+											TLVList: wire.TLVList{
+												wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world!"),
+											},
+										}),
+									},
+								},
+							},
+							result: &wire.SNACMessage{
+								Body: wire.SNACError{},
+							},
 						},
 					},
 				},

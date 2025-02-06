@@ -628,11 +628,40 @@ func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, cm
 		Channel:      wire.ICBMChannelMIME,
 		TLVRestBlock: block,
 	}
-	if _, err := s.ChatService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac); err != nil {
+	reply, err := s.ChatService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac)
+	if err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("ChatService.ChannelMsgToHost: %w", err))
 	}
 
-	return fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, me.DisplayScreenName(), msg)
+	if reply == nil {
+		return s.runtimeErr(ctx, errors.New("ChatService.ChannelMsgToHost: missing response "))
+	}
+
+	switch v := reply.Body.(type) {
+	case wire.SNAC_0x0E_0x06_ChatChannelMsgToClient:
+		msgInfo, ok := v.Bytes(wire.ChatTLVMessageInfo)
+		if !ok {
+			return s.runtimeErr(ctx, errors.New("ChatService.ChannelMsgToHost: missing wire.ChatTLVMessageInfo"))
+		}
+		reflectMsg, err := wire.UnmarshalChatMessageText(msgInfo)
+		if err != nil {
+			return s.runtimeErr(ctx, fmt.Errorf("wire.UnmarshalChatMessageText: %w", err))
+		}
+
+		senderInfo, ok := v.Bytes(wire.ChatTLVSenderInformation)
+		if !ok {
+			return s.runtimeErr(ctx, errors.New("ChatService.ChannelMsgToHost: missing wire.ChatTLVSenderInformation"))
+		}
+
+		var userInfo wire.TLVUserInfo
+		if err := wire.UnmarshalBE(&userInfo, bytes.NewReader(senderInfo)); err != nil {
+			return s.runtimeErr(ctx, fmt.Errorf("wire.UnmarshalBE: %w", err))
+		}
+
+		return fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, userInfo.ScreenName, reflectMsg)
+	default:
+		return s.runtimeErr(ctx, errors.New("ChatService.ChannelMsgToHost: unexpected response"))
+	}
 }
 
 // Evil handles the toc_evil TOC command.
