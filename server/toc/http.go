@@ -357,6 +357,4 @@ func extractProfile(htmlContent []byte) string {
 			bodyContent.Write(tokenizer.Text())
 		}
 	}
-
-	return bodyContent.String()
 }
