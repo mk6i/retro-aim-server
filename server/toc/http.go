@@ -163,10 +163,10 @@ func (s OSCARProxy) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 		pd := struct {
 			ScreenName string
-			Profile    string
+			Profile    template.HTML
 		}{
 			ScreenName: user,
-			Profile:    extractBodyContent(profile),
+			Profile:    template.HTML(extractProfile(profile)),
 		}
 
 		if err := profileTemplate.Execute(w, pd); err != nil {
@@ -332,11 +332,13 @@ func (s OSCARProxy) logAndReturn500(ctx context.Context, w http.ResponseWriter, 
 	http.Error(w, "internal server error", http.StatusInternalServerError)
 }
 
-// extractBodyContent parses an HTML string and extracts the content within <BODY>...</BODY> tags.
-func extractBodyContent(htmlContent []byte) string {
+// extractProfile extracts the contents of an HTML <BODY>. If there's no HTML
+// body, just return the text.
+//
+// It only returns the following HTML tags: <b> <i> <font> <a> <u> <br>
+func extractProfile(htmlContent []byte) string {
 	tokenizer := html.NewTokenizer(bytes.NewReader(htmlContent))
 	var bodyContent bytes.Buffer
-	inBody := false
 
 	for {
 		switch tokenizer.Next() {
@@ -345,20 +347,16 @@ func extractBodyContent(htmlContent []byte) string {
 				return "unable to read profile"
 			}
 			return bodyContent.String()
-		case html.StartTagToken:
+		case html.StartTagToken, html.EndTagToken:
 			token := tokenizer.Token()
-			if token.Data == "body" {
-				inBody = true
-			}
-		case html.EndTagToken:
-			token := tokenizer.Token()
-			if token.Data == "body" {
-				inBody = false
+			switch token.Data {
+			case "b", "i", "font", "a", "u", "br":
+				bodyContent.WriteString(token.String())
 			}
 		case html.TextToken:
-			if inBody {
-				bodyContent.Write(tokenizer.Text())
-			}
+			bodyContent.Write(tokenizer.Text())
 		}
 	}
+
+	return bodyContent.String()
 }
