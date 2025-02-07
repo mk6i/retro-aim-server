@@ -1559,6 +1559,7 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.OService,
 			SubGroup:  wire.OServiceHostOnline,
+			RequestID: wire.ReqIDFromServer,
 		},
 		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
 			FoodGroups: []uint16{
@@ -1572,6 +1573,9 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 				wire.OService,
 				wire.PermitDeny,
 				wire.UserLookup,
+				wire.Invite,
+				wire.Popup,
+				wire.Stats,
 			},
 		},
 	}
@@ -1587,6 +1591,7 @@ func TestOServiceServiceForChat_OServiceHostOnline(t *testing.T) {
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.OService,
 			SubGroup:  wire.OServiceHostOnline,
+			RequestID: wire.ReqIDFromServer,
 		},
 		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
 			FoodGroups: []uint16{
@@ -1901,6 +1906,7 @@ func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.OService,
 			SubGroup:  wire.OServiceHostOnline,
+			RequestID: wire.ReqIDFromServer,
 		},
 		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
 			FoodGroups: []uint16{
@@ -1921,6 +1927,7 @@ func TestOServiceServiceForAlert_HostOnline(t *testing.T) {
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.OService,
 			SubGroup:  wire.OServiceHostOnline,
+			RequestID: wire.ReqIDFromServer,
 		},
 		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
 			FoodGroups: []uint16{

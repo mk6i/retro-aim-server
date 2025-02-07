@@ -43,6 +43,12 @@ type SNACFrame struct {
 	RequestID uint32
 }
 
+// ReqIDFromServer is the SNAC frame Request ID value that indicates the SNAC
+// is initiated by the server. Some clients, such as the Java AIM 1.1.19,
+// completely fail to process some server SNACs if the high bit is not set on
+// request ID.
+const ReqIDFromServer = 1 << 31
+
 type FLAPSignonFrame struct {
 	FLAPVersion uint32
 	TLVRestBlock

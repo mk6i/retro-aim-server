@@ -425,6 +425,7 @@ func TestBuddyService_BroadcastDeparture(t *testing.T) {
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.Buddy,
 									SubGroup:  wire.BuddyDeparted,
+									RequestID: wire.ReqIDFromServer,
 								},
 								Body: wire.SNAC_0x03_0x0C_BuddyDeparted{
 									TLVUserInfo: wire.TLVUserInfo{
@@ -872,6 +873,7 @@ func newBuddyDepartedNotif(me *state.Session) wire.SNACMessage {
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyDeparted,
+			RequestID: wire.ReqIDFromServer,
 		},
 		Body: wire.SNAC_0x03_0x0C_BuddyDeparted{
 			TLVUserInfo: wire.TLVUserInfo{
@@ -889,6 +891,7 @@ func newBuddyArrivedNotif(userInfo wire.TLVUserInfo) wire.SNACMessage {
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyArrived,
+			RequestID: wire.ReqIDFromServer,
 		},
 		Body: wire.SNAC_0x03_0x0B_BuddyArrived{
 			TLVUserInfo: userInfo,

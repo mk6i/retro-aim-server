@@ -63,6 +63,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.ICBM,
 									SubGroup:  wire.ICBMChannelMsgToClient,
+									RequestID: wire.ReqIDFromServer,
 								},
 								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
 									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
@@ -150,6 +151,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 								Frame: wire.SNACFrame{
 									FoodGroup: wire.ICBM,
 									SubGroup:  wire.ICBMChannelMsgToClient,
+									RequestID: wire.ReqIDFromServer,
 								},
 								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
 									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
