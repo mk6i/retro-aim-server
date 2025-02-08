@@ -16,7 +16,7 @@ type Config struct {
 	DisableAuth bool   `envconfig:"DISABLE_AUTH" required:"true" val:"true" description:"Disable password check and auto-create new users at login time. Useful for quickly creating new accounts during development without having to register new users via the management API."`
 	LogLevel    string `envconfig:"LOG_LEVEL" required:"true" val:"info" description:"Set logging granularity. Possible values: 'trace', 'debug', 'info', 'warn', 'error'."`
 	OSCARHost   string `envconfig:"OSCAR_HOST" required:"true" val:"127.0.0.1" description:"The hostname that AIM clients connect to in order to reach OSCAR services (auth, BOS, BUCP, etc). Make sure the hostname is reachable by all clients. For local development, the default loopback address should work provided the server and AIM client(s) are running on the same machine. For LAN-only clients, a private IP address (e.g. 192.168..) or hostname should suffice. For clients connecting over the Internet, specify your public IP address and ensure that TCP ports 5190-5197 are open on your firewall."`
-	TOCHost     string `envconfig:"TOC_HOST" require:"true" val:"127.0.0.1" description:"Specifies the IP address or hostname that the TOC service binds to for incoming connections (0.0.0.0 listens on all interfaces)."`
+	TOCHost     string `envconfig:"TOC_HOST" require:"true" val:"0.0.0.0" description:"Specifies the IP address or hostname that the TOC service binds to for incoming connections (0.0.0.0 listens on all interfaces)."`
 	TOCPort     string `envconfig:"TOC_PORT" required:"true" val:"9898" description:"The port that the TOC service binds to."`
 }
 
