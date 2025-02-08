@@ -29,10 +29,10 @@ The following features are supported:
 - [x] Public & Private Chat Exchanges
 - [x] Instant Messaging
 - [x] User Profiles
-- [x] Blocking (v3.5+)
 - [x] Privacy (allow or block specific users)
 - [x] Warning
 - [x] User Directory Search
+- [x] TOC Protocol Clients: Quick Buddy, gaim, [TiK](./docs/CLIENT_TIK.md)
 
 **ICQ**
 - [x] Windows ICQ Clients: 2000b (more to come soon)
