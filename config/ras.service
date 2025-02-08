@@ -18,7 +18,7 @@ Environment="DISABLE_AUTH=true"
 Environment="LOG_LEVEL=info"
 Environment="ODIR_PORT=5197"
 Environment="OSCAR_HOST=127.0.0.1"
-Environment="TOC_HOST=127.0.0.1"
+Environment="TOC_HOST=0.0.0.0"
 Environment="TOC_PORT=9898"
 ExecStart=/opt/ras/retro_aim_server
 Restart=on-failure
