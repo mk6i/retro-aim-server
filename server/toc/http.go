@@ -335,7 +335,7 @@ func (s OSCARProxy) logAndReturn500(ctx context.Context, w http.ResponseWriter, 
 // extractProfile extracts the contents of an HTML <BODY>. If there's no HTML
 // body, just return the text.
 //
-// It only returns the following HTML tags: <b> <i> <font> <a> <u> <br>
+// It only returns the following HTML tags: <b> <i> <font> <a> <u> <br> <hr> <s> <sub> <sup>
 func extractProfile(htmlContent []byte) string {
 	tokenizer := html.NewTokenizer(bytes.NewReader(htmlContent))
 	var bodyContent bytes.Buffer
@@ -350,7 +350,7 @@ func extractProfile(htmlContent []byte) string {
 		case html.StartTagToken, html.EndTagToken:
 			token := tokenizer.Token()
 			switch token.Data {
-			case "b", "i", "font", "a", "u", "br":
+			case "b", "i", "font", "a", "u", "br", "hr", "s", "sub", "sup":
 				bodyContent.WriteString(token.String())
 			}
 		case html.TextToken:

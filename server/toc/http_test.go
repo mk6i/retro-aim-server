@@ -43,7 +43,7 @@ func TestOSCARProxy_NewServeMux(t *testing.T) {
 			name:           "Successfully retrieve HTML profile",
 			path:           "/info?from=me&user=them&cookie=" + cookie,
 			expectedStatus: http.StatusOK,
-			expectedBody:   `<font lang="0"><a href="aim:GoChat?RoomName=General&amp;Exchange=4">Let's chat</font></a><br><br><font color="#ff0000" lang="0">colorfg</font><font color="#000000"> </font><font back="#00ff00">colorbg</font><font> </font><font size="4">big</font><font size="3"> <b></font><font>bold</b></font><font> <i></font><font>italic</i></font><font> <u></font><font>underline</u></font><font> 8-)</font>`,
+			expectedBody:   `<font lang="0"><a href="aim:GoChat?RoomName=General&amp;Exchange=4">Let's chat</font></a><br><br><font color="#ff0000" lang="0">colorfg</font><font color="#000000"> </font><font back="#00ff00">colorbg</font><font> </font><font size="4">big</font><font size="3"> <b></font><font>bold</b></font><font> <i></font><font>italic</i></font><font> <u></font><font>underline</u></font><font> 8-)</font><hr><s>strike</s><sub>sub</sub><sup>sup</sup>`,
 			mockParams: mockParams{
 				locateParams: locateParams{
 					userInfoQueryParams: userInfoQueryParams{
@@ -62,7 +62,7 @@ func TestOSCARProxy_NewServeMux(t *testing.T) {
 									TLVUserInfo: newTestSession("them").TLVUserInfo(),
 									LocateInfo: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, `"<HTML><BODY BGCOLOR="#ffffff"><FONT LANG="0"><A HREF="aim:GoChat?RoomName=General&Exchange=4">Let's chat</FONT></A><BR><BR><FONT COLOR="#ff0000" LANG="0">colorfg</FONT><FONT COLOR="#000000"> </FONT><FONT BACK="#00ff00">colorbg</FONT><FONT> </FONT><FONT SIZE=4>big</FONT><FONT SIZE=3> <B></FONT><FONT>bold</B></FONT><FONT> <I></FONT><FONT>italic</I></FONT><FONT> <U></FONT><FONT>underline</U></FONT><FONT> 8-)</FONT></BODY></HTML>"`),
+											wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, `"<HTML><BODY BGCOLOR="#ffffff"><FONT LANG="0"><A HREF="aim:GoChat?RoomName=General&Exchange=4">Let's chat</FONT></A><BR><BR><FONT COLOR="#ff0000" LANG="0">colorfg</FONT><FONT COLOR="#000000"> </FONT><FONT BACK="#00ff00">colorbg</FONT><FONT> </FONT><FONT SIZE=4>big</FONT><FONT SIZE=3> <B></FONT><FONT>bold</B></FONT><FONT> <I></FONT><FONT>italic</I></FONT><FONT> <U></FONT><FONT>underline</U></FONT><FONT> 8-)</FONT><HR><S>strike</S><SUB>sub</SUB><SUP>sup</SUP></BODY></HTML>"`),
 										},
 									},
 								},
