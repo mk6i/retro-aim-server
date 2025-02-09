@@ -105,7 +105,7 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 		case <-sess.Closed():
 			block := wire.TLVRestBlock{}
 			// error code indicating user signed in a different location
-			block.Append(wire.NewTLVBE(0x0009, uint8(0x01)))
+			block.Append(wire.NewTLVBE(0x0009, wire.OServiceDiscErrNewLogin))
 			// "more info" button
 			block.Append(wire.NewTLVBE(0x000b, "https://github.com/mk6i/retro-aim-server"))
 			if err := flapc.SendSignoffFrame(block); err != nil {

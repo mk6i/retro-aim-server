@@ -112,7 +112,7 @@ func (s AuthService) RegisterBOSSession(ctx context.Context, authCookie []byte) 
 		return nil, fmt.Errorf("AddSession: %w", err)
 	}
 
-	// Set the unconfirmed user info flag if this account is unconfirmed
+	// set the unconfirmed user info flag if this account is unconfirmed
 	if confirmed, err := s.accountManager.ConfirmStatusByName(sess.IdentScreenName()); err != nil {
 		return nil, fmt.Errorf("error setting unconfirmed user flag: %w", err)
 	} else if !confirmed {
@@ -354,6 +354,11 @@ func (s AuthService) login(
 			loginErr = wire.LoginErrICQUserErr
 		}
 		return loginFailureResponse(props, loginErr), nil
+	}
+
+	// check if suspended status should prevent login
+	if user.SuspendedStatus > 0x0 {
+		return loginFailureResponse(props, user.SuspendedStatus), nil
 	}
 
 	if s.config.DisableAuth {

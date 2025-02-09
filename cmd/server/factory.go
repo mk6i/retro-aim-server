@@ -270,10 +270,11 @@ func BOS(deps Container) oscar.BOSServer {
 	userLookupService := foodgroup.NewUserLookupService(deps.sqLiteUserStore)
 
 	return oscar.BOSServer{
-		AuthService:       authService,
-		BuddyListRegistry: deps.sqLiteUserStore,
-		Config:            deps.cfg,
-		DepartureNotifier: buddyService,
+		AuthService:        authService,
+		BuddyListRegistry:  deps.sqLiteUserStore,
+		Config:             deps.cfg,
+		DepartureNotifier:  buddyService,
+		ChatSessionManager: deps.chatSessionManager,
 		Handler: handler.NewBOSRouter(handler.Handlers{
 			AlertHandler:      handler.NewAlertHandler(logger),
 			BARTHandler:       handler.NewBARTHandler(logger, bartService),

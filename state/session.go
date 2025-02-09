@@ -1,6 +1,7 @@
 package state
 
 import (
+	"net/netip"
 	"sync"
 	"time"
 
@@ -42,6 +43,7 @@ type Session struct {
 	userInfoBitmask   uint16
 	userStatusBitmask uint32
 	clientID          string
+	remoteAddr        *netip.AddrPort
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
@@ -56,6 +58,20 @@ func NewSession() *Session {
 		userInfoBitmask:   wire.OServiceUserFlagOSCARFree,
 		userStatusBitmask: wire.OServiceUserStatusAvailable,
 	}
+}
+
+// SetRemoteAddr sets the user's remote IP address
+func (s *Session) SetRemoteAddr(remoteAddr *netip.AddrPort) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.remoteAddr = remoteAddr
+}
+
+// RemoteAddrs returns user's remote IP address
+func (s *Session) RemoteAddr() (remoteAddr *netip.AddrPort) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.remoteAddr
 }
 
 // SetUserInfoFlag sets a flag to and returns UserInfoBitmask

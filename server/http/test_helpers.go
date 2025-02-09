@@ -8,7 +8,7 @@ import (
 )
 
 type mockParams struct {
-	accountRetrieverParams
+	accountManagerParams
 	bartRetrieverParams
 	chatRoomRetrieverParams
 	chatSessionRetrieverParams
@@ -19,16 +19,17 @@ type mockParams struct {
 	userManagerParams
 }
 
-// accountRetrieverParams is a helper struct that contains mock parameters for
-// accountRetriever methods
-type accountRetrieverParams struct {
+// accountManagerParams is a helper struct that contains mock parameters for
+// accountManager methods
+type accountManagerParams struct {
 	emailAddressByNameParams
 	regStatusByNameParams
 	confirmStatusByNameParams
+	updateSuspendedStatusParams
 }
 
 // emailAddressByNameParams is the list of parameters passed at the mock
-// accountRetriever.EmailAddressByName call site
+// accountManager.EmailAddressByName call site
 type emailAddressByNameParams []struct {
 	screenName state.IdentScreenName
 	result     *mail.Address
@@ -36,7 +37,7 @@ type emailAddressByNameParams []struct {
 }
 
 // regStatusByNameParams is the list of parameters passed at the mock
-// accountRetriever.RegStatusByName call site
+// accountManager.RegStatusByName call site
 type regStatusByNameParams []struct {
 	screenName state.IdentScreenName
 	result     uint16
@@ -44,11 +45,19 @@ type regStatusByNameParams []struct {
 }
 
 // confirmStatusByNameParams is the list of parameters passed at the mock
-// accountRetriever.ConfirmStatusByName call site
+// accountManager.ConfirmStatusByName call site
 type confirmStatusByNameParams []struct {
 	screenName state.IdentScreenName
 	result     bool
 	err        error
+}
+
+// updateSuspendedStatus is the list of parameters passed at the mock
+// accountManager.updateSuspendedStatus call site
+type updateSuspendedStatusParams []struct {
+	suspendedStatus uint16
+	screenName      state.IdentScreenName
+	err             error
 }
 
 // bartRetrieverParams is a helper struct that contains mock parameters for

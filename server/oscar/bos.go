@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -37,6 +38,12 @@ type DepartureNotifier interface {
 	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
 }
 
+// ChatSessionManager is the interface for closing chat sessions
+// when a client disconnects.
+type ChatSessionManager interface {
+	RemoveUserFromAllChats(user state.IdentScreenName)
+}
+
 // BOSServer provides client connection lifecycle management for the BOS
 // service.
 type BOSServer struct {
@@ -48,6 +55,7 @@ type BOSServer struct {
 	Logger     *slog.Logger
 	OnlineNotifier
 	config.Config
+	ChatSessionManager *state.InMemoryChatSessionManager
 }
 
 // Start starts a TCP server and listens for connections. The initial
@@ -173,6 +181,9 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 				rt.Logger.ErrorContext(ctx, "error removing buddy list entry", "err", err.Error())
 			}
 		}
+		if rt.ChatSessionManager != nil {
+			rt.ChatSessionManager.RemoveUserFromAllChats(sess.IdentScreenName())
+		}
 		rt.Signout(ctx, sess)
 	}()
 
@@ -181,6 +192,15 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 	msg := rt.OnlineNotifier.HostOnline()
 	if err := flapc.SendSNAC(msg.Frame, msg.Body); err != nil {
 		return err
+	}
+
+	remoteAddr, ok := ctx.Value("ip").(string)
+	if ok {
+		ip, err := netip.ParseAddrPort(remoteAddr)
+		if err != nil {
+			return errors.New("unable to parse ip addr")
+		}
+		sess.SetRemoteAddr(&ip)
 	}
 
 	return dispatchIncomingMessages(ctx, sess, flapc, rwc, rt.Logger, rt.Handler)

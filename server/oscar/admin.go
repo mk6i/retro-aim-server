@@ -91,6 +91,9 @@ func (rt AdminServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteC
 	}
 
 	sess, err := rt.RetrieveBOSSession(authCookie)
+	if err != nil {
+		return err
+	}
 	if sess == nil {
 		return errors.New("session not found")
 	}
