@@ -967,3 +967,60 @@ func TestICQHandler_DBQuery(t *testing.T) {
 		})
 	}
 }
+
+// Test workaround for QIP 2005 bug where TLV length is incorrect.
+func TestICQHandler_DBQuery_QIP2005UINSearchBug(t *testing.T) {
+	icqService := newMockICQService(t)
+
+	type ICQMetaRequest struct {
+		wire.ICQMetadata
+		ReqSubType  uint16
+		MetaRequest any
+	}
+
+	expect := wire.ICQ_0x07D0_0x0569_DBQueryMetaReqSearchByUIN2{
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(wire.ICQTLVTagsUIN, uint32(100009)),
+			},
+		},
+	}
+
+	icqService.EXPECT().
+		FindByUIN2(mock.Anything, &state.Session{}, expect, uint16(1)).
+		Return(nil)
+
+	rt := NewICQHandler(slog.Default(), icqService)
+
+	inBody := wire.SNAC_0x15_0x02_BQuery{
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(wire.ICQTLVTagsMetadata, wire.ICQMessageReplyEnvelope{
+					Message: ICQMetaRequest{
+						ICQMetadata: wire.ICQMetadata{
+							ReqType: wire.ICQDBQueryMetaReq,
+							Seq:     1,
+						},
+						ReqSubType: wire.ICQDBQueryMetaReqSearchByUIN2,
+						MetaRequest: wire.ICQ_0x07D0_0x0569_DBQueryMetaReqSearchByUIN2{
+							TLVRestBlock: wire.TLVRestBlock{
+								TLVList: wire.TLVList{
+									wire.NewTLVBE(wire.ICQTLVTagsUIN, uint32(100009)),
+								},
+							},
+						},
+					},
+				}),
+			},
+		},
+	}
+
+	buf := &bytes.Buffer{}
+	assert.NoError(t, wire.MarshalBE(inBody, buf))
+
+	b := buf.Bytes()
+	b[18] = 6 // incorrectly set TLV length to 6 (should be 4)
+
+	err := rt.DBQuery(nil, &state.Session{}, wire.SNACFrame{}, buf, nil)
+	assert.NoError(t, err)
+}

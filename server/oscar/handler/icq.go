@@ -130,8 +130,14 @@ func (rt ICQHandler) DBQuery(ctx context.Context, sess *state.Session, inFrame w
 				return err
 			}
 		case wire.ICQDBQueryMetaReqSearchByUIN2:
+			rest := buf.Bytes()
+			if bytes.HasPrefix(rest, []byte{0x36, 0x01, 0x06, 0x00}) && len(rest) == 8 {
+				// fix incorrect TLV len set by QIP 2005. it specifies len=6
+				// for a 4-byte value, causing the unmarshaler to return EOF.
+				rest[2] = 4
+			}
 			req := wire.ICQ_0x07D0_0x0569_DBQueryMetaReqSearchByUIN2{}
-			if err := wire.UnmarshalLE(&req, buf); err != nil {
+			if err := wire.UnmarshalLE(&req, bytes.NewReader(rest)); err != nil {
 				return err
 			}
 			if err := rt.ICQService.FindByUIN2(ctx, sess, req, icqMD.Seq); err != nil {
