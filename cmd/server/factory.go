@@ -69,6 +69,7 @@ func Admin(deps Container) oscar.AdminServer {
 		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
 		deps.inMemorySessionManager,
+		deps.logger,
 	)
 	authService := foodgroup.NewAuthService(
 		deps.cfg,

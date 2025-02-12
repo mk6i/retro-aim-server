@@ -1,6 +1,8 @@
 package foodgroup
 
 import (
+	"io"
+	"log/slog"
 	"net/mail"
 	"testing"
 
@@ -952,6 +954,402 @@ func TestAdminService_InfoChangeRequest_RegStatus(t *testing.T) {
 				accountManager:   accountManager,
 				buddyBroadcaster: buddyBroadcaster,
 				messageRelayer:   messageRelayer,
+			}
+			outputSNAC, err := svc.InfoChangeRequest(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
+			assert.ErrorIs(t, err, tc.expectErr)
+			if tc.expectErr != nil {
+				return
+			}
+			assert.Equal(t, tc.expectOutput, outputSNAC)
+		})
+	}
+}
+
+func TestAdminService_InfoChangeRequest_Password(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// cfg is the app configuration
+		cfg config.Config
+		// inputSNAC is the SNAC sent from the client to the server
+		inputSNAC wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// userSession is the session of the user
+		userSession *state.Session
+		// expectOutput is the SNAC sent from the server to client
+		expectOutput wire.SNACMessage
+		// expectErr is the expected error returned
+		expectErr error
+	}{
+		{
+			name:        "user changes password successfully",
+			userSession: newTestSession("me"),
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerSetUserPasswordParams: accountManagerSetUserPasswordParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							password:   "newpass",
+						},
+					},
+					accountManagerUserParams: accountManagerUserParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							result: func() *state.User {
+								user := &state.User{
+									AuthKey: "auth_key",
+								}
+								assert.NoError(t, user.HashPassword("oldpass"))
+								return user
+							}(),
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpass"),
+							wire.NewTLVBE(wire.AdminTLVNewPassword, "newpass"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVNewPassword, []byte{}),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "user changes password, invalid new password length",
+			userSession: newTestSession("me"),
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerSetUserPasswordParams: accountManagerSetUserPasswordParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							password:   "newpass",
+							err:        state.ErrPasswordInvalid,
+						},
+					},
+					accountManagerUserParams: accountManagerUserParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							result: func() *state.User {
+								user := &state.User{
+									AuthKey: "auth_key",
+								}
+								assert.NoError(t, user.HashPassword("oldpass"))
+								return user
+							}(),
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpass"),
+							wire.NewTLVBE(wire.AdminTLVNewPassword, "newpass"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVNewPassword, []byte{}),
+							wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidPasswordLength),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "user changes password, set user password runtime error",
+			userSession: newTestSession("me"),
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerSetUserPasswordParams: accountManagerSetUserPasswordParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							password:   "newpass",
+							err:        io.EOF,
+						},
+					},
+					accountManagerUserParams: accountManagerUserParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							result: func() *state.User {
+								user := &state.User{
+									AuthKey: "auth_key",
+								}
+								assert.NoError(t, user.HashPassword("oldpass"))
+								return user
+							}(),
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpass"),
+							wire.NewTLVBE(wire.AdminTLVNewPassword, "newpass"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVNewPassword, []byte{}),
+							wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorAllOtherErrors),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "user changes password, old password is invalid",
+			userSession: newTestSession("me"),
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerUserParams: accountManagerUserParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							result: func() *state.User {
+								user := &state.User{
+									AuthKey: "auth_key",
+								}
+								assert.NoError(t, user.HashPassword("oldpass"))
+								return user
+							}(),
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpassbad"),
+							wire.NewTLVBE(wire.AdminTLVNewPassword, "newpass"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVNewPassword, []byte{}),
+							wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorValidatePassword),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "user changes password, user not found",
+			userSession: newTestSession("me"),
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerUserParams: accountManagerUserParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							result:     nil,
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpass"),
+							wire.NewTLVBE(wire.AdminTLVNewPassword, "newpass"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVNewPassword, []byte{}),
+							wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorAllOtherErrors),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "user changes password, user lookup runtime error",
+			userSession: newTestSession("me"),
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerUserParams: accountManagerUserParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							err:        io.EOF,
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpass"),
+							wire.NewTLVBE(wire.AdminTLVNewPassword, "newpass"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVNewPassword, []byte{}),
+							wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorAllOtherErrors),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "user changes password, missing old password",
+			userSession: newTestSession("me"),
+			mockParams:  mockParams{},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVNewPassword, "newpass"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVNewPassword, []byte{}),
+							wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorNeedOldPassword),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			accountManager := newMockAccountManager(t)
+			for _, params := range tc.mockParams.accountManagerUserParams {
+				accountManager.EXPECT().
+					User(params.screenName).
+					Return(params.result, params.err)
+			}
+			for _, params := range tc.mockParams.accountManagerSetUserPasswordParams {
+				accountManager.EXPECT().
+					SetUserPassword(params.screenName, params.password).
+					Return(params.err)
+			}
+
+			svc := AdminService{
+				accountManager: accountManager,
+				logger:         slog.Default(),
 			}
 			outputSNAC, err := svc.InfoChangeRequest(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
 			assert.ErrorIs(t, err, tc.expectErr)

@@ -22,9 +22,9 @@ func (_m *mockAccountManager) EXPECT() *mockAccountManager_Expecter {
 	return &mockAccountManager_Expecter{mock: &_m.Mock}
 }
 
-// ConfirmStatusByName provides a mock function with given fields: screnName
-func (_m *mockAccountManager) ConfirmStatusByName(screnName state.IdentScreenName) (bool, error) {
-	ret := _m.Called(screnName)
+// ConfirmStatusByName provides a mock function with given fields: screenName
+func (_m *mockAccountManager) ConfirmStatusByName(screenName state.IdentScreenName) (bool, error) {
+	ret := _m.Called(screenName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ConfirmStatusByName")
@@ -33,16 +33,16 @@ func (_m *mockAccountManager) ConfirmStatusByName(screnName state.IdentScreenNam
 	var r0 bool
 	var r1 error
 	if rf, ok := ret.Get(0).(func(state.IdentScreenName) (bool, error)); ok {
-		return rf(screnName)
+		return rf(screenName)
 	}
 	if rf, ok := ret.Get(0).(func(state.IdentScreenName) bool); ok {
-		r0 = rf(screnName)
+		r0 = rf(screenName)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
 	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
-		r1 = rf(screnName)
+		r1 = rf(screenName)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -56,12 +56,12 @@ type mockAccountManager_ConfirmStatusByName_Call struct {
 }
 
 // ConfirmStatusByName is a helper method to define mock.On call
-//   - screnName state.IdentScreenName
-func (_e *mockAccountManager_Expecter) ConfirmStatusByName(screnName interface{}) *mockAccountManager_ConfirmStatusByName_Call {
-	return &mockAccountManager_ConfirmStatusByName_Call{Call: _e.mock.On("ConfirmStatusByName", screnName)}
+//   - screenName state.IdentScreenName
+func (_e *mockAccountManager_Expecter) ConfirmStatusByName(screenName interface{}) *mockAccountManager_ConfirmStatusByName_Call {
+	return &mockAccountManager_ConfirmStatusByName_Call{Call: _e.mock.On("ConfirmStatusByName", screenName)}
 }
 
-func (_c *mockAccountManager_ConfirmStatusByName_Call) Run(run func(screnName state.IdentScreenName)) *mockAccountManager_ConfirmStatusByName_Call {
+func (_c *mockAccountManager_ConfirmStatusByName_Call) Run(run func(screenName state.IdentScreenName)) *mockAccountManager_ConfirmStatusByName_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(state.IdentScreenName))
 	})
@@ -188,6 +188,53 @@ func (_c *mockAccountManager_RegStatusByName_Call) Return(_a0 uint16, _a1 error)
 }
 
 func (_c *mockAccountManager_RegStatusByName_Call) RunAndReturn(run func(state.IdentScreenName) (uint16, error)) *mockAccountManager_RegStatusByName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetUserPassword provides a mock function with given fields: screenName, newPassword
+func (_m *mockAccountManager) SetUserPassword(screenName state.IdentScreenName, newPassword string) error {
+	ret := _m.Called(screenName, newPassword)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetUserPassword")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName, string) error); ok {
+		r0 = rf(screenName, newPassword)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockAccountManager_SetUserPassword_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetUserPassword'
+type mockAccountManager_SetUserPassword_Call struct {
+	*mock.Call
+}
+
+// SetUserPassword is a helper method to define mock.On call
+//   - screenName state.IdentScreenName
+//   - newPassword string
+func (_e *mockAccountManager_Expecter) SetUserPassword(screenName interface{}, newPassword interface{}) *mockAccountManager_SetUserPassword_Call {
+	return &mockAccountManager_SetUserPassword_Call{Call: _e.mock.On("SetUserPassword", screenName, newPassword)}
+}
+
+func (_c *mockAccountManager_SetUserPassword_Call) Run(run func(screenName state.IdentScreenName, newPassword string)) *mockAccountManager_SetUserPassword_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(state.IdentScreenName), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *mockAccountManager_SetUserPassword_Call) Return(_a0 error) *mockAccountManager_SetUserPassword_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockAccountManager_SetUserPassword_Call) RunAndReturn(run func(state.IdentScreenName, string) error) *mockAccountManager_SetUserPassword_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -375,6 +422,64 @@ func (_c *mockAccountManager_UpdateRegStatus_Call) Return(_a0 error) *mockAccoun
 }
 
 func (_c *mockAccountManager_UpdateRegStatus_Call) RunAndReturn(run func(uint16, state.IdentScreenName) error) *mockAccountManager_UpdateRegStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// User provides a mock function with given fields: screenName
+func (_m *mockAccountManager) User(screenName state.IdentScreenName) (*state.User, error) {
+	ret := _m.Called(screenName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for User")
+	}
+
+	var r0 *state.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) (*state.User, error)); ok {
+		return rf(screenName)
+	}
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *state.User); ok {
+		r0 = rf(screenName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*state.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
+		r1 = rf(screenName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockAccountManager_User_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'User'
+type mockAccountManager_User_Call struct {
+	*mock.Call
+}
+
+// User is a helper method to define mock.On call
+//   - screenName state.IdentScreenName
+func (_e *mockAccountManager_Expecter) User(screenName interface{}) *mockAccountManager_User_Call {
+	return &mockAccountManager_User_Call{Call: _e.mock.On("User", screenName)}
+}
+
+func (_c *mockAccountManager_User_Call) Run(run func(screenName state.IdentScreenName)) *mockAccountManager_User_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(state.IdentScreenName))
+	})
+	return _c
+}
+
+func (_c *mockAccountManager_User_Call) Return(_a0 *state.User, _a1 error) *mockAccountManager_User_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockAccountManager_User_Call) RunAndReturn(run func(state.IdentScreenName) (*state.User, error)) *mockAccountManager_User_Call {
 	_c.Call.Return(run)
 	return _c
 }

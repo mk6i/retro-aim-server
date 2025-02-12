@@ -49,7 +49,9 @@ type AccountManager interface {
 	UpdateRegStatus(regStatus uint16, screenName state.IdentScreenName) error
 	RegStatusByName(screenName state.IdentScreenName) (uint16, error)
 	UpdateConfirmStatus(confirmStatus bool, screenName state.IdentScreenName) error
-	ConfirmStatusByName(screnName state.IdentScreenName) (bool, error)
+	ConfirmStatusByName(screenName state.IdentScreenName) (bool, error)
+	SetUserPassword(screenName state.IdentScreenName, newPassword string) error
+	User(screenName state.IdentScreenName) (*state.User, error)
 }
 
 type BARTManager interface {

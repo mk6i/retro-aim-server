@@ -3,6 +3,7 @@ package foodgroup
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/mail"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -15,11 +16,13 @@ func NewAdminService(
 	buddyListRetriever BuddyListRetriever,
 	messageRelayer MessageRelayer,
 	sessionRetriever SessionRetriever,
+	logger *slog.Logger,
 ) *AdminService {
 	return &AdminService{
 		accountManager:   accountManager,
 		buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
 		messageRelayer:   messageRelayer,
+		logger:           logger,
 	}
 }
 
@@ -30,6 +33,7 @@ type AdminService struct {
 	accountManager   AccountManager
 	buddyBroadcaster buddyBroadcaster
 	messageRelayer   MessageRelayer
+	logger           *slog.Logger
 }
 
 // ConfirmRequest will mark the user account as confirmed if the user has an email address set
@@ -250,6 +254,45 @@ func (s AdminService) InfoChangeRequest(ctx context.Context, sess *state.Session
 		}
 		tlvList.Append(wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidRegistrationPreference))
 		tlvList.Append(wire.NewTLVBE(wire.AdminTLVUrl, ""))
+		return getAdminChangeReply(tlvList), nil
+	}
+
+	// change password
+	if newPass, hasPassStatus := body.TLVRestBlock.String(wire.AdminTLVNewPassword); hasPassStatus {
+		tlvList.Append(wire.NewTLVBE(wire.AdminTLVNewPassword, []byte{}))
+
+		oldPass, ok := body.TLVRestBlock.String(wire.AdminTLVOldPassword)
+		if !ok {
+			tlvList.Append(wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorNeedOldPassword))
+			return getAdminChangeReply(tlvList), nil
+		}
+
+		u, err := s.accountManager.User(sess.IdentScreenName())
+		if err != nil || u == nil {
+			if err != nil {
+				s.logger.ErrorContext(ctx, "accountManager.User: runtime error", "err", err)
+			} else {
+				s.logger.ErrorContext(ctx, "accountManager.User: can't find user", "err", err)
+			}
+			tlvList.Append(wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorAllOtherErrors))
+			return getAdminChangeReply(tlvList), nil
+		}
+
+		if !u.ValidateHash(wire.StrongMD5PasswordHash(oldPass, u.AuthKey)) {
+			tlvList.Append(wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorValidatePassword))
+			return getAdminChangeReply(tlvList), nil
+		}
+
+		if err := s.accountManager.SetUserPassword(sess.IdentScreenName(), newPass); err != nil {
+			if errors.Is(err, state.ErrPasswordInvalid) {
+				tlvList.Append(wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidPasswordLength))
+			} else {
+				s.logger.ErrorContext(ctx, "accountManager.SetUserPassword: runtime error", "err", err)
+				tlvList.Append(wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorAllOtherErrors))
+			}
+			return getAdminChangeReply(tlvList), nil
+		}
+
 		return getAdminChangeReply(tlvList), nil
 	}
 

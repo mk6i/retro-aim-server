@@ -571,6 +571,8 @@ type accountManagerParams struct {
 	accountManagerRegStatusByNameParams
 	accountManagerUpdateConfirmStatusParams
 	accountManagerConfirmStatusByNameParams
+	accountManagerUserParams
+	accountManagerSetUserPasswordParams
 }
 
 // accountManagerUpdateDisplayScreenNameParams is the list of parameters passed at the mock
@@ -626,6 +628,22 @@ type accountManagerConfirmStatusByNameParams []struct {
 	screenName    state.IdentScreenName
 	confirmStatus bool
 	err           error
+}
+
+// accountManagerUserParams is the list of parameters passed at the mock
+// accountManager.User call site
+type accountManagerUserParams []struct {
+	screenName state.IdentScreenName
+	result     *state.User
+	err        error
+}
+
+// accountManagerSetUserPasswordParams is the list of parameters passed at the mock
+// accountManager.SetUserPassword call site
+type accountManagerSetUserPasswordParams []struct {
+	screenName state.IdentScreenName
+	password   string
+	err        error
 }
 
 // buddyBroadcasterParams is a helper struct that contains mock parameters for
