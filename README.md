@@ -129,7 +129,7 @@ Invoke-WebRequest -Uri http://localhost:8080/chat/room/public `
 Invoke-WebRequest -Uri http://localhost:8080/chat/room/public -Method Get
 ```
 
-### macOS / Linux
+### macOS / Linux / FreeBSD
 
 #### List Users
 

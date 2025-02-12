@@ -33,7 +33,7 @@ keywords and keyword categories via the management API.
     -Body '{"name": "Music"}'
    ```
 
-   ###### macOS / Linux
+   ###### macOS / Linux / FreeBSD
 
     ```shell
     curl -d'{"name": "Programming Languages"}' http://localhost:8080/directory/category
@@ -51,7 +51,7 @@ keywords and keyword categories via the management API.
    Invoke-WebRequest -Uri "http://localhost:8080/directory/category" -Method GET
    ```
 
-   ###### macOS / Linux
+   ###### macOS / Linux / FreeBSD
 
     ```shell
     curl http://localhost:8080/directory/category
@@ -105,7 +105,7 @@ keywords and keyword categories via the management API.
       -Body '{"name": "Live, laugh, love!"}'
    ```
 
-   ###### macOS / Linux
+   ###### macOS / Linux / FreeBSD
 
     ```shell
     curl -d'{"category_id": 2, "name": "The Dictionary"}' http://localhost:8080/directory/keyword
