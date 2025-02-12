@@ -592,7 +592,6 @@ func (s OServiceService) HostOnline() wire.SNACMessage {
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.OService,
 			SubGroup:  wire.OServiceHostOnline,
-			RequestID: wire.ReqIDFromServer,
 		},
 		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
 			FoodGroups: s.foodGroups,
@@ -629,9 +628,6 @@ func NewOServiceServiceForBOS(
 				wire.OService,
 				wire.PermitDeny,
 				wire.UserLookup,
-				wire.Invite,
-				wire.Popup,
-				wire.Stats,
 			},
 		},
 	}

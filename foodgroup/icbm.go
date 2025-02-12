@@ -148,7 +148,6 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.ICBM,
 			SubGroup:  wire.ICBMChannelMsgToClient,
-			RequestID: wire.ReqIDFromServer,
 		},
 		Body: clientIM,
 	})

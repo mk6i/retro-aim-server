@@ -154,7 +154,6 @@ func (s buddyNotifier) BroadcastBuddyArrived(ctx context.Context, sess *state.Se
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyArrived,
-			RequestID: wire.ReqIDFromServer,
 		},
 		Body: wire.SNAC_0x03_0x0B_BuddyArrived{
 			TLVUserInfo: userInfo,
@@ -182,7 +181,6 @@ func (s buddyNotifier) BroadcastBuddyDeparted(ctx context.Context, sess *state.S
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyDeparted,
-			RequestID: wire.ReqIDFromServer,
 		},
 		Body: wire.SNAC_0x03_0x0C_BuddyDeparted{
 			TLVUserInfo: wire.TLVUserInfo{
@@ -297,7 +295,6 @@ func (s buddyNotifier) unicastBuddyDeparted(ctx context.Context, from *state.Ses
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyDeparted,
-			RequestID: wire.ReqIDFromServer,
 		},
 		Body: wire.SNAC_0x03_0x0C_BuddyDeparted{
 			TLVUserInfo: wire.TLVUserInfo{
@@ -319,7 +316,6 @@ func (s buddyNotifier) unicastBuddyArrived(ctx context.Context, userInfo wire.TL
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Buddy,
 			SubGroup:  wire.BuddyArrived,
-			RequestID: wire.ReqIDFromServer,
 		},
 		Body: wire.SNAC_0x03_0x0B_BuddyArrived{
 			TLVUserInfo: userInfo,
