@@ -33,7 +33,7 @@ func NewManagementAPI(
 	messageRelayer MessageRelayer,
 	bartRetriever BARTRetriever,
 	feedbagRetriever FeedBagRetriever,
-	accountRetriever AccountRetriever,
+	accountManager AccountManager,
 	profileRetriever ProfileRetriever,
 	logger *slog.Logger,
 ) *Server {
@@ -62,7 +62,10 @@ func NewManagementAPI(
 
 	// Handlers for '/user/{screenname}/account' route
 	mux.HandleFunc("GET /user/{screenname}/account", func(w http.ResponseWriter, r *http.Request) {
-		getUserAccountHandler(w, r, userManager, accountRetriever, profileRetriever, logger)
+		getUserAccountHandler(w, r, userManager, accountManager, profileRetriever, logger)
+	})
+	mux.HandleFunc("PATCH /user/{screenname}/account", func(w http.ResponseWriter, r *http.Request) {
+		patchUserAccountHandler(w, r, userManager, accountManager, logger)
 	})
 
 	// Handlers for '/user/{screenname}/icon' route
@@ -78,6 +81,9 @@ func NewManagementAPI(
 	// Handlers for '/session/{screenname}' route
 	mux.HandleFunc("GET /session/{screenname}", func(w http.ResponseWriter, r *http.Request) {
 		getSessionHandler(w, r, sessionRetriever, time.Since)
+	})
+	mux.HandleFunc("DELETE /session/{screenname}", func(w http.ResponseWriter, r *http.Request) {
+		deleteSessionHandler(w, r, sessionRetriever)
 	})
 
 	// Handlers for '/chat/room/public' route
@@ -261,12 +267,33 @@ func getSessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever 
 			IdleSeconds:   idleSeconds,
 			IsICQ:         s.UIN() > 0,
 		}
+		ra := s.RemoteAddr()
+		if ra != nil {
+			ou.Sessions[i].RemoteAddr = ra.Addr().String()
+			ou.Sessions[i].RemotePort = ra.Port()
+		}
+
 	}
 
 	if err := json.NewEncoder(w).Encode(ou); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+// deleteSessionHandler handles DELETE /session/{screenname}
+func deleteSessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever SessionRetriever) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if screenName := r.PathValue("screenname"); screenName != "" {
+		session := sessionRetriever.RetrieveSession(state.NewIdentScreenName(screenName))
+		if session == nil {
+			errorMsg(w, "session not found", http.StatusNotFound)
+			return
+		}
+		session.Close()
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // getUserHandler handles the GET /user endpoint.
@@ -282,10 +309,17 @@ func getUserHandler(w http.ResponseWriter, userManager UserManager, logger *slog
 
 	out := make([]userHandle, len(users))
 	for i, u := range users {
+		suspendedStatus, err := getSuspendedStatusErrCodeToText(u.SuspendedStatus)
+		if err != nil {
+			logger.Error("error getting suspended status in GET /user", "err", err.Error())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
 		out[i] = userHandle{
-			ID:         u.IdentScreenName.String(),
-			ScreenName: u.DisplayScreenName.String(),
-			IsICQ:      u.IsICQ,
+			ID:              u.IdentScreenName.String(),
+			ScreenName:      u.DisplayScreenName.String(),
+			IsICQ:           u.IsICQ,
+			SuspendedStatus: suspendedStatus,
 		}
 	}
 
@@ -595,7 +629,7 @@ func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManag
 }
 
 // getUserAccountHandler handles the GET /user/{screenname}/account endpoint.
-func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, a AccountRetriever, p ProfileRetriever, logger *slog.Logger) {
+func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, a AccountManager, p ProfileRetriever, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "application/json")
 
 	screenName := r.PathValue("screenname")
@@ -636,20 +670,118 @@ func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager U
 		return
 	}
 
+	suspendedStatusText, err := getSuspendedStatusErrCodeToText(user.SuspendedStatus)
+	if err != nil {
+		logger.Error("error in GET /user/{screenname}/account", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
 	out := userAccountHandle{
-		ID:           user.IdentScreenName.String(),
-		ScreenName:   user.DisplayScreenName.String(),
-		EmailAddress: emailAddress,
-		RegStatus:    regStatus,
-		Confirmed:    confirmStatus,
-		Profile:      profile,
-		IsICQ:        user.IsICQ,
+		ID:              user.IdentScreenName.String(),
+		ScreenName:      user.DisplayScreenName.String(),
+		EmailAddress:    emailAddress,
+		RegStatus:       regStatus,
+		Confirmed:       confirmStatus,
+		Profile:         profile,
+		IsICQ:           user.IsICQ,
+		SuspendedStatus: suspendedStatusText,
 	}
 
 	if err := json.NewEncoder(w).Encode(out); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+// patchUserAccountHandler handles the PATCH /user/{screenname}/account endpoint.
+func patchUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, a AccountManager, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+
+	screenName := r.PathValue("screenname")
+	user, err := userManager.User(state.NewIdentScreenName(screenName))
+	if err != nil {
+		logger.Error("error in PATCH /user/{screenname}/account", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if user == nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	input := userAccountPatch{}
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&input); err != nil {
+		errorMsg(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	modifiedUser := false
+
+	if input.SuspendedStatusText != nil {
+		switch *input.SuspendedStatusText {
+		case
+			"", "deleted", "expired",
+			"suspended", "suspended_age":
+			suspendedStatus, err := getSuspendedStatusTextToErrCode(*input.SuspendedStatusText)
+			if err != nil {
+				logger.Error("error in PATCH /user/{screenname}/account", "err", err.Error())
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
+			if suspendedStatus != user.SuspendedStatus {
+				err := a.UpdateSuspendedStatus(suspendedStatus, user.IdentScreenName)
+				if err != nil {
+					logger.Error("error in PATCH /user/{screenname}/account", "err", err.Error())
+					http.Error(w, "internal server error", http.StatusInternalServerError)
+					return
+				}
+				modifiedUser = true
+			}
+		default:
+			errorMsg(w, "suspended_status must be empty str or one of deleted,expired,suspended,suspended_age", http.StatusBadRequest)
+			return
+		}
+	}
+
+	if !modifiedUser {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// getSuspendedStatusTextToErrCode maps the given suspendedStatusText to
+// the appropriate error code, or 0x0 for none.
+func getSuspendedStatusTextToErrCode(suspendedStatusText string) (uint16, error) {
+	suspendedStatusTextMap := map[string]uint16{
+		"":              0x0,
+		"deleted":       wire.LoginErrDeletedAccount,
+		"expired":       wire.LoginErrExpiredAccount,
+		"suspended":     wire.LoginErrSuspendedAccount,
+		"suspended_age": wire.LoginErrSuspendedAccountAge,
+	}
+	suspendedStatus, ok := suspendedStatusTextMap[suspendedStatusText]
+	if !ok {
+		return 0x0, errors.New("unable to map suspendedText to error code")
+	}
+	return suspendedStatus, nil
+}
+
+// getSuspendedStatusErrCodeToText maps the given suspendedStatus to
+// the appropriate text, or "" for none.
+func getSuspendedStatusErrCodeToText(suspendedStatus uint16) (string, error) {
+	suspendedStatusTextMap := map[uint16]string{
+		0x0:                              "",
+		wire.LoginErrDeletedAccount:      "deleted",
+		wire.LoginErrExpiredAccount:      "expired",
+		wire.LoginErrSuspendedAccount:    "suspended",
+		wire.LoginErrSuspendedAccountAge: "suspended_age",
+	}
+	st, ok := suspendedStatusTextMap[suspendedStatus]
+	if !ok {
+		return "", errors.New("unable to map error code to suspendedText")
+	}
+	return st, nil
 }
 
 // getVersionHandler handles the GET /version endpoint.

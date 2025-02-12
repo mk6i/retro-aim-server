@@ -94,7 +94,17 @@ const (
 const (
 	LoginErrInvalidUsernameOrPassword uint16 = 0x0001
 	LoginErrInvalidPassword           uint16 = 0x0005 // invalid password
-	LoginErrICQUserErr                uint16 = 0x0008 // ICQ user doesn't exist
+	LoginErrInvalidAccount            uint16 = 0x0007
+	LoginErrDeletedAccount            uint16 = 0x0008
+	LoginErrExpiredAccount            uint16 = 0x0009
+	LoginErrSuspendedAccount          uint16 = 0x0011 // suspended account
+	LoginErrTooHeavilyWarned          uint16 = 0x0019
+	LoginErrRateLimitExceeded         uint16 = 0x001D
+	LoginErrInvalidSecureID           uint16 = 0x0020
+	LoginErrSuspendedAccountAge       uint16 = 0x0022 // suspended due to age (age < 13 years)
+
+	LoginErrICQUserErr uint16 = 0x0008 // ICQ user doesn't exist
+
 )
 
 //
@@ -188,6 +198,9 @@ const (
 	OServiceTLVTagsGroupID       uint16 = 0x0D
 	OServiceTLVTagsSSLCertName   uint16 = 0x8D
 	OServiceTLVTagsSSLState      uint16 = 0x8E
+
+	OServiceDiscErrNewLogin   uint8 = 0x01
+	OServiceDiscErrAccDeleted uint8 = 0x02
 )
 
 type SNAC_0x01_0x02_OServiceClientOnline struct {

@@ -356,6 +356,7 @@ func (f SQLiteUserStore) queryUsers(whereClause string, queryParams []any) ([]Us
 			weakMD5Pass,
 			confirmStatus,
 			regStatus,
+			suspendedStatus,
 			isICQ,
 			icq_affiliations_currentCode1,
 			icq_affiliations_currentCode2,
@@ -447,6 +448,7 @@ func (f SQLiteUserStore) queryUsers(whereClause string, queryParams []any) ([]Us
 			&u.WeakMD5Pass,
 			&u.ConfirmStatus,
 			&u.RegStatus,
+			&u.SuspendedStatus,
 			&u.IsICQ,
 			&u.ICQAffiliations.CurrentCode1,
 			&u.ICQAffiliations.CurrentCode2,
@@ -1276,6 +1278,17 @@ func (f SQLiteUserStore) ConfirmStatusByName(screenName IdentScreenName) (bool, 
 		return false, err
 	}
 	return confirmStatus, nil
+}
+
+// UpdateSuspendedStatus updates the user's suspended status
+func (f SQLiteUserStore) UpdateSuspendedStatus(suspendedStatus uint16, screenName IdentScreenName) error {
+	q := `
+		UPDATE users
+		SET suspendedStatus = ?
+		WHERE identScreenName = ?
+	`
+	_, err := f.db.Exec(q, suspendedStatus, screenName.String())
+	return err
 }
 
 // SetWorkInfo updates the work-related information for an ICQ user.

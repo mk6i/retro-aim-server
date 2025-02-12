@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -185,6 +186,15 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 	}
 
 	ctx = context.WithValue(ctx, "screenName", sessBOS.IdentScreenName())
+
+	remoteAddr, ok := ctx.Value("ip").(string)
+	if ok {
+		ip, err := netip.ParseAddrPort(remoteAddr)
+		if err != nil {
+			return errors.New("unable to parse ip addr")
+		}
+		sessBOS.SetRemoteAddr(&ip)
+	}
 
 	defer rt.BOSProxy.Signout(ctx, sessBOS)
 

@@ -232,6 +232,47 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "AIM account is suspended",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				BOSPort:   "1234",
+			},
+			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.LoginTLVTagsPasswordHash, []byte("password")),
+						wire.NewTLVBE(wire.LoginTLVTagsScreenName, []byte("suspended_screen_name")),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("suspended_screen_name"),
+							result: &state.User{
+								SuspendedStatus: wire.LoginErrSuspendedAccount,
+							},
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BUCP,
+					SubGroup:  wire.BUCPLoginResponse,
+				},
+				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: []wire.TLV{
+							wire.NewTLVBE(wire.LoginTLVTagsScreenName, state.NewIdentScreenName("suspended_screen_name")),
+							wire.NewTLVBE(wire.LoginTLVTagsErrorSubcode, wire.LoginErrSuspendedAccount),
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "ICQ account doesn't exist, login fails",
 			cfg: config.Config{
 				OSCARHost: "127.0.0.1",

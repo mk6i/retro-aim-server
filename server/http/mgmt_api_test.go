@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/mail"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
@@ -27,6 +28,8 @@ func TestSessionHandler_GET(t *testing.T) {
 		sess.SetIdentScreenName(state.NewIdentScreenName(screenName))
 		sess.SetDisplayScreenName(state.DisplayScreenName(screenName))
 		sess.SetUIN(uin)
+		ip, _ := netip.ParseAddrPort("1.2.3.4:1234")
+		sess.SetRemoteAddr(&ip)
 		return sess
 	}
 	tt := []struct {
@@ -52,7 +55,7 @@ func TestSessionHandler_GET(t *testing.T) {
 		},
 		{
 			name:          "with sessions",
-			want:          `{"count":3,"sessions":[{"id":"usera","screen_name":"userA","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":false},{"id":"userb","screen_name":"userB","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":false},{"id":"100003","screen_name":"100003","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":true}]}`,
+			want:          `{"count":3,"sessions":[{"id":"usera","screen_name":"userA","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":false,"remote_addr":"1.2.3.4","remote_port":1234},{"id":"userb","screen_name":"userB","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":false,"remote_addr":"1.2.3.4","remote_port":1234},{"id":"100003","screen_name":"100003","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":true,"remote_addr":"1.2.3.4","remote_port":1234}]}`,
 			statusCode:    http.StatusOK,
 			timeSinceFunc: func(t time.Time) time.Duration { t0 := time.Now(); return t0.Sub(t0) },
 			mockParams: mockParams{
@@ -102,6 +105,8 @@ func TestSessionHandlerScreenname_GET(t *testing.T) {
 		sess.SetIdentScreenName(state.NewIdentScreenName(screenName))
 		sess.SetDisplayScreenName(state.DisplayScreenName(screenName))
 		sess.SetUIN(uin)
+		ip, _ := netip.ParseAddrPort("1.2.3.4:1234")
+		sess.SetRemoteAddr(&ip)
 		return sess
 	}
 	tt := []struct {
@@ -133,7 +138,7 @@ func TestSessionHandlerScreenname_GET(t *testing.T) {
 		{
 			name:              "active session found for screenname",
 			requestScreenName: state.NewIdentScreenName("userA"),
-			want:              `{"count":1,"sessions":[{"id":"usera","screen_name":"userA","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":false}]}`,
+			want:              `{"count":1,"sessions":[{"id":"usera","screen_name":"userA","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":false,"remote_addr":"1.2.3.4","remote_port":1234}]}`,
 			statusCode:        http.StatusOK,
 			timeSinceFunc:     func(t time.Time) time.Duration { t0 := time.Now(); return t0.Sub(t0) },
 			mockParams: mockParams{
@@ -175,6 +180,75 @@ func TestSessionHandlerScreenname_GET(t *testing.T) {
 	}
 }
 
+func TestSessionHandlerScreenname_DELETE(t *testing.T) {
+	fnNewSess := func(screenName string) *state.Session {
+		sess := state.NewSession()
+		sess.SetIdentScreenName(state.NewIdentScreenName(screenName))
+		sess.SetDisplayScreenName(state.DisplayScreenName(screenName))
+		ip, _ := netip.ParseAddrPort("1.2.3.4:1234")
+		sess.SetRemoteAddr(&ip)
+		return sess
+	}
+	tt := []struct {
+		name              string
+		session           *state.Session
+		requestScreenName state.IdentScreenName
+		statusCode        int
+		mockParams        mockParams
+	}{
+		{
+			name:              "delete an active session",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			statusCode:        http.StatusNoContent,
+			mockParams: mockParams{
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionByNameParams: retrieveSessionByNameParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result:     fnNewSess("userA"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:              "delete a non-existent session",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			statusCode:        http.StatusNotFound,
+			mockParams: mockParams{
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionByNameParams: retrieveSessionByNameParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result:     nil,
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodDelete, "/session/"+tc.requestScreenName.String(), nil)
+			request.SetPathValue("screenname", tc.requestScreenName.String())
+			responseRecorder := httptest.NewRecorder()
+
+			sessionRetriever := newMockSessionRetriever(t)
+			for _, params := range tc.mockParams.sessionRetrieverParams.retrieveSessionByNameParams {
+				sessionRetriever.EXPECT().
+					RetrieveSession(params.screenName).
+					Return(params.result)
+			}
+
+			deleteSessionHandler(responseRecorder, request, sessionRetriever)
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+		})
+	}
+}
+
 func TestUserAccountHandler_GET(t *testing.T) {
 	tt := []struct {
 		name              string
@@ -202,7 +276,7 @@ func TestUserAccountHandler_GET(t *testing.T) {
 		{
 			name:              "valid aim account",
 			requestScreenName: state.NewIdentScreenName("userA"),
-			want:              `{"id":"usera","screen_name":"userA","profile":"My Profile Text","email_address":"\u003cuserA@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false}`,
+			want:              `{"id":"usera","screen_name":"userA","profile":"My Profile Text","email_address":"\u003cuserA@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":""}`,
 			statusCode:        http.StatusOK,
 			mockParams: mockParams{
 				userManagerParams: userManagerParams{
@@ -212,11 +286,12 @@ func TestUserAccountHandler_GET(t *testing.T) {
 							result: &state.User{
 								DisplayScreenName: "userA",
 								IdentScreenName:   state.NewIdentScreenName("userA"),
+								SuspendedStatus:   0x0,
 							},
 						},
 					},
 				},
-				accountRetrieverParams: accountRetrieverParams{
+				accountManagerParams: accountManagerParams{
 					emailAddressByNameParams: emailAddressByNameParams{
 						{
 							screenName: state.NewIdentScreenName("userA"),
@@ -248,6 +323,56 @@ func TestUserAccountHandler_GET(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:              "suspended aim account",
+			requestScreenName: state.NewIdentScreenName("userB"),
+			want:              `{"id":"userb","screen_name":"userB","profile":"My Profile Text","email_address":"\u003cuserB@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":"suspended"}`,
+			statusCode:        http.StatusOK,
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("userB"),
+							result: &state.User{
+								DisplayScreenName: "userB",
+								IdentScreenName:   state.NewIdentScreenName("userB"),
+								SuspendedStatus:   wire.LoginErrSuspendedAccount,
+							},
+						},
+					},
+				},
+				accountManagerParams: accountManagerParams{
+					emailAddressByNameParams: emailAddressByNameParams{
+						{
+							screenName: state.NewIdentScreenName("userB"),
+							result: &mail.Address{
+								Address: "userB@aol.com",
+							},
+						},
+					},
+					regStatusByNameParams: regStatusByNameParams{
+						{
+							screenName: state.NewIdentScreenName("userB"),
+							result:     uint16(0x02),
+						},
+					},
+					confirmStatusByNameParams: confirmStatusByNameParams{
+						{
+							screenName: state.NewIdentScreenName("userB"),
+							result:     true,
+						},
+					},
+				},
+				profileRetrieverParams: profileRetrieverParams{
+					retrieveProfileParams: retrieveProfileParams{
+						{
+							screenName: state.NewIdentScreenName("userB"),
+							result:     "My Profile Text",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tt {
@@ -263,19 +388,19 @@ func TestUserAccountHandler_GET(t *testing.T) {
 					Return(params.result, params.err)
 			}
 
-			accountRetriever := newMockAccountRetriever(t)
-			for _, params := range tc.mockParams.accountRetrieverParams.emailAddressByNameParams {
-				accountRetriever.EXPECT().
+			accountManager := newMockAccountManager(t)
+			for _, params := range tc.mockParams.accountManagerParams.emailAddressByNameParams {
+				accountManager.EXPECT().
 					EmailAddressByName(params.screenName).
 					Return(params.result, params.err)
 			}
-			for _, params := range tc.mockParams.accountRetrieverParams.regStatusByNameParams {
-				accountRetriever.EXPECT().
+			for _, params := range tc.mockParams.accountManagerParams.regStatusByNameParams {
+				accountManager.EXPECT().
 					RegStatusByName(params.screenName).
 					Return(params.result, params.err)
 			}
-			for _, params := range tc.mockParams.accountRetrieverParams.confirmStatusByNameParams {
-				accountRetriever.EXPECT().
+			for _, params := range tc.mockParams.accountManagerParams.confirmStatusByNameParams {
+				accountManager.EXPECT().
 					ConfirmStatusByName(params.screenName).
 					Return(params.result, params.err)
 			}
@@ -287,7 +412,163 @@ func TestUserAccountHandler_GET(t *testing.T) {
 					Return(params.result, params.err)
 			}
 
-			getUserAccountHandler(responseRecorder, request, userManager, accountRetriever, profileRetriever, slog.Default())
+			getUserAccountHandler(responseRecorder, request, userManager, accountManager, profileRetriever, slog.Default())
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
+func TestUserAccountHandler_PATCH(t *testing.T) {
+	tt := []struct {
+		name              string
+		requestScreenName state.IdentScreenName
+		want              string
+		body              string
+		statusCode        int
+		mockParams        mockParams
+	}{
+		{
+			name:              "suspending a non-existent account",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			body:              `{"suspended_status":"suspended"}`,
+			want:              `user not found`,
+			statusCode:        http.StatusNotFound,
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result:     nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:              "patching with invalid suspended_status value",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			body:              `{"suspended_status":"thisisinvalid"}`,
+			want:              `{"message":"suspended_status must be empty str or one of deleted,expired,suspended,suspended_age"}`,
+			statusCode:        http.StatusBadRequest,
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result:     &state.User{},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:              "suspending an active aim account",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			statusCode:        http.StatusNoContent,
+			body:              `{"suspended_status":"suspended"}`,
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result: &state.User{
+								DisplayScreenName: "userA",
+								IdentScreenName:   state.NewIdentScreenName("userA"),
+								SuspendedStatus:   0x0,
+							},
+						},
+					},
+				},
+				accountManagerParams: accountManagerParams{
+					updateSuspendedStatusParams: updateSuspendedStatusParams{
+						{
+							suspendedStatus: wire.LoginErrSuspendedAccount,
+							screenName:      state.NewIdentScreenName("userA"),
+							err:             nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:              "unsuspending a suspended aim account",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			statusCode:        http.StatusNoContent,
+			body:              `{"suspended_status":""}`,
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result: &state.User{
+								DisplayScreenName: "userA",
+								IdentScreenName:   state.NewIdentScreenName("userA"),
+								SuspendedStatus:   wire.LoginErrSuspendedAccount,
+							},
+						},
+					},
+				},
+				accountManagerParams: accountManagerParams{
+					updateSuspendedStatusParams: updateSuspendedStatusParams{
+						{
+							suspendedStatus: 0x0,
+							screenName:      state.NewIdentScreenName("userA"),
+							err:             nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:              "suspending an already suspended aim account",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			statusCode:        http.StatusNotModified,
+			body:              `{"suspended_status":"suspended"}`,
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result: &state.User{
+								DisplayScreenName: "userA",
+								IdentScreenName:   state.NewIdentScreenName("userA"),
+								SuspendedStatus:   wire.LoginErrSuspendedAccount,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPatch, "/user/"+tc.requestScreenName.String()+"/account", strings.NewReader(tc.body))
+			request.SetPathValue("screenname", tc.requestScreenName.String())
+			responseRecorder := httptest.NewRecorder()
+
+			userManager := newMockUserManager(t)
+			for _, params := range tc.mockParams.userManagerParams.getUserParams {
+				userManager.EXPECT().
+					User(params.screenName).
+					Return(params.result, params.err)
+			}
+
+			accountManager := newMockAccountManager(t)
+			for _, params := range tc.mockParams.accountManagerParams.updateSuspendedStatusParams {
+				accountManager.EXPECT().
+					UpdateSuspendedStatus(params.suspendedStatus, params.screenName).
+					Return(params.err)
+			}
+
+			patchUserAccountHandler(responseRecorder, request, userManager, accountManager, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
@@ -590,7 +871,7 @@ func TestUserHandler_GET(t *testing.T) {
 		},
 		{
 			name:       "user store containing 3 users",
-			want:       `[{"id":"usera","screen_name":"userA","is_icq":false},{"id":"userb","screen_name":"userB","is_icq":false},{"id":"100003","screen_name":"100003","is_icq":true}]`,
+			want:       `[{"id":"usera","screen_name":"userA","is_icq":false,"suspended_status":""},{"id":"userb","screen_name":"userB","is_icq":false,"suspended_status":""},{"id":"100003","screen_name":"100003","is_icq":true,"suspended_status":""}]`,
 			statusCode: http.StatusOK,
 			mockParams: mockParams{
 				userManagerParams: userManagerParams{

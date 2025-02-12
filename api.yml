@@ -27,6 +27,9 @@ paths:
                     is_icq:
                       type: boolean
                       description: If true, indicates an ICQ user instead of an AIM user.
+                    suspended_status:
+                      type: string
+                      description: User's suspended status
     post:
       summary: Create a new user
       description: Create a new AIM or ICQ user account.
@@ -77,11 +80,12 @@ paths:
       summary: Get account details for a specific screen name.
       description: Retrieve account details for a specific screen name.
       parameters:
-        - name: screenname
-          in: path
+        - in: path
+          name: screenname
+          schema:
+            type: string
           description: User's AIM screen name or ICQ UIN.
           required: true
-          type: string
       responses:
         '200':
           description: Successful response containing account details
@@ -103,24 +107,59 @@ paths:
                     type: string
                     description: User's email address
                   confirmed:
-                    type: bool
+                    type: boolean
                     description: User's account confirmation status
                   is_icq:
                     type: boolean
                     description: If true, indicates an ICQ user instead of an AIM user.
+                  suspended_status:
+                    type: string
+                    description: User's suspended status
         '404':
           description: User not found.
+    patch:
+      summary: Update a user account
+      description: Update attributes for a user account
+      parameters:
+        - in: path
+          name: screenname
+          schema:
+            type: string
+          description: User's AIM screen name or ICQ UIN.
+          required: true
+      responses:
+        '204':
+          description: Successfully updated user account
+        '304':
+          description: Did not modify user account
+        '400':
+          description: Bad request when modifying user account
+        '404':
+          description: User not found
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                suspended_status:
+                    type: string
+                    nullable: true
+                    enum: [deleted, expired, suspended, suspended_age]
+                    description: The suspended status of the account
 
   /user/{screenname}/icon:
     get:
       summary: Get AIM buddy icon for a screen name
       description: Retrieve account buddy icon for a specific screen name.
       parameters:
-        - name: screenname
-          in: path
+        - in: path
+          name: screenname
+          schema:
+            type: string
           description: User's AIM screen name or ICQ UIN.
           required: true
-          type: string
       responses:
         '200':
           description: Successful response containing buddy icon bytes
@@ -171,28 +210,35 @@ paths:
                           type: string
                           description: User's AIM screen name or ICQ UIN.
                         online_seconds:
-                          type: float
+                          type: number
                           description: Number of seconds this user session has been online.
                         away_message:
                           type: string
                           description: User's AIM away message HTML. Empty if the user is not away.
                         idle_seconds:
-                          type: float
+                          type: number
                           description: Number of seconds this user session has been idle. 0 if not idle.
                         is_icq:
                           type: boolean
                           description: If true, indicates an ICQ user instead of an AIM user.
+                        remote_addr:
+                          type: string
+                          description: Remote IP address of the user's connection to BOS or TOC
+                        remote_port:
+                          type: integer
+                          description: Remote port number of the user's connection to BOS or TOC
 
   /session/{screenname}:
     get:
       summary: Get active sessions for a given screen name or UIN.
       description: Retrieve a list of active sessions of a specific logged in user.
       parameters:
-        - name: screenname
-          in: path
+        - in: path
+          name: screenname
+          schema:
+            type: string
           description: User's AIM screen name or ICQ UIN.
           required: true
-          type: string
       responses:
         '200':
           description: Successful response containing a list of active sessions for the given screen name
@@ -216,19 +262,40 @@ paths:
                           type: string
                           description: User's AIM screen name or ICQ UIN.
                         online_seconds:
-                          type: float
+                          type: number
                           description: Number of seconds this user session has been online.
                         away_message:
                           type: string
                           description: User's AIM away message HTML. Empty if the user is not away.
                         idle_seconds:
-                          type: float
+                          type: number
                           description: Number of seconds this user session has been idle. 0 if not idle.
                         is_icq:
                           type: boolean
                           description: If true, indicates an ICQ user instead of an AIM user.
+                        remote_addr:
+                          type: string
+                          description: Remote IP address of the user's connection to BOS or TOC
+                        remote_port:
+                          type: integer
+                          description: Remote port number of the user's connection to BOS or TOC
         '404':
           description: User not found.
+    delete:
+      summary: Delete active sessions for a given screen name or UIN.
+      description: Disconnect any active sessions of a specific logged in user.
+      parameters:
+        - in: path
+          name: screenname
+          schema:
+            type: string
+          description: User's AIM screen name or ICQ UIN.
+          required: true
+      responses:
+        '204':
+          description: Session deleted successfully
+        '404':
+          description: Session not found
 
   /user/password:
     put:

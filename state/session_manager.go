@@ -236,6 +236,20 @@ func (s *InMemoryChatSessionManager) RemoveSession(sess *Session) {
 	}
 }
 
+// RemoveUserFromAllChats removes a user's session from all chat rooms.
+func (s *InMemoryChatSessionManager) RemoveUserFromAllChats(user IdentScreenName) {
+	s.mapMutex.Lock()
+	defer s.mapMutex.Unlock()
+
+	for _, sessionManager := range s.store {
+		userSess := sessionManager.RetrieveSession(user)
+		if userSess != nil {
+			userSess.Close()
+			sessionManager.RemoveSession(userSess)
+		}
+	}
+}
+
 // AllSessions returns all chat room participants. Returns
 // ErrChatRoomNotFound if the room does not exist.
 func (s *InMemoryChatSessionManager) AllSessions(cookie string) []*Session {

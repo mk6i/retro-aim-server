@@ -38,10 +38,11 @@ type MessageRelayer interface {
 	RelayToScreenName(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage)
 }
 
-type AccountRetriever interface {
+type AccountManager interface {
 	EmailAddressByName(screenName state.IdentScreenName) (*mail.Address, error)
 	RegStatusByName(screenName state.IdentScreenName) (uint16, error)
-	ConfirmStatusByName(screnName state.IdentScreenName) (bool, error)
+	ConfirmStatusByName(screenName state.IdentScreenName) (bool, error)
+	UpdateSuspendedStatus(suspendedStatus uint16, screenName state.IdentScreenName) error
 }
 
 type BARTRetriever interface {
@@ -76,9 +77,10 @@ type onlineUsers struct {
 }
 
 type userHandle struct {
-	ID         string `json:"id"`
-	ScreenName string `json:"screen_name"`
-	IsICQ      bool   `json:"is_icq"`
+	ID              string `json:"id"`
+	ScreenName      string `json:"screen_name"`
+	IsICQ           bool   `json:"is_icq"`
+	SuspendedStatus string `json:"suspended_status"`
 }
 
 type aimChatUserHandle struct {
@@ -87,13 +89,18 @@ type aimChatUserHandle struct {
 }
 
 type userAccountHandle struct {
-	ID           string `json:"id"`
-	ScreenName   string `json:"screen_name"`
-	Profile      string `json:"profile"`
-	EmailAddress string `json:"email_address"`
-	RegStatus    uint16 `json:"reg_status"`
-	Confirmed    bool   `json:"confirmed"`
-	IsICQ        bool   `json:"is_icq"`
+	ID              string `json:"id"`
+	ScreenName      string `json:"screen_name"`
+	Profile         string `json:"profile"`
+	EmailAddress    string `json:"email_address"`
+	RegStatus       uint16 `json:"reg_status"`
+	Confirmed       bool   `json:"confirmed"`
+	IsICQ           bool   `json:"is_icq"`
+	SuspendedStatus string `json:"suspended_status"`
+}
+
+type userAccountPatch struct {
+	SuspendedStatusText *string `json:"suspended_status"`
 }
 
 type sessionHandle struct {
@@ -103,6 +110,8 @@ type sessionHandle struct {
 	AwayMessage   string  `json:"away_message"`
 	IdleSeconds   float64 `json:"idle_seconds"`
 	IsICQ         bool    `json:"is_icq"`
+	RemoteAddr    string  `json:"remote_addr,omitempty"`
+	RemotePort    uint16  `json:"remote_port,omitempty"`
 }
 
 type chatRoomCreate struct {

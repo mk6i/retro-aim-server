@@ -3208,3 +3208,34 @@ func TestSQLiteUserStore_PermitDenyTransitionIntegration(t *testing.T) {
 	}
 	assert.ElementsMatch(t, relationships, expect)
 }
+
+func TestSQLiteUserStore_UpdateSuspendedStatus(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	screenName := NewIdentScreenName("userA")
+
+	insertedUser := &User{
+		IdentScreenName:   screenName,
+		DisplayScreenName: DisplayScreenName("usera"),
+		AuthKey:           "theauthkey",
+		StrongMD5Pass:     []byte("thepasshash"),
+		RegStatus:         3,
+		SuspendedStatus:   wire.LoginErrSuspendedAccount,
+	}
+	err = f.InsertUser(*insertedUser)
+	assert.NoError(t, err)
+
+	err = f.UpdateSuspendedStatus(wire.LoginErrSuspendedAccountAge, screenName)
+	assert.NoError(t, err)
+
+	user, err := f.User(screenName)
+	assert.NoError(t, err)
+
+	assert.Equal(t, user.SuspendedStatus, wire.LoginErrSuspendedAccountAge)
+
+}

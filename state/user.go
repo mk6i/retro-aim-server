@@ -176,6 +176,8 @@ type User struct {
 	//  2: limit disclosure
 	//  3: full disclosure
 	RegStatus int
+	// SuspendedStatus is the account suspended status
+	SuspendedStatus uint16
 	// EmailAddress is the email address set by the AIM client.
 	EmailAddress string
 	// ICQAffiliations holds information about the user's affiliations,

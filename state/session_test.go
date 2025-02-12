@@ -1,6 +1,7 @@
 package state
 
 import (
+	"net/netip"
 	"sync"
 	"testing"
 	"time"
@@ -64,6 +65,14 @@ func TestSession_SetAndGetClientID(t *testing.T) {
 	clientID := "AIM Client ID"
 	s.SetClientID(clientID)
 	assert.Equal(t, clientID, s.ClientID())
+}
+
+func TestSession_SetAndGetRemoteAddr(t *testing.T) {
+	s := NewSession()
+	assert.Empty(t, s.RemoteAddr())
+	remoteAddr, _ := netip.ParseAddrPort("1.2.3.4:1234")
+	s.SetRemoteAddr(&remoteAddr)
+	assert.Equal(t, &remoteAddr, s.RemoteAddr())
 }
 
 func TestSession_TLVUserInfo(t *testing.T) {
