@@ -282,6 +282,234 @@ func TestOSCARProxy_AddDeny(t *testing.T) {
 	}
 }
 
+func TestOSCARProxy_ChangePassword(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg string
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully change password",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_change_passwd oldpass newpass"),
+			mockParams: mockParams{
+				adminParams: adminParams{
+					infoChangeRequestParams: infoChangeRequestParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpass"),
+										wire.NewTLVBE(wire.AdminTLVNewPassword, "newpass"),
+									},
+								},
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+									Permissions: wire.AdminInfoPermissionsReadWrite,
+									TLVBlock: wire.TLVBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.AdminTLVNewPassword, []byte{}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantMsg: "ADMIN_PASSWD_STATUS:0",
+		},
+		{
+			name:     "change password - invalid password length",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_change_passwd oldpass np"),
+			mockParams: mockParams{
+				adminParams: adminParams{
+					infoChangeRequestParams: infoChangeRequestParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpass"),
+										wire.NewTLVBE(wire.AdminTLVNewPassword, "np"),
+									},
+								},
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+									Permissions: wire.AdminInfoPermissionsReadWrite,
+									TLVBlock: wire.TLVBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.AdminTLVNewPassword, []byte{}),
+											wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidPasswordLength),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantMsg: "ERROR:911",
+		},
+		{
+			name:     "change password - incorrect password",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_change_passwd oldpass baddpass"),
+			mockParams: mockParams{
+				adminParams: adminParams{
+					infoChangeRequestParams: infoChangeRequestParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpass"),
+										wire.NewTLVBE(wire.AdminTLVNewPassword, "baddpass"),
+									},
+								},
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+									Permissions: wire.AdminInfoPermissionsReadWrite,
+									TLVBlock: wire.TLVBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.AdminTLVNewPassword, []byte{}),
+											wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorValidatePassword),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantMsg: "ERROR:912",
+		},
+		{
+			name:     "change password - catch-all error response",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_change_passwd oldpass baddpass"),
+			mockParams: mockParams{
+				adminParams: adminParams{
+					infoChangeRequestParams: infoChangeRequestParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpass"),
+										wire.NewTLVBE(wire.AdminTLVNewPassword, "baddpass"),
+									},
+								},
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+									Permissions: wire.AdminInfoPermissionsReadWrite,
+									TLVBlock: wire.TLVBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.AdminTLVNewPassword, []byte{}),
+											wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorAllOtherErrors),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantMsg: "ERROR:913",
+		},
+		{
+			name:     "change password - runtime error from admin svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_change_passwd oldpass baddpass"),
+			mockParams: mockParams{
+				adminParams: adminParams{
+					infoChangeRequestParams: infoChangeRequestParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpass"),
+										wire.NewTLVBE(wire.AdminTLVNewPassword, "baddpass"),
+									},
+								},
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "change password - unexpected response from admin svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_change_passwd oldpass baddpass"),
+			mockParams: mockParams{
+				adminParams: adminParams{
+					infoChangeRequestParams: infoChangeRequestParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpass"),
+										wire.NewTLVBE(wire.AdminTLVNewPassword, "baddpass"),
+									},
+								},
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNACError{},
+							},
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_change_passwd`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			adminSvc := newMockAdminService(t)
+			for _, params := range tc.mockParams.infoChangeRequestParams {
+				adminSvc.EXPECT().
+					InfoChangeRequest(ctx, matchSession(params.me), wire.SNACFrame{}, params.inBody).
+					Return(params.msg, params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:       slog.Default(),
+				AdminService: adminSvc,
+			}
+			msg := svc.ChangePassword(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
 func TestOSCARProxy_ChatAccept(t *testing.T) {
 	fnNewChatNavParams := func(err error) chatNavParams {
 		ret := chatNavParams{

@@ -421,6 +421,13 @@ func TOC(deps Container) toc.Server {
 		Logger:     logger,
 		ListenAddr: net.JoinHostPort(deps.cfg.TOCHost, deps.cfg.TOCPort),
 		BOSProxy: toc.OSCARProxy{
+			AdminService: foodgroup.NewAdminService(
+				deps.sqLiteUserStore,
+				deps.sqLiteUserStore,
+				deps.inMemorySessionManager,
+				deps.inMemorySessionManager,
+				deps.logger,
+			),
 			AuthService: foodgroup.NewAuthService(
 				deps.cfg,
 				deps.inMemorySessionManager,

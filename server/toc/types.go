@@ -88,3 +88,7 @@ type CookieBaker interface {
 	Crack(data []byte) ([]byte, error)
 	Issue(data []byte) ([]byte, error)
 }
+
+type AdminService interface {
+	InfoChangeRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x07_0x04_AdminInfoChangeRequest) (wire.SNACMessage, error)
+}

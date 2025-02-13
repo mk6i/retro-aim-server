@@ -160,6 +160,9 @@ packages:
           filename: "mock_user_manager_manager_test.go"
   github.com/mk6i/retro-aim-server/server/toc:
     interfaces:
+      AdminService:
+        config:
+          filename: "mock_admin_service_test.go"
       BuddyService:
         config:
           filename: "mock_buddy_service_test.go"

@@ -99,6 +99,7 @@ func (c *ChatRegistry) RetrieveSess(chatID int) *state.Session {
 //   - Receives incoming messages from the OSCAR server and translates them into
 //     TOC responses for the client.
 type OSCARProxy struct {
+	AdminService        AdminService
 	AuthService         AuthService
 	BuddyListRegistry   BuddyListRegistry
 	BuddyService        BuddyService
@@ -164,6 +165,8 @@ func (s OSCARProxy) RecvClientCmd(
 		return s.Evil(ctx, sessBOS, payload), true
 	case "toc_get_info":
 		return s.GetInfoURL(ctx, sessBOS, payload), true
+	case "toc_change_passwd":
+		return s.ChangePassword(ctx, sessBOS, payload), true
 	case "toc_chat_join", "toc_chat_accept":
 		var chatID int
 		var msg string
@@ -293,6 +296,55 @@ func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, cmd []byte) 
 		return s.runtimeErr(ctx, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
 	}
 	return ""
+}
+
+// ChangePassword handles the toc_change_passwd TOC command.
+//
+// From the TiK documentation:
+//
+//	Change a user's password. An ADMIN_PASSWD_STATUS or ERROR message will be
+//	sent back to the client.
+//
+// Command syntax: toc_change_passwd <existing_passwd> <new_passwd>
+func (s OSCARProxy) ChangePassword(ctx context.Context, me *state.Session, cmd []byte) string {
+	var oldPass, newPass string
+
+	if _, err := parseArgs(cmd, "toc_change_passwd", &oldPass, &newPass); err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
+	}
+
+	reqSNAC := wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(wire.AdminTLVOldPassword, oldPass),
+				wire.NewTLVBE(wire.AdminTLVNewPassword, newPass),
+			},
+		},
+	}
+
+	reply, err := s.AdminService.InfoChangeRequest(ctx, me, wire.SNACFrame{}, reqSNAC)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("AdminService.InfoChangeRequest: %w", err))
+	}
+
+	replyBody, ok := reply.Body.(wire.SNAC_0x07_0x05_AdminChangeReply)
+	if !ok {
+		return s.runtimeErr(ctx, fmt.Errorf("AdminService.InfoChangeRequest: unexpected response type %v", replyBody))
+	}
+
+	code, ok := replyBody.Uint16BE(wire.AdminTLVErrorCode)
+	if ok {
+		switch code {
+		case wire.AdminInfoErrorInvalidPasswordLength:
+			return "ERROR:911"
+		case wire.AdminInfoErrorValidatePassword:
+			return "ERROR:912"
+		default:
+			return "ERROR:913"
+		}
+	}
+
+	return "ADMIN_PASSWD_STATUS:0"
 }
 
 // ChatAccept handles the toc_chat_accept TOC command.
