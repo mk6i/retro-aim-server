@@ -167,6 +167,8 @@ func (s OSCARProxy) RecvClientCmd(
 		return s.GetInfoURL(ctx, sessBOS, payload), true
 	case "toc_change_passwd":
 		return s.ChangePassword(ctx, sessBOS, payload), true
+	case "toc_format_nickname":
+		return s.FormatNickname(ctx, sessBOS, payload), true
 	case "toc_chat_join", "toc_chat_accept":
 		var chatID int
 		var msg string
@@ -761,6 +763,55 @@ func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, cmd []byte) str
 	}
 
 	return ""
+}
+
+// FormatNickname handles the toc_format_nickname TOC command.
+//
+// From the TiK documentation:
+//
+//	Reformat a user's nickname. An ADMIN_NICK_STATUS or ERROR message will be
+//	sent back to the client.
+//
+// Command syntax: toc_format_nickname <new_format>
+func (s OSCARProxy) FormatNickname(ctx context.Context, me *state.Session, cmd []byte) string {
+	var newFormat string
+
+	if _, err := parseArgs(cmd, "toc_format_nickname", &newFormat); err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
+	}
+
+	// remove curly braces added by TiK
+	newFormat = strings.Trim(newFormat, "{}")
+
+	reqSNAC := wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, newFormat),
+			},
+		},
+	}
+
+	reply, err := s.AdminService.InfoChangeRequest(ctx, me, wire.SNACFrame{}, reqSNAC)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("AdminService.InfoChangeRequest: %w", err))
+	}
+
+	replyBody, ok := reply.Body.(wire.SNAC_0x07_0x05_AdminChangeReply)
+	if !ok {
+		return s.runtimeErr(ctx, fmt.Errorf("AdminService.InfoChangeRequest: unexpected response type %v", replyBody))
+	}
+
+	code, ok := replyBody.Uint16BE(wire.AdminTLVErrorCode)
+	if ok {
+		switch code {
+		case wire.AdminInfoErrorInvalidNickNameLength, wire.AdminInfoErrorInvalidNickName:
+			return "ERROR:911"
+		default:
+			return "ERROR:913"
+		}
+	}
+
+	return "ADMIN_NICK_STATUS:0"
 }
 
 // GetDirSearchURL handles the toc_dir_search TOC command.
