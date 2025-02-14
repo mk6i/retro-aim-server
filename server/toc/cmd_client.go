@@ -151,6 +151,8 @@ func (s OSCARProxy) RecvClientCmd(
 		return s.InitDone(ctx, sessBOS, payload), true
 	case "toc_add_buddy":
 		return s.AddBuddy(ctx, sessBOS, payload), true
+	case "toc_get_status":
+		return s.GetStatus(ctx, sessBOS, payload), true
 	case "toc_remove_buddy":
 		return s.RemoveBuddy(ctx, sessBOS, payload), true
 	case "toc_add_permit":
@@ -927,6 +929,45 @@ func (s OSCARProxy) GetInfoURL(ctx context.Context, me *state.Session, cmd []byt
 	p.Add("user", user)
 
 	return fmt.Sprintf("GOTO_URL:profile:info?%s", p.Encode())
+}
+
+// GetStatus handles the toc_get_status TOC command.
+//
+// From the TOC2 documentation:
+//
+//	This useful command wasn't ever really documented. It returns either an
+//	UPDATE_BUDDY message or an ERROR message depending on whether or not the
+//	guy appears to be online.
+//
+// Command syntax: toc_get_status <screenname>
+func (s OSCARProxy) GetStatus(ctx context.Context, me *state.Session, cmd []byte) string {
+	var them string
+
+	if _, err := parseArgs(cmd, "toc_get_status", &them); err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
+	}
+
+	inBody := wire.SNAC_0x02_0x05_LocateUserInfoQuery{
+		ScreenName: them,
+	}
+
+	info, err := s.LocateService.UserInfoQuery(ctx, me, wire.SNACFrame{}, inBody)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("LocateService.UserInfoQuery: %w", err))
+	}
+
+	switch v := info.Body.(type) {
+	case wire.SNACError:
+		if v.Code == wire.ErrorCodeNotLoggedOn {
+			return fmt.Sprintf("ERROR:901:%s", them)
+		} else {
+			return s.runtimeErr(ctx, fmt.Errorf("LocateService.UserInfoQuery error code: %d", v.Code))
+		}
+	case wire.SNAC_0x02_0x06_LocateUserInfoReply:
+		return userInfoToUpdateBuddy(v.TLVUserInfo)
+	default:
+		return s.runtimeErr(ctx, fmt.Errorf("AdminService.InfoChangeRequest: unexpected response type %v", v))
+	}
 }
 
 // InitDone handles the toc_init_done TOC command.

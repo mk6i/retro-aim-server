@@ -237,15 +237,7 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 //
 // Command syntax: UPDATE_BUDDY:<Buddy User>:<Online? T/F>:<Evil Amount>:<Signon Time>:<IdleTime>:<UC>
 func (s OSCARProxy) UpdateBuddyArrival(snac wire.SNAC_0x03_0x0B_BuddyArrived) string {
-	online, _ := snac.Uint32BE(wire.OServiceUserInfoSignonTOD)
-	idle, _ := snac.Uint16BE(wire.OServiceUserInfoIdleTime)
-	uc := [3]string{" ", "O", " "}
-	if snac.IsAway() {
-		uc[2] = "U"
-	}
-	warning := fmt.Sprintf("%d", snac.WarningLevel/10)
-	class := strings.Join(uc[:], "")
-	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%s:%d:%d:%s", snac.ScreenName, "T", warning, online, idle, class)
+	return userInfoToUpdateBuddy(snac.TLVUserInfo)
 }
 
 // UpdateBuddyDeparted handles the UPDATE_BUDDY TOC command for buddy departure events.
@@ -280,4 +272,18 @@ func sendOrCancel(ctx context.Context, ch chan<- []byte, msg string) {
 	case ch <- []byte(msg):
 		return
 	}
+}
+
+// userInfoToUpdateBuddy creates an UPDATE_BUDDY server reply from a User
+// Info TLV.
+func userInfoToUpdateBuddy(snac wire.TLVUserInfo) string {
+	online, _ := snac.Uint32BE(wire.OServiceUserInfoSignonTOD)
+	idle, _ := snac.Uint16BE(wire.OServiceUserInfoIdleTime)
+	uc := [3]string{" ", "O", " "}
+	if snac.IsAway() {
+		uc[2] = "U"
+	}
+	warning := fmt.Sprintf("%d", snac.WarningLevel/10)
+	class := strings.Join(uc[:], "")
+	return fmt.Sprintf("UPDATE_BUDDY:%s:%s:%s:%d:%d:%s", snac.ScreenName, "T", warning, online, idle, class)
 }

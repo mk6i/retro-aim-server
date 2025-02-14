@@ -2092,6 +2092,167 @@ func TestOSCARProxy_GetInfoURL(t *testing.T) {
 	}
 }
 
+func TestOSCARProxy_GetStatus(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg string
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully request status",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_get_status them"),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					userInfoQueryParams: userInfoQueryParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x05_LocateUserInfoQuery{
+								ScreenName: "them",
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNAC_0x02_0x06_LocateUserInfoReply{
+									TLVUserInfo: wire.TLVUserInfo{
+										ScreenName:   "them",
+										WarningLevel: 0,
+										TLVBlock: wire.TLVBlock{
+											TLVList: wire.TLVList{
+												wire.NewTLVBE(wire.OServiceUserInfoSignonTOD, uint32(1234)),
+												wire.NewTLVBE(wire.OServiceUserInfoIdleTime, uint16(5678)),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantMsg: "UPDATE_BUDDY:them:T:0:1234:5678: O ",
+		},
+		{
+			name:     "request status, receive err from locate svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_get_status them"),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					userInfoQueryParams: userInfoQueryParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x05_LocateUserInfoQuery{
+								ScreenName: "them",
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "request status, user not online",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_get_status them"),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					userInfoQueryParams: userInfoQueryParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x05_LocateUserInfoQuery{
+								ScreenName: "them",
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNACError{
+									Code: wire.ErrorCodeNotLoggedOn,
+								},
+							},
+						},
+					},
+				},
+			},
+			wantMsg: "ERROR:901:them",
+		},
+		{
+			name:     "request status, receive unexpected error code",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_get_status them"),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					userInfoQueryParams: userInfoQueryParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x05_LocateUserInfoQuery{
+								ScreenName: "them",
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNACError{
+									Code: wire.ErrorCodeInvalidSnac,
+								},
+							},
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "request status, unexpected response from locate svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_get_status them"),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					userInfoQueryParams: userInfoQueryParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x05_LocateUserInfoQuery{
+								ScreenName: "them",
+							},
+							msg: wire.SNACMessage{
+								Body: wire.SNAC_0x0E_0x04_ChatUsersLeft{},
+							},
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_get_status`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			locateSvc := newMockLocateService(t)
+			for _, params := range tc.mockParams.userInfoQueryParams {
+				locateSvc.EXPECT().
+					UserInfoQuery(mock.Anything, matchSession(params.me), wire.SNACFrame{}, params.inBody).
+					Return(params.msg, params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:        slog.Default(),
+				LocateService: locateSvc,
+			}
+			msg := svc.GetStatus(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
 func TestOSCARProxy_InitDone(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
