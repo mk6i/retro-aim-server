@@ -195,6 +195,8 @@ func (s OSCARProxy) RecvClientCmd(
 		return msg, true
 	case "toc_chat_send":
 		return s.ChatSend(ctx, chatRegistry, payload), true
+	case "toc_chat_whisper":
+		return s.ChatWhisper(ctx, chatRegistry, payload), true
 	case "toc_chat_leave":
 		return s.ChatLeave(ctx, chatRegistry, payload), true
 	case "toc_set_info":
@@ -691,6 +693,87 @@ func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, cm
 
 	if reply == nil {
 		return s.runtimeErr(ctx, errors.New("ChatService.ChannelMsgToHost: missing response "))
+	}
+
+	switch v := reply.Body.(type) {
+	case wire.SNAC_0x0E_0x06_ChatChannelMsgToClient:
+		msgInfo, ok := v.Bytes(wire.ChatTLVMessageInfo)
+		if !ok {
+			return s.runtimeErr(ctx, errors.New("ChatService.ChannelMsgToHost: missing wire.ChatTLVMessageInfo"))
+		}
+		reflectMsg, err := wire.UnmarshalChatMessageText(msgInfo)
+		if err != nil {
+			return s.runtimeErr(ctx, fmt.Errorf("wire.UnmarshalChatMessageText: %w", err))
+		}
+
+		senderInfo, ok := v.Bytes(wire.ChatTLVSenderInformation)
+		if !ok {
+			return s.runtimeErr(ctx, errors.New("ChatService.ChannelMsgToHost: missing wire.ChatTLVSenderInformation"))
+		}
+
+		var userInfo wire.TLVUserInfo
+		if err := wire.UnmarshalBE(&userInfo, bytes.NewReader(senderInfo)); err != nil {
+			return s.runtimeErr(ctx, fmt.Errorf("wire.UnmarshalBE: %w", err))
+		}
+
+		return fmt.Sprintf("CHAT_IN:%d:%s:F:%s", chatID, userInfo.ScreenName, reflectMsg)
+	default:
+		return s.runtimeErr(ctx, errors.New("ChatService.ChannelMsgToHost: unexpected response"))
+	}
+}
+
+// ChatWhisper handles the toc_chat_send TOC command.
+//
+// From the TiK documentation:
+//
+//	Send a message in a chat room using the chat room id from CHAT_JOIN.
+//	This message is directed at only one person. (Currently you DO need to add
+//	this to your UI.) Remember to quote and encode the message. Chat whispering
+//	is different from IMs since it is linked to a chat room, and should usually
+//	be displayed in the chat room UI.
+//
+// Command syntax: toc_chat_whisper <Chat Room ID> <dst_user> <Message>
+func (s OSCARProxy) ChatWhisper(ctx context.Context, chatRegistry *ChatRegistry, cmd []byte) string {
+	var chatIDStr, recip, msg string
+
+	if _, err := parseArgs(cmd, "toc_chat_whisper", &chatIDStr, &recip, &msg); err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
+	}
+
+	chatID, err := strconv.Atoi(chatIDStr)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("strconv.Atoi: %w", err))
+	}
+
+	me := chatRegistry.RetrieveSess(chatID)
+	if me == nil {
+		return s.runtimeErr(ctx, fmt.Errorf("chatRegistry.RetrieveSess: session for chat ID `%d` not found", chatID))
+	}
+
+	block := wire.TLVRestBlock{}
+	// the order of these TLVs matters for AIM 2.x. if out of order, screen
+	// names do not appear with each chat message.
+	//block.Append(wire.NewTLVBE(wire.ChatTLVEnableReflectionFlag, uint8(1)))
+	block.Append(wire.NewTLVBE(wire.ChatTLVSenderInformation, me.TLVUserInfo()))
+	//block.Append(wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}))
+	block.Append(wire.NewTLVBE(0x06, recip))
+	block.Append(wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
+		TLVList: wire.TLVList{
+			wire.NewTLVBE(wire.ChatTLVMessageInfoText, msg),
+		},
+	}))
+
+	snac := wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+		Channel:      wire.ICBMChannelMIME,
+		TLVRestBlock: block,
+	}
+	reply, err := s.ChatService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("ChatService.ChannelMsgToHost: %w", err))
+	}
+
+	if reply == nil {
+		return ""
 	}
 
 	switch v := reply.Body.(type) {

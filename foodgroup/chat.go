@@ -116,7 +116,12 @@ func (s ChatService) transformChatMessage(inBody wire.SNAC_0x0E_0x05_ChatChannel
 		// the order of these TLVs matters for AIM 2.x. if out of order, screen
 		// names do not appear with each chat message.
 		block.Append(wire.NewTLVBE(wire.ChatTLVSenderInformation, sess.TLVUserInfo()))
-		block.Append(wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}))
+		if inBody.HasTag(wire.ChatTLVPublicWhisperFlag) {
+			block.Append(wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}))
+		} else {
+			b, _ := inBody.Bytes(0x06)
+			block.Append(wire.NewTLVBE(0x06, b))
+		}
 		block.Append(wire.NewTLVBE(wire.ChatTLVMessageInfo, msg))
 		return block
 	}
