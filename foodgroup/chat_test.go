@@ -121,6 +121,64 @@ func TestChatService_ChannelMsgToHost(t *testing.T) {
 			},
 		},
 		{
+			name: "send chat whisper",
+			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime,
+				sessOptChatRoomCookie("the-chat-cookie")),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+					Cookie:  1234,
+					Channel: 14,
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ChatTLVWhisperToUser, "them"),
+							wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
+								TLVList: wire.TLVList{
+									wire.NewTLVBE(wire.ChatTLVMessageInfoText,
+										"<HTML><BODY BGCOLOR=\"#ffffff\"><FONT LANG=\"0\">Hello</FONT></BODY></HTML>"),
+								},
+							}),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				chatMessageRelayerParams: chatMessageRelayerParams{
+					chatRelayToScreenNameParams: chatRelayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("them"),
+							cookie:     "the-chat-cookie",
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.Chat,
+									SubGroup:  wire.ChatChannelMsgToClient,
+								},
+								Body: wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+									Cookie:  1234,
+									Channel: 14,
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.ChatTLVSenderInformation,
+												newTestSession("user_sending_chat_msg", sessOptCannedSignonTime).TLVUserInfo()),
+											wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
+												TLVList: wire.TLVList{
+													wire.NewTLVBE(wire.ChatTLVMessageInfoText,
+														"<HTML><BODY BGCOLOR=\"#ffffff\"><FONT LANG=\"0\">Hello</FONT></BODY></HTML>"),
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectOutput: nil,
+		},
+		{
 			name: "send die roll",
 			userSession: newTestSession("user_sending_chat_msg", sessOptCannedSignonTime,
 				sessOptChatRoomCookie("the-chat-cookie")),
@@ -352,6 +410,10 @@ func TestChatService_ChannelMsgToHost(t *testing.T) {
 			for _, params := range tc.mockParams.chatRelayToAllExceptParams {
 				chatMessageRelayer.EXPECT().
 					RelayToAllExcept(mock.Anything, params.cookie, params.screenName, params.message)
+			}
+			for _, params := range tc.mockParams.chatRelayToScreenNameParams {
+				chatMessageRelayer.EXPECT().
+					RelayToScreenName(mock.Anything, params.cookie, params.screenName, params.message)
 			}
 
 			svc := NewChatService(chatMessageRelayer)

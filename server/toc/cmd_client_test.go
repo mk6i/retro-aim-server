@@ -1463,6 +1463,132 @@ func TestOSCARProxy_ChatSend(t *testing.T) {
 	}
 }
 
+func TestOSCARProxy_ChatWhisper(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// givenChatRegistry is the chat registry passed to the function
+		givenChatRegistry *ChatRegistry
+		// wantMsg is the expected TOC response
+		wantMsg string
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully send chat whisper",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_whisper 0 them "Hello world!"`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := NewChatRegistry()
+				reg.RegisterSess(0, newTestSession("me"))
+				return reg
+			}(),
+			mockParams: mockParams{
+				chatParams: chatParams{
+					channelMsgToHostParamsChat: channelMsgToHostParamsChat{
+						{
+							sender: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+								Channel: wire.ICBMChannelMIME,
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ChatTLVSenderInformation, newTestSession("me").TLVUserInfo()),
+										wire.NewTLVBE(wire.ChatTLVWhisperToUser, "them"),
+										wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
+											TLVList: wire.TLVList{
+												wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world!"),
+											},
+										}),
+									},
+								},
+							},
+							result: nil,
+						},
+					},
+				},
+			},
+			wantMsg: "",
+		},
+		{
+			name:     "send chat whisper, receive error from chat svc",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_chat_whisper 0 them "Hello world!"`),
+			givenChatRegistry: func() *ChatRegistry {
+				reg := NewChatRegistry()
+				reg.RegisterSess(0, newTestSession("me"))
+				return reg
+			}(),
+			mockParams: mockParams{
+				chatParams: chatParams{
+					channelMsgToHostParamsChat: channelMsgToHostParamsChat{
+						{
+							sender: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+								Channel: wire.ICBMChannelMIME,
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ChatTLVSenderInformation, newTestSession("me").TLVUserInfo()),
+										wire.NewTLVBE(wire.ChatTLVWhisperToUser, "them"),
+										wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
+											TLVList: wire.TLVList{
+												wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world!"),
+											},
+										}),
+									},
+								},
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "chat room ID with invalid format",
+			givenCmd: []byte(`toc_chat_whisper zero them "Hello world!"`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+		{
+			name:              "missing chat session",
+			givenCmd:          []byte(`toc_chat_whisper 0 them "Hello world!"`),
+			givenChatRegistry: NewChatRegistry(),
+			wantMsg:           cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_chat_whisper`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			chatSvc := newMockChatService(t)
+			for _, params := range tc.mockParams.channelMsgToHostParamsChat {
+				chatSvc.EXPECT().
+					ChannelMsgToHost(ctx, matchSession(params.sender), wire.SNACFrame{}, params.inBody).
+					Return(params.result, params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:      slog.Default(),
+				ChatService: chatSvc,
+			}
+			msg := svc.ChatWhisper(ctx, tc.givenChatRegistry, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
 func TestOSCARProxy_Evil(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name

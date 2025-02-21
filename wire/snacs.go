@@ -1047,6 +1047,7 @@ const (
 	ChatRoomInfoOwner      uint16 = 0x0030
 
 	ChatTLVPublicWhisperFlag    uint16 = 0x01
+	ChatTLVWhisperToUser        uint16 = 0x02
 	ChatTLVSenderInformation    uint16 = 0x03
 	ChatTLVMessageInfo          uint16 = 0x05
 	ChatTLVEnableReflectionFlag uint16 = 0x06

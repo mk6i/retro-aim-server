@@ -52,10 +52,11 @@ type ChatService struct {
 	randRollDie        func(sides int) int
 }
 
-// ChannelMsgToHost relays wire.ChatChannelMsgToClient SNAC sent from a user
-// to the other chat room participants. It returns the same
-// wire.ChatChannelMsgToClient message back to the user if the chat reflection
-// TLV flag is set, otherwise return nil.
+// ChannelMsgToHost relays wire.ChatChannelMsgToClient to chat room
+// participants. If TLV wire.ChatTLVWhisperToUser is set, "whisper" the message
+// to just that user and omit the remaining participants. If TLV
+// wire.ChatTLVEnableReflectionFlag is set, return the message ("reflect") back
+// to the caller.
 func (s ChatService) ChannelMsgToHost(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x0E_0x05_ChatChannelMsgToHost) (*wire.SNACMessage, error) {
 	frameOut := wire.SNACFrame{
 		FoodGroup: wire.Chat,
@@ -71,16 +72,25 @@ func (s ChatService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 	}
 
 	var err error
-	bodyOut.TLVRestBlock, err = s.transformChatMessage(inBody, sess)
-	if err != nil {
+	if bodyOut.TLVRestBlock, err = s.transformChatMessage(inBody, sess); err != nil {
 		return nil, err
 	}
 
-	// send message to all the participants except sender
-	s.chatMessageRelayer.RelayToAllExcept(ctx, sess.ChatRoomCookie(), sess.IdentScreenName(), wire.SNACMessage{
-		Frame: frameOut,
-		Body:  bodyOut,
-	})
+	if inBody.HasTag(wire.ChatTLVWhisperToUser) && !inBody.HasTag(wire.ChatTLVPublicWhisperFlag) {
+		// forward a whisper message to just one recipient
+		r, _ := inBody.String(wire.ChatTLVWhisperToUser)
+		recip := state.NewIdentScreenName(r)
+		s.chatMessageRelayer.RelayToScreenName(ctx, sess.ChatRoomCookie(), recip, wire.SNACMessage{
+			Frame: frameOut,
+			Body:  bodyOut,
+		})
+	} else {
+		// forward  message all participants, except sender
+		s.chatMessageRelayer.RelayToAllExcept(ctx, sess.ChatRoomCookie(), sess.IdentScreenName(), wire.SNACMessage{
+			Frame: frameOut,
+			Body:  bodyOut,
+		})
+	}
 
 	var ret *wire.SNACMessage
 	if _, ackMsg := inBody.Bytes(wire.ChatTLVEnableReflectionFlag); ackMsg {
@@ -116,7 +126,10 @@ func (s ChatService) transformChatMessage(inBody wire.SNAC_0x0E_0x05_ChatChannel
 		// the order of these TLVs matters for AIM 2.x. if out of order, screen
 		// names do not appear with each chat message.
 		block.Append(wire.NewTLVBE(wire.ChatTLVSenderInformation, sess.TLVUserInfo()))
-		block.Append(wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}))
+		if inBody.HasTag(wire.ChatTLVPublicWhisperFlag) {
+			// send message to all chat room participants
+			block.Append(wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}))
+		}
 		block.Append(wire.NewTLVBE(wire.ChatTLVMessageInfo, msg))
 		return block
 	}
