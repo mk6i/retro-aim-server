@@ -15,7 +15,7 @@ RUN go mod download
 RUN go build -o retro_aim_server ./cmd/server
  
 # Tells Docker which network port your container listens on
-EXPOSE 8080 5194 5190 5195 5191 5193 5912 5196 5197
+EXPOSE 8080 5194 5190 5195 5191 5193 5192 5196 5197
  
 # Specifies the executable command that runs when the container starts
 CMD ["/app/retro_aim_server", "-config", "config/settings.env"]
