@@ -4,15 +4,15 @@ services:
   retro-aim-server:
     build: .
     ports:
-      - "8080:8080"
-      - "5194:5194"
       - "5190:5190"
-      - "5195:5195"
       - "5191:5191"
+      - "5192:5192"
       - "5193:5193"
-      - "5912:5912"
+      - "5194:5194"
+      - "5195:5195"
       - "5196:5196"
       - "5197:5197"
+      - "8080:8080"
     volumes:
       - ./config/settings.env:/app/config/settings.env
     environment:
