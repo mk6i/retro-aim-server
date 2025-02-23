@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/mk6i/retro-aim-server/wire"
 )
@@ -201,13 +202,14 @@ type InMemoryChatSessionManager struct {
 // session is replaced by a new one.
 func (s *InMemoryChatSessionManager) AddSession(ctx context.Context, chatCookie string, screenName DisplayScreenName) (*Session, error) {
 	s.mapMutex.Lock()
-	defer s.mapMutex.Unlock()
-
 	if _, ok := s.store[chatCookie]; !ok {
 		s.store[chatCookie] = NewInMemorySessionManager(s.logger)
 	}
-
 	sessionManager := s.store[chatCookie]
+	s.mapMutex.Unlock()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
 
 	sess, err := sessionManager.AddSession(ctx, screenName)
 	if err != nil {
@@ -215,6 +217,23 @@ func (s *InMemoryChatSessionManager) AddSession(ctx context.Context, chatCookie 
 	}
 
 	sess.SetChatRoomCookie(chatCookie)
+
+	s.mapMutex.Lock()
+	defer s.mapMutex.Unlock()
+
+	// at this point it's guaranteed that the prior chat session and corresponding
+	// session manager (if the room count dropped to 0) were removed.
+	//
+	// - SessionManager.RemoveSession() was called because that unlocks
+	//   SessionManager.AddSession(), which unblocks ChatSessionManager.AddSession()
+	// - ChatSessionManager.RemoveSession() must call room deletion routine before
+	//   releasing mapMutex
+	//
+	// now restore the chat session manager, which may have been deleted by the
+	// call to RemoveSession().
+	if _, ok := s.store[chatCookie]; !ok {
+		s.store[chatCookie] = sessionManager
+	}
 
 	return sess, nil
 }

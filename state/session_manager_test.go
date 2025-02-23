@@ -441,22 +441,31 @@ func TestInMemoryChatSessionManager_RemoveSession(t *testing.T) {
 func TestInMemoryChatSessionManager_RemoveSession_DoubleLogin(t *testing.T) {
 	sm := NewInMemoryChatSessionManager(slog.Default())
 
-	user1, err := sm.AddSession(context.Background(), "chat-room-1", "user-screen-name-1")
+	chatSess1, err := sm.AddSession(context.Background(), "chat-room-1", "user-screen-name-1")
 	assert.NoError(t, err)
 
-	var wg sync.WaitGroup
+	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
 	go func() {
-		defer wg.Done()
-		user2, err := sm.AddSession(context.Background(), "chat-room-1", "user-screen-name-1")
+		// add the session again. this call blocks until RemoveSession makes
+		// room for the new session
+		chatSess2, err := sm.AddSession(context.Background(), "chat-room-1", "user-screen-name-1")
 		assert.NoError(t, err)
-		assert.NotSame(t, user1, user2)
+		assert.Equal(t, chatSess1.DisplayScreenName(), chatSess2.DisplayScreenName())
+		wg.Done()
 	}()
 
-	sm.RemoveSession(user1)
-	wg.Wait()
+	// wait for AddSession() to block
+	for sm.mapMutex.TryRLock() {
+		sm.mapMutex.RUnlock()
+	}
 
-	assert.Len(t, sm.AllSessions("chat-room-1"), 1)
+	// AddSession() is blocked waiting for the log. this should unblock
+	// AddSession()
+	sm.RemoveSession(chatSess1)
+
+	wg.Wait()
 }
 
 func TestInMemoryChatSessionManager_RemoveUserFromAllChats(t *testing.T) {
