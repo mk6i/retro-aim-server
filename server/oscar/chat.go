@@ -71,6 +71,10 @@ func (rt ChatServer) Start(ctx context.Context) error {
 }
 
 func (rt ChatServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) error {
+	defer func() {
+		rwc.Close()
+	}()
+
 	flapc := wire.NewFlapClient(100, rwc, rwc)
 	if err := flapc.SendSignonFrame(nil); err != nil {
 		return err
@@ -95,7 +99,6 @@ func (rt ChatServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 
 	defer func() {
 		chatSess.Close()
-		rwc.Close()
 		rt.SignoutChat(ctx, chatSess)
 	}()
 
