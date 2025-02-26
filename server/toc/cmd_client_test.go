@@ -3287,6 +3287,8 @@ func TestOSCARProxy_Signout(t *testing.T) {
 		name string
 		// me is the TOC user session
 		me *state.Session
+		// givenChatRegistry is the chat registry passed to the function
+		chatRegistry *ChatRegistry
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -3294,6 +3296,19 @@ func TestOSCARProxy_Signout(t *testing.T) {
 		{
 			name: "successfully sign out",
 			me:   newTestSession("me"),
+			chatRegistry: func() *ChatRegistry {
+				cr := NewChatRegistry()
+
+				s1 := state.NewSession()
+				s1.SetIdentScreenName(state.NewIdentScreenName("me1"))
+				cr.RegisterSess(0, s1)
+
+				s2 := state.NewSession()
+				s2.SetIdentScreenName(state.NewIdentScreenName("me2"))
+				cr.RegisterSess(1, s2)
+
+				return cr
+			}(),
 			mockParams: mockParams{
 				buddyParams: buddyParams{
 					broadcastBuddyDepartedParams: broadcastBuddyDepartedParams{
@@ -3315,12 +3330,23 @@ func TestOSCARProxy_Signout(t *testing.T) {
 							me: state.NewIdentScreenName("me"),
 						},
 					},
+					signoutChatParams: signoutChatParams{
+						{
+							me: state.NewIdentScreenName("me1"),
+						},
+						{
+							me: state.NewIdentScreenName("me2"),
+						},
+					},
 				},
 			},
 		},
 		{
 			name: "sign out, receive error from buddy service",
 			me:   newTestSession("me"),
+			chatRegistry: func() *ChatRegistry {
+				return NewChatRegistry()
+			}(),
 			mockParams: mockParams{
 				buddyParams: buddyParams{
 					broadcastBuddyDepartedParams: broadcastBuddyDepartedParams{
@@ -3349,6 +3375,9 @@ func TestOSCARProxy_Signout(t *testing.T) {
 		{
 			name: "sign out, receive error from buddy list registry",
 			me:   newTestSession("me"),
+			chatRegistry: func() *ChatRegistry {
+				return NewChatRegistry()
+			}(),
 			mockParams: mockParams{
 				buddyParams: buddyParams{
 					broadcastBuddyDepartedParams: broadcastBuddyDepartedParams{
@@ -3398,6 +3427,9 @@ func TestOSCARProxy_Signout(t *testing.T) {
 			for _, params := range tc.mockParams.signoutParams {
 				authSvc.EXPECT().Signout(ctx, matchSession(params.me))
 			}
+			for _, params := range tc.mockParams.signoutChatParams {
+				authSvc.EXPECT().SignoutChat(ctx, matchSession(params.me))
+			}
 
 			svc := OSCARProxy{
 				AuthService:       authSvc,
@@ -3405,7 +3437,7 @@ func TestOSCARProxy_Signout(t *testing.T) {
 				BuddyService:      buddySvc,
 				Logger:            slog.Default(),
 			}
-			svc.Signout(ctx, tc.me)
+			svc.Signout(ctx, tc.me, tc.chatRegistry)
 		})
 	}
 }

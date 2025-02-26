@@ -186,7 +186,9 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 
 	ctx = context.WithValue(ctx, "screenName", sessBOS.IdentScreenName())
 
-	defer rt.BOSProxy.Signout(ctx, sessBOS)
+	chatRegistry := NewChatRegistry()
+
+	defer rt.BOSProxy.Signout(ctx, sessBOS, chatRegistry)
 
 	// messages from TOC client
 	fromCh := make(chan wire.FLAPFrame, 1)
@@ -197,8 +199,6 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 	go rt.readFromClient(ctx, fromCh, clientFlap)
 
 	g, gCtx := errgroup.WithContext(ctx)
-
-	chatRegistry := NewChatRegistry()
 
 	g.Go(func() error {
 		return rt.BOSProxy.RecvBOS(gCtx, sessBOS, chatRegistry, toCh)

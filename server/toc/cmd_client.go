@@ -89,6 +89,24 @@ func (c *ChatRegistry) RetrieveSess(chatID int) *state.Session {
 	return c.sessions[chatID]
 }
 
+// RemoveSess removes a chat session.
+func (c *ChatRegistry) RemoveSess(chatID int) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	delete(c.sessions, chatID)
+}
+
+// Sessions retrieves all the chat sessions.
+func (c *ChatRegistry) Sessions() []*state.Session {
+	c.m.RLock()
+	defer c.m.RUnlock()
+	sessions := make([]*state.Session, 0, len(c.sessions))
+	for _, s := range c.sessions {
+		sessions = append(sessions, s)
+	}
+	return sessions
+}
+
 // OSCARProxy acts as a bridge between TOC clients and the OSCAR server,
 // translating protocol messages between the two.
 //
@@ -581,6 +599,8 @@ func (s OSCARProxy) ChatLeave(ctx context.Context, chatRegistry *ChatRegistry, c
 	s.AuthService.SignoutChat(ctx, me)
 
 	me.Close() // stop async server SNAC reply handler for this chat room
+
+	chatRegistry.RemoveSess(chatID)
 
 	return fmt.Sprintf("CHAT_LEFT:%d", chatID)
 }
@@ -1337,7 +1357,7 @@ func (s OSCARProxy) Signon(ctx context.Context, cmd []byte) (*state.Session, []s
 
 // Signout terminates a TOC session. It sends departure notifications to
 // buddies, de-registers buddy list and session.
-func (s OSCARProxy) Signout(ctx context.Context, me *state.Session) {
+func (s OSCARProxy) Signout(ctx context.Context, me *state.Session, chatRegistry *ChatRegistry) {
 	if err := s.BuddyService.BroadcastBuddyDeparted(ctx, me); err != nil {
 		s.Logger.ErrorContext(ctx, "error sending departure notifications", "err", err.Error())
 	}
@@ -1345,6 +1365,11 @@ func (s OSCARProxy) Signout(ctx context.Context, me *state.Session) {
 		s.Logger.ErrorContext(ctx, "error removing buddy list entry", "err", err.Error())
 	}
 	s.AuthService.Signout(ctx, me)
+
+	for _, sess := range chatRegistry.Sessions() {
+		s.AuthService.SignoutChat(ctx, sess)
+		sess.Close() // stop async server SNAC reply handler for this chat room
+	}
 }
 
 // newHTTPAuthToken creates a HMAC token for authenticating TOC HTTP requests
