@@ -3405,7 +3405,7 @@ func TestOSCARProxy_Signout(t *testing.T) {
 				BuddyService:      buddySvc,
 				Logger:            slog.Default(),
 			}
-			svc.Signout(ctx, tc.me)
+			svc.Signout(ctx, tc.me, nil)
 		})
 	}
 }
