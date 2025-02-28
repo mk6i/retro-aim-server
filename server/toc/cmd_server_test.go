@@ -3,6 +3,7 @@ package toc
 import (
 	"context"
 	"log/slog"
+	"net"
 	"sync"
 	"testing"
 
@@ -357,6 +358,7 @@ func TestOSCARProxy_RecvBOS_IMIn(t *testing.T) {
 						TLVList: wire.TLVList{
 							wire.NewTLVBE(wire.ICBMTLVData, []wire.ICBMCh2Fragment{
 								{
+									Capability: wire.CapChat,
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLVBE(wire.ICBMRdvTLVTagsInvitation, "join my chat!"),
@@ -373,6 +375,37 @@ func TestOSCARProxy_RecvBOS_IMIn(t *testing.T) {
 			},
 			chatRegistry: NewChatRegistry(),
 			wantCmd:      []byte("CHAT_INVITE:the room:0:them:join my chat!"),
+		},
+		{
+			name: "receive file transfer rendezvous IM",
+			me:   newTestSession("me"),
+			givenMsg: wire.SNACMessage{
+				Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+					ChannelID:   wire.ICBMChannelRendezvous,
+					TLVUserInfo: newTestSession("them").TLVUserInfo(),
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ICBMTLVWantEvents, []byte{}),
+							wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+								Cookie:     [8]byte{'h', 'a', 'h', 'a', 'h', 'a', 'h', 'a'},
+								Type:       wire.ICBMRdvMessagePropose,
+								Capability: wire.CapFileTransfer,
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ICBMRdvTLVTagsSeqNum, uint16(1)),
+										wire.NewTLVBE(wire.ICBMRdvTLVTagsPort, uint16(4000)),
+										wire.NewTLVBE(wire.ICBMRdvTLVTagsRdvIP, net.ParseIP("129.168.0.1").To4()),
+										wire.NewTLVBE(wire.ICBMRdvTLVTagsRequesterIP, net.ParseIP("129.168.0.2").To4()),
+										wire.NewTLVBE(wire.ICBMRdvTLVTagsVerifiedIP, net.ParseIP("129.168.0.3").To4()),
+										wire.NewTLVBE(wire.ICBMRdvTLVTagsSvcData, []byte{'l', 'o', 'l'}),
+									},
+								},
+							}),
+						},
+					},
+				},
+			},
+			wantCmd: []byte("RVOUS_PROPOSE:them:09461343-4C7F-11D1-8222-444553540000:aGFoYWhhaGE=:1:129.168.0.1:129.168.0.2:129.168.0.3:4000:10001:bG9s"),
 		},
 	}
 

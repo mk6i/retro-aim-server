@@ -2,6 +2,7 @@ package foodgroup
 
 import (
 	"net/mail"
+	"net/netip"
 	"time"
 
 	"github.com/stretchr/testify/mock"
@@ -764,6 +765,13 @@ func sessOptUIN(UIN uint32) func(session *state.Session) {
 func sessClientID(clientID string) func(session *state.Session) {
 	return func(session *state.Session) {
 		session.SetClientID(clientID)
+	}
+}
+
+// sessRemoteAddr sets the client's ip address / port
+func sessRemoteAddr(remoteAddr netip.AddrPort) func(session *state.Session) {
+	return func(session *state.Session) {
+		session.SetRemoteAddr(&remoteAddr)
 	}
 }
 

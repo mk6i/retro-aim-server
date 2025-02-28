@@ -383,3 +383,51 @@ func TestTLVList_ICQString(t *testing.T) {
 		assert.Empty(t, str)
 	})
 }
+
+func TestTLVList_Replace(t *testing.T) {
+	tests := []struct {
+		name        string
+		given       TLVList
+		want        TLVList
+		replacement TLV
+	}{
+		{
+			name: "replace multiple TLVs",
+			given: TLVList{
+				NewTLVLE(0x01, []byte{0x01}),
+				NewTLVLE(0x02, []byte{0x02}),
+				NewTLVLE(0x01, []byte{0x03}),
+				NewTLVLE(0x03, []byte{0x04}),
+			},
+			replacement: NewTLVLE(0x01, []byte{0xAA}),
+			want: TLVList{
+				NewTLVLE(0x01, []byte{0xAA}),
+				NewTLVLE(0x02, []byte{0x02}),
+				NewTLVLE(0x01, []byte{0xAA}),
+				NewTLVLE(0x03, []byte{0x04}),
+			},
+		},
+		{
+			name: "no matching tags",
+			given: TLVList{
+				NewTLVLE(0x01, []byte{0x01}),
+				NewTLVLE(0x02, []byte{0x02}),
+				NewTLVLE(0x01, []byte{0x03}),
+				NewTLVLE(0x03, []byte{0x04}),
+			},
+			replacement: NewTLVLE(0x07, []byte{0xAA}),
+			want: TLVList{
+				NewTLVLE(0x01, []byte{0x01}),
+				NewTLVLE(0x02, []byte{0x02}),
+				NewTLVLE(0x01, []byte{0x03}),
+				NewTLVLE(0x03, []byte{0x04}),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.given.Replace(tt.replacement)
+			assert.Equal(t, tt.want, tt.given)
+		})
+	}
+}

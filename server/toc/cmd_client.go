@@ -3,6 +3,7 @@ package toc
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/csv"
 	"encoding/hex"
 	"errors"
@@ -17,11 +18,6 @@ import (
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
-)
-
-var (
-	// capChat is the UUID that represents an OSCAR client's ability to chat
-	capChat = uuid.MustParse("748F2420-6287-11D1-8222-444553540000")
 )
 
 // NewChatRegistry creates a new ChatRegistry instances.
@@ -231,6 +227,10 @@ func (s OSCARProxy) RecvClientCmd(
 		return s.GetDirSearchURL(ctx, sessBOS, payload), true
 	case "toc_get_dir":
 		return s.GetDirURL(ctx, sessBOS, payload), true
+	case "toc_rvous_accept":
+		return s.RvousAccept(ctx, sessBOS, payload), true
+	case "toc_rvous_cancel":
+		return s.RvousCancel(ctx, sessBOS, payload), true
 	}
 
 	s.Logger.ErrorContext(ctx, fmt.Sprintf("unsupported TOC command %s", cmd))
@@ -500,16 +500,16 @@ func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegis
 			ScreenName: guest,
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLVBE(0x05, wire.ICBMCh2Fragment{
-						Type:       0,
-						Capability: capChat,
+					wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+						Type:       wire.ICBMRdvMessagePropose,
+						Capability: wire.CapChat,
 						TLVRestBlock: wire.TLVRestBlock{
 							TLVList: wire.TLVList{
-								wire.NewTLVBE(10, uint16(1)),
-								wire.NewTLVBE(12, msg),
-								wire.NewTLVBE(13, "us-ascii"),
-								wire.NewTLVBE(14, "en"),
-								wire.NewTLVBE(10001, roomInfo),
+								wire.NewTLVBE(wire.ICBMRdvTLVTagsSeqNum, uint16(1)),
+								wire.NewTLVBE(wire.ICBMRdvTLVTagsInvitation, msg),
+								wire.NewTLVBE(wire.ICBMRdvTLVTagsInviteMIMECharset, "us-ascii"),
+								wire.NewTLVBE(wire.ICBMRdvTLVTagsInviteMIMELang, "en"),
+								wire.NewTLVBE(wire.ICBMRdvTLVTagsSvcData, roomInfo),
 							},
 						},
 					}),
@@ -1071,7 +1071,7 @@ func (s OSCARProxy) InitDone(ctx context.Context, sess *state.Session, cmd []byt
 //
 //	Remove buddies from your buddy list. This does not change your saved config.
 //
-// Command syntax:
+// Command syntax: toc_remove_buddy <Buddy User 1> [<Buddy User2> [<Buddy User 3> [...]]]
 func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, cmd []byte) string {
 	users, err := parseArgs(cmd, "toc_remove_buddy")
 	if err != nil {
@@ -1088,6 +1088,117 @@ func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, cmd []by
 	if err := s.BuddyService.DelBuddies(ctx, me, snac); err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("BuddyService.DelBuddies: %w", err))
 	}
+	return ""
+}
+
+// RvousAccept handles the toc_rvous_accept TOC command.
+//
+// From the TiK documentation:
+//
+//	Accept a rendezvous proposal from the user <nick>. <cookie> is the cookie
+//	from the RVOUS_PROPOSE message. <service> is the UUID the proposal was for.
+//	<tlvlist> contains a list of tlv tags followed by base64 encoded values.
+//
+// Note: This method does not actually process the TLV list param, as it's not
+// passed in the TiK client, the reference implementation.
+//
+// Command syntax: toc_rvous_accept <nick> <cookie> <service>
+func (s OSCARProxy) RvousAccept(ctx context.Context, me *state.Session, cmd []byte) string {
+	var nick, cookie, service string
+
+	if _, err := parseArgs(cmd, "toc_rvous_accept", &nick, &cookie, &service); err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
+	}
+
+	cbytes, err := base64.StdEncoding.DecodeString(cookie)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("base64.Decode: %w", err))
+	}
+
+	var arr [8]byte
+	copy(arr[:], cbytes) // copy slice into array
+
+	svcUUID, err := uuid.Parse(service)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("uuid.Parse: %w", err))
+	}
+
+	snac := wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+		ChannelID:  wire.ICBMChannelRendezvous,
+		ScreenName: nick,
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+					Type:       wire.ICBMRdvMessageAccept,
+					Cookie:     arr,
+					Capability: svcUUID,
+				}),
+			},
+		},
+	}
+
+	if _, err = s.ICBMService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac); err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
+	}
+
+	return ""
+}
+
+// RvousCancel handles the toc_rvous_cancel TOC command.
+//
+// From the TiK documentation:
+//
+//	Cancel a rendezvous proposal from the user <nick>. <cookie> is the cookie
+//	from the RVOUS_PROPOSE message. <service> is the UUID the proposal was for.
+//	<tlvlist> contains a list of tlv tags followed by base64 encoded values.
+//
+// Note: This method does not actually process the TLV list param, as it's not
+// passed in the TiK client, the reference implementation.
+//
+// Command syntax: toc_rvous_cancel <nick> <cookie> <service>
+func (s OSCARProxy) RvousCancel(ctx context.Context, me *state.Session, cmd []byte) string {
+	var nick, cookie, service string
+
+	if _, err := parseArgs(cmd, "toc_rvous_cancel", &nick, &cookie, &service); err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
+	}
+
+	cbytes, err := base64.StdEncoding.DecodeString(cookie)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("base64.Decode: %w", err))
+	}
+
+	var arr [8]byte
+	copy(arr[:], cbytes) // copy slice into array
+
+	svcUUID, err := uuid.Parse(service)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("uuid.Parse: %w", err))
+	}
+
+	snac := wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+		ChannelID:  wire.ICBMChannelRendezvous,
+		ScreenName: nick,
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+					Type:       wire.ICBMRdvMessageCancel,
+					Cookie:     arr,
+					Capability: svcUUID,
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ICBMRdvTLVTagsCancelReason, wire.ICBMRdvCancelReasonsUserCancel),
+						},
+					},
+				}),
+			},
+		},
+	}
+
+	if _, err = s.ICBMService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac); err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
+	}
+
 	return ""
 }
 
@@ -1199,7 +1310,7 @@ func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, cmd []byte) 
 		}
 		caps = append(caps, uid)
 	}
-	caps = append(caps, capChat)
+	caps = append(caps, wire.CapChat)
 
 	snac := wire.SNAC_0x02_0x04_LocateSetInfo{
 		TLVRestBlock: wire.TLVRestBlock{
@@ -1532,7 +1643,7 @@ func (s OSCARProxy) Signon(ctx context.Context, cmd []byte) (*state.Session, []s
 	}
 
 	// set chat capability so that... tk
-	sess.SetCaps([][16]byte{capChat})
+	sess.SetCaps([][16]byte{wire.CapChat})
 
 	if err := s.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
 		return nil, []string{s.runtimeErr(ctx, fmt.Errorf("BuddyListRegistry.RegisterBuddyList: %w", err))}

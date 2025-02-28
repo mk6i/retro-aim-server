@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 //
@@ -105,6 +107,17 @@ const (
 
 	LoginErrICQUserErr uint16 = 0x0008 // ICQ user doesn't exist
 
+)
+
+//
+// Capability IDs
+//
+
+var (
+	// CapChat is the UUID that represents an OSCAR client's ability to chat
+	CapChat = uuid.MustParse("748F2420-6287-11D1-8222-444553540000")
+	// CapFileTransfer is the UUID that represents an OSCAR client's ability to send files
+	CapFileTransfer = uuid.MustParse("09461343-4C7F-11D1-8222-444553540000")
 )
 
 //
@@ -596,6 +609,16 @@ const (
 	ICBMMsgTypeAutoDND  uint8 = 0xEB // Auto do not disturb message
 	ICBMMsgTypeAutoFFC  uint8 = 0xEC // Auto free for chat message
 
+	ICBMRdvMessagePropose uint16 = 0x00 //	Propose a rendezvous
+	ICBMRdvMessageCancel  uint16 = 0x01 //	Cancel a proposal you generated
+	ICBMRdvMessageAccept  uint16 = 0x02 //	Accept a proposal someone else generated
+	ICBMRdvMessageNak     uint16 = 0x03 //	NOT CURRENTLY DOCUMENTED
+
+	ICBMRdvCancelReasonsUnknown           uint16 = 0x00 // Reason not specified
+	ICBMRdvCancelReasonsUserCancel        uint16 = 0x01 // Recipient user declined
+	ICBMRdvCancelReasonsTimeout           uint16 = 0x02 // Timeout
+	ICBMRdvCancelReasonsAcceptedElsewhere uint16 = 0x03 // Proposal was accepted by a different instance of the user
+
 	ICBMRdvTLVTagsRdvChan             uint16 = 0x0001 //	uint16 (word)	ICBM channel on which the rendezvous is to occur
 	ICBMRdvTLVTagsRdvIP               uint16 = 0x0002 //	uint32 (dword)	IP address proposed for the rendezvous
 	ICBMRdvTLVTagsRequesterIP         uint16 = 0x0003 //	uint32 (dword)	IP address of the proposing client
@@ -634,7 +657,7 @@ type ICBMCh1Fragment struct {
 
 type ICBMCh2Fragment struct {
 	Type       uint16
-	Cookie     uint64
+	Cookie     [8]byte
 	Capability [16]byte
 	TLVRestBlock
 }

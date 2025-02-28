@@ -824,7 +824,7 @@ func TestOSCARProxy_ChatInvite(t *testing.T) {
 									TLVList: wire.TLVList{
 										wire.NewTLVBE(0x05, wire.ICBMCh2Fragment{
 											Type:       0,
-											Capability: capChat,
+											Capability: wire.CapChat,
 											TLVRestBlock: wire.TLVRestBlock{
 												TLVList: wire.TLVList{
 													wire.NewTLVBE(10, uint16(1)),
@@ -872,7 +872,7 @@ func TestOSCARProxy_ChatInvite(t *testing.T) {
 									TLVList: wire.TLVList{
 										wire.NewTLVBE(0x05, wire.ICBMCh2Fragment{
 											Type:       0,
-											Capability: capChat,
+											Capability: wire.CapChat,
 											TLVRestBlock: wire.TLVRestBlock{
 												TLVList: wire.TLVList{
 													wire.NewTLVBE(10, uint16(1)),
@@ -2543,6 +2543,214 @@ func TestOSCARProxy_RemoveBuddy(t *testing.T) {
 	}
 }
 
+func TestOSCARProxy_RvousAccept(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg string
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully send rendezvous request",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_rvous_accept them aGFoYWhhaGE= 09461343-4C7F-11D1-8222-444553540000`),
+			mockParams: mockParams{
+				icbmParams: icbmParams{
+					channelMsgToHostParamsICBM: channelMsgToHostParamsICBM{
+						{
+							sender: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+								ChannelID:  wire.ICBMChannelRendezvous,
+								ScreenName: "them",
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+											Type:       wire.ICBMRdvMessageAccept,
+											Cookie:     [8]byte{'h', 'a', 'h', 'a', 'h', 'a', 'h', 'a'},
+											Capability: wire.CapFileTransfer,
+										}),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "send rendezvous request, receive error from ICBM service",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_rvous_accept them aGFoYWhhaGE= 09461343-4C7F-11D1-8222-444553540000`),
+			mockParams: mockParams{
+				icbmParams: icbmParams{
+					channelMsgToHostParamsICBM: channelMsgToHostParamsICBM{
+						{
+							sender: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+								ChannelID:  wire.ICBMChannelRendezvous,
+								ScreenName: "them",
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+											Type:       wire.ICBMRdvMessageAccept,
+											Cookie:     [8]byte{'h', 'a', 'h', 'a', 'h', 'a', 'h', 'a'},
+											Capability: wire.CapFileTransfer,
+										}),
+									},
+								},
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_rvous_accept`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			icbmSvc := newMockICBMService(t)
+			for _, params := range tc.mockParams.channelMsgToHostParamsICBM {
+				icbmSvc.EXPECT().
+					ChannelMsgToHost(ctx, matchSession(params.sender), params.inFrame, params.inBody).
+					Return(params.result, params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:      slog.Default(),
+				ICBMService: icbmSvc,
+			}
+			msg := svc.RvousAccept(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
+func TestOSCARProxy_RvousCancel(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// me is the TOC user session
+		me *state.Session
+		// givenCmd is the TOC command
+		givenCmd []byte
+		// wantMsg is the expected TOC response
+		wantMsg string
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+	}{
+		{
+			name:     "successfully send rendezvous cancellation",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_rvous_cancel them aGFoYWhhaGE= 09461343-4C7F-11D1-8222-444553540000`),
+			mockParams: mockParams{
+				icbmParams: icbmParams{
+					channelMsgToHostParamsICBM: channelMsgToHostParamsICBM{
+						{
+							sender: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+								ChannelID:  wire.ICBMChannelRendezvous,
+								ScreenName: "them",
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+											Type:       wire.ICBMRdvMessageCancel,
+											Cookie:     [8]byte{'h', 'a', 'h', 'a', 'h', 'a', 'h', 'a'},
+											Capability: wire.CapFileTransfer,
+											TLVRestBlock: wire.TLVRestBlock{
+												TLVList: wire.TLVList{
+													wire.NewTLVBE(wire.ICBMRdvTLVTagsCancelReason, wire.ICBMRdvCancelReasonsUserCancel),
+												},
+											},
+										}),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "send rendezvous cancellation, receive error from ICBM service",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_rvous_cancel them aGFoYWhhaGE= 09461343-4C7F-11D1-8222-444553540000`),
+			mockParams: mockParams{
+				icbmParams: icbmParams{
+					channelMsgToHostParamsICBM: channelMsgToHostParamsICBM{
+						{
+							sender: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+								ChannelID:  wire.ICBMChannelRendezvous,
+								ScreenName: "them",
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+											Type:       wire.ICBMRdvMessageCancel,
+											Cookie:     [8]byte{'h', 'a', 'h', 'a', 'h', 'a', 'h', 'a'},
+											Capability: wire.CapFileTransfer,
+											TLVRestBlock: wire.TLVRestBlock{
+												TLVList: wire.TLVList{
+													wire.NewTLVBE(wire.ICBMRdvTLVTagsCancelReason, wire.ICBMRdvCancelReasonsUserCancel),
+												},
+											},
+										}),
+									},
+								},
+							},
+							err: io.EOF,
+						},
+					},
+				},
+			},
+			wantMsg: cmdInternalSvcErr,
+		},
+		{
+			name:     "bad command",
+			givenCmd: []byte(`toc_rvous_cancel`),
+			wantMsg:  cmdInternalSvcErr,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			icbmSvc := newMockICBMService(t)
+			for _, params := range tc.mockParams.channelMsgToHostParamsICBM {
+				icbmSvc.EXPECT().
+					ChannelMsgToHost(ctx, matchSession(params.sender), params.inFrame, params.inBody).
+					Return(params.result, params.err)
+			}
+
+			svc := OSCARProxy{
+				Logger:      slog.Default(),
+				ICBMService: icbmSvc,
+			}
+			msg := svc.RvousCancel(ctx, tc.me, tc.givenCmd)
+
+			assert.Equal(t, tc.wantMsg, msg)
+		})
+	}
+}
+
 func TestOSCARProxy_SendIM(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
@@ -2840,7 +3048,7 @@ func TestOSCARProxy_SetCaps(t *testing.T) {
 										wire.NewTLVBE(wire.LocateTLVTagsInfoCapabilities, []uuid.UUID{
 											uuid.MustParse("09460000-4C7F-11D1-8222-444553540000"),
 											uuid.MustParse("09460001-4C7F-11D1-8222-444553540000"),
-											capChat,
+											wire.CapChat,
 										}),
 									},
 								},
@@ -2864,7 +3072,7 @@ func TestOSCARProxy_SetCaps(t *testing.T) {
 									TLVList: wire.TLVList{
 										wire.NewTLVBE(wire.LocateTLVTagsInfoCapabilities, []uuid.UUID{
 											uuid.MustParse("09460000-4C7F-11D1-8222-444553540000"),
-											capChat,
+											wire.CapChat,
 										}),
 									},
 								},
@@ -3694,7 +3902,7 @@ func TestOSCARProxy_Signon(t *testing.T) {
 		{
 			name: "successfully login",
 			me: newTestSession("me", func(session *state.Session) {
-				session.SetCaps([][16]byte{capChat})
+				session.SetCaps([][16]byte{wire.CapChat})
 			}),
 			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
 			mockParams: mockParams{

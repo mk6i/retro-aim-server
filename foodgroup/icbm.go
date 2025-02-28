@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
@@ -141,6 +142,11 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 			// on macOS client v4.0.9.
 			continue
 		}
+		if clientIM.ChannelID == wire.ICBMChannelRendezvous && tlv.Tag == wire.ICBMTLVData {
+			if tlv, err = addExternalIP(sess, tlv); err != nil {
+				return nil, fmt.Errorf("addExternalIP: %w", err)
+			}
+		}
 		clientIM.Append(tlv)
 	}
 
@@ -170,6 +176,34 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 			ScreenName: inBody.ScreenName,
 		},
 	}, nil
+}
+
+// addExternalIP appends the client's IP address to the TLV if it's an ICBM
+// rendezvous proposal/accept message.
+func addExternalIP(sess *state.Session, tlv wire.TLV) (wire.TLV, error) {
+	frag := wire.ICBMCh2Fragment{}
+	if err := wire.UnmarshalBE(&frag, bytes.NewReader(tlv.Value)); err != nil {
+		return tlv, fmt.Errorf("wire.UnmarshalBE: %w", err)
+	}
+	if frag.Type != wire.ICBMRdvMessagePropose {
+		return tlv, nil
+	}
+	if frag.HasTag(wire.ICBMRdvTLVTagsRequesterIP) && sess.RemoteAddr() != nil && sess.RemoteAddr().Addr().Is4() {
+		ip := sess.RemoteAddr().Addr()
+		// replace the IP set by the client with the actual IP seen by the
+		// server. unlike AOL’s original behavior, this allows NATed clients
+		// to use rendezvous by replacing their LAN IP with the correct
+		// external IP.
+		frag.Replace(wire.NewTLVBE(wire.ICBMRdvTLVTagsRequesterIP, ip.AsSlice()))
+		// append the client’s IP as seen by the server. the recipient uses
+		// this to verify that the sender’s claimed IP matches what the server
+		// detects. although redundant since we override the requester IP
+		// above, it remains required for client compatibility.
+		frag.Append(wire.NewTLVBE(wire.ICBMRdvTLVTagsVerifiedIP, ip.AsSlice()))
+		return wire.NewTLVBE(tlv.Tag, frag), nil
+	}
+
+	return tlv, nil
 }
 
 // ClientEvent relays SNAC wire.ICBMClientEvent typing events from the
