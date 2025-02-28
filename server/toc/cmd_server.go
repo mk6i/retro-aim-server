@@ -220,8 +220,10 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 				ip := net.IPv4(byte(rip>>24), byte(rip>>16), byte(rip>>8), byte(rip))
 				port, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsPort)
 
-				//return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%d:%d:%s:%s:%s:%d[:tlv tag1:tlv value1[:tlv tag2:tlv value2[:...]]]", user, uuid, cookie, seq, ip.String(), ip.String(), ip.String(), port)
-				return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%s:%d:%s:%s:%s:%d", user, uuid, string(decodedBytes), seq, ip.String(), ip.String(), ip.String(), port)
+				ftlv, _ := frag.Bytes(10001)
+				b64tlv := base64.StdEncoding.EncodeToString(ftlv)
+
+				return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%s:%d:%s:%s:%s:%d:10001:%s", user, uuid, string(decodedBytes), seq, ip.String(), ip.String(), ip.String(), port, b64tlv)
 			}
 		case wire.ICBMRdvMessageCancel:
 		case wire.ICBMRdvMessageAccept:
