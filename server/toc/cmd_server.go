@@ -3,8 +3,11 @@ package toc
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -174,30 +177,57 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 		if err := wire.UnmarshalBE(&frag, bytes.NewReader(rdinfo)); err != nil {
 			return s.runtimeErr(ctx, fmt.Errorf("wire.UnmarshalBE: %w", err))
 		}
-		prompt, ok := frag.Bytes(wire.ICBMRdvTLVTagsInvitation)
-		if !ok {
-			return s.runtimeErr(ctx, errors.New("frag.Bytes: missing chat invite prompt"))
+
+		switch frag.Type {
+		case wire.ICBMRdvMessagePropose:
+			switch frag.Capability {
+			case capChat:
+				prompt, ok := frag.Bytes(wire.ICBMRdvTLVTagsInvitation)
+				if !ok {
+					return s.runtimeErr(ctx, errors.New("frag.Bytes: missing chat invite prompt"))
+				}
+
+				svcData, ok := frag.Bytes(wire.ICBMRdvTLVTagsSvcData)
+				if !ok || svcData == nil {
+					return s.runtimeErr(ctx, errors.New("frag.Bytes: missing room info"))
+				}
+
+				roomInfo := wire.ICBMRoomInfo{}
+				if err := wire.UnmarshalBE(&roomInfo, bytes.NewReader(svcData)); err != nil {
+					return s.runtimeErr(ctx, fmt.Errorf("wire.UnmarshalBE: %w", err))
+				}
+
+				cookie := strings.Split(roomInfo.Cookie, "-") // make this safe
+				if len(cookie) < 3 {
+					return s.runtimeErr(ctx, errors.New("roomInfo.Cookie: malformed cookie, could not get room name"))
+				}
+
+				roomName := cookie[2]
+				chatID := chatRegistry.Add(roomInfo)
+
+				return fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", roomName, chatID, snac.ScreenName, prompt)
+			case fileTransfer:
+				user := snac.TLVUserInfo.ScreenName
+				uuid := strings.ToUpper(fileTransfer.String())
+				cookieBytes := make([]byte, 8)
+
+				binary.BigEndian.PutUint64(cookieBytes, frag.Cookie)
+
+				decodedBytes, _ := base64.StdEncoding.DecodeString(string(cookieBytes))
+
+				seq, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsSeqNum)
+				rip, _ := frag.Uint32BE(wire.ICBMRdvTLVTagsRequesterIP)
+				ip := net.IPv4(byte(rip>>24), byte(rip>>16), byte(rip>>8), byte(rip))
+				port, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsPort)
+
+				//return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%d:%d:%s:%s:%s:%d[:tlv tag1:tlv value1[:tlv tag2:tlv value2[:...]]]", user, uuid, cookie, seq, ip.String(), ip.String(), ip.String(), port)
+				return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%s:%d:%s:%s:%s:%d", user, uuid, string(decodedBytes), seq, ip.String(), ip.String(), ip.String(), port)
+			}
+		case wire.ICBMRdvMessageCancel:
+		case wire.ICBMRdvMessageAccept:
+		case wire.ICBMRdvMessageNak:
 		}
 
-		svcData, ok := frag.Bytes(wire.ICBMRdvTLVTagsSvcData)
-		if !ok || svcData == nil {
-			return s.runtimeErr(ctx, errors.New("frag.Bytes: missing room info"))
-		}
-
-		roomInfo := wire.ICBMRoomInfo{}
-		if err := wire.UnmarshalBE(&roomInfo, bytes.NewReader(svcData)); err != nil {
-			return s.runtimeErr(ctx, fmt.Errorf("wire.UnmarshalBE: %w", err))
-		}
-
-		cookie := strings.Split(roomInfo.Cookie, "-") // make this safe
-		if len(cookie) < 3 {
-			return s.runtimeErr(ctx, errors.New("roomInfo.Cookie: malformed cookie, could not get room name"))
-		}
-
-		roomName := cookie[2]
-		chatID := chatRegistry.Add(roomInfo)
-
-		return fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", roomName, chatID, snac.ScreenName, prompt)
 	}
 
 	buf, ok := snac.TLVRestBlock.Bytes(wire.ICBMTLVAOLIMData)

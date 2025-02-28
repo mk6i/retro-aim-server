@@ -596,6 +596,11 @@ const (
 	ICBMMsgTypeAutoDND  uint8 = 0xEB // Auto do not disturb message
 	ICBMMsgTypeAutoFFC  uint8 = 0xEC // Auto free for chat message
 
+	ICBMRdvMessagePropose uint16 = 0x00 //	Propose a rendezvous
+	ICBMRdvMessageCancel  uint16 = 0x01 //	Cancel a proposal you generated
+	ICBMRdvMessageAccept  uint16 = 0x02 //	Accept a proposal someone else generated
+	ICBMRdvMessageNak     uint16 = 0x03 //	NOT CURRENTLY DOCUMENTED
+
 	ICBMRdvTLVTagsRdvChan             uint16 = 0x0001 //	uint16 (word)	ICBM channel on which the rendezvous is to occur
 	ICBMRdvTLVTagsRdvIP               uint16 = 0x0002 //	uint32 (dword)	IP address proposed for the rendezvous
 	ICBMRdvTLVTagsRequesterIP         uint16 = 0x0003 //	uint32 (dword)	IP address of the proposing client

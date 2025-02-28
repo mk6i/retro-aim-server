@@ -21,7 +21,8 @@ import (
 
 var (
 	// capChat is the UUID that represents an OSCAR client's ability to chat
-	capChat = uuid.MustParse("748F2420-6287-11D1-8222-444553540000")
+	capChat      = uuid.MustParse("748F2420-6287-11D1-8222-444553540000")
+	fileTransfer = uuid.MustParse("09461343-4C7F-11D1-8222-444553540000")
 )
 
 // NewChatRegistry creates a new ChatRegistry instances.
