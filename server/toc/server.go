@@ -205,8 +205,8 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 	// messages to TOC client
 	toCh := make(chan []byte, 2)
 
-	// read in messages from client. when client disconnects, it closes fromCh.
-	go rt.readFromClient(ctx, fromCh, clientFlap)
+	// read in messages from client. when client disconnects, it closes fromCh and toCh.
+	go rt.readFromClient(ctx, fromCh, toCh, clientFlap)
 
 	g, gCtx := errgroup.WithContext(ctx)
 
@@ -309,8 +309,9 @@ func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state
 	return sessBOS, nil
 }
 
-func (rt Server) readFromClient(ctx context.Context, msgCh chan<- wire.FLAPFrame, clientFlap *wire.FlapClient) {
+func (rt Server) readFromClient(ctx context.Context, msgCh chan<- wire.FLAPFrame, toCh chan<- []byte, clientFlap *wire.FlapClient) {
 	defer close(msgCh)
+	defer close(toCh)
 
 	for {
 		clientFrame, err := clientFlap.ReceiveFLAP()
