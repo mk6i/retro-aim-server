@@ -208,25 +208,21 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 	// messages to TOC client
 	toCh := make(chan []byte, 2000)
 
+	ctx, done := context.WithCancel(ctx)
 	g, gCtx := errgroup.WithContext(ctx)
 
+	// process TOC client requests, put TOC server responses on toCh
 	go func() {
-		<-ctx.Done()
-		// close the TCP connection, which unblocks runClientCommands on shutdown
-		once.Do(func() {
-			_ = conn.Close()
-		})
+		rt.runClientCommands(ctx, g.Go, sessBOS, chatRegistry, clientFlap, toCh)
+		done()
 	}()
 
-	// process client requests, put TOC server responses on toCh
-	g.Go(func() error {
-		return rt.runClientCommands(gCtx, g.Go, sessBOS, chatRegistry, clientFlap, toCh)
-	})
-	// put translated OSCAR->TOC server responses on toCh
+	// translate OSCAR server responses to TOC server responses, put TOC server
+	// responses on toCh
 	g.Go(func() error {
 		return rt.BOSProxy.RecvBOS(gCtx, sessBOS, chatRegistry, toCh)
 	})
-	// send TOC server responses to client
+	// flush TOC server responses to client
 	g.Go(func() error {
 		return rt.sendToClient(gCtx, toCh, clientFlap)
 	})
