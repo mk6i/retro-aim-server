@@ -167,9 +167,14 @@ func (rt Server) dispatchConn(conn net.Conn, ctx context.Context, httpCh chan ne
 }
 
 func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
+	var once sync.Once
+
 	defer func() {
-		_ = conn.Close()
+		once.Do(func() {
+			_ = conn.Close()
+		})
 	}()
+
 	ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 
 	clientFlap, err := rt.initFLAP(conn)
@@ -206,6 +211,13 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 	toCh := make(chan []byte, 2)
 
 	g, gCtx := errgroup.WithContext(ctx)
+
+	go func() {
+		<-ctx.Done()
+		once.Do(func() {
+			_ = conn.Close()
+		})
+	}()
 
 	// read in messages from client. when client disconnects, it closes fromCh.
 	g.Go(func() error {
