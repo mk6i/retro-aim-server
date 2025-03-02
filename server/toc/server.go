@@ -205,11 +205,12 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 	// messages to TOC client
 	toCh := make(chan []byte, 2)
 
-	// read in messages from client. when client disconnects, it closes fromCh.
-	go rt.readFromClient(ctx, fromCh, clientFlap)
-
 	g, gCtx := errgroup.WithContext(ctx)
 
+	// read in messages from client. when client disconnects, it closes fromCh.
+	g.Go(func() error {
+		return rt.readFromClient(fromCh, clientFlap)
+	})
 	g.Go(func() error {
 		return rt.BOSProxy.RecvBOS(gCtx, sessBOS, chatRegistry, toCh)
 	})
@@ -309,29 +310,28 @@ func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state
 	return sessBOS, nil
 }
 
-func (rt Server) readFromClient(ctx context.Context, msgCh chan<- wire.FLAPFrame, clientFlap *wire.FlapClient) {
+func (rt Server) readFromClient(msgCh chan<- wire.FLAPFrame, clientFlap *wire.FlapClient) error {
 	defer close(msgCh)
 
 	for {
 		clientFrame, err := clientFlap.ReceiveFLAP()
 		if err != nil {
 			if !(errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed)) {
-				rt.Logger.ErrorContext(ctx, "ReceiveFLAP error", "err", err.Error())
+				return fmt.Errorf("clientFlap.ReceiveFLAP: %w", err)
 			}
-			break
+			return errDisconnect
 		}
-
-		if clientFrame.FrameType == wire.FLAPFrameSignoff {
-			break // client disconnected
+		switch clientFrame.FrameType {
+		case wire.FLAPFrameSignoff:
+			return errDisconnect // client disconnected
+		case wire.FLAPFrameKeepAlive:
+			// keep alive heartbeat, do nothing for now.
+			// todo set connection deadline to future time
+		case wire.FLAPFrameData:
+			msgCh <- clientFrame
+		default:
+			return fmt.Errorf("unexpected clientFlap clientFrame type %d", clientFrame.FrameType)
 		}
-		if clientFrame.FrameType == wire.FLAPFrameKeepAlive {
-			continue // keep alive heartbeat
-		}
-		if clientFrame.FrameType != wire.FLAPFrameData {
-			rt.Logger.ErrorContext(ctx, "unexpected clientFlap clientFrame type", "type", clientFrame.FrameType)
-			break
-		}
-		msgCh <- clientFrame
 	}
 }
 
