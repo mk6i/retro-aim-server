@@ -216,29 +216,29 @@ func (rt Server) doIt(
 	chatRegistry *ChatRegistry,
 	clientFlap *wire.FlapClient,
 ) error {
-	defer closeConn()
-
 	// messages to TOC client
 	toCh := make(chan []byte, 2)
-
-	ctx, cancel := context.WithCancel(ctx)
 
 	g, gCtx := errgroup.WithContext(ctx)
 
 	// process TOC client requests, put TOC server responses on toCh
-	go func() {
-		_ = rt.runClientCommands(ctx, g.Go, sessBOS, chatRegistry, clientFlap, toCh)
-		cancel()
-	}()
+	g.Go(func() error {
+		return rt.runClientCommands(ctx, g.Go, sessBOS, chatRegistry, clientFlap, toCh)
+	})
 
 	// translate OSCAR server responses to TOC server responses, put TOC server
 	// responses on toCh
 	g.Go(func() error {
-		return rt.BOSProxy.RecvBOS(gCtx, sessBOS, chatRegistry, toCh)
+		err := rt.BOSProxy.RecvBOS(gCtx, sessBOS, chatRegistry, toCh)
+		closeConn() // unblock runClientCommands
+		return err
 	})
+
 	// flush TOC server responses to client
 	g.Go(func() error {
-		return rt.sendToClient(gCtx, toCh, clientFlap)
+		err := rt.sendToClient(gCtx, toCh, clientFlap)
+		closeConn() // unblock runClientCommands
+		return err
 	})
 
 	err := g.Wait()

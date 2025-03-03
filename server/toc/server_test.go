@@ -11,103 +11,84 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// ensure correct behavior during global context cancellation (server shutdown)
 func TestServer_doIt_serverShutdown(t *testing.T) {
-	sv := Server{
-		BOSProxy: OSCARProxy{},
-		Logger:   slog.Default(),
-	}
-
-	serverReader, _ := io.Pipe()
-	_, serverWriter := io.Pipe()
-
-	fc := wire.NewFlapClient(0, serverReader, serverWriter)
-
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 
-	sess := newTestSession("me")
-
 	ctx, cancel := context.WithCancel(context.Background())
-
-	closeConn := func() {
-		_ = serverReader.Close()
-		_ = serverWriter.Close()
-	}
 
 	go func() {
 		defer wg.Done()
-		cr := NewChatRegistry()
+		sv := Server{
+			BOSProxy: OSCARProxy{},
+			Logger:   slog.Default(),
+		}
 
-		err := sv.doIt(ctx, closeConn, sess, cr, fc)
-		assert.NoError(t, err)
+		serverReader, _ := io.Pipe()
+
+		fc := wire.NewFlapClient(0, serverReader, nil)
+		closeConn := func() {
+			_ = serverReader.Close()
+		}
+		sess := newTestSession("me")
+		err := sv.doIt(ctx, closeConn, sess, nil, fc)
+		assert.ErrorIs(t, err, io.ErrClosedPipe)
 	}()
 
 	cancel()
 	wg.Wait()
 }
 
+// ensure correct behavior when client TCP connection disconnects
 func TestServer_doIt_clientReadDisconnect(t *testing.T) {
-	sv := Server{
-		BOSProxy: OSCARProxy{},
-		Logger:   slog.Default(),
-	}
-
-	serverReader, _ := io.Pipe()
-	_, serverWriter := io.Pipe()
-
-	fc := wire.NewFlapClient(0, serverReader, serverWriter)
-
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 
-	sess := newTestSession("me")
-
-	ctx := context.Background()
-
-	closeConn := func() {
-		_ = serverReader.Close()
-		_ = serverWriter.Close()
-	}
+	serverReader, _ := io.Pipe()
 
 	go func() {
 		defer wg.Done()
-		cr := NewChatRegistry()
+		closeConn := func() {
+			_ = serverReader.Close()
+		}
+		sess := newTestSession("me")
+		fc := wire.NewFlapClient(0, serverReader, nil)
 
-		err := sv.doIt(ctx, closeConn, sess, cr, fc)
-		assert.NoError(t, err)
+		sv := Server{
+			BOSProxy: OSCARProxy{},
+			Logger:   slog.Default(),
+		}
+		err := sv.doIt(context.Background(), closeConn, sess, nil, fc)
+		assert.ErrorIs(t, err, io.ErrClosedPipe)
 	}()
 
 	_ = serverReader.Close()
 	wg.Wait()
 }
 
+// ensure correct behavior when session gets closed by another login
 func TestServer_doIt_sessClose(t *testing.T) {
-	sv := Server{
-		BOSProxy: OSCARProxy{},
-		Logger:   slog.Default(),
-	}
-
-	serverReader, _ := io.Pipe()
-	_, serverWriter := io.Pipe()
-
-	fc := wire.NewFlapClient(0, serverReader, serverWriter)
-
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 
 	sess := newTestSession("me")
 
-	ctx := context.Background()
-
 	go func() {
 		defer wg.Done()
+
+		serverReader, _ := io.Pipe()
+		fc := wire.NewFlapClient(0, serverReader, nil)
+
 		closeConn := func() {
 			_ = serverReader.Close()
-			_ = serverWriter.Close()
 		}
-		cr := NewChatRegistry()
 
-		err := sv.doIt(ctx, closeConn, sess, cr, fc)
+		sv := Server{
+			BOSProxy: OSCARProxy{},
+			Logger:   slog.Default(),
+		}
+		err := sv.doIt(context.Background(), closeConn, sess, nil, fc)
 		assert.NoError(t, err)
 	}()
 
