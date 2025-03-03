@@ -169,11 +169,12 @@ func (rt Server) dispatchConn(conn net.Conn, ctx context.Context, httpCh chan ne
 func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 	var once sync.Once
 
-	defer func() {
+	closeConn := func() {
 		once.Do(func() {
 			_ = conn.Close()
 		})
-	}()
+	}
+	defer closeConn()
 
 	ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 
@@ -205,22 +206,31 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 
 	defer rt.BOSProxy.Signout(ctx, sessBOS, chatRegistry)
 
-	// messages to TOC client
-	toCh := make(chan []byte, 2000)
+	return rt.doIt(ctx, closeConn, sessBOS, chatRegistry, clientFlap)
+}
 
-	go func() {
-		<-ctx.Done()
-		once.Do(func() {
-			_ = conn.Close()
-		})
-	}()
+func (rt Server) doIt(
+	ctx context.Context,
+	closeConn func(),
+	sessBOS *state.Session,
+	chatRegistry *ChatRegistry,
+	clientFlap *wire.FlapClient,
+) error {
+	defer closeConn()
+
+	// messages to TOC client
+	toCh := make(chan []byte, 2)
+
+	ctx, cancel := context.WithCancel(ctx)
 
 	g, gCtx := errgroup.WithContext(ctx)
 
 	// process TOC client requests, put TOC server responses on toCh
-	g.Go(func() error {
-		return rt.runClientCommands(ctx, g.Go, sessBOS, chatRegistry, clientFlap, toCh)
-	})
+	go func() {
+		_ = rt.runClientCommands(ctx, g.Go, sessBOS, chatRegistry, clientFlap, toCh)
+		cancel()
+	}()
+
 	// translate OSCAR server responses to TOC server responses, put TOC server
 	// responses on toCh
 	g.Go(func() error {
@@ -231,7 +241,7 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 		return rt.sendToClient(gCtx, toCh, clientFlap)
 	})
 
-	err = g.Wait()
+	err := g.Wait()
 	if errors.Is(err, errDisconnect) {
 		err = nil
 	}
