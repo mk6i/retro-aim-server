@@ -20,6 +20,17 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
+var (
+	// errClientReq indicates that an error occurred while reading a client request
+	errClientReq = errors.New("failed to read client request")
+
+	// errServerWrite indicates that an error occurred while writing a server response
+	errServerWrite = errors.New("failed to send server response")
+
+	// errTOCProcessing indicates that an error occurred in the TOC handler
+	errTOCProcessing = errors.New("failed to process TOC request")
+)
+
 // bufferedConn is a wrapper around net.Conn that allows peeking into the
 // incoming connection without consuming data. It is useful for multiplexing
 // TOC/HTTP and TOC/FLAP connections.
@@ -153,7 +164,9 @@ func (rt Server) dispatchConn(conn net.Conn, ctx context.Context, httpCh chan ne
 
 	if string(buf) == doFlap {
 		if err = rt.dispatchFLAP(ctx, bufCon); err != nil {
-			return fmt.Errorf("dispatchFLAP: %w", err)
+			if !(errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed)) {
+				return fmt.Errorf("rt.dispatchFLAP: %w", err)
+			}
 		}
 		return nil
 	}
@@ -167,9 +180,15 @@ func (rt Server) dispatchConn(conn net.Conn, ctx context.Context, httpCh chan ne
 }
 
 func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
-	defer func() {
-		_ = conn.Close()
-	}()
+	var once sync.Once
+
+	closeConn := func() {
+		once.Do(func() {
+			_ = conn.Close()
+		})
+	}
+	defer closeConn()
+
 	ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 
 	clientFlap, err := rt.initFLAP(conn)
@@ -200,49 +219,65 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 
 	defer rt.BOSProxy.Signout(ctx, sessBOS, chatRegistry)
 
-	// messages from TOC client
-	fromCh := make(chan wire.FLAPFrame, 1)
-	// messages to TOC client
-	toCh := make(chan []byte, 2)
-
-	// read in messages from client. when client disconnects, it closes fromCh.
-	go rt.readFromClient(ctx, fromCh, clientFlap)
-
-	g, gCtx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		return rt.BOSProxy.RecvBOS(gCtx, sessBOS, chatRegistry, toCh)
-	})
-	g.Go(func() error {
-		return rt.sendToClient(gCtx, toCh, clientFlap)
-	})
-	g.Go(func() error {
-		return rt.processCommands(gCtx, g.Go, sessBOS, chatRegistry, fromCh, toCh)
-	})
-
-	err = g.Wait()
-	if errors.Is(err, errDisconnect) {
-		err = nil
-	}
-	return err
+	return rt.handleTOCRequest(ctx, closeConn, sessBOS, chatRegistry, clientFlap)
 }
 
-func (rt Server) processCommands(
+// handleTOCRequest processes incoming TOC requests and coordinates their handling.
+// It reads client requests, processes TOC commands, and sends responses back to the client.
+//
+// Returns:
+//   - errClientReq if an error occurs while reading the TOC request. wraps
+//     io.EOF if the client disconnected.
+//   - errTOCProcessing if an error occurs while processing the TOC command.
+//   - errServerWrite if an error occurs while sending the TOC response.
+func (rt Server) handleTOCRequest(
 	ctx context.Context,
-	doAsync func(f func() error),
+	closeConn func(),
 	sessBOS *state.Session,
 	chatRegistry *ChatRegistry,
-	fromCh <-chan wire.FLAPFrame,
-	toCh chan<- []byte,
+	clientFlap *wire.FlapClient,
 ) error {
+	// TOC response queue
+	msgCh := make(chan []byte, 1)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	// process TOC client requests and enqueue TOC server responses
+	g.Go(func() error {
+		err := rt.runClientCommands(ctx, g.Go, sessBOS, chatRegistry, clientFlap, msgCh)
+		return errors.Join(err, errClientReq)
+	})
+
+	// translate OSCAR server responses to TOC responses and enqueue them
+	g.Go(func() error {
+		err := rt.BOSProxy.RecvBOS(ctx, sessBOS, chatRegistry, msgCh)
+		closeConn() // unblock runClientCommands
+		return errors.Join(err, errTOCProcessing)
+	})
+
+	// send TOC server responses to the client
+	g.Go(func() error {
+		err := rt.sendToClient(ctx, msgCh, clientFlap)
+		closeConn() // unblock runClientCommands
+		return errors.Join(err, errServerWrite)
+	})
+
+	return g.Wait()
+}
+
+func (rt Server) runClientCommands(ctx context.Context, doAsync func(f func() error), sessBOS *state.Session, chatRegistry *ChatRegistry, clientFlap *wire.FlapClient, toCh chan<- []byte) error {
 	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case clientFrame, ok := <-fromCh:
-			if !ok {
-				return nil
-			}
+		clientFrame, err := clientFlap.ReceiveFLAP()
+		if err != nil {
+			return err
+		}
+		switch clientFrame.FrameType {
+		case wire.FLAPFrameSignoff:
+			return io.EOF // client disconnected
+		case wire.FLAPFrameKeepAlive:
+			// keep alive heartbeat, do nothing for now.
+			// todo set connection deadline to future time
+		case wire.FLAPFrameData:
 			clientFrame.Payload = bytes.TrimRight(clientFrame.Payload, "\x00") // trim null terminator
 
 			if len(clientFrame.Payload) == 0 {
@@ -254,7 +289,7 @@ func (rt Server) processCommands(
 
 			msg, ok := rt.BOSProxy.RecvClientCmd(ctx, sessBOS, chatRegistry, clientFrame.Payload, toCh, doAsync)
 			if !ok {
-				return nil
+				return io.EOF
 			}
 			if len(msg) > 0 {
 				select {
@@ -263,6 +298,8 @@ func (rt Server) processCommands(
 					return nil
 				}
 			}
+		default:
+			return fmt.Errorf("unexpected clientFlap clientFrame type %d", clientFrame.FrameType)
 		}
 	}
 }
@@ -307,32 +344,6 @@ func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state
 	}
 
 	return sessBOS, nil
-}
-
-func (rt Server) readFromClient(ctx context.Context, msgCh chan<- wire.FLAPFrame, clientFlap *wire.FlapClient) {
-	defer close(msgCh)
-
-	for {
-		clientFrame, err := clientFlap.ReceiveFLAP()
-		if err != nil {
-			if !(errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed)) {
-				rt.Logger.ErrorContext(ctx, "ReceiveFLAP error", "err", err.Error())
-			}
-			break
-		}
-
-		if clientFrame.FrameType == wire.FLAPFrameSignoff {
-			break // client disconnected
-		}
-		if clientFrame.FrameType == wire.FLAPFrameKeepAlive {
-			continue // keep alive heartbeat
-		}
-		if clientFrame.FrameType != wire.FLAPFrameData {
-			rt.Logger.ErrorContext(ctx, "unexpected clientFlap clientFrame type", "type", clientFrame.FrameType)
-			break
-		}
-		msgCh <- clientFrame
-	}
 }
 
 // initFLAP sets up a new FLAP connection. It returns a flap client if the
