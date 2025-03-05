@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
@@ -208,12 +207,9 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 				return fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", roomName, chatID, snac.ScreenName, prompt)
 			case fileTransfer:
 				user := snac.TLVUserInfo.ScreenName
-				uuid := strings.ToUpper(fileTransfer.String())
-				cookieBytes := make([]byte, 8)
+				uuid := strings.ToUpper(fileTransfer.String()) // TiK requires upper-case UUID characters
 
-				binary.BigEndian.PutUint64(cookieBytes, frag.Cookie)
-
-				decodedBytes, _ := base64.StdEncoding.DecodeString(string(cookieBytes))
+				cookie := base64.StdEncoding.EncodeToString(frag.Cookie[:])
 
 				seq, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsSeqNum)
 				rip, _ := frag.Uint32BE(wire.ICBMRdvTLVTagsRequesterIP)
@@ -223,7 +219,7 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 				ftlv, _ := frag.Bytes(10001)
 				b64tlv := base64.StdEncoding.EncodeToString(ftlv)
 
-				return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%s:%d:%s:%s:%s:%d:10001:%s", user, uuid, string(decodedBytes), seq, ip.String(), ip.String(), ip.String(), port, b64tlv)
+				return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%s:%d:%s:%s:%s:%d:10001:%s", user, uuid, cookie, seq, ip.String(), ip.String(), ip.String(), port, b64tlv)
 			}
 		case wire.ICBMRdvMessageCancel:
 		case wire.ICBMRdvMessageAccept:

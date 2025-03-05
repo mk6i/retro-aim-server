@@ -639,7 +639,7 @@ type ICBMCh1Fragment struct {
 
 type ICBMCh2Fragment struct {
 	Type       uint16
-	Cookie     uint64
+	Cookie     [8]byte
 	Capability [16]byte
 	TLVRestBlock
 }
