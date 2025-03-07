@@ -222,6 +222,20 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 				return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%s:%d:%s:%s:%s:%d:10001:%s", user, uuid, cookie, seq, ip.String(), ip.String(), ip.String(), port, b64tlv)
 			}
 		case wire.ICBMRdvMessageCancel:
+			user := snac.TLVUserInfo.ScreenName
+			uuid := strings.ToUpper(fileTransfer.String()) // TiK requires upper-case UUID characters
+
+			cookie := base64.StdEncoding.EncodeToString(frag.Cookie[:])
+
+			seq, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsSeqNum)
+			rip, _ := frag.Uint32BE(wire.ICBMRdvTLVTagsRequesterIP)
+			ip := net.IPv4(byte(rip>>24), byte(rip>>16), byte(rip>>8), byte(rip))
+			port, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsPort)
+
+			ftlv, _ := frag.Bytes(10001)
+			b64tlv := base64.StdEncoding.EncodeToString(ftlv)
+
+			return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%s:%d:%s:%s:%s:%d:10001:%s", user, uuid, cookie, seq, ip.String(), ip.String(), ip.String(), port, b64tlv)
 		case wire.ICBMRdvMessageAccept:
 		case wire.ICBMRdvMessageNak:
 		}

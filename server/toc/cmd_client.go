@@ -235,6 +235,8 @@ func (s OSCARProxy) RecvClientCmd(
 		return s.GetDirURL(ctx, sessBOS, payload), true
 	case "toc_rvous_accept":
 		return s.RvousAccept(ctx, sessBOS, payload), true
+	case "toc_rvous_cancel":
+		return s.RvousCancel(ctx, sessBOS, payload), true
 	}
 
 	s.Logger.ErrorContext(ctx, fmt.Sprintf("unsupported TOC command %s", cmd))
@@ -1095,6 +1097,62 @@ func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, cmd []by
 	return ""
 }
 
+// RvousCancel handles the toc_rvous_cancel TOC command.
+//
+// From the TiK documentation:
+//
+//	Cancel a rendezvous proposal from the user <nick>. <cookie> is the cookie
+//	from the RVOUS_PROPOSE message. <service> is the UUID the proposal was for.
+//	<tlvlist> contains a list of tlv tags followed by base64 encoded values.
+//
+// Command syntax: toc_rvous_cancel <nick> <cookie> <service>
+func (s OSCARProxy) RvousCancel(ctx context.Context, me *state.Session, cmd []byte) string {
+	var nick, cookie, service string
+
+	if _, err := parseArgs(cmd, "toc_rvous_cancel", &nick, &cookie, &service); err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
+	}
+
+	cbytes, err := base64.StdEncoding.DecodeString(cookie)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("base64.Decode: %w", err))
+	}
+
+	var arr [8]byte
+	copy(arr[:], cbytes) // copy slice into array
+
+	svcUUID, err := uuid.Parse(service)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("uuid.Parse: %w", err))
+	}
+
+	snac := wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+		ChannelID:  wire.ICBMChannelRendezvous,
+		ScreenName: nick,
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+					Type:       wire.ICBMRdvMessageCancel,
+					Cookie:     arr,
+					Capability: svcUUID,
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(0x000B, uint16(0x01)),
+						},
+					},
+				}),
+			},
+		},
+	}
+
+	_, err = s.ICBMService.ChannelMsgToHost(ctx, me, wire.SNACFrame{}, snac)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("ICBMService.ChannelMsgToHost: %w", err))
+	}
+
+	return ""
+}
+
 // RvousAccept handles the toc_rvous_accept TOC command.
 //
 // From the TiK documentation:
@@ -1117,23 +1175,22 @@ func (s OSCARProxy) RvousAccept(ctx context.Context, me *state.Session, cmd []by
 	}
 
 	var arr [8]byte
-	copy(arr[:], cbytes) // Copy slice into array
+	copy(arr[:], cbytes) // copy slice into array
 
-	//svcUUID, err := uuid.Parse(service)
-	//if err != nil {
-	//	return s.runtimeErr(ctx, fmt.Errorf("uuid.Parse: %w", err))
-	//}
+	svcUUID, err := uuid.Parse(service)
+	if err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("uuid.Parse: %w", err))
+	}
 
 	snac := wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
-		ChannelID:  wire.ICBMRdvMessagePropose,
+		ChannelID:  wire.ICBMChannelRendezvous,
 		ScreenName: nick,
 		TLVRestBlock: wire.TLVRestBlock{
 			TLVList: wire.TLVList{
 				wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
-					Type:   wire.ICBMRdvMessageAccept,
-					Cookie: arr,
-					//Capability: svcUUID,
-					Capability: fileTransfer,
+					Type:       wire.ICBMRdvMessageAccept,
+					Cookie:     arr,
+					Capability: svcUUID,
 				}),
 			},
 		},
