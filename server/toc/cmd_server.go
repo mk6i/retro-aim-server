@@ -167,81 +167,19 @@ func (s OSCARProxy) Eviled(snac wire.SNAC_0x01_0x10_OServiceEvilNotification) st
 //
 // Command syntax: IM_IN:<Source User>:<Auto Response T/F?>:<Message>
 func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient) string {
-	if snac.ChannelID == wire.ICBMChannelRendezvous {
-		rdinfo, has := snac.TLVRestBlock.Bytes(wire.ICBMTLVData)
-		if !has {
-			return s.runtimeErr(ctx, errors.New("TLVRestBlock.Bytes: missing rendezvous block"))
-		}
-		frag := wire.ICBMCh2Fragment{}
-		if err := wire.UnmarshalBE(&frag, bytes.NewReader(rdinfo)); err != nil {
-			return s.runtimeErr(ctx, fmt.Errorf("wire.UnmarshalBE: %w", err))
-		}
-
-		switch frag.Type {
-		case wire.ICBMRdvMessagePropose:
-			switch frag.Capability {
-			case capChat:
-				prompt, ok := frag.Bytes(wire.ICBMRdvTLVTagsInvitation)
-				if !ok {
-					return s.runtimeErr(ctx, errors.New("frag.Bytes: missing chat invite prompt"))
-				}
-
-				svcData, ok := frag.Bytes(wire.ICBMRdvTLVTagsSvcData)
-				if !ok || svcData == nil {
-					return s.runtimeErr(ctx, errors.New("frag.Bytes: missing room info"))
-				}
-
-				roomInfo := wire.ICBMRoomInfo{}
-				if err := wire.UnmarshalBE(&roomInfo, bytes.NewReader(svcData)); err != nil {
-					return s.runtimeErr(ctx, fmt.Errorf("wire.UnmarshalBE: %w", err))
-				}
-
-				cookie := strings.Split(roomInfo.Cookie, "-") // make this safe
-				if len(cookie) < 3 {
-					return s.runtimeErr(ctx, errors.New("roomInfo.Cookie: malformed cookie, could not get room name"))
-				}
-
-				roomName := cookie[2]
-				chatID := chatRegistry.Add(roomInfo)
-
-				return fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", roomName, chatID, snac.ScreenName, prompt)
-			case fileTransfer:
-				user := snac.TLVUserInfo.ScreenName
-				uuid := strings.ToUpper(fileTransfer.String()) // TiK requires upper-case UUID characters
-
-				cookie := base64.StdEncoding.EncodeToString(frag.Cookie[:])
-
-				seq, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsSeqNum)
-				rip, _ := frag.Uint32BE(wire.ICBMRdvTLVTagsRequesterIP)
-				ip := net.IPv4(byte(rip>>24), byte(rip>>16), byte(rip>>8), byte(rip))
-				port, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsPort)
-
-				ftlv, _ := frag.Bytes(10001)
-				b64tlv := base64.StdEncoding.EncodeToString(ftlv)
-
-				return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%s:%d:%s:%s:%s:%d:10001:%s", user, uuid, cookie, seq, ip.String(), ip.String(), ip.String(), port, b64tlv)
-			}
-		case wire.ICBMRdvMessageCancel:
-			user := snac.TLVUserInfo.ScreenName
-			uuid := strings.ToUpper(fileTransfer.String()) // TiK requires upper-case UUID characters
-
-			cookie := base64.StdEncoding.EncodeToString(frag.Cookie[:])
-
-			seq, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsSeqNum)
-			rip, _ := frag.Uint32BE(wire.ICBMRdvTLVTagsRequesterIP)
-			ip := net.IPv4(byte(rip>>24), byte(rip>>16), byte(rip>>8), byte(rip))
-			port, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsPort)
-
-			ftlv, _ := frag.Bytes(10001)
-			b64tlv := base64.StdEncoding.EncodeToString(ftlv)
-
-			return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%s:%d:%s:%s:%s:%d:10001:%s", user, uuid, cookie, seq, ip.String(), ip.String(), ip.String(), port, b64tlv)
-		case wire.ICBMRdvMessageAccept:
-		case wire.ICBMRdvMessageNak:
-		}
-
+	switch snac.ChannelID {
+	case wire.ICBMChannelIM:
+		return s.convertICBMInstantMsg(ctx, snac)
+	case wire.ICBMChannelRendezvous:
+		return s.convertICBMRendezvous(ctx, chatRegistry, snac)
+	default:
+		s.Logger.DebugContext(ctx, "received ICBM for channel", "channel_id", snac.ChannelID)
+		return ""
 	}
+}
 
+// convertICBMInstantMsg converts an ICBM instant message SNAC to a TOC IM_IN response.
+func (s OSCARProxy) convertICBMInstantMsg(ctx context.Context, snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient) string {
 	buf, ok := snac.TLVRestBlock.Bytes(wire.ICBMTLVAOLIMData)
 	if !ok {
 		return s.runtimeErr(ctx, errors.New("TLVRestBlock.Bytes: missing wire.ICBMTLVAOLIMData"))
@@ -257,6 +195,72 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 	}
 
 	return fmt.Sprintf("IM_IN:%s:%s:%s", snac.ScreenName, autoResp, txt)
+}
+
+// convertICBMRendezvous converts an ICBM rendezvous SNAC to a TOC response.
+//   - if chat, return CHAT_INVITE
+//   - file transfer, return RVOUS_PROPOSE
+//   - don't respond for other rendezvous types
+func (s OSCARProxy) convertICBMRendezvous(ctx context.Context, chatRegistry *ChatRegistry, snac wire.SNAC_0x04_0x07_ICBMChannelMsgToClient) string {
+	rdinfo, has := snac.TLVRestBlock.Bytes(wire.ICBMTLVData)
+	if !has {
+		return s.runtimeErr(ctx, errors.New("TLVRestBlock.Bytes: missing rendezvous block"))
+	}
+	frag := wire.ICBMCh2Fragment{}
+	if err := wire.UnmarshalBE(&frag, bytes.NewReader(rdinfo)); err != nil {
+		return s.runtimeErr(ctx, fmt.Errorf("wire.UnmarshalBE: %w", err))
+	}
+
+	if frag.Type != wire.ICBMRdvMessagePropose {
+		s.Logger.DebugContext(ctx, "can't convert ICBM rendezvous message to TOC response", "rdv_type", frag.Type)
+		return ""
+	}
+
+	switch frag.Capability {
+	case capChat:
+		prompt, ok := frag.Bytes(wire.ICBMRdvTLVTagsInvitation)
+		if !ok {
+			return s.runtimeErr(ctx, errors.New("frag.Bytes: missing chat invite prompt"))
+		}
+
+		svcData, ok := frag.Bytes(wire.ICBMRdvTLVTagsSvcData)
+		if !ok || svcData == nil {
+			return s.runtimeErr(ctx, errors.New("frag.Bytes: missing room info"))
+		}
+
+		roomInfo := wire.ICBMRoomInfo{}
+		if err := wire.UnmarshalBE(&roomInfo, bytes.NewReader(svcData)); err != nil {
+			return s.runtimeErr(ctx, fmt.Errorf("wire.UnmarshalBE: %w", err))
+		}
+
+		cookie := strings.Split(roomInfo.Cookie, "-") // make this safe
+		if len(cookie) < 3 {
+			return s.runtimeErr(ctx, errors.New("roomInfo.Cookie: malformed cookie, could not get room name"))
+		}
+
+		roomName := cookie[2]
+		chatID := chatRegistry.Add(roomInfo)
+
+		return fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", roomName, chatID, snac.ScreenName, prompt)
+	case fileTransfer:
+		user := snac.TLVUserInfo.ScreenName
+		uuid := strings.ToUpper(fileTransfer.String()) // TiK requires upper-case UUID characters
+
+		cookie := base64.StdEncoding.EncodeToString(frag.Cookie[:])
+
+		seq, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsSeqNum)
+		rip, _ := frag.Uint32BE(wire.ICBMRdvTLVTagsRequesterIP)
+		ip := net.IPv4(byte(rip>>24), byte(rip>>16), byte(rip>>8), byte(rip))
+		port, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsPort)
+
+		ftlv, _ := frag.Bytes(10001)
+		b64tlv := base64.StdEncoding.EncodeToString(ftlv)
+
+		return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%s:%d:%s:%s:%s:%d:10001:%s", user, uuid, cookie, seq, ip.String(), ip.String(), ip.String(), port, b64tlv)
+	default:
+		s.Logger.DebugContext(ctx, "received rendezvous ICBM for unsupported capability", "capability", capChat)
+		return ""
+	}
 }
 
 // UpdateBuddyArrival handles the UPDATE_BUDDY TOC command for buddy arrival events.
@@ -308,6 +312,9 @@ func (s OSCARProxy) UpdateBuddyDeparted(snac wire.SNAC_0x03_0x0C_BuddyDeparted) 
 }
 
 func sendOrCancel(ctx context.Context, ch chan<- []byte, msg string) {
+	if msg == "" {
+		return
+	}
 	select {
 	case <-ctx.Done():
 		return
