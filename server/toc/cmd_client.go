@@ -506,16 +506,16 @@ func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegis
 			ScreenName: guest,
 			TLVRestBlock: wire.TLVRestBlock{
 				TLVList: wire.TLVList{
-					wire.NewTLVBE(0x05, wire.ICBMCh2Fragment{
-						Type:       0,
+					wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+						Type:       wire.ICBMRdvMessagePropose,
 						Capability: capChat,
 						TLVRestBlock: wire.TLVRestBlock{
 							TLVList: wire.TLVList{
-								wire.NewTLVBE(10, uint16(1)),
-								wire.NewTLVBE(12, msg),
-								wire.NewTLVBE(13, "us-ascii"),
-								wire.NewTLVBE(14, "en"),
-								wire.NewTLVBE(10001, roomInfo),
+								wire.NewTLVBE(wire.ICBMRdvTLVTagsSeqNum, uint16(1)),
+								wire.NewTLVBE(wire.ICBMRdvTLVTagsInvitation, msg),
+								wire.NewTLVBE(wire.ICBMRdvTLVTagsInviteMIMECharset, "us-ascii"),
+								wire.NewTLVBE(wire.ICBMRdvTLVTagsInviteMIMELang, "en"),
+								wire.NewTLVBE(wire.ICBMRdvTLVTagsSvcData, roomInfo),
 							},
 						},
 					}),
