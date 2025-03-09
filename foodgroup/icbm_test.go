@@ -1,12 +1,15 @@
 package foodgroup
 
 import (
+	"net"
+	"net/netip"
 	"testing"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -65,6 +68,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 									SubGroup:  wire.ICBMChannelMsgToClient,
 								},
 								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									ChannelID:   wire.ICBMChannelIM,
 									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
@@ -89,6 +93,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelIM,
 					ScreenName: "recipient-screen-name",
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
@@ -111,6 +116,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x04_0x0C_ICBMHostAck{
+					ChannelID:  wire.ICBMChannelIM,
 					ScreenName: "recipient-screen-name",
 				},
 			},
@@ -152,6 +158,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 									SubGroup:  wire.ICBMChannelMsgToClient,
 								},
 								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									ChannelID:   wire.ICBMChannelIM,
 									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
@@ -176,6 +183,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelIM,
 					ScreenName: "recipient-screen-name",
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
@@ -220,6 +228,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelIM,
 					ScreenName: "recipient-screen-name",
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
@@ -273,6 +282,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelIM,
 					ScreenName: "recipient-screen-name",
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
@@ -331,6 +341,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelIM,
 					ScreenName: "recipient-screen-name",
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
@@ -361,6 +372,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelIM,
 					ScreenName: "22222222",
 					TLVRestBlock: wire.TLVRestBlock{
 						TLVList: wire.TLVList{
@@ -415,6 +427,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 						{
 							offlineMessageIn: state.OfflineMessage{
 								Message: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+									ChannelID:  wire.ICBMChannelIM,
 									ScreenName: "22222222",
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
@@ -431,6 +444,252 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name: "send rendezvous request for file transfer, expect IP TLV override",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(10),
+				sessRemoteAddr(netip.AddrPortFrom(netip.MustParseAddr("129.168.0.1"), 0))),
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     newTestSession("recipient-screen-name", sessOptWarning(20)),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICBM,
+									SubGroup:  wire.ICBMChannelMsgToClient,
+								},
+								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									ChannelID:   wire.ICBMChannelRendezvous,
+									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.ICBMTLVWantEvents, []byte{}),
+											wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+												Type:       wire.ICBMRdvMessagePropose,
+												Capability: uuid.MustParse("09461343-4C7F-11D1-8222-444553540000"),
+												TLVRestBlock: wire.TLVRestBlock{
+													TLVList: wire.TLVList{
+														wire.NewTLVBE(wire.ICBMRdvTLVTagsPort, uint16(4000)),
+														wire.NewTLVBE(wire.ICBMRdvTLVTagsRequesterIP, net.ParseIP("129.168.0.1").To4()),
+														wire.NewTLVBE(wire.ICBMRdvTLVTagsVerifiedIP, net.ParseIP("129.168.0.1").To4()),
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelRendezvous,
+					ScreenName: "recipient-screen-name",
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+								Type:       wire.ICBMRdvMessagePropose,
+								Capability: uuid.MustParse("09461343-4C7F-11D1-8222-444553540000"),
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ICBMRdvTLVTagsPort, uint16(4000)),
+										wire.NewTLVBE(wire.ICBMRdvTLVTagsRequesterIP, net.ParseIP("127.0.0.1").To4()),
+									},
+								},
+							}),
+						},
+					},
+				},
+			},
+			expectOutput: nil,
+		},
+		{
+			name: "send rendezvous rejection for file transfer, expect no IP TLV override",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(10),
+				sessRemoteAddr(netip.AddrPortFrom(netip.MustParseAddr("129.168.0.1"), 0))),
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     newTestSession("recipient-screen-name", sessOptWarning(20)),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICBM,
+									SubGroup:  wire.ICBMChannelMsgToClient,
+								},
+								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									ChannelID:   wire.ICBMChannelRendezvous,
+									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.ICBMTLVWantEvents, []byte{}),
+											wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+												Type:       wire.ICBMRdvMessageCancel,
+												Capability: uuid.MustParse("09461343-4C7F-11D1-8222-444553540000"),
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelRendezvous,
+					ScreenName: "recipient-screen-name",
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+								Type:       wire.ICBMRdvMessageCancel,
+								Capability: uuid.MustParse("09461343-4C7F-11D1-8222-444553540000"),
+							}),
+						},
+					},
+				},
+			},
+			expectOutput: nil,
+		},
+		{
+			name:          "send rendezvous request for file transfer without IP in session, expect no IP TLV override",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
+			mockParams: mockParams{
+				buddyListRetrieverParams: buddyListRetrieverParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     newTestSession("recipient-screen-name", sessOptWarning(20)),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICBM,
+									SubGroup:  wire.ICBMChannelMsgToClient,
+								},
+								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									ChannelID:   wire.ICBMChannelRendezvous,
+									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.ICBMTLVWantEvents, []byte{}),
+											wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+												Type:       wire.ICBMRdvMessagePropose,
+												Capability: uuid.MustParse("09461343-4C7F-11D1-8222-444553540000"),
+												TLVRestBlock: wire.TLVRestBlock{
+													TLVList: wire.TLVList{
+														wire.NewTLVBE(wire.ICBMRdvTLVTagsPort, uint16(4000)),
+														wire.NewTLVBE(wire.ICBMRdvTLVTagsRequesterIP, net.ParseIP("127.0.0.1").To4()),
+													},
+												},
+											}),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelRendezvous,
+					ScreenName: "recipient-screen-name",
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
+								Type:       wire.ICBMRdvMessagePropose,
+								Capability: uuid.MustParse("09461343-4C7F-11D1-8222-444553540000"),
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.ICBMRdvTLVTagsPort, uint16(4000)),
+										wire.NewTLVBE(wire.ICBMRdvTLVTagsRequesterIP, net.ParseIP("127.0.0.1").To4()),
+									},
+								},
+							}),
+						},
+					},
+				},
+			},
+			expectOutput: nil,
 		},
 	}
 

@@ -330,9 +330,6 @@ func (s OSCARProxy) UpdateBuddyDeparted(snac wire.SNAC_0x03_0x0C_BuddyDeparted) 
 }
 
 func sendOrCancel(ctx context.Context, ch chan<- []byte, msg string) {
-	if msg == "" {
-		return
-	}
 	select {
 	case <-ctx.Done():
 		return

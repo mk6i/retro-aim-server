@@ -357,6 +357,7 @@ func TestOSCARProxy_RecvBOS_IMIn(t *testing.T) {
 						TLVList: wire.TLVList{
 							wire.NewTLVBE(wire.ICBMTLVData, []wire.ICBMCh2Fragment{
 								{
+									Capability: capChat,
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											wire.NewTLVBE(wire.ICBMRdvTLVTagsInvitation, "join my chat!"),

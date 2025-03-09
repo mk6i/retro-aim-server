@@ -93,6 +93,16 @@ func (s *TLVList) HasTag(tag uint16) bool {
 	return false
 }
 
+// Replace updates the values of TLVs in the list with the same tag as new. If
+// no matching tag is found, the list remains unchanged.
+func (s *TLVList) Replace(new TLV) {
+	for i, old := range *s {
+		if old.Tag == new.Tag {
+			(*s)[i].Value = new.Value
+		}
+	}
+}
+
 // String retrieves the string value associated with the specified tag from the
 // TLVList.
 //

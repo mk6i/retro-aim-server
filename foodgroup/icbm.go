@@ -188,15 +188,17 @@ func addExternalIP(sess *state.Session, tlv wire.TLV) (wire.TLV, error) {
 	if frag.Type != wire.ICBMRdvMessagePropose {
 		return tlv, nil
 	}
-	if frag.HasTag(wire.ICBMRdvTLVTagsPort) && sess.RemoteAddr() != nil && sess.RemoteAddr().Addr().Is4() {
+	if frag.HasTag(wire.ICBMRdvTLVTagsRequesterIP) && sess.RemoteAddr() != nil && sess.RemoteAddr().Addr().Is4() {
 		ip := sess.RemoteAddr().Addr()
-		// todo: create tlv replaceValue method
-		for i := range frag.TLVList {
-			if frag.TLVList[i].Tag == wire.ICBMRdvTLVTagsRequesterIP {
-				frag.TLVList[i].Value = ip.AsSlice()
-				break
-			}
-		}
+		// replace the IP set by the client with the actual IP seen by the
+		// server. unlike AOL’s original behavior, this allows NATed clients
+		// to use rendezvous by replacing their LAN IP with the correct
+		// external IP.
+		frag.Replace(wire.NewTLVBE(wire.ICBMRdvTLVTagsRequesterIP, ip.AsSlice()))
+		// append the client’s IP as seen by the server. the recipient uses
+		// this to verify that the sender’s claimed IP matches what the server
+		// detects. although redundant since we override the requester IP
+		// above, it remains required for client compatibility.
 		frag.Append(wire.NewTLVBE(wire.ICBMRdvTLVTagsVerifiedIP, ip.AsSlice()))
 		return wire.NewTLVBE(tlv.Tag, frag), nil
 	}

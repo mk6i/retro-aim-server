@@ -137,9 +137,7 @@ func (rt Server) Start(ctx context.Context) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := rt.dispatchConn(conn, ctx, httpCh); err != nil {
-				rt.Logger.ErrorContext(ctx, "TOC request failed", "err", err.Error())
-			}
+			rt.dispatchConn(conn, ctx, httpCh)
 		}()
 	}
 
