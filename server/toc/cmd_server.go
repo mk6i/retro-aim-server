@@ -173,7 +173,7 @@ func (s OSCARProxy) IMIn(ctx context.Context, chatRegistry *ChatRegistry, snac w
 	case wire.ICBMChannelRendezvous:
 		return s.convertICBMRendezvous(ctx, chatRegistry, snac)
 	default:
-		s.Logger.DebugContext(ctx, "received ICBM for channel", "channel_id", snac.ChannelID)
+		s.Logger.DebugContext(ctx, "received unsupported ICBM channel message", "channel_id", snac.ChannelID)
 		return ""
 	}
 }
@@ -249,7 +249,7 @@ func (s OSCARProxy) convertICBMRendezvous(ctx context.Context, chatRegistry *Cha
 		seq, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsSeqNum)
 
 		rvousIP := "0.0.0.0"
-		if ip, ok := frag.Bytes(wire.ICBMRdvTLVTagsRequesterIP); ok && len(ip) == 4 {
+		if ip, ok := frag.Bytes(wire.ICBMRdvTLVTagsRdvIP); ok && len(ip) == 4 {
 			rvousIP = net.IPv4(ip[0], ip[1], ip[2], ip[3]).String()
 		}
 
@@ -259,7 +259,7 @@ func (s OSCARProxy) convertICBMRendezvous(ctx context.Context, chatRegistry *Cha
 		}
 
 		verifiedIP := "0.0.0.0"
-		if ip, ok := frag.Bytes(wire.ICBMRdvTLVTagsRequesterIP); ok && len(ip) == 4 {
+		if ip, ok := frag.Bytes(wire.ICBMRdvTLVTagsVerifiedIP); ok && len(ip) == 4 {
 			verifiedIP = net.IPv4(ip[0], ip[1], ip[2], ip[3]).String()
 		}
 
