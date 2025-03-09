@@ -244,7 +244,7 @@ func (s OSCARProxy) convertICBMRendezvous(ctx context.Context, chatRegistry *Cha
 		return fmt.Sprintf("CHAT_INVITE:%s:%d:%s:%s", roomName, chatID, snac.ScreenName, prompt)
 	case fileTransfer:
 		user := snac.TLVUserInfo.ScreenName
-		uuid := strings.ToUpper(fileTransfer.String()) // TiK requires upper-case UUID characters
+		capability := strings.ToUpper(fileTransfer.String()) // TiK requires upper-case UUID characters
 		cookie := base64.StdEncoding.EncodeToString(frag.Cookie[:])
 		seq, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsSeqNum)
 
@@ -263,11 +263,18 @@ func (s OSCARProxy) convertICBMRendezvous(ctx context.Context, chatRegistry *Cha
 			verifiedIP = net.IPv4(ip[0], ip[1], ip[2], ip[3]).String()
 		}
 
-		port, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsPort)
-		ftlv, _ := frag.Bytes(wire.ICBMRdvTLVTagsSvcData)
-		b64tlv := base64.StdEncoding.EncodeToString(ftlv)
+		rvousPort, _ := frag.Uint16BE(wire.ICBMRdvTLVTagsPort)
 
-		return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%s:%d:%s:%s:%s:%d:10001:%s", user, uuid, cookie, seq, rvousIP, proposerIP, verifiedIP, port, b64tlv)
+		var fileMetadata string
+		if f, ok := frag.Bytes(wire.ICBMRdvTLVTagsSvcData); ok {
+			// remove sequence of null bytes from the end that causes TiK file open
+			// dialog to crash
+			f = bytes.TrimRight(f, "\x00")
+			fileMetadata = base64.StdEncoding.EncodeToString(f)
+		}
+
+		return fmt.Sprintf("RVOUS_PROPOSE:%s:%s:%s:%d:%s:%s:%s:%d:%d:%s",
+			user, capability, cookie, seq, rvousIP, proposerIP, verifiedIP, rvousPort, wire.ICBMRdvTLVTagsSvcData, fileMetadata)
 	default:
 		s.Logger.DebugContext(ctx, "received rendezvous ICBM for unsupported capability", "capability", capChat)
 		return ""
