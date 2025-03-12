@@ -633,7 +633,7 @@ paths:
 
   /directory/keyword:
     post:
-      summary: Create a new keyword
+      summary: Create a new keyword.
       description: Create a new keyword in a category.
       requestBody:
         required: true
@@ -642,15 +642,15 @@ paths:
             schema:
               type: object
               required:
+                - category_id
                 - name
-                - parent
               properties:
+                category_id:
+                  type: integer
+                  description: The ID of the parent keyword category.
                 name:
                   type: string
                   description: The name of the keyword.
-                parent:
-                  type: integer
-                  description: The ID of the parent keyword category.
       responses:
         '201':
           description: Keyword created successfully.
@@ -665,9 +665,6 @@ paths:
                   name:
                     type: string
                     description: The name of the keyword.
-                  parent:
-                    type: integer
-                    description: The ID of the parent keyword category.
         '400':
           description: Malformed input body.
           content:
