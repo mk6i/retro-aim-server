@@ -478,9 +478,6 @@ paths:
                 type: array
                 items:
                   type: object
-                  required:
-                    - id
-                    - name
                   properties:
                     id:
                       type: integer
@@ -598,10 +595,6 @@ paths:
                 type: array
                 items:
                   type: object
-                  required:
-                    - id
-                    - name
-                    - parent
                   properties:
                     id:
                       type: integer
@@ -609,9 +602,6 @@ paths:
                     name:
                       type: string
                       description: The name of the keyword.
-                    parent:
-                      type: integer
-                      description: The ID of the parent keyword category.
         '400':
           description: Invalid category ID.
           content:
