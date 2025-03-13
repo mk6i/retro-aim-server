@@ -10,12 +10,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-func TestOSCARProxy_AddBuddy(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_AddBuddy(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -53,6 +54,21 @@ func TestOSCARProxy_AddBuddy(t *testing.T) {
 			},
 		},
 		{
+			name:     "add buddies with empty list",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_add_buddy"),
+			mockParams: mockParams{
+				buddyParams: buddyParams{
+					addBuddiesParams: addBuddiesParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x03_0x04_BuddyAddBuddies{},
+						},
+					},
+				},
+			},
+		},
+		{
 			name:     "add buddies, receive error from buddy service",
 			me:       newTestSession("me"),
 			givenCmd: []byte("toc_add_buddy friend1"),
@@ -75,11 +91,6 @@ func TestOSCARProxy_AddBuddy(t *testing.T) {
 			},
 			wantMsg: cmdInternalSvcErr,
 		},
-		{
-			name:     "bad command",
-			givenCmd: []byte(`toc_add_buddy_bad`),
-			wantMsg:  cmdInternalSvcErr,
-		},
 	}
 
 	for _, tc := range cases {
@@ -97,14 +108,14 @@ func TestOSCARProxy_AddBuddy(t *testing.T) {
 				Logger:       slog.Default(),
 				BuddyService: buddySvc,
 			}
-			msg := svc.AddBuddy(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_AddPermit(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_AddPermit(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -165,9 +176,19 @@ func TestOSCARProxy_AddPermit(t *testing.T) {
 			wantMsg: cmdInternalSvcErr,
 		},
 		{
-			name:     "bad command",
-			givenCmd: []byte(`toc_remove_buddy_bad`),
-			wantMsg:  cmdInternalSvcErr,
+			name:     "permit buddies with empty list",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_add_permit"),
+			mockParams: mockParams{
+				permitDenyParams: permitDenyParams{
+					addPermListEntriesParams: addPermListEntriesParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							body: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{},
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -186,14 +207,14 @@ func TestOSCARProxy_AddPermit(t *testing.T) {
 				Logger:            slog.Default(),
 				PermitDenyService: pdSvc,
 			}
-			msg := svc.AddPermit(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_AddDeny(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_AddDeny(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -254,9 +275,19 @@ func TestOSCARProxy_AddDeny(t *testing.T) {
 			wantMsg: cmdInternalSvcErr,
 		},
 		{
-			name:     "bad command",
-			givenCmd: []byte(`toc_add_deny_bad`),
-			wantMsg:  cmdInternalSvcErr,
+			name:     "deny buddies with empty list",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_add_deny"),
+			mockParams: mockParams{
+				permitDenyParams: permitDenyParams{
+					addDenyListEntriesParams: addDenyListEntriesParams{
+						{
+							me:   state.NewIdentScreenName("me"),
+							body: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{},
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -275,14 +306,14 @@ func TestOSCARProxy_AddDeny(t *testing.T) {
 				Logger:            slog.Default(),
 				PermitDenyService: pdSvc,
 			}
-			msg := svc.AddDeny(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_FormatNickname(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_FormatNickname(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -497,14 +528,14 @@ func TestOSCARProxy_FormatNickname(t *testing.T) {
 				Logger:       slog.Default(),
 				AdminService: adminSvc,
 			}
-			msg := svc.FormatNickname(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_ChatAccept(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_ChatAccept(t *testing.T) {
 	fnNewChatNavParams := func(err error) chatNavParams {
 		ret := chatNavParams{
 			requestRoomInfoParams: requestRoomInfoParams{
@@ -616,8 +647,9 @@ func TestOSCARProxy_ChatAccept(t *testing.T) {
 		givenChatRegistry *ChatRegistry
 		// wantMsg is the expected TOC response
 		wantMsg string
-		// wantChatID is the expected chat ID
-		wantChatID int
+		// expectChatSession indicates whether a chat session should be present
+		// in the chat registry
+		expectChatSession bool
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -641,7 +673,8 @@ func TestOSCARProxy_ChatAccept(t *testing.T) {
 				authParams:         fnNewAuthParams(nil),
 				oServiceChatParams: fnNewOServiceChatParams(nil),
 			},
-			wantMsg: "CHAT_JOIN:0:cool room",
+			wantMsg:           "CHAT_JOIN:0:cool room",
+			expectChatSession: true,
 		},
 		{
 			name:     "accept chat, receive error from chat oservice svc",
@@ -662,7 +695,8 @@ func TestOSCARProxy_ChatAccept(t *testing.T) {
 				authParams:         fnNewAuthParams(nil),
 				oServiceChatParams: fnNewOServiceChatParams(io.EOF),
 			},
-			wantMsg: cmdInternalSvcErr,
+			wantMsg:           cmdInternalSvcErr,
+			expectChatSession: false,
 		},
 		{
 			name:     "accept chat, receive error from auth svc",
@@ -682,7 +716,8 @@ func TestOSCARProxy_ChatAccept(t *testing.T) {
 				oServiceBOSParams: fnNewOServiceBOSParams(nil),
 				authParams:        fnNewAuthParams(io.EOF),
 			},
-			wantMsg: cmdInternalSvcErr,
+			wantMsg:           cmdInternalSvcErr,
+			expectChatSession: false,
 		},
 		{
 			name:     "accept chat, receive error from BOS oservice svc",
@@ -701,7 +736,8 @@ func TestOSCARProxy_ChatAccept(t *testing.T) {
 				chatNavParams:     fnNewChatNavParams(nil),
 				oServiceBOSParams: fnNewOServiceBOSParams(io.EOF),
 			},
-			wantMsg: cmdInternalSvcErr,
+			wantMsg:           cmdInternalSvcErr,
+			expectChatSession: false,
 		},
 		{
 			name:     "accept chat, receive error from chat nav svc",
@@ -719,29 +755,31 @@ func TestOSCARProxy_ChatAccept(t *testing.T) {
 			mockParams: mockParams{
 				chatNavParams: fnNewChatNavParams(io.EOF),
 			},
-			wantMsg: cmdInternalSvcErr,
+			wantMsg:           cmdInternalSvcErr,
+			expectChatSession: false,
 		},
 		{
-			name:              "chat doesn't exist",
-			givenCmd:          []byte(`toc_chat_accept 0`),
+			name:              "bad command",
+			me:                newTestSession("me"),
+			givenCmd:          []byte(`toc_chat_accept`),
 			givenChatRegistry: NewChatRegistry(),
 			wantMsg:           cmdInternalSvcErr,
+			expectChatSession: false,
 		},
 		{
-			name:     "bad command",
-			givenCmd: []byte(`toc_chat_accept`),
-			wantMsg:  cmdInternalSvcErr,
-		},
-		{
-			name:     "bad exchange number",
-			givenCmd: []byte(`toc_chat_accept four`),
-			wantMsg:  cmdInternalSvcErr,
+			name:              "bad exchange number",
+			me:                newTestSession("me"),
+			givenCmd:          []byte(`toc_chat_accept four`),
+			givenChatRegistry: NewChatRegistry(),
+			wantMsg:           cmdInternalSvcErr,
+			expectChatSession: false,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
 
 			chatNavSvc := newMockChatNavService(t)
 			for _, params := range tc.mockParams.requestRoomInfoParams {
@@ -775,15 +813,20 @@ func TestOSCARProxy_ChatAccept(t *testing.T) {
 				OServiceServiceBOS:  bosOServiceSvc,
 				OServiceServiceChat: chatOServiceSvc,
 			}
-			chatID, msg := svc.ChatAccept(ctx, tc.me, tc.givenChatRegistry, tc.givenCmd)
 
+			g := &errgroup.Group{}
+			tc.me.Close()
+
+			msg := svc.RecvClientCmd(ctx, tc.me, tc.givenChatRegistry, tc.givenCmd, nil, g.Go)
+
+			assert.NoError(t, g.Wait())
 			assert.Equal(t, tc.wantMsg, msg)
-			assert.Equal(t, tc.wantChatID, chatID)
+			assert.Equal(t, tc.expectChatSession, len(tc.givenChatRegistry.Sessions()) == 1)
 		})
 	}
 }
 
-func TestOSCARProxy_ChatInvite(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_ChatInvite(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -931,14 +974,14 @@ func TestOSCARProxy_ChatInvite(t *testing.T) {
 				Logger:      slog.Default(),
 				ICBMService: icbmSvc,
 			}
-			msg := svc.ChatInvite(ctx, tc.me, tc.givenChatRegistry, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, tc.givenChatRegistry, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_ChatJoin(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 	fnNewChatNavParams := func(err error) chatNavParams {
 		ret := chatNavParams{
 			createRoomParams: createRoomParams{
@@ -1050,8 +1093,9 @@ func TestOSCARProxy_ChatJoin(t *testing.T) {
 		givenChatRegistry *ChatRegistry
 		// wantMsg is the expected TOC response
 		wantMsg string
-		// wantChatID is the expected chat ID
-		wantChatID int
+		// expectChatSession indicates whether a chat session should be present
+		// in the chat registry
+		expectChatSession bool
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1067,7 +1111,8 @@ func TestOSCARProxy_ChatJoin(t *testing.T) {
 				authParams:         fnNewAuthParams(nil),
 				oServiceChatParams: fnNewOServiceChatParams(nil),
 			},
-			wantMsg: "CHAT_JOIN:0:cool room",
+			wantMsg:           "CHAT_JOIN:0:cool room",
+			expectChatSession: true,
 		},
 		{
 			name:              "join chat, receive error from chat oservice svc",
@@ -1080,7 +1125,8 @@ func TestOSCARProxy_ChatJoin(t *testing.T) {
 				authParams:         fnNewAuthParams(nil),
 				oServiceChatParams: fnNewOServiceChatParams(io.EOF),
 			},
-			wantMsg: cmdInternalSvcErr,
+			wantMsg:           cmdInternalSvcErr,
+			expectChatSession: false,
 		},
 		{
 			name:              "join chat, receive error from auth svc",
@@ -1092,7 +1138,8 @@ func TestOSCARProxy_ChatJoin(t *testing.T) {
 				oServiceBOSParams: fnNewOServiceBOSParams(nil),
 				authParams:        fnNewAuthParams(io.EOF),
 			},
-			wantMsg: cmdInternalSvcErr,
+			wantMsg:           cmdInternalSvcErr,
+			expectChatSession: false,
 		},
 		{
 			name:              "join chat, receive error from BOS oservice svc",
@@ -1103,7 +1150,8 @@ func TestOSCARProxy_ChatJoin(t *testing.T) {
 				chatNavParams:     fnNewChatNavParams(nil),
 				oServiceBOSParams: fnNewOServiceBOSParams(io.EOF),
 			},
-			wantMsg: cmdInternalSvcErr,
+			wantMsg:           cmdInternalSvcErr,
+			expectChatSession: false,
 		},
 		{
 			name:              "join chat, receive error from chat nav svc",
@@ -1113,23 +1161,31 @@ func TestOSCARProxy_ChatJoin(t *testing.T) {
 			mockParams: mockParams{
 				chatNavParams: fnNewChatNavParams(io.EOF),
 			},
-			wantMsg: cmdInternalSvcErr,
+			wantMsg:           cmdInternalSvcErr,
+			expectChatSession: false,
 		},
 		{
-			name:     "bad command",
-			givenCmd: []byte(`toc_chat_join`),
-			wantMsg:  cmdInternalSvcErr,
+			name:              "bad command",
+			me:                newTestSession("me"),
+			givenCmd:          []byte(`toc_chat_join`),
+			givenChatRegistry: NewChatRegistry(),
+			wantMsg:           cmdInternalSvcErr,
+			expectChatSession: false,
 		},
 		{
-			name:     "bad exchange number",
-			givenCmd: []byte(`toc_chat_join four "cool room"`),
-			wantMsg:  cmdInternalSvcErr,
+			name:              "bad exchange number",
+			me:                newTestSession("me"),
+			givenCmd:          []byte(`toc_chat_join four "cool room"`),
+			givenChatRegistry: NewChatRegistry(),
+			wantMsg:           cmdInternalSvcErr,
+			expectChatSession: false,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
 
 			chatNavSvc := newMockChatNavService(t)
 			for _, params := range tc.mockParams.createRoomParams {
@@ -1163,15 +1219,20 @@ func TestOSCARProxy_ChatJoin(t *testing.T) {
 				OServiceServiceBOS:  bosOServiceSvc,
 				OServiceServiceChat: chatOServiceSvc,
 			}
-			chatID, msg := svc.ChatJoin(ctx, tc.me, tc.givenChatRegistry, tc.givenCmd)
 
+			g := &errgroup.Group{}
+			tc.me.Close()
+
+			msg := svc.RecvClientCmd(ctx, tc.me, tc.givenChatRegistry, tc.givenCmd, nil, g.Go)
+
+			assert.NoError(t, g.Wait())
 			assert.Equal(t, tc.wantMsg, msg)
-			assert.Equal(t, tc.wantChatID, chatID)
+			assert.Equal(t, tc.expectChatSession, len(tc.givenChatRegistry.Sessions()) == 1)
 		})
 	}
 }
 
-func TestOSCARProxy_ChatLeave(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_ChatLeave(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -1238,14 +1299,14 @@ func TestOSCARProxy_ChatLeave(t *testing.T) {
 				Logger:      slog.Default(),
 				AuthService: authSvc,
 			}
-			msg := svc.ChatLeave(ctx, tc.givenChatRegistry, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, nil, tc.givenChatRegistry, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_ChatSend(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_ChatSend(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -1456,14 +1517,14 @@ func TestOSCARProxy_ChatSend(t *testing.T) {
 				Logger:      slog.Default(),
 				ChatService: chatSvc,
 			}
-			msg := svc.ChatSend(ctx, tc.givenChatRegistry, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, nil, tc.givenChatRegistry, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_ChatWhisper(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_ChatWhisper(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -1582,14 +1643,14 @@ func TestOSCARProxy_ChatWhisper(t *testing.T) {
 				Logger:      slog.Default(),
 				ChatService: chatSvc,
 			}
-			msg := svc.ChatWhisper(ctx, tc.givenChatRegistry, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, nil, tc.givenChatRegistry, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_Evil(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_Evil(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -1736,14 +1797,14 @@ func TestOSCARProxy_Evil(t *testing.T) {
 				Logger:      slog.Default(),
 				ICBMService: icbmSvc,
 			}
-			msg := svc.Evil(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_ChangePassword(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_ChangePassword(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -1964,14 +2025,14 @@ func TestOSCARProxy_ChangePassword(t *testing.T) {
 				Logger:       slog.Default(),
 				AdminService: adminSvc,
 			}
-			msg := svc.ChangePassword(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_GetDirSearchURL(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_GetDirSearchURL(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -2061,14 +2122,14 @@ func TestOSCARProxy_GetDirSearchURL(t *testing.T) {
 				Logger:      slog.Default(),
 				CookieBaker: cookieBaker,
 			}
-			msg := svc.GetDirSearchURL(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_GetDirURL(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_GetDirURL(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -2136,14 +2197,14 @@ func TestOSCARProxy_GetDirURL(t *testing.T) {
 				Logger:      slog.Default(),
 				CookieBaker: cookieBaker,
 			}
-			msg := svc.GetDirURL(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_GetInfoURL(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_GetInfoURL(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -2211,14 +2272,14 @@ func TestOSCARProxy_GetInfoURL(t *testing.T) {
 				Logger:      slog.Default(),
 				CookieBaker: cookieBaker,
 			}
-			msg := svc.GetInfoURL(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_GetStatus(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_GetStatus(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -2372,14 +2433,14 @@ func TestOSCARProxy_GetStatus(t *testing.T) {
 				Logger:        slog.Default(),
 				LocateService: locateSvc,
 			}
-			msg := svc.GetStatus(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_InitDone(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_InitDone(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -2425,11 +2486,6 @@ func TestOSCARProxy_InitDone(t *testing.T) {
 			},
 			wantMsg: cmdInternalSvcErr,
 		},
-		{
-			name:     "bad command",
-			givenCmd: []byte(`toc_init_done_diff`),
-			wantMsg:  cmdInternalSvcErr,
-		},
 	}
 
 	for _, tc := range cases {
@@ -2447,14 +2503,14 @@ func TestOSCARProxy_InitDone(t *testing.T) {
 				Logger:             slog.Default(),
 				OServiceServiceBOS: oSvc,
 			}
-			msg := svc.InitDone(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_RemoveBuddy(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_RemoveBuddy(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -2492,6 +2548,21 @@ func TestOSCARProxy_RemoveBuddy(t *testing.T) {
 			},
 		},
 		{
+			name:     "remove buddies with empty list",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_remove_buddy"),
+			mockParams: mockParams{
+				buddyParams: buddyParams{
+					delBuddiesParams: delBuddiesParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x03_0x05_BuddyDelBuddies{},
+						},
+					},
+				},
+			},
+		},
+		{
 			name:     "remove buddies, receive error from buddy service",
 			me:       newTestSession("me"),
 			givenCmd: []byte("toc_remove_buddy friend1"),
@@ -2514,11 +2585,6 @@ func TestOSCARProxy_RemoveBuddy(t *testing.T) {
 			},
 			wantMsg: cmdInternalSvcErr,
 		},
-		{
-			name:     "bad command",
-			givenCmd: []byte(`toc_remove_buddy_bad`),
-			wantMsg:  cmdInternalSvcErr,
-		},
 	}
 
 	for _, tc := range cases {
@@ -2536,14 +2602,14 @@ func TestOSCARProxy_RemoveBuddy(t *testing.T) {
 				Logger:       slog.Default(),
 				BuddyService: buddySvc,
 			}
-			msg := svc.RemoveBuddy(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_RvousAccept(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_RvousAccept(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -2635,14 +2701,14 @@ func TestOSCARProxy_RvousAccept(t *testing.T) {
 				Logger:      slog.Default(),
 				ICBMService: icbmSvc,
 			}
-			msg := svc.RvousAccept(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_RvousCancel(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_RvousCancel(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -2744,14 +2810,14 @@ func TestOSCARProxy_RvousCancel(t *testing.T) {
 				Logger:      slog.Default(),
 				ICBMService: icbmSvc,
 			}
-			msg := svc.RvousCancel(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_SendIM(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_SendIM(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -2904,14 +2970,14 @@ func TestOSCARProxy_SendIM(t *testing.T) {
 				Logger:      slog.Default(),
 				ICBMService: icbmSvc,
 			}
-			msg := svc.SendIM(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_SetAway(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_SetAway(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -2990,11 +3056,6 @@ func TestOSCARProxy_SetAway(t *testing.T) {
 			},
 			wantMsg: cmdInternalSvcErr,
 		},
-		{
-			name:     "bad command",
-			givenCmd: []byte(`toc_set_away_bad`),
-			wantMsg:  cmdInternalSvcErr,
-		},
 	}
 
 	for _, tc := range cases {
@@ -3012,14 +3073,14 @@ func TestOSCARProxy_SetAway(t *testing.T) {
 				Logger:        slog.Default(),
 				LocateService: locateSvc,
 			}
-			msg := svc.SetAway(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_SetCaps(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_SetCaps(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -3048,6 +3109,29 @@ func TestOSCARProxy_SetCaps(t *testing.T) {
 										wire.NewTLVBE(wire.LocateTLVTagsInfoCapabilities, []uuid.UUID{
 											uuid.MustParse("09460000-4C7F-11D1-8222-444553540000"),
 											uuid.MustParse("09460001-4C7F-11D1-8222-444553540000"),
+											wire.CapChat,
+										}),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "set capabilities with empty list",
+			me:       newTestSession("me"),
+			givenCmd: []byte(`toc_set_caps`),
+			mockParams: mockParams{
+				locateParams: locateParams{
+					setInfoParams: setInfoParams{
+						{
+							me: state.NewIdentScreenName("me"),
+							inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
+								TLVRestBlock: wire.TLVRestBlock{
+									TLVList: wire.TLVList{
+										wire.NewTLVBE(wire.LocateTLVTagsInfoCapabilities, []uuid.UUID{
 											wire.CapChat,
 										}),
 									},
@@ -3090,11 +3174,6 @@ func TestOSCARProxy_SetCaps(t *testing.T) {
 			givenCmd: []byte(`toc_set_caps 09460000-`),
 			wantMsg:  cmdInternalSvcErr,
 		},
-		{
-			name:     "bad command",
-			givenCmd: []byte(`toc_set_caps_bad`),
-			wantMsg:  cmdInternalSvcErr,
-		},
 	}
 
 	for _, tc := range cases {
@@ -3112,14 +3191,14 @@ func TestOSCARProxy_SetCaps(t *testing.T) {
 				Logger:        slog.Default(),
 				LocateService: locateSvc,
 			}
-			msg := svc.SetCaps(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_SetConfig(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_SetConfig(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -3507,7 +3586,7 @@ func TestOSCARProxy_SetConfig(t *testing.T) {
 		},
 		{
 			name:     "bad command",
-			givenCmd: []byte(`toc_chat_leave`),
+			givenCmd: []byte(`toc_set_config`),
 			wantMsg:  cmdInternalSvcErr,
 		},
 	}
@@ -3546,14 +3625,14 @@ func TestOSCARProxy_SetConfig(t *testing.T) {
 				PermitDenyService: pdSvc,
 				TOCConfigStore:    tocConfigSvc,
 			}
-			msg := svc.SetConfig(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_SetDir(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_SetDir(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -3705,14 +3784,14 @@ func TestOSCARProxy_SetDir(t *testing.T) {
 				Logger:        slog.Default(),
 				LocateService: locateSvc,
 			}
-			msg := svc.SetDir(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_SetIdle(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_SetIdle(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -3789,14 +3868,14 @@ func TestOSCARProxy_SetIdle(t *testing.T) {
 				Logger:             slog.Default(),
 				OServiceServiceBOS: oServiceSvc,
 			}
-			msg := svc.SetIdle(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
 	}
 }
 
-func TestOSCARProxy_SetInfo(t *testing.T) {
+func TestOSCARProxy_RecvClientCmd_SetInfo(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -3876,7 +3955,7 @@ func TestOSCARProxy_SetInfo(t *testing.T) {
 				Logger:        slog.Default(),
 				LocateService: locateSvc,
 			}
-			msg := svc.SetInfo(ctx, tc.me, tc.givenCmd)
+			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
 			assert.Equal(t, tc.wantMsg, msg)
 		})
@@ -3904,7 +3983,7 @@ func TestOSCARProxy_Signon(t *testing.T) {
 			me: newTestSession("me", func(session *state.Session) {
 				session.SetCaps([][16]byte{wire.CapChat})
 			}),
-			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			givenCmd: []byte(`"" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
 			mockParams: mockParams{
 				authParams: authParams{
 					flapLoginParams: flapLoginParams{
@@ -3954,7 +4033,7 @@ func TestOSCARProxy_Signon(t *testing.T) {
 		},
 		{
 			name:     "login, receive error from auth svc FLAP login",
-			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			givenCmd: []byte(`"" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
 			mockParams: mockParams{
 				authParams: authParams{
 					flapLoginParams: flapLoginParams{
@@ -3973,11 +4052,11 @@ func TestOSCARProxy_Signon(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: []string{string(cmdInternalSvcErr)},
+			wantMsg: []string{cmdInternalSvcErr},
 		},
 		{
 			name:     "login, receive error from auth svc registration",
-			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			givenCmd: []byte(`"" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
 			mockParams: mockParams{
 				authParams: authParams{
 					flapLoginParams: flapLoginParams{
@@ -4006,11 +4085,11 @@ func TestOSCARProxy_Signon(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: []string{string(cmdInternalSvcErr)},
+			wantMsg: []string{cmdInternalSvcErr},
 		},
 		{
 			name:     "login, receive error from buddy list registry",
-			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			givenCmd: []byte(`"" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
 			mockParams: mockParams{
 				authParams: authParams{
 					flapLoginParams: flapLoginParams{
@@ -4047,11 +4126,11 @@ func TestOSCARProxy_Signon(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: []string{string(cmdInternalSvcErr)},
+			wantMsg: []string{cmdInternalSvcErr},
 		},
 		{
 			name:     "login, receive error from TOC config store",
-			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			givenCmd: []byte(`"" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
 			mockParams: mockParams{
 				authParams: authParams{
 					flapLoginParams: flapLoginParams{
@@ -4095,11 +4174,11 @@ func TestOSCARProxy_Signon(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: []string{string(cmdInternalSvcErr)},
+			wantMsg: []string{cmdInternalSvcErr},
 		},
 		{
 			name:     "login, user not found after login",
-			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			givenCmd: []byte(`"" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
 			mockParams: mockParams{
 				authParams: authParams{
 					flapLoginParams: flapLoginParams{
@@ -4143,11 +4222,11 @@ func TestOSCARProxy_Signon(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: []string{string(cmdInternalSvcErr)},
+			wantMsg: []string{cmdInternalSvcErr},
 		},
 		{
 			name:     "login with bad credentials",
-			givenCmd: []byte(`toc_signon "" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
+			givenCmd: []byte(`"" "" me "xx` + hex.EncodeToString(roastedPass) + `"`),
 			mockParams: mockParams{
 				authParams: authParams{
 					flapLoginParams: flapLoginParams{
@@ -4174,8 +4253,8 @@ func TestOSCARProxy_Signon(t *testing.T) {
 		},
 		{
 			name:     "bad command",
-			givenCmd: []byte(`toc_init_done_diff`),
-			wantMsg:  []string{string(cmdInternalSvcErr)},
+			givenCmd: []byte(`"" ""`),
+			wantMsg:  []string{cmdInternalSvcErr},
 		},
 	}
 
@@ -4387,11 +4466,22 @@ func TestOSCARProxy_Signout(t *testing.T) {
 	}
 }
 
+func TestOSCARProxy_RecvClientCmd_UnknownCmd(t *testing.T) {
+	ctx := context.Background()
+
+	svc := OSCARProxy{
+		Logger: slog.Default(),
+	}
+	cmd := []byte("toc_unknown_cmd")
+	msg := svc.RecvClientCmd(ctx, nil, nil, cmd, nil, nil)
+
+	assert.Equal(t, cmdInternalSvcErr, msg)
+}
+
 func Test_parseArgs(t *testing.T) {
 	type testCase struct {
 		name         string
 		givenPayload string
-		givenCmd     string
 		givenArgs    []*string
 		wantVarArgs  []string
 		wantArgs     []string
@@ -4401,54 +4491,40 @@ func Test_parseArgs(t *testing.T) {
 	tests := []testCase{
 		{
 			name:         "no positional args or varargs",
-			givenPayload: `toc_chat_invite`,
-			givenCmd:     "toc_chat_invite",
+			givenPayload: ``,
 			givenArgs:    nil,
 			wantVarArgs:  []string{},
 		},
 		{
 			name:         "positional args with varargs",
-			givenPayload: `toc_chat_invite 1234 "Join me!" user1 user2 user3`,
-			givenCmd:     "toc_chat_invite",
+			givenPayload: `1234 "Join me!" user1 user2 user3`,
 			givenArgs:    []*string{new(string), new(string)},
 			wantVarArgs:  []string{"user1", "user2", "user3"},
 			wantArgs:     []string{"1234", "Join me!"},
 		},
 		{
 			name:         "nil positional argument placeholders should get skipped",
-			givenPayload: `toc_chat_invite 1234 "Join me!" user1 user2 user3`,
-			givenCmd:     "toc_chat_invite",
+			givenPayload: `1234 "Join me!" user1 user2 user3`,
 			givenArgs:    []*string{nil, nil}, // still 2 placeholders, both nil
 			wantVarArgs:  []string{"user1", "user2", "user3"},
 			wantArgs:     []string{"", ""},
 		},
 		{
 			name:         "positional args with no varargs",
-			givenPayload: `toc_chat_invite 1234 "Join me!"`,
-			givenCmd:     "toc_chat_invite",
+			givenPayload: `1234 "Join me!"`,
 			givenArgs:    []*string{new(string), new(string)}, // roomID + msg
 			wantVarArgs:  []string{},
 			wantArgs:     []string{"1234", "Join me!"},
 		},
 		{
 			name:         "varargs only",
-			givenPayload: `toc_chat_invite user1 user2 user3`,
-			givenCmd:     "toc_chat_invite",
+			givenPayload: `user1 user2 user3`,
 			givenArgs:    nil,
 			wantVarArgs:  []string{"user1", "user2", "user3"},
 		},
 		{
-			name:         "command mismatch",
-			givenPayload: `toc_chat_invite user1 user2 user3`,
-			givenCmd:     "toc_chat_accept",
-			givenArgs:    nil,
-			wantVarArgs:  []string{},
-			wantErrMsg:   "mismatch",
-		},
-		{
 			name:         "too many positional arg placeholders",
 			givenPayload: `toc_chat_invite`,
-			givenCmd:     "toc_chat_invite",
 			givenArgs:    []*string{new(string), new(string)},
 			wantVarArgs:  []string{},
 			wantErrMsg:   "command contains fewer arguments than expected",
@@ -4456,7 +4532,6 @@ func Test_parseArgs(t *testing.T) {
 		{
 			name:         "CSV parser error",
 			givenPayload: ``,
-			givenCmd:     "toc_chat_invite",
 			givenArgs:    []*string{nil},
 			wantVarArgs:  []string{},
 			wantErrMsg:   "CSV reader error",
@@ -4465,7 +4540,7 @@ func Test_parseArgs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			varArgs, err := parseArgs([]byte(tt.givenPayload), tt.givenCmd, tt.givenArgs...)
+			varArgs, err := parseArgs([]byte(tt.givenPayload), tt.givenArgs...)
 
 			if tt.wantErrMsg != "" {
 				assert.ErrorContains(t, err, tt.wantErrMsg)

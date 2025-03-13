@@ -287,10 +287,7 @@ func (rt Server) runClientCommands(ctx context.Context, doAsync func(f func() er
 				return errors.New("TOC command exceeds maximum length (2048)")
 			}
 
-			msg, ok := rt.BOSProxy.RecvClientCmd(ctx, sessBOS, chatRegistry, clientFrame.Payload, toCh, doAsync)
-			if !ok {
-				return io.EOF
-			}
+			msg := rt.BOSProxy.RecvClientCmd(ctx, sessBOS, chatRegistry, clientFrame.Payload, toCh, doAsync)
 			if len(msg) > 0 {
 				select {
 				case toCh <- []byte(msg):
@@ -336,7 +333,17 @@ func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state
 		return nil, fmt.Errorf("clientFlap.ReceiveFLAP: %w", err)
 	}
 
-	sessBOS, reply := rt.BOSProxy.Signon(ctx, clientFrame.Payload)
+	cmd := clientFrame.Payload
+	var args []byte
+
+	if idx := bytes.IndexByte(clientFrame.Payload, ' '); idx > -1 {
+		cmd, args = clientFrame.Payload[:idx], clientFrame.Payload[idx:]
+	}
+	if string(cmd) != "toc_signon" {
+		return nil, errors.New("expected toc_signon")
+	}
+
+	sessBOS, reply := rt.BOSProxy.Signon(ctx, args)
 	for _, m := range reply {
 		if err := clientFlap.SendDataFrame([]byte(m)); err != nil {
 			return nil, fmt.Errorf("clientFlap.SendDataFrame: %w", err)
