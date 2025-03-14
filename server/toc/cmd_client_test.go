@@ -3213,376 +3213,81 @@ func TestOSCARProxy_RecvClientCmd_SetConfig(t *testing.T) {
 		mockParams mockParams
 	}{
 		{
-			name:     "successfully set permit all config",
+			name:     "successfully set permit all config (unquoted)",
 			me:       newTestSession("me"),
 			givenCmd: []byte("toc_set_config {m 1\ng Buddies\nb friend1\nb friend2\n}\n"),
 			mockParams: mockParams{
-				permitDenyParams: permitDenyParams{
-					// confusingly, setting "permit all" mode requires adding a
-					// deny list entry
-					addDenyListEntriesParams: addDenyListEntriesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							body: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
-								Users: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "me"},
-								},
-							},
-						},
-					},
-				},
-				buddyParams: buddyParams{
-					addBuddiesParams: addBuddiesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							inBody: wire.SNAC_0x03_0x04_BuddyAddBuddies{
-								Buddies: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "friend1"},
-									{ScreenName: "friend2"},
-								},
-							},
-						},
-					},
-				},
 				tocConfigParams: tocConfigParams{
 					setTOCConfigParams: setTOCConfigParams{
 						{
 							user:   state.NewIdentScreenName("me"),
-							config: "m 1\ng Buddies\nb friend1\nb friend2",
+							config: "{m 1\ng Buddies\nb friend1\nb friend2\n}\n",
 						},
 					},
 				},
 			},
 		},
 		{
-			name:     "set permit all config, receive err from config store svc",
+			name:     "successfully set permit all config (double-quoted)",
 			me:       newTestSession("me"),
-			givenCmd: []byte("toc_set_config {m 1\ng Buddies\nb friend1\n}\n"),
+			givenCmd: []byte("toc_set_config \"{m 1\ng Buddies\nb friend1\nb friend2\n}\n\""),
 			mockParams: mockParams{
-				permitDenyParams: permitDenyParams{
-					// confusingly, setting "permit all" mode requires adding a
-					// deny list entry
-					addDenyListEntriesParams: addDenyListEntriesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							body: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
-								Users: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "me"},
-								},
-							},
-						},
-					},
-				},
-				buddyParams: buddyParams{
-					addBuddiesParams: addBuddiesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							inBody: wire.SNAC_0x03_0x04_BuddyAddBuddies{
-								Buddies: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "friend1"},
-								},
-							},
-						},
-					},
-				},
 				tocConfigParams: tocConfigParams{
 					setTOCConfigParams: setTOCConfigParams{
 						{
 							user:   state.NewIdentScreenName("me"),
-							config: "m 1\ng Buddies\nb friend1",
+							config: "{m 1\ng Buddies\nb friend1\nb friend2\n}\n",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "successfully set permit all config (single-quoted)",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_set_config '{m 1\ng Buddies\nb friend1\nb friend2\n}\n'"),
+			mockParams: mockParams{
+				tocConfigParams: tocConfigParams{
+					setTOCConfigParams: setTOCConfigParams{
+						{
+							user:   state.NewIdentScreenName("me"),
+							config: "{m 1\ng Buddies\nb friend1\nb friend2\n}\n",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "successfully set permit all config (double-quoted with spaces)",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_set_config \" {m 1\ng Buddies\nb friend1\nb friend2\n}\n \""),
+			mockParams: mockParams{
+				tocConfigParams: tocConfigParams{
+					setTOCConfigParams: setTOCConfigParams{
+						{
+							user:   state.NewIdentScreenName("me"),
+							config: "{m 1\ng Buddies\nb friend1\nb friend2\n}\n",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "set config, receive error from toc config store",
+			me:       newTestSession("me"),
+			givenCmd: []byte("toc_set_config {m 1\ng Buddies\nb friend1\nb friend2\n}\n"),
+			mockParams: mockParams{
+				tocConfigParams: tocConfigParams{
+					setTOCConfigParams: setTOCConfigParams{
+						{
+							user:   state.NewIdentScreenName("me"),
+							config: "{m 1\ng Buddies\nb friend1\nb friend2\n}\n",
 							err:    io.EOF,
 						},
 					},
 				},
 			},
 			wantMsg: cmdInternalSvcErr,
-		},
-		{
-			name:     "set permit all config, receive err from buddy svc",
-			me:       newTestSession("me"),
-			givenCmd: []byte("toc_set_config {m 1\ng Buddies\nb friend1\n}\n"),
-			mockParams: mockParams{
-				permitDenyParams: permitDenyParams{
-					// confusingly, setting "permit all" mode requires adding a
-					// deny list entry
-					addDenyListEntriesParams: addDenyListEntriesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							body: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
-								Users: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "me"},
-								},
-							},
-						},
-					},
-				},
-				buddyParams: buddyParams{
-					addBuddiesParams: addBuddiesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							inBody: wire.SNAC_0x03_0x04_BuddyAddBuddies{
-								Buddies: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "friend1"},
-								},
-							},
-							err: io.EOF,
-						},
-					},
-				},
-			},
-			wantMsg: cmdInternalSvcErr,
-		},
-		{
-			name:     "set permit all config, receive err from permit-deny svc",
-			me:       newTestSession("me"),
-			givenCmd: []byte("toc_set_config {m 1\ng Buddies\nb friend1\nb friend2\n}\n"),
-			mockParams: mockParams{
-				permitDenyParams: permitDenyParams{
-					// confusingly, setting "permit all" mode requires adding a
-					// deny list entry
-					addDenyListEntriesParams: addDenyListEntriesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							body: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
-								Users: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "me"},
-								},
-							},
-							err: io.EOF,
-						},
-					},
-				},
-			},
-			wantMsg: cmdInternalSvcErr,
-		},
-		{
-			name:     "successfully set deny all config",
-			me:       newTestSession("me"),
-			givenCmd: []byte("toc_set_config {m 2\ng Buddies\nb friend1\nb friend2\n}\n"),
-			mockParams: mockParams{
-				permitDenyParams: permitDenyParams{
-					// confusingly, setting "deny all" mode requires adding a
-					// permit list entry
-					addPermListEntriesParams: addPermListEntriesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							body: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
-								Users: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "me"},
-								},
-							},
-						},
-					},
-				},
-				buddyParams: buddyParams{
-					addBuddiesParams: addBuddiesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							inBody: wire.SNAC_0x03_0x04_BuddyAddBuddies{
-								Buddies: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "friend1"},
-									{ScreenName: "friend2"},
-								},
-							},
-						},
-					},
-				},
-				tocConfigParams: tocConfigParams{
-					setTOCConfigParams: setTOCConfigParams{
-						{
-							user:   state.NewIdentScreenName("me"),
-							config: "m 2\ng Buddies\nb friend1\nb friend2",
-						},
-					},
-				},
-			},
-		},
-		{
-			name:     "set deny all config, receive err from permit-deny svc",
-			me:       newTestSession("me"),
-			givenCmd: []byte("toc_set_config {m 2\ng Buddies\nb friend1\nb friend2\n}\n"),
-			mockParams: mockParams{
-				permitDenyParams: permitDenyParams{
-					// confusingly, setting "deny all" mode requires adding a
-					// permit list entry
-					addPermListEntriesParams: addPermListEntriesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							body: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
-								Users: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "me"},
-								},
-							},
-							err: io.EOF,
-						},
-					},
-				},
-			},
-			wantMsg: cmdInternalSvcErr,
-		},
-		{
-			name:     "successfully set permit some config",
-			me:       newTestSession("me"),
-			givenCmd: []byte("toc_set_config {m 3\np friend3\np friend4\n\ng Buddies\nb friend1\nb friend2\n}\n"),
-			mockParams: mockParams{
-				permitDenyParams: permitDenyParams{
-					addPermListEntriesParams: addPermListEntriesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							body: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
-								Users: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "friend3"},
-									{ScreenName: "friend4"},
-								},
-							},
-						},
-					},
-				},
-				buddyParams: buddyParams{
-					addBuddiesParams: addBuddiesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							inBody: wire.SNAC_0x03_0x04_BuddyAddBuddies{
-								Buddies: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "friend1"},
-									{ScreenName: "friend2"},
-								},
-							},
-						},
-					},
-				},
-				tocConfigParams: tocConfigParams{
-					setTOCConfigParams: setTOCConfigParams{
-						{
-							user:   state.NewIdentScreenName("me"),
-							config: "m 3\np friend3\np friend4\n\ng Buddies\nb friend1\nb friend2",
-						},
-					},
-				},
-			},
-		},
-		{
-			name:     "set permit some config, receive err from permit-deny svc",
-			me:       newTestSession("me"),
-			givenCmd: []byte("toc_set_config {m 3\np friend3\np friend4\n\ng Buddies\nb friend1\nb friend2\n}\n"),
-			mockParams: mockParams{
-				permitDenyParams: permitDenyParams{
-					addPermListEntriesParams: addPermListEntriesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							body: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
-								Users: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "friend3"},
-									{ScreenName: "friend4"},
-								},
-							},
-							err: io.EOF,
-						},
-					},
-				},
-			},
-			wantMsg: cmdInternalSvcErr,
-		},
-		{
-			name:     "successfully set deny some config",
-			me:       newTestSession("me"),
-			givenCmd: []byte("toc_set_config {m 4\nd friend3\nd friend4\n\ng Buddies\nb friend1\nb friend2\n}\n"),
-			mockParams: mockParams{
-				permitDenyParams: permitDenyParams{
-					addDenyListEntriesParams: addDenyListEntriesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							body: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
-								Users: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "friend3"},
-									{ScreenName: "friend4"},
-								},
-							},
-						},
-					},
-				},
-				buddyParams: buddyParams{
-					addBuddiesParams: addBuddiesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							inBody: wire.SNAC_0x03_0x04_BuddyAddBuddies{
-								Buddies: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "friend1"},
-									{ScreenName: "friend2"},
-								},
-							},
-						},
-					},
-				},
-				tocConfigParams: tocConfigParams{
-					setTOCConfigParams: setTOCConfigParams{
-						{
-							user:   state.NewIdentScreenName("me"),
-							config: "m 4\nd friend3\nd friend4\n\ng Buddies\nb friend1\nb friend2",
-						},
-					},
-				},
-			},
-		},
-		{
-			name:     "set deny some config, receive err from permit-deny svc",
-			me:       newTestSession("me"),
-			givenCmd: []byte("toc_set_config {m 4\nd friend3\nd friend4\n\ng Buddies\nb friend1\nb friend2\n}\n"),
-			mockParams: mockParams{
-				permitDenyParams: permitDenyParams{
-					addDenyListEntriesParams: addDenyListEntriesParams{
-						{
-							me: state.NewIdentScreenName("me"),
-							body: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
-								Users: []struct {
-									ScreenName string `oscar:"len_prefix=uint8"`
-								}{
-									{ScreenName: "friend3"},
-									{ScreenName: "friend4"},
-								},
-							},
-							err: io.EOF,
-						},
-					},
-				},
-			},
-			wantMsg: cmdInternalSvcErr,
-		},
-		{
-			name:     "set unknown PD mode",
-			me:       newTestSession("me"),
-			givenCmd: []byte("toc_set_config {m 5\nd friend3\nd friend4\n\ng Buddies\nb friend1\nb friend2\n}\n"),
-			wantMsg:  cmdInternalSvcErr,
 		},
 		{
 			name:     "bad command",

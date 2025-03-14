@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/netip"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -137,7 +138,9 @@ func (rt Server) Start(ctx context.Context) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			rt.dispatchConn(conn, ctx, httpCh)
+			if err := rt.dispatchConn(conn, ctx, httpCh); err != nil {
+				rt.Logger.ErrorContext(ctx, "client disconnected with error", "err", err.Error())
+			}
 		}()
 	}
 
@@ -162,15 +165,22 @@ func (rt Server) dispatchConn(conn net.Conn, ctx context.Context, httpCh chan ne
 		return fmt.Errorf("bufCon.Peek: %w", err)
 	}
 
+	// handle TOC/FLAP
 	if string(buf) == doFlap {
 		if err = rt.dispatchFLAP(ctx, bufCon); err != nil {
-			if !(errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed)) {
+			switch {
+			case errors.Is(err, io.EOF):
+			case errors.Is(err, net.ErrClosed):
+			case errors.Is(err, syscall.ECONNRESET):
+				return nil
+			default:
 				return fmt.Errorf("rt.dispatchFLAP: %w", err)
 			}
 		}
 		return nil
 	}
 
+	// handle TOC/HTTP
 	select {
 	case httpCh <- bufCon:
 		return nil

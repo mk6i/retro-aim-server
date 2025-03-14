@@ -147,6 +147,7 @@ func (s OSCARProxy) RecvClientCmd(
 	toCh chan<- []byte,
 	doAsync func(f func() error),
 ) (reply string) {
+
 	cmd := payload
 	var args []byte
 	if idx := bytes.IndexByte(payload, ' '); idx > -1 {
@@ -154,7 +155,7 @@ func (s OSCARProxy) RecvClientCmd(
 	}
 
 	if s.Logger.Enabled(ctx, slog.LevelDebug) {
-		s.Logger.DebugContext(ctx, "client request", "command", args)
+		s.Logger.DebugContext(ctx, "client request", "command", cmd)
 	} else {
 		s.Logger.InfoContext(ctx, "client request", "command", cmd)
 	}
@@ -1359,123 +1360,24 @@ func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, args []byte)
 //		- 3 - Permit Some
 //		- 4 - Deny Some
 //
+// This method doesn't attempt to validate any of the configuration--it saves
+// the config as received from the client.
+//
 // Command syntax: toc_set_config <Config Info>
 func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, args []byte) string {
-	// replace curly braces with quotes so that the string can be properly
-	// split up by the space-delimited reader
-	for i, c := range args {
-		if c == '{' || c == '}' {
-			args[i] = '"'
-		}
-	}
-	args = bytes.TrimSpace(args)
+	// most TOC clients don't quote the config info argument, despite what the
+	// documentation specifies. this makes the argument payload incompatible
+	// for CSV parsing. since this command takes a single argument, we can get
+	// away with trimming quotes and spaces from the byte slice before passing
+	// it to the config store.
+	args = bytes.Trim(args, "'\" ")
 
-	var info string
-	if _, err := parseArgs(args, &info); err != nil {
-		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
+	config := string(args)
+	if config == "" {
+		return s.runtimeErr(ctx, fmt.Errorf("empty config"))
 	}
 
-	config := strings.Split(info, "\n")
-
-	var cfg [][2]string
-	for _, item := range config {
-		parts := strings.Split(item, " ")
-		if len(parts) != 2 {
-			s.Logger.InfoContext(ctx, "invalid config item", "item", item, "user", me.DisplayScreenName())
-			continue
-		}
-		cfg = append(cfg, [2]string{parts[0], parts[1]})
-	}
-
-	mode := wire.FeedbagPDModePermitAll
-	for _, c := range cfg {
-		if c[0] != "m" {
-			continue
-		}
-		switch c[1] {
-		case "1":
-			mode = wire.FeedbagPDModePermitAll
-		case "2":
-			mode = wire.FeedbagPDModeDenyAll
-		case "3":
-			mode = wire.FeedbagPDModePermitSome
-		case "4":
-			mode = wire.FeedbagPDModeDenySome
-		default:
-			return s.runtimeErr(ctx, fmt.Errorf("config: invalid mode `%s`", c[1]))
-		}
-	}
-
-	switch mode {
-	case wire.FeedbagPDModePermitAll:
-		snac := wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
-			Users: []struct {
-				ScreenName string `oscar:"len_prefix=uint8"`
-			}{
-				{
-					ScreenName: me.IdentScreenName().String(),
-				},
-			},
-		}
-		if err := s.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
-			return s.runtimeErr(ctx, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
-		}
-	case wire.FeedbagPDModeDenyAll:
-		snac := wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
-			Users: []struct {
-				ScreenName string `oscar:"len_prefix=uint8"`
-			}{
-				{
-					ScreenName: me.IdentScreenName().String(),
-				},
-			},
-		}
-		if err := s.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
-			return s.runtimeErr(ctx, fmt.Errorf("PermitDenyService.AddPermListEntrie: %w", err))
-		}
-	case wire.FeedbagPDModePermitSome:
-		snac := wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{}
-		for _, c := range cfg {
-			if c[0] != "p" {
-				continue
-			}
-			snac.Users = append(snac.Users, struct {
-				ScreenName string `oscar:"len_prefix=uint8"`
-			}{ScreenName: c[1]})
-		}
-		if err := s.PermitDenyService.AddPermListEntries(ctx, me, snac); err != nil {
-			return s.runtimeErr(ctx, fmt.Errorf("PermitDenyService.AddPermListEntrie: %w", err))
-		}
-	case wire.FeedbagPDModeDenySome:
-		snac := wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{}
-		for _, c := range cfg {
-			if c[0] != "d" {
-				continue
-			}
-			snac.Users = append(snac.Users, struct {
-				ScreenName string `oscar:"len_prefix=uint8"`
-			}{ScreenName: c[1]})
-		}
-		if err := s.PermitDenyService.AddDenyListEntries(ctx, me, snac); err != nil {
-			return s.runtimeErr(ctx, fmt.Errorf("PermitDenyService.AddDenyListEntries: %w", err))
-		}
-	}
-
-	snac := wire.SNAC_0x03_0x04_BuddyAddBuddies{}
-	for _, c := range cfg {
-		if c[0] != "b" {
-			continue
-		}
-		snac.Buddies = append(snac.Buddies, struct {
-			ScreenName string `oscar:"len_prefix=uint8"`
-		}{ScreenName: c[1]})
-	}
-
-	if err := s.BuddyService.AddBuddies(ctx, me, snac); err != nil {
-		return s.runtimeErr(ctx, fmt.Errorf("BuddyService.AddBuddies: %w", err))
-	}
-
-	if err := s.TOCConfigStore.SetTOCConfig(me.IdentScreenName(), info); err != nil {
+	if err := s.TOCConfigStore.SetTOCConfig(me.IdentScreenName(), config); err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("TOCConfigStore.SaveTOCConfig: %w", err))
 	}
 
