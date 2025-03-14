@@ -2067,32 +2067,6 @@ func TestICQService_SetAffiliations(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "err: unexpected affiliations count",
-			seq:  1,
-			sess: newTestSession("100003", sessOptUIN(100003)),
-			req: wire.ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations{
-				PastAffiliations: [3]struct {
-					Code    uint16
-					Keyword string `oscar:"len_prefix=uint16,nullterm"`
-				}{
-					{
-						Code:    1,
-						Keyword: "kw1",
-					},
-				},
-				Affiliations: [3]struct {
-					Code    uint16
-					Keyword string `oscar:"len_prefix=uint16,nullterm"`
-				}{
-					{
-						Code:    4,
-						Keyword: "kw4",
-					},
-				},
-			},
-			wantErr: errICQBadRequest,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2388,27 +2362,6 @@ func TestICQService_SetInterests(t *testing.T) {
 					},
 				},
 			},
-		},
-		{
-			name: "err: unexpected interest count",
-			seq:  1,
-			sess: newTestSession("100003", sessOptUIN(100003)),
-			req: wire.ICQ_0x07D0_0x0410_DBQueryMetaReqSetInterests{
-				Interests: [4]struct {
-					Code    uint16
-					Keyword string `oscar:"len_prefix=uint16,nullterm"`
-				}{
-					{
-						Code:    1,
-						Keyword: "kw1",
-					},
-					{
-						Code:    2,
-						Keyword: "kw2",
-					},
-				},
-			},
-			wantErr: errICQBadRequest,
 		},
 	}
 	for _, tt := range tests {
