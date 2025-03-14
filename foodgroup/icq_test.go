@@ -1706,7 +1706,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 													Success:    wire.ICQStatusCodeOK,
 													ReqSubType: wire.ICQDBQueryMetaReplyAffiliations,
 													ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations: wire.ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations{
-														PastAffiliations: []struct {
+														PastAffiliations: [3]struct {
 															Code    uint16
 															Keyword string `oscar:"len_prefix=uint16,nullterm"`
 														}{
@@ -1723,7 +1723,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 																Keyword: "Previous Job",
 															},
 														},
-														Affiliations: []struct {
+														Affiliations: [3]struct {
 															Code    uint16
 															Keyword string `oscar:"len_prefix=uint16,nullterm"`
 														}{
@@ -1978,7 +1978,7 @@ func TestICQService_SetAffiliations(t *testing.T) {
 			seq:  1,
 			sess: newTestSession("100003", sessOptUIN(100003)),
 			req: wire.ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations{
-				PastAffiliations: []struct {
+				PastAffiliations: [3]struct {
 					Code    uint16
 					Keyword string `oscar:"len_prefix=uint16,nullterm"`
 				}{
@@ -1995,7 +1995,7 @@ func TestICQService_SetAffiliations(t *testing.T) {
 						Keyword: "kw3",
 					},
 				},
-				Affiliations: []struct {
+				Affiliations: [3]struct {
 					Code    uint16
 					Keyword string `oscar:"len_prefix=uint16,nullterm"`
 				}{
@@ -2072,7 +2072,7 @@ func TestICQService_SetAffiliations(t *testing.T) {
 			seq:  1,
 			sess: newTestSession("100003", sessOptUIN(100003)),
 			req: wire.ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations{
-				PastAffiliations: []struct {
+				PastAffiliations: [3]struct {
 					Code    uint16
 					Keyword string `oscar:"len_prefix=uint16,nullterm"`
 				}{
@@ -2081,7 +2081,7 @@ func TestICQService_SetAffiliations(t *testing.T) {
 						Keyword: "kw1",
 					},
 				},
-				Affiliations: []struct {
+				Affiliations: [3]struct {
 					Code    uint16
 					Keyword string `oscar:"len_prefix=uint16,nullterm"`
 				}{
@@ -2317,7 +2317,7 @@ func TestICQService_SetInterests(t *testing.T) {
 			seq:  1,
 			sess: newTestSession("100003", sessOptUIN(100003)),
 			req: wire.ICQ_0x07D0_0x0410_DBQueryMetaReqSetInterests{
-				Interests: []struct {
+				Interests: [4]struct {
 					Code    uint16
 					Keyword string `oscar:"len_prefix=uint16,nullterm"`
 				}{
@@ -2394,7 +2394,7 @@ func TestICQService_SetInterests(t *testing.T) {
 			seq:  1,
 			sess: newTestSession("100003", sessOptUIN(100003)),
 			req: wire.ICQ_0x07D0_0x0410_DBQueryMetaReqSetInterests{
-				Interests: []struct {
+				Interests: [4]struct {
 					Code    uint16
 					Keyword string `oscar:"len_prefix=uint16,nullterm"`
 				}{

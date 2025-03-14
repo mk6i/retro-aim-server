@@ -1802,18 +1802,18 @@ type ICQ_0x07D0_0x0406_DBQueryMetaReqSetNotes struct {
 }
 
 type ICQ_0x07D0_0x0410_DBQueryMetaReqSetInterests struct {
-	Interests []struct {
+	Interests [4]struct {
 		Code    uint16
 		Keyword string `oscar:"len_prefix=uint16,nullterm"`
 	} `oscar:"count_prefix=uint8"`
 }
 
 type ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations struct {
-	PastAffiliations []struct {
+	PastAffiliations [3]struct {
 		Code    uint16
 		Keyword string `oscar:"len_prefix=uint16,nullterm"`
 	} `oscar:"count_prefix=uint8"`
-	Affiliations []struct {
+	Affiliations [3]struct {
 		Code    uint16
 		Keyword string `oscar:"len_prefix=uint16,nullterm"`
 	} `oscar:"count_prefix=uint8"`

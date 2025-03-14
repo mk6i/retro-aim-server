@@ -461,9 +461,11 @@ func (s ICQService) OfflineMsgReq(ctx context.Context, sess *state.Session, seq 
 }
 
 func (s ICQService) SetAffiliations(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations, seq uint16) error {
-	if len(req.PastAffiliations) != 3 || len(req.Affiliations) != 3 {
-		return fmt.Errorf("%w: expected 3 past affiliations and 3 affiliations", errICQBadRequest)
-	}
+	if req.PastAffiliations[0].Code == 0 || req.Affiliations[0].Code == 0 ||
+		req.PastAffiliations[1].Code == 0 || req.Affiliations[1].Code == 0 ||
+		req.PastAffiliations[2].Code == 0 || req.Affiliations[2].Code == 0 {
+		 return fmt.Errorf("%w: expected 3 past affiliations and 3 affiliations", errICQBadRequest)
+	 }
 	u := state.ICQAffiliations{
 		PastCode1:       req.PastAffiliations[0].Code,
 		PastKeyword1:    req.PastAffiliations[0].Keyword,
@@ -519,9 +521,10 @@ func (s ICQService) SetEmails(ctx context.Context, sess *state.Session, req wire
 }
 
 func (s ICQService) SetInterests(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x0410_DBQueryMetaReqSetInterests, seq uint16) error {
-	if len(req.Interests) != 4 {
-		return fmt.Errorf("%w: expected 4 interests", errICQBadRequest)
-	}
+    if req.Interests[0].Code == 0 || req.Interests[1].Code == 0 ||
+       req.Interests[2].Code == 0 || req.Interests[3].Code == 0 {
+        return fmt.Errorf("%w: expected exactly 4 interests", errICQBadRequest)
+    }
 	u := state.ICQInterests{
 		Code1:    req.Interests[0].Code,
 		Keyword1: req.Interests[0].Keyword,
@@ -656,7 +659,7 @@ func (s ICQService) affiliations(ctx context.Context, sess *state.Session, user 
 			ReqSubType: wire.ICQDBQueryMetaReplyAffiliations,
 			Success:    wire.ICQStatusCodeOK,
 			ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations: wire.ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations{
-				PastAffiliations: []struct {
+				PastAffiliations: [3]struct {
 					Code    uint16
 					Keyword string `oscar:"len_prefix=uint16,nullterm"`
 				}{
@@ -673,7 +676,7 @@ func (s ICQService) affiliations(ctx context.Context, sess *state.Session, user 
 						Keyword: user.ICQAffiliations.PastKeyword3,
 					},
 				},
-				Affiliations: []struct {
+				Affiliations: [3]struct {
 					Code    uint16
 					Keyword string `oscar:"len_prefix=uint16,nullterm"`
 				}{
