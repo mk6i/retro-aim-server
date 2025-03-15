@@ -845,7 +845,7 @@ func TestOSCARProxy_RecvClientCmd_ChatInvite(t *testing.T) {
 		{
 			name:     "successfully send chat invitation",
 			me:       newTestSession("me"),
-			givenCmd: []byte(`toc_chat_invite 0 "join my chat!" friend1`),
+			givenCmd: []byte(`toc_chat_invite 0 "join my chat! :\)" friend1`),
 			givenChatRegistry: func() *ChatRegistry {
 				reg := NewChatRegistry()
 				reg.Add(wire.ICBMRoomInfo{
@@ -871,7 +871,7 @@ func TestOSCARProxy_RecvClientCmd_ChatInvite(t *testing.T) {
 											TLVRestBlock: wire.TLVRestBlock{
 												TLVList: wire.TLVList{
 													wire.NewTLVBE(10, uint16(1)),
-													wire.NewTLVBE(12, "join my chat!"),
+													wire.NewTLVBE(12, "join my chat! :)"),
 													wire.NewTLVBE(13, "us-ascii"),
 													wire.NewTLVBE(14, "en"),
 													wire.NewTLVBE(10001, wire.ICBMRoomInfo{
@@ -992,7 +992,7 @@ func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 						Cookie:   "create",
 						TLVBlock: wire.TLVBlock{
 							TLVList: wire.TLVList{
-								wire.NewTLVBE(wire.ChatRoomTLVRoomName, "cool room"),
+								wire.NewTLVBE(wire.ChatRoomTLVRoomName, "cool room :)"),
 							},
 						},
 					},
@@ -1103,7 +1103,7 @@ func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 		{
 			name:              "successfully join chat",
 			me:                newTestSession("me"),
-			givenCmd:          []byte(`toc_chat_join 4 "cool room"`),
+			givenCmd:          []byte(`toc_chat_join 4 "cool room :\)"`),
 			givenChatRegistry: NewChatRegistry(),
 			mockParams: mockParams{
 				chatNavParams:      fnNewChatNavParams(nil),
@@ -1111,13 +1111,13 @@ func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 				authParams:         fnNewAuthParams(nil),
 				oServiceChatParams: fnNewOServiceChatParams(nil),
 			},
-			wantMsg:           "CHAT_JOIN:0:cool room",
+			wantMsg:           "CHAT_JOIN:0:cool room :)",
 			expectChatSession: true,
 		},
 		{
 			name:              "join chat, receive error from chat oservice svc",
 			me:                newTestSession("me"),
-			givenCmd:          []byte(`toc_chat_join 4 "cool room"`),
+			givenCmd:          []byte(`toc_chat_join 4 "cool room :\)"`),
 			givenChatRegistry: NewChatRegistry(),
 			mockParams: mockParams{
 				chatNavParams:      fnNewChatNavParams(nil),
@@ -1131,7 +1131,7 @@ func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 		{
 			name:              "join chat, receive error from auth svc",
 			me:                newTestSession("me"),
-			givenCmd:          []byte(`toc_chat_join 4 "cool room"`),
+			givenCmd:          []byte(`toc_chat_join 4 "cool room :\)"`),
 			givenChatRegistry: NewChatRegistry(),
 			mockParams: mockParams{
 				chatNavParams:     fnNewChatNavParams(nil),
@@ -1144,7 +1144,7 @@ func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 		{
 			name:              "join chat, receive error from BOS oservice svc",
 			me:                newTestSession("me"),
-			givenCmd:          []byte(`toc_chat_join 4 "cool room"`),
+			givenCmd:          []byte(`toc_chat_join 4 "cool room :\)"`),
 			givenChatRegistry: NewChatRegistry(),
 			mockParams: mockParams{
 				chatNavParams:     fnNewChatNavParams(nil),
@@ -1156,7 +1156,7 @@ func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 		{
 			name:              "join chat, receive error from chat nav svc",
 			me:                newTestSession("me"),
-			givenCmd:          []byte(`toc_chat_join 4 "cool room"`),
+			givenCmd:          []byte(`toc_chat_join 4 "cool room :\)"`),
 			givenChatRegistry: NewChatRegistry(),
 			mockParams: mockParams{
 				chatNavParams: fnNewChatNavParams(io.EOF),
@@ -1175,7 +1175,7 @@ func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 		{
 			name:              "bad exchange number",
 			me:                newTestSession("me"),
-			givenCmd:          []byte(`toc_chat_join four "cool room"`),
+			givenCmd:          []byte(`toc_chat_join four "cool room :\)"`),
 			givenChatRegistry: NewChatRegistry(),
 			wantMsg:           cmdInternalSvcErr,
 			expectChatSession: false,
@@ -1325,7 +1325,7 @@ func TestOSCARProxy_RecvClientCmd_ChatSend(t *testing.T) {
 		{
 			name:     "successfully send chat message",
 			me:       newTestSession("me"),
-			givenCmd: []byte(`toc_chat_send 0 "Hello world!"`),
+			givenCmd: []byte(`toc_chat_send 0 "Hello world! :\)"`),
 			givenChatRegistry: func() *ChatRegistry {
 				reg := NewChatRegistry()
 				reg.RegisterSess(0, newTestSession("me"))
@@ -1345,7 +1345,7 @@ func TestOSCARProxy_RecvClientCmd_ChatSend(t *testing.T) {
 										wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}),
 										wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
 											TLVList: wire.TLVList{
-												wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world!"),
+												wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world! :)"),
 											},
 										}),
 									},
@@ -1361,7 +1361,7 @@ func TestOSCARProxy_RecvClientCmd_ChatSend(t *testing.T) {
 											wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}),
 											wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
 												TLVList: wire.TLVList{
-													wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world!"),
+													wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world! :)"),
 												},
 											}),
 										},
@@ -1372,7 +1372,7 @@ func TestOSCARProxy_RecvClientCmd_ChatSend(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: "CHAT_IN:0:me:F:Hello world!",
+			wantMsg: "CHAT_IN:0:me:F:Hello world! :)",
 		},
 		{
 			name:     "send chat message, receive error from chat svc",
@@ -1543,7 +1543,7 @@ func TestOSCARProxy_RecvClientCmd_ChatWhisper(t *testing.T) {
 		{
 			name:     "successfully send chat whisper",
 			me:       newTestSession("me"),
-			givenCmd: []byte(`toc_chat_whisper 0 them "Hello world!"`),
+			givenCmd: []byte(`toc_chat_whisper 0 them "Hello world! :\)"`),
 			givenChatRegistry: func() *ChatRegistry {
 				reg := NewChatRegistry()
 				reg.RegisterSess(0, newTestSession("me"))
@@ -1562,7 +1562,7 @@ func TestOSCARProxy_RecvClientCmd_ChatWhisper(t *testing.T) {
 										wire.NewTLVBE(wire.ChatTLVWhisperToUser, "them"),
 										wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{
 											TLVList: wire.TLVList{
-												wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world!"),
+												wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello world! :)"),
 											},
 										}),
 									},
@@ -1821,7 +1821,7 @@ func TestOSCARProxy_RecvClientCmd_ChangePassword(t *testing.T) {
 		{
 			name:     "successfully change password",
 			me:       newTestSession("me"),
-			givenCmd: []byte("toc_change_passwd oldpass newpass"),
+			givenCmd: []byte("toc_change_passwd oldpa\\$\\$ newpa\\$\\$"),
 			mockParams: mockParams{
 				adminParams: adminParams{
 					infoChangeRequestParams: infoChangeRequestParams{
@@ -1830,8 +1830,8 @@ func TestOSCARProxy_RecvClientCmd_ChangePassword(t *testing.T) {
 							inBody: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
 								TLVRestBlock: wire.TLVRestBlock{
 									TLVList: wire.TLVList{
-										wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpass"),
-										wire.NewTLVBE(wire.AdminTLVNewPassword, "newpass"),
+										wire.NewTLVBE(wire.AdminTLVOldPassword, "oldpa$$"),
+										wire.NewTLVBE(wire.AdminTLVNewPassword, "newpa$$"),
 									},
 								},
 							},
@@ -2049,7 +2049,7 @@ func TestOSCARProxy_RecvClientCmd_GetDirSearchURL(t *testing.T) {
 		{
 			name:     "successfully request user info",
 			me:       newTestSession("me"),
-			givenCmd: []byte(`toc_dir_search "first name":"middle name":"last name":"maiden name":"city":"state":"country":"email"`),
+			givenCmd: []byte(`toc_dir_search "first \[name\]":"middle name":"last name":"maiden name":"city":"state":"country":"email"`),
 			mockParams: mockParams{
 				cookieBakerParams: cookieBakerParams{
 					issueParams: issueParams{
@@ -2060,7 +2060,7 @@ func TestOSCARProxy_RecvClientCmd_GetDirSearchURL(t *testing.T) {
 					},
 				},
 			},
-			wantMsg: "GOTO_URL:search results:dir_search?city=city&cookie=6d6f6e73746572&country=country&email=email&first_name=first+name&last_name=last+name&maiden_name=maiden+name&middle_name=middle+name&state=state",
+			wantMsg: "GOTO_URL:search results:dir_search?city=city&cookie=6d6f6e73746572&country=country&email=email&first_name=first+%5Bname%5D&last_name=last+name&maiden_name=maiden+name&middle_name=middle+name&state=state",
 		},
 		{
 			name:     "successfully request user info by keywords",
@@ -2834,7 +2834,7 @@ func TestOSCARProxy_RecvClientCmd_SendIM(t *testing.T) {
 		{
 			name:     "successfully send instant message",
 			me:       newTestSession("me"),
-			givenCmd: []byte(`toc_send_im chattingChuck "hello world!"`),
+			givenCmd: []byte(`toc_send_im chattingChuck "hello world! :\)"`),
 			mockParams: mockParams{
 				icbmParams: icbmParams{
 					channelMsgToHostParamsICBM: channelMsgToHostParamsICBM{
@@ -2857,7 +2857,7 @@ func TestOSCARProxy_RecvClientCmd_SendIM(t *testing.T) {
 												Payload: []byte{
 													0x00, 0x00,
 													0x00, 0x00,
-													'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '!',
+													'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '!', ' ', ':', ')',
 												},
 											},
 										}),
@@ -2994,7 +2994,7 @@ func TestOSCARProxy_RecvClientCmd_SetAway(t *testing.T) {
 		{
 			name:     "successfully set away with message",
 			me:       newTestSession("me"),
-			givenCmd: []byte(`toc_set_away "I'm away from my computer right now."`),
+			givenCmd: []byte(`toc_set_away "I'm away from my computer right now. :\)"`),
 			mockParams: mockParams{
 				locateParams: locateParams{
 					setInfoParams: setInfoParams{
@@ -3003,7 +3003,7 @@ func TestOSCARProxy_RecvClientCmd_SetAway(t *testing.T) {
 							inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
 								TLVRestBlock: wire.TLVRestBlock{
 									TLVList: wire.TLVList{
-										wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableData, "I'm away from my computer right now."),
+										wire.NewTLVBE(wire.LocateTLVTagsInfoUnavailableData, "I'm away from my computer right now. :)"),
 									},
 								},
 							},
@@ -3354,7 +3354,7 @@ func TestOSCARProxy_RecvClientCmd_SetDir(t *testing.T) {
 		{
 			name:     "successfully set directory info with quoted fields",
 			me:       newTestSession("me"),
-			givenCmd: []byte(`toc_set_dir "first name":"middle name":"last name":"maiden name":"city":"state":"country":"email":"allow web searches"`),
+			givenCmd: []byte(`toc_set_dir "first name\$":"middle name":"last name":"maiden name":"city":"state":"country":"email":"allow web searches"`),
 			mockParams: mockParams{
 				locateParams: locateParams{
 					setDirInfoParams: setDirInfoParams{
@@ -3363,7 +3363,7 @@ func TestOSCARProxy_RecvClientCmd_SetDir(t *testing.T) {
 							inBody: wire.SNAC_0x02_0x09_LocateSetDirInfo{
 								TLVRestBlock: wire.TLVRestBlock{
 									TLVList: wire.TLVList{
-										wire.NewTLVBE(wire.ODirTLVFirstName, "first name"),
+										wire.NewTLVBE(wire.ODirTLVFirstName, "first name$"),
 										wire.NewTLVBE(wire.ODirTLVMiddleName, "middle name"),
 										wire.NewTLVBE(wire.ODirTLVLastName, "last name"),
 										wire.NewTLVBE(wire.ODirTLVMaidenName, "maiden name"),
@@ -3597,7 +3597,7 @@ func TestOSCARProxy_RecvClientCmd_SetInfo(t *testing.T) {
 		{
 			name:     "successfully set profile",
 			me:       newTestSession("me"),
-			givenCmd: []byte(`toc_set_info "my profile!"`),
+			givenCmd: []byte(`toc_set_info "my profile! :\)"`),
 			mockParams: mockParams{
 				locateParams: locateParams{
 					setInfoParams: setInfoParams{
@@ -3606,7 +3606,7 @@ func TestOSCARProxy_RecvClientCmd_SetInfo(t *testing.T) {
 							inBody: wire.SNAC_0x02_0x04_LocateSetInfo{
 								TLVRestBlock: wire.TLVRestBlock{
 									TLVList: wire.TLVList{
-										wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, "my profile!"),
+										wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, "my profile! :)"),
 									},
 								},
 							},
@@ -4268,6 +4268,35 @@ func Test_parseArgs(t *testing.T) {
 			assert.Equal(t, tt.wantVarArgs, varArgs)
 			assert.Equal(t, len(tt.wantArgs), len(tt.givenArgs))
 
+		})
+	}
+}
+
+// TestUnescape tests the unescape function
+func TestUnescape(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"No Escapes", "Hello World", "Hello World"},
+		{"Escaped Brace", "Hello \\{World\\}", "Hello {World}"},
+		{"Escaped Parentheses", "Test\\(123\\)", "Test(123)"},
+		{"Escaped Brackets", "\\[List\\]", "[List]"},
+		{"Escaped Dollar", "Price: \\$100", "Price: $100"},
+		{"Escaped Quote", "She said \\\"Hello\\\"", "She said \"Hello\""},
+		{"Multiple Escapes", "One\\, Two\\, Three", "One, Two, Three"},
+		{"Consecutive Escapes", "\\\\\\$100", "\\$100"},
+		{"Only Escape Character", "\\", ""},
+		{"Empty Input", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := unescape(tt.input)
+			if result != tt.expected {
+				t.Errorf("unescape(%q) = %q; want %q", tt.input, result, tt.expected)
+			}
 		})
 	}
 }

@@ -155,7 +155,7 @@ func (s OSCARProxy) RecvClientCmd(
 	}
 
 	if s.Logger.Enabled(ctx, slog.LevelDebug) {
-		s.Logger.DebugContext(ctx, "client request", "command", cmd)
+		s.Logger.DebugContext(ctx, "client request", "command", payload)
 	} else {
 		s.Logger.InfoContext(ctx, "client request", "command", cmd)
 	}
@@ -337,6 +337,8 @@ func (s OSCARProxy) ChangePassword(ctx context.Context, me *state.Session, args 
 	if _, err := parseArgs(args, &oldPass, &newPass); err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
 	}
+	oldPass = unescape(oldPass)
+	newPass = unescape(newPass)
 
 	reqSNAC := wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
 		TLVRestBlock: wire.TLVRestBlock{
@@ -490,6 +492,7 @@ func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegis
 	if err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
 	}
+	msg = unescape(msg)
 
 	chatID, err := strconv.Atoi(chatRoomIDStr)
 	if err != nil {
@@ -557,6 +560,7 @@ func (s OSCARProxy) ChatJoin(
 	if _, err := parseArgs(args, &exchangeStr, &roomName); err != nil {
 		return 0, s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
 	}
+	roomName = unescape(roomName)
 
 	// create room or retrieve the room if it already exists
 	exchange, err := strconv.Atoi(exchangeStr)
@@ -692,6 +696,7 @@ func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, ar
 	if _, err := parseArgs(args, &chatIDStr, &msg); err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
 	}
+	msg = unescape(msg)
 
 	chatID, err := strconv.Atoi(chatIDStr)
 	if err != nil {
@@ -772,6 +777,7 @@ func (s OSCARProxy) ChatWhisper(ctx context.Context, chatRegistry *ChatRegistry,
 	if _, err := parseArgs(args, &chatIDStr, &recip, &msg); err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
 	}
+	msg = unescape(msg)
 
 	chatID, err := strconv.Atoi(chatIDStr)
 	if err != nil {
@@ -921,6 +927,7 @@ func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, args
 	if _, err := parseArgs(args, &info); err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
 	}
+	info = unescape(info)
 
 	params := strings.Split(info, ":")
 	labels := []string{
@@ -1228,6 +1235,7 @@ func (s OSCARProxy) SendIM(ctx context.Context, sender *state.Session, args []by
 	if err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
 	}
+	msg = unescape(msg)
 
 	frags, err := wire.ICBMFragmentList(msg)
 	if err != nil {
@@ -1276,7 +1284,7 @@ func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, args []byte)
 
 	var msg string
 	if len(maybeMsg) > 0 {
-		msg = maybeMsg[0]
+		msg = unescape(maybeMsg[0])
 	}
 
 	snac := wire.SNAC_0x02_0x04_LocateSetInfo{
@@ -1405,6 +1413,7 @@ func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, args []byte) 
 	if _, err := parseArgs(args, &info); err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
 	}
+	info = unescape(info)
 
 	rawFields := strings.Split(info, ":")
 
@@ -1482,6 +1491,7 @@ func (s OSCARProxy) SetInfo(ctx context.Context, me *state.Session, args []byte)
 	if _, err := parseArgs(args, &info); err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
 	}
+	info = unescape(info)
 
 	snac := wire.SNAC_0x02_0x04_LocateSetInfo{
 		TLVRestBlock: wire.TLVRestBlock{
@@ -1638,4 +1648,32 @@ func parseArgs(payload []byte, args ...*string) (varArgs []string, err error) {
 func (s OSCARProxy) runtimeErr(ctx context.Context, err error) string {
 	s.Logger.ErrorContext(ctx, "internal service error", "err", err.Error())
 	return cmdInternalSvcErr
+}
+
+// unescape removes escaping from the following TOC characters: \ { } ( ) [ ] $ "
+func unescape(encoded string) string {
+	if !strings.ContainsRune(encoded, '\\') {
+		return encoded
+	}
+
+	var result strings.Builder
+	result.Grow(len(encoded))
+
+	escaped := false
+
+	for i := 0; i < len(encoded); i++ {
+		ch := encoded[i]
+
+		if escaped {
+			// append escaped character without the backslash
+			result.WriteByte(ch)
+			escaped = false
+		} else if ch == '\\' {
+			escaped = true
+		} else {
+			result.WriteByte(ch)
+		}
+	}
+
+	return result.String()
 }
