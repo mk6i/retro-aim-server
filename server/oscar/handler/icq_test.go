@@ -657,7 +657,7 @@ func TestICQHandler_DBQuery(t *testing.T) {
 									},
 									ReqSubType: wire.ICQDBQueryMetaReqSetInterests,
 									MetaRequest: wire.ICQ_0x07D0_0x0410_DBQueryMetaReqSetInterests{
-										Interests: [4]struct {
+										Interests: []struct {
 											Code    uint16
 											Keyword string `oscar:"len_prefix=uint16,nullterm"`
 										}{
@@ -676,7 +676,7 @@ func TestICQHandler_DBQuery(t *testing.T) {
 			allMockParams: allMockParams{
 				setInterests: &mockParam{
 					req: wire.ICQ_0x07D0_0x0410_DBQueryMetaReqSetInterests{
-						Interests: [4]struct {
+						Interests: []struct {
 							Code    uint16
 							Keyword string `oscar:"len_prefix=uint16,nullterm"`
 						}{
@@ -703,7 +703,7 @@ func TestICQHandler_DBQuery(t *testing.T) {
 									},
 									ReqSubType: wire.ICQDBQueryMetaReqSetAffiliations,
 									MetaRequest: wire.ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations{
-										PastAffiliations: [3]struct {
+										PastAffiliations: []struct {
 											Code    uint16
 											Keyword string `oscar:"len_prefix=uint16,nullterm"`
 										}{
@@ -711,7 +711,7 @@ func TestICQHandler_DBQuery(t *testing.T) {
 												Keyword: "a_past_affiliation",
 											},
 										},
-										Affiliations: [3]struct {
+										Affiliations: []struct {
 											Code    uint16
 											Keyword string `oscar:"len_prefix=uint16,nullterm"`
 										}{
@@ -730,7 +730,7 @@ func TestICQHandler_DBQuery(t *testing.T) {
 			allMockParams: allMockParams{
 				setAffiliations: &mockParam{
 					req: wire.ICQ_0x07D0_0x041A_DBQueryMetaReqSetAffiliations{
-						PastAffiliations: [3]struct {
+						PastAffiliations: []struct {
 							Code    uint16
 							Keyword string `oscar:"len_prefix=uint16,nullterm"`
 						}{
@@ -738,7 +738,7 @@ func TestICQHandler_DBQuery(t *testing.T) {
 								Keyword: "a_past_affiliation",
 							},
 						},
-						Affiliations: [3]struct {
+						Affiliations: []struct {
 							Code    uint16
 							Keyword string `oscar:"len_prefix=uint16,nullterm"`
 						}{
