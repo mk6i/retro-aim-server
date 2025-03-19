@@ -1,6 +1,7 @@
 package oscar
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -102,7 +103,7 @@ func (rt AuthServer) handleNewConnection(rwc io.ReadWriteCloser) error {
 		return rt.processFLAPAuth(signonFrame, flapc)
 	}
 
-	return rt.processBUCPAuth(flapc, err)
+	return rt.processBUCPAuth(flapc)
 }
 
 func (rt AuthServer) processFLAPAuth(signonFrame wire.FLAPSignonFrame, flapc *wire.FlapClient) error {
@@ -113,35 +114,64 @@ func (rt AuthServer) processFLAPAuth(signonFrame wire.FLAPSignonFrame, flapc *wi
 	return flapc.SendSignoffFrame(tlv)
 }
 
-func (rt AuthServer) processBUCPAuth(flapc *wire.FlapClient, err error) error {
-	challengeRequest := wire.SNAC_0x17_0x06_BUCPChallengeRequest{}
-	if err := flapc.ReceiveSNAC(&wire.SNACFrame{}, &challengeRequest); err != nil {
-		return err
-	}
+func (rt AuthServer) processBUCPAuth(flapc *wire.FlapClient) error {
+	for {
+		frame, err := flapc.ReceiveFLAP()
+		if err != nil {
+			return err
+		}
 
-	outSNAC, err := rt.BUCPChallenge(challengeRequest, uuid.New)
-	if err != nil {
-		return err
-	}
-	if err := flapc.SendSNAC(outSNAC.Frame, outSNAC.Body); err != nil {
-		return err
-	}
+		switch frame.FrameType {
+		case wire.FLAPFrameSignoff:
+			rt.Logger.Debug("signed off mid-login")
+			return io.EOF // client disconnected
+		case wire.FLAPFrameKeepAlive:
+			rt.Logger.Debug("received flap keepalive frame")
+		case wire.FLAPFrameData:
+			buf := bytes.NewReader(frame.Payload)
+			fr := wire.SNACFrame{}
+			if err := wire.UnmarshalBE(&fr, buf); err != nil {
+				return err
+			}
+			switch {
+			case fr.FoodGroup == wire.BUCP && fr.SubGroup == wire.BUCPChallengeRequest:
+				challengeRequest := wire.SNAC_0x17_0x06_BUCPChallengeRequest{}
+				if err := wire.UnmarshalBE(&challengeRequest, buf); err != nil {
+					return err
+				}
+				outSNAC, err := rt.BUCPChallenge(challengeRequest, uuid.New)
+				if err != nil {
+					return err
+				}
+				if err := flapc.SendSNAC(outSNAC.Frame, outSNAC.Body); err != nil {
+					return err
+				}
 
-	if outSNAC.Frame.SubGroup == wire.BUCPLoginResponse {
-		screenName, _ := challengeRequest.String(wire.LoginTLVTagsScreenName)
-		rt.Logger.Debug("failed BUCP challenge: user does not exist", "screen_name", screenName)
-		return nil // account does not exist
-	}
+				if outSNAC.Frame.SubGroup == wire.BUCPLoginResponse {
+					screenName, _ := challengeRequest.String(wire.LoginTLVTagsScreenName)
+					rt.Logger.Debug("failed BUCP challenge: user does not exist", "screen_name", screenName)
+					return nil // account does not exist
+				}
+			case fr.FoodGroup == wire.BUCP && fr.SubGroup == wire.BUCPLoginRequest:
+				loginRequest := wire.SNAC_0x17_0x02_BUCPLoginRequest{}
+				if err := wire.UnmarshalBE(&loginRequest, buf); err != nil {
+					return err
+				}
+				outSNAC, err := rt.BUCPLogin(loginRequest, state.NewStubUser)
+				if err != nil {
+					return err
+				}
 
-	loginRequest := wire.SNAC_0x17_0x02_BUCPLoginRequest{}
-	if err := flapc.ReceiveSNAC(&wire.SNACFrame{}, &loginRequest); err != nil {
-		return err
+				return flapc.SendSNAC(outSNAC.Frame, outSNAC.Body)
+			default:
+				rt.Logger.Debug("unexpected SNAC received during login",
+					"foodgroup", wire.FoodGroupName(fr.FoodGroup),
+					"subgroup", wire.SubGroupName(fr.FoodGroup, fr.SubGroup))
+				return io.EOF
+			}
+		default:
+			rt.Logger.Debug("unexpected frame type received during login", "type", frame.FrameType)
+			return io.EOF
+		}
 	}
-
-	outSNAC, err = rt.BUCPLogin(loginRequest, state.NewStubUser)
-	if err != nil {
-		return err
-	}
-
-	return flapc.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }

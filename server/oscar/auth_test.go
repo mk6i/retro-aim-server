@@ -50,6 +50,9 @@ func TestBUCPAuthService_handleNewConnection(t *testing.T) {
 		assert.NoError(t, flapc.ReceiveSNAC(&frame, &wire.SNAC_0x17_0x07_BUCPChallengeResponse{}))
 		assert.Equal(t, wire.SNACFrame{FoodGroup: wire.BUCP, SubGroup: wire.BUCPChallengeResponse}, frame)
 
+		// > send keep alive frame (like BSFlite does mid-login)
+		assert.NoError(t, flapc.SendKeepAliveFrame())
+
 		// > send SNAC_0x17_0x02_BUCPLoginRequest
 		frame = wire.SNACFrame{
 			FoodGroup: wire.BUCP,
