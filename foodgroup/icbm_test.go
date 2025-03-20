@@ -72,12 +72,12 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											{
-												Tag:   wire.ICBMTLVWantEvents,
-												Value: []byte{},
-											},
-											{
 												Tag:   wire.ICBMTLVData,
 												Value: []byte{1, 2, 3, 4},
+											},
+											{
+												Tag:   wire.ICBMTLVWantEvents,
+												Value: []byte{},
 											},
 										},
 									},
@@ -162,12 +162,12 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
 											{
-												Tag:   wire.ICBMTLVWantEvents,
-												Value: []byte{},
-											},
-											{
 												Tag:   wire.ICBMTLVData,
 												Value: []byte{1, 2, 3, 4},
+											},
+											{
+												Tag:   wire.ICBMTLVWantEvents,
+												Value: []byte{},
 											},
 										},
 									},
@@ -486,7 +486,6 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLVBE(wire.ICBMTLVWantEvents, []byte{}),
 											wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
 												Type:       wire.ICBMRdvMessagePropose,
 												Capability: wire.CapFileTransfer,
@@ -498,6 +497,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 													},
 												},
 											}),
+											wire.NewTLVBE(wire.ICBMTLVWantEvents, []byte{}),
 										},
 									},
 								},
@@ -573,11 +573,11 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLVBE(wire.ICBMTLVWantEvents, []byte{}),
 											wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
 												Type:       wire.ICBMRdvMessageCancel,
 												Capability: wire.CapFileTransfer,
 											}),
+											wire.NewTLVBE(wire.ICBMTLVWantEvents, []byte{}),
 										},
 									},
 								},
@@ -646,7 +646,6 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
 									TLVRestBlock: wire.TLVRestBlock{
 										TLVList: wire.TLVList{
-											wire.NewTLVBE(wire.ICBMTLVWantEvents, []byte{}),
 											wire.NewTLVBE(wire.ICBMTLVData, wire.ICBMCh2Fragment{
 												Type:       wire.ICBMRdvMessagePropose,
 												Capability: wire.CapFileTransfer,
@@ -657,6 +656,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 													},
 												},
 											}),
+											wire.NewTLVBE(wire.ICBMTLVWantEvents, []byte{}),
 										},
 									},
 								},

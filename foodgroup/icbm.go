@@ -122,18 +122,10 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 	}
 
 	clientIM := wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
-		Cookie:      inBody.Cookie,
-		ChannelID:   inBody.ChannelID,
-		TLVUserInfo: sess.TLVUserInfo(),
-		TLVRestBlock: wire.TLVRestBlock{
-			TLVList: wire.TLVList{
-				{
-					// todo only add this TLV if the sender wants client events
-					Tag:   wire.ICBMTLVWantEvents,
-					Value: []byte{},
-				},
-			},
-		},
+		Cookie:       inBody.Cookie,
+		ChannelID:    inBody.ChannelID,
+		TLVUserInfo:  sess.TLVUserInfo(),
+		TLVRestBlock: wire.TLVRestBlock{},
 	}
 
 	for _, tlv := range inBody.TLVRestBlock.TLVList {
@@ -149,6 +141,11 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		}
 		clientIM.Append(tlv)
 	}
+
+	// todo I forget why I added this TLV here, but it should be added
+	//  conditionally. I moved it from the beginning of the TLV list to the end
+	//  since BeAIM assumes that the first TLV is 0x02.
+	clientIM.Append(wire.NewTLVBE(wire.ICBMTLVWantEvents, []byte{}))
 
 	s.messageRelayer.RelayToScreenName(ctx, recipSess.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
