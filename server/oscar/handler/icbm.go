@@ -34,10 +34,28 @@ type ICBMHandler struct {
 	middleware.RouteLogger
 }
 
-func (h ICBMHandler) AddParameters(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
+func (h ICBMHandler) AddParameters(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x04_0x02_ICBMAddParameters{}
 	h.LogRequest(ctx, inFrame, inBody)
-	return wire.UnmarshalBE(&inBody, r)
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
+		return err
+	}
+	outSNAC := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.ICBM,
+			SubGroup:  wire.ICBMParameterReply,
+			RequestID: inFrame.RequestID,
+		},
+		Body: wire.SNAC_0x04_0x05_ICBMParameterReply{
+			Channel:              0,
+			ICBMFlags:            inBody.ICBMFlags,
+			MaxIncomingICBMLen:   inBody.MaxIncomingICBMLen,
+			MaxSourceEvil:        inBody.MaxSourceEvil,
+			MaxDestinationEvil:   inBody.MaxDestinationEvil,
+			MinInterICBMInterval: inBody.MinInterICBMInterval,
+		},
+	}
+	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
 
 func (h ICBMHandler) ParameterQuery(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {

@@ -174,7 +174,7 @@ func TestICBMHandler_ParameterQuery(t *testing.T) {
 			SubGroup:  wire.ICBMParameterReply,
 		},
 		Body: wire.SNAC_0x04_0x05_ICBMParameterReply{
-			MaxSlots: 100,
+			Channel: 100,
 		},
 	}
 

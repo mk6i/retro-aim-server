@@ -658,7 +658,7 @@ type SNAC_0x04_0x02_ICBMAddParameters struct {
 }
 
 type SNAC_0x04_0x05_ICBMParameterReply struct {
-	MaxSlots             uint16
+	Channel              uint16
 	ICBMFlags            uint32
 	MaxIncomingICBMLen   uint16
 	MaxSourceEvil        uint16
