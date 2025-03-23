@@ -797,6 +797,16 @@ type SNAC_0x04_0x14_ICBMClientEvent struct {
 }
 
 //
+// 0x06: Invite
+//
+
+const (
+	InviteErr          uint16 = 0x0001
+	InviteRequestQuery uint16 = 0x0002
+	InviteRequestReply uint16 = 0x0003
+)
+
+//
 // 0x07: Admin
 //
 
