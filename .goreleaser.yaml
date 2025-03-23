@@ -47,6 +47,8 @@ archives:
       - LICENSE
       - src: config/settings.env
         strip_parent: true
+      - src: config/ras.service
+        strip_parent: true
     name_template: >-
       {{ .Binary }}.{{ .Version }}.{{ .Os }}.
       {{- if eq .Arch "amd64" }}x86_64{{ else }}arm64_arm7_raspberry_pi{{ end }}
