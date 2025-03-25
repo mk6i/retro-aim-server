@@ -148,6 +148,7 @@ func NewAlertRouter(h Handlers) oscar.Router {
 
 	router.Register(wire.OService, wire.OServiceClientOnline, h.ClientOnline)
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceHandler.IdleNotification)
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
 
@@ -162,6 +163,7 @@ func NewBARTRouter(h Handlers) oscar.Router {
 
 	router.Register(wire.OService, wire.OServiceClientOnline, h.ClientOnline)
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceHandler.IdleNotification)
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
 
@@ -173,6 +175,7 @@ func NewAdminRouter(h Handlers) oscar.Router {
 
 	router.Register(wire.OService, wire.OServiceClientOnline, h.OServiceHandler.ClientOnline)
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceHandler.IdleNotification)
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
 	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
@@ -192,6 +195,7 @@ func NewODirRouter(h Handlers) oscar.Router {
 
 	router.Register(wire.OService, wire.OServiceClientOnline, h.ClientOnline)
 	router.Register(wire.OService, wire.OServiceClientVersions, h.OServiceHandler.ClientVersions)
+	router.Register(wire.OService, wire.OServiceIdleNotification, h.OServiceHandler.IdleNotification)
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
 	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
