@@ -17,10 +17,10 @@
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | This project is an independent, open-source initiative and is not affiliated with, endorsed by, or associated with AOL or Yahoo! Inc. This project is entirely non-commercial and does not generate any revenue or accept donations. |
 
-
 The following features are supported:
 
 **AIM**
+
 - [x] Windows AIM Clients: v1.x, v2.x, v3.x, v4.x, v5.x
 - [x] Away Messages
 - [x] Buddy Icons (v4.x, v5.x)
@@ -33,8 +33,12 @@ The following features are supported:
 - [x] Warning
 - [x] User Directory Search
 - [x] TOC Protocol Clients: Quick Buddy, gaim, [TiK](./docs/CLIENT_TIK.md)
+- [x] File Sharing
+    - LAN Only: Direct Connect, Get File
+    - Lan/Internet: [Send File](./docs/RENDEZVOUS.md)
 
 **ICQ**
+
 - [x] Windows ICQ Clients: 2000b (more to come soon)
 - [x] Instant Messaging
 - [x] Profiles
@@ -62,7 +66,8 @@ Follow [this guide](./docs/BUILD.md) to learn how to compile and run Retro AIM S
 
 ## 🌍 Community
 
-Check out the Retro AIM Server [Discord server](https://discord.gg/2Xy4nF3Uh9) to get help or find out how to get involved.
+Check out the Retro AIM Server [Discord server](https://discord.gg/2Xy4nF3Uh9) to get help or find out how to get
+involved.
 
 ## 👤 Management API
 
