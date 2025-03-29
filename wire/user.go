@@ -29,26 +29,31 @@ func StrongMD5PasswordHash(pass, authKey string) []byte {
 	return bottom.Sum(nil)
 }
 
-// RoastPassword toggles password obfuscation using a roasting algorithm for
-// AIM v1.0-v3.0 auth. The first call obfuscates the password, and the second
-// call de-obfuscates the password, and so on.
-func RoastPassword(roastedPass []byte) []byte {
-	var roastTable = [16]byte{
+// RoastOSCARPassword roasts an OSCAR client password.
+func RoastOSCARPassword(roastedPass []byte) []byte {
+	var roastTable = []byte{
 		0xF3, 0x26, 0x81, 0xC4, 0x39, 0x86, 0xDB, 0x92,
 		0x71, 0xA3, 0xB9, 0xE6, 0x53, 0x7A, 0x95, 0x7C,
 	}
-	clearPass := make([]byte, len(roastedPass))
-	for i := range roastedPass {
-		clearPass[i] = roastedPass[i] ^ roastTable[i%len(roastTable)]
-	}
-	return clearPass
+	return roastPass(roastedPass, roastTable)
 }
 
-// RoastPassword toggles password obfuscation using a roasting algorithm for
-// AIM v1.0-v3.0 auth. The first call obfuscates the password, and the second
-// call de-obfuscates the password, and so on.
+// RoastOSCARJavaPassword roasts a Java OSCAR client password.
+func RoastOSCARJavaPassword(roastedPass []byte) []byte {
+	var roastTable = []byte{
+		0xF3, 0xB3, 0x6C, 0x99, 0x95, 0x3F, 0xAC, 0xB6,
+		0xC5, 0xFA, 0x6B, 0x63, 0x69, 0x6C, 0xC3, 0x9A,
+	}
+	return roastPass(roastedPass, roastTable)
+}
+
+// RoastTOCPassword roasts a TOC client password.
 func RoastTOCPassword(roastedPass []byte) []byte {
-	var roastTable = []byte("Tic/Toc")
+	return roastPass(roastedPass, []byte("Tic/Toc"))
+}
+
+// roastPass toggles obfuscation/deobfuscates of roastedPass.
+func roastPass(roastedPass []byte, roastTable []byte) []byte {
 	clearPass := make([]byte, len(roastedPass))
 	for i := range roastedPass {
 		clearPass[i] = roastedPass[i] ^ roastTable[i%len(roastTable)]

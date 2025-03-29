@@ -536,6 +536,100 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			},
 			wantErr: io.EOF,
 		},
+		{
+			name: "login with TOC client - success",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				BOSPort:   "1234",
+			},
+			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
+						wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, wire.RoastTOCPassword([]byte("the_password"))),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: user.IdentScreenName,
+							result:     &user,
+						},
+					},
+				},
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: func() []byte {
+								loginCookie := bosCookie{
+									ScreenName: user.DisplayScreenName,
+								}
+								buf := &bytes.Buffer{}
+								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+								return buf.Bytes()
+							}(),
+							cookieOut: []byte("the-cookie"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BUCP,
+					SubGroup:  wire.BUCPLoginResponse,
+				},
+				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
+							wire.NewTLVBE(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLVBE(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "login with TOC client - failed",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				BOSPort:   "1234",
+			},
+			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
+						wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, wire.RoastTOCPassword([]byte("the_wrong_password"))),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: user.IdentScreenName,
+							result:     &user,
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BUCP,
+					SubGroup:  wire.BUCPLoginResponse,
+				},
+				Body: wire.SNAC_0x17_0x03_BUCPLoginResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.LoginTLVTagsScreenName, "screenName"),
+							wire.NewTLVBE(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidPassword),
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -578,9 +672,6 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 	}
 	assert.NoError(t, user.HashPassword("the_password"))
 
-	// roastedPassword the roasted form of "the_password"
-	roastedPassword := []byte{0x87, 0x4E, 0xE4, 0x9B, 0x49, 0xE7, 0xA8, 0xE1, 0x06, 0xCC, 0xCB, 0x82}
-
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -607,7 +698,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, roastedPassword),
+						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, wire.RoastOSCARPassword([]byte("the_password"))),
 						wire.NewTLVBE(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					},
 				},
@@ -655,7 +746,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
 						wire.NewTLVBE(wire.LoginTLVTagsClientIdentity, "ICQ 2000b"),
-						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, roastedPassword),
+						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, wire.RoastOSCARPassword([]byte("the_password"))),
 						wire.NewTLVBE(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					},
 				},
@@ -734,7 +825,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, roastedPassword),
+						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, wire.RoastOSCARPassword([]byte("the_password"))),
 						wire.NewTLVBE(wire.LoginTLVTagsScreenName, []byte("non_existent_screen_name")),
 					},
 				},
@@ -766,7 +857,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
 						wire.NewTLVBE(wire.LoginTLVTagsClientIdentity, "ICQ 2000b"),
-						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, roastedPassword),
+						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, wire.RoastOSCARPassword([]byte("the_password"))),
 						wire.NewTLVBE(wire.LoginTLVTagsScreenName, []byte("100003")),
 					},
 				},
@@ -798,7 +889,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, roastedPassword),
+						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, wire.RoastOSCARPassword([]byte("the_password"))),
 						wire.NewTLVBE(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					},
 				},
@@ -900,7 +991,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, roastedPassword),
+						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, wire.RoastOSCARPassword([]byte("the_password"))),
 						wire.NewTLVBE(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 					},
 				},
@@ -916,6 +1007,87 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				},
 			},
 			wantErr: io.EOF,
+		},
+		{
+			name: "login with AIM 1.1.19 for Java - success",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				BOSPort:   "1234",
+			},
+			inputSNAC: wire.FLAPSignonFrame{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.LoginTLVTagsClientIdentity, "AOL Instant Messenger (TM) version 1.1.19 for Java"),
+						wire.NewTLVBE(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
+						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, wire.RoastOSCARJavaPassword([]byte("the_password"))),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: user.IdentScreenName,
+							result:     &user,
+						},
+					},
+				},
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: func() []byte {
+								loginCookie := bosCookie{
+									ScreenName: user.DisplayScreenName,
+									ClientID:   "AOL Instant Messenger (TM) version 1.1.19 for Java",
+								}
+								buf := &bytes.Buffer{}
+								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+								return buf.Bytes()
+							}(),
+							cookieOut: []byte("the-cookie"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLVBE(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
+					wire.NewTLVBE(wire.LoginTLVTagsReconnectHere, "127.0.0.1:1234"),
+					wire.NewTLVBE(wire.LoginTLVTagsAuthorizationCookie, []byte("the-cookie")),
+				},
+			},
+		},
+		{
+			name: "login with AIM 1.1.19 for Java - failed",
+			cfg: config.Config{
+				OSCARHost: "127.0.0.1",
+				BOSPort:   "1234",
+			},
+			inputSNAC: wire.FLAPSignonFrame{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.LoginTLVTagsClientIdentity, "AOL Instant Messenger (TM) version 1.1.19 for Java"),
+						wire.NewTLVBE(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
+						wire.NewTLVBE(wire.LoginTLVTagsRoastedPassword, wire.RoastOSCARJavaPassword([]byte("the_wrong_password"))),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: user.IdentScreenName,
+							result:     &user,
+						},
+					},
+				},
+			},
+			expectOutput: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLVBE(wire.LoginTLVTagsScreenName, "screenName"),
+					wire.NewTLVBE(wire.LoginTLVTagsErrorSubcode, wire.LoginErrInvalidPassword),
+				},
+			},
 		},
 	}
 

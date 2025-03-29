@@ -403,7 +403,16 @@ func (u *User) ValidateHash(md5Hash []byte) bool {
 // hash of the user's actual password. A roasted password is a XOR-obfuscated
 // form of the real password, intended to add a simple layer of security.
 func (u *User) ValidateRoastedPass(roastedPass []byte) bool {
-	clearPass := wire.RoastPassword(roastedPass)
+	clearPass := wire.RoastOSCARPassword(roastedPass)
+	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey) // todo remove string conversion
+	return bytes.Equal(u.WeakMD5Pass, md5Hash)
+}
+
+// ValidateRoastedJavaPass checks if the provided roasted password matches the MD5
+// hash of the user's actual password. A roasted password is a XOR-obfuscated
+// form of the real password, intended to add a simple layer of security. // todo toc description
+func (u *User) ValidateRoastedJavaPass(roastedPass []byte) bool {
+	clearPass := wire.RoastOSCARJavaPassword(roastedPass)
 	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey) // todo remove string conversion
 	return bytes.Equal(u.WeakMD5Pass, md5Hash)
 }
