@@ -9,61 +9,121 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-type ChatRoomRetriever interface {
-	AllChatRooms(exchange uint16) ([]state.ChatRoom, error)
+// AccountManager defines methods for managing user account attributes
+// such as email, confirmation status, registration status, and suspension.
+type AccountManager interface {
+	// ConfirmStatus returns whether a user account has been confirmed.
+	ConfirmStatus(ctx context.Context, screenName state.IdentScreenName) (bool, error)
+
+	// EmailAddress looks up a user's email address by screen name.
+	EmailAddress(ctx context.Context, screenName state.IdentScreenName) (*mail.Address, error)
+
+	// RegStatus looks up a user's registration status by screen name.
+	// It returns one of the following values:
+	//   - wire.AdminInfoRegStatusFullDisclosure
+	//   - wire.AdminInfoRegStatusLimitDisclosure
+	//   - wire.AdminInfoRegStatusNoDisclosure
+	RegStatus(ctx context.Context, screenName state.IdentScreenName) (uint16, error)
+
+	// UpdateSuspendedStatus updates the suspension status of a user account.
+	UpdateSuspendedStatus(ctx context.Context, suspendedStatus uint16, screenName state.IdentScreenName) error
 }
 
+// BuddyIconRetriever defines a method for retrieving a buddy icon image by its hash.
+type BuddyIconRetriever interface {
+	// BuddyIcon retrieves a buddy icon image by its md5 hash.
+	BuddyIcon(ctx context.Context, itemHash []byte) ([]byte, error)
+}
+
+// ChatRoomCreator defines a method for creating a new chat room.
 type ChatRoomCreator interface {
-	CreateChatRoom(chatRoom *state.ChatRoom) error
+	// CreateChatRoom creates a new chat room.
+	CreateChatRoom(ctx context.Context, chatRoom *state.ChatRoom) error
 }
 
+// ChatRoomRetriever defines a method for retrieving all chat rooms
+// under a specific exchange.
+type ChatRoomRetriever interface {
+	// AllChatRooms returns all chat rooms associated with the given exchange ID.
+	AllChatRooms(ctx context.Context, exchange uint16) ([]state.ChatRoom, error)
+}
+
+// ChatSessionRetriever defines a method for retrieving all sessions
+// associated with a specific chat room.
 type ChatSessionRetriever interface {
+	// AllSessions returns all active sessions in the chat room identified by cookie.
 	AllSessions(cookie string) []*state.Session
 }
 
-type SessionRetriever interface {
-	AllSessions() []*state.Session
-	RetrieveSession(screenName state.IdentScreenName) *state.Session
+// DirectoryManager defines methods for managing interest categories and keywords
+// used in user profiles and directory listings.
+type DirectoryManager interface {
+	// Categories returns all existing directory categories.
+	Categories(ctx context.Context) ([]state.Category, error)
+
+	// CreateCategory adds a new directory category.
+	CreateCategory(ctx context.Context, name string) (state.Category, error)
+
+	// CreateKeyword adds a new keyword to the specified category.
+	CreateKeyword(ctx context.Context, name string, categoryID uint8) (state.Keyword, error)
+
+	// DeleteCategory removes a directory category by ID.
+	DeleteCategory(ctx context.Context, categoryID uint8) error
+
+	// DeleteKeyword removes a keyword by ID.
+	DeleteKeyword(ctx context.Context, id uint8) error
+
+	// KeywordsByCategory returns all keywords under the specified category.
+	KeywordsByCategory(ctx context.Context, categoryID uint8) ([]state.Keyword, error)
 }
 
-type UserManager interface {
-	AllUsers() ([]state.User, error)
-	DeleteUser(screenName state.IdentScreenName) error
-	InsertUser(u state.User) error
-	SetUserPassword(screenName state.IdentScreenName, newPassword string) error
-	User(screenName state.IdentScreenName) (*state.User, error)
+// FeedBagRetriever defines methods for retrieving buddy list metadata.
+type FeedBagRetriever interface {
+	// BuddyIconMetadata retrieves a user's buddy icon metadata. It returns nil
+	// if the user does not have a buddy icon.
+	BuddyIconMetadata(ctx context.Context, screenName state.IdentScreenName) (*wire.BARTID, error)
 }
 
+// MessageRelayer defines a method for sending a SNAC message to a specific screen name.
 type MessageRelayer interface {
+	// RelayToScreenName sends the given SNAC message to the specified screen name.
 	RelayToScreenName(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage)
 }
 
-type AccountManager interface {
-	EmailAddressByName(screenName state.IdentScreenName) (*mail.Address, error)
-	RegStatusByName(screenName state.IdentScreenName) (uint16, error)
-	ConfirmStatusByName(screenName state.IdentScreenName) (bool, error)
-	UpdateSuspendedStatus(suspendedStatus uint16, screenName state.IdentScreenName) error
-}
-
-type BARTRetriever interface {
-	BARTRetrieve(itemHash []byte) ([]byte, error)
-}
-
-type FeedBagRetriever interface {
-	BuddyIconRefByName(screenName state.IdentScreenName) (*wire.BARTID, error)
-}
-
+// ProfileRetriever defines a method for retrieving a user's free-form profile.
 type ProfileRetriever interface {
-	Profile(screenName state.IdentScreenName) (string, error)
+	// Profile returns the free-form profile body for the given screen name.
+	Profile(ctx context.Context, screenName state.IdentScreenName) (string, error)
 }
 
-type DirectoryManager interface {
-	Categories() ([]state.Category, error)
-	CreateCategory(name string) (state.Category, error)
-	CreateKeyword(name string, categoryID uint8) (state.Keyword, error)
-	DeleteCategory(categoryID uint8) error
-	DeleteKeyword(id uint8) error
-	KeywordsByCategory(categoryID uint8) ([]state.Keyword, error)
+// SessionRetriever defines methods for retrieving active sessions,
+// either all of them or by screen name.
+type SessionRetriever interface {
+	// AllSessions returns all active user sessions.
+	AllSessions() []*state.Session
+
+	// RetrieveSession returns the session associated with the given screen name,
+	// or nil if no active session exists.
+	RetrieveSession(screenName state.IdentScreenName) *state.Session
+}
+
+// UserManager defines methods for accessing and inserting AIM user records.
+type UserManager interface {
+	// AllUsers returns all registered users.
+	AllUsers(ctx context.Context) ([]state.User, error)
+
+	// DeleteUser removes a user from the system by screen name.
+	DeleteUser(ctx context.Context, screenName state.IdentScreenName) error
+
+	// InsertUser inserts a new user into the system. Return state.ErrDupUser
+	// if a user with the same screen name already exists.
+	InsertUser(ctx context.Context, u state.User) error
+
+	// SetUserPassword sets the user's password hashes and auth key.
+	SetUserPassword(ctx context.Context, screenName state.IdentScreenName, newPassword string) error
+
+	// User returns all attributes for a user.
+	User(ctx context.Context, screenName state.IdentScreenName) (*state.User, error)
 }
 
 type userWithPassword struct {

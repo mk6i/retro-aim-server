@@ -3,6 +3,8 @@
 package http
 
 import (
+	context "context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,9 +22,9 @@ func (_m *mockProfileRetriever) EXPECT() *mockProfileRetriever_Expecter {
 	return &mockProfileRetriever_Expecter{mock: &_m.Mock}
 }
 
-// Profile provides a mock function with given fields: screenName
-func (_m *mockProfileRetriever) Profile(screenName state.IdentScreenName) (string, error) {
-	ret := _m.Called(screenName)
+// Profile provides a mock function with given fields: ctx, screenName
+func (_m *mockProfileRetriever) Profile(ctx context.Context, screenName state.IdentScreenName) (string, error) {
+	ret := _m.Called(ctx, screenName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Profile")
@@ -30,17 +32,17 @@ func (_m *mockProfileRetriever) Profile(screenName state.IdentScreenName) (strin
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) (string, error)); ok {
-		return rf(screenName)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) (string, error)); ok {
+		return rf(ctx, screenName)
 	}
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) string); ok {
-		r0 = rf(screenName)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) string); ok {
+		r0 = rf(ctx, screenName)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
-		r1 = rf(screenName)
+	if rf, ok := ret.Get(1).(func(context.Context, state.IdentScreenName) error); ok {
+		r1 = rf(ctx, screenName)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -54,14 +56,15 @@ type mockProfileRetriever_Profile_Call struct {
 }
 
 // Profile is a helper method to define mock.On call
+//   - ctx context.Context
 //   - screenName state.IdentScreenName
-func (_e *mockProfileRetriever_Expecter) Profile(screenName interface{}) *mockProfileRetriever_Profile_Call {
-	return &mockProfileRetriever_Profile_Call{Call: _e.mock.On("Profile", screenName)}
+func (_e *mockProfileRetriever_Expecter) Profile(ctx interface{}, screenName interface{}) *mockProfileRetriever_Profile_Call {
+	return &mockProfileRetriever_Profile_Call{Call: _e.mock.On("Profile", ctx, screenName)}
 }
 
-func (_c *mockProfileRetriever_Profile_Call) Run(run func(screenName state.IdentScreenName)) *mockProfileRetriever_Profile_Call {
+func (_c *mockProfileRetriever_Profile_Call) Run(run func(ctx context.Context, screenName state.IdentScreenName)) *mockProfileRetriever_Profile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -71,7 +74,7 @@ func (_c *mockProfileRetriever_Profile_Call) Return(_a0 string, _a1 error) *mock
 	return _c
 }
 
-func (_c *mockProfileRetriever_Profile_Call) RunAndReturn(run func(state.IdentScreenName) (string, error)) *mockProfileRetriever_Profile_Call {
+func (_c *mockProfileRetriever_Profile_Call) RunAndReturn(run func(context.Context, state.IdentScreenName) (string, error)) *mockProfileRetriever_Profile_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -611,15 +611,16 @@ func NewOServiceServiceForBOS(
 	logger *slog.Logger,
 	cookieIssuer CookieBaker,
 	chatRoomManager ChatRoomRegistry,
-	buddyListRetriever BuddyListRetriever,
+	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
+	buddyIconManager BuddyIconManager,
 ) *OServiceServiceForBOS {
 	return &OServiceServiceForBOS{
 		chatRoomManager: chatRoomManager,
 		cookieIssuer:    cookieIssuer,
 		messageRelayer:  messageRelayer,
 		OServiceService: OServiceService{
-			buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+			buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
 			cfg:              cfg,
 			logger:           logger,
 			foodGroups: []uint16{
@@ -780,7 +781,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			return wire.SNACMessage{}, err
 		}
 
-		room, err := s.chatRoomManager.ChatRoomByCookie(roomSNAC.Cookie)
+		room, err := s.chatRoomManager.ChatRoomByCookie(ctx, roomSNAC.Cookie)
 		if err != nil {
 			return wire.SNACMessage{}, fmt.Errorf("unable to retrieve room info: %w", err)
 		}
@@ -871,12 +872,13 @@ func NewOServiceServiceForChat(
 	messageRelayer MessageRelayer,
 	chatRoomManager ChatRoomRegistry,
 	chatMessageRelayer ChatMessageRelayer,
-	buddyListRetriever BuddyListRetriever,
+	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
+	buddyIconManager BuddyIconManager,
 ) *OServiceServiceForChat {
 	return &OServiceServiceForChat{
 		OServiceService: OServiceService{
-			buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+			buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
 			cfg:              cfg,
 			logger:           logger,
 			foodGroups: []uint16{
@@ -903,7 +905,7 @@ type OServiceServiceForChat struct {
 //   - Announce current user's arrival to other chat room participants
 //   - Send current user the chat room participant list
 func (s OServiceServiceForChat) ClientOnline(ctx context.Context, _ wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
-	room, err := s.chatRoomManager.ChatRoomByCookie(sess.ChatRoomCookie())
+	room, err := s.chatRoomManager.ChatRoomByCookie(ctx, sess.ChatRoomCookie())
 	if err != nil {
 		return fmt.Errorf("error getting chat room: %w", err)
 	}
@@ -924,11 +926,12 @@ func NewOServiceServiceForChatNav(
 	cfg config.Config,
 	logger *slog.Logger,
 	messageRelayer MessageRelayer,
-	buddyListRetriever BuddyListRetriever,
+	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
+	buddyIconManager BuddyIconManager,
 ) *OServiceService {
 	return &OServiceService{
-		buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		cfg:              cfg,
 		logger:           logger,
 		foodGroups: []uint16{
@@ -944,11 +947,12 @@ func NewOServiceServiceForAlert(
 	cfg config.Config,
 	logger *slog.Logger,
 	messageRelayer MessageRelayer,
-	buddyListRetriever BuddyListRetriever,
+	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
+	buddyIconManager BuddyIconManager,
 ) *OServiceService {
 	return &OServiceService{
-		buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		cfg:              cfg,
 		logger:           logger,
 		foodGroups: []uint16{
@@ -976,11 +980,12 @@ func NewOServiceServiceForAdmin(
 	cfg config.Config,
 	logger *slog.Logger,
 	messageRelayer MessageRelayer,
-	buddyListRetriever BuddyListRetriever,
+	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
+	buddyIconManager BuddyIconManager,
 ) *OServiceService {
 	return &OServiceService{
-		buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		cfg:              cfg,
 		logger:           logger,
 		foodGroups: []uint16{
@@ -996,11 +1001,12 @@ func NewOServiceServiceForBART(
 	cfg config.Config,
 	logger *slog.Logger,
 	messageRelayer MessageRelayer,
-	buddyListRetriever BuddyListRetriever,
+	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
+	buddyIconManager BuddyIconManager,
 ) *OServiceService {
 	return &OServiceService{
-		buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		cfg:              cfg,
 		logger:           logger,
 		foodGroups: []uint16{

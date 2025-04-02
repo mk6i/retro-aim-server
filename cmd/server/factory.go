@@ -67,6 +67,7 @@ func Admin(deps Container) oscar.AdminServer {
 	adminService := foodgroup.NewAdminService(
 		deps.sqLiteUserStore,
 		deps.sqLiteUserStore,
+		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
 		deps.inMemorySessionManager,
 		deps.logger,
@@ -87,6 +88,7 @@ func Admin(deps Container) oscar.AdminServer {
 		deps.inMemorySessionManager,
 		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
 	)
 
 	return oscar.AdminServer{
@@ -123,6 +125,7 @@ func Alert(deps Container) oscar.BOSServer {
 		sessionManager,
 		deps.sqLiteUserStore,
 		sessionManager,
+		deps.sqLiteUserStore,
 	)
 
 	return oscar.BOSServer{
@@ -188,6 +191,7 @@ func BART(deps Container) oscar.BOSServer {
 		sessionManager,
 		deps.sqLiteUserStore,
 		sessionManager,
+		deps.sqLiteUserStore,
 	)
 
 	return oscar.BOSServer{
@@ -229,6 +233,7 @@ func BOS(deps Container) oscar.BOSServer {
 		deps.sqLiteUserStore,
 		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
 	)
 	chatNavService := foodgroup.NewChatNavService(logger, deps.sqLiteUserStore)
 	feedbagService := foodgroup.NewFeedbagService(
@@ -242,10 +247,12 @@ func BOS(deps Container) oscar.BOSServer {
 	permitDenyService := foodgroup.NewPermitDenyService(
 		deps.sqLiteUserStore,
 		deps.sqLiteUserStore,
+		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
 		deps.inMemorySessionManager,
 	)
 	icbmService := foodgroup.NewICBMService(
+		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
 		deps.sqLiteUserStore,
 		deps.sqLiteUserStore,
@@ -254,6 +261,7 @@ func BOS(deps Container) oscar.BOSServer {
 	icqService := foodgroup.NewICQService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore,
 		logger, deps.inMemorySessionManager, deps.sqLiteUserStore)
 	locateService := foodgroup.NewLocateService(
+		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
 		deps.sqLiteUserStore,
 		deps.sqLiteUserStore,
@@ -267,6 +275,7 @@ func BOS(deps Container) oscar.BOSServer {
 		deps.sqLiteUserStore,
 		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
 	)
 	userLookupService := foodgroup.NewUserLookupService(deps.sqLiteUserStore)
 
@@ -319,6 +328,7 @@ func Chat(deps Container) oscar.ChatServer {
 		deps.chatSessionManager,
 		deps.sqLiteUserStore,
 		sessionManager,
+		deps.sqLiteUserStore,
 	)
 
 	return oscar.ChatServer{
@@ -355,6 +365,7 @@ func ChatNav(deps Container) oscar.BOSServer {
 		sessionManager,
 		deps.sqLiteUserStore,
 		sessionManager,
+		deps.sqLiteUserStore,
 	)
 
 	return oscar.BOSServer{
@@ -424,6 +435,7 @@ func TOC(deps Container) toc.Server {
 			AdminService: foodgroup.NewAdminService(
 				deps.sqLiteUserStore,
 				deps.sqLiteUserStore,
+				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
 				deps.inMemorySessionManager,
 				deps.logger,
@@ -444,16 +456,19 @@ func TOC(deps Container) toc.Server {
 				deps.sqLiteUserStore,
 				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
+				deps.sqLiteUserStore,
 			),
 			CookieBaker:      deps.hmacCookieBaker,
 			DirSearchService: foodgroup.NewODirService(logger, deps.sqLiteUserStore),
 			ICBMService: foodgroup.NewICBMService(
+				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
 				deps.sqLiteUserStore,
 				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
 			),
 			LocateService: foodgroup.NewLocateService(
+				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
 				deps.sqLiteUserStore,
 				deps.sqLiteUserStore,
@@ -468,8 +483,10 @@ func TOC(deps Container) toc.Server {
 				deps.sqLiteUserStore,
 				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
+				deps.sqLiteUserStore,
 			),
 			PermitDenyService: foodgroup.NewPermitDenyService(
+				deps.sqLiteUserStore,
 				deps.sqLiteUserStore,
 				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
@@ -485,6 +502,7 @@ func TOC(deps Container) toc.Server {
 				deps.chatSessionManager,
 				deps.sqLiteUserStore,
 				sessionManager,
+				deps.sqLiteUserStore,
 			),
 			ChatNavService: foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
 		},

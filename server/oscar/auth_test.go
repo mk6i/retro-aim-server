@@ -2,6 +2,7 @@ package oscar
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"log/slog"
 	"testing"
@@ -70,7 +71,7 @@ func TestBUCPAuthService_handleNewConnection(t *testing.T) {
 
 	authService := newMockAuthService(t)
 	authService.EXPECT().
-		BUCPChallenge(mock.Anything, mock.Anything).
+		BUCPChallenge(matchContext(), mock.Anything, mock.Anything).
 		Return(wire.SNACMessage{
 			Frame: wire.SNACFrame{
 				FoodGroup: wire.BUCP,
@@ -79,7 +80,7 @@ func TestBUCPAuthService_handleNewConnection(t *testing.T) {
 			Body: wire.SNAC_0x17_0x07_BUCPChallengeResponse{},
 		}, nil)
 	authService.EXPECT().
-		BUCPLogin(mock.Anything, mock.Anything).
+		BUCPLogin(matchContext(), mock.Anything, mock.Anything).
 		Return(wire.SNACMessage{
 			Frame: wire.SNACFrame{
 				FoodGroup: wire.BUCP,
@@ -96,5 +97,5 @@ func TestBUCPAuthService_handleNewConnection(t *testing.T) {
 		PipeReader: clientReader,
 		PipeWriter: clientWriter,
 	}
-	assert.NoError(t, rt.handleNewConnection(rwc))
+	assert.NoError(t, rt.handleNewConnection(context.Background(), rwc))
 }

@@ -292,7 +292,7 @@ func TestUserAccountHandler_GET(t *testing.T) {
 					},
 				},
 				accountManagerParams: accountManagerParams{
-					emailAddressByNameParams: emailAddressByNameParams{
+					EmailAddressParams: EmailAddressParams{
 						{
 							screenName: state.NewIdentScreenName("userA"),
 							result: &mail.Address{
@@ -300,13 +300,13 @@ func TestUserAccountHandler_GET(t *testing.T) {
 							},
 						},
 					},
-					regStatusByNameParams: regStatusByNameParams{
+					RegStatusParams: RegStatusParams{
 						{
 							screenName: state.NewIdentScreenName("userA"),
 							result:     uint16(0x02),
 						},
 					},
-					confirmStatusByNameParams: confirmStatusByNameParams{
+					ConfirmStatusParams: ConfirmStatusParams{
 						{
 							screenName: state.NewIdentScreenName("userA"),
 							result:     true,
@@ -342,7 +342,7 @@ func TestUserAccountHandler_GET(t *testing.T) {
 					},
 				},
 				accountManagerParams: accountManagerParams{
-					emailAddressByNameParams: emailAddressByNameParams{
+					EmailAddressParams: EmailAddressParams{
 						{
 							screenName: state.NewIdentScreenName("userB"),
 							result: &mail.Address{
@@ -350,13 +350,13 @@ func TestUserAccountHandler_GET(t *testing.T) {
 							},
 						},
 					},
-					regStatusByNameParams: regStatusByNameParams{
+					RegStatusParams: RegStatusParams{
 						{
 							screenName: state.NewIdentScreenName("userB"),
 							result:     uint16(0x02),
 						},
 					},
-					confirmStatusByNameParams: confirmStatusByNameParams{
+					ConfirmStatusParams: ConfirmStatusParams{
 						{
 							screenName: state.NewIdentScreenName("userB"),
 							result:     true,
@@ -384,31 +384,31 @@ func TestUserAccountHandler_GET(t *testing.T) {
 			userManager := newMockUserManager(t)
 			for _, params := range tc.mockParams.userManagerParams.getUserParams {
 				userManager.EXPECT().
-					User(params.screenName).
+					User(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
 
 			accountManager := newMockAccountManager(t)
-			for _, params := range tc.mockParams.accountManagerParams.emailAddressByNameParams {
+			for _, params := range tc.mockParams.accountManagerParams.EmailAddressParams {
 				accountManager.EXPECT().
-					EmailAddressByName(params.screenName).
+					EmailAddress(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
-			for _, params := range tc.mockParams.accountManagerParams.regStatusByNameParams {
+			for _, params := range tc.mockParams.accountManagerParams.RegStatusParams {
 				accountManager.EXPECT().
-					RegStatusByName(params.screenName).
+					RegStatus(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
-			for _, params := range tc.mockParams.accountManagerParams.confirmStatusByNameParams {
+			for _, params := range tc.mockParams.accountManagerParams.ConfirmStatusParams {
 				accountManager.EXPECT().
-					ConfirmStatusByName(params.screenName).
+					ConfirmStatus(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
 
 			profileRetriever := newMockProfileRetriever(t)
 			for _, params := range tc.mockParams.profileRetrieverParams.retrieveProfileParams {
 				profileRetriever.EXPECT().
-					Profile(params.screenName).
+					Profile(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
 
@@ -557,14 +557,14 @@ func TestUserAccountHandler_PATCH(t *testing.T) {
 			userManager := newMockUserManager(t)
 			for _, params := range tc.mockParams.userManagerParams.getUserParams {
 				userManager.EXPECT().
-					User(params.screenName).
+					User(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
 
 			accountManager := newMockAccountManager(t)
 			for _, params := range tc.mockParams.accountManagerParams.updateSuspendedStatusParams {
 				accountManager.EXPECT().
-					UpdateSuspendedStatus(params.suspendedStatus, params.screenName).
+					UpdateSuspendedStatus(matchContext(), params.suspendedStatus, params.screenName).
 					Return(params.err)
 			}
 
@@ -632,7 +632,7 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 					},
 				},
 				feedBagRetrieverParams: feedBagRetrieverParams{
-					buddyIconRefByNameParams: buddyIconRefByNameParams{
+					buddyIconMetadataParams: buddyIconMetadataParams{
 						{
 							screenName: state.NewIdentScreenName("userA"),
 							result: &wire.BARTID{
@@ -674,7 +674,7 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 					},
 				},
 				feedBagRetrieverParams: feedBagRetrieverParams{
-					buddyIconRefByNameParams: buddyIconRefByNameParams{
+					buddyIconMetadataParams: buddyIconMetadataParams{
 						{
 							screenName: state.NewIdentScreenName("userA"),
 							result: &wire.BARTID{
@@ -716,7 +716,7 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 					},
 				},
 				feedBagRetrieverParams: feedBagRetrieverParams{
-					buddyIconRefByNameParams: buddyIconRefByNameParams{
+					buddyIconMetadataParams: buddyIconMetadataParams{
 						{
 							screenName: state.NewIdentScreenName("userA"),
 							result: &wire.BARTID{
@@ -758,7 +758,7 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 					},
 				},
 				feedBagRetrieverParams: feedBagRetrieverParams{
-					buddyIconRefByNameParams: buddyIconRefByNameParams{
+					buddyIconMetadataParams: buddyIconMetadataParams{
 						{
 							screenName: state.NewIdentScreenName("userA"),
 							result: &wire.BARTID{
@@ -792,7 +792,7 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 					},
 				},
 				feedBagRetrieverParams: feedBagRetrieverParams{
-					buddyIconRefByNameParams: buddyIconRefByNameParams{
+					buddyIconMetadataParams: buddyIconMetadataParams{
 						{
 							screenName: state.NewIdentScreenName("userA"),
 							result:     nil,
@@ -812,21 +812,21 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 			userManager := newMockUserManager(t)
 			for _, params := range tc.mockParams.userManagerParams.getUserParams {
 				userManager.EXPECT().
-					User(params.screenName).
+					User(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
 
 			feedbagRetriever := newMockFeedBagRetriever(t)
-			for _, params := range tc.mockParams.feedBagRetrieverParams.buddyIconRefByNameParams {
+			for _, params := range tc.mockParams.feedBagRetrieverParams.buddyIconMetadataParams {
 				feedbagRetriever.EXPECT().
-					BuddyIconRefByName(params.screenName).
+					BuddyIconMetadata(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
 
-			bartRetriever := newMockBARTRetriever(t)
+			bartRetriever := newMockBuddyIconRetriever(t)
 			for _, params := range tc.mockParams.bartRetrieverParams.bartRetrieveParams {
 				bartRetriever.EXPECT().
-					BARTRetrieve(params.itemHash).
+					BuddyIcon(matchContext(), params.itemHash).
 					Return(params.result, params.err)
 			}
 
@@ -916,16 +916,17 @@ func TestUserHandler_GET(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/user", nil)
 			responseRecorder := httptest.NewRecorder()
 
 			userManager := newMockUserManager(t)
 			for _, params := range tc.mockParams.userManagerParams.allUsersParams {
 				userManager.EXPECT().
-					AllUsers().
+					AllUsers(matchContext()).
 					Return(params.result, params.err)
 			}
 
-			getUserHandler(responseRecorder, userManager, slog.Default())
+			getUserHandler(responseRecorder, request, userManager, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
@@ -1083,7 +1084,7 @@ func TestUserHandler_POST(t *testing.T) {
 			for _, params := range tc.mockParams.userManagerParams.insertUserParams {
 				assert.NoError(t, params.u.HashPassword(tc.password))
 				userManager.EXPECT().
-					InsertUser(params.u).
+					InsertUser(matchContext(), params.u).
 					Return(params.err)
 			}
 
@@ -1172,7 +1173,7 @@ func TestUserHandler_DELETE(t *testing.T) {
 			userManager := newMockUserManager(t)
 			for _, params := range tc.mockParams.userManagerParams.deleteUserParams {
 				userManager.EXPECT().
-					DeleteUser(params.screenName).
+					DeleteUser(matchContext(), params.screenName).
 					Return(params.err)
 			}
 
@@ -1280,7 +1281,7 @@ func TestUserPasswordHandler_PUT(t *testing.T) {
 			userManager := newMockUserManager(t)
 			for _, params := range tc.mockParams.userManagerParams.setUserPasswordParams {
 				userManager.EXPECT().
-					SetUserPassword(params.screenName, params.newPassword).
+					SetUserPassword(matchContext(), params.screenName, params.newPassword).
 					Return(params.err)
 			}
 
@@ -1400,7 +1401,7 @@ func TestPublicChatHandler_GET(t *testing.T) {
 			chatRoomRetriever := newMockChatRoomRetriever(t)
 			for _, params := range tc.mockParams.chatRoomRetrieverParams.allChatRoomsParams {
 				chatRoomRetriever.EXPECT().
-					AllChatRooms(params.exchange).
+					AllChatRooms(matchContext(), params.exchange).
 					Return(params.result, params.err)
 			}
 
@@ -1527,7 +1528,7 @@ func TestPrivateChatHandler_GET(t *testing.T) {
 			chatRoomRetriever := newMockChatRoomRetriever(t)
 			for _, params := range tc.mockParams.chatRoomRetrieverParams.allChatRoomsParams {
 				chatRoomRetriever.EXPECT().
-					AllChatRooms(params.exchange).
+					AllChatRooms(matchContext(), params.exchange).
 					Return(params.result, params.err)
 			}
 
@@ -1723,15 +1724,16 @@ func TestDirectoryCategoryHandler_GET(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			responseRecorder := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, "/directory/category", nil)
 
 			directoryManager := newMockDirectoryManager(t)
 			for _, params := range tc.mockParams.categoriesParams {
 				directoryManager.EXPECT().
-					Categories().
+					Categories(matchContext()).
 					Return(params.result, params.err)
 			}
 
-			getDirectoryCategoryHandler(responseRecorder, directoryManager, slog.Default())
+			getDirectoryCategoryHandler(responseRecorder, request, directoryManager, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
@@ -1849,7 +1851,7 @@ func TestDirectoryCategoryKeywordHandler_GET(t *testing.T) {
 			directoryManager := newMockDirectoryManager(t)
 			for _, params := range tc.mockParams.keywordsByCategoryParams {
 				directoryManager.EXPECT().
-					KeywordsByCategory(params.categoryID).
+					KeywordsByCategory(matchContext(), params.categoryID).
 					Return(params.result, params.err)
 			}
 
@@ -1959,7 +1961,7 @@ func TestDirectoryCategoryHandler_DELETE(t *testing.T) {
 			directoryManager := newMockDirectoryManager(t)
 			for _, params := range tc.mockParams.deleteCategoryParams {
 				directoryManager.EXPECT().
-					DeleteCategory(params.categoryID).
+					DeleteCategory(matchContext(), params.categoryID).
 					Return(params.err)
 			}
 
@@ -2056,7 +2058,7 @@ func TestDirectoryCategoryHandler_POST(t *testing.T) {
 			directoryManager := newMockDirectoryManager(t)
 			for _, params := range tc.mockParams.createCategoryParams {
 				directoryManager.EXPECT().
-					CreateCategory(params.name).
+					CreateCategory(matchContext(), params.name).
 					Return(params.result, params.err)
 			}
 
@@ -2173,7 +2175,7 @@ func TestDirectoryKeywordHandler_POST(t *testing.T) {
 			directoryManager := newMockDirectoryManager(t)
 			for _, params := range tc.mockParams.createKeywordParams {
 				directoryManager.EXPECT().
-					CreateKeyword(params.name, params.categoryID).
+					CreateKeyword(matchContext(), params.name, params.categoryID).
 					Return(params.result, params.err)
 			}
 
@@ -2283,7 +2285,7 @@ func TestDirectoryKeywordHandler_DELETE(t *testing.T) {
 			directoryManager := newMockDirectoryManager(t)
 			for _, params := range tc.mockParams.deleteKeywordParams {
 				directoryManager.EXPECT().
-					DeleteKeyword(params.id).
+					DeleteKeyword(matchContext(), params.id).
 					Return(params.err)
 			}
 

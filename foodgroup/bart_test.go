@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"context"
 	"log/slog"
 	"testing"
 
@@ -38,8 +39,8 @@ func TestBARTService_UpsertItem(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				bartManagerParams: bartManagerParams{
-					bartManagerUpsertParams: bartManagerUpsertParams{
+				buddyIconManagerParams: buddyIconManagerParams{
+					buddyIconManagerUpsertParams: buddyIconManagerUpsertParams{
 						{
 							itemHash: []byte{0x4e, 0xd9, 0xc1, 0x96, 0x45, 0xdb, 0x5a, 0xec, 0xdb, 0xf5, 0xc7, 0xa2, 0x4e, 0x8e, 0xa0, 0xed},
 							payload:  []byte{'i', 't', 'e', 'm', 'd', 'a', 't', 'a'},
@@ -76,10 +77,10 @@ func TestBARTService_UpsertItem(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			bartManager := newMockBARTManager(t)
-			for _, params := range tc.mockParams.bartManagerUpsertParams {
-				bartManager.EXPECT().
-					BARTUpsert(params.itemHash, params.payload).
+			buddyIconManager := newMockBuddyIconManager(t)
+			for _, params := range tc.mockParams.buddyIconManagerUpsertParams {
+				buddyIconManager.EXPECT().
+					SetBuddyIcon(matchContext(), params.itemHash, params.payload).
 					Return(nil)
 			}
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
@@ -88,10 +89,10 @@ func TestBARTService_UpsertItem(t *testing.T) {
 					BroadcastBuddyArrived(mock.Anything, matchSession(params.screenName)).
 					Return(params.err)
 			}
-			svc := NewBARTService(slog.Default(), bartManager, nil, nil, nil)
+			svc := NewBARTService(slog.Default(), buddyIconManager, nil, nil, nil)
 			svc.buddyUpdateBroadcaster = buddyUpdateBroadcaster
 
-			output, err := svc.UpsertItem(nil, tc.userSession, tc.inputSNAC.Frame,
+			output, err := svc.UpsertItem(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x10_0x02_BARTUploadQuery))
 
 			assert.NoError(t, err)
@@ -136,8 +137,8 @@ func TestBARTService_RetrieveItem(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				bartManagerParams: bartManagerParams{
-					bartManagerRetrieveParams: bartManagerRetrieveParams{
+				buddyIconManagerParams: buddyIconManagerParams{
+					buddyIconManagerRetrieveParams: buddyIconManagerRetrieveParams{
 						{
 							itemHash: []byte{0x4e, 0xd9, 0xc1, 0x96, 0x45, 0xdb, 0x5a, 0xec, 0xdb, 0xf5, 0xc7, 0xa2, 0x4e, 0x8e, 0xa0, 0xed},
 							result:   []byte{'i', 't', 'e', 'm', 'd', 'a', 't', 'a'},
@@ -206,16 +207,16 @@ func TestBARTService_RetrieveItem(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			bartManager := newMockBARTManager(t)
-			for _, params := range tc.mockParams.bartManagerParams.bartManagerRetrieveParams {
-				bartManager.EXPECT().
-					BARTRetrieve(params.itemHash).
+			buddyIconManager := newMockBuddyIconManager(t)
+			for _, params := range tc.mockParams.buddyIconManagerParams.buddyIconManagerRetrieveParams {
+				buddyIconManager.EXPECT().
+					BuddyIcon(matchContext(), params.itemHash).
 					Return(params.result, nil)
 			}
 
-			svc := NewBARTService(slog.Default(), bartManager, nil, nil, nil)
+			svc := NewBARTService(slog.Default(), buddyIconManager, nil, nil, nil)
 
-			output, err := svc.RetrieveItem(nil, tc.userSession, tc.inputSNAC.Frame,
+			output, err := svc.RetrieveItem(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x10_0x04_BARTDownloadQuery))
 
 			assert.ErrorIs(t, err, tc.expectErr)

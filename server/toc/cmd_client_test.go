@@ -3320,7 +3320,7 @@ func TestOSCARProxy_RecvClientCmd_SetConfig(t *testing.T) {
 			tocConfigSvc := newMockTOCConfigStore(t)
 			for _, params := range tc.mockParams.setTOCConfigParams {
 				tocConfigSvc.EXPECT().
-					SetTOCConfig(params.user, params.config).
+					SetTOCConfig(matchContext(), params.user, params.config).
 					Return(params.err)
 			}
 
@@ -3970,24 +3970,24 @@ func TestOSCARProxy_Signon(t *testing.T) {
 			authSvc := newMockAuthService(t)
 			for _, params := range tc.mockParams.flapLoginParams {
 				authSvc.EXPECT().
-					FLAPLogin(params.frame, mock.Anything).
+					FLAPLogin(matchContext(), params.frame, mock.Anything).
 					Return(params.tlv, params.err)
 			}
 			for _, params := range tc.mockParams.registerBOSSessionParams {
 				authSvc.EXPECT().
-					RegisterBOSSession(ctx, params.authCookie).
+					RegisterBOSSession(matchContext(), params.authCookie).
 					Return(params.sess, params.err)
 			}
 			buddyRegistry := newMockBuddyListRegistry(t)
 			for _, params := range tc.mockParams.registerBuddyListParams {
 				buddyRegistry.EXPECT().
-					RegisterBuddyList(params.user).
+					RegisterBuddyList(matchContext(), params.user).
 					Return(params.err)
 			}
 			tocCfg := newMockTOCConfigStore(t)
 			for _, params := range tc.mockParams.userParams {
 				tocCfg.EXPECT().
-					User(params.screenName).
+					User(matchContext(), params.screenName).
 					Return(params.returnedUser, params.err)
 			}
 
@@ -4148,7 +4148,7 @@ func TestOSCARProxy_Signout(t *testing.T) {
 			buddyListSvc := newMockBuddyListRegistry(t)
 			for _, params := range tc.mockParams.unregisterBuddyListParams {
 				buddyListSvc.EXPECT().
-					UnregisterBuddyList(params.user).
+					UnregisterBuddyList(matchContext(), params.user).
 					Return(params.err)
 			}
 

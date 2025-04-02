@@ -637,12 +637,12 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 			userManager := newMockUserManager(t)
 			for _, params := range tc.mockParams.userManagerParams.getUserParams {
 				userManager.EXPECT().
-					User(params.screenName).
+					User(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
 			for _, params := range tc.mockParams.insertUserParams {
 				userManager.EXPECT().
-					InsertUser(params.user).
+					InsertUser(matchContext(), params.user).
 					Return(params.err)
 			}
 			cookieBaker := newMockCookieBaker(t)
@@ -657,7 +657,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 				cookieBaker: cookieBaker,
 				userManager: userManager,
 			}
-			outputSNAC, err := svc.BUCPLogin(tc.inputSNAC, tc.newUserFn)
+			outputSNAC, err := svc.BUCPLogin(context.Background(), tc.inputSNAC, tc.newUserFn)
 			assert.ErrorIs(t, err, tc.wantErr)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
@@ -1096,12 +1096,12 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 			userManager := newMockUserManager(t)
 			for _, params := range tc.mockParams.userManagerParams.getUserParams {
 				userManager.EXPECT().
-					User(params.screenName).
+					User(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
 			for _, params := range tc.mockParams.insertUserParams {
 				userManager.EXPECT().
-					InsertUser(params.user).
+					InsertUser(matchContext(), params.user).
 					Return(params.err)
 			}
 			cookieBaker := newMockCookieBaker(t)
@@ -1115,7 +1115,7 @@ func TestAuthService_FLAPLoginResponse(t *testing.T) {
 				cookieBaker: cookieBaker,
 				userManager: userManager,
 			}
-			outputSNAC, err := svc.FLAPLogin(tc.inputSNAC, tc.newUserFn)
+			outputSNAC, err := svc.FLAPLogin(context.Background(), tc.inputSNAC, tc.newUserFn)
 			assert.ErrorIs(t, err, tc.wantErr)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
@@ -1274,7 +1274,7 @@ func TestAuthService_BUCPChallengeRequest(t *testing.T) {
 			userManager := newMockUserManager(t)
 			for _, params := range tc.mockParams.userManagerParams.getUserParams {
 				userManager.EXPECT().
-					User(params.screenName).
+					User(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
 			svc := AuthService{
@@ -1284,7 +1284,7 @@ func TestAuthService_BUCPChallengeRequest(t *testing.T) {
 			fnNewUUID := func() uuid.UUID {
 				return sessUUID
 			}
-			outputSNAC, err := svc.BUCPChallenge(tc.inputSNAC, fnNewUUID)
+			outputSNAC, err := svc.BUCPChallenge(context.Background(), tc.inputSNAC, fnNewUUID)
 			assert.ErrorIs(t, err, tc.wantErr)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
@@ -1382,7 +1382,7 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 					},
 				},
 				accountManagerParams: accountManagerParams{
-					accountManagerConfirmStatusByNameParams: accountManagerConfirmStatusByNameParams{
+					accountManagerConfirmStatusParams: accountManagerConfirmStatusParams{
 						{
 							screenName:    screenName.IdentScreenName(),
 							confirmStatus: true,
@@ -1426,7 +1426,7 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 					},
 				},
 				accountManagerParams: accountManagerParams{
-					accountManagerConfirmStatusByNameParams: accountManagerConfirmStatusByNameParams{
+					accountManagerConfirmStatusParams: accountManagerConfirmStatusParams{
 						{
 							screenName:    uin.IdentScreenName(),
 							confirmStatus: true,
@@ -1459,13 +1459,13 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 			userManager := newMockUserManager(t)
 			for _, params := range tc.mockParams.userManagerParams.getUserParams {
 				userManager.EXPECT().
-					User(params.screenName).
+					User(matchContext(), params.screenName).
 					Return(params.result, nil)
 			}
 			accountManager := newMockAccountManager(t)
-			for _, params := range tc.mockParams.accountManagerConfirmStatusByNameParams {
+			for _, params := range tc.mockParams.accountManagerConfirmStatusParams {
 				accountManager.EXPECT().
-					ConfirmStatusByName(params.screenName).
+					ConfirmStatus(matchContext(), params.screenName).
 					Return(params.confirmStatus, nil)
 			}
 
@@ -1504,12 +1504,12 @@ func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
 
 	userManager := newMockUserManager(t)
 	userManager.EXPECT().
-		User(sess.IdentScreenName()).
+		User(matchContext(), sess.IdentScreenName()).
 		Return(&state.User{IdentScreenName: sess.IdentScreenName()}, nil)
 
 	svc := NewAuthService(config.Config{}, nil, nil, userManager, cookieBaker, nil, nil, sessionRetriever)
 
-	have, err := svc.RetrieveBOSSession(authCookie)
+	have, err := svc.RetrieveBOSSession(context.Background(), authCookie)
 	assert.NoError(t, err)
 	assert.Equal(t, sess, have)
 }
@@ -1537,12 +1537,12 @@ func TestAuthService_RetrieveBOSSession_SessionNotFound(t *testing.T) {
 
 	userManager := newMockUserManager(t)
 	userManager.EXPECT().
-		User(sess.IdentScreenName()).
+		User(matchContext(), sess.IdentScreenName()).
 		Return(&state.User{IdentScreenName: sess.IdentScreenName()}, nil)
 
 	svc := NewAuthService(config.Config{}, nil, nil, userManager, cookieBaker, nil, nil, sessionRetriever)
 
-	have, err := svc.RetrieveBOSSession(authCookie)
+	have, err := svc.RetrieveBOSSession(context.Background(), authCookie)
 	assert.NoError(t, err)
 	assert.Nil(t, have)
 }
@@ -1625,7 +1625,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 			chatMessageRelayer := newMockChatMessageRelayer(t)
 			for _, params := range tt.mockParams.chatRelayToAllExceptParams {
 				chatMessageRelayer.EXPECT().
-					RelayToAllExcept(nil, tt.userSession.ChatRoomCookie(), params.screenName, params.message)
+					RelayToAllExcept(matchContext(), tt.userSession.ChatRoomCookie(), params.screenName, params.message)
 			}
 			sessionManager := newMockChatSessionRegistry(t)
 			for _, params := range tt.mockParams.removeSessionParams {
@@ -1634,7 +1634,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 			}
 
 			svc := NewAuthService(config.Config{}, nil, sessionManager, nil, nil, chatMessageRelayer, nil, nil)
-			svc.SignoutChat(nil, tt.userSession)
+			svc.SignoutChat(context.Background(), tt.userSession)
 		})
 	}
 }
@@ -1680,7 +1680,7 @@ func TestAuthService_Signout(t *testing.T) {
 			}
 			svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil, nil, nil)
 
-			svc.Signout(nil, tt.userSession)
+			svc.Signout(context.Background(), tt.userSession)
 		})
 	}
 }

@@ -2,6 +2,7 @@ package foodgroup
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"testing"
 	"time"
@@ -41,12 +42,12 @@ func TestICQService_DeleteMsgReq(t *testing.T) {
 			offlineMessageManager := newMockOfflineMessageManager(t)
 			for _, params := range tt.mockParams.deleteMessagesParams {
 				offlineMessageManager.EXPECT().
-					DeleteMessages(params.recipIn).
+					DeleteMessages(matchContext(), params.recipIn).
 					Return(params.err)
 			}
 
 			s := NewICQService(nil, nil, nil, slog.Default(), nil, offlineMessageManager)
-			err := s.DeleteMsgReq(nil, tt.sess, tt.seq)
+			err := s.DeleteMsgReq(context.Background(), tt.sess, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -225,7 +226,7 @@ func TestICQService_FindByICQName(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByDetailsParams {
 				userFinder.EXPECT().
-					FindByICQName(params.firstName, params.lastName, params.nickName).
+					FindByICQName(matchContext(), params.firstName, params.lastName, params.nickName).
 					Return(params.result, params.err)
 			}
 
@@ -247,7 +248,7 @@ func TestICQService_FindByICQName(t *testing.T) {
 				timeNow:          tt.timeNow,
 				userFinder:       userFinder,
 			}
-			err := s.FindByICQName(nil, tt.sess, tt.req, tt.seq)
+			err := s.FindByICQName(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -361,7 +362,7 @@ func TestICQService_FindByICQEmail(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByEmailParams {
 				userFinder.EXPECT().
-					FindByICQEmail(params.email).
+					FindByICQEmail(matchContext(), params.email).
 					Return(params.result, params.err)
 			}
 
@@ -383,7 +384,7 @@ func TestICQService_FindByICQEmail(t *testing.T) {
 				timeNow:          tt.timeNow,
 				userFinder:       userFinder,
 			}
-			err := s.FindByICQEmail(nil, tt.sess, tt.req, tt.seq)
+			err := s.FindByICQEmail(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -503,7 +504,7 @@ func TestICQService_FindByEmail3(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByEmailParams {
 				userFinder.EXPECT().
-					FindByICQEmail(params.email).
+					FindByICQEmail(matchContext(), params.email).
 					Return(params.result, params.err)
 			}
 
@@ -525,7 +526,7 @@ func TestICQService_FindByEmail3(t *testing.T) {
 				timeNow:          tt.timeNow,
 				userFinder:       userFinder,
 			}
-			err := s.FindByEmail3(nil, tt.sess, tt.req, tt.seq)
+			err := s.FindByEmail3(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -639,7 +640,7 @@ func TestICQService_FindByUIN(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByUINParams {
 				userFinder.EXPECT().
-					FindByUIN(params.UIN).
+					FindByUIN(matchContext(), params.UIN).
 					Return(params.result, params.err)
 			}
 
@@ -661,7 +662,7 @@ func TestICQService_FindByUIN(t *testing.T) {
 				timeNow:          tt.timeNow,
 				userFinder:       userFinder,
 			}
-			err := s.FindByUIN(nil, tt.sess, tt.req, tt.seq)
+			err := s.FindByUIN(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -779,7 +780,7 @@ func TestICQService_FindByUIN2(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByUINParams {
 				userFinder.EXPECT().
-					FindByUIN(params.UIN).
+					FindByUIN(matchContext(), params.UIN).
 					Return(params.result, params.err)
 			}
 
@@ -801,7 +802,7 @@ func TestICQService_FindByUIN2(t *testing.T) {
 				timeNow:          tt.timeNow,
 				userFinder:       userFinder,
 			}
-			err := s.FindByUIN2(nil, tt.sess, tt.req, tt.seq)
+			err := s.FindByUIN2(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -978,7 +979,7 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByInterestsParams {
 				userFinder.EXPECT().
-					FindByICQInterests(params.code, params.keywords).
+					FindByICQInterests(matchContext(), params.code, params.keywords).
 					Return(params.result, params.err)
 			}
 
@@ -1000,7 +1001,7 @@ func TestICQService_FindByWhitePages(t *testing.T) {
 				timeNow:          tt.timeNow,
 				userFinder:       userFinder,
 			}
-			err := s.FindByICQInterests(nil, tt.sess, tt.req, tt.seq)
+			err := s.FindByICQInterests(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -1297,12 +1298,12 @@ func TestICQService_FindByWhitePages2(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByKeywordParams {
 				userFinder.EXPECT().
-					FindByICQKeyword(params.keyword).
+					FindByICQKeyword(matchContext(), params.keyword).
 					Return(params.result, params.err)
 			}
 			for _, params := range tt.mockParams.findByDetailsParams {
 				userFinder.EXPECT().
-					FindByICQName(params.firstName, params.lastName, params.nickName).
+					FindByICQName(matchContext(), params.firstName, params.lastName, params.nickName).
 					Return(params.result, params.err)
 			}
 
@@ -1324,7 +1325,7 @@ func TestICQService_FindByWhitePages2(t *testing.T) {
 				timeNow:          tt.timeNow,
 				userFinder:       userFinder,
 			}
-			err := s.FindByWhitePages2(nil, tt.sess, tt.req, tt.seq)
+			err := s.FindByWhitePages2(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -1766,7 +1767,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByUINParams {
 				userFinder.EXPECT().
-					FindByUIN(params.UIN).
+					FindByUIN(matchContext(), params.UIN).
 					Return(params.result, params.err)
 			}
 
@@ -1780,7 +1781,7 @@ func TestICQService_FullUserInfo(t *testing.T) {
 				timeNow:        tt.timeNow,
 				userFinder:     userFinder,
 			}
-			err := s.FullUserInfo(nil, tt.sess, tt.req, tt.seq)
+			err := s.FullUserInfo(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -1949,7 +1950,7 @@ func TestICQService_OfflineMsgReq(t *testing.T) {
 			offlineMessageManager := newMockOfflineMessageManager(t)
 			for _, params := range tt.mockParams.retrieveMessagesParams {
 				offlineMessageManager.EXPECT().
-					RetrieveMessages(params.recipIn).
+					RetrieveMessages(matchContext(), params.recipIn).
 					Return(params.messagesOut, params.err)
 			}
 			messageRelayer := newMockMessageRelayer(t)
@@ -1958,7 +1959,7 @@ func TestICQService_OfflineMsgReq(t *testing.T) {
 			}
 
 			s := NewICQService(messageRelayer, nil, nil, slog.Default(), nil, offlineMessageManager)
-			err := s.OfflineMsgReq(nil, tt.sess, tt.seq)
+			err := s.OfflineMsgReq(context.Background(), tt.sess, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -2099,7 +2100,7 @@ func TestICQService_SetAffiliations(t *testing.T) {
 			userUpdater := newMockICQUserUpdater(t)
 			for _, params := range tt.mockParams.setAffiliationsParams {
 				userUpdater.EXPECT().
-					SetAffiliations(params.name, params.data).
+					SetAffiliations(matchContext(), params.name, params.data).
 					Return(params.err)
 			}
 
@@ -2112,7 +2113,7 @@ func TestICQService_SetAffiliations(t *testing.T) {
 				userUpdater:    userUpdater,
 				messageRelayer: messageRelayer,
 			}
-			err := s.SetAffiliations(nil, tt.sess, tt.req, tt.seq)
+			err := s.SetAffiliations(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.ErrorIs(t, err, tt.wantErr)
 		})
 	}
@@ -2187,7 +2188,7 @@ func TestICQService_SetEmails(t *testing.T) {
 				logger:         slog.Default(),
 				messageRelayer: messageRelayer,
 			}
-			err := s.SetEmails(nil, tt.sess, tt.req, tt.seq)
+			err := s.SetEmails(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -2284,7 +2285,7 @@ func TestICQService_SetBasicInfo(t *testing.T) {
 			userUpdater := newMockICQUserUpdater(t)
 			for _, params := range tt.mockParams.setBasicInfoParams {
 				userUpdater.EXPECT().
-					SetBasicInfo(params.name, params.data).
+					SetBasicInfo(matchContext(), params.name, params.data).
 					Return(params.err)
 			}
 
@@ -2297,7 +2298,7 @@ func TestICQService_SetBasicInfo(t *testing.T) {
 				userUpdater:    userUpdater,
 				messageRelayer: messageRelayer,
 			}
-			err := s.SetBasicInfo(nil, tt.sess, tt.req, tt.seq)
+			err := s.SetBasicInfo(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -2416,7 +2417,7 @@ func TestICQService_SetInterests(t *testing.T) {
 			userUpdater := newMockICQUserUpdater(t)
 			for _, params := range tt.mockParams.setInterestsParams {
 				userUpdater.EXPECT().
-					SetInterests(params.name, params.data).
+					SetInterests(matchContext(), params.name, params.data).
 					Return(params.err)
 			}
 
@@ -2429,7 +2430,7 @@ func TestICQService_SetInterests(t *testing.T) {
 				userUpdater:    userUpdater,
 				messageRelayer: messageRelayer,
 			}
-			err := s.SetInterests(nil, tt.sess, tt.req, tt.seq)
+			err := s.SetInterests(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.ErrorIs(t, err, tt.wantErr)
 		})
 	}
@@ -2515,7 +2516,7 @@ func TestICQService_SetMoreInfo(t *testing.T) {
 			userUpdater := newMockICQUserUpdater(t)
 			for _, params := range tt.mockParams.setMoreInfoParams {
 				userUpdater.EXPECT().
-					SetMoreInfo(params.name, params.data).
+					SetMoreInfo(matchContext(), params.name, params.data).
 					Return(params.err)
 			}
 
@@ -2528,7 +2529,7 @@ func TestICQService_SetMoreInfo(t *testing.T) {
 				userUpdater:    userUpdater,
 				messageRelayer: messageRelayer,
 			}
-			err := s.SetMoreInfo(nil, tt.sess, tt.req, tt.seq)
+			err := s.SetMoreInfo(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -2593,7 +2594,7 @@ func TestICQService_SetPermissions(t *testing.T) {
 				logger:         slog.Default(),
 				messageRelayer: messageRelayer,
 			}
-			err := s.SetPermissions(nil, tt.sess, tt.req, tt.seq)
+			err := s.SetPermissions(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -2664,7 +2665,7 @@ func TestICQService_SetUserNotes(t *testing.T) {
 			userUpdater := newMockICQUserUpdater(t)
 			for _, params := range tt.mockParams.setUserNotesParams {
 				userUpdater.EXPECT().
-					SetUserNotes(params.name, params.data).
+					SetUserNotes(matchContext(), params.name, params.data).
 					Return(params.err)
 			}
 
@@ -2677,7 +2678,7 @@ func TestICQService_SetUserNotes(t *testing.T) {
 				userUpdater:    userUpdater,
 				messageRelayer: messageRelayer,
 			}
-			err := s.SetUserNotes(nil, tt.sess, tt.req, tt.seq)
+			err := s.SetUserNotes(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -2770,7 +2771,7 @@ func TestICQService_SetWorkInfo(t *testing.T) {
 			userUpdater := newMockICQUserUpdater(t)
 			for _, params := range tt.mockParams.setWorkInfoParams {
 				userUpdater.EXPECT().
-					SetWorkInfo(params.name, params.data).
+					SetWorkInfo(matchContext(), params.name, params.data).
 					Return(params.err)
 			}
 
@@ -2783,7 +2784,7 @@ func TestICQService_SetWorkInfo(t *testing.T) {
 				userUpdater:    userUpdater,
 				messageRelayer: messageRelayer,
 			}
-			err := s.SetWorkInfo(nil, tt.sess, tt.req, tt.seq)
+			err := s.SetWorkInfo(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -2884,7 +2885,7 @@ func TestICQService_ShortUserInfo(t *testing.T) {
 			userFinder := newMockICQUserFinder(t)
 			for _, params := range tt.mockParams.findByUINParams {
 				userFinder.EXPECT().
-					FindByUIN(params.UIN).
+					FindByUIN(matchContext(), params.UIN).
 					Return(params.result, params.err)
 			}
 
@@ -2898,7 +2899,7 @@ func TestICQService_ShortUserInfo(t *testing.T) {
 				timeNow:        tt.timeNow,
 				userFinder:     userFinder,
 			}
-			err := s.ShortUserInfo(nil, tt.sess, tt.req, tt.seq)
+			err := s.ShortUserInfo(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}
@@ -2968,7 +2969,7 @@ func TestICQService_XMLReqData(t *testing.T) {
 				messageRelayer: messageRelayer,
 				timeNow:        tt.timeNow,
 			}
-			err := s.XMLReqData(nil, tt.sess, tt.req, tt.seq)
+			err := s.XMLReqData(context.Background(), tt.sess, tt.req, tt.seq)
 			assert.NoError(t, err)
 		})
 	}

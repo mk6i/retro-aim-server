@@ -25,12 +25,15 @@ packages:
           filename: "mock_user_manager_test.go"
   github.com/mk6i/retro-aim-server/server/http:
     interfaces:
+      AccountManager:
+        config:
+          filename: "mock_account_manager_test.go"
       AccountRetriever:
         config:
-          filename: "mock_chat_account_retriever_test.go"
-      BARTRetriever:
+          filename: "mock_account_retriever_test.go"
+      BuddyIconRetriever:
         config:
-          filename: "mock_bart_retriever_test.go"
+          filename: "mock_buddy_icon_retriever_test.go"
       ChatRoomCreator:
         config:
           filename: "mock_chat_room_creator_test.go"
@@ -62,40 +65,40 @@ packages:
     interfaces:
       AdminService:
         config:
-          filename: "mock_admin_test.go"
+          filename: "mock_admin_service_test.go"
       BARTService:
         config:
-          filename: "mock_bart_test.go"
+          filename: "mock_bart_service_test.go"
       BuddyService:
         config:
-          filename: "mock_buddy_test.go"
+          filename: "mock_buddy_service_test.go"
       ChatNavService:
         config:
-          filename: "mock_chat_nav_test.go"
+          filename: "mock_chat_nav_service_test.go"
       ChatService:
         config:
-          filename: "mock_chat_test.go"
+          filename: "mock_chat_service_test.go"
       FeedbagService:
         config:
-          filename: "mock_feedbag_test.go"
+          filename: "mock_feedbag_service_test.go"
       ICBMService:
         config:
-          filename: "mock_icbm_test.go"
+          filename: "mock_icbm_service_test.go"
       ICQService:
         config:
           filename: "mock_icq_service_test.go"
       LocateService:
         config:
-          filename: "mock_locate_test.go"
+          filename: "mock_locate_service_test.go"
       ODirService:
         config:
           filename: "mock_odir_service_test.go"
       OServiceService:
         config:
-          filename: "mock_oservice_test.go"
+          filename: "mock_oservice_service_test.go"
       PermitDenyService:
         config:
-          filename: "mock_permit_deny_test.go"
+          filename: "mock_permit_deny_service_test.go"
       UserLookupService:
         config:
           filename: "mock_user_lookup_service_test.go"
@@ -104,15 +107,15 @@ packages:
       AccountManager:
         config:
           filename: "mock_account_manager_test.go"
-      BARTManager:
+      BuddyIconManager:
         config:
-          filename: "mock_bart_manager_test.go"
+          filename: "mock_buddy_icon_manager_test.go"
       buddyBroadcaster:
         config:
           filename: "mock_buddy_broadcaster_test.go"
-      BuddyListRetriever:
+      RelationshipFetcher:
         config:
-          filename: "mock_buddy_list_retriever_test.go"
+          filename: "mock_relationship_fetcher_test.go"
       ChatMessageRelayer:
         config:
           filename: "mock_chat_message_relayer_test.go"
@@ -137,9 +140,9 @@ packages:
       LegacyBuddyListManager:
         config:
           filename: "mock_legacy_buddy_list_manager_test.go"
-      LocalBuddyListManager:
+      ClientSideBuddyListManager:
         config:
-          filename: "mock_local_buddy_list_manager_test.go"
+          filename: "mock_client_side_buddy_list_manager_test.go"
       MessageRelayer:
         config:
           filename: "mock_message_relayer_test.go"

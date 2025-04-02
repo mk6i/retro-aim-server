@@ -39,7 +39,7 @@ type ODirService struct {
 // ignored in order to be backwards compatible with older versions that do not
 // send it. It doesn't appear to make a difference, since AIM 5.x sends the
 // same TLV types for each search type.
-func (s ODirService) InfoQuery(_ context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0F_0x02_InfoQuery) (wire.SNACMessage, error) {
+func (s ODirService) InfoQuery(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0F_0x02_InfoQuery) (wire.SNACMessage, error) {
 	response := wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.ODir,
@@ -50,7 +50,7 @@ func (s ODirService) InfoQuery(_ context.Context, inFrame wire.SNACFrame, inBody
 
 	// search by email address
 	if email, hasEmail := inBody.String(wire.ODirTLVEmailAddress); hasEmail {
-		foundUser, err := s.profileManager.FindByAIMEmail(email)
+		foundUser, err := s.profileManager.FindByAIMEmail(ctx, email)
 		if err != nil {
 			if errors.Is(err, state.ErrNoUser) {
 				response.Body = s.searchResponse(nil)
@@ -64,7 +64,7 @@ func (s ODirService) InfoQuery(_ context.Context, inFrame wire.SNACFrame, inBody
 
 	// search by interest keyword
 	if interest, hasInterest := inBody.String(wire.ODirTLVInterest); hasInterest {
-		foundUsers, err := s.profileManager.FindByAIMKeyword(interest)
+		foundUsers, err := s.profileManager.FindByAIMKeyword(ctx, interest)
 		if err != nil {
 			return wire.SNACMessage{}, fmt.Errorf("FindByAIMKeyword: %w", err)
 		}
@@ -74,7 +74,7 @@ func (s ODirService) InfoQuery(_ context.Context, inFrame wire.SNACFrame, inBody
 
 	// search by name and address
 	if inBody.HasTag(wire.ODirTLVFirstName) || inBody.HasTag(wire.ODirTLVLastName) {
-		foundUsers, err := s.profileManager.FindByAIMNameAndAddr(newAIMNameAndAddrFromTLVList(inBody.TLVList))
+		foundUsers, err := s.profileManager.FindByAIMNameAndAddr(ctx, newAIMNameAndAddrFromTLVList(inBody.TLVList))
 		if err != nil {
 			return wire.SNACMessage{}, fmt.Errorf("FindByAIMNameAndAddr: %w", err)
 		}
@@ -91,8 +91,8 @@ func (s ODirService) InfoQuery(_ context.Context, inFrame wire.SNACFrame, inBody
 
 // KeywordListQuery returns a list of keywords that can be searched in the user
 // directory.
-func (s ODirService) KeywordListQuery(_ context.Context, inFrame wire.SNACFrame) (wire.SNACMessage, error) {
-	interests, err := s.profileManager.InterestList()
+func (s ODirService) KeywordListQuery(ctx context.Context, inFrame wire.SNACFrame) (wire.SNACMessage, error) {
+	interests, err := s.profileManager.InterestList(ctx)
 	if err != nil {
 		return wire.SNACMessage{}, fmt.Errorf("InterestList: %w", err)
 	}

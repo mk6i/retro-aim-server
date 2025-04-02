@@ -1,10 +1,12 @@
 package http
 
 import (
+	"context"
 	"net/mail"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
+	"github.com/stretchr/testify/mock"
 )
 
 type mockParams struct {
@@ -22,31 +24,31 @@ type mockParams struct {
 // accountManagerParams is a helper struct that contains mock parameters for
 // accountManager methods
 type accountManagerParams struct {
-	emailAddressByNameParams
-	regStatusByNameParams
-	confirmStatusByNameParams
+	EmailAddressParams
+	RegStatusParams
+	ConfirmStatusParams
 	updateSuspendedStatusParams
 }
 
-// emailAddressByNameParams is the list of parameters passed at the mock
-// accountManager.EmailAddressByName call site
-type emailAddressByNameParams []struct {
+// EmailAddressParams is the list of parameters passed at the mock
+// accountManager.EmailAddress call site
+type EmailAddressParams []struct {
 	screenName state.IdentScreenName
 	result     *mail.Address
 	err        error
 }
 
-// regStatusByNameParams is the list of parameters passed at the mock
-// accountManager.RegStatusByName call site
-type regStatusByNameParams []struct {
+// RegStatusParams is the list of parameters passed at the mock
+// accountManager.RegStatus call site
+type RegStatusParams []struct {
 	screenName state.IdentScreenName
 	result     uint16
 	err        error
 }
 
-// confirmStatusByNameParams is the list of parameters passed at the mock
-// accountManager.ConfirmStatusByName call site
-type confirmStatusByNameParams []struct {
+// ConfirmStatusParams is the list of parameters passed at the mock
+// accountManager.ConfirmStatus call site
+type ConfirmStatusParams []struct {
 	screenName state.IdentScreenName
 	result     bool
 	err        error
@@ -61,13 +63,13 @@ type updateSuspendedStatusParams []struct {
 }
 
 // bartRetrieverParams is a helper struct that contains mock parameters for
-// BARTRetriever methods
+// BuddyIconRetriever methods
 type bartRetrieverParams struct {
 	bartRetrieveParams
 }
 
 // bartRetrieveParams is the list of parameters passed at the mock
-// BARTRetriever.BARTRetrieveParams call site
+// BuddyIconRetriever.BuddyIconParams call site
 type bartRetrieveParams []struct {
 	itemHash []byte
 	result   []byte
@@ -159,12 +161,12 @@ type keywordsByCategoryParams []struct {
 // feedBagRetrieverParams is a helper struct that contains mock parameters for
 // FeedBagRetriever methods
 type feedBagRetrieverParams struct {
-	buddyIconRefByNameParams
+	buddyIconMetadataParams
 }
 
-// buddyIconRefByNameParams is the list of parameters passed at the mock
-// FeedBagRetriever.BuddyIconRefByNameParams call site
-type buddyIconRefByNameParams []struct {
+// buddyIconMetadataParams is the list of parameters passed at the mock
+// FeedBagRetriever.BuddyIconMetadataParams call site
+type buddyIconMetadataParams []struct {
 	screenName state.IdentScreenName
 	result     *wire.BARTID
 	err        error
@@ -249,4 +251,12 @@ type setUserPasswordParams []struct {
 	screenName  state.IdentScreenName
 	newPassword string
 	err         error
+}
+
+// matchContext matches any instance of Context interface.
+func matchContext() interface{} {
+	return mock.MatchedBy(func(ctx any) bool {
+		_, ok := ctx.(context.Context)
+		return ok
+	})
 }

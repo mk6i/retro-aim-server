@@ -3,6 +3,8 @@
 package http
 
 import (
+	context "context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,9 +22,9 @@ func (_m *mockDirectoryManager) EXPECT() *mockDirectoryManager_Expecter {
 	return &mockDirectoryManager_Expecter{mock: &_m.Mock}
 }
 
-// Categories provides a mock function with no fields
-func (_m *mockDirectoryManager) Categories() ([]state.Category, error) {
-	ret := _m.Called()
+// Categories provides a mock function with given fields: ctx
+func (_m *mockDirectoryManager) Categories(ctx context.Context) ([]state.Category, error) {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Categories")
@@ -30,19 +32,19 @@ func (_m *mockDirectoryManager) Categories() ([]state.Category, error) {
 
 	var r0 []state.Category
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]state.Category, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(context.Context) ([]state.Category, error)); ok {
+		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func() []state.Category); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) []state.Category); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]state.Category)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -56,13 +58,14 @@ type mockDirectoryManager_Categories_Call struct {
 }
 
 // Categories is a helper method to define mock.On call
-func (_e *mockDirectoryManager_Expecter) Categories() *mockDirectoryManager_Categories_Call {
-	return &mockDirectoryManager_Categories_Call{Call: _e.mock.On("Categories")}
+//   - ctx context.Context
+func (_e *mockDirectoryManager_Expecter) Categories(ctx interface{}) *mockDirectoryManager_Categories_Call {
+	return &mockDirectoryManager_Categories_Call{Call: _e.mock.On("Categories", ctx)}
 }
 
-func (_c *mockDirectoryManager_Categories_Call) Run(run func()) *mockDirectoryManager_Categories_Call {
+func (_c *mockDirectoryManager_Categories_Call) Run(run func(ctx context.Context)) *mockDirectoryManager_Categories_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -72,14 +75,14 @@ func (_c *mockDirectoryManager_Categories_Call) Return(_a0 []state.Category, _a1
 	return _c
 }
 
-func (_c *mockDirectoryManager_Categories_Call) RunAndReturn(run func() ([]state.Category, error)) *mockDirectoryManager_Categories_Call {
+func (_c *mockDirectoryManager_Categories_Call) RunAndReturn(run func(context.Context) ([]state.Category, error)) *mockDirectoryManager_Categories_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// CreateCategory provides a mock function with given fields: name
-func (_m *mockDirectoryManager) CreateCategory(name string) (state.Category, error) {
-	ret := _m.Called(name)
+// CreateCategory provides a mock function with given fields: ctx, name
+func (_m *mockDirectoryManager) CreateCategory(ctx context.Context, name string) (state.Category, error) {
+	ret := _m.Called(ctx, name)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateCategory")
@@ -87,17 +90,17 @@ func (_m *mockDirectoryManager) CreateCategory(name string) (state.Category, err
 
 	var r0 state.Category
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (state.Category, error)); ok {
-		return rf(name)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (state.Category, error)); ok {
+		return rf(ctx, name)
 	}
-	if rf, ok := ret.Get(0).(func(string) state.Category); ok {
-		r0 = rf(name)
+	if rf, ok := ret.Get(0).(func(context.Context, string) state.Category); ok {
+		r0 = rf(ctx, name)
 	} else {
 		r0 = ret.Get(0).(state.Category)
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(name)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, name)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -111,14 +114,15 @@ type mockDirectoryManager_CreateCategory_Call struct {
 }
 
 // CreateCategory is a helper method to define mock.On call
+//   - ctx context.Context
 //   - name string
-func (_e *mockDirectoryManager_Expecter) CreateCategory(name interface{}) *mockDirectoryManager_CreateCategory_Call {
-	return &mockDirectoryManager_CreateCategory_Call{Call: _e.mock.On("CreateCategory", name)}
+func (_e *mockDirectoryManager_Expecter) CreateCategory(ctx interface{}, name interface{}) *mockDirectoryManager_CreateCategory_Call {
+	return &mockDirectoryManager_CreateCategory_Call{Call: _e.mock.On("CreateCategory", ctx, name)}
 }
 
-func (_c *mockDirectoryManager_CreateCategory_Call) Run(run func(name string)) *mockDirectoryManager_CreateCategory_Call {
+func (_c *mockDirectoryManager_CreateCategory_Call) Run(run func(ctx context.Context, name string)) *mockDirectoryManager_CreateCategory_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -128,14 +132,14 @@ func (_c *mockDirectoryManager_CreateCategory_Call) Return(_a0 state.Category, _
 	return _c
 }
 
-func (_c *mockDirectoryManager_CreateCategory_Call) RunAndReturn(run func(string) (state.Category, error)) *mockDirectoryManager_CreateCategory_Call {
+func (_c *mockDirectoryManager_CreateCategory_Call) RunAndReturn(run func(context.Context, string) (state.Category, error)) *mockDirectoryManager_CreateCategory_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// CreateKeyword provides a mock function with given fields: name, categoryID
-func (_m *mockDirectoryManager) CreateKeyword(name string, categoryID uint8) (state.Keyword, error) {
-	ret := _m.Called(name, categoryID)
+// CreateKeyword provides a mock function with given fields: ctx, name, categoryID
+func (_m *mockDirectoryManager) CreateKeyword(ctx context.Context, name string, categoryID uint8) (state.Keyword, error) {
+	ret := _m.Called(ctx, name, categoryID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateKeyword")
@@ -143,17 +147,17 @@ func (_m *mockDirectoryManager) CreateKeyword(name string, categoryID uint8) (st
 
 	var r0 state.Keyword
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, uint8) (state.Keyword, error)); ok {
-		return rf(name, categoryID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, uint8) (state.Keyword, error)); ok {
+		return rf(ctx, name, categoryID)
 	}
-	if rf, ok := ret.Get(0).(func(string, uint8) state.Keyword); ok {
-		r0 = rf(name, categoryID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, uint8) state.Keyword); ok {
+		r0 = rf(ctx, name, categoryID)
 	} else {
 		r0 = ret.Get(0).(state.Keyword)
 	}
 
-	if rf, ok := ret.Get(1).(func(string, uint8) error); ok {
-		r1 = rf(name, categoryID)
+	if rf, ok := ret.Get(1).(func(context.Context, string, uint8) error); ok {
+		r1 = rf(ctx, name, categoryID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -167,15 +171,16 @@ type mockDirectoryManager_CreateKeyword_Call struct {
 }
 
 // CreateKeyword is a helper method to define mock.On call
+//   - ctx context.Context
 //   - name string
 //   - categoryID uint8
-func (_e *mockDirectoryManager_Expecter) CreateKeyword(name interface{}, categoryID interface{}) *mockDirectoryManager_CreateKeyword_Call {
-	return &mockDirectoryManager_CreateKeyword_Call{Call: _e.mock.On("CreateKeyword", name, categoryID)}
+func (_e *mockDirectoryManager_Expecter) CreateKeyword(ctx interface{}, name interface{}, categoryID interface{}) *mockDirectoryManager_CreateKeyword_Call {
+	return &mockDirectoryManager_CreateKeyword_Call{Call: _e.mock.On("CreateKeyword", ctx, name, categoryID)}
 }
 
-func (_c *mockDirectoryManager_CreateKeyword_Call) Run(run func(name string, categoryID uint8)) *mockDirectoryManager_CreateKeyword_Call {
+func (_c *mockDirectoryManager_CreateKeyword_Call) Run(run func(ctx context.Context, name string, categoryID uint8)) *mockDirectoryManager_CreateKeyword_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(uint8))
+		run(args[0].(context.Context), args[1].(string), args[2].(uint8))
 	})
 	return _c
 }
@@ -185,22 +190,22 @@ func (_c *mockDirectoryManager_CreateKeyword_Call) Return(_a0 state.Keyword, _a1
 	return _c
 }
 
-func (_c *mockDirectoryManager_CreateKeyword_Call) RunAndReturn(run func(string, uint8) (state.Keyword, error)) *mockDirectoryManager_CreateKeyword_Call {
+func (_c *mockDirectoryManager_CreateKeyword_Call) RunAndReturn(run func(context.Context, string, uint8) (state.Keyword, error)) *mockDirectoryManager_CreateKeyword_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// DeleteCategory provides a mock function with given fields: categoryID
-func (_m *mockDirectoryManager) DeleteCategory(categoryID uint8) error {
-	ret := _m.Called(categoryID)
+// DeleteCategory provides a mock function with given fields: ctx, categoryID
+func (_m *mockDirectoryManager) DeleteCategory(ctx context.Context, categoryID uint8) error {
+	ret := _m.Called(ctx, categoryID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteCategory")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(uint8) error); ok {
-		r0 = rf(categoryID)
+	if rf, ok := ret.Get(0).(func(context.Context, uint8) error); ok {
+		r0 = rf(ctx, categoryID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -214,14 +219,15 @@ type mockDirectoryManager_DeleteCategory_Call struct {
 }
 
 // DeleteCategory is a helper method to define mock.On call
+//   - ctx context.Context
 //   - categoryID uint8
-func (_e *mockDirectoryManager_Expecter) DeleteCategory(categoryID interface{}) *mockDirectoryManager_DeleteCategory_Call {
-	return &mockDirectoryManager_DeleteCategory_Call{Call: _e.mock.On("DeleteCategory", categoryID)}
+func (_e *mockDirectoryManager_Expecter) DeleteCategory(ctx interface{}, categoryID interface{}) *mockDirectoryManager_DeleteCategory_Call {
+	return &mockDirectoryManager_DeleteCategory_Call{Call: _e.mock.On("DeleteCategory", ctx, categoryID)}
 }
 
-func (_c *mockDirectoryManager_DeleteCategory_Call) Run(run func(categoryID uint8)) *mockDirectoryManager_DeleteCategory_Call {
+func (_c *mockDirectoryManager_DeleteCategory_Call) Run(run func(ctx context.Context, categoryID uint8)) *mockDirectoryManager_DeleteCategory_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint8))
+		run(args[0].(context.Context), args[1].(uint8))
 	})
 	return _c
 }
@@ -231,22 +237,22 @@ func (_c *mockDirectoryManager_DeleteCategory_Call) Return(_a0 error) *mockDirec
 	return _c
 }
 
-func (_c *mockDirectoryManager_DeleteCategory_Call) RunAndReturn(run func(uint8) error) *mockDirectoryManager_DeleteCategory_Call {
+func (_c *mockDirectoryManager_DeleteCategory_Call) RunAndReturn(run func(context.Context, uint8) error) *mockDirectoryManager_DeleteCategory_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// DeleteKeyword provides a mock function with given fields: id
-func (_m *mockDirectoryManager) DeleteKeyword(id uint8) error {
-	ret := _m.Called(id)
+// DeleteKeyword provides a mock function with given fields: ctx, id
+func (_m *mockDirectoryManager) DeleteKeyword(ctx context.Context, id uint8) error {
+	ret := _m.Called(ctx, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteKeyword")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(uint8) error); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, uint8) error); ok {
+		r0 = rf(ctx, id)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -260,14 +266,15 @@ type mockDirectoryManager_DeleteKeyword_Call struct {
 }
 
 // DeleteKeyword is a helper method to define mock.On call
+//   - ctx context.Context
 //   - id uint8
-func (_e *mockDirectoryManager_Expecter) DeleteKeyword(id interface{}) *mockDirectoryManager_DeleteKeyword_Call {
-	return &mockDirectoryManager_DeleteKeyword_Call{Call: _e.mock.On("DeleteKeyword", id)}
+func (_e *mockDirectoryManager_Expecter) DeleteKeyword(ctx interface{}, id interface{}) *mockDirectoryManager_DeleteKeyword_Call {
+	return &mockDirectoryManager_DeleteKeyword_Call{Call: _e.mock.On("DeleteKeyword", ctx, id)}
 }
 
-func (_c *mockDirectoryManager_DeleteKeyword_Call) Run(run func(id uint8)) *mockDirectoryManager_DeleteKeyword_Call {
+func (_c *mockDirectoryManager_DeleteKeyword_Call) Run(run func(ctx context.Context, id uint8)) *mockDirectoryManager_DeleteKeyword_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint8))
+		run(args[0].(context.Context), args[1].(uint8))
 	})
 	return _c
 }
@@ -277,14 +284,14 @@ func (_c *mockDirectoryManager_DeleteKeyword_Call) Return(_a0 error) *mockDirect
 	return _c
 }
 
-func (_c *mockDirectoryManager_DeleteKeyword_Call) RunAndReturn(run func(uint8) error) *mockDirectoryManager_DeleteKeyword_Call {
+func (_c *mockDirectoryManager_DeleteKeyword_Call) RunAndReturn(run func(context.Context, uint8) error) *mockDirectoryManager_DeleteKeyword_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// KeywordsByCategory provides a mock function with given fields: categoryID
-func (_m *mockDirectoryManager) KeywordsByCategory(categoryID uint8) ([]state.Keyword, error) {
-	ret := _m.Called(categoryID)
+// KeywordsByCategory provides a mock function with given fields: ctx, categoryID
+func (_m *mockDirectoryManager) KeywordsByCategory(ctx context.Context, categoryID uint8) ([]state.Keyword, error) {
+	ret := _m.Called(ctx, categoryID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for KeywordsByCategory")
@@ -292,19 +299,19 @@ func (_m *mockDirectoryManager) KeywordsByCategory(categoryID uint8) ([]state.Ke
 
 	var r0 []state.Keyword
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uint8) ([]state.Keyword, error)); ok {
-		return rf(categoryID)
+	if rf, ok := ret.Get(0).(func(context.Context, uint8) ([]state.Keyword, error)); ok {
+		return rf(ctx, categoryID)
 	}
-	if rf, ok := ret.Get(0).(func(uint8) []state.Keyword); ok {
-		r0 = rf(categoryID)
+	if rf, ok := ret.Get(0).(func(context.Context, uint8) []state.Keyword); ok {
+		r0 = rf(ctx, categoryID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]state.Keyword)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(uint8) error); ok {
-		r1 = rf(categoryID)
+	if rf, ok := ret.Get(1).(func(context.Context, uint8) error); ok {
+		r1 = rf(ctx, categoryID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -318,14 +325,15 @@ type mockDirectoryManager_KeywordsByCategory_Call struct {
 }
 
 // KeywordsByCategory is a helper method to define mock.On call
+//   - ctx context.Context
 //   - categoryID uint8
-func (_e *mockDirectoryManager_Expecter) KeywordsByCategory(categoryID interface{}) *mockDirectoryManager_KeywordsByCategory_Call {
-	return &mockDirectoryManager_KeywordsByCategory_Call{Call: _e.mock.On("KeywordsByCategory", categoryID)}
+func (_e *mockDirectoryManager_Expecter) KeywordsByCategory(ctx interface{}, categoryID interface{}) *mockDirectoryManager_KeywordsByCategory_Call {
+	return &mockDirectoryManager_KeywordsByCategory_Call{Call: _e.mock.On("KeywordsByCategory", ctx, categoryID)}
 }
 
-func (_c *mockDirectoryManager_KeywordsByCategory_Call) Run(run func(categoryID uint8)) *mockDirectoryManager_KeywordsByCategory_Call {
+func (_c *mockDirectoryManager_KeywordsByCategory_Call) Run(run func(ctx context.Context, categoryID uint8)) *mockDirectoryManager_KeywordsByCategory_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint8))
+		run(args[0].(context.Context), args[1].(uint8))
 	})
 	return _c
 }
@@ -335,7 +343,7 @@ func (_c *mockDirectoryManager_KeywordsByCategory_Call) Return(_a0 []state.Keywo
 	return _c
 }
 
-func (_c *mockDirectoryManager_KeywordsByCategory_Call) RunAndReturn(run func(uint8) ([]state.Keyword, error)) *mockDirectoryManager_KeywordsByCategory_Call {
+func (_c *mockDirectoryManager_KeywordsByCategory_Call) RunAndReturn(run func(context.Context, uint8) ([]state.Keyword, error)) *mockDirectoryManager_KeywordsByCategory_Call {
 	_c.Call.Return(run)
 	return _c
 }

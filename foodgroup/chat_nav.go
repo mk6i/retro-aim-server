@@ -76,7 +76,7 @@ func (s ChatNavService) RequestChatRights(_ context.Context, inFrame wire.SNACFr
 // CreateRoom creates and returns a chat room or returns an existing chat
 // room. It returns SNAC wire.ChatNavNavInfo, which contains metadata for the
 // chat room.
-func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (wire.SNACMessage, error) {
+func (s ChatNavService) CreateRoom(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate) (wire.SNACMessage, error) {
 	if err := validateExchange(inBody.Exchange); err != nil {
 		s.logger.Debug("error validating exchange: " + err.Error())
 		return sendChatNavErrorSNAC(inFrame, wire.ErrorCodeNotSupportedByHost)
@@ -91,7 +91,7 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 	}
 
 	// todo call ChatRoomByName and CreateChatRoom in a txn
-	room, err := s.chatRoomManager.ChatRoomByName(inBody.Exchange, name)
+	room, err := s.chatRoomManager.ChatRoomByName(ctx, inBody.Exchange, name)
 
 	switch {
 	case errors.Is(err, state.ErrChatRoomNotFound):
@@ -102,7 +102,7 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 
 		room = state.NewChatRoom(name, sess.IdentScreenName(), inBody.Exchange)
 
-		if err := s.chatRoomManager.CreateChatRoom(&room); err != nil {
+		if err := s.chatRoomManager.CreateChatRoom(ctx, &room); err != nil {
 			return wire.SNACMessage{}, fmt.Errorf("%w: %w", errChatNavRoomCreateFailed, err)
 		}
 		break
@@ -135,13 +135,13 @@ func (s ChatNavService) CreateRoom(_ context.Context, sess *state.Session, inFra
 
 // RequestRoomInfo returns wire.ChatNavNavInfo, which contains metadata for
 // the chat room specified in the inFrame.hmacCookie.
-func (s ChatNavService) RequestRoomInfo(_ context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (wire.SNACMessage, error) {
+func (s ChatNavService) RequestRoomInfo(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo) (wire.SNACMessage, error) {
 	if err := validateExchange(inBody.Exchange); err != nil {
 		s.logger.Debug("error validating exchange: " + err.Error())
 		return sendChatNavErrorSNAC(inFrame, wire.ErrorCodeNotSupportedByHost)
 	}
 
-	room, err := s.chatRoomManager.ChatRoomByCookie(inBody.Cookie)
+	room, err := s.chatRoomManager.ChatRoomByCookie(ctx, inBody.Cookie)
 	if err != nil {
 		return wire.SNACMessage{}, fmt.Errorf("%w: %w", state.ErrChatRoomNotFound, err)
 	}

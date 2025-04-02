@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net/mail"
@@ -57,11 +58,11 @@ func TestSQLiteUserStore_FeedbagUpsert(t *testing.T) {
 		}
 
 		me := NewIdentScreenName("me")
-		if err := f.FeedbagUpsert(me, given); err != nil {
+		if err := f.FeedbagUpsert(context.Background(), me, given); err != nil {
 			t.Fatalf("failed to upsert: %s", err.Error())
 		}
 
-		have, err := f.Feedbag(me)
+		have, err := f.Feedbag(context.Background(), me)
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, expect, have)
 	})
@@ -88,7 +89,7 @@ func TestSQLiteUserStore_FeedbagUpsert(t *testing.T) {
 		}
 
 		me := NewIdentScreenName("me")
-		err = f.FeedbagUpsert(me, given)
+		err = f.FeedbagUpsert(context.Background(), me, given)
 		assert.NoError(t, err)
 
 		var pdMode uint8
@@ -115,7 +116,7 @@ func TestSQLiteUserStore_FeedbagUpsert(t *testing.T) {
 		}
 
 		me := NewIdentScreenName("me")
-		err = f.FeedbagUpsert(me, given)
+		err = f.FeedbagUpsert(context.Background(), me, given)
 		assert.NoError(t, err)
 
 		var pdMode uint8
@@ -162,15 +163,15 @@ func TestFeedbagDelete(t *testing.T) {
 		},
 	}
 
-	if err := f.FeedbagUpsert(screenName, itemsIn); err != nil {
+	if err := f.FeedbagUpsert(context.Background(), screenName, itemsIn); err != nil {
 		t.Fatalf("failed to upsert: %s", err.Error())
 	}
 
-	if err := f.FeedbagDelete(screenName, []wire.FeedbagItem{itemsIn[0]}); err != nil {
+	if err := f.FeedbagDelete(context.Background(), screenName, []wire.FeedbagItem{itemsIn[0]}); err != nil {
 		t.Fatalf("failed to delete: %s", err.Error())
 	}
 
-	itemsOut, err := f.Feedbag(screenName)
+	itemsOut, err := f.Feedbag(context.Background(), screenName)
 	if err != nil {
 		t.Fatalf("failed to retrieve: %s", err.Error())
 	}
@@ -193,7 +194,7 @@ func TestLastModifiedEmpty(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	_, err = f.FeedbagLastModified(screenName)
+	_, err = f.FeedbagLastModified(context.Background(), screenName)
 
 	if err != nil {
 		t.Fatalf("get error from last modified: %s", err.Error())
@@ -219,11 +220,11 @@ func TestLastModifiedNotEmpty(t *testing.T) {
 			Name:    "Friends",
 		},
 	}
-	if err := f.FeedbagUpsert(screenName, itemsIn); err != nil {
+	if err := f.FeedbagUpsert(context.Background(), screenName, itemsIn); err != nil {
 		t.Fatalf("failed to upsert: %s", err.Error())
 	}
 
-	_, err = f.FeedbagLastModified(screenName)
+	_, err = f.FeedbagLastModified(context.Background(), screenName)
 
 	if err != nil {
 		t.Fatalf("get error from last modified: %s", err.Error())
@@ -244,11 +245,11 @@ func TestProfile(t *testing.T) {
 	u := User{
 		IdentScreenName: screenName,
 	}
-	if err := f.InsertUser(u); err != nil {
+	if err := f.InsertUser(context.Background(), u); err != nil {
 		t.Fatalf("failed to upsert new user: %s", err.Error())
 	}
 
-	profile, err := f.Profile(screenName)
+	profile, err := f.Profile(context.Background(), screenName)
 	if err != nil {
 		t.Fatalf("failed to retrieve profile: %s", err.Error())
 	}
@@ -258,11 +259,11 @@ func TestProfile(t *testing.T) {
 	}
 
 	newProfile := "here is my profile"
-	if err := f.SetProfile(screenName, newProfile); err != nil {
+	if err := f.SetProfile(context.Background(), screenName, newProfile); err != nil {
 		t.Fatalf("failed to create new profile: %s", err.Error())
 	}
 
-	profile, err = f.Profile(screenName)
+	profile, err = f.Profile(context.Background(), screenName)
 	if err != nil {
 		t.Fatalf("failed to retrieve profile: %s", err.Error())
 	}
@@ -272,11 +273,11 @@ func TestProfile(t *testing.T) {
 	}
 
 	updatedProfile := "here is my profile [updated]"
-	if err := f.SetProfile(screenName, updatedProfile); err != nil {
+	if err := f.SetProfile(context.Background(), screenName, updatedProfile); err != nil {
 		t.Fatalf("failed to create new profile: %s", err.Error())
 	}
 
-	profile, err = f.Profile(screenName)
+	profile, err = f.Profile(context.Background(), screenName)
 	if err != nil {
 		t.Fatalf("failed to retrieve profile: %s", err.Error())
 	}
@@ -297,7 +298,7 @@ func TestProfileNonExistent(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	prof, err := f.Profile(screenName)
+	prof, err := f.Profile(context.Background(), screenName)
 	assert.NoError(t, err)
 	assert.Empty(t, prof)
 }
@@ -319,10 +320,10 @@ func TestGetUser(t *testing.T) {
 		StrongMD5Pass:     []byte("thepasshash"),
 		RegStatus:         3,
 	}
-	err = f.InsertUser(*insertedUser)
+	err = f.InsertUser(context.Background(), *insertedUser)
 	assert.NoError(t, err)
 
-	actualUser, err := f.User(screenName)
+	actualUser, err := f.User(context.Background(), screenName)
 	if err != nil {
 		t.Fatalf("failed to get user: %s", err.Error())
 	}
@@ -340,7 +341,7 @@ func TestGetUserNotFound(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	actualUser, err := f.User(NewIdentScreenName("testscreenname"))
+	actualUser, err := f.User(context.Background(), NewIdentScreenName("testscreenname"))
 	if err != nil {
 		t.Fatalf("failed to get user: %s", err.Error())
 	}
@@ -379,11 +380,11 @@ func TestSQLiteUserStore_Users(t *testing.T) {
 	}
 
 	for _, u := range want {
-		err := f.InsertUser(u)
+		err := f.InsertUser(context.Background(), u)
 		assert.NoError(t, err)
 	}
 
-	have, err := f.AllUsers()
+	have, err := f.AllUsers(context.Background())
 	assert.NoError(t, err)
 
 	assert.Equal(t, want, have)
@@ -402,7 +403,7 @@ func TestSQLiteUserStore_InsertUser_UINButNotIsICQ(t *testing.T) {
 		DisplayScreenName: "100003",
 	}
 
-	err = f.InsertUser(user)
+	err = f.InsertUser(context.Background(), user)
 	assert.ErrorContains(t, err, "inserting user with UIN and isICQ=false")
 }
 
@@ -414,21 +415,21 @@ func TestSQLiteUserStore_DeleteUser_DeleteExistentUser(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	err = f.InsertUser(User{
+	err = f.InsertUser(context.Background(), User{
 		IdentScreenName:   NewIdentScreenName("userA"),
 		DisplayScreenName: "userA",
 	})
 	assert.NoError(t, err)
-	err = f.InsertUser(User{
+	err = f.InsertUser(context.Background(), User{
 		IdentScreenName:   NewIdentScreenName("userB"),
 		DisplayScreenName: "userB",
 	})
 	assert.NoError(t, err)
 
-	err = f.DeleteUser(NewIdentScreenName("userA"))
+	err = f.DeleteUser(context.Background(), NewIdentScreenName("userA"))
 	assert.NoError(t, err)
 
-	have, err := f.AllUsers()
+	have, err := f.AllUsers(context.Background())
 	assert.NoError(t, err)
 
 	want := []User{{
@@ -446,7 +447,7 @@ func TestSQLiteUserStore_DeleteUser_DeleteNonExistentUser(t *testing.T) {
 	f, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	err = f.DeleteUser(NewIdentScreenName("userA"))
+	err = f.DeleteUser(context.Background(), NewIdentScreenName("userA"))
 	assert.ErrorIs(t, ErrNoUser, err)
 }
 
@@ -484,7 +485,7 @@ func pdInfoItem(itemID uint16, pdMode wire.FeedbagPDMode) wire.FeedbagItem {
 	}
 }
 
-func TestSQLiteUserStore_BARTUpsertAndRetrieve(t *testing.T) {
+func TestSQLiteUserStore_SetBuddyIconAndRetrieve(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
 	}()
@@ -495,14 +496,14 @@ func TestSQLiteUserStore_BARTUpsertAndRetrieve(t *testing.T) {
 	hash := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	item := []byte{'a', 'b', 'c', 'd'}
 
-	b, err := feedbagStore.BARTRetrieve(hash)
+	b, err := feedbagStore.BuddyIcon(context.Background(), hash)
 	assert.NoError(t, err)
 	assert.Empty(t, b)
 
-	err = feedbagStore.BARTUpsert(hash, item)
+	err = feedbagStore.SetBuddyIcon(context.Background(), hash, item)
 	assert.NoError(t, err)
 
-	b, err = feedbagStore.BARTRetrieve(hash)
+	b, err = feedbagStore.BuddyIcon(context.Background(), hash)
 	assert.NoError(t, err)
 	assert.Equal(t, item, b)
 }
@@ -522,13 +523,13 @@ func TestSQLiteUserStore_SetUserPassword_UserExists(t *testing.T) {
 	err = u.HashPassword("thepassword")
 	assert.NoError(t, err)
 
-	err = feedbagStore.InsertUser(u)
+	err = feedbagStore.InsertUser(context.Background(), u)
 	assert.NoError(t, err)
 
-	err = feedbagStore.SetUserPassword(u.IdentScreenName, "theNEWpassword")
+	err = feedbagStore.SetUserPassword(context.Background(), u.IdentScreenName, "theNEWpassword")
 	assert.NoError(t, err)
 
-	gotUser, err := feedbagStore.User(u.IdentScreenName)
+	gotUser, err := feedbagStore.User(context.Background(), u.IdentScreenName)
 	assert.NoError(t, err)
 
 	wantUser := User{}
@@ -546,7 +547,7 @@ func TestSQLiteUserStore_SetUserPassword_ErrNoUser(t *testing.T) {
 	feedbagStore, err := NewSQLiteUserStore(testFile)
 	assert.NoError(t, err)
 
-	err = feedbagStore.SetUserPassword(NewIdentScreenName("some_user"), "thepassword")
+	err = feedbagStore.SetUserPassword(context.Background(), NewIdentScreenName("some_user"), "thepassword")
 	assert.ErrorIs(t, err, ErrNoUser)
 }
 
@@ -586,10 +587,10 @@ func TestSQLiteUserStore_ChatRoomByCookie(t *testing.T) {
 			userStore, err := NewSQLiteUserStore(testFile)
 			assert.NoError(t, err)
 
-			err = userStore.CreateChatRoom(&tt.givenRoom)
+			err = userStore.CreateChatRoom(context.Background(), &tt.givenRoom)
 			assert.NoError(t, err)
 
-			gotRoom, err := userStore.ChatRoomByCookie(tt.lookupRoom.Cookie())
+			gotRoom, err := userStore.ChatRoomByCookie(context.Background(), tt.lookupRoom.Cookie())
 			assert.ErrorIs(t, err, tt.expectedErr)
 			if tt.expectedErr == nil {
 				assert.Equal(t, tt.givenRoom.Cookie(), gotRoom.Cookie())
@@ -634,10 +635,10 @@ func TestSQLiteUserStore_ChatRoomByName(t *testing.T) {
 			userStore, err := NewSQLiteUserStore(testFile)
 			assert.NoError(t, err)
 
-			err = userStore.CreateChatRoom(&tt.givenRoom)
+			err = userStore.CreateChatRoom(context.Background(), &tt.givenRoom)
 			assert.NoError(t, err)
 
-			gotRoom, err := userStore.ChatRoomByName(tt.lookupRoom.Exchange(), tt.lookupRoom.Name())
+			gotRoom, err := userStore.ChatRoomByName(context.Background(), tt.lookupRoom.Exchange(), tt.lookupRoom.Name())
 			assert.ErrorIs(t, err, tt.expectedErr)
 			if tt.expectedErr == nil {
 				assert.Equal(t, tt.givenRoom.Cookie(), gotRoom.Cookie())
@@ -662,19 +663,19 @@ func TestSQLiteUserStore_AllChatRooms(t *testing.T) {
 
 	for i := range chatRooms {
 		tBefore := (&chatRooms[i]).CreateTime()
-		err = userStore.CreateChatRoom(&chatRooms[i])
+		err = userStore.CreateChatRoom(context.Background(), &chatRooms[i])
 		assert.NoError(t, err)
 		assert.True(t, chatRooms[i].CreateTime().After(tBefore))
 	}
 
 	// public exchange
-	gotRooms, err := userStore.AllChatRooms(5)
+	gotRooms, err := userStore.AllChatRooms(context.Background(), 5)
 	assert.NoError(t, err)
 
 	assert.Equal(t, chatRooms[2:], gotRooms)
 
 	// private exchange
-	gotRooms, err = userStore.AllChatRooms(4)
+	gotRooms, err = userStore.AllChatRooms(context.Background(), 4)
 	assert.NoError(t, err)
 
 	assert.Equal(t, chatRooms[0:2], gotRooms)
@@ -711,10 +712,10 @@ func TestSQLiteUserStore_CreateChatRoom_ErrChatRoomExists(t *testing.T) {
 			userStore, err := NewSQLiteUserStore(testFile)
 			assert.NoError(t, err)
 
-			err = userStore.CreateChatRoom(&tc.firstInsert)
+			err = userStore.CreateChatRoom(context.Background(), &tc.firstInsert)
 			assert.NoError(t, err)
 
-			err = userStore.CreateChatRoom(&tc.secondInsert)
+			err = userStore.CreateChatRoom(context.Background(), &tc.secondInsert)
 			assert.ErrorIs(t, err, tc.wantErr)
 		})
 	}
@@ -737,15 +738,15 @@ func TestUpdateDisplayScreenName(t *testing.T) {
 		IdentScreenName:   screenNameOriginal.IdentScreenName(),
 		RegStatus:         3,
 	}
-	if err := f.InsertUser(user); err != nil {
+	if err := f.InsertUser(context.Background(), user); err != nil {
 		t.Fatalf("failed to upsert new user: %s", err.Error())
 	}
-	err = f.UpdateDisplayScreenName(screenNameFormatted)
+	err = f.UpdateDisplayScreenName(context.Background(), screenNameFormatted)
 	if err != nil {
 		t.Fatalf("failed to update display screen name: %s", err.Error())
 	}
 
-	dbUser, err := f.User(screenNameOriginal.IdentScreenName())
+	dbUser, err := f.User(context.Background(), screenNameOriginal.IdentScreenName())
 	if err != nil {
 		t.Fatalf("failed to retrieve screen name: %s", err.Error())
 	}
@@ -765,7 +766,7 @@ func TestSQLiteUserStore_SetWorkInfo(t *testing.T) {
 	user := User{
 		IdentScreenName: screenName,
 	}
-	err = f.InsertUser(user)
+	err = f.InsertUser(context.Background(), user)
 	assert.NoError(t, err)
 
 	// Define the work info to set
@@ -786,11 +787,11 @@ func TestSQLiteUserStore_SetWorkInfo(t *testing.T) {
 
 	t.Run("Successful Update", func(t *testing.T) {
 		// Call SetWorkInfo
-		err := f.SetWorkInfo(screenName, workInfo)
+		err := f.SetWorkInfo(context.Background(), screenName, workInfo)
 		assert.NoError(t, err)
 
 		// Retrieve the user and verify the work info was set correctly
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Equal(t, workInfo.Company, updatedUser.ICQWorkInfo.Company)
 		assert.Equal(t, workInfo.Department, updatedUser.ICQWorkInfo.Department)
@@ -809,7 +810,7 @@ func TestSQLiteUserStore_SetWorkInfo(t *testing.T) {
 	t.Run("Update Non-Existing User", func(t *testing.T) {
 		// Try to set work info for a non-existing user
 		nonExistingScreenName := NewIdentScreenName("nonexistentuser")
-		err := f.SetWorkInfo(nonExistingScreenName, workInfo)
+		err := f.SetWorkInfo(context.Background(), nonExistingScreenName, workInfo)
 
 		// This should return ErrNoUser, as the user does not exist
 		assert.ErrorIs(t, err, ErrNoUser)
@@ -818,11 +819,11 @@ func TestSQLiteUserStore_SetWorkInfo(t *testing.T) {
 	t.Run("Empty Work Info", func(t *testing.T) {
 		// Test updating with empty work info (depending on business rules, this might be allowed or not)
 		emptyWorkInfo := ICQWorkInfo{}
-		err := f.SetWorkInfo(screenName, emptyWorkInfo)
+		err := f.SetWorkInfo(context.Background(), screenName, emptyWorkInfo)
 		assert.NoError(t, err)
 
 		// Retrieve the user and verify that fields are empty or have default values
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Empty(t, updatedUser.ICQWorkInfo.Company)
 		assert.Empty(t, updatedUser.ICQWorkInfo.Department)
@@ -854,7 +855,7 @@ func TestSQLiteUserStore_SetMoreInfo(t *testing.T) {
 	user := User{
 		IdentScreenName: screenName,
 	}
-	err = f.InsertUser(user)
+	err = f.InsertUser(context.Background(), user)
 	assert.NoError(t, err)
 
 	// Define the more info data to set
@@ -871,11 +872,11 @@ func TestSQLiteUserStore_SetMoreInfo(t *testing.T) {
 
 	t.Run("Successful Update", func(t *testing.T) {
 		// Call SetMoreInfo
-		err := f.SetMoreInfo(screenName, moreInfo)
+		err := f.SetMoreInfo(context.Background(), screenName, moreInfo)
 		assert.NoError(t, err)
 
 		// Retrieve the user and verify the more info was set correctly
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Equal(t, moreInfo.BirthDay, updatedUser.ICQMoreInfo.BirthDay)
 		assert.Equal(t, moreInfo.BirthMonth, updatedUser.ICQMoreInfo.BirthMonth)
@@ -890,7 +891,7 @@ func TestSQLiteUserStore_SetMoreInfo(t *testing.T) {
 	t.Run("Update Non-Existing User", func(t *testing.T) {
 		// Try to set more info for a non-existing user
 		nonExistingScreenName := NewIdentScreenName("nonexistentuser")
-		err := f.SetMoreInfo(nonExistingScreenName, moreInfo)
+		err := f.SetMoreInfo(context.Background(), nonExistingScreenName, moreInfo)
 
 		// This should return ErrNoUser, as the user does not exist
 		assert.ErrorIs(t, err, ErrNoUser)
@@ -899,11 +900,11 @@ func TestSQLiteUserStore_SetMoreInfo(t *testing.T) {
 	t.Run("Empty More Info", func(t *testing.T) {
 		// Test updating with empty more info
 		emptyMoreInfo := ICQMoreInfo{}
-		err := f.SetMoreInfo(screenName, emptyMoreInfo)
+		err := f.SetMoreInfo(context.Background(), screenName, emptyMoreInfo)
 		assert.NoError(t, err)
 
 		// Retrieve the user and verify that fields are empty or have default values
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Empty(t, updatedUser.ICQMoreInfo.BirthDay)
 		assert.Empty(t, updatedUser.ICQMoreInfo.BirthMonth)
@@ -931,7 +932,7 @@ func TestSQLiteUserStore_SetUserNotes(t *testing.T) {
 	user := User{
 		IdentScreenName: screenName,
 	}
-	err = f.InsertUser(user)
+	err = f.InsertUser(context.Background(), user)
 	assert.NoError(t, err)
 
 	// Define the user notes to set
@@ -941,11 +942,11 @@ func TestSQLiteUserStore_SetUserNotes(t *testing.T) {
 
 	t.Run("Successful Update", func(t *testing.T) {
 		// Call SetUserNotes
-		err := f.SetUserNotes(screenName, userNotes)
+		err := f.SetUserNotes(context.Background(), screenName, userNotes)
 		assert.NoError(t, err)
 
 		// Retrieve the user and verify the notes were set correctly
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Equal(t, userNotes.Notes, updatedUser.ICQNotes.Notes)
 	})
@@ -953,7 +954,7 @@ func TestSQLiteUserStore_SetUserNotes(t *testing.T) {
 	t.Run("Update Non-Existing User", func(t *testing.T) {
 		// Try to set notes for a non-existing user
 		nonExistingScreenName := NewIdentScreenName("nonexistentuser")
-		err := f.SetUserNotes(nonExistingScreenName, userNotes)
+		err := f.SetUserNotes(context.Background(), nonExistingScreenName, userNotes)
 
 		// This should return ErrNoUser, as the user does not exist
 		assert.ErrorIs(t, err, ErrNoUser)
@@ -962,11 +963,11 @@ func TestSQLiteUserStore_SetUserNotes(t *testing.T) {
 	t.Run("Empty Notes", func(t *testing.T) {
 		// Test updating with empty notes
 		emptyNotes := ICQUserNotes{Notes: ""}
-		err := f.SetUserNotes(screenName, emptyNotes)
+		err := f.SetUserNotes(context.Background(), screenName, emptyNotes)
 		assert.NoError(t, err)
 
 		// Retrieve the user and verify that notes are empty
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Empty(t, updatedUser.ICQNotes.Notes)
 	})
@@ -987,7 +988,7 @@ func TestSQLiteUserStore_SetInterests(t *testing.T) {
 	user := User{
 		IdentScreenName: screenName,
 	}
-	err = f.InsertUser(user)
+	err = f.InsertUser(context.Background(), user)
 	assert.NoError(t, err)
 
 	// Define the interests data to set
@@ -1004,11 +1005,11 @@ func TestSQLiteUserStore_SetInterests(t *testing.T) {
 
 	t.Run("Successful Update", func(t *testing.T) {
 		// Call SetInterests
-		err := f.SetInterests(screenName, interests)
+		err := f.SetInterests(context.Background(), screenName, interests)
 		assert.NoError(t, err)
 
 		// Retrieve the user and verify the interests were set correctly
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Equal(t, interests.Code1, updatedUser.ICQInterests.Code1)
 		assert.Equal(t, interests.Keyword1, updatedUser.ICQInterests.Keyword1)
@@ -1023,7 +1024,7 @@ func TestSQLiteUserStore_SetInterests(t *testing.T) {
 	t.Run("Update Non-Existing User", func(t *testing.T) {
 		// Try to set interests for a non-existing user
 		nonExistingScreenName := NewIdentScreenName("nonexistentuser")
-		err := f.SetInterests(nonExistingScreenName, interests)
+		err := f.SetInterests(context.Background(), nonExistingScreenName, interests)
 
 		// This should return ErrNoUser, as the user does not exist
 		assert.ErrorIs(t, err, ErrNoUser)
@@ -1032,11 +1033,11 @@ func TestSQLiteUserStore_SetInterests(t *testing.T) {
 	t.Run("Empty Interests", func(t *testing.T) {
 		// Test updating with empty interests
 		emptyInterests := ICQInterests{}
-		err := f.SetInterests(screenName, emptyInterests)
+		err := f.SetInterests(context.Background(), screenName, emptyInterests)
 		assert.NoError(t, err)
 
 		// Retrieve the user and verify that interests fields are empty or have default values
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Empty(t, updatedUser.ICQInterests.Code1)
 		assert.Empty(t, updatedUser.ICQInterests.Keyword1)
@@ -1064,7 +1065,7 @@ func TestSQLiteUserStore_SetAffiliations(t *testing.T) {
 	user := User{
 		IdentScreenName: screenName,
 	}
-	err = f.InsertUser(user)
+	err = f.InsertUser(context.Background(), user)
 	assert.NoError(t, err)
 
 	// Define the affiliations data to set
@@ -1085,11 +1086,11 @@ func TestSQLiteUserStore_SetAffiliations(t *testing.T) {
 
 	t.Run("Successful Update", func(t *testing.T) {
 		// Call SetAffiliations
-		err := f.SetAffiliations(screenName, affiliations)
+		err := f.SetAffiliations(context.Background(), screenName, affiliations)
 		assert.NoError(t, err)
 
 		// Retrieve the user and verify the affiliations were set correctly
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Equal(t, affiliations.CurrentCode1, updatedUser.ICQAffiliations.CurrentCode1)
 		assert.Equal(t, affiliations.CurrentKeyword1, updatedUser.ICQAffiliations.CurrentKeyword1)
@@ -1108,7 +1109,7 @@ func TestSQLiteUserStore_SetAffiliations(t *testing.T) {
 	t.Run("Update Non-Existing User", func(t *testing.T) {
 		// Try to set affiliations for a non-existing user
 		nonExistingScreenName := NewIdentScreenName("nonexistentuser")
-		err := f.SetAffiliations(nonExistingScreenName, affiliations)
+		err := f.SetAffiliations(context.Background(), nonExistingScreenName, affiliations)
 
 		// This should return ErrNoUser, as the user does not exist
 		assert.ErrorIs(t, err, ErrNoUser)
@@ -1117,11 +1118,11 @@ func TestSQLiteUserStore_SetAffiliations(t *testing.T) {
 	t.Run("Empty Affiliations", func(t *testing.T) {
 		// Test updating with empty affiliations
 		emptyAffiliations := ICQAffiliations{}
-		err := f.SetAffiliations(screenName, emptyAffiliations)
+		err := f.SetAffiliations(context.Background(), screenName, emptyAffiliations)
 		assert.NoError(t, err)
 
 		// Retrieve the user and verify that affiliations fields are empty or have default values
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Empty(t, updatedUser.ICQAffiliations.CurrentCode1)
 		assert.Empty(t, updatedUser.ICQAffiliations.CurrentKeyword1)
@@ -1153,7 +1154,7 @@ func TestSQLiteUserStore_SetBasicInfo(t *testing.T) {
 	user := User{
 		IdentScreenName: screenName,
 	}
-	err = f.InsertUser(user)
+	err = f.InsertUser(context.Background(), user)
 	assert.NoError(t, err)
 
 	// Define the basic info data to set
@@ -1176,11 +1177,11 @@ func TestSQLiteUserStore_SetBasicInfo(t *testing.T) {
 
 	t.Run("Successful Update", func(t *testing.T) {
 		// Call SetBasicInfo
-		err := f.SetBasicInfo(screenName, basicInfo)
+		err := f.SetBasicInfo(context.Background(), screenName, basicInfo)
 		assert.NoError(t, err)
 
 		// Retrieve the user and verify the basic info was set correctly
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Equal(t, basicInfo.CellPhone, updatedUser.ICQBasicInfo.CellPhone)
 		assert.Equal(t, basicInfo.CountryCode, updatedUser.ICQBasicInfo.CountryCode)
@@ -1201,7 +1202,7 @@ func TestSQLiteUserStore_SetBasicInfo(t *testing.T) {
 	t.Run("Update Non-Existing User", func(t *testing.T) {
 		// Try to set basic info for a non-existing user
 		nonExistingScreenName := NewIdentScreenName("nonexistentuser")
-		err := f.SetBasicInfo(nonExistingScreenName, basicInfo)
+		err := f.SetBasicInfo(context.Background(), nonExistingScreenName, basicInfo)
 
 		// This should return ErrNoUser, as the user does not exist
 		assert.ErrorIs(t, err, ErrNoUser)
@@ -1210,11 +1211,11 @@ func TestSQLiteUserStore_SetBasicInfo(t *testing.T) {
 	t.Run("Empty Basic Info", func(t *testing.T) {
 		// Test updating with empty basic info
 		emptyBasicInfo := ICQBasicInfo{}
-		err := f.SetBasicInfo(screenName, emptyBasicInfo)
+		err := f.SetBasicInfo(context.Background(), screenName, emptyBasicInfo)
 		assert.NoError(t, err)
 
 		// Retrieve the user and verify that basic info fields are empty or have default values
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Empty(t, updatedUser.ICQBasicInfo.CellPhone)
 		assert.Empty(t, updatedUser.ICQBasicInfo.CountryCode)
@@ -1247,7 +1248,7 @@ func TestSQLiteUserStore_FindByICQInterests(t *testing.T) {
 	user1 := User{
 		IdentScreenName: NewIdentScreenName("user1"),
 	}
-	err = f.InsertUser(user1)
+	err = f.InsertUser(context.Background(), user1)
 	assert.NoError(t, err)
 	interests1 := ICQInterests{
 		Code1:    1,
@@ -1255,13 +1256,13 @@ func TestSQLiteUserStore_FindByICQInterests(t *testing.T) {
 		Code2:    2,
 		Keyword2: "Music",
 	}
-	err = f.SetInterests(user1.IdentScreenName, interests1)
+	err = f.SetInterests(context.Background(), user1.IdentScreenName, interests1)
 	assert.NoError(t, err)
 
 	user2 := User{
 		IdentScreenName: NewIdentScreenName("user2"),
 	}
-	err = f.InsertUser(user2)
+	err = f.InsertUser(context.Background(), user2)
 	assert.NoError(t, err)
 	interests2 := ICQInterests{
 		Code1:    1,
@@ -1269,13 +1270,13 @@ func TestSQLiteUserStore_FindByICQInterests(t *testing.T) {
 		Code3:    3,
 		Keyword3: "Gaming",
 	}
-	err = f.SetInterests(user2.IdentScreenName, interests2)
+	err = f.SetInterests(context.Background(), user2.IdentScreenName, interests2)
 	assert.NoError(t, err)
 
 	user3 := User{
 		IdentScreenName: NewIdentScreenName("user3"),
 	}
-	err = f.InsertUser(user3)
+	err = f.InsertUser(context.Background(), user3)
 	assert.NoError(t, err)
 	interests3 := ICQInterests{
 		Code2:    2,
@@ -1283,7 +1284,7 @@ func TestSQLiteUserStore_FindByICQInterests(t *testing.T) {
 		Code4:    4,
 		Keyword4: "Travel",
 	}
-	err = f.SetInterests(user3.IdentScreenName, interests3)
+	err = f.SetInterests(context.Background(), user3.IdentScreenName, interests3)
 	assert.NoError(t, err)
 
 	// Helper function to check if a user with a specific IdentScreenName exists in the results
@@ -1298,7 +1299,7 @@ func TestSQLiteUserStore_FindByICQInterests(t *testing.T) {
 
 	t.Run("Find Users by Single Keyword", func(t *testing.T) {
 		// Search for users interested in "Music"
-		users, err := f.FindByICQInterests(2, []string{"Music"})
+		users, err := f.FindByICQInterests(context.Background(), 2, []string{"Music"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 
@@ -1309,7 +1310,7 @@ func TestSQLiteUserStore_FindByICQInterests(t *testing.T) {
 
 	t.Run("Find Users by Multiple Keywords", func(t *testing.T) {
 		// Search for users interested in "Coding" or "Gaming"
-		users, err := f.FindByICQInterests(1, []string{"Coding", "Gaming"})
+		users, err := f.FindByICQInterests(context.Background(), 1, []string{"Coding", "Gaming"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 
@@ -1320,14 +1321,14 @@ func TestSQLiteUserStore_FindByICQInterests(t *testing.T) {
 
 	t.Run("Find Users by Multiple Codes and Keywords", func(t *testing.T) {
 		// Search for users interested in "Coding"
-		users, err := f.FindByICQInterests(1, []string{"Coding"})
+		users, err := f.FindByICQInterests(context.Background(), 1, []string{"Coding"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 		assert.True(t, containsUserWithScreenName(users, user1.IdentScreenName))
 		assert.True(t, containsUserWithScreenName(users, user2.IdentScreenName))
 
 		// Search for users interested in "Travel"
-		users, err = f.FindByICQInterests(4, []string{"Travel"})
+		users, err = f.FindByICQInterests(context.Background(), 4, []string{"Travel"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 1)
 		assert.True(t, containsUserWithScreenName(users, user3.IdentScreenName))
@@ -1335,7 +1336,7 @@ func TestSQLiteUserStore_FindByICQInterests(t *testing.T) {
 
 	t.Run("No Users Found", func(t *testing.T) {
 		// Search for users interested in a keyword that no user has
-		users, err := f.FindByICQInterests(1, []string{"Status"})
+		users, err := f.FindByICQInterests(context.Background(), 1, []string{"Status"})
 		assert.NoError(t, err)
 		assert.Empty(t, users)
 	})
@@ -1355,37 +1356,37 @@ func TestSQLiteUserStore_FindByICQKeyword(t *testing.T) {
 	user1 := User{
 		IdentScreenName: NewIdentScreenName("user1"),
 	}
-	err = f.InsertUser(user1)
+	err = f.InsertUser(context.Background(), user1)
 	assert.NoError(t, err)
 	interests1 := ICQInterests{
 		Keyword1: "Coding",
 		Keyword2: "Music",
 	}
-	err = f.SetInterests(user1.IdentScreenName, interests1)
+	err = f.SetInterests(context.Background(), user1.IdentScreenName, interests1)
 	assert.NoError(t, err)
 
 	user2 := User{
 		IdentScreenName: NewIdentScreenName("user2"),
 	}
-	err = f.InsertUser(user2)
+	err = f.InsertUser(context.Background(), user2)
 	assert.NoError(t, err)
 	interests2 := ICQInterests{
 		Keyword1: "Coding",
 		Keyword3: "Gaming",
 	}
-	err = f.SetInterests(user2.IdentScreenName, interests2)
+	err = f.SetInterests(context.Background(), user2.IdentScreenName, interests2)
 	assert.NoError(t, err)
 
 	user3 := User{
 		IdentScreenName: NewIdentScreenName("user3"),
 	}
-	err = f.InsertUser(user3)
+	err = f.InsertUser(context.Background(), user3)
 	assert.NoError(t, err)
 	interests3 := ICQInterests{
 		Keyword3: "Music",
 		Keyword4: "Travel",
 	}
-	err = f.SetInterests(user3.IdentScreenName, interests3)
+	err = f.SetInterests(context.Background(), user3.IdentScreenName, interests3)
 	assert.NoError(t, err)
 
 	// Helper function to check if a user with a specific IdentScreenName exists in the results
@@ -1400,7 +1401,7 @@ func TestSQLiteUserStore_FindByICQKeyword(t *testing.T) {
 
 	t.Run("Find Users by Keyword", func(t *testing.T) {
 		// Search for users interested in "Music"
-		users, err := f.FindByICQKeyword("Music")
+		users, err := f.FindByICQKeyword(context.Background(), "Music")
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 
@@ -1411,7 +1412,7 @@ func TestSQLiteUserStore_FindByICQKeyword(t *testing.T) {
 
 	t.Run("No Users Found", func(t *testing.T) {
 		// Search for users interested in a keyword that no user has
-		users, err := f.FindByICQKeyword("Knitting")
+		users, err := f.FindByICQKeyword(context.Background(), "Knitting")
 		assert.NoError(t, err)
 		assert.Empty(t, users)
 	})
@@ -1431,40 +1432,40 @@ func TestSQLiteUserStore_FindByICQName(t *testing.T) {
 	user1 := User{
 		IdentScreenName: NewIdentScreenName("user1"),
 	}
-	err = f.InsertUser(user1)
+	err = f.InsertUser(context.Background(), user1)
 	assert.NoError(t, err)
 	basicInfo1 := ICQBasicInfo{
 		FirstName: "John",
 		LastName:  "Doe",
 		Nickname:  "Johnny",
 	}
-	err = f.SetBasicInfo(user1.IdentScreenName, basicInfo1)
+	err = f.SetBasicInfo(context.Background(), user1.IdentScreenName, basicInfo1)
 	assert.NoError(t, err)
 
 	user2 := User{
 		IdentScreenName: NewIdentScreenName("user2"),
 	}
-	err = f.InsertUser(user2)
+	err = f.InsertUser(context.Background(), user2)
 	assert.NoError(t, err)
 	basicInfo2 := ICQBasicInfo{
 		FirstName: "Jane",
 		LastName:  "Smith",
 		Nickname:  "Janey",
 	}
-	err = f.SetBasicInfo(user2.IdentScreenName, basicInfo2)
+	err = f.SetBasicInfo(context.Background(), user2.IdentScreenName, basicInfo2)
 	assert.NoError(t, err)
 
 	user3 := User{
 		IdentScreenName: NewIdentScreenName("user3"),
 	}
-	err = f.InsertUser(user3)
+	err = f.InsertUser(context.Background(), user3)
 	assert.NoError(t, err)
 	basicInfo3 := ICQBasicInfo{
 		FirstName: "John",
 		LastName:  "Smith",
 		Nickname:  "JohnnyS",
 	}
-	err = f.SetBasicInfo(user3.IdentScreenName, basicInfo3)
+	err = f.SetBasicInfo(context.Background(), user3.IdentScreenName, basicInfo3)
 	assert.NoError(t, err)
 
 	// Helper function to check if a user with a specific IdentScreenName exists in the results
@@ -1479,7 +1480,7 @@ func TestSQLiteUserStore_FindByICQName(t *testing.T) {
 
 	t.Run("Find Users by First Cookie", func(t *testing.T) {
 		// Search for users with the first name "John"
-		users, err := f.FindByICQName("John", "", "")
+		users, err := f.FindByICQName(context.Background(), "John", "", "")
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 
@@ -1490,7 +1491,7 @@ func TestSQLiteUserStore_FindByICQName(t *testing.T) {
 
 	t.Run("Find Users by Last Cookie", func(t *testing.T) {
 		// Search for users with the last name "Smith"
-		users, err := f.FindByICQName("", "Smith", "")
+		users, err := f.FindByICQName(context.Background(), "", "Smith", "")
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 
@@ -1501,7 +1502,7 @@ func TestSQLiteUserStore_FindByICQName(t *testing.T) {
 
 	t.Run("Find Users by Nickname", func(t *testing.T) {
 		// Search for users with the nickname "Johnny"
-		users, err := f.FindByICQName("", "", "Johnny")
+		users, err := f.FindByICQName(context.Background(), "", "", "Johnny")
 		assert.NoError(t, err)
 		assert.Len(t, users, 1)
 
@@ -1511,7 +1512,7 @@ func TestSQLiteUserStore_FindByICQName(t *testing.T) {
 
 	t.Run("Find Users by Multiple Fields", func(t *testing.T) {
 		// Search for users with the first name "Jane" and last name "Smith"
-		users, err := f.FindByICQName("Jane", "Smith", "")
+		users, err := f.FindByICQName(context.Background(), "Jane", "Smith", "")
 		assert.NoError(t, err)
 		assert.Len(t, users, 1)
 
@@ -1521,7 +1522,7 @@ func TestSQLiteUserStore_FindByICQName(t *testing.T) {
 
 	t.Run("No Users Found", func(t *testing.T) {
 		// Search for users with a first name that no user has
-		users, err := f.FindByICQName("NonExistent", "", "")
+		users, err := f.FindByICQName(context.Background(), "NonExistent", "", "")
 		assert.NoError(t, err)
 		assert.Empty(t, users)
 	})
@@ -1541,7 +1542,7 @@ func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
 	user1 := User{
 		IdentScreenName: NewIdentScreenName("user1"),
 	}
-	err = f.InsertUser(user1)
+	err = f.InsertUser(context.Background(), user1)
 	assert.NoError(t, err)
 	directoryInfo1 := AIMNameAndAddr{
 		FirstName: "John",
@@ -1549,13 +1550,13 @@ func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
 		NickName:  "Johnny",
 		City:      "New York",
 	}
-	err = f.SetDirectoryInfo(user1.IdentScreenName, directoryInfo1)
+	err = f.SetDirectoryInfo(context.Background(), user1.IdentScreenName, directoryInfo1)
 	assert.NoError(t, err)
 
 	user2 := User{
 		IdentScreenName: NewIdentScreenName("user2"),
 	}
-	err = f.InsertUser(user2)
+	err = f.InsertUser(context.Background(), user2)
 	assert.NoError(t, err)
 	directoryInfo2 := AIMNameAndAddr{
 		FirstName: "Jane",
@@ -1563,13 +1564,13 @@ func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
 		NickName:  "Janey",
 		Country:   "USA",
 	}
-	err = f.SetDirectoryInfo(user2.IdentScreenName, directoryInfo2)
+	err = f.SetDirectoryInfo(context.Background(), user2.IdentScreenName, directoryInfo2)
 	assert.NoError(t, err)
 
 	user3 := User{
 		IdentScreenName: NewIdentScreenName("user3"),
 	}
-	err = f.InsertUser(user3)
+	err = f.InsertUser(context.Background(), user3)
 	assert.NoError(t, err)
 	directoryInfo3 := AIMNameAndAddr{
 		FirstName: "John",
@@ -1577,7 +1578,7 @@ func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
 		NickName:  "JohnnyS",
 		State:     "California",
 	}
-	err = f.SetDirectoryInfo(user3.IdentScreenName, directoryInfo3)
+	err = f.SetDirectoryInfo(context.Background(), user3.IdentScreenName, directoryInfo3)
 	assert.NoError(t, err)
 
 	// Helper function to check if a user with a specific IdentScreenName exists in the results
@@ -1592,7 +1593,7 @@ func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
 
 	t.Run("Find Users by First Cookie", func(t *testing.T) {
 		// Search for users with the first name "John"
-		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{FirstName: "John"})
+		users, err := f.FindByAIMNameAndAddr(context.Background(), AIMNameAndAddr{FirstName: "John"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 
@@ -1603,7 +1604,7 @@ func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
 
 	t.Run("Find Users by Last Cookie", func(t *testing.T) {
 		// Search for users with the last name "Smith"
-		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{LastName: "Smith"})
+		users, err := f.FindByAIMNameAndAddr(context.Background(), AIMNameAndAddr{LastName: "Smith"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 2)
 
@@ -1614,7 +1615,7 @@ func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
 
 	t.Run("Find Users by Nickname", func(t *testing.T) {
 		// Search for users with the nickname "Johnny"
-		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{NickName: "Johnny"})
+		users, err := f.FindByAIMNameAndAddr(context.Background(), AIMNameAndAddr{NickName: "Johnny"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 1)
 
@@ -1624,7 +1625,7 @@ func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
 
 	t.Run("Find Users by City", func(t *testing.T) {
 		// Search for users with the city "New York"
-		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{City: "New York"})
+		users, err := f.FindByAIMNameAndAddr(context.Background(), AIMNameAndAddr{City: "New York"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 1)
 
@@ -1634,7 +1635,7 @@ func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
 
 	t.Run("Find Users by Multiple Fields", func(t *testing.T) {
 		// Search for users with the first name "Jane" and country "USA"
-		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{FirstName: "Jane", Country: "USA"})
+		users, err := f.FindByAIMNameAndAddr(context.Background(), AIMNameAndAddr{FirstName: "Jane", Country: "USA"})
 		assert.NoError(t, err)
 		assert.Len(t, users, 1)
 
@@ -1644,7 +1645,7 @@ func TestSQLiteUserStore_FindByDirectoryInfo(t *testing.T) {
 
 	t.Run("No Users Found", func(t *testing.T) {
 		// Search for users with a first name that no user has
-		users, err := f.FindByAIMNameAndAddr(AIMNameAndAddr{FirstName: "NonExistent"})
+		users, err := f.FindByAIMNameAndAddr(context.Background(), AIMNameAndAddr{FirstName: "NonExistent"})
 		assert.NoError(t, err)
 		assert.Empty(t, users)
 	})
@@ -1664,56 +1665,56 @@ func TestSQLiteUserStore_FindByICQEmail(t *testing.T) {
 	user1 := User{
 		IdentScreenName: NewIdentScreenName("user1"),
 	}
-	err = f.InsertUser(user1)
+	err = f.InsertUser(context.Background(), user1)
 	assert.NoError(t, err)
 	basicInfo1 := ICQBasicInfo{
 		EmailAddress: "user1@example.com",
 	}
-	err = f.SetBasicInfo(user1.IdentScreenName, basicInfo1)
+	err = f.SetBasicInfo(context.Background(), user1.IdentScreenName, basicInfo1)
 	assert.NoError(t, err)
 
 	user2 := User{
 		IdentScreenName: NewIdentScreenName("user2"),
 	}
-	err = f.InsertUser(user2)
+	err = f.InsertUser(context.Background(), user2)
 	assert.NoError(t, err)
 	basicInfo2 := ICQBasicInfo{
 		EmailAddress: "user2@example.com",
 	}
-	err = f.SetBasicInfo(user2.IdentScreenName, basicInfo2)
+	err = f.SetBasicInfo(context.Background(), user2.IdentScreenName, basicInfo2)
 	assert.NoError(t, err)
 
 	user3 := User{
 		IdentScreenName: NewIdentScreenName("user3"),
 	}
-	err = f.InsertUser(user3)
+	err = f.InsertUser(context.Background(), user3)
 	assert.NoError(t, err)
 	basicInfo3 := ICQBasicInfo{
 		EmailAddress: "user3@example.com",
 	}
-	err = f.SetBasicInfo(user3.IdentScreenName, basicInfo3)
+	err = f.SetBasicInfo(context.Background(), user3.IdentScreenName, basicInfo3)
 	assert.NoError(t, err)
 
 	t.Run("Find User by Email", func(t *testing.T) {
 		// Search for user with email "user1@example.com"
-		user, err := f.FindByICQEmail("user1@example.com")
+		user, err := f.FindByICQEmail(context.Background(), "user1@example.com")
 		assert.NoError(t, err)
 		assert.Equal(t, user1.IdentScreenName, user.IdentScreenName)
 
 		// Search for user with email "user2@example.com"
-		user, err = f.FindByICQEmail("user2@example.com")
+		user, err = f.FindByICQEmail(context.Background(), "user2@example.com")
 		assert.NoError(t, err)
 		assert.Equal(t, user2.IdentScreenName, user.IdentScreenName)
 
 		// Search for user with email "user3@example.com"
-		user, err = f.FindByICQEmail("user3@example.com")
+		user, err = f.FindByICQEmail(context.Background(), "user3@example.com")
 		assert.NoError(t, err)
 		assert.Equal(t, user3.IdentScreenName, user.IdentScreenName)
 	})
 
 	t.Run("User Not Found", func(t *testing.T) {
 		// Search for an email that doesn't exist
-		_, err := f.FindByICQEmail("nonexistent@example.com")
+		_, err := f.FindByICQEmail(context.Background(), "nonexistent@example.com")
 		assert.ErrorIs(t, err, ErrNoUser)
 	})
 }
@@ -1729,49 +1730,49 @@ func TestSQLiteUserStore_FindByAIMEmail(t *testing.T) {
 	user1 := User{
 		IdentScreenName: NewIdentScreenName("user1"),
 	}
-	err = f.InsertUser(user1)
+	err = f.InsertUser(context.Background(), user1)
 	assert.NoError(t, err)
-	err = f.UpdateEmailAddress(&mail.Address{Address: "user1@example.com"}, user1.IdentScreenName)
+	err = f.UpdateEmailAddress(context.Background(), user1.IdentScreenName, &mail.Address{Address: "user1@example.com"})
 	assert.NoError(t, err)
 
 	user2 := User{
 		IdentScreenName: NewIdentScreenName("user2"),
 		EmailAddress:    "user2@example.com",
 	}
-	err = f.InsertUser(user2)
+	err = f.InsertUser(context.Background(), user2)
 	assert.NoError(t, err)
-	err = f.UpdateEmailAddress(&mail.Address{Address: "user2@example.com"}, user2.IdentScreenName)
+	err = f.UpdateEmailAddress(context.Background(), user2.IdentScreenName, &mail.Address{Address: "user2@example.com"})
 	assert.NoError(t, err)
 
 	user3 := User{
 		IdentScreenName: NewIdentScreenName("user3"),
 		EmailAddress:    "user3@example.com",
 	}
-	err = f.InsertUser(user3)
+	err = f.InsertUser(context.Background(), user3)
 	assert.NoError(t, err)
-	err = f.UpdateEmailAddress(&mail.Address{Address: "user3@example.com"}, user3.IdentScreenName)
+	err = f.UpdateEmailAddress(context.Background(), user3.IdentScreenName, &mail.Address{Address: "user3@example.com"})
 	assert.NoError(t, err)
 
 	t.Run("Find User by Email", func(t *testing.T) {
 		// Search for user with email "user1@example.com"
-		user, err := f.FindByAIMEmail("user1@example.com")
+		user, err := f.FindByAIMEmail(context.Background(), "user1@example.com")
 		assert.NoError(t, err)
 		assert.Equal(t, user1.IdentScreenName, user.IdentScreenName)
 
 		// Search for user with email "user2@example.com"
-		user, err = f.FindByAIMEmail("user2@example.com")
+		user, err = f.FindByAIMEmail(context.Background(), "user2@example.com")
 		assert.NoError(t, err)
 		assert.Equal(t, user2.IdentScreenName, user.IdentScreenName)
 
 		// Search for user with email "user3@example.com"
-		user, err = f.FindByAIMEmail("user3@example.com")
+		user, err = f.FindByAIMEmail(context.Background(), "user3@example.com")
 		assert.NoError(t, err)
 		assert.Equal(t, user3.IdentScreenName, user.IdentScreenName)
 	})
 
 	t.Run("User Not Found", func(t *testing.T) {
 		// Search for an email that doesn't exist
-		_, err := f.FindByAIMEmail("nonexistent@example.com")
+		_, err := f.FindByAIMEmail(context.Background(), "nonexistent@example.com")
 		assert.ErrorIs(t, err, ErrNoUser)
 	})
 }
@@ -1790,41 +1791,41 @@ func TestSQLiteUserStore_FindByUIN(t *testing.T) {
 	user1 := User{
 		IdentScreenName: NewIdentScreenName("12345"),
 	}
-	err = f.InsertUser(user1)
+	err = f.InsertUser(context.Background(), user1)
 	assert.NoError(t, err)
 
 	user2 := User{
 		IdentScreenName: NewIdentScreenName("67890"),
 	}
-	err = f.InsertUser(user2)
+	err = f.InsertUser(context.Background(), user2)
 	assert.NoError(t, err)
 
 	user3 := User{
 		IdentScreenName: NewIdentScreenName("54321"),
 	}
-	err = f.InsertUser(user3)
+	err = f.InsertUser(context.Background(), user3)
 	assert.NoError(t, err)
 
 	t.Run("Find User by UIN", func(t *testing.T) {
 		// Search for user with UIN 12345
-		user, err := f.FindByUIN(12345)
+		user, err := f.FindByUIN(context.Background(), 12345)
 		assert.NoError(t, err)
 		assert.Equal(t, user1.IdentScreenName, user.IdentScreenName)
 
 		// Search for user with UIN 67890
-		user, err = f.FindByUIN(67890)
+		user, err = f.FindByUIN(context.Background(), 67890)
 		assert.NoError(t, err)
 		assert.Equal(t, user2.IdentScreenName, user.IdentScreenName)
 
 		// Search for user with UIN 54321
-		user, err = f.FindByUIN(54321)
+		user, err = f.FindByUIN(context.Background(), 54321)
 		assert.NoError(t, err)
 		assert.Equal(t, user3.IdentScreenName, user.IdentScreenName)
 	})
 
 	t.Run("User Not Found", func(t *testing.T) {
 		// Search for a UIN that doesn't exist
-		_, err := f.FindByUIN(99999)
+		_, err := f.FindByUIN(context.Background(), 99999)
 		assert.ErrorIs(t, err, ErrNoUser)
 	})
 }
@@ -1867,12 +1868,12 @@ func TestSQLiteUserStore_RetrieveMessages(t *testing.T) {
 	}
 
 	for _, msg := range offlineMessages {
-		err = f.SaveMessage(msg)
+		err = f.SaveMessage(context.Background(), msg)
 		assert.NoError(t, err)
 	}
 
 	t.Run("Retrieve Messages", func(t *testing.T) {
-		messages, err := f.RetrieveMessages(NewIdentScreenName("Jack"))
+		messages, err := f.RetrieveMessages(context.Background(), NewIdentScreenName("Jack"))
 		assert.NoError(t, err)
 		if assert.Len(t, messages, 2) {
 			assert.Equal(t, offlineMessages[0], messages[0])
@@ -1881,7 +1882,7 @@ func TestSQLiteUserStore_RetrieveMessages(t *testing.T) {
 	})
 
 	t.Run("Retrieve No Messages", func(t *testing.T) {
-		messages, err := f.RetrieveMessages(NewIdentScreenName("Franke"))
+		messages, err := f.RetrieveMessages(context.Background(), NewIdentScreenName("Franke"))
 		assert.NoError(t, err)
 		assert.Empty(t, messages)
 	})
@@ -1925,34 +1926,34 @@ func TestSQLiteUserStore_DeleteMessages(t *testing.T) {
 	}
 
 	for _, msg := range offlineMessages {
-		err = f.SaveMessage(msg)
+		err = f.SaveMessage(context.Background(), msg)
 		assert.NoError(t, err)
 	}
 
 	t.Run("Delete Messages", func(t *testing.T) {
-		err := f.DeleteMessages(NewIdentScreenName("Jack"))
+		err := f.DeleteMessages(context.Background(), NewIdentScreenName("Jack"))
 		assert.NoError(t, err)
 
-		messages, err := f.RetrieveMessages(NewIdentScreenName("Jack"))
+		messages, err := f.RetrieveMessages(context.Background(), NewIdentScreenName("Jack"))
 		assert.NoError(t, err)
 		assert.Empty(t, messages)
 
-		messages, err = f.RetrieveMessages(NewIdentScreenName("Anne"))
+		messages, err = f.RetrieveMessages(context.Background(), NewIdentScreenName("Anne"))
 		assert.NoError(t, err)
 		assert.Len(t, messages, 1)
 	})
 
 	t.Run("Delete No Messages", func(t *testing.T) {
-		err := f.DeleteMessages(NewIdentScreenName("Franke"))
+		err := f.DeleteMessages(context.Background(), NewIdentScreenName("Franke"))
 		assert.NoError(t, err)
 
-		messages, err := f.RetrieveMessages(NewIdentScreenName("Anne"))
+		messages, err := f.RetrieveMessages(context.Background(), NewIdentScreenName("Anne"))
 		assert.NoError(t, err)
 		assert.Len(t, messages, 1)
 	})
 }
 
-func TestSQLiteUserStore_BuddyIconRefByNameExistingRef(t *testing.T) {
+func TestSQLiteUserStore_BuddyIconMetadataExistingRef(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
 	}()
@@ -1975,11 +1976,11 @@ func TestSQLiteUserStore_BuddyIconRefByNameExistingRef(t *testing.T) {
 			},
 		},
 	}
-	if err := feedbagStore.FeedbagUpsert(screenName, itemsIn); err != nil {
+	if err := feedbagStore.FeedbagUpsert(context.Background(), screenName, itemsIn); err != nil {
 		t.Fatalf("failed to upsert: %s", err.Error())
 	}
 
-	b, err := feedbagStore.BuddyIconRefByName(screenName)
+	b, err := feedbagStore.BuddyIconMetadata(context.Background(), screenName)
 	assert.NoError(t, err)
 
 	if !reflect.DeepEqual(b.BARTInfo.Hash, testHash) {
@@ -1987,7 +1988,7 @@ func TestSQLiteUserStore_BuddyIconRefByNameExistingRef(t *testing.T) {
 	}
 }
 
-func TestSQLiteUserStore_BuddyIconRefByNameMissingRef(t *testing.T) {
+func TestSQLiteUserStore_BuddyIconMetadataMissingRef(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.Remove(testFile))
 	}()
@@ -2012,11 +2013,11 @@ func TestSQLiteUserStore_BuddyIconRefByNameMissingRef(t *testing.T) {
 			},
 		},
 	}
-	if err := feedbagStore.FeedbagUpsert(existingScreenName, itemsIn); err != nil {
+	if err := feedbagStore.FeedbagUpsert(context.Background(), existingScreenName, itemsIn); err != nil {
 		t.Fatalf("failed to upsert: %s", err.Error())
 	}
 
-	b, err := feedbagStore.BuddyIconRefByName(queryScreenName)
+	b, err := feedbagStore.BuddyIconMetadata(context.Background(), queryScreenName)
 	assert.NoError(t, err)
 
 	if b != nil {
@@ -2036,7 +2037,7 @@ func TestSQLiteUserStore_SetDirectoryInfo(t *testing.T) {
 	user := User{
 		IdentScreenName: screenName,
 	}
-	err = f.InsertUser(user)
+	err = f.InsertUser(context.Background(), user)
 	assert.NoError(t, err)
 
 	directoryInfo := AIMNameAndAddr{
@@ -2053,10 +2054,10 @@ func TestSQLiteUserStore_SetDirectoryInfo(t *testing.T) {
 	}
 
 	t.Run("Successful Update", func(t *testing.T) {
-		err := f.SetDirectoryInfo(screenName, directoryInfo)
+		err := f.SetDirectoryInfo(context.Background(), screenName, directoryInfo)
 		assert.NoError(t, err)
 
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Equal(t, directoryInfo.FirstName, updatedUser.AIMDirectoryInfo.FirstName)
 		assert.Equal(t, directoryInfo.LastName, updatedUser.AIMDirectoryInfo.LastName)
@@ -2072,17 +2073,17 @@ func TestSQLiteUserStore_SetDirectoryInfo(t *testing.T) {
 
 	t.Run("Update Non-Existing User", func(t *testing.T) {
 		nonExistingScreenName := NewIdentScreenName("nonexistentuser")
-		err := f.SetDirectoryInfo(nonExistingScreenName, directoryInfo)
+		err := f.SetDirectoryInfo(context.Background(), nonExistingScreenName, directoryInfo)
 
 		assert.ErrorIs(t, err, ErrNoUser)
 	})
 
 	t.Run("Empty Directory Info", func(t *testing.T) {
 		emptyDirectoryInfo := AIMNameAndAddr{}
-		err := f.SetDirectoryInfo(screenName, emptyDirectoryInfo)
+		err := f.SetDirectoryInfo(context.Background(), screenName, emptyDirectoryInfo)
 		assert.NoError(t, err)
 
-		updatedUser, err := f.User(screenName)
+		updatedUser, err := f.User(context.Background(), screenName)
 		assert.NoError(t, err)
 		assert.Empty(t, updatedUser.AIMDirectoryInfo.FirstName)
 		assert.Empty(t, updatedUser.AIMDirectoryInfo.LastName)
@@ -2108,11 +2109,11 @@ func TestSQLiteUserStore_Categories(t *testing.T) {
 		// Insert some test keyword categories
 		categories := []string{"Category3", "Category1", "Category2"}
 		for _, categoryName := range categories {
-			_, err := f.CreateCategory(categoryName)
+			_, err := f.CreateCategory(context.Background(), categoryName)
 			assert.NoError(t, err)
 		}
 
-		retrievedCategories, err := f.Categories()
+		retrievedCategories, err := f.Categories(context.Background())
 		assert.NoError(t, err)
 
 		// Make sure all categories are returned in alphabetical order
@@ -2146,7 +2147,7 @@ func TestSQLiteUserStore_Categories(t *testing.T) {
 		_, err = f.db.Exec(`DELETE FROM aimKeywordCategory`)
 		assert.NoError(t, err)
 
-		retrievedCategories, err := f.Categories()
+		retrievedCategories, err := f.Categories(context.Background())
 		assert.NoError(t, err)
 		assert.Empty(t, retrievedCategories)
 	})
@@ -2162,7 +2163,7 @@ func TestSQLiteUserStore_Categories(t *testing.T) {
 		_, err = f.db.Exec(`DROP TABLE aimKeywordCategory`)
 		assert.NoError(t, err)
 
-		_, err = f.Categories()
+		_, err = f.Categories(context.Background())
 		assert.Error(t, err)
 	})
 
@@ -2175,11 +2176,11 @@ func TestSQLiteUserStore_Categories(t *testing.T) {
 
 		// Insert a category with a unique name
 		categoryName := "UniqueCategory"
-		_, err = f.CreateCategory(categoryName)
+		_, err = f.CreateCategory(context.Background(), categoryName)
 		assert.NoError(t, err)
 
 		// Try to insert the same category name again to trigger the unique constraint
-		_, err = f.CreateCategory(categoryName)
+		_, err = f.CreateCategory(context.Background(), categoryName)
 		assert.ErrorIs(t, err, ErrKeywordCategoryExists)
 	})
 }
@@ -2193,13 +2194,13 @@ func TestSQLiteUserStore_CreateCategory(t *testing.T) {
 		assert.NoError(t, err)
 
 		categoryName := "TestCategory"
-		keywordCategory, err := f.CreateCategory(categoryName)
+		keywordCategory, err := f.CreateCategory(context.Background(), categoryName)
 		assert.NoError(t, err)
 
 		assert.Equal(t, categoryName, keywordCategory.Name)
 		assert.NotZero(t, keywordCategory.ID)
 
-		categories, err := f.Categories()
+		categories, err := f.Categories(context.Background())
 		assert.NoError(t, err)
 		if assert.Len(t, categories, 1) {
 			assert.Equal(t, categoryName, categories[0].Name)
@@ -2216,11 +2217,11 @@ func TestSQLiteUserStore_CreateCategory(t *testing.T) {
 		categoryName := "DuplicateCategory"
 
 		// Create the category
-		_, err = f.CreateCategory(categoryName)
+		_, err = f.CreateCategory(context.Background(), categoryName)
 		assert.NoError(t, err)
 
 		// Try to create the same category again
-		_, err = f.CreateCategory(categoryName)
+		_, err = f.CreateCategory(context.Background(), categoryName)
 		assert.ErrorIs(t, err, ErrKeywordCategoryExists)
 	})
 
@@ -2233,12 +2234,12 @@ func TestSQLiteUserStore_CreateCategory(t *testing.T) {
 
 		// Simulate ID overflow by inserting max number of entries
 		for i := range math.MaxUint8 {
-			_, err := f.CreateCategory(fmt.Sprintf("Category_%d", i))
+			_, err := f.CreateCategory(context.Background(), fmt.Sprintf("Category_%d", i))
 			assert.NoError(t, err)
 		}
 
 		// Next insert should cause an ID overflow
-		_, err = f.CreateCategory("OverflowCategory")
+		_, err = f.CreateCategory(context.Background(), "OverflowCategory")
 		assert.ErrorIs(t, err, errTooManyCategories)
 	})
 
@@ -2253,7 +2254,7 @@ func TestSQLiteUserStore_CreateCategory(t *testing.T) {
 		_, err = f.db.Exec(`DROP TABLE aimKeywordCategory`)
 		assert.NoError(t, err)
 
-		_, err = f.CreateCategory("ShouldFail")
+		_, err = f.CreateCategory(context.Background(), "ShouldFail")
 		assert.Error(t, err)
 	})
 }
@@ -2268,20 +2269,20 @@ func TestSQLiteUserStore_DeleteCategory(t *testing.T) {
 
 		// Insert a test category
 		categoryName := "CategoryToDelete"
-		category, err := f.CreateCategory(categoryName)
+		category, err := f.CreateCategory(context.Background(), categoryName)
 		assert.NoError(t, err)
 
 		// Ensure the category was created
-		retrievedCategories, err := f.Categories()
+		retrievedCategories, err := f.Categories(context.Background())
 		assert.NoError(t, err)
 		assert.Len(t, retrievedCategories, 1)
 
 		// Delete the category
-		err = f.DeleteCategory(category.ID)
+		err = f.DeleteCategory(context.Background(), category.ID)
 		assert.NoError(t, err)
 
 		// Verify the category was deleted
-		retrievedCategories, err = f.Categories()
+		retrievedCategories, err = f.Categories(context.Background())
 		assert.NoError(t, err)
 		assert.Empty(t, retrievedCategories)
 	})
@@ -2295,7 +2296,7 @@ func TestSQLiteUserStore_DeleteCategory(t *testing.T) {
 
 		// Attempt to delete a category that does not exist
 		nonExistentCategoryID := uint8(99)
-		err = f.DeleteCategory(nonExistentCategoryID)
+		err = f.DeleteCategory(context.Background(), nonExistentCategoryID)
 		assert.ErrorIs(t, err, ErrKeywordCategoryNotFound)
 	})
 
@@ -2308,26 +2309,26 @@ func TestSQLiteUserStore_DeleteCategory(t *testing.T) {
 
 		// Insert a category
 		categoryName := "CategoryInUse"
-		category, err := f.CreateCategory(categoryName)
+		category, err := f.CreateCategory(context.Background(), categoryName)
 		assert.NoError(t, err)
 
 		// Insert a keyword that references this category
 		keywordName := "KeywordInUse"
-		_, err = f.CreateKeyword(keywordName, category.ID)
+		_, err = f.CreateKeyword(context.Background(), keywordName, category.ID)
 		assert.NoError(t, err)
 
 		// Create a user and associate it with the keyword
 		u := User{
 			IdentScreenName: NewIdentScreenName("testuser"),
 		}
-		err = f.InsertUser(u)
+		err = f.InsertUser(context.Background(), u)
 		assert.NoError(t, err)
 
-		err = f.SetKeywords(u.IdentScreenName, [5]string{keywordName})
+		err = f.SetKeywords(context.Background(), u.IdentScreenName, [5]string{keywordName})
 		assert.NoError(t, err)
 
 		// Attempt to delete the category that is in use by the keyword
-		err = f.DeleteCategory(category.ID)
+		err = f.DeleteCategory(context.Background(), category.ID)
 		assert.ErrorIs(t, err, ErrKeywordInUse)
 	})
 }
@@ -2342,19 +2343,19 @@ func TestSQLiteUserStore_CreateKeyword(t *testing.T) {
 
 		// Create a test category
 		categoryName := "TestCategory"
-		category, err := f.CreateCategory(categoryName)
+		category, err := f.CreateCategory(context.Background(), categoryName)
 		assert.NoError(t, err)
 
 		// Insert a keyword for the category
 		keywordName := "TestKeyword"
-		keyword, err := f.CreateKeyword(keywordName, category.ID)
+		keyword, err := f.CreateKeyword(context.Background(), keywordName, category.ID)
 		assert.NoError(t, err)
 
 		assert.Equal(t, keywordName, keyword.Name)
 		assert.NotZero(t, keyword.ID)
 
 		// Verify the keyword and category were inserted into the database
-		keywords, err := f.KeywordsByCategory(category.ID)
+		keywords, err := f.KeywordsByCategory(context.Background(), category.ID)
 		assert.NoError(t, err)
 		if assert.Len(t, keywords, 1) {
 			expect := []Keyword{
@@ -2373,14 +2374,14 @@ func TestSQLiteUserStore_CreateKeyword(t *testing.T) {
 
 		// Insert a keyword with no category (parent is NULL)
 		keywordName := "UncategorizedKeyword"
-		keyword, err := f.CreateKeyword(keywordName, 0)
+		keyword, err := f.CreateKeyword(context.Background(), keywordName, 0)
 		assert.NoError(t, err)
 
 		assert.Equal(t, keywordName, keyword.Name)
 		assert.NotZero(t, keyword.ID)
 
 		// Verify the keyword was inserted into the database
-		keywords, err := f.KeywordsByCategory(0)
+		keywords, err := f.KeywordsByCategory(context.Background(), 0)
 		assert.NoError(t, err)
 		if assert.Len(t, keywords, 1) {
 			expect := []Keyword{
@@ -2399,7 +2400,7 @@ func TestSQLiteUserStore_CreateKeyword(t *testing.T) {
 
 		// Insert a keyword with no category (parent is NULL)
 		keywordName := "AKeyword"
-		_, err = f.CreateKeyword(keywordName, 1)
+		_, err = f.CreateKeyword(context.Background(), keywordName, 1)
 		assert.ErrorIs(t, err, ErrKeywordCategoryNotFound)
 	})
 
@@ -2413,11 +2414,11 @@ func TestSQLiteUserStore_CreateKeyword(t *testing.T) {
 		keywordName := "DuplicateKeyword"
 
 		// Create the keyword
-		_, err = f.CreateKeyword(keywordName, 0)
+		_, err = f.CreateKeyword(context.Background(), keywordName, 0)
 		assert.NoError(t, err)
 
 		// Try to create the same keyword again
-		_, err = f.CreateKeyword(keywordName, 0)
+		_, err = f.CreateKeyword(context.Background(), keywordName, 0)
 		assert.ErrorIs(t, err, ErrKeywordExists)
 	})
 
@@ -2430,17 +2431,17 @@ func TestSQLiteUserStore_CreateKeyword(t *testing.T) {
 
 		// Create a test category
 		categoryName := "OverflowCategory"
-		category, err := f.CreateCategory(categoryName)
+		category, err := f.CreateCategory(context.Background(), categoryName)
 		assert.NoError(t, err)
 
 		// Simulate ID overflow by inserting max number of entries
 		for i := 0; i < math.MaxUint8; i++ {
-			_, err := f.CreateKeyword(fmt.Sprintf("Keyword_%d", i), category.ID)
+			_, err := f.CreateKeyword(context.Background(), fmt.Sprintf("Keyword_%d", i), category.ID)
 			assert.NoError(t, err)
 		}
 
 		// Next insert should cause an ID overflow
-		_, err = f.CreateKeyword("OverflowKeyword", category.ID)
+		_, err = f.CreateKeyword(context.Background(), "OverflowKeyword", category.ID)
 		assert.ErrorIs(t, err, errTooManyKeywords)
 	})
 
@@ -2455,7 +2456,7 @@ func TestSQLiteUserStore_CreateKeyword(t *testing.T) {
 		_, err = f.db.Exec(`DROP TABLE aimKeyword`)
 		assert.NoError(t, err)
 
-		_, err = f.CreateKeyword("ShouldFail", 0)
+		_, err = f.CreateKeyword(context.Background(), "ShouldFail", 0)
 		assert.Error(t, err)
 	})
 }
@@ -2470,25 +2471,25 @@ func TestSQLiteUserStore_DeleteKeyword(t *testing.T) {
 
 		// Insert a category
 		categoryName := "TestCategory"
-		category, err := f.CreateCategory(categoryName)
+		category, err := f.CreateCategory(context.Background(), categoryName)
 		assert.NoError(t, err)
 
 		// Insert a keyword for the category
 		keywordName := "TestKeyword"
-		keyword, err := f.CreateKeyword(keywordName, category.ID)
+		keyword, err := f.CreateKeyword(context.Background(), keywordName, category.ID)
 		assert.NoError(t, err)
 
 		// Ensure the keyword was created
-		retrievedKeywords, err := f.KeywordsByCategory(category.ID)
+		retrievedKeywords, err := f.KeywordsByCategory(context.Background(), category.ID)
 		assert.NoError(t, err)
 		assert.Len(t, retrievedKeywords, 1)
 
 		// Delete the keyword
-		err = f.DeleteKeyword(keyword.ID)
+		err = f.DeleteKeyword(context.Background(), keyword.ID)
 		assert.NoError(t, err)
 
 		// Verify the keyword was deleted
-		retrievedKeywords, err = f.KeywordsByCategory(category.ID)
+		retrievedKeywords, err = f.KeywordsByCategory(context.Background(), category.ID)
 		assert.NoError(t, err)
 		assert.Empty(t, retrievedKeywords)
 	})
@@ -2502,7 +2503,7 @@ func TestSQLiteUserStore_DeleteKeyword(t *testing.T) {
 
 		// Attempt to delete a keyword that does not exist
 		nonExistentKeywordID := uint8(99)
-		err = f.DeleteKeyword(nonExistentKeywordID)
+		err = f.DeleteKeyword(context.Background(), nonExistentKeywordID)
 		assert.ErrorIs(t, err, ErrKeywordNotFound)
 	})
 
@@ -2515,26 +2516,26 @@ func TestSQLiteUserStore_DeleteKeyword(t *testing.T) {
 
 		// Insert a category
 		categoryName := "CategoryInUse"
-		category, err := f.CreateCategory(categoryName)
+		category, err := f.CreateCategory(context.Background(), categoryName)
 		assert.NoError(t, err)
 
 		// Insert a keyword
 		keywordName := "KeywordInUse"
-		keyword, err := f.CreateKeyword(keywordName, category.ID)
+		keyword, err := f.CreateKeyword(context.Background(), keywordName, category.ID)
 		assert.NoError(t, err)
 
 		// Create a user and associate it with the keyword
 		u := User{
 			IdentScreenName: NewIdentScreenName("testuser"),
 		}
-		err = f.InsertUser(u)
+		err = f.InsertUser(context.Background(), u)
 		assert.NoError(t, err)
 
-		err = f.SetKeywords(u.IdentScreenName, [5]string{keywordName})
+		err = f.SetKeywords(context.Background(), u.IdentScreenName, [5]string{keywordName})
 		assert.NoError(t, err)
 
 		// Attempt to delete the keyword and expect an ErrKeywordInUse
-		err = f.DeleteKeyword(keyword.ID)
+		err = f.DeleteKeyword(context.Background(), keyword.ID)
 		assert.ErrorIs(t, err, ErrKeywordInUse)
 	})
 }
@@ -2547,30 +2548,30 @@ func TestSQLiteUserStore_InterestList(t *testing.T) {
 			assert.NoError(t, os.Remove(testFile))
 		}()
 
-		tech, err := f.CreateCategory("Technology")
+		tech, err := f.CreateCategory(context.Background(), "Technology")
 		assert.NoError(t, err)
-		music, err := f.CreateCategory("Music")
+		music, err := f.CreateCategory(context.Background(), "Music")
 		assert.NoError(t, err)
-		sports, err := f.CreateCategory("Sports")
+		sports, err := f.CreateCategory(context.Background(), "Sports")
 		assert.NoError(t, err)
 
-		_, err = f.CreateKeyword("Rock", music.ID)
+		_, err = f.CreateKeyword(context.Background(), "Rock", music.ID)
 		assert.NoError(t, err)
-		_, err = f.CreateKeyword("Soccer", sports.ID)
+		_, err = f.CreateKeyword(context.Background(), "Soccer", sports.ID)
 		assert.NoError(t, err)
-		_, err = f.CreateKeyword("Cybersecurity", tech.ID)
+		_, err = f.CreateKeyword(context.Background(), "Cybersecurity", tech.ID)
 		assert.NoError(t, err)
-		_, err = f.CreateKeyword("Zoology", 0)
+		_, err = f.CreateKeyword(context.Background(), "Zoology", 0)
 		assert.NoError(t, err)
-		_, err = f.CreateKeyword("Jazz", music.ID)
+		_, err = f.CreateKeyword(context.Background(), "Jazz", music.ID)
 		assert.NoError(t, err)
-		_, err = f.CreateKeyword("Animals", 0)
+		_, err = f.CreateKeyword(context.Background(), "Animals", 0)
 		assert.NoError(t, err)
-		_, err = f.CreateKeyword("Basketball", sports.ID)
+		_, err = f.CreateKeyword(context.Background(), "Basketball", sports.ID)
 		assert.NoError(t, err)
-		_, err = f.CreateKeyword("Artificial Intelligence", tech.ID)
+		_, err = f.CreateKeyword(context.Background(), "Artificial Intelligence", tech.ID)
 		assert.NoError(t, err)
-		_, err = f.CreateKeyword("Tennis", sports.ID)
+		_, err = f.CreateKeyword(context.Background(), "Tennis", sports.ID)
 		assert.NoError(t, err)
 
 		expect := []wire.ODirKeywordListItem{
@@ -2636,7 +2637,7 @@ func TestSQLiteUserStore_InterestList(t *testing.T) {
 			},
 		}
 
-		actual, err := f.InterestList()
+		actual, err := f.InterestList(context.Background())
 		assert.NoError(t, err)
 		assert.Equal(t, expect, actual)
 	})
@@ -2648,7 +2649,7 @@ func TestSQLiteUserStore_InterestList(t *testing.T) {
 			assert.NoError(t, os.Remove(testFile))
 		}()
 
-		actual, err := f.InterestList()
+		actual, err := f.InterestList(context.Background())
 		assert.NoError(t, err)
 		assert.Empty(t, actual)
 	})
@@ -2664,10 +2665,10 @@ func TestSQLiteUserStore_KeywordsByCategory(t *testing.T) {
 
 		// Create a test category
 		categoryName := "TestCategory"
-		category, err := f.CreateCategory(categoryName)
+		category, err := f.CreateCategory(context.Background(), categoryName)
 		assert.NoError(t, err)
 
-		keywords, err := f.KeywordsByCategory(category.ID + 1)
+		keywords, err := f.KeywordsByCategory(context.Background(), category.ID+1)
 		assert.Empty(t, keywords)
 		assert.ErrorIs(t, err, ErrKeywordCategoryNotFound)
 	})
@@ -2688,18 +2689,18 @@ func TestSQLiteUserStore_UnregisterBuddyList(t *testing.T) {
 	}
 
 	for _, me := range users {
-		err = f.RegisterBuddyList(me)
+		err = f.RegisterBuddyList(context.Background(), me)
 		assert.NoError(t, err)
 		for _, them := range users {
 			if me == them {
 				continue
 			}
-			err = f.AddBuddy(me, them)
+			err = f.AddBuddy(context.Background(), me, them)
 			assert.NoError(t, err)
 		}
 	}
 
-	relationships, err := f.AllRelationships(users[0], nil)
+	relationships, err := f.AllRelationships(context.Background(), users[0], nil)
 	assert.NoError(t, err)
 
 	expect := []Relationship{
@@ -2716,10 +2717,10 @@ func TestSQLiteUserStore_UnregisterBuddyList(t *testing.T) {
 	}
 	assert.ElementsMatch(t, relationships, expect)
 
-	err = f.UnregisterBuddyList(users[2])
+	err = f.UnregisterBuddyList(context.Background(), users[2])
 	assert.NoError(t, err)
 
-	relationships, err = f.AllRelationships(users[0], nil)
+	relationships, err = f.AllRelationships(context.Background(), users[0], nil)
 	expect = []Relationship{
 		{
 			User:          NewIdentScreenName("user2"),
@@ -2745,30 +2746,30 @@ func TestSQLiteUserStore_ClearBuddyListRegistry(t *testing.T) {
 	}
 
 	for _, me := range users {
-		err = f.RegisterBuddyList(me)
+		err = f.RegisterBuddyList(context.Background(), me)
 		assert.NoError(t, err)
 		for _, them := range users {
 			if me == them {
 				continue
 			}
-			err = f.AddBuddy(me, them)
+			err = f.AddBuddy(context.Background(), me, them)
 			assert.NoError(t, err)
 		}
 	}
 
 	for _, me := range users {
 		var relationships []Relationship
-		relationships, err = f.AllRelationships(me, nil)
+		relationships, err = f.AllRelationships(context.Background(), me, nil)
 		assert.NoError(t, err)
 		assert.Len(t, relationships, 2)
 	}
 
-	err = f.ClearBuddyListRegistry()
+	err = f.ClearBuddyListRegistry(context.Background())
 	assert.NoError(t, err)
 
 	for _, me := range users {
 		var relationships []Relationship
-		relationships, err = f.AllRelationships(me, nil)
+		relationships, err = f.AllRelationships(context.Background(), me, nil)
 		assert.NoError(t, err)
 		assert.Empty(t, relationships)
 	}
@@ -2783,17 +2784,17 @@ func TestSQLiteUserStore_RemoveBuddy(t *testing.T) {
 	assert.NoError(t, err)
 
 	me := NewIdentScreenName("me")
-	err = f.RegisterBuddyList(me)
+	err = f.RegisterBuddyList(context.Background(), me)
 	assert.NoError(t, err)
 
 	them := NewIdentScreenName("them")
-	err = f.RegisterBuddyList(them)
+	err = f.RegisterBuddyList(context.Background(), them)
 	assert.NoError(t, err)
 
-	err = f.AddBuddy(me, them)
+	err = f.AddBuddy(context.Background(), me, them)
 	assert.NoError(t, err)
 
-	relationships, err := f.AllRelationships(me, nil)
+	relationships, err := f.AllRelationships(context.Background(), me, nil)
 	assert.NoError(t, err)
 
 	expect := []Relationship{
@@ -2805,10 +2806,10 @@ func TestSQLiteUserStore_RemoveBuddy(t *testing.T) {
 	}
 	assert.ElementsMatch(t, relationships, expect)
 
-	err = f.RemoveBuddy(me, them)
+	err = f.RemoveBuddy(context.Background(), me, them)
 	assert.NoError(t, err)
 
-	relationships, err = f.AllRelationships(me, nil)
+	relationships, err = f.AllRelationships(context.Background(), me, nil)
 	assert.NoError(t, err)
 
 	expect = []Relationship{
@@ -2830,19 +2831,19 @@ func TestSQLiteUserStore_RemoveDenyBuddy(t *testing.T) {
 	assert.NoError(t, err)
 
 	me := NewIdentScreenName("me")
-	err = f.RegisterBuddyList(me)
+	err = f.RegisterBuddyList(context.Background(), me)
 	assert.NoError(t, err)
-	err = f.SetPDMode(me, wire.FeedbagPDModeDenySome)
+	err = f.SetPDMode(context.Background(), me, wire.FeedbagPDModeDenySome)
 	assert.NoError(t, err)
 
 	them := NewIdentScreenName("them")
-	err = f.RegisterBuddyList(them)
+	err = f.RegisterBuddyList(context.Background(), them)
 	assert.NoError(t, err)
 
-	err = f.DenyBuddy(me, them)
+	err = f.DenyBuddy(context.Background(), me, them)
 	assert.NoError(t, err)
 
-	relationships, err := f.AllRelationships(me, nil)
+	relationships, err := f.AllRelationships(context.Background(), me, nil)
 	assert.NoError(t, err)
 
 	expect := []Relationship{
@@ -2856,10 +2857,10 @@ func TestSQLiteUserStore_RemoveDenyBuddy(t *testing.T) {
 	}
 	assert.ElementsMatch(t, relationships, expect)
 
-	err = f.RemoveDenyBuddy(me, them)
+	err = f.RemoveDenyBuddy(context.Background(), me, them)
 	assert.NoError(t, err)
 
-	relationships, err = f.AllRelationships(me, nil)
+	relationships, err = f.AllRelationships(context.Background(), me, nil)
 	assert.NoError(t, err)
 
 	expect = []Relationship{
@@ -2883,19 +2884,19 @@ func TestSQLiteUserStore_RemovePermitBuddy(t *testing.T) {
 	assert.NoError(t, err)
 
 	me := NewIdentScreenName("me")
-	err = f.RegisterBuddyList(me)
+	err = f.RegisterBuddyList(context.Background(), me)
 	assert.NoError(t, err)
-	err = f.SetPDMode(me, wire.FeedbagPDModePermitSome)
+	err = f.SetPDMode(context.Background(), me, wire.FeedbagPDModePermitSome)
 	assert.NoError(t, err)
 
 	them := NewIdentScreenName("them")
-	err = f.RegisterBuddyList(them)
+	err = f.RegisterBuddyList(context.Background(), them)
 	assert.NoError(t, err)
 
-	err = f.PermitBuddy(me, them)
+	err = f.PermitBuddy(context.Background(), me, them)
 	assert.NoError(t, err)
 
-	relationships, err := f.AllRelationships(me, nil)
+	relationships, err := f.AllRelationships(context.Background(), me, nil)
 	assert.NoError(t, err)
 
 	expect := []Relationship{
@@ -2909,10 +2910,10 @@ func TestSQLiteUserStore_RemovePermitBuddy(t *testing.T) {
 	}
 	assert.ElementsMatch(t, relationships, expect)
 
-	err = f.RemovePermitBuddy(me, them)
+	err = f.RemovePermitBuddy(context.Background(), me, them)
 	assert.NoError(t, err)
 
-	relationships, err = f.AllRelationships(me, nil)
+	relationships, err = f.AllRelationships(context.Background(), me, nil)
 	assert.NoError(t, err)
 
 	expect = []Relationship{
@@ -2941,15 +2942,15 @@ func TestSQLiteUserStore_SetPDMode(t *testing.T) {
 			NewIdentScreenName("them1"),
 		}
 		for _, user := range users {
-			err = f.RegisterBuddyList(user)
+			err = f.RegisterBuddyList(context.Background(), user)
 			assert.NoError(t, err)
 		}
 
-		assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitSome))
-		assert.NoError(t, f.PermitBuddy(users[0], users[1]))
-		assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitSome))
+		assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModePermitSome))
+		assert.NoError(t, f.PermitBuddy(context.Background(), users[0], users[1]))
+		assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModePermitSome))
 
-		relationships, err := f.AllRelationships(users[0], nil)
+		relationships, err := f.AllRelationships(context.Background(), users[0], nil)
 		assert.NoError(t, err)
 
 		expect := []Relationship{
@@ -2977,15 +2978,15 @@ func TestSQLiteUserStore_SetPDMode(t *testing.T) {
 			NewIdentScreenName("them1"),
 		}
 		for _, user := range users {
-			err = f.RegisterBuddyList(user)
+			err = f.RegisterBuddyList(context.Background(), user)
 			assert.NoError(t, err)
 		}
 
-		assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitSome))
-		assert.NoError(t, f.PermitBuddy(users[0], users[1]))
-		assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModeDenySome))
+		assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModePermitSome))
+		assert.NoError(t, f.PermitBuddy(context.Background(), users[0], users[1]))
+		assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModeDenySome))
 
-		relationships, err := f.AllRelationships(users[0], nil)
+		relationships, err := f.AllRelationships(context.Background(), users[0], nil)
 		assert.NoError(t, err)
 		assert.Empty(t, relationships)
 	})
@@ -3007,18 +3008,18 @@ func TestSQLiteUserStore_PermitDenyTransitionIntegration(t *testing.T) {
 		NewIdentScreenName("them3"),
 	}
 	for _, user := range users {
-		err = f.RegisterBuddyList(user)
+		err = f.RegisterBuddyList(context.Background(), user)
 		assert.NoError(t, err)
 	}
 
 	// add them1 to buddy list
-	assert.NoError(t, f.AddBuddy(users[0], users[1]))
+	assert.NoError(t, f.AddBuddy(context.Background(), users[0], users[1]))
 
 	// permit them2
-	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitSome))
-	assert.NoError(t, f.PermitBuddy(users[0], users[2]))
+	assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModePermitSome))
+	assert.NoError(t, f.PermitBuddy(context.Background(), users[0], users[2]))
 
-	relationships, err := f.AllRelationships(users[0], nil)
+	relationships, err := f.AllRelationships(context.Background(), users[0], nil)
 	assert.NoError(t, err)
 
 	// make sure them1 is blocked and them2 is permitted
@@ -3041,9 +3042,9 @@ func TestSQLiteUserStore_PermitDenyTransitionIntegration(t *testing.T) {
 	assert.ElementsMatch(t, relationships, expect)
 
 	// allow everyone
-	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitAll))
+	assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModePermitAll))
 
-	relationships, err = f.AllRelationships(users[0], nil)
+	relationships, err = f.AllRelationships(context.Background(), users[0], nil)
 	assert.NoError(t, err)
 
 	// make sure buddy1 is on your buddy list and permitted
@@ -3059,10 +3060,10 @@ func TestSQLiteUserStore_PermitDenyTransitionIntegration(t *testing.T) {
 	assert.ElementsMatch(t, relationships, expect)
 
 	// permit them3
-	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitSome))
-	assert.NoError(t, f.PermitBuddy(users[0], users[3]))
+	assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModePermitSome))
+	assert.NoError(t, f.PermitBuddy(context.Background(), users[0], users[3]))
 
-	relationships, err = f.AllRelationships(users[0], nil)
+	relationships, err = f.AllRelationships(context.Background(), users[0], nil)
 	assert.NoError(t, err)
 
 	// make sure them1 is blocked them3 is permitted
@@ -3085,9 +3086,9 @@ func TestSQLiteUserStore_PermitDenyTransitionIntegration(t *testing.T) {
 	assert.ElementsMatch(t, relationships, expect)
 
 	// only allow on buddy list
-	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitOnList))
+	assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModePermitOnList))
 
-	relationships, err = f.AllRelationships(users[0], nil)
+	relationships, err = f.AllRelationships(context.Background(), users[0], nil)
 	assert.NoError(t, err)
 
 	// make sure buddy1 is on your buddy list and permitted
@@ -3103,10 +3104,10 @@ func TestSQLiteUserStore_PermitDenyTransitionIntegration(t *testing.T) {
 	assert.ElementsMatch(t, relationships, expect)
 
 	// deny them2
-	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModeDenySome))
-	assert.NoError(t, f.DenyBuddy(users[0], users[2]))
+	assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModeDenySome))
+	assert.NoError(t, f.DenyBuddy(context.Background(), users[0], users[2]))
 
-	relationships, err = f.AllRelationships(users[0], nil)
+	relationships, err = f.AllRelationships(context.Background(), users[0], nil)
 	assert.NoError(t, err)
 
 	// make sure them1 is allowed and them2 is blocked
@@ -3129,9 +3130,9 @@ func TestSQLiteUserStore_PermitDenyTransitionIntegration(t *testing.T) {
 	assert.ElementsMatch(t, relationships, expect)
 
 	// allow everyone
-	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitAll))
+	assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModePermitAll))
 
-	relationships, err = f.AllRelationships(users[0], nil)
+	relationships, err = f.AllRelationships(context.Background(), users[0], nil)
 	assert.NoError(t, err)
 
 	// make sure buddy1 is on your buddy list and permitted
@@ -3147,10 +3148,10 @@ func TestSQLiteUserStore_PermitDenyTransitionIntegration(t *testing.T) {
 	assert.ElementsMatch(t, relationships, expect)
 
 	// deny them3
-	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModeDenySome))
-	assert.NoError(t, f.DenyBuddy(users[0], users[3]))
+	assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModeDenySome))
+	assert.NoError(t, f.DenyBuddy(context.Background(), users[0], users[3]))
 
-	relationships, err = f.AllRelationships(users[0], nil)
+	relationships, err = f.AllRelationships(context.Background(), users[0], nil)
 	assert.NoError(t, err)
 
 	// make sure them1 is allowed and them3 is blocked
@@ -3173,9 +3174,9 @@ func TestSQLiteUserStore_PermitDenyTransitionIntegration(t *testing.T) {
 	assert.ElementsMatch(t, relationships, expect)
 
 	// deny everyone
-	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModeDenyAll))
+	assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModeDenyAll))
 
-	relationships, err = f.AllRelationships(users[0], nil)
+	relationships, err = f.AllRelationships(context.Background(), users[0], nil)
 	assert.NoError(t, err)
 
 	// make sure them1 is blocked
@@ -3191,9 +3192,9 @@ func TestSQLiteUserStore_PermitDenyTransitionIntegration(t *testing.T) {
 	assert.ElementsMatch(t, relationships, expect)
 
 	// allow everyone
-	assert.NoError(t, f.SetPDMode(users[0], wire.FeedbagPDModePermitAll))
+	assert.NoError(t, f.SetPDMode(context.Background(), users[0], wire.FeedbagPDModePermitAll))
 
-	relationships, err = f.AllRelationships(users[0], nil)
+	relationships, err = f.AllRelationships(context.Background(), users[0], nil)
 	assert.NoError(t, err)
 
 	// make sure them1 is on your buddy list and permitted
@@ -3227,13 +3228,13 @@ func TestSQLiteUserStore_UpdateSuspendedStatus(t *testing.T) {
 		RegStatus:         3,
 		SuspendedStatus:   wire.LoginErrSuspendedAccount,
 	}
-	err = f.InsertUser(*insertedUser)
+	err = f.InsertUser(context.Background(), *insertedUser)
 	assert.NoError(t, err)
 
-	err = f.UpdateSuspendedStatus(wire.LoginErrSuspendedAccountAge, screenName)
+	err = f.UpdateSuspendedStatus(context.Background(), wire.LoginErrSuspendedAccountAge, screenName)
 	assert.NoError(t, err)
 
-	user, err := f.User(screenName)
+	user, err := f.User(context.Background(), screenName)
 	assert.NoError(t, err)
 
 	assert.Equal(t, user.SuspendedStatus, wire.LoginErrSuspendedAccountAge)

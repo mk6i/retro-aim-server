@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestBuddyService_RightsQuery(t *testing.T) {
-	svc := NewBuddyService(nil, nil, nil, nil)
+	svc := NewBuddyService(nil, nil, nil, nil, nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -66,7 +67,7 @@ func TestBuddyService_AddBuddies(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					addBuddyParams: addBuddyParams{
 						{
 							me:   state.NewIdentScreenName("user_screen_name"),
@@ -107,7 +108,7 @@ func TestBuddyService_AddBuddies(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					addBuddyParams: addBuddyParams{
 						{
 							me:   state.NewIdentScreenName("user_screen_name"),
@@ -124,10 +125,10 @@ func TestBuddyService_AddBuddies(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			localBuddyListManager := newMockLocalBuddyListManager(t)
+			clientSideBuddyListManager := newMockClientSideBuddyListManager(t)
 			for _, params := range tt.mockParams.addBuddyParams {
-				localBuddyListManager.EXPECT().
-					AddBuddy(params.me, params.them).
+				clientSideBuddyListManager.EXPECT().
+					AddBuddy(matchContext(), params.me, params.them).
 					Return(params.err)
 			}
 			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
@@ -138,11 +139,11 @@ func TestBuddyService_AddBuddies(t *testing.T) {
 			}
 
 			svc := BuddyService{
-				localBuddyListManager: localBuddyListManager,
-				buddyBroadcaster:      mockBuddyBroadcaster,
+				clientSideBuddyListManager: clientSideBuddyListManager,
+				buddyBroadcaster:           mockBuddyBroadcaster,
 			}
 
-			haveErr := svc.AddBuddies(nil, tt.sess, tt.bodyIn)
+			haveErr := svc.AddBuddies(context.Background(), tt.sess, tt.bodyIn)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
 		})
 	}
@@ -189,7 +190,7 @@ func TestBuddyService_DelBuddies(t *testing.T) {
 						},
 					},
 				},
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					deleteBuddyParams: deleteBuddyParams{
 						{
 							me:   state.NewIdentScreenName("user_screen_name"),
@@ -212,19 +213,19 @@ func TestBuddyService_DelBuddies(t *testing.T) {
 					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter, true).
 					Return(params.err)
 			}
-			localBuddyListManager := newMockLocalBuddyListManager(t)
+			clientSideBuddyListManager := newMockClientSideBuddyListManager(t)
 			for _, params := range tt.mockParams.deleteBuddyParams {
-				localBuddyListManager.EXPECT().
-					RemoveBuddy(params.me, params.them).
+				clientSideBuddyListManager.EXPECT().
+					RemoveBuddy(matchContext(), params.me, params.them).
 					Return(params.err)
 			}
 
 			svc := BuddyService{
-				buddyBroadcaster:      mockBuddyBroadcaster,
-				localBuddyListManager: localBuddyListManager,
+				buddyBroadcaster:           mockBuddyBroadcaster,
+				clientSideBuddyListManager: clientSideBuddyListManager,
 			}
 
-			assert.ErrorIs(t, tt.wantErr, svc.DelBuddies(nil, tt.sess, tt.bodyIn))
+			assert.ErrorIs(t, tt.wantErr, svc.DelBuddies(context.Background(), tt.sess, tt.bodyIn))
 		})
 	}
 }
@@ -243,7 +244,21 @@ func TestBuddyNotifier_BroadcastBuddyArrived(t *testing.T) {
 			name:        "happy path",
 			userSession: newTestSession("me"),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				buddyIconManagerParams: buddyIconManagerParams{
+					buddyIconMetadataParams: buddyIconMetadataParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							result: &wire.BARTID{
+								Type: wire.BARTTypesBuddyIcon,
+								BARTInfo: wire.BARTInfo{
+									Flags: wire.BARTFlagsKnown,
+									Hash:  []byte{'m', 'y', 'i', 'c', 'o', 'n'},
+								},
+							},
+						},
+					},
+				},
+				relationshipFetcherParams: relationshipFetcherParams{
 					allRelationshipsParams: allRelationshipsParams{
 						{
 							screenName: state.NewIdentScreenName("me"),
@@ -287,18 +302,6 @@ func TestBuddyNotifier_BroadcastBuddyArrived(t *testing.T) {
 							},
 						},
 					},
-					buddyIconRefByNameParams: buddyIconRefByNameParams{
-						{
-							screenName: state.NewIdentScreenName("me"),
-							result: &wire.BARTID{
-								Type: wire.BARTTypesBuddyIcon,
-								BARTInfo: wire.BARTInfo{
-									Flags: wire.BARTFlagsKnown,
-									Hash:  []byte{'m', 'y', 'i', 'c', 'o', 'n'},
-								},
-							},
-						},
-					},
 				},
 				messageRelayerParams: messageRelayerParams{
 					relayToScreenNamesParams: relayToScreenNamesParams{
@@ -326,30 +329,31 @@ func TestBuddyNotifier_BroadcastBuddyArrived(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			buddyListRetriever := newMockBuddyListRetriever(t)
+			relationshipFetcher := newMockRelationshipFetcher(t)
 			for _, params := range tc.mockParams.allRelationshipsParams {
-				buddyListRetriever.EXPECT().
-					AllRelationships(params.screenName, params.filter).
+				relationshipFetcher.EXPECT().
+					AllRelationships(matchContext(), params.screenName, params.filter).
 					Return(params.result, params.err)
 			}
-			for _, params := range tc.mockParams.buddyIconRefByNameParams {
-				buddyListRetriever.EXPECT().
-					BuddyIconRefByName(params.screenName).
+			buddyIconManager := newMockBuddyIconManager(t)
+			for _, params := range tc.mockParams.buddyIconMetadataParams {
+				buddyIconManager.EXPECT().
+					BuddyIconMetadata(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
-
 			messageRelayer := newMockMessageRelayer(t)
 			for _, params := range tc.mockParams.relayToScreenNamesParams {
 				messageRelayer.EXPECT().
-					RelayToScreenNames(mock.Anything, params.screenNames, params.message)
+					RelayToScreenNames(matchContext(), params.screenNames, params.message)
 			}
 
 			svc := buddyNotifier{
-				buddyListRetriever: buddyListRetriever,
-				messageRelayer:     messageRelayer,
+				buddyIconManager:    buddyIconManager,
+				relationshipFetcher: relationshipFetcher,
+				messageRelayer:      messageRelayer,
 			}
 
-			err := svc.BroadcastBuddyArrived(nil, tc.userSession)
+			err := svc.BroadcastBuddyArrived(context.Background(), tc.userSession)
 			assert.NoError(t, err)
 		})
 	}
@@ -369,7 +373,7 @@ func TestBuddyService_BroadcastDeparture(t *testing.T) {
 			name:        "happy path",
 			userSession: newTestSession("me"),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					allRelationshipsParams: allRelationshipsParams{
 						{
 							screenName: state.NewIdentScreenName("me"),
@@ -448,15 +452,16 @@ func TestBuddyService_BroadcastDeparture(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			buddyListRetriever := newMockBuddyListRetriever(t)
+			relationshipFetcher := newMockRelationshipFetcher(t)
 			for _, params := range tc.mockParams.allRelationshipsParams {
-				buddyListRetriever.EXPECT().
-					AllRelationships(params.screenName, params.filter).
+				relationshipFetcher.EXPECT().
+					AllRelationships(matchContext(), params.screenName, params.filter).
 					Return(params.result, params.err)
 			}
-			for _, params := range tc.mockParams.buddyIconRefByNameParams {
-				buddyListRetriever.EXPECT().
-					BuddyIconRefByName(params.screenName).
+			buddyIconManager := newMockBuddyIconManager(t)
+			for _, params := range tc.mockParams.buddyIconMetadataParams {
+				buddyIconManager.EXPECT().
+					BuddyIconMetadata(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
 
@@ -467,11 +472,11 @@ func TestBuddyService_BroadcastDeparture(t *testing.T) {
 			}
 
 			svc := buddyNotifier{
-				buddyListRetriever: buddyListRetriever,
-				messageRelayer:     messageRelayer,
+				relationshipFetcher: relationshipFetcher,
+				messageRelayer:      messageRelayer,
 			}
 
-			err := svc.BroadcastBuddyDeparted(nil, tc.userSession)
+			err := svc.BroadcastBuddyDeparted(context.Background(), tc.userSession)
 			assert.NoError(t, err)
 		})
 	}
@@ -495,7 +500,23 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 			name:        "happy path",
 			userSession: newTestSession("me"),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				buddyIconManagerParams: buddyIconManagerParams{
+					buddyIconMetadataParams: buddyIconMetadataParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							result:     nil,
+						},
+						{
+							screenName: state.NewIdentScreenName("friend3-visible-on-your-list"),
+							result:     nil,
+						},
+						{
+							screenName: state.NewIdentScreenName("friend4-visible-on-both-lists"),
+							result:     nil,
+						},
+					},
+				},
+				relationshipFetcherParams: relationshipFetcherParams{
 					allRelationshipsParams: allRelationshipsParams{
 						{
 							screenName: state.NewIdentScreenName("me"),
@@ -558,20 +579,6 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 									IsOnTheirList: true,
 								},
 							},
-						},
-					},
-					buddyIconRefByNameParams: buddyIconRefByNameParams{
-						{
-							screenName: state.NewIdentScreenName("me"),
-							result:     nil,
-						},
-						{
-							screenName: state.NewIdentScreenName("friend3-visible-on-your-list"),
-							result:     nil,
-						},
-						{
-							screenName: state.NewIdentScreenName("friend4-visible-on-both-lists"),
-							result:     nil,
 						},
 					},
 				},
@@ -650,7 +657,23 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 			name:        "don't send departure notifications",
 			userSession: newTestSession("me"),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				buddyIconManagerParams: buddyIconManagerParams{
+					buddyIconMetadataParams: buddyIconMetadataParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							result:     nil,
+						},
+						{
+							screenName: state.NewIdentScreenName("friend3-visible-on-your-list"),
+							result:     nil,
+						},
+						{
+							screenName: state.NewIdentScreenName("friend4-visible-on-both-lists"),
+							result:     nil,
+						},
+					},
+				},
+				relationshipFetcherParams: relationshipFetcherParams{
 					allRelationshipsParams: allRelationshipsParams{
 						{
 							screenName: state.NewIdentScreenName("me"),
@@ -685,20 +708,6 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 									IsOnTheirList: true,
 								},
 							},
-						},
-					},
-					buddyIconRefByNameParams: buddyIconRefByNameParams{
-						{
-							screenName: state.NewIdentScreenName("me"),
-							result:     nil,
-						},
-						{
-							screenName: state.NewIdentScreenName("friend3-visible-on-your-list"),
-							result:     nil,
-						},
-						{
-							screenName: state.NewIdentScreenName("friend4-visible-on-both-lists"),
-							result:     nil,
 						},
 					},
 				},
@@ -749,23 +758,8 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 			name:        "users have buddy icons",
 			userSession: newTestSession("me"),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
-					allRelationshipsParams: allRelationshipsParams{
-						{
-							screenName: state.NewIdentScreenName("me"),
-							filter:     nil,
-							result: []state.Relationship{
-								{
-									User:          state.NewIdentScreenName("friend-visible-on-both-lists"),
-									BlocksYou:     false,
-									YouBlock:      false,
-									IsOnYourList:  true,
-									IsOnTheirList: true,
-								},
-							},
-						},
-					},
-					buddyIconRefByNameParams: buddyIconRefByNameParams{
+				buddyIconManagerParams: buddyIconManagerParams{
+					buddyIconMetadataParams: buddyIconMetadataParams{
 						{
 							screenName: state.NewIdentScreenName("me"),
 							result: &wire.BARTID{
@@ -783,6 +777,23 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 								BARTInfo: wire.BARTInfo{
 									Flags: wire.BARTFlagsKnown,
 									Hash:  []byte{'t', 'h', 'e', 'i', 'r', 'i', 'c', 'o', 'n'},
+								},
+							},
+						},
+					},
+				},
+				relationshipFetcherParams: relationshipFetcherParams{
+					allRelationshipsParams: allRelationshipsParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							filter:     nil,
+							result: []state.Relationship{
+								{
+									User:          state.NewIdentScreenName("friend-visible-on-both-lists"),
+									BlocksYou:     false,
+									YouBlock:      false,
+									IsOnYourList:  true,
+									IsOnTheirList: true,
 								},
 							},
 						},
@@ -833,15 +844,16 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			buddyListRetriever := newMockBuddyListRetriever(t)
+			relationshipFetcher := newMockRelationshipFetcher(t)
 			for _, params := range tc.mockParams.allRelationshipsParams {
-				buddyListRetriever.EXPECT().
-					AllRelationships(params.screenName, params.filter).
+				relationshipFetcher.EXPECT().
+					AllRelationships(matchContext(), params.screenName, params.filter).
 					Return(params.result, params.err)
 			}
-			for _, params := range tc.mockParams.buddyIconRefByNameParams {
-				buddyListRetriever.EXPECT().
-					BuddyIconRefByName(params.screenName).
+			buddyIconManager := newMockBuddyIconManager(t)
+			for _, params := range tc.mockParams.buddyIconMetadataParams {
+				buddyIconManager.EXPECT().
+					BuddyIconMetadata(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
 			messageRelayer := newMockMessageRelayer(t)
@@ -857,12 +869,13 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 			}
 
 			svc := buddyNotifier{
-				buddyListRetriever: buddyListRetriever,
-				messageRelayer:     messageRelayer,
-				sessionRetriever:   sessionRetriever,
+				buddyIconManager:    buddyIconManager,
+				relationshipFetcher: relationshipFetcher,
+				messageRelayer:      messageRelayer,
+				sessionRetriever:    sessionRetriever,
 			}
 
-			err := svc.BroadcastVisibility(nil, tc.userSession, tc.filter, tc.doSendDepartures)
+			err := svc.BroadcastVisibility(context.Background(), tc.userSession, tc.filter, tc.doSendDepartures)
 			assert.NoError(t, err)
 		})
 	}

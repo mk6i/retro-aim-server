@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"embed"
 	"errors"
@@ -95,13 +96,9 @@ func (f SQLiteUserStore) runMigrations() error {
 	return nil
 }
 
-// AllUsers returns all stored users. It only populates the following fields:
-// - IdentScreenName
-// - DisplayScreenName
-// - IsICQ
-func (f SQLiteUserStore) AllUsers() ([]User, error) {
+func (f SQLiteUserStore) AllUsers(ctx context.Context) ([]User, error) {
 	q := `SELECT identScreenName, displayScreenName, isICQ FROM users`
-	rows, err := f.db.Query(q)
+	rows, err := f.db.QueryContext(ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -128,9 +125,8 @@ func (f SQLiteUserStore) AllUsers() ([]User, error) {
 	return users, nil
 }
 
-// FindByUIN returns a user with a matching UIN.
-func (f SQLiteUserStore) FindByUIN(UIN uint32) (User, error) {
-	users, err := f.queryUsers(`identScreenName = ?`, []any{strconv.Itoa(int(UIN))})
+func (f SQLiteUserStore) FindByUIN(ctx context.Context, UIN uint32) (User, error) {
+	users, err := f.queryUsers(ctx, `identScreenName = ?`, []any{strconv.Itoa(int(UIN))})
 	if err != nil {
 		return User{}, fmt.Errorf("FindByUIN: %w", err)
 	}
@@ -142,9 +138,8 @@ func (f SQLiteUserStore) FindByUIN(UIN uint32) (User, error) {
 	return users[0], nil
 }
 
-// FindByICQEmail returns a user with a matching email address.
-func (f SQLiteUserStore) FindByICQEmail(email string) (User, error) {
-	users, err := f.queryUsers(`icq_basicInfo_emailAddress = ?`, []any{email})
+func (f SQLiteUserStore) FindByICQEmail(ctx context.Context, email string) (User, error) {
+	users, err := f.queryUsers(ctx, `icq_basicInfo_emailAddress = ?`, []any{email})
 	if err != nil {
 		return User{}, fmt.Errorf("FindByICQEmail: %w", err)
 	}
@@ -156,9 +151,8 @@ func (f SQLiteUserStore) FindByICQEmail(email string) (User, error) {
 	return users[0], nil
 }
 
-// FindByAIMEmail returns a user with a matching email address.
-func (f SQLiteUserStore) FindByAIMEmail(email string) (User, error) {
-	users, err := f.queryUsers(`emailAddress = ?`, []any{email})
+func (f SQLiteUserStore) FindByAIMEmail(ctx context.Context, email string) (User, error) {
+	users, err := f.queryUsers(ctx, `emailAddress = ?`, []any{email})
 	if err != nil {
 		return User{}, fmt.Errorf("FindByAIMEmail: %w", err)
 	}
@@ -170,13 +164,12 @@ func (f SQLiteUserStore) FindByAIMEmail(email string) (User, error) {
 	return users[0], nil
 }
 
-// FindByAIMKeyword returns users who have a matching keyword.
-func (f SQLiteUserStore) FindByAIMKeyword(keyword string) ([]User, error) {
+func (f SQLiteUserStore) FindByAIMKeyword(ctx context.Context, keyword string) ([]User, error) {
 	where := `
 		(SELECT id FROM aimKeyword WHERE name = ?) IN
 		(aim_keyword1, aim_keyword2, aim_keyword3, aim_keyword4, aim_keyword5)
 	`
-	users, err := f.queryUsers(where, []any{keyword})
+	users, err := f.queryUsers(ctx, where, []any{keyword})
 	if err != nil {
 		return nil, err
 	}
@@ -184,9 +177,7 @@ func (f SQLiteUserStore) FindByAIMKeyword(keyword string) ([]User, error) {
 	return users, nil
 }
 
-// FindByICQName returns users with matching first name, last name, and
-// nickname. Empty values are not included in the search parameters.
-func (f SQLiteUserStore) FindByICQName(firstName, lastName, nickName string) ([]User, error) {
+func (f SQLiteUserStore) FindByICQName(ctx context.Context, firstName, lastName, nickName string) ([]User, error) {
 	var args []any
 	var clauses []string
 
@@ -207,7 +198,7 @@ func (f SQLiteUserStore) FindByICQName(firstName, lastName, nickName string) ([]
 
 	whereClause := strings.Join(clauses, " AND ")
 
-	users, err := f.queryUsers(whereClause, args)
+	users, err := f.queryUsers(ctx, whereClause, args)
 	if err != nil {
 		err = fmt.Errorf("FindByICQName: %w", err)
 	}
@@ -215,9 +206,7 @@ func (f SQLiteUserStore) FindByICQName(firstName, lastName, nickName string) ([]
 	return users, nil
 }
 
-// FindByAIMNameAndAddr returns users with all matching non-empty directory info
-// fields. Empty values are not included in the search parameters.
-func (f SQLiteUserStore) FindByAIMNameAndAddr(info AIMNameAndAddr) ([]User, error) {
+func (f SQLiteUserStore) FindByAIMNameAndAddr(ctx context.Context, info AIMNameAndAddr) ([]User, error) {
 	var args []any
 	var clauses []string
 
@@ -273,7 +262,7 @@ func (f SQLiteUserStore) FindByAIMNameAndAddr(info AIMNameAndAddr) ([]User, erro
 
 	whereClause := strings.Join(clauses, " AND ")
 
-	users, err := f.queryUsers(whereClause, args)
+	users, err := f.queryUsers(ctx, whereClause, args)
 	if err != nil {
 		err = fmt.Errorf("FindByAIMNameAndAddr: %w", err)
 	}
@@ -281,8 +270,7 @@ func (f SQLiteUserStore) FindByAIMNameAndAddr(info AIMNameAndAddr) ([]User, erro
 	return users, nil
 }
 
-// FindByICQInterests returns users who have at least one matching interest.
-func (f SQLiteUserStore) FindByICQInterests(code uint16, keywords []string) ([]User, error) {
+func (f SQLiteUserStore) FindByICQInterests(ctx context.Context, code uint16, keywords []string) ([]User, error) {
 	var args []any
 	var clauses []string
 
@@ -298,7 +286,7 @@ func (f SQLiteUserStore) FindByICQInterests(code uint16, keywords []string) ([]U
 
 	cond := strings.Join(clauses, " OR ")
 
-	users, err := f.queryUsers(cond, args)
+	users, err := f.queryUsers(ctx, cond, args)
 	if err != nil {
 		err = fmt.Errorf("FindByICQInterests: %w", err)
 	}
@@ -306,9 +294,7 @@ func (f SQLiteUserStore) FindByICQInterests(code uint16, keywords []string) ([]U
 	return users, nil
 }
 
-// FindByICQKeyword returns users with matching interest keyword across all
-// interest categories.
-func (f SQLiteUserStore) FindByICQKeyword(keyword string) ([]User, error) {
+func (f SQLiteUserStore) FindByICQKeyword(ctx context.Context, keyword string) ([]User, error) {
 	var args []any
 	var clauses []string
 
@@ -319,7 +305,7 @@ func (f SQLiteUserStore) FindByICQKeyword(keyword string) ([]User, error) {
 
 	whereClause := strings.Join(clauses, " OR ")
 
-	users, err := f.queryUsers(whereClause, args)
+	users, err := f.queryUsers(ctx, whereClause, args)
 	if err != nil {
 		err = fmt.Errorf("FindByICQKeyword: %w", err)
 	}
@@ -327,10 +313,8 @@ func (f SQLiteUserStore) FindByICQKeyword(keyword string) ([]User, error) {
 	return users, nil
 }
 
-// User looks up a user by screen name. It populates the User record with
-// credentials that can be used to validate the user's password.
-func (f SQLiteUserStore) User(screenName IdentScreenName) (*User, error) {
-	users, err := f.queryUsers(`identScreenName = ?`, []any{screenName.String()})
+func (f SQLiteUserStore) User(ctx context.Context, screenName IdentScreenName) (*User, error) {
+	users, err := f.queryUsers(ctx, `identScreenName = ?`, []any{screenName.String()})
 	if err != nil {
 		return nil, fmt.Errorf("User: %w", err)
 	}
@@ -345,7 +329,7 @@ func (f SQLiteUserStore) User(screenName IdentScreenName) (*User, error) {
 // queryUsers retrieves a list of users from the database based on the
 // specified WHERE clause and query parameters. Returns a slice of User objects
 // or an error if the query fails.
-func (f SQLiteUserStore) queryUsers(whereClause string, queryParams []any) ([]User, error) {
+func (f SQLiteUserStore) queryUsers(ctx context.Context, whereClause string, queryParams []any) ([]User, error) {
 	q := `
 		SELECT
 			identScreenName,
@@ -429,7 +413,7 @@ func (f SQLiteUserStore) queryUsers(whereClause string, queryParams []any) ([]Us
 		WHERE %s
 	`
 	q = fmt.Sprintf(q, whereClause)
-	rows, err := f.db.Query(q, queryParams...)
+	rows, err := f.db.QueryContext(ctx, q, queryParams...)
 	if err != nil {
 		return nil, err
 	}
@@ -531,9 +515,7 @@ func (f SQLiteUserStore) queryUsers(whereClause string, queryParams []any) ([]Us
 	return users, nil
 }
 
-// InsertUser inserts a user to the store. Return ErrDupUser if a user with the
-// same screen name already exists.
-func (f SQLiteUserStore) InsertUser(u User) error {
+func (f SQLiteUserStore) InsertUser(ctx context.Context, u User) error {
 	if u.DisplayScreenName.IsUIN() && !u.IsICQ {
 		return errors.New("inserting user with UIN and isICQ=false")
 	}
@@ -542,7 +524,8 @@ func (f SQLiteUserStore) InsertUser(u User) error {
 		VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT (identScreenName) DO NOTHING
 	`
-	result, err := f.db.Exec(q,
+	result, err := f.db.ExecContext(ctx,
+		q,
 		u.IdentScreenName.String(),
 		u.DisplayScreenName,
 		u.AuthKey,
@@ -565,13 +548,11 @@ func (f SQLiteUserStore) InsertUser(u User) error {
 	return nil
 }
 
-// DeleteUser deletes a user from the store. Return ErrNoUser if the user did
-// not exist prior to deletion.
-func (f SQLiteUserStore) DeleteUser(screenName IdentScreenName) error {
+func (f SQLiteUserStore) DeleteUser(ctx context.Context, screenName IdentScreenName) error {
 	q := `
 		DELETE FROM users WHERE identScreenName = ?
 	`
-	result, err := f.db.Exec(q, screenName.String())
+	result, err := f.db.ExecContext(ctx, q, screenName.String())
 	if err != nil {
 		return err
 	}
@@ -587,13 +568,7 @@ func (f SQLiteUserStore) DeleteUser(screenName IdentScreenName) error {
 	return nil
 }
 
-// SetUserPassword sets the user's password hashes and auth key. The following
-// fields must be set on u:
-// - AuthKey
-// - WeakMD5Pass
-// - StrongMD5Pass
-// - IdentScreenName
-func (f SQLiteUserStore) SetUserPassword(screenName IdentScreenName, newPassword string) error {
+func (f SQLiteUserStore) SetUserPassword(ctx context.Context, screenName IdentScreenName, newPassword string) error {
 	tx, err := f.db.Begin()
 	if err != nil {
 		return err
@@ -615,7 +590,7 @@ func (f SQLiteUserStore) SetUserPassword(screenName IdentScreenName, newPassword
 
 	u := User{}
 
-	err = tx.QueryRow(q, screenName.String()).Scan(
+	err = tx.QueryRowContext(ctx, q, screenName.String()).Scan(
 		&u.AuthKey,
 		&u.IsICQ,
 	)
@@ -633,7 +608,7 @@ func (f SQLiteUserStore) SetUserPassword(screenName IdentScreenName, newPassword
 		SET authKey = ?, weakMD5Pass = ?, strongMD5Pass = ?
 		WHERE identScreenName = ?
 	`
-	result, err := tx.Exec(q, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass, screenName.String())
+	result, err := tx.ExecContext(ctx, q, u.AuthKey, u.WeakMD5Pass, u.StrongMD5Pass, screenName.String())
 	if err != nil {
 		return err
 	}
@@ -647,7 +622,7 @@ func (f SQLiteUserStore) SetUserPassword(screenName IdentScreenName, newPassword
 		// it's possible the user didn't change OR the user doesn't exist.
 		// check if the user exists.
 		var exists int
-		err = tx.QueryRow("SELECT COUNT(*) FROM users WHERE identScreenName = ?", u.IdentScreenName.String()).Scan(&exists)
+		err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE identScreenName = ?", u.IdentScreenName.String()).Scan(&exists)
 		if err != nil {
 			return err // Handle possible SQL errors during the select
 		}
@@ -660,8 +635,7 @@ func (f SQLiteUserStore) SetUserPassword(screenName IdentScreenName, newPassword
 	return tx.Commit()
 }
 
-// Feedbag fetches the contents of a user's feedbag (buddy list).
-func (f SQLiteUserStore) Feedbag(screenName IdentScreenName) ([]wire.FeedbagItem, error) {
+func (f SQLiteUserStore) Feedbag(ctx context.Context, screenName IdentScreenName) ([]wire.FeedbagItem, error) {
 	q := `
 		SELECT 
 			groupID,
@@ -673,7 +647,7 @@ func (f SQLiteUserStore) Feedbag(screenName IdentScreenName) ([]wire.FeedbagItem
 		WHERE screenName = ?
 	`
 
-	rows, err := f.db.Query(q, screenName.String())
+	rows, err := f.db.QueryContext(ctx, q, screenName.String())
 	if err != nil {
 		return nil, err
 	}
@@ -695,22 +669,19 @@ func (f SQLiteUserStore) Feedbag(screenName IdentScreenName) ([]wire.FeedbagItem
 	return items, nil
 }
 
-// FeedbagLastModified returns the last time a user's feedbag (buddy list) was
-// updated.
-func (f SQLiteUserStore) FeedbagLastModified(screenName IdentScreenName) (time.Time, error) {
+func (f SQLiteUserStore) FeedbagLastModified(ctx context.Context, screenName IdentScreenName) (time.Time, error) {
 	var lastModified sql.NullInt64
 	q := `SELECT MAX(lastModified) FROM feedbag WHERE screenName = ?`
-	err := f.db.QueryRow(q, screenName.String()).Scan(&lastModified)
+	err := f.db.QueryRowContext(ctx, q, screenName.String()).Scan(&lastModified)
 	return time.Unix(lastModified.Int64, 0), err
 }
 
-// FeedbagDelete deletes an entry from a user's feedbag (buddy list).
-func (f SQLiteUserStore) FeedbagDelete(screenName IdentScreenName, items []wire.FeedbagItem) error {
+func (f SQLiteUserStore) FeedbagDelete(ctx context.Context, screenName IdentScreenName, items []wire.FeedbagItem) error {
 	// todo add transaction
 	q := `DELETE FROM feedbag WHERE screenName = ? AND itemID = ?`
 
 	for _, item := range items {
-		if _, err := f.db.Exec(q, screenName.String(), item.ItemID); err != nil {
+		if _, err := f.db.ExecContext(ctx, q, screenName.String(), item.ItemID); err != nil {
 			return err
 		}
 	}
@@ -718,9 +689,7 @@ func (f SQLiteUserStore) FeedbagDelete(screenName IdentScreenName, items []wire.
 	return nil
 }
 
-// FeedbagUpsert upserts an entry to a user's feedbag (buddy list). An entry is
-// created if it doesn't already exist, or modified if it already exists.
-func (f SQLiteUserStore) FeedbagUpsert(screenName IdentScreenName, items []wire.FeedbagItem) error {
+func (f SQLiteUserStore) FeedbagUpsert(ctx context.Context, screenName IdentScreenName, items []wire.FeedbagItem) error {
 	q := `
 		INSERT INTO feedbag (screenName, groupID, itemID, classID, name, attributes, pdMode, lastModified)
 		VALUES (?, ?, ?, ?, ?, ?, ?, UNIXEPOCH())
@@ -753,7 +722,8 @@ func (f SQLiteUserStore) FeedbagUpsert(screenName IdentScreenName, items []wire.
 				pdMode = uint8(wire.FeedbagPDModePermitAll)
 			}
 		}
-		_, err := f.db.Exec(q,
+		_, err := f.db.ExecContext(ctx,
+			q,
 			screenName.String(),
 			item.GroupID,
 			item.ItemID,
@@ -769,41 +739,36 @@ func (f SQLiteUserStore) FeedbagUpsert(screenName IdentScreenName, items []wire.
 	return nil
 }
 
-// ClearBuddyListRegistry removes all buddy lists from the visiblity registry.
-func (f SQLiteUserStore) ClearBuddyListRegistry() error {
-	if _, err := f.db.Exec(`DELETE FROM buddyListMode`); err != nil {
+func (f SQLiteUserStore) ClearBuddyListRegistry(ctx context.Context) error {
+	if _, err := f.db.ExecContext(ctx, `DELETE FROM buddyListMode`); err != nil {
 		return err
 	}
-	if _, err := f.db.Exec(`DELETE FROM clientSideBuddyList`); err != nil {
+	if _, err := f.db.ExecContext(ctx, `DELETE FROM clientSideBuddyList`); err != nil {
 		return err
 	}
 	return nil
 }
 
-// RegisterBuddyList makes my buddy list visible to other buddy lists.
-func (f SQLiteUserStore) RegisterBuddyList(user IdentScreenName) error {
+func (f SQLiteUserStore) RegisterBuddyList(ctx context.Context, user IdentScreenName) error {
 	q := `
 		INSERT INTO buddyListMode (screenName, clientSidePDMode) VALUES(?, ?)
 		ON CONFLICT (screenName) DO NOTHING
 	`
-	_, err := f.db.Exec(q, user.String(), wire.FeedbagPDModePermitAll)
+	_, err := f.db.ExecContext(ctx, q, user.String(), wire.FeedbagPDModePermitAll)
 	return err
 }
 
-// UnregisterBuddyList makes my buddy list invisible to other buddy lists.
-func (f SQLiteUserStore) UnregisterBuddyList(user IdentScreenName) error {
-	if _, err := f.db.Exec(`DELETE FROM buddyListMode WHERE screenName = ?`, user.String()); err != nil {
+func (f SQLiteUserStore) UnregisterBuddyList(ctx context.Context, user IdentScreenName) error {
+	if _, err := f.db.ExecContext(ctx, `DELETE FROM buddyListMode WHERE screenName = ?`, user.String()); err != nil {
 		return err
 	}
-	if _, err := f.db.Exec(`DELETE FROM clientSideBuddyList WHERE me = ?`, user.String()); err != nil {
+	if _, err := f.db.ExecContext(ctx, `DELETE FROM clientSideBuddyList WHERE me = ?`, user.String()); err != nil {
 		return err
 	}
 	return nil
 }
 
-// UseFeedbag sets the current session to use the server-side buddy list
-// instead of the default client-side buddy list.
-func (f SQLiteUserStore) UseFeedbag(user IdentScreenName) error {
+func (f SQLiteUserStore) UseFeedbag(ctx context.Context, screenName IdentScreenName) error {
 	q := `
 		INSERT INTO buddyListMode (screenName, useFeedbag)
 		VALUES (?, ?)
@@ -811,14 +776,12 @@ func (f SQLiteUserStore) UseFeedbag(user IdentScreenName) error {
 			DO UPDATE SET clientSidePDMode = 0,
 						  useFeedbag       = true
 	`
-	_, err := f.db.Exec(q, user.String(), true)
+	_, err := f.db.ExecContext(ctx, q, screenName.String(), true)
 	return err
 }
 
-// SetPDMode sets my current client-side permit/deny mode. It clears any
-// existing permit/deny records.
-func (f SQLiteUserStore) SetPDMode(me IdentScreenName, pdMode wire.FeedbagPDMode) error {
-	alreadySet, err := f.isPDModeEqual(me, pdMode)
+func (f SQLiteUserStore) SetPDMode(ctx context.Context, me IdentScreenName, pdMode wire.FeedbagPDMode) error {
+	alreadySet, err := f.isPDModeEqual(ctx, me, pdMode)
 	if err != nil {
 		return fmt.Errorf("isPDModeEqual: %w", err)
 	}
@@ -835,15 +798,15 @@ func (f SQLiteUserStore) SetPDMode(me IdentScreenName, pdMode wire.FeedbagPDMode
 		_ = tx.Rollback()
 	}()
 
-	if err := setClientSidePDMode(tx, me, pdMode); err != nil {
+	if err := setClientSidePDMode(ctx, tx, me, pdMode); err != nil {
 		return fmt.Errorf("setClientSidePDMode: %w", err)
 	}
 
-	if err := clearClientSidePDFlags(tx, me, pdMode); err != nil {
+	if err := clearClientSidePDFlags(ctx, tx, me, pdMode); err != nil {
 		return fmt.Errorf("clearClientSidePDFlags: %w", err)
 	}
 
-	if err := clearBlankClientSideBuddies(tx, me, pdMode); err != nil {
+	if err := clearBlankClientSideBuddies(ctx, tx, me, pdMode); err != nil {
 		return fmt.Errorf("clearBlankClientSideBuddies: %w", err)
 	}
 
@@ -856,14 +819,14 @@ func (f SQLiteUserStore) SetPDMode(me IdentScreenName, pdMode wire.FeedbagPDMode
 
 // isPDModeEqual indicates whether the current permit/deny mode is already set
 // to pdMode.
-func (f SQLiteUserStore) isPDModeEqual(me IdentScreenName, pdMode wire.FeedbagPDMode) (bool, error) {
+func (f SQLiteUserStore) isPDModeEqual(ctx context.Context, me IdentScreenName, pdMode wire.FeedbagPDMode) (bool, error) {
 	q := `
 		SELECT true
 		FROM buddyListMode
 		WHERE screenName = ? AND clientSidePDMode = ?
 	`
 	var isEqual bool
-	err := f.db.QueryRow(q, me.String(), pdMode).Scan(&isEqual)
+	err := f.db.QueryRowContext(ctx, q, me.String(), pdMode).Scan(&isEqual)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return false, err
 	}
@@ -871,13 +834,13 @@ func (f SQLiteUserStore) isPDModeEqual(me IdentScreenName, pdMode wire.FeedbagPD
 }
 
 // setClientSidePDMode sets the permit/deny mode for my client-side buddy list.
-func setClientSidePDMode(tx *sql.Tx, me IdentScreenName, pdMode wire.FeedbagPDMode) error {
+func setClientSidePDMode(ctx context.Context, tx *sql.Tx, me IdentScreenName, pdMode wire.FeedbagPDMode) error {
 	q := `
 		INSERT INTO buddyListMode (screenName, clientSidePDMode) VALUES(?, ?)
 		ON CONFLICT (screenName)
 			DO UPDATE SET clientSidePDMode = excluded.clientSidePDMode
 	`
-	_, err := tx.Exec(q, me.String(), pdMode)
+	_, err := tx.ExecContext(ctx, q, me.String(), pdMode)
 	if err != nil {
 		return err
 	}
@@ -886,7 +849,7 @@ func setClientSidePDMode(tx *sql.Tx, me IdentScreenName, pdMode wire.FeedbagPDMo
 
 // clearBlankClientSideBuddies removes client-side buddy where all flags
 // (isBuddy, isPermit, isDeny) are false.
-func clearBlankClientSideBuddies(tx *sql.Tx, me IdentScreenName, pdMode wire.FeedbagPDMode) error {
+func clearBlankClientSideBuddies(ctx context.Context, tx *sql.Tx, me IdentScreenName, pdMode wire.FeedbagPDMode) error {
 	q := `
 		DELETE FROM clientSideBuddyList
 		WHERE isBuddy IS FALSE
@@ -894,120 +857,110 @@ func clearBlankClientSideBuddies(tx *sql.Tx, me IdentScreenName, pdMode wire.Fee
 		  AND isDeny IS FALSE
 		  AND me = ?
 	`
-	_, err := tx.Exec(q, me.String(), pdMode)
+	_, err := tx.ExecContext(ctx, q, me.String(), pdMode)
 	return err
 }
 
 // clearClientSidePDFlags clears permit/deny flags.
-func clearClientSidePDFlags(tx *sql.Tx, me IdentScreenName, pdMode wire.FeedbagPDMode) error {
+func clearClientSidePDFlags(ctx context.Context, tx *sql.Tx, me IdentScreenName, pdMode wire.FeedbagPDMode) error {
 	q := `
 		UPDATE clientSideBuddyList
 		SET isDeny = false, isPermit = false
 		WHERE me = ?
 	`
-	_, err := tx.Exec(q, me.String(), pdMode)
+	_, err := tx.ExecContext(ctx, q, me.String(), pdMode)
 	return err
 }
 
-// AddBuddy adds a buddy to my client-side buddy list.
-func (f SQLiteUserStore) AddBuddy(me IdentScreenName, them IdentScreenName) error {
+func (f SQLiteUserStore) AddBuddy(ctx context.Context, me IdentScreenName, them IdentScreenName) error {
 	q := `
 		INSERT INTO clientSideBuddyList (me, them, isBuddy)
 		VALUES (?, ?, true)
 		ON CONFLICT (me, them) DO UPDATE SET isBuddy = true
 	`
-	_, err := f.db.Exec(q, me.String(), them.String())
+	_, err := f.db.ExecContext(ctx, q, me.String(), them.String())
 	return err
 }
 
-// RemoveBuddy removes a buddy from my client-side buddy list.
-func (f SQLiteUserStore) RemoveBuddy(me IdentScreenName, them IdentScreenName) error {
+func (f SQLiteUserStore) RemoveBuddy(ctx context.Context, me IdentScreenName, them IdentScreenName) error {
 	q := `
 		UPDATE clientSideBuddyList
 		SET isBuddy = false
 		WHERE me = ?
 		  AND them = ?
 	`
-	_, err := f.db.Exec(q, me.String(), them.String())
+	_, err := f.db.ExecContext(ctx, q, me.String(), them.String())
 	return err
 }
 
-// DenyBuddy adds a buddy to my client-side deny list.
-func (f SQLiteUserStore) DenyBuddy(me IdentScreenName, them IdentScreenName) error {
+func (f SQLiteUserStore) DenyBuddy(ctx context.Context, me IdentScreenName, them IdentScreenName) error {
 	q := `
 		INSERT INTO clientSideBuddyList (me, them, isDeny)
 		VALUES (?, ?, 1)
 		ON CONFLICT (me, them) DO UPDATE SET isDeny = 1
 	`
-	_, err := f.db.Exec(q, me.String(), them.String())
+	_, err := f.db.ExecContext(ctx, q, me.String(), them.String())
 	return err
 }
 
-// RemoveDenyBuddy removes a buddy from my client-side deny list.
-func (f SQLiteUserStore) RemoveDenyBuddy(me IdentScreenName, them IdentScreenName) error {
+func (f SQLiteUserStore) RemoveDenyBuddy(ctx context.Context, me IdentScreenName, them IdentScreenName) error {
 	q := `
 		UPDATE clientSideBuddyList
 		SET isDeny = false
 		WHERE me = ?
 		  AND them = ?
 	`
-	_, err := f.db.Exec(q, me.String(), them.String())
+	_, err := f.db.ExecContext(ctx, q, me.String(), them.String())
 	return err
 }
 
-// PermitBuddy adds a buddy to my client-side permit list.
-func (f SQLiteUserStore) PermitBuddy(me IdentScreenName, them IdentScreenName) error {
+func (f SQLiteUserStore) PermitBuddy(ctx context.Context, me IdentScreenName, them IdentScreenName) error {
 	q := `
 		INSERT INTO clientSideBuddyList (me, them, isPermit)
 		VALUES (?, ?, 1)
 		ON CONFLICT (me, them) DO UPDATE SET isPermit = 1
 	`
-	_, err := f.db.Exec(q, me.String(), them.String())
+	_, err := f.db.ExecContext(ctx, q, me.String(), them.String())
 	return err
 }
 
-// RemovePermitBuddy removes a buddy from my client-side permit list.
-func (f SQLiteUserStore) RemovePermitBuddy(me IdentScreenName, them IdentScreenName) error {
+func (f SQLiteUserStore) RemovePermitBuddy(ctx context.Context, me IdentScreenName, them IdentScreenName) error {
 	q := `
 		UPDATE clientSideBuddyList
 		SET isPermit = false
 		WHERE me = ?
 		  AND them = ?
 	`
-	_, err := f.db.Exec(q, me.String(), them.String())
+	_, err := f.db.ExecContext(ctx, q, me.String(), them.String())
 	return err
 }
 
-// Profile fetches a user profile. Return empty string if the user
-// does not exist or has no profile.
-func (f SQLiteUserStore) Profile(screenName IdentScreenName) (string, error) {
+func (f SQLiteUserStore) Profile(ctx context.Context, screenName IdentScreenName) (string, error) {
 	q := `
 		SELECT IFNULL(body, '')
 		FROM profile
 		WHERE screenName = ?
 	`
 	var profile string
-	err := f.db.QueryRow(q, screenName.String()).Scan(&profile)
+	err := f.db.QueryRowContext(ctx, q, screenName.String()).Scan(&profile)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return "", err
 	}
 	return profile, nil
 }
 
-// SetProfile sets the text contents of a user's profile.
-func (f SQLiteUserStore) SetProfile(screenName IdentScreenName, body string) error {
+func (f SQLiteUserStore) SetProfile(ctx context.Context, screenName IdentScreenName, body string) error {
 	q := `
 		INSERT INTO profile (screenName, body)
 		VALUES (?, ?)
 		ON CONFLICT (screenName)
 			DO UPDATE SET body = excluded.body
 	`
-	_, err := f.db.Exec(q, screenName.String(), body)
+	_, err := f.db.ExecContext(ctx, q, screenName.String(), body)
 	return err
 }
 
-// SetDirectoryInfo sets an AIM user's directory information.
-func (f SQLiteUserStore) SetDirectoryInfo(screenName IdentScreenName, info AIMNameAndAddr) error {
+func (f SQLiteUserStore) SetDirectoryInfo(ctx context.Context, screenName IdentScreenName, info AIMNameAndAddr) error {
 	q := `
 		UPDATE users SET 
 			aim_firstName = ?,
@@ -1022,7 +975,8 @@ func (f SQLiteUserStore) SetDirectoryInfo(screenName IdentScreenName, info AIMNa
 			aim_address = ?
 		WHERE identScreenName = ?
 	`
-	res, err := f.db.Exec(q,
+	res, err := f.db.ExecContext(ctx,
+		q,
 		info.FirstName,
 		info.LastName,
 		info.MiddleName,
@@ -1050,33 +1004,31 @@ func (f SQLiteUserStore) SetDirectoryInfo(screenName IdentScreenName, info AIMNa
 	return nil
 }
 
-func (f SQLiteUserStore) BARTUpsert(itemHash []byte, body []byte) error {
+func (f SQLiteUserStore) SetBuddyIcon(ctx context.Context, md5 []byte, image []byte) error {
 	q := `
 		INSERT INTO bartItem (hash, body)
 		VALUES (?, ?)
 		ON CONFLICT DO NOTHING
 	`
-	_, err := f.db.Exec(q, itemHash, body)
+	_, err := f.db.ExecContext(ctx, q, md5, image)
 	return err
 }
 
-func (f SQLiteUserStore) BARTRetrieve(hash []byte) ([]byte, error) {
+func (f SQLiteUserStore) BuddyIcon(ctx context.Context, md5 []byte) ([]byte, error) {
 	q := `
 		SELECT body
 		FROM bartItem
 		WHERE hash = ?
 	`
 	var body []byte
-	err := f.db.QueryRow(q, hash).Scan(&body)
+	err := f.db.QueryRowContext(ctx, q, md5).Scan(&body)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
 	}
 	return body, err
 }
 
-// ChatRoomByCookie looks up a chat room by cookie. Returns
-// ErrChatRoomNotFound if the room does not exist for cookie.
-func (f SQLiteUserStore) ChatRoomByCookie(cookie string) (ChatRoom, error) {
+func (f SQLiteUserStore) ChatRoomByCookie(ctx context.Context, chatCookie string) (ChatRoom, error) {
 	chatRoom := ChatRoom{}
 
 	q := `
@@ -1085,23 +1037,21 @@ func (f SQLiteUserStore) ChatRoomByCookie(cookie string) (ChatRoom, error) {
 		WHERE lower(cookie) = lower(?)
 	`
 	var creator string
-	err := f.db.QueryRow(q, cookie).Scan(
+	err := f.db.QueryRowContext(ctx, q, chatCookie).Scan(
 		&chatRoom.exchange,
 		&chatRoom.name,
 		&chatRoom.createTime,
 		&creator,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
-		err = fmt.Errorf("%w: %s", ErrChatRoomNotFound, cookie)
+		err = fmt.Errorf("%w: %s", ErrChatRoomNotFound, chatCookie)
 	}
 	chatRoom.creator = NewIdentScreenName(creator)
 
 	return chatRoom, err
 }
 
-// ChatRoomByName looks up a chat room by exchange and name. Returns
-// ErrChatRoomNotFound if the room does not exist for exchange and name.
-func (f SQLiteUserStore) ChatRoomByName(exchange uint16, name string) (ChatRoom, error) {
+func (f SQLiteUserStore) ChatRoomByName(ctx context.Context, exchange uint16, name string) (ChatRoom, error) {
 	chatRoom := ChatRoom{
 		exchange: exchange,
 	}
@@ -1112,7 +1062,7 @@ func (f SQLiteUserStore) ChatRoomByName(exchange uint16, name string) (ChatRoom,
 		WHERE exchange = ? AND lower(name) = lower(?)
 	`
 	var creator string
-	err := f.db.QueryRow(q, exchange, name).Scan(
+	err := f.db.QueryRowContext(ctx, q, exchange, name).Scan(
 		&chatRoom.name,
 		&chatRoom.createTime,
 		&creator,
@@ -1125,15 +1075,13 @@ func (f SQLiteUserStore) ChatRoomByName(exchange uint16, name string) (ChatRoom,
 	return chatRoom, err
 }
 
-// CreateChatRoom creates a new chat room. It sets createTime on chatRoom to
-// the current timestamp.
-func (f SQLiteUserStore) CreateChatRoom(chatRoom *ChatRoom) error {
+func (f SQLiteUserStore) CreateChatRoom(ctx context.Context, chatRoom *ChatRoom) error {
 	chatRoom.createTime = time.Now().UTC()
 	q := `
 		INSERT INTO chatRoom (cookie, exchange, name, created, creator)
 		VALUES (?, ?, ?, ?, ?)
 	`
-	_, err := f.db.Exec(
+	_, err := f.db.ExecContext(ctx,
 		q,
 		chatRoom.Cookie(),
 		chatRoom.Exchange(),
@@ -1151,14 +1099,14 @@ func (f SQLiteUserStore) CreateChatRoom(chatRoom *ChatRoom) error {
 	return err
 }
 
-func (f SQLiteUserStore) AllChatRooms(exchange uint16) ([]ChatRoom, error) {
+func (f SQLiteUserStore) AllChatRooms(ctx context.Context, exchange uint16) ([]ChatRoom, error) {
 	q := `
 		SELECT created, creator, name
 		FROM chatRoom
 		WHERE exchange = ?
 		ORDER BY created ASC
 	`
-	rows, err := f.db.Query(q, exchange)
+	rows, err := f.db.QueryContext(ctx, q, exchange)
 	if err != nil {
 		return nil, err
 	}
@@ -1184,37 +1132,34 @@ func (f SQLiteUserStore) AllChatRooms(exchange uint16) ([]ChatRoom, error) {
 	return users, nil
 }
 
-// UpdateDisplayScreenName updates the user's DisplayScreenName
-func (f SQLiteUserStore) UpdateDisplayScreenName(displayScreenName DisplayScreenName) error {
+func (f SQLiteUserStore) UpdateDisplayScreenName(ctx context.Context, displayScreenName DisplayScreenName) error {
 	q := `
 		UPDATE users
 		SET displayScreenName = ?
 		WHERE identScreenName = ?
 	`
-	_, err := f.db.Exec(q, displayScreenName.String(), displayScreenName.IdentScreenName().String())
+	_, err := f.db.ExecContext(ctx, q, displayScreenName.String(), displayScreenName.IdentScreenName().String())
 	return err
 }
 
-// UpdateEmailAddress updates the user's EmailAddress
-func (f SQLiteUserStore) UpdateEmailAddress(emailAddress *mail.Address, screenName IdentScreenName) error {
+func (f SQLiteUserStore) UpdateEmailAddress(ctx context.Context, screenName IdentScreenName, emailAddress *mail.Address) error {
 	q := `
 		UPDATE users
 		SET emailAddress = ?
 		WHERE identScreenName = ?
 	`
-	_, err := f.db.Exec(q, emailAddress.Address, screenName.String())
+	_, err := f.db.ExecContext(ctx, q, emailAddress.Address, screenName.String())
 	return err
 }
 
-// EmailAddressByName retrieves the user's EmailAddress
-func (f SQLiteUserStore) EmailAddressByName(screenName IdentScreenName) (*mail.Address, error) {
+func (f SQLiteUserStore) EmailAddress(ctx context.Context, screenName IdentScreenName) (*mail.Address, error) {
 	q := `
 		SELECT emailAddress
 		FROM users
 		WHERE identScreenName = ?
 	`
 	var emailAddress string
-	err := f.db.QueryRow(q, screenName.String()).Scan(&emailAddress)
+	err := f.db.QueryRowContext(ctx, q, screenName.String()).Scan(&emailAddress)
 	// username isn't found for some reason
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
@@ -1226,26 +1171,24 @@ func (f SQLiteUserStore) EmailAddressByName(screenName IdentScreenName) (*mail.A
 	return e, nil
 }
 
-// UpdateRegStatus updates the user's registration status preference
-func (f SQLiteUserStore) UpdateRegStatus(regStatus uint16, screenName IdentScreenName) error {
+func (f SQLiteUserStore) UpdateRegStatus(ctx context.Context, screenName IdentScreenName, regStatus uint16) error {
 	q := `
 		UPDATE users
 		SET regStatus = ?
 		WHERE identScreenName = ?
 	`
-	_, err := f.db.Exec(q, regStatus, screenName.String())
+	_, err := f.db.ExecContext(ctx, q, regStatus, screenName.String())
 	return err
 }
 
-// RegStatusByName retrieves the user's registration status preference
-func (f SQLiteUserStore) RegStatusByName(screenName IdentScreenName) (uint16, error) {
+func (f SQLiteUserStore) RegStatus(ctx context.Context, screenName IdentScreenName) (uint16, error) {
 	q := `
 		SELECT regStatus
 		FROM users
 		WHERE identScreenName = ?
 	`
 	var regStatus uint16
-	err := f.db.QueryRow(q, screenName.String()).Scan(&regStatus)
+	err := f.db.QueryRowContext(ctx, q, screenName.String()).Scan(&regStatus)
 	// username isn't found for some reason
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return 0, err
@@ -1253,26 +1196,24 @@ func (f SQLiteUserStore) RegStatusByName(screenName IdentScreenName) (uint16, er
 	return regStatus, nil
 }
 
-// UpdateConfirmStatus updates the user's confirmation status
-func (f SQLiteUserStore) UpdateConfirmStatus(confirmStatus bool, screenName IdentScreenName) error {
+func (f SQLiteUserStore) UpdateConfirmStatus(ctx context.Context, screenName IdentScreenName, confirmStatus bool) error {
 	q := `
 		UPDATE users
 		SET confirmStatus = ?
 		WHERE identScreenName = ?
 	`
-	_, err := f.db.Exec(q, confirmStatus, screenName.String())
+	_, err := f.db.ExecContext(ctx, q, confirmStatus, screenName.String())
 	return err
 }
 
-// ConfirmStatusByName retrieves the user's confirmation status
-func (f SQLiteUserStore) ConfirmStatusByName(screenName IdentScreenName) (bool, error) {
+func (f SQLiteUserStore) ConfirmStatus(ctx context.Context, screenName IdentScreenName) (bool, error) {
 	q := `
 		SELECT confirmStatus
 		FROM users
 		WHERE identScreenName = ?
 	`
 	var confirmStatus bool
-	err := f.db.QueryRow(q, screenName.String()).Scan(&confirmStatus)
+	err := f.db.QueryRowContext(ctx, q, screenName.String()).Scan(&confirmStatus)
 	// username isn't found for some reason
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return false, err
@@ -1280,19 +1221,17 @@ func (f SQLiteUserStore) ConfirmStatusByName(screenName IdentScreenName) (bool, 
 	return confirmStatus, nil
 }
 
-// UpdateSuspendedStatus updates the user's suspended status
-func (f SQLiteUserStore) UpdateSuspendedStatus(suspendedStatus uint16, screenName IdentScreenName) error {
+func (f SQLiteUserStore) UpdateSuspendedStatus(ctx context.Context, suspendedStatus uint16, screenName IdentScreenName) error {
 	q := `
 		UPDATE users
 		SET suspendedStatus = ?
 		WHERE identScreenName = ?
 	`
-	_, err := f.db.Exec(q, suspendedStatus, screenName.String())
+	_, err := f.db.ExecContext(ctx, q, suspendedStatus, screenName.String())
 	return err
 }
 
-// SetWorkInfo updates the work-related information for an ICQ user.
-func (f SQLiteUserStore) SetWorkInfo(name IdentScreenName, data ICQWorkInfo) error {
+func (f SQLiteUserStore) SetWorkInfo(ctx context.Context, name IdentScreenName, data ICQWorkInfo) error {
 	q := `
 		UPDATE users SET 
 			icq_workInfo_company = ?,
@@ -1309,7 +1248,8 @@ func (f SQLiteUserStore) SetWorkInfo(name IdentScreenName, data ICQWorkInfo) err
 			icq_workInfo_zipCode = ?
 		WHERE identScreenName = ?
 	`
-	res, err := f.db.Exec(q,
+	res, err := f.db.ExecContext(ctx,
+		q,
 		data.Company,
 		data.Department,
 		data.OccupationCode,
@@ -1337,7 +1277,7 @@ func (f SQLiteUserStore) SetWorkInfo(name IdentScreenName, data ICQWorkInfo) err
 	return nil
 }
 
-func (f SQLiteUserStore) SetMoreInfo(name IdentScreenName, data ICQMoreInfo) error {
+func (f SQLiteUserStore) SetMoreInfo(ctx context.Context, name IdentScreenName, data ICQMoreInfo) error {
 	q := `
 		UPDATE users SET 
 			icq_moreInfo_birthDay = ?,
@@ -1350,7 +1290,8 @@ func (f SQLiteUserStore) SetMoreInfo(name IdentScreenName, data ICQMoreInfo) err
 			icq_moreInfo_lang3 = ?
 		WHERE identScreenName = ?
 	`
-	res, err := f.db.Exec(q,
+	res, err := f.db.ExecContext(ctx,
+		q,
 		data.BirthDay,
 		data.BirthMonth,
 		data.BirthYear,
@@ -1374,13 +1315,14 @@ func (f SQLiteUserStore) SetMoreInfo(name IdentScreenName, data ICQMoreInfo) err
 	return nil
 }
 
-func (f SQLiteUserStore) SetUserNotes(name IdentScreenName, data ICQUserNotes) error {
+func (f SQLiteUserStore) SetUserNotes(ctx context.Context, name IdentScreenName, data ICQUserNotes) error {
 	q := `
 		UPDATE users
 		SET icq_notes = ?
 		WHERE identScreenName = ?
 	`
-	res, err := f.db.Exec(q,
+	res, err := f.db.ExecContext(ctx,
+		q,
 		data.Notes,
 		name.String(),
 	)
@@ -1397,7 +1339,7 @@ func (f SQLiteUserStore) SetUserNotes(name IdentScreenName, data ICQUserNotes) e
 	return nil
 }
 
-func (f SQLiteUserStore) SetInterests(name IdentScreenName, data ICQInterests) error {
+func (f SQLiteUserStore) SetInterests(ctx context.Context, name IdentScreenName, data ICQInterests) error {
 	q := `
 		UPDATE users SET 
 			icq_interests_code1 = ?,
@@ -1410,7 +1352,8 @@ func (f SQLiteUserStore) SetInterests(name IdentScreenName, data ICQInterests) e
 			icq_interests_keyword4 = ?
 		WHERE identScreenName = ?
 	`
-	res, err := f.db.Exec(q,
+	res, err := f.db.ExecContext(ctx,
+		q,
 		data.Code1,
 		data.Keyword1,
 		data.Code2,
@@ -1434,7 +1377,7 @@ func (f SQLiteUserStore) SetInterests(name IdentScreenName, data ICQInterests) e
 	return nil
 }
 
-func (f SQLiteUserStore) SetAffiliations(name IdentScreenName, data ICQAffiliations) error {
+func (f SQLiteUserStore) SetAffiliations(ctx context.Context, name IdentScreenName, data ICQAffiliations) error {
 	q := `
 		UPDATE users SET 
 			icq_affiliations_currentCode1 = ?,
@@ -1451,7 +1394,8 @@ func (f SQLiteUserStore) SetAffiliations(name IdentScreenName, data ICQAffiliati
 			icq_affiliations_pastKeyword3 = ?
 		WHERE identScreenName = ?
 	`
-	res, err := f.db.Exec(q,
+	res, err := f.db.ExecContext(ctx,
+		q,
 		data.CurrentCode1,
 		data.CurrentKeyword1,
 		data.CurrentCode2,
@@ -1479,7 +1423,7 @@ func (f SQLiteUserStore) SetAffiliations(name IdentScreenName, data ICQAffiliati
 	return nil
 }
 
-func (f SQLiteUserStore) SetBasicInfo(name IdentScreenName, data ICQBasicInfo) error {
+func (f SQLiteUserStore) SetBasicInfo(ctx context.Context, name IdentScreenName, data ICQBasicInfo) error {
 	q := `
 		UPDATE users SET 
 			icq_basicInfo_cellPhone = ?,
@@ -1498,7 +1442,8 @@ func (f SQLiteUserStore) SetBasicInfo(name IdentScreenName, data ICQBasicInfo) e
 			icq_basicInfo_zipCode = ?
 		WHERE identScreenName = ?
 	`
-	res, err := f.db.Exec(q,
+	res, err := f.db.ExecContext(ctx,
+		q,
 		data.CellPhone,
 		data.CountryCode,
 		data.EmailAddress,
@@ -1528,8 +1473,7 @@ func (f SQLiteUserStore) SetBasicInfo(name IdentScreenName, data ICQBasicInfo) e
 	return nil
 }
 
-// SaveMessage saves an offline message for later retrieval.
-func (f SQLiteUserStore) SaveMessage(offlineMessage OfflineMessage) error {
+func (f SQLiteUserStore) SaveMessage(ctx context.Context, offlineMessage OfflineMessage) error {
 	buf := &bytes.Buffer{}
 	if err := wire.MarshalBE(offlineMessage.Message, buf); err != nil {
 		return fmt.Errorf("marshal: %w", err)
@@ -1539,7 +1483,7 @@ func (f SQLiteUserStore) SaveMessage(offlineMessage OfflineMessage) error {
 		INSERT INTO offlineMessage (sender, recipient, message, sent)
 		VALUES (?, ?, ?, ?)
 	`
-	_, err := f.db.Exec(
+	_, err := f.db.ExecContext(ctx,
 		q,
 		offlineMessage.Sender.String(),
 		offlineMessage.Recipient.String(),
@@ -1549,8 +1493,7 @@ func (f SQLiteUserStore) SaveMessage(offlineMessage OfflineMessage) error {
 	return err
 }
 
-// RetrieveMessages retrieves all offline messages sent to recipient.
-func (f SQLiteUserStore) RetrieveMessages(recip IdentScreenName) ([]OfflineMessage, error) {
+func (f SQLiteUserStore) RetrieveMessages(ctx context.Context, recip IdentScreenName) ([]OfflineMessage, error) {
 	q := `
 		SELECT 
 		    sender, 
@@ -1559,7 +1502,7 @@ func (f SQLiteUserStore) RetrieveMessages(recip IdentScreenName) ([]OfflineMessa
 		FROM offlineMessage
 		WHERE recipient = ?
 	`
-	rows, err := f.db.Query(q, recip.String())
+	rows, err := f.db.QueryContext(ctx, q, recip.String())
 	if err != nil {
 		return nil, err
 	}
@@ -1595,17 +1538,15 @@ func (f SQLiteUserStore) RetrieveMessages(recip IdentScreenName) ([]OfflineMessa
 	return messages, nil
 }
 
-// DeleteMessages deletes all offline messages sent to recipient.
-func (f SQLiteUserStore) DeleteMessages(recip IdentScreenName) error {
+func (f SQLiteUserStore) DeleteMessages(ctx context.Context, recip IdentScreenName) error {
 	q := `
 		DELETE FROM offlineMessage WHERE recipient = ?
 	`
-	_, err := f.db.Exec(q, recip.String())
+	_, err := f.db.ExecContext(ctx, q, recip.String())
 	return err
 }
 
-// BuddyIconRefByName retrieves the buddy icon reference for a given user
-func (f SQLiteUserStore) BuddyIconRefByName(screenName IdentScreenName) (*wire.BARTID, error) {
+func (f SQLiteUserStore) BuddyIconMetadata(ctx context.Context, screenName IdentScreenName) (*wire.BARTID, error) {
 	q := `
 		SELECT
 			groupID,
@@ -1618,7 +1559,7 @@ func (f SQLiteUserStore) BuddyIconRefByName(screenName IdentScreenName) (*wire.B
 	`
 	var item wire.FeedbagItem
 	var attrs []byte
-	err := f.db.QueryRow(q, screenName.String(), wire.BARTTypesBuddyIcon, wire.FeedbagClassIdBart).Scan(&item.GroupID, &item.ItemID, &item.ClassID, &item.Name, &attrs)
+	err := f.db.QueryRowContext(ctx, q, screenName.String(), wire.BARTTypesBuddyIcon, wire.FeedbagClassIdBart).Scan(&item.GroupID, &item.ItemID, &item.ClassID, &item.Name, &attrs)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -1646,7 +1587,7 @@ func (f SQLiteUserStore) BuddyIconRefByName(screenName IdentScreenName) (*wire.B
 
 }
 
-func (f SQLiteUserStore) SetKeywords(name IdentScreenName, keywords [5]string) error {
+func (f SQLiteUserStore) SetKeywords(ctx context.Context, screenName IdentScreenName, keywords [5]string) error {
 	q := `
 		WITH interests AS (SELECT CASE WHEN name = ? THEN id ELSE NULL END AS aim_keyword1,
 								  CASE WHEN name = ? THEN id ELSE NULL END AS aim_keyword2,
@@ -1664,18 +1605,17 @@ func (f SQLiteUserStore) SetKeywords(name IdentScreenName, keywords [5]string) e
 		WHERE identScreenName = ?
 	`
 
-	_, err := f.db.Exec(q,
+	_, err := f.db.ExecContext(ctx, q,
 		keywords[0], keywords[1], keywords[2], keywords[3], keywords[4],
 		keywords[0], keywords[1], keywords[2], keywords[3], keywords[4],
-		name.String())
+		screenName.String())
 	return err
 }
 
-// Categories returns a list of keyword categories.
-func (f SQLiteUserStore) Categories() ([]Category, error) {
+func (f SQLiteUserStore) Categories(ctx context.Context) ([]Category, error) {
 	q := `SELECT id, name FROM aimKeywordCategory ORDER BY name`
 
-	rows, err := f.db.Query(q)
+	rows, err := f.db.QueryContext(ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -1697,8 +1637,7 @@ func (f SQLiteUserStore) Categories() ([]Category, error) {
 	return categories, nil
 }
 
-// CreateCategory creates a new keyword category.
-func (f SQLiteUserStore) CreateCategory(name string) (Category, error) {
+func (f SQLiteUserStore) CreateCategory(ctx context.Context, name string) (Category, error) {
 	tx, err := f.db.Begin()
 	if err != nil {
 		return Category{}, err
@@ -1707,7 +1646,7 @@ func (f SQLiteUserStore) CreateCategory(name string) (Category, error) {
 	defer tx.Rollback()
 
 	q := `INSERT INTO aimKeywordCategory (name) VALUES (?)`
-	res, err := tx.Exec(q, name)
+	res, err := tx.ExecContext(ctx, q, name)
 	if err != nil {
 		if sqliteErr, ok := err.(*sqlite.Error); ok && sqliteErr.Code() == lib.SQLITE_CONSTRAINT_UNIQUE {
 			err = ErrKeywordCategoryExists
@@ -1734,11 +1673,9 @@ func (f SQLiteUserStore) CreateCategory(name string) (Category, error) {
 	}, nil
 }
 
-// DeleteCategory deletes a keyword category and all of its associated
-// keywords.
-func (f SQLiteUserStore) DeleteCategory(categoryID uint8) error {
+func (f SQLiteUserStore) DeleteCategory(ctx context.Context, categoryID uint8) error {
 	q := `DELETE FROM aimKeywordCategory WHERE id = ?`
-	res, err := f.db.Exec(q, categoryID)
+	res, err := f.db.ExecContext(ctx, q, categoryID)
 	if err != nil {
 		// Check if the error is a foreign key constraint violation
 		if sqliteErr, ok := err.(*sqlite.Error); ok && sqliteErr.Code() == lib.SQLITE_CONSTRAINT_FOREIGNKEY {
@@ -1757,14 +1694,13 @@ func (f SQLiteUserStore) DeleteCategory(categoryID uint8) error {
 	return nil
 }
 
-// KeywordsByCategory returns all keywords for a given category.
-func (f SQLiteUserStore) KeywordsByCategory(categoryID uint8) ([]Keyword, error) {
+func (f SQLiteUserStore) KeywordsByCategory(ctx context.Context, categoryID uint8) ([]Keyword, error) {
 	q := `SELECT id, name FROM aimKeyword WHERE parent = ? ORDER BY name`
 	if categoryID == 0 {
 		q = `SELECT id, name FROM aimKeyword WHERE parent IS NULL ORDER BY name`
 	}
 
-	rows, err := f.db.Query(q, categoryID)
+	rows, err := f.db.QueryContext(ctx, q, categoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -1797,8 +1733,7 @@ func (f SQLiteUserStore) KeywordsByCategory(categoryID uint8) ([]Keyword, error)
 	return keywords, nil
 }
 
-// CreateKeyword creates a new keyword. If categoryID is 0, it has no category.
-func (f SQLiteUserStore) CreateKeyword(name string, categoryID uint8) (Keyword, error) {
+func (f SQLiteUserStore) CreateKeyword(ctx context.Context, name string, categoryID uint8) (Keyword, error) {
 	tx, err := f.db.Begin()
 	if err != nil {
 		return Keyword{}, err
@@ -1812,7 +1747,7 @@ func (f SQLiteUserStore) CreateKeyword(name string, categoryID uint8) (Keyword, 
 		parent = categoryID
 	}
 
-	res, err := tx.Exec(q, name, parent)
+	res, err := tx.ExecContext(ctx, q, name, parent)
 	if err != nil {
 		if sqliteErr, ok := err.(*sqlite.Error); ok && sqliteErr.Code() == lib.SQLITE_CONSTRAINT_UNIQUE {
 			err = ErrKeywordExists
@@ -1841,10 +1776,9 @@ func (f SQLiteUserStore) CreateKeyword(name string, categoryID uint8) (Keyword, 
 	}, nil
 }
 
-// DeleteKeyword deletes a keyword.
-func (f SQLiteUserStore) DeleteKeyword(id uint8) error {
+func (f SQLiteUserStore) DeleteKeyword(ctx context.Context, id uint8) error {
 	q := `DELETE FROM aimKeyword WHERE id = ?`
-	res, err := f.db.Exec(q, id)
+	res, err := f.db.ExecContext(ctx, q, id)
 
 	if err != nil {
 		// Check if the error is a foreign key constraint violation
@@ -1903,7 +1837,7 @@ func (f SQLiteUserStore) DeleteKeyword(id uint8) error {
 //		> Tennis (keyword, id=2)
 //	> Technology (category, id=3)
 //	> Zoology (top-level keyword, id=0)
-func (f SQLiteUserStore) InterestList() ([]wire.ODirKeywordListItem, error) {
+func (f SQLiteUserStore) InterestList(ctx context.Context) ([]wire.ODirKeywordListItem, error) {
 	q := `
 		WITH categories AS (
 			SELECT
@@ -1929,7 +1863,7 @@ func (f SQLiteUserStore) InterestList() ([]wire.ODirKeywordListItem, error) {
 		FROM categories
 	`
 
-	rows, err := f.db.Query(q)
+	rows, err := f.db.QueryContext(ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -1960,16 +1894,14 @@ func (f SQLiteUserStore) InterestList() ([]wire.ODirKeywordListItem, error) {
 	return list, nil
 }
 
-// SetTOCConfig sets the user's TOC config. The TOC config is the server-side
-// buddy list functionality for TOC. This configuration is not available to
-// OSCAR clients.
-func (f SQLiteUserStore) SetTOCConfig(user IdentScreenName, config string) error {
+func (f SQLiteUserStore) SetTOCConfig(ctx context.Context, user IdentScreenName, config string) error {
 	q := `
 		UPDATE users
 		SET tocConfig = ?
 		WHERE identScreenName = ?
 	`
-	res, err := f.db.Exec(q,
+	res, err := f.db.ExecContext(ctx,
+		q,
 		config,
 		user.String(),
 	)

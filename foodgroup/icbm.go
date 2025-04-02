@@ -17,14 +17,15 @@ const (
 
 // NewICBMService returns a new instance of ICBMService.
 func NewICBMService(
+	buddyIconManager BuddyIconManager,
 	messageRelayer MessageRelayer,
 	offlineMessageSaver OfflineMessageManager,
-	buddyListRetriever BuddyListRetriever,
+	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 ) *ICBMService {
 	return &ICBMService{
-		buddyListRetriever:  buddyListRetriever,
-		buddyBroadcaster:    newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		relationshipFetcher: relationshipFetcher,
+		buddyBroadcaster:    newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		messageRelayer:      messageRelayer,
 		offlineMessageSaver: offlineMessageSaver,
 		timeNow:             time.Now,
@@ -36,7 +37,7 @@ func NewICBMService(
 // responsible for sending and receiving instant messages and associated
 // functionality such as warning, typing events, etc.
 type ICBMService struct {
-	buddyListRetriever  BuddyListRetriever
+	relationshipFetcher RelationshipFetcher
 	buddyBroadcaster    buddyBroadcaster
 	messageRelayer      MessageRelayer
 	offlineMessageSaver OfflineMessageManager
@@ -83,7 +84,7 @@ func newICBMErr(requestID uint32, errCode uint16) *wire.SNACMessage {
 func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*wire.SNACMessage, error) {
 	recip := state.NewIdentScreenName(inBody.ScreenName)
 
-	rel, err := s.buddyListRetriever.Relationship(sess.IdentScreenName(), recip)
+	rel, err := s.relationshipFetcher.Relationship(ctx, sess.IdentScreenName(), recip)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +106,7 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 				Sender:    sess.IdentScreenName(),
 				Sent:      s.timeNow().UTC(),
 			}
-			if err := s.offlineMessageSaver.SaveMessage(offlineMsg); err != nil {
+			if err := s.offlineMessageSaver.SaveMessage(ctx, offlineMsg); err != nil {
 				return nil, fmt.Errorf("save ICBM offline message failed: %w", err)
 			}
 		}
@@ -208,7 +209,7 @@ func addExternalIP(sess *state.Session, tlv wire.TLV) (wire.TLV, error) {
 // ClientEvent relays SNAC wire.ICBMClientEvent typing events from the
 // sender to the recipient.
 func (s ICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x14_ICBMClientEvent) error {
-	blocked, err := s.buddyListRetriever.Relationship(sess.IdentScreenName(), state.NewIdentScreenName(inBody.ScreenName))
+	blocked, err := s.relationshipFetcher.Relationship(ctx, sess.IdentScreenName(), state.NewIdentScreenName(inBody.ScreenName))
 
 	switch {
 	case err != nil:
@@ -276,7 +277,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		}, nil
 	}
 
-	blocked, err := s.buddyListRetriever.Relationship(sess.IdentScreenName(), identScreenName)
+	blocked, err := s.relationshipFetcher.Relationship(ctx, sess.IdentScreenName(), identScreenName)
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}

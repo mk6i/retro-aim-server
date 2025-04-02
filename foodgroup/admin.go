@@ -13,14 +13,15 @@ import (
 // NewAdminService creates an instance of AdminService.
 func NewAdminService(
 	accountManager AccountManager,
-	buddyListRetriever BuddyListRetriever,
+	buddyIconManager BuddyIconManager,
+	relationshipFetcher RelationshipFetcher,
 	messageRelayer MessageRelayer,
 	sessionRetriever SessionRetriever,
 	logger *slog.Logger,
 ) *AdminService {
 	return &AdminService{
 		accountManager:   accountManager,
-		buddyBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		messageRelayer:   messageRelayer,
 		logger:           logger,
 	}
@@ -52,21 +53,21 @@ func (s AdminService) ConfirmRequest(ctx context.Context, sess *state.Session, f
 		}
 	}
 
-	_, err := s.accountManager.EmailAddressByName(sess.IdentScreenName())
+	_, err := s.accountManager.EmailAddress(ctx, sess.IdentScreenName())
 	if errors.Is(err, state.ErrNoEmailAddress) {
 		return getAdminConfirmReply(wire.AdminAcctConfirmStatusServerError), nil
 	} else if err != nil {
 		return wire.SNACMessage{}, err
 	}
 
-	accountConfirmed, err := s.accountManager.ConfirmStatusByName(sess.IdentScreenName())
+	accountConfirmed, err := s.accountManager.ConfirmStatus(ctx, sess.IdentScreenName())
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}
 	if accountConfirmed {
 		return getAdminConfirmReply(wire.AdminAcctConfirmStatusAlreadyConfirmed), nil
 	}
-	if err := s.accountManager.UpdateConfirmStatus(true, sess.IdentScreenName()); err != nil {
+	if err := s.accountManager.UpdateConfirmStatus(ctx, sess.IdentScreenName(), true); err != nil {
 		return wire.SNACMessage{}, err
 	}
 	sess.ClearUserInfoFlag(wire.OServiceUserFlagUnconfirmed)
@@ -77,7 +78,7 @@ func (s AdminService) ConfirmRequest(ctx context.Context, sess *state.Session, f
 }
 
 // InfoQuery returns the requested information about the account
-func (s AdminService) InfoQuery(_ context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x07_0x02_AdminInfoQuery) (wire.SNACMessage, error) {
+func (s AdminService) InfoQuery(ctx context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x07_0x02_AdminInfoQuery) (wire.SNACMessage, error) {
 	// getAdminInfoReply returns an AdminInfoReply SNAC
 	var getAdminInfoReply = func(tlvList wire.TLVList) wire.SNACMessage {
 		return wire.SNACMessage{
@@ -98,7 +99,7 @@ func (s AdminService) InfoQuery(_ context.Context, sess *state.Session, frame wi
 	tlvList := wire.TLVList{}
 
 	if _, hasRegStatus := body.TLVRestBlock.Bytes(wire.AdminTLVRegistrationStatus); hasRegStatus {
-		regStatus, err := s.accountManager.RegStatusByName(sess.IdentScreenName())
+		regStatus, err := s.accountManager.RegStatus(ctx, sess.IdentScreenName())
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}
@@ -107,7 +108,7 @@ func (s AdminService) InfoQuery(_ context.Context, sess *state.Session, frame wi
 	}
 
 	if _, hasEmail := body.TLVRestBlock.Bytes(wire.AdminTLVEmailAddress); hasEmail {
-		e, err := s.accountManager.EmailAddressByName(sess.IdentScreenName())
+		e, err := s.accountManager.EmailAddress(ctx, sess.IdentScreenName())
 		if errors.Is(err, state.ErrNoEmailAddress) {
 			tlvList.Append(wire.NewTLVBE(wire.AdminTLVEmailAddress, ""))
 		} else if err != nil {
@@ -205,7 +206,7 @@ func (s AdminService) InfoChangeRequest(ctx context.Context, sess *state.Session
 			tlvList.Append(wire.NewTLVBE(wire.AdminTLVUrl, ""))
 			return getAdminChangeReply(tlvList), nil
 		}
-		if err := s.accountManager.UpdateDisplayScreenName(proposedName); err != nil {
+		if err := s.accountManager.UpdateDisplayScreenName(ctx, proposedName); err != nil {
 			return wire.SNACMessage{}, err
 		}
 		sess.SetDisplayScreenName(proposedName)
@@ -233,7 +234,7 @@ func (s AdminService) InfoChangeRequest(ctx context.Context, sess *state.Session
 			return getAdminChangeReply(tlvList), nil
 
 		}
-		if err := s.accountManager.UpdateEmailAddress(e, sess.IdentScreenName()); err != nil {
+		if err := s.accountManager.UpdateEmailAddress(ctx, sess.IdentScreenName(), e); err != nil {
 			return wire.SNACMessage{}, err
 		}
 		tlvList.Append(wire.NewTLVBE(wire.AdminTLVEmailAddress, e.Address))
@@ -246,7 +247,7 @@ func (s AdminService) InfoChangeRequest(ctx context.Context, sess *state.Session
 			wire.AdminInfoRegStatusFullDisclosure,
 			wire.AdminInfoRegStatusLimitDisclosure,
 			wire.AdminInfoRegStatusNoDisclosure:
-			if err := s.accountManager.UpdateRegStatus(regStatus, sess.IdentScreenName()); err != nil {
+			if err := s.accountManager.UpdateRegStatus(ctx, sess.IdentScreenName(), regStatus); err != nil {
 				return wire.SNACMessage{}, err
 			}
 			tlvList.Append(wire.NewTLVBE(wire.AdminTLVRegistrationStatus, regStatus))
@@ -267,7 +268,7 @@ func (s AdminService) InfoChangeRequest(ctx context.Context, sess *state.Session
 			return getAdminChangeReply(tlvList), nil
 		}
 
-		u, err := s.accountManager.User(sess.IdentScreenName())
+		u, err := s.accountManager.User(ctx, sess.IdentScreenName())
 		if err != nil || u == nil {
 			if err != nil {
 				s.logger.ErrorContext(ctx, "accountManager.User: runtime error", "err", err)
@@ -283,7 +284,7 @@ func (s AdminService) InfoChangeRequest(ctx context.Context, sess *state.Session
 			return getAdminChangeReply(tlvList), nil
 		}
 
-		if err := s.accountManager.SetUserPassword(sess.IdentScreenName(), newPass); err != nil {
+		if err := s.accountManager.SetUserPassword(ctx, sess.IdentScreenName(), newPass); err != nil {
 			if errors.Is(err, state.ErrPasswordInvalid) {
 				tlvList.Append(wire.NewTLVBE(wire.AdminTLVErrorCode, wire.AdminInfoErrorInvalidPasswordLength))
 			} else {

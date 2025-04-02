@@ -90,7 +90,7 @@ func (rt AdminServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteC
 		return errors.New("unable to get session id from payload")
 	}
 
-	sess, err := rt.RetrieveBOSSession(authCookie)
+	sess, err := rt.RetrieveBOSSession(ctx, authCookie)
 	if err != nil {
 		return err
 	}

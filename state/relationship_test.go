@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -2999,27 +3000,27 @@ func TestSQLiteUserStore_AllRelationships(t *testing.T) {
 			assert.NoError(t, err)
 
 			for sn, list := range tt.clientSideLists {
-				assert.NoError(t, feedbagStore.SetPDMode(sn, list.privacyMode))
+				assert.NoError(t, feedbagStore.SetPDMode(context.Background(), sn, list.privacyMode))
 				for _, buddy := range list.buddyList {
-					assert.NoError(t, feedbagStore.AddBuddy(sn, buddy))
+					assert.NoError(t, feedbagStore.AddBuddy(context.Background(), sn, buddy))
 				}
 				for _, buddy := range list.permitList {
-					assert.NoError(t, feedbagStore.PermitBuddy(sn, buddy))
+					assert.NoError(t, feedbagStore.PermitBuddy(context.Background(), sn, buddy))
 				}
 				for _, buddy := range list.denyList {
-					assert.NoError(t, feedbagStore.DenyBuddy(sn, buddy))
+					assert.NoError(t, feedbagStore.DenyBuddy(context.Background(), sn, buddy))
 				}
 			}
 
 			for sn, list := range tt.serverSideLists {
-				assert.NoError(t, feedbagStore.UseFeedbag(sn))
+				assert.NoError(t, feedbagStore.UseFeedbag(context.Background(), sn))
 				itemID := uint16(1)
 				items := []wire.FeedbagItem{
 					pdInfoItem(itemID, list.privacyMode),
 				}
 				itemID++
 				for _, buddy := range list.buddyList {
-					assert.NoError(t, feedbagStore.AddBuddy(sn, buddy))
+					assert.NoError(t, feedbagStore.AddBuddy(context.Background(), sn, buddy))
 					items = append(items, newFeedbagItem(wire.FeedbagClassIdBuddy, itemID, buddy.String()))
 					itemID++
 				}
@@ -3031,10 +3032,10 @@ func TestSQLiteUserStore_AllRelationships(t *testing.T) {
 					items = append(items, newFeedbagItem(wire.FeedbagClassIDDeny, itemID, buddy.String()))
 					itemID++
 				}
-				assert.NoError(t, feedbagStore.FeedbagUpsert(sn, items))
+				assert.NoError(t, feedbagStore.FeedbagUpsert(context.Background(), sn, items))
 			}
 
-			have, err := feedbagStore.AllRelationships(tt.me, tt.filter)
+			have, err := feedbagStore.AllRelationships(context.Background(), tt.me, tt.filter)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, tt.expect, have)
 		})

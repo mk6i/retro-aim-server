@@ -28,7 +28,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 		{
 			name: "request user info, expect user info response",
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("user_screen_name"),
@@ -82,7 +82,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 		{
 			name: "request user info + profile, expect user info response + profile",
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("user_screen_name"),
@@ -150,7 +150,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 		{
 			name: "request user info + profile, expect user info response + profile",
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("user_screen_name"),
@@ -218,7 +218,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 		{
 			name: "request user info + away message, expect user info response + away message",
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("user_screen_name"),
@@ -278,7 +278,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 		{
 			name: "request user info of user who blocked requester, expect not logged in error",
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("user_screen_name"),
@@ -317,7 +317,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 		{
 			name: "request user info of user who does not exist, expect not logged in error",
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("user_screen_name"),
@@ -365,10 +365,10 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			buddyListRetriever := newMockBuddyListRetriever(t)
-			for _, params := range tc.mockParams.buddyListRetrieverParams.relationshipParams {
-				buddyListRetriever.EXPECT().
-					Relationship(params.me, params.them).
+			relationshipFetcher := newMockRelationshipFetcher(t)
+			for _, params := range tc.mockParams.relationshipFetcherParams.relationshipParams {
+				relationshipFetcher.EXPECT().
+					Relationship(matchContext(), params.me, params.them).
 					Return(params.result, params.err)
 			}
 			sessionRetriever := newMockSessionRetriever(t)
@@ -380,13 +380,13 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 			profileManager := newMockProfileManager(t)
 			for _, val := range tc.mockParams.retrieveProfileParams {
 				profileManager.EXPECT().
-					Profile(val.screenName).
+					Profile(matchContext(), val.screenName).
 					Return(val.result, val.err)
 			}
 			svc := LocateService{
-				buddyListRetriever: buddyListRetriever,
-				sessionRetriever:   sessionRetriever,
-				profileManager:     profileManager,
+				relationshipFetcher: relationshipFetcher,
+				sessionRetriever:    sessionRetriever,
+				profileManager:      profileManager,
 			}
 			outputSNAC, err := svc.UserInfoQuery(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x02_0x05_LocateUserInfoQuery))
@@ -561,11 +561,11 @@ func TestLocateService_SetKeywordInfo(t *testing.T) {
 			profileManager := newMockProfileManager(t)
 			for _, params := range tt.mockParams.setKeywordsParams {
 				profileManager.EXPECT().
-					SetKeywords(params.screenName, params.keywords).
+					SetKeywords(matchContext(), params.screenName, params.keywords).
 					Return(params.err)
 			}
-			svc := NewLocateService(nil, profileManager, nil, nil)
-			outputSNAC, err := svc.SetKeywordInfo(nil, tt.userSession, tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x02_0x0F_LocateSetKeywordInfo))
+			svc := NewLocateService(nil, nil, profileManager, nil, nil)
+			outputSNAC, err := svc.SetKeywordInfo(context.Background(), tt.userSession, tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x02_0x0F_LocateSetKeywordInfo))
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectOutput, outputSNAC)
 		})
@@ -650,11 +650,11 @@ func TestLocateService_SetDirInfo(t *testing.T) {
 			profileManager := newMockProfileManager(t)
 			for _, params := range tt.mockParams.setDirectoryInfoParams {
 				profileManager.EXPECT().
-					SetDirectoryInfo(params.screenName, params.info).
+					SetDirectoryInfo(matchContext(), params.screenName, params.info).
 					Return(nil)
 			}
-			svc := NewLocateService(nil, profileManager, nil, nil)
-			outputSNAC, err := svc.SetDirInfo(nil, tt.userSession, tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x02_0x09_LocateSetDirInfo))
+			svc := NewLocateService(nil, nil, profileManager, nil, nil)
+			outputSNAC, err := svc.SetDirInfo(context.Background(), tt.userSession, tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x02_0x09_LocateSetDirInfo))
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectOutput, outputSNAC)
 		})
@@ -737,7 +737,7 @@ func TestLocateService_SetInfo(t *testing.T) {
 			profileManager := newMockProfileManager(t)
 			for _, params := range tt.mockParams.setProfileParams {
 				profileManager.EXPECT().
-					SetProfile(params.screenName, params.body).
+					SetProfile(matchContext(), params.screenName, params.body).
 					Return(nil)
 			}
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
@@ -746,15 +746,15 @@ func TestLocateService_SetInfo(t *testing.T) {
 					BroadcastBuddyArrived(mock.Anything, matchSession(params.screenName)).
 					Return(params.err)
 			}
-			svc := NewLocateService(nil, profileManager, nil, nil)
+			svc := NewLocateService(nil, nil, profileManager, nil, nil)
 			svc.buddyBroadcaster = buddyUpdateBroadcaster
-			assert.Equal(t, tt.wantErr, svc.SetInfo(nil, tt.userSession, tt.inBody))
+			assert.Equal(t, tt.wantErr, svc.SetInfo(context.Background(), tt.userSession, tt.inBody))
 		})
 	}
 }
 
 func TestLocateService_SetInfo_SetCaps(t *testing.T) {
-	svc := NewLocateService(nil, nil, nil, nil)
+	svc := NewLocateService(nil, nil, nil, nil, nil)
 
 	sess := newTestSession("screen-name")
 	inBody := wire.SNAC_0x02_0x04_LocateSetInfo{
@@ -775,7 +775,7 @@ func TestLocateService_SetInfo_SetCaps(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, svc.SetInfo(nil, sess, inBody))
+	assert.NoError(t, svc.SetInfo(context.Background(), sess, inBody))
 
 	expect := [][16]byte{
 		// 748F2420-6287-11D1-8222-444553540000 (chat)
@@ -787,9 +787,9 @@ func TestLocateService_SetInfo_SetCaps(t *testing.T) {
 }
 
 func TestLocateService_RightsQuery(t *testing.T) {
-	svc := NewLocateService(nil, nil, nil, nil)
+	svc := NewLocateService(nil, nil, nil, nil, nil)
 
-	outputSNAC := svc.RightsQuery(nil, wire.SNACFrame{RequestID: 1234})
+	outputSNAC := svc.RightsQuery(context.Background(), wire.SNACFrame{RequestID: 1234})
 	expectSNAC := wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Locate,
@@ -928,11 +928,11 @@ func TestLocateService_DirInfo(t *testing.T) {
 			profileManager := newMockProfileManager(t)
 			for _, params := range tt.mockParams.profileManagerParams.getUserParams {
 				profileManager.EXPECT().
-					User(params.screenName).
+					User(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
-			svc := NewLocateService(nil, profileManager, nil, nil)
-			outputSNAC, err := svc.DirInfo(nil, tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x02_0x0B_LocateGetDirInfo))
+			svc := NewLocateService(nil, nil, profileManager, nil, nil)
+			outputSNAC, err := svc.DirInfo(context.Background(), tt.inputSNAC.Frame, tt.inputSNAC.Body.(wire.SNAC_0x02_0x0B_LocateGetDirInfo))
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectOutput, outputSNAC)
 		})

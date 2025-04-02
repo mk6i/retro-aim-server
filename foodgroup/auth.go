@@ -97,7 +97,7 @@ func (s AuthService) RegisterBOSSession(ctx context.Context, authCookie []byte) 
 		return nil, err
 	}
 
-	u, err := s.userManager.User(c.ScreenName.IdentScreenName())
+	u, err := s.userManager.User(ctx, c.ScreenName.IdentScreenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
 	}
@@ -114,7 +114,7 @@ func (s AuthService) RegisterBOSSession(ctx context.Context, authCookie []byte) 
 	}
 
 	// set the unconfirmed user info flag if this account is unconfirmed
-	if confirmed, err := s.accountManager.ConfirmStatusByName(sess.IdentScreenName()); err != nil {
+	if confirmed, err := s.accountManager.ConfirmStatus(ctx, sess.IdentScreenName()); err != nil {
 		return nil, fmt.Errorf("error setting unconfirmed user flag: %w", err)
 	} else if !confirmed {
 		sess.SetUserInfoFlag(wire.OServiceUserFlagUnconfirmed)
@@ -137,7 +137,7 @@ func (s AuthService) RegisterBOSSession(ctx context.Context, authCookie []byte) 
 }
 
 // RetrieveBOSSession returns a user's existing session
-func (s AuthService) RetrieveBOSSession(authCookie []byte) (*state.Session, error) {
+func (s AuthService) RetrieveBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error) {
 	buf, err := s.cookieBaker.Crack(authCookie)
 	if err != nil {
 		return nil, err
@@ -148,7 +148,7 @@ func (s AuthService) RetrieveBOSSession(authCookie []byte) (*state.Session, erro
 		return nil, err
 	}
 
-	u, err := s.userManager.User(c.ScreenName.IdentScreenName())
+	u, err := s.userManager.User(ctx, c.ScreenName.IdentScreenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
 	}
@@ -178,10 +178,7 @@ func (s AuthService) SignoutChat(ctx context.Context, sess *state.Session) {
 // request. The client uses the auth key to salt the MD5 password hash provided
 // in the subsequent login request. If the account is valid, return
 // SNAC(0x17,0x07), otherwise return SNAC(0x17,0x03).
-func (s AuthService) BUCPChallenge(
-	bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest,
-	newUUIDFn func() uuid.UUID,
-) (wire.SNACMessage, error) {
+func (s AuthService) BUCPChallenge(ctx context.Context, bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUIDFn func() uuid.UUID) (wire.SNACMessage, error) {
 
 	screenName, exists := bodyIn.String(wire.LoginTLVTagsScreenName)
 	if !exists {
@@ -190,7 +187,7 @@ func (s AuthService) BUCPChallenge(
 
 	var authKey string
 
-	user, err := s.userManager.User(state.NewIdentScreenName(screenName))
+	user, err := s.userManager.User(ctx, state.NewIdentScreenName(screenName))
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}
@@ -240,12 +237,9 @@ func (s AuthService) BUCPChallenge(
 // (wire.LoginTLVTagsReconnectHere) and an authorization cookie
 // (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
 // (wire.LoginTLVTagsErrorSubcode).
-func (s AuthService) BUCPLogin(
-	bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest,
-	newUserFn func(screenName state.DisplayScreenName) (state.User, error),
-) (wire.SNACMessage, error) {
+func (s AuthService) BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error) {
 
-	block, err := s.login(bodyIn.TLVList, newUserFn)
+	block, err := s.login(ctx, bodyIn.TLVList, newUserFn)
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}
@@ -271,11 +265,8 @@ func (s AuthService) BUCPLogin(
 // (wire.LoginTLVTagsReconnectHere) and an authorization cookie
 // (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
 // (wire.LoginTLVTagsErrorSubcode).
-func (s AuthService) FLAPLogin(
-	frame wire.FLAPSignonFrame,
-	newUserFn func(screenName state.DisplayScreenName) (state.User, error),
-) (wire.TLVRestBlock, error) {
-	return s.login(frame.TLVList, newUserFn)
+func (s AuthService) FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error) {
+	return s.login(ctx, frame.TLVList, newUserFn)
 }
 
 // loginProperties represents the properties sent by the client at login.
@@ -334,17 +325,14 @@ func (l *loginProperties) fromTLV(list wire.TLVList) error {
 
 // login validates a user's credentials and creates their session. it returns
 // metadata used in both BUCP and FLAP authentication responses.
-func (s AuthService) login(
-	tlv wire.TLVList,
-	newUserFn func(screenName state.DisplayScreenName) (state.User, error),
-) (wire.TLVRestBlock, error) {
+func (s AuthService) login(ctx context.Context, tlv wire.TLVList, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error) {
 
 	props := loginProperties{}
 	if err := props.fromTLV(tlv); err != nil {
 		return wire.TLVRestBlock{}, err
 	}
 
-	user, err := s.userManager.User(props.screenName.IdentScreenName())
+	user, err := s.userManager.User(ctx, props.screenName.IdentScreenName())
 	if err != nil {
 		return wire.TLVRestBlock{}, err
 	}
@@ -353,7 +341,7 @@ func (s AuthService) login(
 		// user not found
 		if s.config.DisableAuth {
 			// auth disabled, create the user
-			return s.createUser(props, newUserFn)
+			return s.createUser(ctx, props, newUserFn)
 		}
 		// auth enabled, return separate login errors for ICQ and AIM
 		loginErr := wire.LoginErrInvalidUsernameOrPassword
@@ -392,10 +380,7 @@ func (s AuthService) login(
 	return s.loginSuccessResponse(props)
 }
 
-func (s AuthService) createUser(
-	props loginProperties,
-	newUserFn func(screenName state.DisplayScreenName) (state.User, error),
-) (wire.TLVRestBlock, error) {
+func (s AuthService) createUser(ctx context.Context, props loginProperties, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error) {
 
 	var err error
 	if props.screenName.IsUIN() {
@@ -420,7 +405,7 @@ func (s AuthService) createUser(
 		return wire.TLVRestBlock{}, err
 	}
 
-	err = s.userManager.InsertUser(newUser)
+	err = s.userManager.InsertUser(ctx, newUser)
 	if err != nil {
 		return wire.TLVRestBlock{}, err
 	}

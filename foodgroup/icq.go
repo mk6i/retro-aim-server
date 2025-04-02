@@ -48,7 +48,7 @@ type ICQService struct {
 }
 
 func (s ICQService) DeleteMsgReq(ctx context.Context, sess *state.Session, seq uint16) error {
-	if err := s.offlineMessageManager.DeleteMessages(sess.IdentScreenName()); err != nil {
+	if err := s.offlineMessageManager.DeleteMessages(ctx, sess.IdentScreenName()); err != nil {
 		return fmt.Errorf("deleting messages: %w", err)
 	}
 	return nil
@@ -65,7 +65,7 @@ func (s ICQService) FindByICQName(ctx context.Context, sess *state.Session, req 
 		ReqSubType: wire.ICQDBQueryMetaReplyLastUserFound,
 	}
 
-	res, err := s.userFinder.FindByICQName(req.FirstName, req.LastName, req.NickName)
+	res, err := s.userFinder.FindByICQName(ctx, req.FirstName, req.LastName, req.NickName)
 
 	if err != nil {
 		s.logger.Error("FindByICQName failed", "err", err.Error())
@@ -110,7 +110,7 @@ func (s ICQService) FindByICQEmail(ctx context.Context, sess *state.Session, req
 	}
 	resp.LastResult()
 
-	res, err := s.userFinder.FindByICQEmail(req.Email)
+	res, err := s.userFinder.FindByICQEmail(ctx, req.Email)
 
 	switch {
 	case errors.Is(err, state.ErrNoUser):
@@ -150,7 +150,7 @@ func (s ICQService) FindByEmail3(ctx context.Context, sess *state.Session, req w
 	}
 	resp.LastResult()
 
-	res, err := s.userFinder.FindByICQEmail(email.Email)
+	res, err := s.userFinder.FindByICQEmail(ctx, email.Email)
 
 	switch {
 	case errors.Is(err, state.ErrNoUser):
@@ -180,7 +180,7 @@ func (s ICQService) FindByICQInterests(ctx context.Context, sess *state.Session,
 	}
 
 	interests := strings.Split(req.InterestsKeyword, ",")
-	res, err := s.userFinder.FindByICQInterests(req.InterestsCode, interests)
+	res, err := s.userFinder.FindByICQInterests(ctx, req.InterestsCode, interests)
 
 	if err != nil {
 		s.logger.Error("FindByICQInterests failed", "err", err.Error())
@@ -217,7 +217,7 @@ func (s ICQService) FindByWhitePages2(ctx context.Context, sess *state.Session, 
 
 	users, err := func() ([]state.User, error) {
 		if keyword, hasKeyword := req.ICQString(wire.ICQTLVTagsWhitepagesSearchKeywords); hasKeyword {
-			res, err := s.userFinder.FindByICQKeyword(keyword)
+			res, err := s.userFinder.FindByICQKeyword(ctx, keyword)
 			if err != nil {
 				return nil, fmt.Errorf("FindByICQKeyword failed: %w", err)
 			}
@@ -229,7 +229,7 @@ func (s ICQService) FindByWhitePages2(ctx context.Context, sess *state.Session, 
 		bLast, hastLast := req.ICQString(wire.ICQTLVTagsLastName)
 
 		if hasNick || hasFirst || hastLast {
-			res, err := s.userFinder.FindByICQName(bFirst, bLast, bNick)
+			res, err := s.userFinder.FindByICQName(ctx, bFirst, bLast, bNick)
 			if err != nil {
 				return nil, fmt.Errorf("FindByICQName failed: %w", err)
 			}
@@ -293,7 +293,7 @@ func (s ICQService) FindByUIN(ctx context.Context, sess *state.Session, req wire
 	}
 	resp.LastResult()
 
-	res, err := s.userFinder.FindByUIN(req.UIN)
+	res, err := s.userFinder.FindByUIN(ctx, req.UIN)
 
 	switch {
 	case errors.Is(err, state.ErrNoUser):
@@ -328,7 +328,7 @@ func (s ICQService) FindByUIN2(ctx context.Context, sess *state.Session, req wir
 	}
 	resp.LastResult()
 
-	res, err := s.userFinder.FindByUIN(UIN)
+	res, err := s.userFinder.FindByUIN(ctx, UIN)
 
 	switch {
 	case errors.Is(err, state.ErrNoUser):
@@ -348,7 +348,7 @@ func (s ICQService) FindByUIN2(ctx context.Context, sess *state.Session, req wir
 
 func (s ICQService) FullUserInfo(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x051F_DBQueryMetaReqSearchByUIN, seq uint16) error {
 
-	user, err := s.userFinder.FindByUIN(req.UIN)
+	user, err := s.userFinder.FindByUIN(ctx, req.UIN)
 	if err != nil {
 		return err
 	}
@@ -388,7 +388,7 @@ func (s ICQService) FullUserInfo(ctx context.Context, sess *state.Session, req w
 }
 
 func (s ICQService) OfflineMsgReq(ctx context.Context, sess *state.Session, seq uint16) error {
-	messages, err := s.offlineMessageManager.RetrieveMessages(sess.IdentScreenName())
+	messages, err := s.offlineMessageManager.RetrieveMessages(ctx, sess.IdentScreenName())
 	if err != nil {
 		return fmt.Errorf("retrieving messages: %w", err)
 	}
@@ -479,7 +479,7 @@ func (s ICQService) SetAffiliations(ctx context.Context, sess *state.Session, re
 		CurrentKeyword3: req.Affiliations[2].Keyword,
 	}
 
-	if err := s.userUpdater.SetAffiliations(sess.IdentScreenName(), u); err != nil {
+	if err := s.userUpdater.SetAffiliations(ctx, sess.IdentScreenName(), u); err != nil {
 		return err
 	}
 
@@ -504,7 +504,7 @@ func (s ICQService) SetBasicInfo(ctx context.Context, sess *state.Session, req w
 		ZIPCode:      req.ZIP,
 	}
 
-	if err := s.userUpdater.SetBasicInfo(sess.IdentScreenName(), u); err != nil {
+	if err := s.userUpdater.SetBasicInfo(ctx, sess.IdentScreenName(), u); err != nil {
 		return err
 	}
 
@@ -533,7 +533,7 @@ func (s ICQService) SetInterests(ctx context.Context, sess *state.Session, req w
 		Keyword4: req.Interests[3].Keyword,
 	}
 
-	if err := s.userUpdater.SetInterests(sess.IdentScreenName(), u); err != nil {
+	if err := s.userUpdater.SetInterests(ctx, sess.IdentScreenName(), u); err != nil {
 		return err
 	}
 
@@ -552,7 +552,7 @@ func (s ICQService) SetMoreInfo(ctx context.Context, sess *state.Session, req wi
 		Lang3:        req.Lang3,
 	}
 
-	if err := s.userUpdater.SetMoreInfo(sess.IdentScreenName(), u); err != nil {
+	if err := s.userUpdater.SetMoreInfo(ctx, sess.IdentScreenName(), u); err != nil {
 		return err
 	}
 
@@ -569,7 +569,7 @@ func (s ICQService) SetUserNotes(ctx context.Context, sess *state.Session, req w
 		Notes: req.Notes,
 	}
 
-	if err := s.userUpdater.SetUserNotes(sess.IdentScreenName(), u); err != nil {
+	if err := s.userUpdater.SetUserNotes(ctx, sess.IdentScreenName(), u); err != nil {
 		return err
 	}
 
@@ -592,7 +592,7 @@ func (s ICQService) SetWorkInfo(ctx context.Context, sess *state.Session, req wi
 		ZIPCode:        req.ZIP,
 	}
 
-	if err := s.userUpdater.SetWorkInfo(sess.IdentScreenName(), icqWorkInfo); err != nil {
+	if err := s.userUpdater.SetWorkInfo(ctx, sess.IdentScreenName(), icqWorkInfo); err != nil {
 		return err
 	}
 
@@ -600,7 +600,7 @@ func (s ICQService) SetWorkInfo(ctx context.Context, sess *state.Session, req wi
 }
 
 func (s ICQService) ShortUserInfo(ctx context.Context, sess *state.Session, req wire.ICQ_0x07D0_0x04BA_DBQueryMetaReqShortInfo, seq uint16) error {
-	user, err := s.userFinder.FindByUIN(req.UIN)
+	user, err := s.userFinder.FindByUIN(ctx, req.UIN)
 	if err != nil {
 		return err
 	}

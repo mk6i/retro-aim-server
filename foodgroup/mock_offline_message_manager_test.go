@@ -3,6 +3,8 @@
 package foodgroup
 
 import (
+	context "context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,17 +22,17 @@ func (_m *mockOfflineMessageManager) EXPECT() *mockOfflineMessageManager_Expecte
 	return &mockOfflineMessageManager_Expecter{mock: &_m.Mock}
 }
 
-// DeleteMessages provides a mock function with given fields: recip
-func (_m *mockOfflineMessageManager) DeleteMessages(recip state.IdentScreenName) error {
-	ret := _m.Called(recip)
+// DeleteMessages provides a mock function with given fields: ctx, recip
+func (_m *mockOfflineMessageManager) DeleteMessages(ctx context.Context, recip state.IdentScreenName) error {
+	ret := _m.Called(ctx, recip)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteMessages")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) error); ok {
-		r0 = rf(recip)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) error); ok {
+		r0 = rf(ctx, recip)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -44,14 +46,15 @@ type mockOfflineMessageManager_DeleteMessages_Call struct {
 }
 
 // DeleteMessages is a helper method to define mock.On call
+//   - ctx context.Context
 //   - recip state.IdentScreenName
-func (_e *mockOfflineMessageManager_Expecter) DeleteMessages(recip interface{}) *mockOfflineMessageManager_DeleteMessages_Call {
-	return &mockOfflineMessageManager_DeleteMessages_Call{Call: _e.mock.On("DeleteMessages", recip)}
+func (_e *mockOfflineMessageManager_Expecter) DeleteMessages(ctx interface{}, recip interface{}) *mockOfflineMessageManager_DeleteMessages_Call {
+	return &mockOfflineMessageManager_DeleteMessages_Call{Call: _e.mock.On("DeleteMessages", ctx, recip)}
 }
 
-func (_c *mockOfflineMessageManager_DeleteMessages_Call) Run(run func(recip state.IdentScreenName)) *mockOfflineMessageManager_DeleteMessages_Call {
+func (_c *mockOfflineMessageManager_DeleteMessages_Call) Run(run func(ctx context.Context, recip state.IdentScreenName)) *mockOfflineMessageManager_DeleteMessages_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -61,14 +64,14 @@ func (_c *mockOfflineMessageManager_DeleteMessages_Call) Return(_a0 error) *mock
 	return _c
 }
 
-func (_c *mockOfflineMessageManager_DeleteMessages_Call) RunAndReturn(run func(state.IdentScreenName) error) *mockOfflineMessageManager_DeleteMessages_Call {
+func (_c *mockOfflineMessageManager_DeleteMessages_Call) RunAndReturn(run func(context.Context, state.IdentScreenName) error) *mockOfflineMessageManager_DeleteMessages_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// RetrieveMessages provides a mock function with given fields: recip
-func (_m *mockOfflineMessageManager) RetrieveMessages(recip state.IdentScreenName) ([]state.OfflineMessage, error) {
-	ret := _m.Called(recip)
+// RetrieveMessages provides a mock function with given fields: ctx, recip
+func (_m *mockOfflineMessageManager) RetrieveMessages(ctx context.Context, recip state.IdentScreenName) ([]state.OfflineMessage, error) {
+	ret := _m.Called(ctx, recip)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RetrieveMessages")
@@ -76,19 +79,19 @@ func (_m *mockOfflineMessageManager) RetrieveMessages(recip state.IdentScreenNam
 
 	var r0 []state.OfflineMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) ([]state.OfflineMessage, error)); ok {
-		return rf(recip)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) ([]state.OfflineMessage, error)); ok {
+		return rf(ctx, recip)
 	}
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) []state.OfflineMessage); ok {
-		r0 = rf(recip)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) []state.OfflineMessage); ok {
+		r0 = rf(ctx, recip)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]state.OfflineMessage)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
-		r1 = rf(recip)
+	if rf, ok := ret.Get(1).(func(context.Context, state.IdentScreenName) error); ok {
+		r1 = rf(ctx, recip)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -102,14 +105,15 @@ type mockOfflineMessageManager_RetrieveMessages_Call struct {
 }
 
 // RetrieveMessages is a helper method to define mock.On call
+//   - ctx context.Context
 //   - recip state.IdentScreenName
-func (_e *mockOfflineMessageManager_Expecter) RetrieveMessages(recip interface{}) *mockOfflineMessageManager_RetrieveMessages_Call {
-	return &mockOfflineMessageManager_RetrieveMessages_Call{Call: _e.mock.On("RetrieveMessages", recip)}
+func (_e *mockOfflineMessageManager_Expecter) RetrieveMessages(ctx interface{}, recip interface{}) *mockOfflineMessageManager_RetrieveMessages_Call {
+	return &mockOfflineMessageManager_RetrieveMessages_Call{Call: _e.mock.On("RetrieveMessages", ctx, recip)}
 }
 
-func (_c *mockOfflineMessageManager_RetrieveMessages_Call) Run(run func(recip state.IdentScreenName)) *mockOfflineMessageManager_RetrieveMessages_Call {
+func (_c *mockOfflineMessageManager_RetrieveMessages_Call) Run(run func(ctx context.Context, recip state.IdentScreenName)) *mockOfflineMessageManager_RetrieveMessages_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -119,22 +123,22 @@ func (_c *mockOfflineMessageManager_RetrieveMessages_Call) Return(_a0 []state.Of
 	return _c
 }
 
-func (_c *mockOfflineMessageManager_RetrieveMessages_Call) RunAndReturn(run func(state.IdentScreenName) ([]state.OfflineMessage, error)) *mockOfflineMessageManager_RetrieveMessages_Call {
+func (_c *mockOfflineMessageManager_RetrieveMessages_Call) RunAndReturn(run func(context.Context, state.IdentScreenName) ([]state.OfflineMessage, error)) *mockOfflineMessageManager_RetrieveMessages_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SaveMessage provides a mock function with given fields: offlineMessage
-func (_m *mockOfflineMessageManager) SaveMessage(offlineMessage state.OfflineMessage) error {
-	ret := _m.Called(offlineMessage)
+// SaveMessage provides a mock function with given fields: ctx, offlineMessage
+func (_m *mockOfflineMessageManager) SaveMessage(ctx context.Context, offlineMessage state.OfflineMessage) error {
+	ret := _m.Called(ctx, offlineMessage)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SaveMessage")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.OfflineMessage) error); ok {
-		r0 = rf(offlineMessage)
+	if rf, ok := ret.Get(0).(func(context.Context, state.OfflineMessage) error); ok {
+		r0 = rf(ctx, offlineMessage)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -148,14 +152,15 @@ type mockOfflineMessageManager_SaveMessage_Call struct {
 }
 
 // SaveMessage is a helper method to define mock.On call
+//   - ctx context.Context
 //   - offlineMessage state.OfflineMessage
-func (_e *mockOfflineMessageManager_Expecter) SaveMessage(offlineMessage interface{}) *mockOfflineMessageManager_SaveMessage_Call {
-	return &mockOfflineMessageManager_SaveMessage_Call{Call: _e.mock.On("SaveMessage", offlineMessage)}
+func (_e *mockOfflineMessageManager_Expecter) SaveMessage(ctx interface{}, offlineMessage interface{}) *mockOfflineMessageManager_SaveMessage_Call {
+	return &mockOfflineMessageManager_SaveMessage_Call{Call: _e.mock.On("SaveMessage", ctx, offlineMessage)}
 }
 
-func (_c *mockOfflineMessageManager_SaveMessage_Call) Run(run func(offlineMessage state.OfflineMessage)) *mockOfflineMessageManager_SaveMessage_Call {
+func (_c *mockOfflineMessageManager_SaveMessage_Call) Run(run func(ctx context.Context, offlineMessage state.OfflineMessage)) *mockOfflineMessageManager_SaveMessage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.OfflineMessage))
+		run(args[0].(context.Context), args[1].(state.OfflineMessage))
 	})
 	return _c
 }
@@ -165,7 +170,7 @@ func (_c *mockOfflineMessageManager_SaveMessage_Call) Return(_a0 error) *mockOff
 	return _c
 }
 
-func (_c *mockOfflineMessageManager_SaveMessage_Call) RunAndReturn(run func(state.OfflineMessage) error) *mockOfflineMessageManager_SaveMessage_Call {
+func (_c *mockOfflineMessageManager_SaveMessage_Call) RunAndReturn(run func(context.Context, state.OfflineMessage) error) *mockOfflineMessageManager_SaveMessage_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -3,6 +3,8 @@
 package http
 
 import (
+	context "context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,9 +22,9 @@ func (_m *mockUserManager) EXPECT() *mockUserManager_Expecter {
 	return &mockUserManager_Expecter{mock: &_m.Mock}
 }
 
-// AllUsers provides a mock function with no fields
-func (_m *mockUserManager) AllUsers() ([]state.User, error) {
-	ret := _m.Called()
+// AllUsers provides a mock function with given fields: ctx
+func (_m *mockUserManager) AllUsers(ctx context.Context) ([]state.User, error) {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AllUsers")
@@ -30,19 +32,19 @@ func (_m *mockUserManager) AllUsers() ([]state.User, error) {
 
 	var r0 []state.User
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]state.User, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(context.Context) ([]state.User, error)); ok {
+		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func() []state.User); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) []state.User); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]state.User)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -56,13 +58,14 @@ type mockUserManager_AllUsers_Call struct {
 }
 
 // AllUsers is a helper method to define mock.On call
-func (_e *mockUserManager_Expecter) AllUsers() *mockUserManager_AllUsers_Call {
-	return &mockUserManager_AllUsers_Call{Call: _e.mock.On("AllUsers")}
+//   - ctx context.Context
+func (_e *mockUserManager_Expecter) AllUsers(ctx interface{}) *mockUserManager_AllUsers_Call {
+	return &mockUserManager_AllUsers_Call{Call: _e.mock.On("AllUsers", ctx)}
 }
 
-func (_c *mockUserManager_AllUsers_Call) Run(run func()) *mockUserManager_AllUsers_Call {
+func (_c *mockUserManager_AllUsers_Call) Run(run func(ctx context.Context)) *mockUserManager_AllUsers_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -72,22 +75,22 @@ func (_c *mockUserManager_AllUsers_Call) Return(_a0 []state.User, _a1 error) *mo
 	return _c
 }
 
-func (_c *mockUserManager_AllUsers_Call) RunAndReturn(run func() ([]state.User, error)) *mockUserManager_AllUsers_Call {
+func (_c *mockUserManager_AllUsers_Call) RunAndReturn(run func(context.Context) ([]state.User, error)) *mockUserManager_AllUsers_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// DeleteUser provides a mock function with given fields: screenName
-func (_m *mockUserManager) DeleteUser(screenName state.IdentScreenName) error {
-	ret := _m.Called(screenName)
+// DeleteUser provides a mock function with given fields: ctx, screenName
+func (_m *mockUserManager) DeleteUser(ctx context.Context, screenName state.IdentScreenName) error {
+	ret := _m.Called(ctx, screenName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteUser")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) error); ok {
-		r0 = rf(screenName)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) error); ok {
+		r0 = rf(ctx, screenName)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -101,14 +104,15 @@ type mockUserManager_DeleteUser_Call struct {
 }
 
 // DeleteUser is a helper method to define mock.On call
+//   - ctx context.Context
 //   - screenName state.IdentScreenName
-func (_e *mockUserManager_Expecter) DeleteUser(screenName interface{}) *mockUserManager_DeleteUser_Call {
-	return &mockUserManager_DeleteUser_Call{Call: _e.mock.On("DeleteUser", screenName)}
+func (_e *mockUserManager_Expecter) DeleteUser(ctx interface{}, screenName interface{}) *mockUserManager_DeleteUser_Call {
+	return &mockUserManager_DeleteUser_Call{Call: _e.mock.On("DeleteUser", ctx, screenName)}
 }
 
-func (_c *mockUserManager_DeleteUser_Call) Run(run func(screenName state.IdentScreenName)) *mockUserManager_DeleteUser_Call {
+func (_c *mockUserManager_DeleteUser_Call) Run(run func(ctx context.Context, screenName state.IdentScreenName)) *mockUserManager_DeleteUser_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -118,22 +122,22 @@ func (_c *mockUserManager_DeleteUser_Call) Return(_a0 error) *mockUserManager_De
 	return _c
 }
 
-func (_c *mockUserManager_DeleteUser_Call) RunAndReturn(run func(state.IdentScreenName) error) *mockUserManager_DeleteUser_Call {
+func (_c *mockUserManager_DeleteUser_Call) RunAndReturn(run func(context.Context, state.IdentScreenName) error) *mockUserManager_DeleteUser_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// InsertUser provides a mock function with given fields: u
-func (_m *mockUserManager) InsertUser(u state.User) error {
-	ret := _m.Called(u)
+// InsertUser provides a mock function with given fields: ctx, u
+func (_m *mockUserManager) InsertUser(ctx context.Context, u state.User) error {
+	ret := _m.Called(ctx, u)
 
 	if len(ret) == 0 {
 		panic("no return value specified for InsertUser")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.User) error); ok {
-		r0 = rf(u)
+	if rf, ok := ret.Get(0).(func(context.Context, state.User) error); ok {
+		r0 = rf(ctx, u)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -147,14 +151,15 @@ type mockUserManager_InsertUser_Call struct {
 }
 
 // InsertUser is a helper method to define mock.On call
+//   - ctx context.Context
 //   - u state.User
-func (_e *mockUserManager_Expecter) InsertUser(u interface{}) *mockUserManager_InsertUser_Call {
-	return &mockUserManager_InsertUser_Call{Call: _e.mock.On("InsertUser", u)}
+func (_e *mockUserManager_Expecter) InsertUser(ctx interface{}, u interface{}) *mockUserManager_InsertUser_Call {
+	return &mockUserManager_InsertUser_Call{Call: _e.mock.On("InsertUser", ctx, u)}
 }
 
-func (_c *mockUserManager_InsertUser_Call) Run(run func(u state.User)) *mockUserManager_InsertUser_Call {
+func (_c *mockUserManager_InsertUser_Call) Run(run func(ctx context.Context, u state.User)) *mockUserManager_InsertUser_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.User))
+		run(args[0].(context.Context), args[1].(state.User))
 	})
 	return _c
 }
@@ -164,22 +169,22 @@ func (_c *mockUserManager_InsertUser_Call) Return(_a0 error) *mockUserManager_In
 	return _c
 }
 
-func (_c *mockUserManager_InsertUser_Call) RunAndReturn(run func(state.User) error) *mockUserManager_InsertUser_Call {
+func (_c *mockUserManager_InsertUser_Call) RunAndReturn(run func(context.Context, state.User) error) *mockUserManager_InsertUser_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SetUserPassword provides a mock function with given fields: screenName, newPassword
-func (_m *mockUserManager) SetUserPassword(screenName state.IdentScreenName, newPassword string) error {
-	ret := _m.Called(screenName, newPassword)
+// SetUserPassword provides a mock function with given fields: ctx, screenName, newPassword
+func (_m *mockUserManager) SetUserPassword(ctx context.Context, screenName state.IdentScreenName, newPassword string) error {
+	ret := _m.Called(ctx, screenName, newPassword)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetUserPassword")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName, string) error); ok {
-		r0 = rf(screenName, newPassword)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName, string) error); ok {
+		r0 = rf(ctx, screenName, newPassword)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -193,15 +198,16 @@ type mockUserManager_SetUserPassword_Call struct {
 }
 
 // SetUserPassword is a helper method to define mock.On call
+//   - ctx context.Context
 //   - screenName state.IdentScreenName
 //   - newPassword string
-func (_e *mockUserManager_Expecter) SetUserPassword(screenName interface{}, newPassword interface{}) *mockUserManager_SetUserPassword_Call {
-	return &mockUserManager_SetUserPassword_Call{Call: _e.mock.On("SetUserPassword", screenName, newPassword)}
+func (_e *mockUserManager_Expecter) SetUserPassword(ctx interface{}, screenName interface{}, newPassword interface{}) *mockUserManager_SetUserPassword_Call {
+	return &mockUserManager_SetUserPassword_Call{Call: _e.mock.On("SetUserPassword", ctx, screenName, newPassword)}
 }
 
-func (_c *mockUserManager_SetUserPassword_Call) Run(run func(screenName state.IdentScreenName, newPassword string)) *mockUserManager_SetUserPassword_Call {
+func (_c *mockUserManager_SetUserPassword_Call) Run(run func(ctx context.Context, screenName state.IdentScreenName, newPassword string)) *mockUserManager_SetUserPassword_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName), args[1].(string))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName), args[2].(string))
 	})
 	return _c
 }
@@ -211,14 +217,14 @@ func (_c *mockUserManager_SetUserPassword_Call) Return(_a0 error) *mockUserManag
 	return _c
 }
 
-func (_c *mockUserManager_SetUserPassword_Call) RunAndReturn(run func(state.IdentScreenName, string) error) *mockUserManager_SetUserPassword_Call {
+func (_c *mockUserManager_SetUserPassword_Call) RunAndReturn(run func(context.Context, state.IdentScreenName, string) error) *mockUserManager_SetUserPassword_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// User provides a mock function with given fields: screenName
-func (_m *mockUserManager) User(screenName state.IdentScreenName) (*state.User, error) {
-	ret := _m.Called(screenName)
+// User provides a mock function with given fields: ctx, screenName
+func (_m *mockUserManager) User(ctx context.Context, screenName state.IdentScreenName) (*state.User, error) {
+	ret := _m.Called(ctx, screenName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for User")
@@ -226,19 +232,19 @@ func (_m *mockUserManager) User(screenName state.IdentScreenName) (*state.User, 
 
 	var r0 *state.User
 	var r1 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) (*state.User, error)); ok {
-		return rf(screenName)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) (*state.User, error)); ok {
+		return rf(ctx, screenName)
 	}
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *state.User); ok {
-		r0 = rf(screenName)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) *state.User); ok {
+		r0 = rf(ctx, screenName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*state.User)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
-		r1 = rf(screenName)
+	if rf, ok := ret.Get(1).(func(context.Context, state.IdentScreenName) error); ok {
+		r1 = rf(ctx, screenName)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -252,14 +258,15 @@ type mockUserManager_User_Call struct {
 }
 
 // User is a helper method to define mock.On call
+//   - ctx context.Context
 //   - screenName state.IdentScreenName
-func (_e *mockUserManager_Expecter) User(screenName interface{}) *mockUserManager_User_Call {
-	return &mockUserManager_User_Call{Call: _e.mock.On("User", screenName)}
+func (_e *mockUserManager_Expecter) User(ctx interface{}, screenName interface{}) *mockUserManager_User_Call {
+	return &mockUserManager_User_Call{Call: _e.mock.On("User", ctx, screenName)}
 }
 
-func (_c *mockUserManager_User_Call) Run(run func(screenName state.IdentScreenName)) *mockUserManager_User_Call {
+func (_c *mockUserManager_User_Call) Run(run func(ctx context.Context, screenName state.IdentScreenName)) *mockUserManager_User_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -269,7 +276,7 @@ func (_c *mockUserManager_User_Call) Return(_a0 *state.User, _a1 error) *mockUse
 	return _c
 }
 
-func (_c *mockUserManager_User_Call) RunAndReturn(run func(state.IdentScreenName) (*state.User, error)) *mockUserManager_User_Call {
+func (_c *mockUserManager_User_Call) RunAndReturn(run func(context.Context, state.IdentScreenName) (*state.User, error)) *mockUserManager_User_Call {
 	_c.Call.Return(run)
 	return _c
 }

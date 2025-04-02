@@ -22,16 +22,17 @@ var omitCaps = map[[16]byte]bool{
 
 // NewLocateService creates a new instance of LocateService.
 func NewLocateService(
+	buddyIconManager BuddyIconManager,
 	messageRelayer MessageRelayer,
 	profileManager ProfileManager,
-	buddyListRetriever BuddyListRetriever,
+	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 ) LocateService {
 	return LocateService{
-		buddyBroadcaster:   newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
-		buddyListRetriever: buddyListRetriever,
-		profileManager:     profileManager,
-		sessionRetriever:   sessionRetriever,
+		buddyBroadcaster:    newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		relationshipFetcher: relationshipFetcher,
+		profileManager:      profileManager,
+		sessionRetriever:    sessionRetriever,
 	}
 }
 
@@ -39,10 +40,10 @@ func NewLocateService(
 // responsible for user profiles, user info lookups, directory information, and
 // keyword lookups.
 type LocateService struct {
-	buddyBroadcaster   buddyBroadcaster
-	buddyListRetriever BuddyListRetriever
-	profileManager     ProfileManager
-	sessionRetriever   SessionRetriever
+	buddyBroadcaster    buddyBroadcaster
+	relationshipFetcher RelationshipFetcher
+	profileManager      ProfileManager
+	sessionRetriever    SessionRetriever
 }
 
 // RightsQuery returns SNAC wire.LocateRightsReply, which contains Locate food
@@ -74,7 +75,7 @@ func (s LocateService) RightsQuery(_ context.Context, inFrame wire.SNACFrame) wi
 func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x02_0x04_LocateSetInfo) error {
 	// update profile
 	if profile, hasProfile := inBody.String(wire.LocateTLVTagsInfoSigData); hasProfile {
-		if err := s.profileManager.SetProfile(sess.IdentScreenName(), profile); err != nil {
+		if err := s.profileManager.SetProfile(ctx, sess.IdentScreenName(), profile); err != nil {
 			return err
 		}
 	}
@@ -130,10 +131,10 @@ func newLocateErr(requestID uint32, errCode uint16) wire.SNACMessage {
 // UserInfoQuery fetches display information about an arbitrary user (not the
 // current user). It returns wire.LocateUserInfoReply, which contains the
 // profile, if requested, and/or the away message, if requested.
-func (s LocateService) UserInfoQuery(_ context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery) (wire.SNACMessage, error) {
+func (s LocateService) UserInfoQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x05_LocateUserInfoQuery) (wire.SNACMessage, error) {
 	identScreenName := state.NewIdentScreenName(inBody.ScreenName)
 
-	rel, err := s.buddyListRetriever.Relationship(sess.IdentScreenName(), identScreenName)
+	rel, err := s.relationshipFetcher.Relationship(ctx, sess.IdentScreenName(), identScreenName)
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}
@@ -151,7 +152,7 @@ func (s LocateService) UserInfoQuery(_ context.Context, sess *state.Session, inF
 	var list wire.TLVList
 
 	if inBody.RequestProfile() {
-		profile, err := s.profileManager.Profile(identScreenName)
+		profile, err := s.profileManager.Profile(ctx, identScreenName)
 		if err != nil {
 			return wire.SNACMessage{}, err
 		}
@@ -188,7 +189,7 @@ func (s LocateService) UserInfoQuery(_ context.Context, sess *state.Session, inF
 func (s LocateService) SetDirInfo(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x02_0x09_LocateSetDirInfo) (wire.SNACMessage, error) {
 	info := newAIMNameAndAddrFromTLVList(inBody.TLVList)
 
-	if err := s.profileManager.SetDirectoryInfo(sess.IdentScreenName(), info); err != nil {
+	if err := s.profileManager.SetDirectoryInfo(ctx, sess.IdentScreenName(), info); err != nil {
 		return wire.SNACMessage{}, err
 	}
 
@@ -222,7 +223,7 @@ func (s LocateService) SetKeywordInfo(ctx context.Context, sess *state.Session, 
 		}
 	}
 
-	if err := s.profileManager.SetKeywords(sess.IdentScreenName(), keywords); err != nil {
+	if err := s.profileManager.SetKeywords(ctx, sess.IdentScreenName(), keywords); err != nil {
 		return wire.SNACMessage{}, fmt.Errorf("SetKeywords: %w", err)
 	}
 
@@ -247,7 +248,7 @@ func (s LocateService) DirInfo(ctx context.Context, inFrame wire.SNACFrame, body
 		},
 	}
 
-	user, err := s.profileManager.User(state.NewIdentScreenName(body.ScreenName))
+	user, err := s.profileManager.User(ctx, state.NewIdentScreenName(body.ScreenName))
 	if err != nil {
 		return wire.SNACMessage{}, fmt.Errorf("User: %w", err)
 	}

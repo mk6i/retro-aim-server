@@ -3,6 +3,8 @@
 package toc
 
 import (
+	context "context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,17 +22,17 @@ func (_m *mockTOCConfigStore) EXPECT() *mockTOCConfigStore_Expecter {
 	return &mockTOCConfigStore_Expecter{mock: &_m.Mock}
 }
 
-// SetTOCConfig provides a mock function with given fields: user, config
-func (_m *mockTOCConfigStore) SetTOCConfig(user state.IdentScreenName, config string) error {
-	ret := _m.Called(user, config)
+// SetTOCConfig provides a mock function with given fields: ctx, user, config
+func (_m *mockTOCConfigStore) SetTOCConfig(ctx context.Context, user state.IdentScreenName, config string) error {
+	ret := _m.Called(ctx, user, config)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetTOCConfig")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName, string) error); ok {
-		r0 = rf(user, config)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName, string) error); ok {
+		r0 = rf(ctx, user, config)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -44,15 +46,16 @@ type mockTOCConfigStore_SetTOCConfig_Call struct {
 }
 
 // SetTOCConfig is a helper method to define mock.On call
+//   - ctx context.Context
 //   - user state.IdentScreenName
 //   - config string
-func (_e *mockTOCConfigStore_Expecter) SetTOCConfig(user interface{}, config interface{}) *mockTOCConfigStore_SetTOCConfig_Call {
-	return &mockTOCConfigStore_SetTOCConfig_Call{Call: _e.mock.On("SetTOCConfig", user, config)}
+func (_e *mockTOCConfigStore_Expecter) SetTOCConfig(ctx interface{}, user interface{}, config interface{}) *mockTOCConfigStore_SetTOCConfig_Call {
+	return &mockTOCConfigStore_SetTOCConfig_Call{Call: _e.mock.On("SetTOCConfig", ctx, user, config)}
 }
 
-func (_c *mockTOCConfigStore_SetTOCConfig_Call) Run(run func(user state.IdentScreenName, config string)) *mockTOCConfigStore_SetTOCConfig_Call {
+func (_c *mockTOCConfigStore_SetTOCConfig_Call) Run(run func(ctx context.Context, user state.IdentScreenName, config string)) *mockTOCConfigStore_SetTOCConfig_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName), args[1].(string))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName), args[2].(string))
 	})
 	return _c
 }
@@ -62,14 +65,14 @@ func (_c *mockTOCConfigStore_SetTOCConfig_Call) Return(_a0 error) *mockTOCConfig
 	return _c
 }
 
-func (_c *mockTOCConfigStore_SetTOCConfig_Call) RunAndReturn(run func(state.IdentScreenName, string) error) *mockTOCConfigStore_SetTOCConfig_Call {
+func (_c *mockTOCConfigStore_SetTOCConfig_Call) RunAndReturn(run func(context.Context, state.IdentScreenName, string) error) *mockTOCConfigStore_SetTOCConfig_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// User provides a mock function with given fields: screenName
-func (_m *mockTOCConfigStore) User(screenName state.IdentScreenName) (*state.User, error) {
-	ret := _m.Called(screenName)
+// User provides a mock function with given fields: ctx, screenName
+func (_m *mockTOCConfigStore) User(ctx context.Context, screenName state.IdentScreenName) (*state.User, error) {
+	ret := _m.Called(ctx, screenName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for User")
@@ -77,19 +80,19 @@ func (_m *mockTOCConfigStore) User(screenName state.IdentScreenName) (*state.Use
 
 	var r0 *state.User
 	var r1 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) (*state.User, error)); ok {
-		return rf(screenName)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) (*state.User, error)); ok {
+		return rf(ctx, screenName)
 	}
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *state.User); ok {
-		r0 = rf(screenName)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) *state.User); ok {
+		r0 = rf(ctx, screenName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*state.User)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
-		r1 = rf(screenName)
+	if rf, ok := ret.Get(1).(func(context.Context, state.IdentScreenName) error); ok {
+		r1 = rf(ctx, screenName)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -103,14 +106,15 @@ type mockTOCConfigStore_User_Call struct {
 }
 
 // User is a helper method to define mock.On call
+//   - ctx context.Context
 //   - screenName state.IdentScreenName
-func (_e *mockTOCConfigStore_Expecter) User(screenName interface{}) *mockTOCConfigStore_User_Call {
-	return &mockTOCConfigStore_User_Call{Call: _e.mock.On("User", screenName)}
+func (_e *mockTOCConfigStore_Expecter) User(ctx interface{}, screenName interface{}) *mockTOCConfigStore_User_Call {
+	return &mockTOCConfigStore_User_Call{Call: _e.mock.On("User", ctx, screenName)}
 }
 
-func (_c *mockTOCConfigStore_User_Call) Run(run func(screenName state.IdentScreenName)) *mockTOCConfigStore_User_Call {
+func (_c *mockTOCConfigStore_User_Call) Run(run func(ctx context.Context, screenName state.IdentScreenName)) *mockTOCConfigStore_User_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -120,7 +124,7 @@ func (_c *mockTOCConfigStore_User_Call) Return(_a0 *state.User, _a1 error) *mock
 	return _c
 }
 
-func (_c *mockTOCConfigStore_User_Call) RunAndReturn(run func(state.IdentScreenName) (*state.User, error)) *mockTOCConfigStore_User_Call {
+func (_c *mockTOCConfigStore_User_Call) RunAndReturn(run func(context.Context, state.IdentScreenName) (*state.User, error)) *mockTOCConfigStore_User_Call {
 	_c.Call.Return(run)
 	return _c
 }

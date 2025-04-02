@@ -3,6 +3,8 @@
 package oscar
 
 import (
+	"context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -21,7 +23,7 @@ func (_m *mockBuddyListRegistry) EXPECT() *mockBuddyListRegistry_Expecter {
 }
 
 // ClearBuddyListRegistry provides a mock function with no fields
-func (_m *mockBuddyListRegistry) ClearBuddyListRegistry() error {
+func (_m *mockBuddyListRegistry) ClearBuddyListRegistry(context.Context) error {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
@@ -66,7 +68,7 @@ func (_c *mockBuddyListRegistry_ClearBuddyListRegistry_Call) RunAndReturn(run fu
 }
 
 // RegisterBuddyList provides a mock function with given fields: user
-func (_m *mockBuddyListRegistry) RegisterBuddyList(user state.IdentScreenName) error {
+func (_m *mockBuddyListRegistry) RegisterBuddyList(ctx context.Context, user state.IdentScreenName) error {
 	ret := _m.Called(user)
 
 	if len(ret) == 0 {
@@ -112,7 +114,7 @@ func (_c *mockBuddyListRegistry_RegisterBuddyList_Call) RunAndReturn(run func(st
 }
 
 // UnregisterBuddyList provides a mock function with given fields: user
-func (_m *mockBuddyListRegistry) UnregisterBuddyList(user state.IdentScreenName) error {
+func (_m *mockBuddyListRegistry) UnregisterBuddyList(ctx context.Context, user state.IdentScreenName) error {
 	ret := _m.Called(user)
 
 	if len(ret) == 0 {

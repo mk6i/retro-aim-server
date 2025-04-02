@@ -11,7 +11,7 @@ import (
 )
 
 func TestPermitDenyService_RightsQuery(t *testing.T) {
-	svc := NewPermitDenyService(nil, nil, nil, nil)
+	svc := NewPermitDenyService(nil, nil, nil, nil, nil)
 
 	have := svc.RightsQuery(nil, wire.SNACFrame{RequestID: 1234})
 	want := wire.SNACMessage{
@@ -61,7 +61,7 @@ func TestPermitDenyService_AddDenyListEntries(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					setPDModeParams: setPDModeParams{
 						{
 							userScreenName: state.NewIdentScreenName("me"),
@@ -84,7 +84,7 @@ func TestPermitDenyService_AddDenyListEntries(t *testing.T) {
 			sess:   newTestSession("me", sessOptSignonComplete),
 			bodyIn: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					setPDModeParams: setPDModeParams{
 						{
 							userScreenName: state.NewIdentScreenName("me"),
@@ -113,7 +113,7 @@ func TestPermitDenyService_AddDenyListEntries(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					setPDModeParams: setPDModeParams{
 						{
 							userScreenName: state.NewIdentScreenName("me"),
@@ -148,7 +148,7 @@ func TestPermitDenyService_AddDenyListEntries(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					setPDModeParams: setPDModeParams{
 						{
 							userScreenName: state.NewIdentScreenName("me"),
@@ -179,7 +179,7 @@ func TestPermitDenyService_AddDenyListEntries(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					setPDModeParams: setPDModeParams{
 						{
 							userScreenName: state.NewIdentScreenName("me"),
@@ -210,15 +210,15 @@ func TestPermitDenyService_AddDenyListEntries(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			localBuddyListManager := newMockLocalBuddyListManager(t)
+			clientSideBuddyListManager := newMockClientSideBuddyListManager(t)
 			for _, item := range tt.mockParams.setPDModeParams {
-				localBuddyListManager.EXPECT().
-					SetPDMode(item.userScreenName, item.pdMode).
+				clientSideBuddyListManager.EXPECT().
+					SetPDMode(matchContext(), item.userScreenName, item.pdMode).
 					Return(item.err)
 			}
 			for _, item := range tt.mockParams.denyBuddyParams {
-				localBuddyListManager.EXPECT().
-					DenyBuddy(item.me, item.them).
+				clientSideBuddyListManager.EXPECT().
+					DenyBuddy(matchContext(), item.me, item.them).
 					Return(item.err)
 			}
 			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
@@ -229,8 +229,8 @@ func TestPermitDenyService_AddDenyListEntries(t *testing.T) {
 			}
 
 			svc := PermitDenyService{
-				buddyBroadcaster:      mockBuddyBroadcaster,
-				localBuddyListManager: localBuddyListManager,
+				buddyBroadcaster:           mockBuddyBroadcaster,
+				clientSideBuddyListManager: clientSideBuddyListManager,
 			}
 			err := svc.AddDenyListEntries(context.TODO(), tt.sess, tt.bodyIn)
 			assert.Equal(t, tt.wantErr, err)
@@ -265,7 +265,7 @@ func TestPermitDenyService_AddPermListEntries(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					setPDModeParams: setPDModeParams{
 						{
 							userScreenName: state.NewIdentScreenName("me"),
@@ -288,7 +288,7 @@ func TestPermitDenyService_AddPermListEntries(t *testing.T) {
 			sess:   newTestSession("me", sessOptSignonComplete),
 			bodyIn: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					setPDModeParams: setPDModeParams{
 						{
 							userScreenName: state.NewIdentScreenName("me"),
@@ -317,7 +317,7 @@ func TestPermitDenyService_AddPermListEntries(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					setPDModeParams: setPDModeParams{
 						{
 							userScreenName: state.NewIdentScreenName("me"),
@@ -352,7 +352,7 @@ func TestPermitDenyService_AddPermListEntries(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					setPDModeParams: setPDModeParams{
 						{
 							userScreenName: state.NewIdentScreenName("me"),
@@ -383,7 +383,7 @@ func TestPermitDenyService_AddPermListEntries(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					setPDModeParams: setPDModeParams{
 						{
 							userScreenName: state.NewIdentScreenName("me"),
@@ -414,15 +414,15 @@ func TestPermitDenyService_AddPermListEntries(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			localBuddyListManager := newMockLocalBuddyListManager(t)
+			clientSideBuddyListManager := newMockClientSideBuddyListManager(t)
 			for _, item := range tt.mockParams.setPDModeParams {
-				localBuddyListManager.EXPECT().
-					SetPDMode(item.userScreenName, item.pdMode).
+				clientSideBuddyListManager.EXPECT().
+					SetPDMode(matchContext(), item.userScreenName, item.pdMode).
 					Return(item.err)
 			}
 			for _, item := range tt.mockParams.permitBuddyParams {
-				localBuddyListManager.EXPECT().
-					PermitBuddy(item.me, item.them).
+				clientSideBuddyListManager.EXPECT().
+					PermitBuddy(matchContext(), item.me, item.them).
 					Return(item.err)
 			}
 			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
@@ -433,8 +433,8 @@ func TestPermitDenyService_AddPermListEntries(t *testing.T) {
 			}
 
 			svc := PermitDenyService{
-				buddyBroadcaster:      mockBuddyBroadcaster,
-				localBuddyListManager: localBuddyListManager,
+				buddyBroadcaster:           mockBuddyBroadcaster,
+				clientSideBuddyListManager: clientSideBuddyListManager,
 			}
 			err := svc.AddPermListEntries(context.TODO(), tt.sess, tt.bodyIn)
 			assert.Equal(t, tt.wantErr, err)
@@ -478,7 +478,7 @@ func TestPermitDenyService_DelDenyListEntries(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					removeDenyBuddyParams: removeDenyBuddyParams{
 						{
 							me:   state.NewIdentScreenName("me"),
@@ -503,7 +503,7 @@ func TestPermitDenyService_DelDenyListEntries(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					removeDenyBuddyParams: removeDenyBuddyParams{
 						{
 							me:   state.NewIdentScreenName("me"),
@@ -531,10 +531,10 @@ func TestPermitDenyService_DelDenyListEntries(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			localBuddyListManager := newMockLocalBuddyListManager(t)
+			clientSideBuddyListManager := newMockClientSideBuddyListManager(t)
 			for _, item := range tt.mockParams.removeDenyBuddyParams {
-				localBuddyListManager.EXPECT().
-					RemoveDenyBuddy(item.me, item.them).
+				clientSideBuddyListManager.EXPECT().
+					RemoveDenyBuddy(matchContext(), item.me, item.them).
 					Return(item.err)
 			}
 			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
@@ -545,8 +545,8 @@ func TestPermitDenyService_DelDenyListEntries(t *testing.T) {
 			}
 
 			svc := PermitDenyService{
-				buddyBroadcaster:      mockBuddyBroadcaster,
-				localBuddyListManager: localBuddyListManager,
+				buddyBroadcaster:           mockBuddyBroadcaster,
+				clientSideBuddyListManager: clientSideBuddyListManager,
 			}
 			err := svc.DelDenyListEntries(context.TODO(), tt.sess, tt.bodyIn)
 			assert.Equal(t, tt.wantErr, err)
@@ -590,7 +590,7 @@ func TestPermitDenyService_DelPermListEntries(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					removePermitBuddyParams: removePermitBuddyParams{
 						{
 							me:   state.NewIdentScreenName("me"),
@@ -615,7 +615,7 @@ func TestPermitDenyService_DelPermListEntries(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				localBuddyListManagerParams: localBuddyListManagerParams{
+				clientSideBuddyListManagerParams: clientSideBuddyListManagerParams{
 					removePermitBuddyParams: removePermitBuddyParams{
 						{
 							me:   state.NewIdentScreenName("me"),
@@ -643,10 +643,10 @@ func TestPermitDenyService_DelPermListEntries(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			localBuddyListManager := newMockLocalBuddyListManager(t)
+			clientSideBuddyListManager := newMockClientSideBuddyListManager(t)
 			for _, item := range tt.mockParams.removePermitBuddyParams {
-				localBuddyListManager.EXPECT().
-					RemovePermitBuddy(item.me, item.them).
+				clientSideBuddyListManager.EXPECT().
+					RemovePermitBuddy(matchContext(), item.me, item.them).
 					Return(item.err)
 			}
 			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
@@ -657,8 +657,8 @@ func TestPermitDenyService_DelPermListEntries(t *testing.T) {
 			}
 
 			svc := PermitDenyService{
-				buddyBroadcaster:      mockBuddyBroadcaster,
-				localBuddyListManager: localBuddyListManager,
+				buddyBroadcaster:           mockBuddyBroadcaster,
+				clientSideBuddyListManager: clientSideBuddyListManager,
 			}
 			err := svc.DelPermListEntries(context.TODO(), tt.sess, tt.bodyIn)
 			assert.Equal(t, tt.wantErr, err)

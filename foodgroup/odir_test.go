@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"context"
 	"log/slog"
 	"testing"
 
@@ -102,12 +103,12 @@ func TestODirService_KeywordListQuery(t *testing.T) {
 			profileManager := newMockProfileManager(t)
 			for _, params := range tc.mockParams.interestListParams {
 				profileManager.EXPECT().
-					InterestList().
+					InterestList(matchContext()).
 					Return(params.result, params.err)
 			}
 
 			svc := NewODirService(slog.Default(), profileManager)
-			actual, err := svc.KeywordListQuery(nil, tc.inputSNAC.Frame)
+			actual, err := svc.KeywordListQuery(context.Background(), tc.inputSNAC.Frame)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, actual)
 		})
@@ -493,22 +494,22 @@ func TestODirService_InfoQuery(t *testing.T) {
 			profileManager := newMockProfileManager(t)
 			for _, params := range tc.mockParams.findByAIMNameAndAddrParams {
 				profileManager.EXPECT().
-					FindByAIMNameAndAddr(params.info).
+					FindByAIMNameAndAddr(matchContext(), params.info).
 					Return(params.result, params.err)
 			}
 			for _, params := range tc.mockParams.findByAIMEmailParams {
 				profileManager.EXPECT().
-					FindByAIMEmail(params.email).
+					FindByAIMEmail(matchContext(), params.email).
 					Return(params.result, params.err)
 			}
 			for _, params := range tc.mockParams.findByAIMKeywordParams {
 				profileManager.EXPECT().
-					FindByAIMKeyword(params.keyword).
+					FindByAIMKeyword(matchContext(), params.keyword).
 					Return(params.result, params.err)
 			}
 
 			svc := NewODirService(slog.Default(), profileManager)
-			actual, err := svc.InfoQuery(nil, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x0F_0x02_InfoQuery))
+			actual, err := svc.InfoQuery(context.Background(), tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x0F_0x02_InfoQuery))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, actual)
 		})

@@ -3,6 +3,8 @@
 package toc
 
 import (
+	context "context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,17 +22,17 @@ func (_m *mockBuddyListRegistry) EXPECT() *mockBuddyListRegistry_Expecter {
 	return &mockBuddyListRegistry_Expecter{mock: &_m.Mock}
 }
 
-// RegisterBuddyList provides a mock function with given fields: user
-func (_m *mockBuddyListRegistry) RegisterBuddyList(user state.IdentScreenName) error {
-	ret := _m.Called(user)
+// RegisterBuddyList provides a mock function with given fields: ctx, user
+func (_m *mockBuddyListRegistry) RegisterBuddyList(ctx context.Context, user state.IdentScreenName) error {
+	ret := _m.Called(ctx, user)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RegisterBuddyList")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) error); ok {
-		r0 = rf(user)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) error); ok {
+		r0 = rf(ctx, user)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -44,14 +46,15 @@ type mockBuddyListRegistry_RegisterBuddyList_Call struct {
 }
 
 // RegisterBuddyList is a helper method to define mock.On call
+//   - ctx context.Context
 //   - user state.IdentScreenName
-func (_e *mockBuddyListRegistry_Expecter) RegisterBuddyList(user interface{}) *mockBuddyListRegistry_RegisterBuddyList_Call {
-	return &mockBuddyListRegistry_RegisterBuddyList_Call{Call: _e.mock.On("RegisterBuddyList", user)}
+func (_e *mockBuddyListRegistry_Expecter) RegisterBuddyList(ctx interface{}, user interface{}) *mockBuddyListRegistry_RegisterBuddyList_Call {
+	return &mockBuddyListRegistry_RegisterBuddyList_Call{Call: _e.mock.On("RegisterBuddyList", ctx, user)}
 }
 
-func (_c *mockBuddyListRegistry_RegisterBuddyList_Call) Run(run func(user state.IdentScreenName)) *mockBuddyListRegistry_RegisterBuddyList_Call {
+func (_c *mockBuddyListRegistry_RegisterBuddyList_Call) Run(run func(ctx context.Context, user state.IdentScreenName)) *mockBuddyListRegistry_RegisterBuddyList_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -61,22 +64,22 @@ func (_c *mockBuddyListRegistry_RegisterBuddyList_Call) Return(_a0 error) *mockB
 	return _c
 }
 
-func (_c *mockBuddyListRegistry_RegisterBuddyList_Call) RunAndReturn(run func(state.IdentScreenName) error) *mockBuddyListRegistry_RegisterBuddyList_Call {
+func (_c *mockBuddyListRegistry_RegisterBuddyList_Call) RunAndReturn(run func(context.Context, state.IdentScreenName) error) *mockBuddyListRegistry_RegisterBuddyList_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// UnregisterBuddyList provides a mock function with given fields: user
-func (_m *mockBuddyListRegistry) UnregisterBuddyList(user state.IdentScreenName) error {
-	ret := _m.Called(user)
+// UnregisterBuddyList provides a mock function with given fields: ctx, user
+func (_m *mockBuddyListRegistry) UnregisterBuddyList(ctx context.Context, user state.IdentScreenName) error {
+	ret := _m.Called(ctx, user)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UnregisterBuddyList")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) error); ok {
-		r0 = rf(user)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) error); ok {
+		r0 = rf(ctx, user)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -90,14 +93,15 @@ type mockBuddyListRegistry_UnregisterBuddyList_Call struct {
 }
 
 // UnregisterBuddyList is a helper method to define mock.On call
+//   - ctx context.Context
 //   - user state.IdentScreenName
-func (_e *mockBuddyListRegistry_Expecter) UnregisterBuddyList(user interface{}) *mockBuddyListRegistry_UnregisterBuddyList_Call {
-	return &mockBuddyListRegistry_UnregisterBuddyList_Call{Call: _e.mock.On("UnregisterBuddyList", user)}
+func (_e *mockBuddyListRegistry_Expecter) UnregisterBuddyList(ctx interface{}, user interface{}) *mockBuddyListRegistry_UnregisterBuddyList_Call {
+	return &mockBuddyListRegistry_UnregisterBuddyList_Call{Call: _e.mock.On("UnregisterBuddyList", ctx, user)}
 }
 
-func (_c *mockBuddyListRegistry_UnregisterBuddyList_Call) Run(run func(user state.IdentScreenName)) *mockBuddyListRegistry_UnregisterBuddyList_Call {
+func (_c *mockBuddyListRegistry_UnregisterBuddyList_Call) Run(run func(ctx context.Context, user state.IdentScreenName)) *mockBuddyListRegistry_UnregisterBuddyList_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName))
 	})
 	return _c
 }
@@ -107,7 +111,7 @@ func (_c *mockBuddyListRegistry_UnregisterBuddyList_Call) Return(_a0 error) *moc
 	return _c
 }
 
-func (_c *mockBuddyListRegistry_UnregisterBuddyList_Call) RunAndReturn(run func(state.IdentScreenName) error) *mockBuddyListRegistry_UnregisterBuddyList_Call {
+func (_c *mockBuddyListRegistry_UnregisterBuddyList_Call) RunAndReturn(run func(context.Context, state.IdentScreenName) error) *mockBuddyListRegistry_UnregisterBuddyList_Call {
 	_c.Call.Return(run)
 	return _c
 }

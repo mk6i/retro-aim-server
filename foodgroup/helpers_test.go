@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"context"
 	"net/mail"
 	"net/netip"
 	"time"
@@ -15,16 +16,16 @@ import (
 // in one place for a table test
 type mockParams struct {
 	accountManagerParams
-	bartManagerParams
+	buddyIconManagerParams
 	buddyBroadcasterParams
-	buddyListRetrieverParams
+	relationshipFetcherParams
 	chatMessageRelayerParams
 	chatRoomRegistryParams
 	cookieBakerParams
 	feedbagManagerParams
 	icqUserFinderParams
 	icqUserUpdaterParams
-	localBuddyListManagerParams
+	clientSideBuddyListManagerParams
 	messageRelayerParams
 	offlineMessageManagerParams
 	profileManagerParams
@@ -33,16 +34,15 @@ type mockParams struct {
 	userManagerParams
 }
 
-// buddyListRetrieverParams is a helper struct that contains mock parameters
-// for BuddyListRetriever methods
-type buddyListRetrieverParams struct {
+// relationshipFetcherParams is a helper struct that contains mock parameters
+// for RelationshipFetcher methods
+type relationshipFetcherParams struct {
 	allRelationshipsParams
-	buddyIconRefByNameParams
 	relationshipParams
 }
 
 // allRelationshipsParams is the list of parameters passed at the mock
-// BuddyListRetriever.AllRelationships call site
+// RelationshipFetcher.AllRelationships call site
 type allRelationshipsParams []struct {
 	screenName state.IdentScreenName
 	filter     []state.IdentScreenName
@@ -50,16 +50,8 @@ type allRelationshipsParams []struct {
 	err        error
 }
 
-// buddyIconRefByNameParams is the list of parameters passed at the mock
-// BuddyListRetriever.BuddyIconRefByName call site
-type buddyIconRefByNameParams []struct {
-	screenName state.IdentScreenName
-	result     *wire.BARTID
-	err        error
-}
-
 // relationshipParams is the list of parameters passed at the mock
-// BuddyListRetriever.Relationship call site
+// RelationshipFetcher.Relationship call site
 type relationshipParams []struct {
 	me     state.IdentScreenName
 	them   state.IdentScreenName
@@ -222,25 +214,34 @@ type setMoreInfoParams []struct {
 	err  error
 }
 
-// bartManagerParams is a helper struct that contains mock parameters for
-// BARTManager methods
-type bartManagerParams struct {
-	bartManagerRetrieveParams
-	bartManagerUpsertParams
+// buddyIconManagerParams is a helper struct that contains mock parameters for
+// BuddyIconManager methods
+type buddyIconManagerParams struct {
+	buddyIconManagerRetrieveParams
+	buddyIconManagerUpsertParams
+	buddyIconMetadataParams
 }
 
-// bartManagerRetrieveParams is the list of parameters passed at the mock
-// BARTManager.BARTRetrieve call site
-type bartManagerRetrieveParams []struct {
+// buddyIconManagerRetrieveParams is the list of parameters passed at the mock
+// BuddyIconManager.BuddyIcon call site
+type buddyIconManagerRetrieveParams []struct {
 	itemHash []byte
 	result   []byte
 }
 
-// bartManagerUpsertParams is the list of parameters passed at the mock
-// BARTManager.BARTUpsert call site
-type bartManagerUpsertParams []struct {
+// buddyIconManagerUpsertParams is the list of parameters passed at the mock
+// BuddyIconManager.SetBuddyIcon call site
+type buddyIconManagerUpsertParams []struct {
 	itemHash []byte
 	payload  []byte
+}
+
+// buddyIconMetadataParams is the list of parameters passed at the mock
+// BuddyIconManager.BuddyIconMetadata call site
+type buddyIconMetadataParams []struct {
+	screenName state.IdentScreenName
+	result     *wire.BARTID
+	err        error
 }
 
 // userManagerParams is a helper struct that contains mock parameters for
@@ -471,9 +472,9 @@ type chatRelayToScreenNameParams []struct {
 	err        error
 }
 
-// localBuddyListManagerParams is a helper struct that contains mock
-// parameters for LocalBuddyListManager methods
-type localBuddyListManagerParams struct {
+// clientSideBuddyListManagerParams is a helper struct that contains mock
+// parameters for ClientSideBuddyListManager methods
+type clientSideBuddyListManagerParams struct {
 	addBuddyParams
 	deleteBuddyParams
 	denyBuddyParams
@@ -484,7 +485,7 @@ type localBuddyListManagerParams struct {
 }
 
 // legacyBuddiesParams is the list of parameters passed at the mock
-// LocalBuddyListManager.AddBuddy call site
+// ClientSideBuddyListManager.AddBuddy call site
 type addBuddyParams []struct {
 	me   state.IdentScreenName
 	them state.IdentScreenName
@@ -492,7 +493,7 @@ type addBuddyParams []struct {
 }
 
 // legacyBuddiesParams is the list of parameters passed at the mock
-// LocalBuddyListManager.RemoveBuddy call site
+// ClientSideBuddyListManager.RemoveBuddy call site
 type deleteBuddyParams []struct {
 	me   state.IdentScreenName
 	them state.IdentScreenName
@@ -500,7 +501,7 @@ type deleteBuddyParams []struct {
 }
 
 // deleteUserParams is the list of parameters passed at the mock
-// LocalBuddyListManager.RemoveBuddy call site
+// ClientSideBuddyListManager.RemoveBuddy call site
 type denyBuddyParams []struct {
 	me   state.IdentScreenName
 	them state.IdentScreenName
@@ -508,7 +509,7 @@ type denyBuddyParams []struct {
 }
 
 // permitBuddyParams is the list of parameters passed at the mock
-// LocalBuddyListManager.PermitBuddy call site
+// ClientSideBuddyListManager.PermitBuddy call site
 type permitBuddyParams []struct {
 	me   state.IdentScreenName
 	them state.IdentScreenName
@@ -516,7 +517,7 @@ type permitBuddyParams []struct {
 }
 
 // removeDenyBuddyParams is the list of parameters passed at the mock
-// LocalBuddyListManager.RemoveDenyBuddy call site
+// ClientSideBuddyListManager.RemoveDenyBuddy call site
 type removeDenyBuddyParams []struct {
 	me   state.IdentScreenName
 	them state.IdentScreenName
@@ -524,7 +525,7 @@ type removeDenyBuddyParams []struct {
 }
 
 // removePermitBuddyParams is the list of parameters passed at the mock
-// LocalBuddyListManager.RemovePermitBuddy call site
+// ClientSideBuddyListManager.RemovePermitBuddy call site
 type removePermitBuddyParams []struct {
 	me   state.IdentScreenName
 	them state.IdentScreenName
@@ -532,7 +533,7 @@ type removePermitBuddyParams []struct {
 }
 
 // setPDModeParams is the list of parameters passed at the mock
-// LocalBuddyListManager.SetPDMode call site
+// ClientSideBuddyListManager.SetPDMode call site
 type setPDModeParams []struct {
 	userScreenName state.IdentScreenName
 	pdMode         wire.FeedbagPDMode
@@ -567,11 +568,11 @@ type cookieIssueParams []struct {
 type accountManagerParams struct {
 	accountManagerUpdateDisplayScreenNameParams
 	accountManagerUpdateEmailAddressParams
-	accountManagerEmailAddressByNameParams
+	accountManagerEmailAddressParams
 	accountManagerUpdateRegStatusParams
-	accountManagerRegStatusByNameParams
+	accountManagerRegStatusParams
 	accountManagerUpdateConfirmStatusParams
-	accountManagerConfirmStatusByNameParams
+	accountManagerConfirmStatusParams
 	accountManagerUserParams
 	accountManagerSetUserPasswordParams
 }
@@ -591,9 +592,9 @@ type accountManagerUpdateEmailAddressParams []struct {
 	err          error
 }
 
-// accountManagerEmailAddressByNameParams is the list of parameters passed at the mock
-// accountManager.EmailAddressByName call site
-type accountManagerEmailAddressByNameParams []struct {
+// accountManagerEmailAddressParams is the list of parameters passed at the mock
+// accountManager.EmailAddress call site
+type accountManagerEmailAddressParams []struct {
 	screenName   state.IdentScreenName
 	emailAddress *mail.Address
 	err          error
@@ -607,9 +608,9 @@ type accountManagerUpdateRegStatusParams []struct {
 	err        error
 }
 
-// accountManagerRegStatusByNameParams is the list of parameters passed at the mock
-// accountManager.RegStatusByName call site
-type accountManagerRegStatusByNameParams []struct {
+// accountManagerRegStatusParams is the list of parameters passed at the mock
+// accountManager.RegStatus call site
+type accountManagerRegStatusParams []struct {
 	screenName state.IdentScreenName
 	regStatus  uint16
 	err        error
@@ -623,9 +624,9 @@ type accountManagerUpdateConfirmStatusParams []struct {
 	err           error
 }
 
-// accountManagerConfirmStatusByNameParams is the list of parameters passed at the mock
-// accountManager.ConfirmStatusByName call site
-type accountManagerConfirmStatusByNameParams []struct {
+// accountManagerConfirmStatusParams is the list of parameters passed at the mock
+// accountManager.ConfirmStatus call site
+type accountManagerConfirmStatusParams []struct {
 	screenName    state.IdentScreenName
 	confirmStatus bool
 	err           error
@@ -797,5 +798,13 @@ func userInfoWithBARTIcon(sess *state.Session, bid wire.BARTID) wire.TLVUserInfo
 func matchSession(mustMatch state.IdentScreenName) interface{} {
 	return mock.MatchedBy(func(s *state.Session) bool {
 		return mustMatch == s.IdentScreenName()
+	})
+}
+
+// matchContext matches any instance of Context interface.
+func matchContext() interface{} {
+	return mock.MatchedBy(func(ctx any) bool {
+		_, ok := ctx.(context.Context)
+		return ok
 	})
 }

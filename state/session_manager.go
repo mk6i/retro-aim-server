@@ -71,12 +71,6 @@ func (s *InMemorySessionManager) maybeRelayMessage(ctx context.Context, msg wire
 	}
 }
 
-// AddSession adds a new session to the pool, ensuring only one session exists
-// for a given screen name. If a session with the same screen name is already
-// active, the call blocks until the active session is terminated by
-// [InMemorySessionManager.RemoveSession] or the context is canceled. When
-// concurrent calls are made for the same screen name, only one call succeeds
-// and the others return an error.
 func (s *InMemorySessionManager) AddSession(ctx context.Context, screenName DisplayScreenName) (*Session, error) {
 	s.mapMutex.Lock()
 

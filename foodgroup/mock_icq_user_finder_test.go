@@ -3,6 +3,8 @@
 package foodgroup
 
 import (
+	context "context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,9 +22,9 @@ func (_m *mockICQUserFinder) EXPECT() *mockICQUserFinder_Expecter {
 	return &mockICQUserFinder_Expecter{mock: &_m.Mock}
 }
 
-// FindByICQEmail provides a mock function with given fields: email
-func (_m *mockICQUserFinder) FindByICQEmail(email string) (state.User, error) {
-	ret := _m.Called(email)
+// FindByICQEmail provides a mock function with given fields: ctx, email
+func (_m *mockICQUserFinder) FindByICQEmail(ctx context.Context, email string) (state.User, error) {
+	ret := _m.Called(ctx, email)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindByICQEmail")
@@ -30,17 +32,17 @@ func (_m *mockICQUserFinder) FindByICQEmail(email string) (state.User, error) {
 
 	var r0 state.User
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (state.User, error)); ok {
-		return rf(email)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (state.User, error)); ok {
+		return rf(ctx, email)
 	}
-	if rf, ok := ret.Get(0).(func(string) state.User); ok {
-		r0 = rf(email)
+	if rf, ok := ret.Get(0).(func(context.Context, string) state.User); ok {
+		r0 = rf(ctx, email)
 	} else {
 		r0 = ret.Get(0).(state.User)
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(email)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, email)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -54,14 +56,15 @@ type mockICQUserFinder_FindByICQEmail_Call struct {
 }
 
 // FindByICQEmail is a helper method to define mock.On call
+//   - ctx context.Context
 //   - email string
-func (_e *mockICQUserFinder_Expecter) FindByICQEmail(email interface{}) *mockICQUserFinder_FindByICQEmail_Call {
-	return &mockICQUserFinder_FindByICQEmail_Call{Call: _e.mock.On("FindByICQEmail", email)}
+func (_e *mockICQUserFinder_Expecter) FindByICQEmail(ctx interface{}, email interface{}) *mockICQUserFinder_FindByICQEmail_Call {
+	return &mockICQUserFinder_FindByICQEmail_Call{Call: _e.mock.On("FindByICQEmail", ctx, email)}
 }
 
-func (_c *mockICQUserFinder_FindByICQEmail_Call) Run(run func(email string)) *mockICQUserFinder_FindByICQEmail_Call {
+func (_c *mockICQUserFinder_FindByICQEmail_Call) Run(run func(ctx context.Context, email string)) *mockICQUserFinder_FindByICQEmail_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -71,14 +74,14 @@ func (_c *mockICQUserFinder_FindByICQEmail_Call) Return(_a0 state.User, _a1 erro
 	return _c
 }
 
-func (_c *mockICQUserFinder_FindByICQEmail_Call) RunAndReturn(run func(string) (state.User, error)) *mockICQUserFinder_FindByICQEmail_Call {
+func (_c *mockICQUserFinder_FindByICQEmail_Call) RunAndReturn(run func(context.Context, string) (state.User, error)) *mockICQUserFinder_FindByICQEmail_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// FindByICQInterests provides a mock function with given fields: code, keywords
-func (_m *mockICQUserFinder) FindByICQInterests(code uint16, keywords []string) ([]state.User, error) {
-	ret := _m.Called(code, keywords)
+// FindByICQInterests provides a mock function with given fields: ctx, code, keywords
+func (_m *mockICQUserFinder) FindByICQInterests(ctx context.Context, code uint16, keywords []string) ([]state.User, error) {
+	ret := _m.Called(ctx, code, keywords)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindByICQInterests")
@@ -86,19 +89,19 @@ func (_m *mockICQUserFinder) FindByICQInterests(code uint16, keywords []string) 
 
 	var r0 []state.User
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uint16, []string) ([]state.User, error)); ok {
-		return rf(code, keywords)
+	if rf, ok := ret.Get(0).(func(context.Context, uint16, []string) ([]state.User, error)); ok {
+		return rf(ctx, code, keywords)
 	}
-	if rf, ok := ret.Get(0).(func(uint16, []string) []state.User); ok {
-		r0 = rf(code, keywords)
+	if rf, ok := ret.Get(0).(func(context.Context, uint16, []string) []state.User); ok {
+		r0 = rf(ctx, code, keywords)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]state.User)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(uint16, []string) error); ok {
-		r1 = rf(code, keywords)
+	if rf, ok := ret.Get(1).(func(context.Context, uint16, []string) error); ok {
+		r1 = rf(ctx, code, keywords)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -112,15 +115,16 @@ type mockICQUserFinder_FindByICQInterests_Call struct {
 }
 
 // FindByICQInterests is a helper method to define mock.On call
+//   - ctx context.Context
 //   - code uint16
 //   - keywords []string
-func (_e *mockICQUserFinder_Expecter) FindByICQInterests(code interface{}, keywords interface{}) *mockICQUserFinder_FindByICQInterests_Call {
-	return &mockICQUserFinder_FindByICQInterests_Call{Call: _e.mock.On("FindByICQInterests", code, keywords)}
+func (_e *mockICQUserFinder_Expecter) FindByICQInterests(ctx interface{}, code interface{}, keywords interface{}) *mockICQUserFinder_FindByICQInterests_Call {
+	return &mockICQUserFinder_FindByICQInterests_Call{Call: _e.mock.On("FindByICQInterests", ctx, code, keywords)}
 }
 
-func (_c *mockICQUserFinder_FindByICQInterests_Call) Run(run func(code uint16, keywords []string)) *mockICQUserFinder_FindByICQInterests_Call {
+func (_c *mockICQUserFinder_FindByICQInterests_Call) Run(run func(ctx context.Context, code uint16, keywords []string)) *mockICQUserFinder_FindByICQInterests_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint16), args[1].([]string))
+		run(args[0].(context.Context), args[1].(uint16), args[2].([]string))
 	})
 	return _c
 }
@@ -130,14 +134,14 @@ func (_c *mockICQUserFinder_FindByICQInterests_Call) Return(_a0 []state.User, _a
 	return _c
 }
 
-func (_c *mockICQUserFinder_FindByICQInterests_Call) RunAndReturn(run func(uint16, []string) ([]state.User, error)) *mockICQUserFinder_FindByICQInterests_Call {
+func (_c *mockICQUserFinder_FindByICQInterests_Call) RunAndReturn(run func(context.Context, uint16, []string) ([]state.User, error)) *mockICQUserFinder_FindByICQInterests_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// FindByICQKeyword provides a mock function with given fields: keyword
-func (_m *mockICQUserFinder) FindByICQKeyword(keyword string) ([]state.User, error) {
-	ret := _m.Called(keyword)
+// FindByICQKeyword provides a mock function with given fields: ctx, keyword
+func (_m *mockICQUserFinder) FindByICQKeyword(ctx context.Context, keyword string) ([]state.User, error) {
+	ret := _m.Called(ctx, keyword)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindByICQKeyword")
@@ -145,19 +149,19 @@ func (_m *mockICQUserFinder) FindByICQKeyword(keyword string) ([]state.User, err
 
 	var r0 []state.User
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) ([]state.User, error)); ok {
-		return rf(keyword)
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]state.User, error)); ok {
+		return rf(ctx, keyword)
 	}
-	if rf, ok := ret.Get(0).(func(string) []state.User); ok {
-		r0 = rf(keyword)
+	if rf, ok := ret.Get(0).(func(context.Context, string) []state.User); ok {
+		r0 = rf(ctx, keyword)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]state.User)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(keyword)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, keyword)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -171,14 +175,15 @@ type mockICQUserFinder_FindByICQKeyword_Call struct {
 }
 
 // FindByICQKeyword is a helper method to define mock.On call
+//   - ctx context.Context
 //   - keyword string
-func (_e *mockICQUserFinder_Expecter) FindByICQKeyword(keyword interface{}) *mockICQUserFinder_FindByICQKeyword_Call {
-	return &mockICQUserFinder_FindByICQKeyword_Call{Call: _e.mock.On("FindByICQKeyword", keyword)}
+func (_e *mockICQUserFinder_Expecter) FindByICQKeyword(ctx interface{}, keyword interface{}) *mockICQUserFinder_FindByICQKeyword_Call {
+	return &mockICQUserFinder_FindByICQKeyword_Call{Call: _e.mock.On("FindByICQKeyword", ctx, keyword)}
 }
 
-func (_c *mockICQUserFinder_FindByICQKeyword_Call) Run(run func(keyword string)) *mockICQUserFinder_FindByICQKeyword_Call {
+func (_c *mockICQUserFinder_FindByICQKeyword_Call) Run(run func(ctx context.Context, keyword string)) *mockICQUserFinder_FindByICQKeyword_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -188,14 +193,14 @@ func (_c *mockICQUserFinder_FindByICQKeyword_Call) Return(_a0 []state.User, _a1 
 	return _c
 }
 
-func (_c *mockICQUserFinder_FindByICQKeyword_Call) RunAndReturn(run func(string) ([]state.User, error)) *mockICQUserFinder_FindByICQKeyword_Call {
+func (_c *mockICQUserFinder_FindByICQKeyword_Call) RunAndReturn(run func(context.Context, string) ([]state.User, error)) *mockICQUserFinder_FindByICQKeyword_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// FindByICQName provides a mock function with given fields: firstName, lastName, nickName
-func (_m *mockICQUserFinder) FindByICQName(firstName string, lastName string, nickName string) ([]state.User, error) {
-	ret := _m.Called(firstName, lastName, nickName)
+// FindByICQName provides a mock function with given fields: ctx, firstName, lastName, nickName
+func (_m *mockICQUserFinder) FindByICQName(ctx context.Context, firstName string, lastName string, nickName string) ([]state.User, error) {
+	ret := _m.Called(ctx, firstName, lastName, nickName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindByICQName")
@@ -203,19 +208,19 @@ func (_m *mockICQUserFinder) FindByICQName(firstName string, lastName string, ni
 
 	var r0 []state.User
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string, string) ([]state.User, error)); ok {
-		return rf(firstName, lastName, nickName)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) ([]state.User, error)); ok {
+		return rf(ctx, firstName, lastName, nickName)
 	}
-	if rf, ok := ret.Get(0).(func(string, string, string) []state.User); ok {
-		r0 = rf(firstName, lastName, nickName)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) []state.User); ok {
+		r0 = rf(ctx, firstName, lastName, nickName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]state.User)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, string, string) error); ok {
-		r1 = rf(firstName, lastName, nickName)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
+		r1 = rf(ctx, firstName, lastName, nickName)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -229,16 +234,17 @@ type mockICQUserFinder_FindByICQName_Call struct {
 }
 
 // FindByICQName is a helper method to define mock.On call
+//   - ctx context.Context
 //   - firstName string
 //   - lastName string
 //   - nickName string
-func (_e *mockICQUserFinder_Expecter) FindByICQName(firstName interface{}, lastName interface{}, nickName interface{}) *mockICQUserFinder_FindByICQName_Call {
-	return &mockICQUserFinder_FindByICQName_Call{Call: _e.mock.On("FindByICQName", firstName, lastName, nickName)}
+func (_e *mockICQUserFinder_Expecter) FindByICQName(ctx interface{}, firstName interface{}, lastName interface{}, nickName interface{}) *mockICQUserFinder_FindByICQName_Call {
+	return &mockICQUserFinder_FindByICQName_Call{Call: _e.mock.On("FindByICQName", ctx, firstName, lastName, nickName)}
 }
 
-func (_c *mockICQUserFinder_FindByICQName_Call) Run(run func(firstName string, lastName string, nickName string)) *mockICQUserFinder_FindByICQName_Call {
+func (_c *mockICQUserFinder_FindByICQName_Call) Run(run func(ctx context.Context, firstName string, lastName string, nickName string)) *mockICQUserFinder_FindByICQName_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
 	})
 	return _c
 }
@@ -248,14 +254,14 @@ func (_c *mockICQUserFinder_FindByICQName_Call) Return(_a0 []state.User, _a1 err
 	return _c
 }
 
-func (_c *mockICQUserFinder_FindByICQName_Call) RunAndReturn(run func(string, string, string) ([]state.User, error)) *mockICQUserFinder_FindByICQName_Call {
+func (_c *mockICQUserFinder_FindByICQName_Call) RunAndReturn(run func(context.Context, string, string, string) ([]state.User, error)) *mockICQUserFinder_FindByICQName_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// FindByUIN provides a mock function with given fields: UIN
-func (_m *mockICQUserFinder) FindByUIN(UIN uint32) (state.User, error) {
-	ret := _m.Called(UIN)
+// FindByUIN provides a mock function with given fields: ctx, UIN
+func (_m *mockICQUserFinder) FindByUIN(ctx context.Context, UIN uint32) (state.User, error) {
+	ret := _m.Called(ctx, UIN)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindByUIN")
@@ -263,17 +269,17 @@ func (_m *mockICQUserFinder) FindByUIN(UIN uint32) (state.User, error) {
 
 	var r0 state.User
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uint32) (state.User, error)); ok {
-		return rf(UIN)
+	if rf, ok := ret.Get(0).(func(context.Context, uint32) (state.User, error)); ok {
+		return rf(ctx, UIN)
 	}
-	if rf, ok := ret.Get(0).(func(uint32) state.User); ok {
-		r0 = rf(UIN)
+	if rf, ok := ret.Get(0).(func(context.Context, uint32) state.User); ok {
+		r0 = rf(ctx, UIN)
 	} else {
 		r0 = ret.Get(0).(state.User)
 	}
 
-	if rf, ok := ret.Get(1).(func(uint32) error); ok {
-		r1 = rf(UIN)
+	if rf, ok := ret.Get(1).(func(context.Context, uint32) error); ok {
+		r1 = rf(ctx, UIN)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -287,14 +293,15 @@ type mockICQUserFinder_FindByUIN_Call struct {
 }
 
 // FindByUIN is a helper method to define mock.On call
+//   - ctx context.Context
 //   - UIN uint32
-func (_e *mockICQUserFinder_Expecter) FindByUIN(UIN interface{}) *mockICQUserFinder_FindByUIN_Call {
-	return &mockICQUserFinder_FindByUIN_Call{Call: _e.mock.On("FindByUIN", UIN)}
+func (_e *mockICQUserFinder_Expecter) FindByUIN(ctx interface{}, UIN interface{}) *mockICQUserFinder_FindByUIN_Call {
+	return &mockICQUserFinder_FindByUIN_Call{Call: _e.mock.On("FindByUIN", ctx, UIN)}
 }
 
-func (_c *mockICQUserFinder_FindByUIN_Call) Run(run func(UIN uint32)) *mockICQUserFinder_FindByUIN_Call {
+func (_c *mockICQUserFinder_FindByUIN_Call) Run(run func(ctx context.Context, UIN uint32)) *mockICQUserFinder_FindByUIN_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint32))
+		run(args[0].(context.Context), args[1].(uint32))
 	})
 	return _c
 }
@@ -304,7 +311,7 @@ func (_c *mockICQUserFinder_FindByUIN_Call) Return(_a0 state.User, _a1 error) *m
 	return _c
 }
 
-func (_c *mockICQUserFinder_FindByUIN_Call) RunAndReturn(run func(uint32) (state.User, error)) *mockICQUserFinder_FindByUIN_Call {
+func (_c *mockICQUserFinder_FindByUIN_Call) RunAndReturn(run func(context.Context, uint32) (state.User, error)) *mockICQUserFinder_FindByUIN_Call {
 	_c.Call.Return(run)
 	return _c
 }

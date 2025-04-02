@@ -3,6 +3,8 @@
 package foodgroup
 
 import (
+	context "context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,9 +22,9 @@ func (_m *mockChatRoomRegistry) EXPECT() *mockChatRoomRegistry_Expecter {
 	return &mockChatRoomRegistry_Expecter{mock: &_m.Mock}
 }
 
-// ChatRoomByCookie provides a mock function with given fields: chatCookie
-func (_m *mockChatRoomRegistry) ChatRoomByCookie(chatCookie string) (state.ChatRoom, error) {
-	ret := _m.Called(chatCookie)
+// ChatRoomByCookie provides a mock function with given fields: ctx, chatCookie
+func (_m *mockChatRoomRegistry) ChatRoomByCookie(ctx context.Context, chatCookie string) (state.ChatRoom, error) {
+	ret := _m.Called(ctx, chatCookie)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ChatRoomByCookie")
@@ -30,17 +32,17 @@ func (_m *mockChatRoomRegistry) ChatRoomByCookie(chatCookie string) (state.ChatR
 
 	var r0 state.ChatRoom
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (state.ChatRoom, error)); ok {
-		return rf(chatCookie)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (state.ChatRoom, error)); ok {
+		return rf(ctx, chatCookie)
 	}
-	if rf, ok := ret.Get(0).(func(string) state.ChatRoom); ok {
-		r0 = rf(chatCookie)
+	if rf, ok := ret.Get(0).(func(context.Context, string) state.ChatRoom); ok {
+		r0 = rf(ctx, chatCookie)
 	} else {
 		r0 = ret.Get(0).(state.ChatRoom)
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(chatCookie)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, chatCookie)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -54,14 +56,15 @@ type mockChatRoomRegistry_ChatRoomByCookie_Call struct {
 }
 
 // ChatRoomByCookie is a helper method to define mock.On call
+//   - ctx context.Context
 //   - chatCookie string
-func (_e *mockChatRoomRegistry_Expecter) ChatRoomByCookie(chatCookie interface{}) *mockChatRoomRegistry_ChatRoomByCookie_Call {
-	return &mockChatRoomRegistry_ChatRoomByCookie_Call{Call: _e.mock.On("ChatRoomByCookie", chatCookie)}
+func (_e *mockChatRoomRegistry_Expecter) ChatRoomByCookie(ctx interface{}, chatCookie interface{}) *mockChatRoomRegistry_ChatRoomByCookie_Call {
+	return &mockChatRoomRegistry_ChatRoomByCookie_Call{Call: _e.mock.On("ChatRoomByCookie", ctx, chatCookie)}
 }
 
-func (_c *mockChatRoomRegistry_ChatRoomByCookie_Call) Run(run func(chatCookie string)) *mockChatRoomRegistry_ChatRoomByCookie_Call {
+func (_c *mockChatRoomRegistry_ChatRoomByCookie_Call) Run(run func(ctx context.Context, chatCookie string)) *mockChatRoomRegistry_ChatRoomByCookie_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -71,14 +74,14 @@ func (_c *mockChatRoomRegistry_ChatRoomByCookie_Call) Return(_a0 state.ChatRoom,
 	return _c
 }
 
-func (_c *mockChatRoomRegistry_ChatRoomByCookie_Call) RunAndReturn(run func(string) (state.ChatRoom, error)) *mockChatRoomRegistry_ChatRoomByCookie_Call {
+func (_c *mockChatRoomRegistry_ChatRoomByCookie_Call) RunAndReturn(run func(context.Context, string) (state.ChatRoom, error)) *mockChatRoomRegistry_ChatRoomByCookie_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ChatRoomByName provides a mock function with given fields: exchange, name
-func (_m *mockChatRoomRegistry) ChatRoomByName(exchange uint16, name string) (state.ChatRoom, error) {
-	ret := _m.Called(exchange, name)
+// ChatRoomByName provides a mock function with given fields: ctx, exchange, name
+func (_m *mockChatRoomRegistry) ChatRoomByName(ctx context.Context, exchange uint16, name string) (state.ChatRoom, error) {
+	ret := _m.Called(ctx, exchange, name)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ChatRoomByName")
@@ -86,17 +89,17 @@ func (_m *mockChatRoomRegistry) ChatRoomByName(exchange uint16, name string) (st
 
 	var r0 state.ChatRoom
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uint16, string) (state.ChatRoom, error)); ok {
-		return rf(exchange, name)
+	if rf, ok := ret.Get(0).(func(context.Context, uint16, string) (state.ChatRoom, error)); ok {
+		return rf(ctx, exchange, name)
 	}
-	if rf, ok := ret.Get(0).(func(uint16, string) state.ChatRoom); ok {
-		r0 = rf(exchange, name)
+	if rf, ok := ret.Get(0).(func(context.Context, uint16, string) state.ChatRoom); ok {
+		r0 = rf(ctx, exchange, name)
 	} else {
 		r0 = ret.Get(0).(state.ChatRoom)
 	}
 
-	if rf, ok := ret.Get(1).(func(uint16, string) error); ok {
-		r1 = rf(exchange, name)
+	if rf, ok := ret.Get(1).(func(context.Context, uint16, string) error); ok {
+		r1 = rf(ctx, exchange, name)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -110,15 +113,16 @@ type mockChatRoomRegistry_ChatRoomByName_Call struct {
 }
 
 // ChatRoomByName is a helper method to define mock.On call
+//   - ctx context.Context
 //   - exchange uint16
 //   - name string
-func (_e *mockChatRoomRegistry_Expecter) ChatRoomByName(exchange interface{}, name interface{}) *mockChatRoomRegistry_ChatRoomByName_Call {
-	return &mockChatRoomRegistry_ChatRoomByName_Call{Call: _e.mock.On("ChatRoomByName", exchange, name)}
+func (_e *mockChatRoomRegistry_Expecter) ChatRoomByName(ctx interface{}, exchange interface{}, name interface{}) *mockChatRoomRegistry_ChatRoomByName_Call {
+	return &mockChatRoomRegistry_ChatRoomByName_Call{Call: _e.mock.On("ChatRoomByName", ctx, exchange, name)}
 }
 
-func (_c *mockChatRoomRegistry_ChatRoomByName_Call) Run(run func(exchange uint16, name string)) *mockChatRoomRegistry_ChatRoomByName_Call {
+func (_c *mockChatRoomRegistry_ChatRoomByName_Call) Run(run func(ctx context.Context, exchange uint16, name string)) *mockChatRoomRegistry_ChatRoomByName_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint16), args[1].(string))
+		run(args[0].(context.Context), args[1].(uint16), args[2].(string))
 	})
 	return _c
 }
@@ -128,22 +132,22 @@ func (_c *mockChatRoomRegistry_ChatRoomByName_Call) Return(_a0 state.ChatRoom, _
 	return _c
 }
 
-func (_c *mockChatRoomRegistry_ChatRoomByName_Call) RunAndReturn(run func(uint16, string) (state.ChatRoom, error)) *mockChatRoomRegistry_ChatRoomByName_Call {
+func (_c *mockChatRoomRegistry_ChatRoomByName_Call) RunAndReturn(run func(context.Context, uint16, string) (state.ChatRoom, error)) *mockChatRoomRegistry_ChatRoomByName_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// CreateChatRoom provides a mock function with given fields: chatRoom
-func (_m *mockChatRoomRegistry) CreateChatRoom(chatRoom *state.ChatRoom) error {
-	ret := _m.Called(chatRoom)
+// CreateChatRoom provides a mock function with given fields: ctx, chatRoom
+func (_m *mockChatRoomRegistry) CreateChatRoom(ctx context.Context, chatRoom *state.ChatRoom) error {
+	ret := _m.Called(ctx, chatRoom)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateChatRoom")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*state.ChatRoom) error); ok {
-		r0 = rf(chatRoom)
+	if rf, ok := ret.Get(0).(func(context.Context, *state.ChatRoom) error); ok {
+		r0 = rf(ctx, chatRoom)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -157,14 +161,15 @@ type mockChatRoomRegistry_CreateChatRoom_Call struct {
 }
 
 // CreateChatRoom is a helper method to define mock.On call
+//   - ctx context.Context
 //   - chatRoom *state.ChatRoom
-func (_e *mockChatRoomRegistry_Expecter) CreateChatRoom(chatRoom interface{}) *mockChatRoomRegistry_CreateChatRoom_Call {
-	return &mockChatRoomRegistry_CreateChatRoom_Call{Call: _e.mock.On("CreateChatRoom", chatRoom)}
+func (_e *mockChatRoomRegistry_Expecter) CreateChatRoom(ctx interface{}, chatRoom interface{}) *mockChatRoomRegistry_CreateChatRoom_Call {
+	return &mockChatRoomRegistry_CreateChatRoom_Call{Call: _e.mock.On("CreateChatRoom", ctx, chatRoom)}
 }
 
-func (_c *mockChatRoomRegistry_CreateChatRoom_Call) Run(run func(chatRoom *state.ChatRoom)) *mockChatRoomRegistry_CreateChatRoom_Call {
+func (_c *mockChatRoomRegistry_CreateChatRoom_Call) Run(run func(ctx context.Context, chatRoom *state.ChatRoom)) *mockChatRoomRegistry_CreateChatRoom_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*state.ChatRoom))
+		run(args[0].(context.Context), args[1].(*state.ChatRoom))
 	})
 	return _c
 }
@@ -174,7 +179,7 @@ func (_c *mockChatRoomRegistry_CreateChatRoom_Call) Return(_a0 error) *mockChatR
 	return _c
 }
 
-func (_c *mockChatRoomRegistry_CreateChatRoom_Call) RunAndReturn(run func(*state.ChatRoom) error) *mockChatRoomRegistry_CreateChatRoom_Call {
+func (_c *mockChatRoomRegistry_CreateChatRoom_Call) RunAndReturn(run func(context.Context, *state.ChatRoom) error) *mockChatRoomRegistry_CreateChatRoom_Call {
 	_c.Call.Return(run)
 	return _c
 }

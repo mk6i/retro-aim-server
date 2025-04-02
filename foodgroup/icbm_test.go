@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"context"
 	"net"
 	"net/netip"
 	"testing"
@@ -34,7 +35,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			name:          "transmit message from sender to recipient, ack message back to sender",
 			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -125,7 +126,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			name:          "transmit message from sender to recipient, don't ack message back to sender",
 			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -202,7 +203,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			name:          "don't transmit message from sender to recipient because sender has blocked recipient",
 			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -256,7 +257,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			name:          "don't transmit message from sender to recipient because recipient has blocked sender",
 			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -310,7 +311,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			name:          "don't transmit message from sender to recipient because recipient doesn't exist",
 			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -397,7 +398,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 				return time.Date(2020, time.August, 1, 0, 0, 0, 0, time.UTC)
 			},
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("11111111"),
@@ -451,7 +452,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			senderSession: newTestSession("sender-screen-name", sessOptWarning(10),
 				sessRemoteAddr(netip.AddrPortFrom(netip.MustParseAddr("129.168.0.1"), 0))),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -538,7 +539,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			senderSession: newTestSession("sender-screen-name", sessOptWarning(10),
 				sessRemoteAddr(netip.AddrPortFrom(netip.MustParseAddr("129.168.0.1"), 0))),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -611,7 +612,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			name:          "send rendezvous request for file transfer without IP in session, expect no IP TLV override",
 			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -696,10 +697,10 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			buddyListRetriever := newMockBuddyListRetriever(t)
-			for _, item := range tc.mockParams.buddyListRetrieverParams.relationshipParams {
-				buddyListRetriever.EXPECT().
-					Relationship(item.me, item.them).
+			relationshipFetcher := newMockRelationshipFetcher(t)
+			for _, item := range tc.mockParams.relationshipFetcherParams.relationshipParams {
+				relationshipFetcher.EXPECT().
+					Relationship(matchContext(), item.me, item.them).
 					Return(item.result, item.err)
 			}
 			sessionRetriever := newMockSessionRetriever(t)
@@ -716,19 +717,19 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			offlineMessageManager := newMockOfflineMessageManager(t)
 			for _, params := range tc.mockParams.saveMessageParams {
 				offlineMessageManager.EXPECT().
-					SaveMessage(params.offlineMessageIn).
+					SaveMessage(matchContext(), params.offlineMessageIn).
 					Return(params.err)
 			}
 
 			svc := ICBMService{
-				buddyListRetriever:  buddyListRetriever,
+				relationshipFetcher: relationshipFetcher,
 				messageRelayer:      messageRelayer,
 				offlineMessageSaver: offlineMessageManager,
 				sessionRetriever:    sessionRetriever,
 				timeNow:             tc.timeNow,
 			}
 
-			outputSNAC, err := svc.ChannelMsgToHost(nil, tc.senderSession, tc.inputSNAC.Frame,
+			outputSNAC, err := svc.ChannelMsgToHost(context.Background(), tc.senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x06_ICBMChannelMsgToHost))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
@@ -752,7 +753,7 @@ func TestICBMService_ClientEvent(t *testing.T) {
 			name:             "transmit message from sender to recipient",
 			senderScreenName: "sender-screen-name",
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -804,7 +805,7 @@ func TestICBMService_ClientEvent(t *testing.T) {
 			name:             "don't transmit message from sender to recipient because sender has blocked recipient",
 			senderScreenName: "sender-screen-name",
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -836,24 +837,24 @@ func TestICBMService_ClientEvent(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			buddyListRetriever := newMockBuddyListRetriever(t)
-			for _, item := range tc.mockParams.buddyListRetrieverParams.relationshipParams {
-				buddyListRetriever.EXPECT().
-					Relationship(item.me, item.them).
+			relationshipFetcher := newMockRelationshipFetcher(t)
+			for _, item := range tc.mockParams.relationshipFetcherParams.relationshipParams {
+				relationshipFetcher.EXPECT().
+					Relationship(matchContext(), item.me, item.them).
 					Return(item.result, item.err)
 			}
 			messageRelayer := newMockMessageRelayer(t)
 			for _, item := range tc.mockParams.relayToScreenNameParams {
 				messageRelayer.EXPECT().
-					RelayToScreenName(mock.Anything, item.screenName, item.message)
+					RelayToScreenName(matchContext(), item.screenName, item.message)
 			}
 
 			senderSession := newTestSession(tc.senderScreenName)
 			svc := ICBMService{
-				buddyListRetriever: buddyListRetriever,
-				messageRelayer:     messageRelayer,
+				relationshipFetcher: relationshipFetcher,
+				messageRelayer:      messageRelayer,
 			}
-			assert.NoError(t, svc.ClientEvent(nil, senderSession, tc.inputSNAC.Frame,
+			assert.NoError(t, svc.ClientEvent(context.Background(), senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x14_ICBMClientEvent)))
 		})
 	}
@@ -904,7 +905,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 						},
 					},
 				},
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -976,7 +977,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 						},
 					},
 				},
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -1048,7 +1049,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -1088,7 +1089,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -1132,7 +1133,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			name:          "don't transmit non-anonymous warning from sender to recipient because recipient is offline",
 			senderSession: newTestSession("sender-screen-name"),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -1180,7 +1181,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			name:          "don't transmit anonymous warning from sender to recipient because recipient is offline",
 			senderSession: newTestSession("sender-screen-name"),
 			mockParams: mockParams{
-				buddyListRetrieverParams: buddyListRetrieverParams{
+				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
 							me:   state.NewIdentScreenName("sender-screen-name"),
@@ -1234,10 +1235,10 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					BroadcastBuddyArrived(mock.Anything, matchSession(item.screenName)).
 					Return(item.err)
 			}
-			buddyListRetriever := newMockBuddyListRetriever(t)
-			for _, item := range tc.mockParams.buddyListRetrieverParams.relationshipParams {
-				buddyListRetriever.EXPECT().
-					Relationship(item.me, item.them).
+			relationshipFetcher := newMockRelationshipFetcher(t)
+			for _, item := range tc.mockParams.relationshipFetcherParams.relationshipParams {
+				relationshipFetcher.EXPECT().
+					Relationship(matchContext(), item.me, item.them).
 					Return(item.result, item.err)
 			}
 			sessionRetriever := newMockSessionRetriever(t)
@@ -1254,19 +1255,19 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			offlineMessageManager := newMockOfflineMessageManager(t)
 			for _, params := range tc.mockParams.saveMessageParams {
 				offlineMessageManager.EXPECT().
-					SaveMessage(params.offlineMessageIn).
+					SaveMessage(matchContext(), params.offlineMessageIn).
 					Return(params.err)
 			}
 
 			svc := ICBMService{
 				buddyBroadcaster:    mockBuddyBroadcaster,
-				buddyListRetriever:  buddyListRetriever,
+				relationshipFetcher: relationshipFetcher,
 				messageRelayer:      messageRelayer,
 				offlineMessageSaver: offlineMessageManager,
 				sessionRetriever:    sessionRetriever,
 			}
 
-			outputSNAC, err := svc.EvilRequest(nil, tc.senderSession, tc.inputSNAC.Frame,
+			outputSNAC, err := svc.EvilRequest(context.Background(), tc.senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
@@ -1275,7 +1276,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 }
 
 func TestICBMService_ParameterQuery(t *testing.T) {
-	svc := NewICBMService(nil, nil, nil, nil)
+	svc := NewICBMService(nil, nil, nil, nil, nil)
 
 	have := svc.ParameterQuery(nil, wire.SNACFrame{RequestID: 1234})
 	want := wire.SNACMessage{
@@ -1327,8 +1328,8 @@ func TestICBMService_ClientErr(t *testing.T) {
 	messageRelayer.EXPECT().
 		RelayToScreenName(mock.Anything, state.NewIdentScreenName("recipientScreenName"), expect)
 
-	svc := NewICBMService(messageRelayer, nil, nil, nil)
+	svc := NewICBMService(nil, messageRelayer, nil, nil, nil)
 
-	err := svc.ClientErr(nil, sess, wire.SNACFrame{RequestID: 1234}, inBody)
+	err := svc.ClientErr(context.Background(), sess, wire.SNACFrame{RequestID: 1234}, inBody)
 	assert.NoError(t, err)
 }

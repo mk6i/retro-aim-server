@@ -119,9 +119,9 @@ func (_c *mockBuddyService_BroadcastBuddyDeparted_Call) RunAndReturn(run func(co
 	return _c
 }
 
-// DelBuddies provides a mock function with given fields: _a0, sess, inBody
-func (_m *mockBuddyService) DelBuddies(_a0 context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies) error {
-	ret := _m.Called(_a0, sess, inBody)
+// DelBuddies provides a mock function with given fields: ctx, sess, inBody
+func (_m *mockBuddyService) DelBuddies(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies) error {
+	ret := _m.Called(ctx, sess, inBody)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DelBuddies")
@@ -129,7 +129,7 @@ func (_m *mockBuddyService) DelBuddies(_a0 context.Context, sess *state.Session,
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, *state.Session, wire.SNAC_0x03_0x05_BuddyDelBuddies) error); ok {
-		r0 = rf(_a0, sess, inBody)
+		r0 = rf(ctx, sess, inBody)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -143,14 +143,14 @@ type mockBuddyService_DelBuddies_Call struct {
 }
 
 // DelBuddies is a helper method to define mock.On call
-//   - _a0 context.Context
+//   - ctx context.Context
 //   - sess *state.Session
 //   - inBody wire.SNAC_0x03_0x05_BuddyDelBuddies
-func (_e *mockBuddyService_Expecter) DelBuddies(_a0 interface{}, sess interface{}, inBody interface{}) *mockBuddyService_DelBuddies_Call {
-	return &mockBuddyService_DelBuddies_Call{Call: _e.mock.On("DelBuddies", _a0, sess, inBody)}
+func (_e *mockBuddyService_Expecter) DelBuddies(ctx interface{}, sess interface{}, inBody interface{}) *mockBuddyService_DelBuddies_Call {
+	return &mockBuddyService_DelBuddies_Call{Call: _e.mock.On("DelBuddies", ctx, sess, inBody)}
 }
 
-func (_c *mockBuddyService_DelBuddies_Call) Run(run func(_a0 context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies)) *mockBuddyService_DelBuddies_Call {
+func (_c *mockBuddyService_DelBuddies_Call) Run(run func(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies)) *mockBuddyService_DelBuddies_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNAC_0x03_0x05_BuddyDelBuddies))
 	})

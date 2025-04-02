@@ -18,11 +18,11 @@ import (
 )
 
 type AuthService interface {
-	BUCPChallenge(bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
-	BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
-	FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error)
+	BUCPChallenge(ctx context.Context, bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
+	BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
+	FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error)
 	RegisterBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
-	RetrieveBOSSession(authCookie []byte) (*state.Session, error)
+	RetrieveBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	RegisterChatSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	Signout(ctx context.Context, sess *state.Session)
 	SignoutChat(ctx context.Context, sess *state.Session)
@@ -67,7 +67,7 @@ func (rt AuthServer) Start(ctx context.Context) error {
 			defer wg.Done()
 			connCtx := context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 			rt.Logger.DebugContext(connCtx, "accepted connection")
-			if err := rt.handleNewConnection(conn); err != nil {
+			if err := rt.handleNewConnection(connCtx, conn); err != nil {
 				rt.Logger.Info("user session failed", "err", err.Error())
 			}
 		}()
@@ -82,7 +82,7 @@ func (rt AuthServer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (rt AuthServer) handleNewConnection(rwc io.ReadWriteCloser) error {
+func (rt AuthServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) error {
 	defer rwc.Close()
 
 	flapc := wire.NewFlapClient(100, rwc, rwc)
@@ -100,21 +100,21 @@ func (rt AuthServer) handleNewConnection(rwc io.ReadWriteCloser) error {
 	// indicator of FLAP-auth because older ICQ clients appear to omit the
 	// roasted password TLV when the password is not stored client-side.
 	if _, hasScreenName := signonFrame.Uint16BE(wire.LoginTLVTagsScreenName); hasScreenName {
-		return rt.processFLAPAuth(signonFrame, flapc)
+		return rt.processFLAPAuth(ctx, signonFrame, flapc)
 	}
 
-	return rt.processBUCPAuth(flapc)
+	return rt.processBUCPAuth(ctx, flapc)
 }
 
-func (rt AuthServer) processFLAPAuth(signonFrame wire.FLAPSignonFrame, flapc *wire.FlapClient) error {
-	tlv, err := rt.AuthService.FLAPLogin(signonFrame, state.NewStubUser)
+func (rt AuthServer) processFLAPAuth(ctx context.Context, signonFrame wire.FLAPSignonFrame, flapc *wire.FlapClient) error {
+	tlv, err := rt.AuthService.FLAPLogin(ctx, signonFrame, state.NewStubUser)
 	if err != nil {
 		return err
 	}
 	return flapc.SendSignoffFrame(tlv)
 }
 
-func (rt AuthServer) processBUCPAuth(flapc *wire.FlapClient) error {
+func (rt AuthServer) processBUCPAuth(ctx context.Context, flapc *wire.FlapClient) error {
 	for {
 		frame, err := flapc.ReceiveFLAP()
 		if err != nil {
@@ -139,7 +139,7 @@ func (rt AuthServer) processBUCPAuth(flapc *wire.FlapClient) error {
 				if err := wire.UnmarshalBE(&challengeRequest, buf); err != nil {
 					return err
 				}
-				outSNAC, err := rt.BUCPChallenge(challengeRequest, uuid.New)
+				outSNAC, err := rt.BUCPChallenge(ctx, challengeRequest, uuid.New)
 				if err != nil {
 					return err
 				}
@@ -157,7 +157,7 @@ func (rt AuthServer) processBUCPAuth(flapc *wire.FlapClient) error {
 				if err := wire.UnmarshalBE(&loginRequest, buf); err != nil {
 					return err
 				}
-				outSNAC, err := rt.BUCPLogin(loginRequest, state.NewStubUser)
+				outSNAC, err := rt.BUCPLogin(ctx, loginRequest, state.NewStubUser)
 				if err != nil {
 					return err
 				}

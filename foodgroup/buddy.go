@@ -11,20 +11,21 @@ import (
 // NewBuddyService creates a new instance of BuddyService.
 func NewBuddyService(
 	messageRelayer MessageRelayer,
-	localBuddyListManager LocalBuddyListManager,
-	buddyListRetriever BuddyListRetriever,
+	clientSideBuddyListManager ClientSideBuddyListManager,
+	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
+	buddyIconManager BuddyIconManager,
 ) *BuddyService {
 	return &BuddyService{
-		buddyBroadcaster:      newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
-		localBuddyListManager: localBuddyListManager,
+		buddyBroadcaster:           newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		clientSideBuddyListManager: clientSideBuddyListManager,
 	}
 }
 
 // BuddyService provides functionality for the Buddy food group.
 type BuddyService struct {
-	localBuddyListManager LocalBuddyListManager
-	buddyBroadcaster      buddyBroadcaster
+	clientSideBuddyListManager ClientSideBuddyListManager
+	buddyBroadcaster           buddyBroadcaster
 }
 
 // RightsQuery returns buddy list service parameters.
@@ -57,7 +58,7 @@ func (s BuddyService) AddBuddies(
 
 	for _, entry := range inBody.Buddies {
 		sn := state.NewIdentScreenName(entry.ScreenName)
-		if err := s.localBuddyListManager.AddBuddy(sess.IdentScreenName(), sn); err != nil {
+		if err := s.clientSideBuddyListManager.AddBuddy(ctx, sess.IdentScreenName(), sn); err != nil {
 			return err
 		}
 	}
@@ -80,17 +81,13 @@ func (s BuddyService) AddBuddies(
 }
 
 // DelBuddies deletes buddies from my client-side buddy list.
-func (s BuddyService) DelBuddies(
-	ctx context.Context,
-	sess *state.Session,
-	inBody wire.SNAC_0x03_0x05_BuddyDelBuddies,
-) error {
+func (s BuddyService) DelBuddies(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies) error {
 
 	var toNotify []state.IdentScreenName
 
 	for _, entry := range inBody.Buddies {
 		sn := state.NewIdentScreenName(entry.ScreenName)
-		if err := s.localBuddyListManager.RemoveBuddy(sess.IdentScreenName(), sn); err != nil {
+		if err := s.clientSideBuddyListManager.RemoveBuddy(ctx, sess.IdentScreenName(), sn); err != nil {
 			return err
 		}
 		toNotify = append(toNotify, sn)
@@ -108,23 +105,26 @@ func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Se
 }
 
 func newBuddyNotifier(
-	buddyListRetriever BuddyListRetriever,
+	buddyIconManager BuddyIconManager,
+	relationshipFetcher RelationshipFetcher,
 	messageRelayer MessageRelayer,
 	sessionRetriever SessionRetriever,
 ) buddyNotifier {
 	return buddyNotifier{
-		buddyListRetriever: buddyListRetriever,
-		messageRelayer:     messageRelayer,
-		sessionRetriever:   sessionRetriever,
+		buddyIconManager:    buddyIconManager,
+		relationshipFetcher: relationshipFetcher,
+		messageRelayer:      messageRelayer,
+		sessionRetriever:    sessionRetriever,
 	}
 }
 
 // buddyNotifier centralizes logic for sending buddy arrival and departure
 // notifications.
 type buddyNotifier struct {
-	buddyListRetriever BuddyListRetriever
-	messageRelayer     MessageRelayer
-	sessionRetriever   SessionRetriever
+	buddyIconManager    BuddyIconManager
+	relationshipFetcher RelationshipFetcher
+	messageRelayer      MessageRelayer
+	sessionRetriever    SessionRetriever
 }
 
 // BroadcastBuddyArrived sends the latest user info to the user's adjacent users.
@@ -132,7 +132,7 @@ type buddyNotifier struct {
 // only used to indicate the user coming online. It can also notify changes to
 // buddy icons, warning levels, invisibility status, etc.
 func (s buddyNotifier) BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error {
-	users, err := s.buddyListRetriever.AllRelationships(sess.IdentScreenName(), nil)
+	users, err := s.relationshipFetcher.AllRelationships(ctx, sess.IdentScreenName(), nil)
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (s buddyNotifier) BroadcastBuddyArrived(ctx context.Context, sess *state.Se
 	}
 
 	userInfo := sess.TLVUserInfo()
-	if err := s.setBuddyIcon(sess.IdentScreenName(), &userInfo); err != nil {
+	if err := s.setBuddyIcon(ctx, sess.IdentScreenName(), &userInfo); err != nil {
 		return fmt.Errorf("failed to set buddy icon for %s: %w", sess.IdentScreenName().String(), err)
 	}
 
@@ -165,7 +165,7 @@ func (s buddyNotifier) BroadcastBuddyArrived(ctx context.Context, sess *state.Se
 }
 
 func (s buddyNotifier) BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error {
-	users, err := s.buddyListRetriever.AllRelationships(sess.IdentScreenName(), nil)
+	users, err := s.relationshipFetcher.AllRelationships(ctx, sess.IdentScreenName(), nil)
 	if err != nil {
 		return err
 	}
@@ -227,7 +227,7 @@ func (s buddyNotifier) BroadcastVisibility(
 	doSendDepartures bool,
 ) error {
 
-	relationships, err := s.buddyListRetriever.AllRelationships(you.IdentScreenName(), filter)
+	relationships, err := s.relationshipFetcher.AllRelationships(ctx, you.IdentScreenName(), filter)
 	if err != nil {
 		return fmt.Errorf("retrieving relationships: %w", err)
 	}
@@ -249,7 +249,7 @@ func (s buddyNotifier) BroadcastVisibility(
 			if relationship.IsOnTheirList {
 				if !buddyIconSet {
 					// lazy load your buddy icon
-					if err := s.setBuddyIcon(you.IdentScreenName(), &yourTLVInfo); err != nil {
+					if err := s.setBuddyIcon(ctx, you.IdentScreenName(), &yourTLVInfo); err != nil {
 						return fmt.Errorf("failed to set buddy icon for %s: %w", you.IdentScreenName().String(), err)
 					}
 					buddyIconSet = true
@@ -259,7 +259,7 @@ func (s buddyNotifier) BroadcastVisibility(
 			}
 			if relationship.IsOnYourList {
 				theirInfo := theirSess.TLVUserInfo()
-				if err := s.setBuddyIcon(theirSess.IdentScreenName(), &theirInfo); err != nil {
+				if err := s.setBuddyIcon(ctx, theirSess.IdentScreenName(), &theirInfo); err != nil {
 					return fmt.Errorf("failed to set buddy icon for %s: %w", you.IdentScreenName().String(), err)
 				}
 				// tell you they're online
@@ -281,8 +281,8 @@ func (s buddyNotifier) BroadcastVisibility(
 }
 
 // setBuddyIcon adds buddy icon metadata to TLV user info
-func (s buddyNotifier) setBuddyIcon(you state.IdentScreenName, myInfo *wire.TLVUserInfo) error {
-	icon, err := s.buddyListRetriever.BuddyIconRefByName(you)
+func (s buddyNotifier) setBuddyIcon(ctx context.Context, you state.IdentScreenName, myInfo *wire.TLVUserInfo) error {
+	icon, err := s.buddyIconManager.BuddyIconMetadata(ctx, you)
 	if err != nil {
 		return fmt.Errorf("retrieve buddy icon ref: %v", err)
 	}

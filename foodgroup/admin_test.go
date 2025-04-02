@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/mail"
@@ -55,7 +56,7 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 			},
 			mockParams: mockParams{
 				accountManagerParams: accountManagerParams{
-					accountManagerEmailAddressByNameParams: accountManagerEmailAddressByNameParams{
+					accountManagerEmailAddressParams: accountManagerEmailAddressParams{
 						{
 
 							screenName: state.NewIdentScreenName("chattingchuck"),
@@ -65,7 +66,7 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 							err: nil,
 						},
 					},
-					accountManagerConfirmStatusByNameParams: accountManagerConfirmStatusByNameParams{
+					accountManagerConfirmStatusParams: accountManagerConfirmStatusParams{
 						{
 							screenName:    state.NewIdentScreenName("chattingchuck"),
 							confirmStatus: false,
@@ -112,7 +113,7 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 			},
 			mockParams: mockParams{
 				accountManagerParams: accountManagerParams{
-					accountManagerEmailAddressByNameParams: accountManagerEmailAddressByNameParams{
+					accountManagerEmailAddressParams: accountManagerEmailAddressParams{
 						{
 
 							screenName: state.NewIdentScreenName("chattingchuck"),
@@ -122,7 +123,7 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 							err: nil,
 						},
 					},
-					accountManagerConfirmStatusByNameParams: accountManagerConfirmStatusByNameParams{
+					accountManagerConfirmStatusParams: accountManagerConfirmStatusParams{
 						{
 							screenName:    state.NewIdentScreenName("chattingchuck"),
 							confirmStatus: true,
@@ -155,7 +156,7 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 			},
 			mockParams: mockParams{
 				accountManagerParams: accountManagerParams{
-					accountManagerEmailAddressByNameParams: accountManagerEmailAddressByNameParams{
+					accountManagerEmailAddressParams: accountManagerEmailAddressParams{
 						{
 
 							screenName:   state.NewIdentScreenName("chattingchuck"),
@@ -174,19 +175,19 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 			accountManager := newMockAccountManager(t)
 			buddyBroadcaster := newMockbuddyBroadcaster(t)
 
-			for _, params := range tc.mockParams.accountManagerParams.accountManagerEmailAddressByNameParams {
+			for _, params := range tc.mockParams.accountManagerParams.accountManagerEmailAddressParams {
 				accountManager.EXPECT().
-					EmailAddressByName(params.screenName).
+					EmailAddress(matchContext(), params.screenName).
 					Return(params.emailAddress, params.err)
 			}
-			for _, params := range tc.mockParams.accountManagerParams.accountManagerConfirmStatusByNameParams {
+			for _, params := range tc.mockParams.accountManagerParams.accountManagerConfirmStatusParams {
 				accountManager.EXPECT().
-					ConfirmStatusByName(params.screenName).
+					ConfirmStatus(matchContext(), params.screenName).
 					Return(params.confirmStatus, params.err)
 			}
 			for _, params := range tc.mockParams.accountManagerParams.accountManagerUpdateConfirmStatusParams {
 				accountManager.EXPECT().
-					UpdateConfirmStatus(params.confirmStatus, params.screenName).
+					UpdateConfirmStatus(matchContext(), params.screenName, params.confirmStatus).
 					Return(params.err)
 			}
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
@@ -199,7 +200,7 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 				accountManager:   accountManager,
 				buddyBroadcaster: buddyBroadcaster,
 			}
-			outputSNAC, err := svc.ConfirmRequest(nil, tc.userSession, tc.inputSNAC.Frame)
+			outputSNAC, err := svc.ConfirmRequest(context.Background(), tc.userSession, tc.inputSNAC.Frame)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -260,7 +261,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 			},
 			mockParams: mockParams{
 				accountManagerParams: accountManagerParams{
-					accountManagerRegStatusByNameParams: accountManagerRegStatusByNameParams{
+					accountManagerRegStatusParams: accountManagerRegStatusParams{
 						{
 							screenName: state.NewIdentScreenName("chattingchuck"),
 							regStatus:  wire.AdminInfoRegStatusLimitDisclosure,
@@ -303,7 +304,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 			},
 			mockParams: mockParams{
 				accountManagerParams: accountManagerParams{
-					accountManagerEmailAddressByNameParams: accountManagerEmailAddressByNameParams{
+					accountManagerEmailAddressParams: accountManagerEmailAddressParams{
 						{
 							screenName: state.NewIdentScreenName("chattingchuck"),
 							emailAddress: &mail.Address{
@@ -348,7 +349,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 			},
 			mockParams: mockParams{
 				accountManagerParams: accountManagerParams{
-					accountManagerEmailAddressByNameParams: accountManagerEmailAddressByNameParams{
+					accountManagerEmailAddressParams: accountManagerEmailAddressParams{
 						{
 							screenName:   state.NewIdentScreenName("chattingchuck"),
 							emailAddress: nil,
@@ -425,15 +426,15 @@ func TestAdminService_InfoQuery(t *testing.T) {
 			accountManager := newMockAccountManager(t)
 			buddyBroadcaster := newMockbuddyBroadcaster(t)
 
-			for _, params := range tc.mockParams.accountManagerParams.accountManagerRegStatusByNameParams {
+			for _, params := range tc.mockParams.accountManagerParams.accountManagerRegStatusParams {
 				accountManager.EXPECT().
-					RegStatusByName(params.screenName).
+					RegStatus(matchContext(), params.screenName).
 					Return(params.regStatus, params.err)
 			}
 
-			for _, params := range tc.mockParams.accountManagerParams.accountManagerEmailAddressByNameParams {
+			for _, params := range tc.mockParams.accountManagerParams.accountManagerEmailAddressParams {
 				accountManager.EXPECT().
-					EmailAddressByName(params.screenName).
+					EmailAddress(matchContext(), params.screenName).
 					Return(params.emailAddress, params.err)
 			}
 
@@ -442,7 +443,7 @@ func TestAdminService_InfoQuery(t *testing.T) {
 				accountManager:   accountManager,
 				buddyBroadcaster: buddyBroadcaster,
 			}
-			outputSNAC, err := svc.InfoQuery(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x02_AdminInfoQuery))
+			outputSNAC, err := svc.InfoQuery(context.Background(), tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x02_AdminInfoQuery))
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -644,7 +645,7 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 
 			for _, params := range tc.mockParams.accountManagerParams.accountManagerUpdateDisplayScreenNameParams {
 				accountManager.EXPECT().
-					UpdateDisplayScreenName(params.displayScreenName).
+					UpdateDisplayScreenName(matchContext(), params.displayScreenName).
 					Return(params.err)
 			}
 
@@ -665,7 +666,7 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 				buddyBroadcaster: mockBuddyBroadcaster,
 				messageRelayer:   messageRelayer,
 			}
-			outputSNAC, err := svc.InfoChangeRequest(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
+			outputSNAC, err := svc.InfoChangeRequest(context.Background(), tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -822,7 +823,7 @@ func TestAdminService_InfoChangeRequest_EmailAddress(t *testing.T) {
 
 			for _, params := range tc.mockParams.accountManagerParams.accountManagerUpdateEmailAddressParams {
 				accountManager.EXPECT().
-					UpdateEmailAddress(params.emailAddress, params.screenName).
+					UpdateEmailAddress(matchContext(), params.screenName, params.emailAddress).
 					Return(params.err)
 			}
 
@@ -831,7 +832,7 @@ func TestAdminService_InfoChangeRequest_EmailAddress(t *testing.T) {
 				buddyBroadcaster: buddyBroadcaster,
 				messageRelayer:   messageRelayer,
 			}
-			outputSNAC, err := svc.InfoChangeRequest(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
+			outputSNAC, err := svc.InfoChangeRequest(context.Background(), tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -946,7 +947,7 @@ func TestAdminService_InfoChangeRequest_RegStatus(t *testing.T) {
 
 			for _, params := range tc.mockParams.accountManagerParams.accountManagerUpdateRegStatusParams {
 				accountManager.EXPECT().
-					UpdateRegStatus(params.regStatus, params.screenName).
+					UpdateRegStatus(context.Background(), params.screenName, params.regStatus).
 					Return(params.err)
 			}
 
@@ -955,7 +956,7 @@ func TestAdminService_InfoChangeRequest_RegStatus(t *testing.T) {
 				buddyBroadcaster: buddyBroadcaster,
 				messageRelayer:   messageRelayer,
 			}
-			outputSNAC, err := svc.InfoChangeRequest(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
+			outputSNAC, err := svc.InfoChangeRequest(context.Background(), tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -1338,12 +1339,12 @@ func TestAdminService_InfoChangeRequest_Password(t *testing.T) {
 			accountManager := newMockAccountManager(t)
 			for _, params := range tc.mockParams.accountManagerUserParams {
 				accountManager.EXPECT().
-					User(params.screenName).
+					User(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
 			for _, params := range tc.mockParams.accountManagerSetUserPasswordParams {
 				accountManager.EXPECT().
-					SetUserPassword(params.screenName, params.password).
+					SetUserPassword(matchContext(), params.screenName, params.password).
 					Return(params.err)
 			}
 
@@ -1351,7 +1352,7 @@ func TestAdminService_InfoChangeRequest_Password(t *testing.T) {
 				accountManager: accountManager,
 				logger:         slog.Default(),
 			}
-			outputSNAC, err := svc.InfoChangeRequest(nil, tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
+			outputSNAC, err := svc.InfoChangeRequest(context.Background(), tc.userSession, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x07_0x04_AdminInfoChangeRequest))
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return

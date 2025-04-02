@@ -1,6 +1,8 @@
 package toc
 
 import (
+	"context"
+
 	"github.com/stretchr/testify/mock"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -288,4 +290,12 @@ func newTestSession(screenName state.DisplayScreenName, options ...func(session 
 		op(s)
 	}
 	return s
+}
+
+// matchContext matches any instance of Context interface.
+func matchContext() interface{} {
+	return mock.MatchedBy(func(ctx any) bool {
+		_, ok := ctx.(context.Context)
+		return ok
+	})
 }

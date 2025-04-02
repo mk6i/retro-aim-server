@@ -3,6 +3,8 @@
 package http
 
 import (
+	context "context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 
@@ -22,29 +24,29 @@ func (_m *mockFeedBagRetriever) EXPECT() *mockFeedBagRetriever_Expecter {
 	return &mockFeedBagRetriever_Expecter{mock: &_m.Mock}
 }
 
-// BuddyIconRefByName provides a mock function with given fields: screenName
-func (_m *mockFeedBagRetriever) BuddyIconRefByName(screenName state.IdentScreenName) (*wire.BARTID, error) {
-	ret := _m.Called(screenName)
+// BuddyIconMetadata provides a mock function with given fields: ctx, screenName
+func (_m *mockFeedBagRetriever) BuddyIconMetadata(ctx context.Context, screenName state.IdentScreenName) (*wire.BARTID, error) {
+	ret := _m.Called(ctx, screenName)
 
 	if len(ret) == 0 {
-		panic("no return value specified for BuddyIconRefByName")
+		panic("no return value specified for BuddyIconMetadata")
 	}
 
 	var r0 *wire.BARTID
 	var r1 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) (*wire.BARTID, error)); ok {
-		return rf(screenName)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) (*wire.BARTID, error)); ok {
+		return rf(ctx, screenName)
 	}
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *wire.BARTID); ok {
-		r0 = rf(screenName)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName) *wire.BARTID); ok {
+		r0 = rf(ctx, screenName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*wire.BARTID)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(state.IdentScreenName) error); ok {
-		r1 = rf(screenName)
+	if rf, ok := ret.Get(1).(func(context.Context, state.IdentScreenName) error); ok {
+		r1 = rf(ctx, screenName)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -52,30 +54,31 @@ func (_m *mockFeedBagRetriever) BuddyIconRefByName(screenName state.IdentScreenN
 	return r0, r1
 }
 
-// mockFeedBagRetriever_BuddyIconRefByName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BuddyIconRefByName'
-type mockFeedBagRetriever_BuddyIconRefByName_Call struct {
+// mockFeedBagRetriever_BuddyIconMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BuddyIconMetadata'
+type mockFeedBagRetriever_BuddyIconMetadata_Call struct {
 	*mock.Call
 }
 
-// BuddyIconRefByName is a helper method to define mock.On call
+// BuddyIconMetadata is a helper method to define mock.On call
+//   - ctx context.Context
 //   - screenName state.IdentScreenName
-func (_e *mockFeedBagRetriever_Expecter) BuddyIconRefByName(screenName interface{}) *mockFeedBagRetriever_BuddyIconRefByName_Call {
-	return &mockFeedBagRetriever_BuddyIconRefByName_Call{Call: _e.mock.On("BuddyIconRefByName", screenName)}
+func (_e *mockFeedBagRetriever_Expecter) BuddyIconMetadata(ctx interface{}, screenName interface{}) *mockFeedBagRetriever_BuddyIconMetadata_Call {
+	return &mockFeedBagRetriever_BuddyIconMetadata_Call{Call: _e.mock.On("BuddyIconMetadata", ctx, screenName)}
 }
 
-func (_c *mockFeedBagRetriever_BuddyIconRefByName_Call) Run(run func(screenName state.IdentScreenName)) *mockFeedBagRetriever_BuddyIconRefByName_Call {
+func (_c *mockFeedBagRetriever_BuddyIconMetadata_Call) Run(run func(ctx context.Context, screenName state.IdentScreenName)) *mockFeedBagRetriever_BuddyIconMetadata_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName))
 	})
 	return _c
 }
 
-func (_c *mockFeedBagRetriever_BuddyIconRefByName_Call) Return(_a0 *wire.BARTID, _a1 error) *mockFeedBagRetriever_BuddyIconRefByName_Call {
+func (_c *mockFeedBagRetriever_BuddyIconMetadata_Call) Return(_a0 *wire.BARTID, _a1 error) *mockFeedBagRetriever_BuddyIconMetadata_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockFeedBagRetriever_BuddyIconRefByName_Call) RunAndReturn(run func(state.IdentScreenName) (*wire.BARTID, error)) *mockFeedBagRetriever_BuddyIconRefByName_Call {
+func (_c *mockFeedBagRetriever_BuddyIconMetadata_Call) RunAndReturn(run func(context.Context, state.IdentScreenName) (*wire.BARTID, error)) *mockFeedBagRetriever_BuddyIconMetadata_Call {
 	_c.Call.Return(run)
 	return _c
 }

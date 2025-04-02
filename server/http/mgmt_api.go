@@ -31,7 +31,7 @@ func NewManagementAPI(
 	chatSessionRetriever ChatSessionRetriever,
 	directoryManager DirectoryManager,
 	messageRelayer MessageRelayer,
-	bartRetriever BARTRetriever,
+	bartRetriever BuddyIconRetriever,
 	feedbagRetriever FeedBagRetriever,
 	accountManager AccountManager,
 	profileRetriever ProfileRetriever,
@@ -44,7 +44,7 @@ func NewManagementAPI(
 		deleteUserHandler(w, r, userManager, logger)
 	})
 	mux.HandleFunc("GET /user", func(w http.ResponseWriter, r *http.Request) {
-		getUserHandler(w, userManager, logger)
+		getUserHandler(w, r, userManager, logger)
 	})
 	mux.HandleFunc("POST /user", func(w http.ResponseWriter, r *http.Request) {
 		postUserHandler(w, r, userManager, uuid.New, logger)
@@ -111,7 +111,7 @@ func NewManagementAPI(
 
 	// Handlers for '/directory/category' route
 	mux.HandleFunc("GET /directory/category", func(w http.ResponseWriter, r *http.Request) {
-		getDirectoryCategoryHandler(w, directoryManager, logger)
+		getDirectoryCategoryHandler(w, r, directoryManager, logger)
 	})
 	mux.HandleFunc("POST /directory/category", func(w http.ResponseWriter, r *http.Request) {
 		postDirectoryCategoryHandler(w, r, directoryManager, logger)
@@ -185,7 +185,7 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request, manager UserManag
 		return
 	}
 
-	err = manager.DeleteUser(state.NewIdentScreenName(user.ScreenName))
+	err = manager.DeleteUser(r.Context(), state.NewIdentScreenName(user.ScreenName))
 	switch {
 	case errors.Is(err, state.ErrNoUser):
 		http.Error(w, "user does not exist", http.StatusNotFound)
@@ -210,7 +210,7 @@ func putUserPasswordHandler(w http.ResponseWriter, r *http.Request, userManager 
 
 	sn := state.NewIdentScreenName(input.ScreenName)
 
-	if err := userManager.SetUserPassword(sn, input.Password); err != nil {
+	if err := userManager.SetUserPassword(r.Context(), sn, input.Password); err != nil {
 		switch {
 		case errors.Is(err, state.ErrNoUser):
 			http.Error(w, "user does not exist", http.StatusNotFound)
@@ -297,10 +297,10 @@ func deleteSessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriev
 }
 
 // getUserHandler handles the GET /user endpoint.
-func getUserHandler(w http.ResponseWriter, userManager UserManager, logger *slog.Logger) {
+func getUserHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "application/json")
 
-	users, err := userManager.AllUsers()
+	users, err := userManager.AllUsers(r.Context())
 	if err != nil {
 		logger.Error("error in GET /user", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -363,7 +363,7 @@ func postUserHandler(w http.ResponseWriter, r *http.Request, userManager UserMan
 		return
 	}
 
-	err = userManager.InsertUser(user)
+	err = userManager.InsertUser(r.Context(), user)
 	switch {
 	case errors.Is(err, state.ErrDupUser):
 		http.Error(w, "user already exists", http.StatusConflict)
@@ -421,7 +421,7 @@ func getUserLoginHandler(w http.ResponseWriter, r *http.Request, userManager Use
 
 	username, password := state.NewIdentScreenName(pair[0]), pair[1]
 
-	user, err := userManager.User(username)
+	user, err := userManager.User(r.Context(), username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("500 InternalServerError\n"))
@@ -440,9 +440,9 @@ func getUserLoginHandler(w http.ResponseWriter, r *http.Request, userManager Use
 }
 
 // getPublicChatHandler handles the GET /chat/room/public endpoint.
-func getPublicChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetriever ChatRoomRetriever, chatSessionRetriever ChatSessionRetriever, logger *slog.Logger) {
+func getPublicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomRetriever ChatRoomRetriever, chatSessionRetriever ChatSessionRetriever, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "application/json")
-	rooms, err := chatRoomRetriever.AllChatRooms(state.PublicExchange)
+	rooms, err := chatRoomRetriever.AllChatRooms(r.Context(), state.PublicExchange)
 	if err != nil {
 		logger.Error("error in GET /chat/rooms/public", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -487,7 +487,7 @@ func postPublicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomCreat
 
 	cr := state.NewChatRoom(input.Name, state.NewIdentScreenName("system"), state.PublicExchange)
 
-	err := chatRoomCreator.CreateChatRoom(&cr)
+	err := chatRoomCreator.CreateChatRoom(r.Context(), &cr)
 	switch {
 	case errors.Is(err, state.ErrDupChatRoom):
 		http.Error(w, "Chat room already exists.", http.StatusConflict)
@@ -503,9 +503,9 @@ func postPublicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomCreat
 }
 
 // getPrivateChatHandler handles the GET /chat/room/private endpoint.
-func getPrivateChatHandler(w http.ResponseWriter, _ *http.Request, chatRoomRetriever ChatRoomRetriever, chatSessionRetriever ChatSessionRetriever, logger *slog.Logger) {
+func getPrivateChatHandler(w http.ResponseWriter, r *http.Request, chatRoomRetriever ChatRoomRetriever, chatSessionRetriever ChatSessionRetriever, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "application/json")
-	rooms, err := chatRoomRetriever.AllChatRooms(state.PrivateExchange)
+	rooms, err := chatRoomRetriever.AllChatRooms(r.Context(), state.PrivateExchange)
 	if err != nil {
 		logger.Error("error in GET /chat/rooms/private", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -596,9 +596,9 @@ func postInstantMessageHandler(w http.ResponseWriter, r *http.Request, messageRe
 }
 
 // getUserBuddyIconHandler handles the GET /user/{screenname}/icon endpoint.
-func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManager, f FeedBagRetriever, b BARTRetriever, logger *slog.Logger) {
+func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManager, f FeedBagRetriever, b BuddyIconRetriever, logger *slog.Logger) {
 	screenName := state.NewIdentScreenName(r.PathValue("screenname"))
-	user, err := u.User(screenName)
+	user, err := u.User(r.Context(), screenName)
 	if err != nil {
 		logger.Error("error retrieving user", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -608,7 +608,7 @@ func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManag
 		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
-	iconRef, err := f.BuddyIconRefByName(screenName)
+	iconRef, err := f.BuddyIconMetadata(r.Context(), screenName)
 	if err != nil {
 		logger.Error("error retrieving buddy icon ref", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -618,7 +618,7 @@ func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManag
 		http.Error(w, "icon not found", http.StatusNotFound)
 		return
 	}
-	icon, err := b.BARTRetrieve(iconRef.Hash)
+	icon, err := b.BuddyIcon(r.Context(), iconRef.Hash)
 	if err != nil {
 		logger.Error("error retrieving buddy icon bart item", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -633,7 +633,7 @@ func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager U
 	w.Header().Set("Content-Type", "application/json")
 
 	screenName := r.PathValue("screenname")
-	user, err := userManager.User(state.NewIdentScreenName(screenName))
+	user, err := userManager.User(r.Context(), state.NewIdentScreenName(screenName))
 	if err != nil {
 		logger.Error("error in GET /user/{screenname}/account", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -645,25 +645,25 @@ func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager U
 	}
 
 	emailAddress := ""
-	email, err := a.EmailAddressByName(user.IdentScreenName)
+	email, err := a.EmailAddress(r.Context(), user.IdentScreenName)
 	if err != nil {
 		emailAddress = ""
 	} else {
 		emailAddress = email.String()
 	}
-	regStatus, err := a.RegStatusByName(user.IdentScreenName)
+	regStatus, err := a.RegStatus(r.Context(), user.IdentScreenName)
 	if err != nil {
 		logger.Error("error in GET /user/*/account RegStatus", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	confirmStatus, err := a.ConfirmStatusByName(user.IdentScreenName)
+	confirmStatus, err := a.ConfirmStatus(r.Context(), user.IdentScreenName)
 	if err != nil {
 		logger.Error("error in GET /user/*/account ConfirmStatus", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	profile, err := p.Profile(user.IdentScreenName)
+	profile, err := p.Profile(r.Context(), user.IdentScreenName)
 	if err != nil {
 		logger.Error("error in GET /user/*/account Profile", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -697,7 +697,7 @@ func patchUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager
 	w.Header().Set("Content-Type", "application/json")
 
 	screenName := r.PathValue("screenname")
-	user, err := userManager.User(state.NewIdentScreenName(screenName))
+	user, err := userManager.User(r.Context(), state.NewIdentScreenName(screenName))
 	if err != nil {
 		logger.Error("error in PATCH /user/{screenname}/account", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -729,7 +729,7 @@ func patchUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager
 				return
 			}
 			if suspendedStatus != user.SuspendedStatus {
-				err := a.UpdateSuspendedStatus(suspendedStatus, user.IdentScreenName)
+				err := a.UpdateSuspendedStatus(r.Context(), suspendedStatus, user.IdentScreenName)
 				if err != nil {
 					logger.Error("error in PATCH /user/{screenname}/account", "err", err.Error())
 					http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -794,9 +794,9 @@ func getVersionHandler(w http.ResponseWriter, bld config.Build) {
 }
 
 // getDirectoryCategoryHandler handles the GET /directory/category endpoint.
-func getDirectoryCategoryHandler(w http.ResponseWriter, manager DirectoryManager, logger *slog.Logger) {
+func getDirectoryCategoryHandler(w http.ResponseWriter, r *http.Request, manager DirectoryManager, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "application/json")
-	categories, err := manager.Categories()
+	categories, err := manager.Categories(r.Context())
 	if err != nil {
 		logger.Error("error in GET /directory/category", "err", err.Error())
 		errorMsg(w, "internal server error", http.StatusInternalServerError)
@@ -824,7 +824,7 @@ func postDirectoryCategoryHandler(w http.ResponseWriter, r *http.Request, manage
 		return
 	}
 
-	category, err := manager.CreateCategory(input.Name)
+	category, err := manager.CreateCategory(r.Context(), input.Name)
 	if err != nil {
 		if errors.Is(err, state.ErrKeywordCategoryExists) {
 			errorMsg(w, "category already exists", http.StatusConflict)
@@ -853,7 +853,7 @@ func deleteDirectoryCategoryHandler(w http.ResponseWriter, r *http.Request, mana
 		return
 	}
 
-	if err := manager.DeleteCategory(uint8(categoryID)); err != nil {
+	if err := manager.DeleteCategory(r.Context(), uint8(categoryID)); err != nil {
 		switch {
 		case errors.Is(err, state.ErrKeywordCategoryNotFound):
 			errorMsg(w, "category not found", http.StatusNotFound)
@@ -881,7 +881,7 @@ func getDirectoryCategoryKeywordHandler(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	categories, err := manager.KeywordsByCategory(uint8(categoryID))
+	categories, err := manager.KeywordsByCategory(r.Context(), uint8(categoryID))
 	if err != nil {
 		if errors.Is(err, state.ErrKeywordCategoryNotFound) {
 			errorMsg(w, "category not found", http.StatusNotFound)
@@ -915,7 +915,7 @@ func postDirectoryKeywordHandler(w http.ResponseWriter, r *http.Request, manager
 		return
 	}
 
-	kw, err := manager.CreateKeyword(input.Name, input.CategoryID)
+	kw, err := manager.CreateKeyword(r.Context(), input.Name, input.CategoryID)
 	if err != nil {
 		switch {
 		case errors.Is(err, state.ErrKeywordCategoryNotFound):
@@ -950,7 +950,7 @@ func deleteDirectoryKeywordHandler(w http.ResponseWriter, r *http.Request, manag
 		return
 	}
 
-	if err := manager.DeleteKeyword(uint8(keywordID)); err != nil {
+	if err := manager.DeleteKeyword(r.Context(), uint8(keywordID)); err != nil {
 		switch {
 		case errors.Is(err, state.ErrKeywordInUse):
 			errorMsg(w, "can't delete because category in use by a user", http.StatusConflict)

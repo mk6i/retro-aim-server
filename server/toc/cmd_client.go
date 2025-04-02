@@ -1385,7 +1385,7 @@ func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, args []byt
 		return s.runtimeErr(ctx, fmt.Errorf("empty config"))
 	}
 
-	if err := s.TOCConfigStore.SetTOCConfig(me.IdentScreenName(), config); err != nil {
+	if err := s.TOCConfigStore.SetTOCConfig(ctx, me.IdentScreenName(), config); err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("TOCConfigStore.SaveTOCConfig: %w", err))
 	}
 
@@ -1545,7 +1545,7 @@ func (s OSCARProxy) Signon(ctx context.Context, args []byte) (*state.Session, []
 	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsScreenName, userName))
 	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, passwordHash))
 
-	block, err := s.AuthService.FLAPLogin(signonFrame, state.NewStubUser)
+	block, err := s.AuthService.FLAPLogin(ctx, signonFrame, state.NewStubUser)
 	if err != nil {
 		return nil, []string{s.runtimeErr(ctx, fmt.Errorf("AuthService.FLAPLogin: %w", err))}
 	}
@@ -1568,11 +1568,11 @@ func (s OSCARProxy) Signon(ctx context.Context, args []byte) (*state.Session, []
 	// set chat capability so that... tk
 	sess.SetCaps([][16]byte{wire.CapChat})
 
-	if err := s.BuddyListRegistry.RegisterBuddyList(sess.IdentScreenName()); err != nil {
+	if err := s.BuddyListRegistry.RegisterBuddyList(ctx, sess.IdentScreenName()); err != nil {
 		return nil, []string{s.runtimeErr(ctx, fmt.Errorf("BuddyListRegistry.RegisterBuddyList: %w", err))}
 	}
 
-	u, err := s.TOCConfigStore.User(sess.IdentScreenName())
+	u, err := s.TOCConfigStore.User(ctx, sess.IdentScreenName())
 	if err != nil {
 		return nil, []string{s.runtimeErr(ctx, fmt.Errorf("TOCConfigStore.User: %w", err))}
 	}
@@ -1589,7 +1589,7 @@ func (s OSCARProxy) Signout(ctx context.Context, me *state.Session, chatRegistry
 	if err := s.BuddyService.BroadcastBuddyDeparted(ctx, me); err != nil {
 		s.Logger.ErrorContext(ctx, "error sending departure notifications", "err", err.Error())
 	}
-	if err := s.BuddyListRegistry.UnregisterBuddyList(me.IdentScreenName()); err != nil {
+	if err := s.BuddyListRegistry.UnregisterBuddyList(ctx, me.IdentScreenName()); err != nil {
 		s.Logger.ErrorContext(ctx, "error removing buddy list entry", "err", err.Error())
 	}
 	s.AuthService.Signout(ctx, me)

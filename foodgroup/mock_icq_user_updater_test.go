@@ -3,6 +3,8 @@
 package foodgroup
 
 import (
+	context "context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,17 +22,17 @@ func (_m *mockICQUserUpdater) EXPECT() *mockICQUserUpdater_Expecter {
 	return &mockICQUserUpdater_Expecter{mock: &_m.Mock}
 }
 
-// SetAffiliations provides a mock function with given fields: name, data
-func (_m *mockICQUserUpdater) SetAffiliations(name state.IdentScreenName, data state.ICQAffiliations) error {
-	ret := _m.Called(name, data)
+// SetAffiliations provides a mock function with given fields: ctx, name, data
+func (_m *mockICQUserUpdater) SetAffiliations(ctx context.Context, name state.IdentScreenName, data state.ICQAffiliations) error {
+	ret := _m.Called(ctx, name, data)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetAffiliations")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName, state.ICQAffiliations) error); ok {
-		r0 = rf(name, data)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName, state.ICQAffiliations) error); ok {
+		r0 = rf(ctx, name, data)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -44,15 +46,16 @@ type mockICQUserUpdater_SetAffiliations_Call struct {
 }
 
 // SetAffiliations is a helper method to define mock.On call
+//   - ctx context.Context
 //   - name state.IdentScreenName
 //   - data state.ICQAffiliations
-func (_e *mockICQUserUpdater_Expecter) SetAffiliations(name interface{}, data interface{}) *mockICQUserUpdater_SetAffiliations_Call {
-	return &mockICQUserUpdater_SetAffiliations_Call{Call: _e.mock.On("SetAffiliations", name, data)}
+func (_e *mockICQUserUpdater_Expecter) SetAffiliations(ctx interface{}, name interface{}, data interface{}) *mockICQUserUpdater_SetAffiliations_Call {
+	return &mockICQUserUpdater_SetAffiliations_Call{Call: _e.mock.On("SetAffiliations", ctx, name, data)}
 }
 
-func (_c *mockICQUserUpdater_SetAffiliations_Call) Run(run func(name state.IdentScreenName, data state.ICQAffiliations)) *mockICQUserUpdater_SetAffiliations_Call {
+func (_c *mockICQUserUpdater_SetAffiliations_Call) Run(run func(ctx context.Context, name state.IdentScreenName, data state.ICQAffiliations)) *mockICQUserUpdater_SetAffiliations_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName), args[1].(state.ICQAffiliations))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName), args[2].(state.ICQAffiliations))
 	})
 	return _c
 }
@@ -62,22 +65,22 @@ func (_c *mockICQUserUpdater_SetAffiliations_Call) Return(_a0 error) *mockICQUse
 	return _c
 }
 
-func (_c *mockICQUserUpdater_SetAffiliations_Call) RunAndReturn(run func(state.IdentScreenName, state.ICQAffiliations) error) *mockICQUserUpdater_SetAffiliations_Call {
+func (_c *mockICQUserUpdater_SetAffiliations_Call) RunAndReturn(run func(context.Context, state.IdentScreenName, state.ICQAffiliations) error) *mockICQUserUpdater_SetAffiliations_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SetBasicInfo provides a mock function with given fields: name, data
-func (_m *mockICQUserUpdater) SetBasicInfo(name state.IdentScreenName, data state.ICQBasicInfo) error {
-	ret := _m.Called(name, data)
+// SetBasicInfo provides a mock function with given fields: ctx, name, data
+func (_m *mockICQUserUpdater) SetBasicInfo(ctx context.Context, name state.IdentScreenName, data state.ICQBasicInfo) error {
+	ret := _m.Called(ctx, name, data)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetBasicInfo")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName, state.ICQBasicInfo) error); ok {
-		r0 = rf(name, data)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName, state.ICQBasicInfo) error); ok {
+		r0 = rf(ctx, name, data)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -91,15 +94,16 @@ type mockICQUserUpdater_SetBasicInfo_Call struct {
 }
 
 // SetBasicInfo is a helper method to define mock.On call
+//   - ctx context.Context
 //   - name state.IdentScreenName
 //   - data state.ICQBasicInfo
-func (_e *mockICQUserUpdater_Expecter) SetBasicInfo(name interface{}, data interface{}) *mockICQUserUpdater_SetBasicInfo_Call {
-	return &mockICQUserUpdater_SetBasicInfo_Call{Call: _e.mock.On("SetBasicInfo", name, data)}
+func (_e *mockICQUserUpdater_Expecter) SetBasicInfo(ctx interface{}, name interface{}, data interface{}) *mockICQUserUpdater_SetBasicInfo_Call {
+	return &mockICQUserUpdater_SetBasicInfo_Call{Call: _e.mock.On("SetBasicInfo", ctx, name, data)}
 }
 
-func (_c *mockICQUserUpdater_SetBasicInfo_Call) Run(run func(name state.IdentScreenName, data state.ICQBasicInfo)) *mockICQUserUpdater_SetBasicInfo_Call {
+func (_c *mockICQUserUpdater_SetBasicInfo_Call) Run(run func(ctx context.Context, name state.IdentScreenName, data state.ICQBasicInfo)) *mockICQUserUpdater_SetBasicInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName), args[1].(state.ICQBasicInfo))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName), args[2].(state.ICQBasicInfo))
 	})
 	return _c
 }
@@ -109,22 +113,22 @@ func (_c *mockICQUserUpdater_SetBasicInfo_Call) Return(_a0 error) *mockICQUserUp
 	return _c
 }
 
-func (_c *mockICQUserUpdater_SetBasicInfo_Call) RunAndReturn(run func(state.IdentScreenName, state.ICQBasicInfo) error) *mockICQUserUpdater_SetBasicInfo_Call {
+func (_c *mockICQUserUpdater_SetBasicInfo_Call) RunAndReturn(run func(context.Context, state.IdentScreenName, state.ICQBasicInfo) error) *mockICQUserUpdater_SetBasicInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SetInterests provides a mock function with given fields: name, data
-func (_m *mockICQUserUpdater) SetInterests(name state.IdentScreenName, data state.ICQInterests) error {
-	ret := _m.Called(name, data)
+// SetInterests provides a mock function with given fields: ctx, name, data
+func (_m *mockICQUserUpdater) SetInterests(ctx context.Context, name state.IdentScreenName, data state.ICQInterests) error {
+	ret := _m.Called(ctx, name, data)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetInterests")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName, state.ICQInterests) error); ok {
-		r0 = rf(name, data)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName, state.ICQInterests) error); ok {
+		r0 = rf(ctx, name, data)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -138,15 +142,16 @@ type mockICQUserUpdater_SetInterests_Call struct {
 }
 
 // SetInterests is a helper method to define mock.On call
+//   - ctx context.Context
 //   - name state.IdentScreenName
 //   - data state.ICQInterests
-func (_e *mockICQUserUpdater_Expecter) SetInterests(name interface{}, data interface{}) *mockICQUserUpdater_SetInterests_Call {
-	return &mockICQUserUpdater_SetInterests_Call{Call: _e.mock.On("SetInterests", name, data)}
+func (_e *mockICQUserUpdater_Expecter) SetInterests(ctx interface{}, name interface{}, data interface{}) *mockICQUserUpdater_SetInterests_Call {
+	return &mockICQUserUpdater_SetInterests_Call{Call: _e.mock.On("SetInterests", ctx, name, data)}
 }
 
-func (_c *mockICQUserUpdater_SetInterests_Call) Run(run func(name state.IdentScreenName, data state.ICQInterests)) *mockICQUserUpdater_SetInterests_Call {
+func (_c *mockICQUserUpdater_SetInterests_Call) Run(run func(ctx context.Context, name state.IdentScreenName, data state.ICQInterests)) *mockICQUserUpdater_SetInterests_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName), args[1].(state.ICQInterests))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName), args[2].(state.ICQInterests))
 	})
 	return _c
 }
@@ -156,22 +161,22 @@ func (_c *mockICQUserUpdater_SetInterests_Call) Return(_a0 error) *mockICQUserUp
 	return _c
 }
 
-func (_c *mockICQUserUpdater_SetInterests_Call) RunAndReturn(run func(state.IdentScreenName, state.ICQInterests) error) *mockICQUserUpdater_SetInterests_Call {
+func (_c *mockICQUserUpdater_SetInterests_Call) RunAndReturn(run func(context.Context, state.IdentScreenName, state.ICQInterests) error) *mockICQUserUpdater_SetInterests_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SetMoreInfo provides a mock function with given fields: name, data
-func (_m *mockICQUserUpdater) SetMoreInfo(name state.IdentScreenName, data state.ICQMoreInfo) error {
-	ret := _m.Called(name, data)
+// SetMoreInfo provides a mock function with given fields: ctx, name, data
+func (_m *mockICQUserUpdater) SetMoreInfo(ctx context.Context, name state.IdentScreenName, data state.ICQMoreInfo) error {
+	ret := _m.Called(ctx, name, data)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetMoreInfo")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName, state.ICQMoreInfo) error); ok {
-		r0 = rf(name, data)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName, state.ICQMoreInfo) error); ok {
+		r0 = rf(ctx, name, data)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -185,15 +190,16 @@ type mockICQUserUpdater_SetMoreInfo_Call struct {
 }
 
 // SetMoreInfo is a helper method to define mock.On call
+//   - ctx context.Context
 //   - name state.IdentScreenName
 //   - data state.ICQMoreInfo
-func (_e *mockICQUserUpdater_Expecter) SetMoreInfo(name interface{}, data interface{}) *mockICQUserUpdater_SetMoreInfo_Call {
-	return &mockICQUserUpdater_SetMoreInfo_Call{Call: _e.mock.On("SetMoreInfo", name, data)}
+func (_e *mockICQUserUpdater_Expecter) SetMoreInfo(ctx interface{}, name interface{}, data interface{}) *mockICQUserUpdater_SetMoreInfo_Call {
+	return &mockICQUserUpdater_SetMoreInfo_Call{Call: _e.mock.On("SetMoreInfo", ctx, name, data)}
 }
 
-func (_c *mockICQUserUpdater_SetMoreInfo_Call) Run(run func(name state.IdentScreenName, data state.ICQMoreInfo)) *mockICQUserUpdater_SetMoreInfo_Call {
+func (_c *mockICQUserUpdater_SetMoreInfo_Call) Run(run func(ctx context.Context, name state.IdentScreenName, data state.ICQMoreInfo)) *mockICQUserUpdater_SetMoreInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName), args[1].(state.ICQMoreInfo))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName), args[2].(state.ICQMoreInfo))
 	})
 	return _c
 }
@@ -203,22 +209,22 @@ func (_c *mockICQUserUpdater_SetMoreInfo_Call) Return(_a0 error) *mockICQUserUpd
 	return _c
 }
 
-func (_c *mockICQUserUpdater_SetMoreInfo_Call) RunAndReturn(run func(state.IdentScreenName, state.ICQMoreInfo) error) *mockICQUserUpdater_SetMoreInfo_Call {
+func (_c *mockICQUserUpdater_SetMoreInfo_Call) RunAndReturn(run func(context.Context, state.IdentScreenName, state.ICQMoreInfo) error) *mockICQUserUpdater_SetMoreInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SetUserNotes provides a mock function with given fields: name, data
-func (_m *mockICQUserUpdater) SetUserNotes(name state.IdentScreenName, data state.ICQUserNotes) error {
-	ret := _m.Called(name, data)
+// SetUserNotes provides a mock function with given fields: ctx, name, data
+func (_m *mockICQUserUpdater) SetUserNotes(ctx context.Context, name state.IdentScreenName, data state.ICQUserNotes) error {
+	ret := _m.Called(ctx, name, data)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetUserNotes")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName, state.ICQUserNotes) error); ok {
-		r0 = rf(name, data)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName, state.ICQUserNotes) error); ok {
+		r0 = rf(ctx, name, data)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -232,15 +238,16 @@ type mockICQUserUpdater_SetUserNotes_Call struct {
 }
 
 // SetUserNotes is a helper method to define mock.On call
+//   - ctx context.Context
 //   - name state.IdentScreenName
 //   - data state.ICQUserNotes
-func (_e *mockICQUserUpdater_Expecter) SetUserNotes(name interface{}, data interface{}) *mockICQUserUpdater_SetUserNotes_Call {
-	return &mockICQUserUpdater_SetUserNotes_Call{Call: _e.mock.On("SetUserNotes", name, data)}
+func (_e *mockICQUserUpdater_Expecter) SetUserNotes(ctx interface{}, name interface{}, data interface{}) *mockICQUserUpdater_SetUserNotes_Call {
+	return &mockICQUserUpdater_SetUserNotes_Call{Call: _e.mock.On("SetUserNotes", ctx, name, data)}
 }
 
-func (_c *mockICQUserUpdater_SetUserNotes_Call) Run(run func(name state.IdentScreenName, data state.ICQUserNotes)) *mockICQUserUpdater_SetUserNotes_Call {
+func (_c *mockICQUserUpdater_SetUserNotes_Call) Run(run func(ctx context.Context, name state.IdentScreenName, data state.ICQUserNotes)) *mockICQUserUpdater_SetUserNotes_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName), args[1].(state.ICQUserNotes))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName), args[2].(state.ICQUserNotes))
 	})
 	return _c
 }
@@ -250,22 +257,22 @@ func (_c *mockICQUserUpdater_SetUserNotes_Call) Return(_a0 error) *mockICQUserUp
 	return _c
 }
 
-func (_c *mockICQUserUpdater_SetUserNotes_Call) RunAndReturn(run func(state.IdentScreenName, state.ICQUserNotes) error) *mockICQUserUpdater_SetUserNotes_Call {
+func (_c *mockICQUserUpdater_SetUserNotes_Call) RunAndReturn(run func(context.Context, state.IdentScreenName, state.ICQUserNotes) error) *mockICQUserUpdater_SetUserNotes_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SetWorkInfo provides a mock function with given fields: name, data
-func (_m *mockICQUserUpdater) SetWorkInfo(name state.IdentScreenName, data state.ICQWorkInfo) error {
-	ret := _m.Called(name, data)
+// SetWorkInfo provides a mock function with given fields: ctx, name, data
+func (_m *mockICQUserUpdater) SetWorkInfo(ctx context.Context, name state.IdentScreenName, data state.ICQWorkInfo) error {
+	ret := _m.Called(ctx, name, data)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetWorkInfo")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName, state.ICQWorkInfo) error); ok {
-		r0 = rf(name, data)
+	if rf, ok := ret.Get(0).(func(context.Context, state.IdentScreenName, state.ICQWorkInfo) error); ok {
+		r0 = rf(ctx, name, data)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -279,15 +286,16 @@ type mockICQUserUpdater_SetWorkInfo_Call struct {
 }
 
 // SetWorkInfo is a helper method to define mock.On call
+//   - ctx context.Context
 //   - name state.IdentScreenName
 //   - data state.ICQWorkInfo
-func (_e *mockICQUserUpdater_Expecter) SetWorkInfo(name interface{}, data interface{}) *mockICQUserUpdater_SetWorkInfo_Call {
-	return &mockICQUserUpdater_SetWorkInfo_Call{Call: _e.mock.On("SetWorkInfo", name, data)}
+func (_e *mockICQUserUpdater_Expecter) SetWorkInfo(ctx interface{}, name interface{}, data interface{}) *mockICQUserUpdater_SetWorkInfo_Call {
+	return &mockICQUserUpdater_SetWorkInfo_Call{Call: _e.mock.On("SetWorkInfo", ctx, name, data)}
 }
 
-func (_c *mockICQUserUpdater_SetWorkInfo_Call) Run(run func(name state.IdentScreenName, data state.ICQWorkInfo)) *mockICQUserUpdater_SetWorkInfo_Call {
+func (_c *mockICQUserUpdater_SetWorkInfo_Call) Run(run func(ctx context.Context, name state.IdentScreenName, data state.ICQWorkInfo)) *mockICQUserUpdater_SetWorkInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName), args[1].(state.ICQWorkInfo))
+		run(args[0].(context.Context), args[1].(state.IdentScreenName), args[2].(state.ICQWorkInfo))
 	})
 	return _c
 }
@@ -297,7 +305,7 @@ func (_c *mockICQUserUpdater_SetWorkInfo_Call) Return(_a0 error) *mockICQUserUpd
 	return _c
 }
 
-func (_c *mockICQUserUpdater_SetWorkInfo_Call) RunAndReturn(run func(state.IdentScreenName, state.ICQWorkInfo) error) *mockICQUserUpdater_SetWorkInfo_Call {
+func (_c *mockICQUserUpdater_SetWorkInfo_Call) RunAndReturn(run func(context.Context, state.IdentScreenName, state.ICQWorkInfo) error) *mockICQUserUpdater_SetWorkInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

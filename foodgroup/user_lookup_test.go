@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"context"
 	"io"
 	"testing"
 
@@ -122,12 +123,12 @@ func TestUserLookupService_FindByEmail(t *testing.T) {
 
 			for _, params := range tc.mockParams.findByAIMEmailParams {
 				profileManager.EXPECT().
-					FindByAIMEmail(params.email).
+					FindByAIMEmail(matchContext(), params.email).
 					Return(params.result, params.err)
 			}
 
 			svc := NewUserLookupService(profileManager)
-			actual, err := svc.FindByEmail(nil, tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x0A_0x02_UserLookupFindByEmail))
+			actual, err := svc.FindByEmail(context.Background(), tc.inputSNAC.Frame, tc.inputSNAC.Body.(wire.SNAC_0x0A_0x02_UserLookupFindByEmail))
 			assert.ErrorIs(t, err, tc.expectErr)
 			assert.Equal(t, tc.expectOutput, actual)
 		})

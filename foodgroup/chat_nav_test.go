@@ -389,12 +389,12 @@ func TestChatNavService_CreateRoom(t *testing.T) {
 			chatRoomRegistry := newMockChatRoomRegistry(t)
 			for _, params := range tt.mockParams.chatRoomByNameParams {
 				chatRoomRegistry.EXPECT().
-					ChatRoomByName(params.exchange, params.name).
+					ChatRoomByName(matchContext(), params.exchange, params.name).
 					Return(params.room, params.err)
 			}
 			for _, params := range tt.mockParams.createChatRoomParams {
 				chatRoomRegistry.EXPECT().
-					CreateChatRoom(params.room).
+					CreateChatRoom(matchContext(), params.room).
 					Return(params.err)
 			}
 
@@ -581,12 +581,12 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 			chatRoomRegistry := newMockChatRoomRegistry(t)
 			for _, params := range tt.mockParams.chatRoomByCookieParams {
 				chatRoomRegistry.EXPECT().
-					ChatRoomByCookie(params.cookie).
+					ChatRoomByCookie(matchContext(), params.cookie).
 					Return(params.room, params.err)
 			}
 
 			svc := NewChatNavService(slog.Default(), chatRoomRegistry)
-			got, err := svc.RequestRoomInfo(nil, tt.inputSNAC.Frame,
+			got, err := svc.RequestRoomInfo(context.Background(), tt.inputSNAC.Frame,
 				tt.inputSNAC.Body.(wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo))
 			assert.ErrorIs(t, err, tt.wantErr)
 			if tt.wantErr != nil {
@@ -600,7 +600,7 @@ func TestChatNavService_RequestRoomInfo(t *testing.T) {
 func TestChatNavService_RequestChatRights(t *testing.T) {
 	svc := NewChatNavService(nil, nil)
 
-	have := svc.RequestChatRights(nil, wire.SNACFrame{RequestID: 1234})
+	have := svc.RequestChatRights(context.Background(), wire.SNACFrame{RequestID: 1234})
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{

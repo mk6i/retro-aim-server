@@ -21,8 +21,8 @@ type UserLookupService struct {
 }
 
 // FindByEmail searches for a user by email address.
-func (s UserLookupService) FindByEmail(_ context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0A_0x02_UserLookupFindByEmail) (wire.SNACMessage, error) {
-	user, err := s.profileManager.FindByAIMEmail(string(inBody.Email))
+func (s UserLookupService) FindByEmail(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x0A_0x02_UserLookupFindByEmail) (wire.SNACMessage, error) {
+	user, err := s.profileManager.FindByAIMEmail(ctx, string(inBody.Email))
 
 	switch {
 	case errors.Is(err, state.ErrNoUser):

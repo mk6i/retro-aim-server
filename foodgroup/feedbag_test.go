@@ -1,6 +1,7 @@
 package foodgroup
 
 import (
+	"context"
 	"log/slog"
 	"testing"
 	"time"
@@ -114,19 +115,19 @@ func TestFeedbagService_Query(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
 			for _, params := range tc.mockParams.feedbagParams {
 				feedbagManager.EXPECT().
-					Feedbag(params.screenName).
+					Feedbag(matchContext(), params.screenName).
 					Return(params.results, nil)
 			}
 			for _, params := range tc.mockParams.feedbagLastModifiedParams {
 				feedbagManager.EXPECT().
-					FeedbagLastModified(params.screenName).
+					FeedbagLastModified(matchContext(), params.screenName).
 					Return(params.result, nil)
 			}
 
 			svc := FeedbagService{
 				feedbagManager: feedbagManager,
 			}
-			outputSNAC, err := svc.Query(nil, tc.userSession, tc.inputSNAC.Frame)
+			outputSNAC, err := svc.Query(context.Background(), tc.userSession, tc.inputSNAC.Frame)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
@@ -289,12 +290,12 @@ func TestFeedbagService_QueryIfModified(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
 			for _, params := range tc.mockParams.feedbagParams {
 				feedbagManager.EXPECT().
-					Feedbag(params.screenName).
+					Feedbag(matchContext(), params.screenName).
 					Return(params.results, nil)
 			}
 			for _, params := range tc.mockParams.feedbagLastModifiedParams {
 				feedbagManager.EXPECT().
-					FeedbagLastModified(params.screenName).
+					FeedbagLastModified(matchContext(), params.screenName).
 					Return(params.result, nil)
 			}
 			//
@@ -303,7 +304,7 @@ func TestFeedbagService_QueryIfModified(t *testing.T) {
 			svc := FeedbagService{
 				feedbagManager: feedbagManager,
 			}
-			outputSNAC, err := svc.QueryIfModified(nil, tc.userSession, tc.inputSNAC.Frame,
+			outputSNAC, err := svc.QueryIfModified(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x13_0x05_FeedbagQueryIfModified))
 			assert.NoError(t, err)
 			//
@@ -317,7 +318,7 @@ func TestFeedbagService_QueryIfModified(t *testing.T) {
 func TestFeedbagService_RightsQuery(t *testing.T) {
 	svc := NewFeedbagService(nil, nil, nil, nil, nil, nil)
 
-	outputSNAC := svc.RightsQuery(nil, wire.SNACFrame{RequestID: 1234})
+	outputSNAC := svc.RightsQuery(context.Background(), wire.SNACFrame{RequestID: 1234})
 	expectSNAC := wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.Feedbag,
@@ -663,8 +664,8 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				bartManagerParams: bartManagerParams{
-					bartManagerRetrieveParams: bartManagerRetrieveParams{
+				buddyIconManagerParams: buddyIconManagerParams{
+					buddyIconManagerRetrieveParams: buddyIconManagerRetrieveParams{
 						{
 							itemHash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
 							result:   []byte{}, // icon doesn't exist
@@ -747,8 +748,8 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				bartManagerParams: bartManagerParams{
-					bartManagerRetrieveParams: bartManagerRetrieveParams{
+				buddyIconManagerParams: buddyIconManagerParams{
+					buddyIconManagerRetrieveParams: buddyIconManagerRetrieveParams{
 						{
 							itemHash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
 							result:   []byte{'i', 'c', 'o', 'n', 'd', 'a', 't', 'a'},
@@ -885,7 +886,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
 			for _, params := range tc.mockParams.feedbagManagerParams.feedbagUpsertParams {
 				feedbagManager.EXPECT().
-					FeedbagUpsert(params.screenName, params.items).
+					FeedbagUpsert(matchContext(), params.screenName, params.items).
 					Return(nil)
 			}
 			messageRelayer := newMockMessageRelayer(t)
@@ -893,10 +894,10 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				messageRelayer.EXPECT().
 					RelayToScreenName(mock.Anything, params.screenName, params.message)
 			}
-			bartManager := newMockBARTManager(t)
-			for _, params := range tc.mockParams.bartManagerParams.bartManagerRetrieveParams {
-				bartManager.EXPECT().
-					BARTRetrieve(params.itemHash).
+			buddyIconManager := newMockBuddyIconManager(t)
+			for _, params := range tc.mockParams.buddyIconManagerParams.buddyIconManagerRetrieveParams {
+				buddyIconManager.EXPECT().
+					BuddyIcon(matchContext(), params.itemHash).
 					Return(params.result, nil)
 			}
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
@@ -910,9 +911,9 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter, true).
 					Return(params.err)
 			}
-			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, bartManager, nil, nil)
+			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, buddyIconManager, nil, nil)
 			svc.buddyBroadcaster = buddyUpdateBroadcaster
-			output, err := svc.UpsertItem(nil, tc.userSession, tc.inputSNAC.Frame,
+			output, err := svc.UpsertItem(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x13_0x08_FeedbagInsertItem).Items)
 			assert.NoError(t, err)
 			assert.Equal(t, output, tc.expectOutput)
@@ -1010,7 +1011,7 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
 			for _, params := range tc.mockParams.feedbagManagerParams.feedbagDeleteParams {
 				feedbagManager.EXPECT().
-					FeedbagDelete(params.screenName, params.items).
+					FeedbagDelete(matchContext(), params.screenName, params.items).
 					Return(nil)
 			}
 			buddyUpdateBroadcast := newMockbuddyBroadcaster(t)
@@ -1025,7 +1026,7 @@ func TestFeedbagService_DeleteItem(t *testing.T) {
 				feedbagManager:   feedbagManager,
 				messageRelayer:   nil,
 			}
-			output, err := svc.DeleteItem(nil, tc.userSession, tc.inputSNAC.Frame,
+			output, err := svc.DeleteItem(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x13_0x0A_FeedbagDeleteItem))
 			assert.NoError(t, err)
 			assert.Equal(t, output, tc.expectOutput)
@@ -1071,13 +1072,13 @@ func TestFeedbagService_Use(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
 			for _, params := range tt.mockParams.buddiesParams {
 				feedbagManager.EXPECT().
-					UseFeedbag(params.screenName).
+					UseFeedbag(matchContext(), params.screenName).
 					Return(nil)
 			}
 
 			svc := NewFeedbagService(slog.Default(), nil, feedbagManager, nil, nil, nil)
 
-			haveErr := svc.Use(nil, tt.sess)
+			haveErr := svc.Use(context.Background(), tt.sess)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
 		})
 	}
@@ -1170,11 +1171,11 @@ func TestFeedbagService_RespondAuthorizeToHost(t *testing.T) {
 			messageRelayer := newMockMessageRelayer(t)
 			for _, params := range tt.mockParams.relayToScreenNameParams {
 				messageRelayer.EXPECT().
-					RelayToScreenName(nil, params.screenName, params.message)
+					RelayToScreenName(matchContext(), params.screenName, params.message)
 			}
 
 			svc := NewFeedbagService(slog.Default(), messageRelayer, nil, nil, nil, nil)
-			haveErr := svc.RespondAuthorizeToHost(nil, tt.sess, wire.SNACFrame{}, tt.bodyIn)
+			haveErr := svc.RespondAuthorizeToHost(context.Background(), tt.sess, wire.SNACFrame{}, tt.bodyIn)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
 		})
 	}

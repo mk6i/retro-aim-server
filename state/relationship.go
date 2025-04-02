@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 	"text/template"
@@ -160,8 +161,8 @@ type Relationship struct {
 // This method always returns a usable [Relationship] value. If the user
 // specified by `them` does not exist, the returned [Relationship] will have
 // default boolean values.
-func (f SQLiteUserStore) Relationship(me IdentScreenName, them IdentScreenName) (Relationship, error) {
-	rels, err := f.AllRelationships(me, []IdentScreenName{them})
+func (f SQLiteUserStore) Relationship(ctx context.Context, me IdentScreenName, them IdentScreenName) (Relationship, error) {
+	rels, err := f.AllRelationships(ctx, me, []IdentScreenName{them})
 	if err != nil {
 		return Relationship{}, fmt.Errorf("error getting relationships: %w", err)
 	}
@@ -185,7 +186,7 @@ func (f SQLiteUserStore) Relationship(me IdentScreenName, them IdentScreenName) 
 // a call to [SQLiteUserStore.RegisterBuddyList]. The results can be optionally
 // filtered to include only specific users by providing their identifiers in
 // the `filter` parameter.
-func (f SQLiteUserStore) AllRelationships(me IdentScreenName, filter []IdentScreenName) ([]Relationship, error) {
+func (f SQLiteUserStore) AllRelationships(ctx context.Context, me IdentScreenName, filter []IdentScreenName) ([]Relationship, error) {
 	tpl := queryWithoutFiltering
 	args := make([]any, 1, len(filter)+1)
 	args[0] = me.String()
@@ -200,7 +201,7 @@ func (f SQLiteUserStore) AllRelationships(me IdentScreenName, filter []IdentScre
 		}
 	}
 
-	rows, err := f.db.Query(tpl, args...)
+	rows, err := f.db.QueryContext(ctx, tpl, args...)
 	if err != nil {
 		return nil, fmt.Errorf("error querying relationships: %w", err)
 	}

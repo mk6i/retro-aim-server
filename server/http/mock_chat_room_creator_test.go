@@ -3,6 +3,8 @@
 package http
 
 import (
+	context "context"
+
 	state "github.com/mk6i/retro-aim-server/state"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,17 +22,17 @@ func (_m *mockChatRoomCreator) EXPECT() *mockChatRoomCreator_Expecter {
 	return &mockChatRoomCreator_Expecter{mock: &_m.Mock}
 }
 
-// CreateChatRoom provides a mock function with given fields: chatRoom
-func (_m *mockChatRoomCreator) CreateChatRoom(chatRoom *state.ChatRoom) error {
-	ret := _m.Called(chatRoom)
+// CreateChatRoom provides a mock function with given fields: ctx, chatRoom
+func (_m *mockChatRoomCreator) CreateChatRoom(ctx context.Context, chatRoom *state.ChatRoom) error {
+	ret := _m.Called(ctx, chatRoom)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateChatRoom")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*state.ChatRoom) error); ok {
-		r0 = rf(chatRoom)
+	if rf, ok := ret.Get(0).(func(context.Context, *state.ChatRoom) error); ok {
+		r0 = rf(ctx, chatRoom)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -44,14 +46,15 @@ type mockChatRoomCreator_CreateChatRoom_Call struct {
 }
 
 // CreateChatRoom is a helper method to define mock.On call
+//   - ctx context.Context
 //   - chatRoom *state.ChatRoom
-func (_e *mockChatRoomCreator_Expecter) CreateChatRoom(chatRoom interface{}) *mockChatRoomCreator_CreateChatRoom_Call {
-	return &mockChatRoomCreator_CreateChatRoom_Call{Call: _e.mock.On("CreateChatRoom", chatRoom)}
+func (_e *mockChatRoomCreator_Expecter) CreateChatRoom(ctx interface{}, chatRoom interface{}) *mockChatRoomCreator_CreateChatRoom_Call {
+	return &mockChatRoomCreator_CreateChatRoom_Call{Call: _e.mock.On("CreateChatRoom", ctx, chatRoom)}
 }
 
-func (_c *mockChatRoomCreator_CreateChatRoom_Call) Run(run func(chatRoom *state.ChatRoom)) *mockChatRoomCreator_CreateChatRoom_Call {
+func (_c *mockChatRoomCreator_CreateChatRoom_Call) Run(run func(ctx context.Context, chatRoom *state.ChatRoom)) *mockChatRoomCreator_CreateChatRoom_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*state.ChatRoom))
+		run(args[0].(context.Context), args[1].(*state.ChatRoom))
 	})
 	return _c
 }
@@ -61,7 +64,7 @@ func (_c *mockChatRoomCreator_CreateChatRoom_Call) Return(_a0 error) *mockChatRo
 	return _c
 }
 
-func (_c *mockChatRoomCreator_CreateChatRoom_Call) RunAndReturn(run func(*state.ChatRoom) error) *mockChatRoomCreator_CreateChatRoom_Call {
+func (_c *mockChatRoomCreator_CreateChatRoom_Call) RunAndReturn(run func(context.Context, *state.ChatRoom) error) *mockChatRoomCreator_CreateChatRoom_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -9,14 +9,15 @@ import (
 
 // NewPermitDenyService creates an instance of PermitDenyService.
 func NewPermitDenyService(
-	buddyListRetriever BuddyListRetriever,
-	localBuddyListManager LocalBuddyListManager,
+	buddyIconManager BuddyIconManager,
+	relationshipFetcher RelationshipFetcher,
+	clientSideBuddyListManager ClientSideBuddyListManager,
 	messageRelayer MessageRelayer,
 	sessionRetriever SessionRetriever,
 ) PermitDenyService {
 	return PermitDenyService{
-		buddyBroadcaster:      newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
-		localBuddyListManager: localBuddyListManager,
+		buddyBroadcaster:           newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		clientSideBuddyListManager: clientSideBuddyListManager,
 	}
 }
 
@@ -24,8 +25,8 @@ func NewPermitDenyService(
 // The PD food group manages settings for permit/deny (allow/block) for
 // pre-feedbag (sever-side buddy list) AIM clients.
 type PermitDenyService struct {
-	buddyBroadcaster      buddyBroadcaster
-	localBuddyListManager LocalBuddyListManager
+	buddyBroadcaster           buddyBroadcaster
+	clientSideBuddyListManager ClientSideBuddyListManager
 }
 
 // AddDenyListEntries adds users to your block list and sets your visibility
@@ -41,20 +42,20 @@ func (s PermitDenyService) AddDenyListEntries(
 	if len(body.Users) == 1 {
 		sn := state.NewIdentScreenName(body.Users[0].ScreenName)
 		if sn.String() == sess.IdentScreenName().String() {
-			if err := s.localBuddyListManager.SetPDMode(sess.IdentScreenName(), wire.FeedbagPDModePermitAll); err != nil {
+			if err := s.clientSideBuddyListManager.SetPDMode(ctx, sess.IdentScreenName(), wire.FeedbagPDModePermitAll); err != nil {
 				return err
 			}
 			return s.maybeBroadcastVisibility(ctx, sess, nil)
 		}
 	}
 
-	if err := s.localBuddyListManager.SetPDMode(sess.IdentScreenName(), wire.FeedbagPDModeDenySome); err != nil {
+	if err := s.clientSideBuddyListManager.SetPDMode(ctx, sess.IdentScreenName(), wire.FeedbagPDModeDenySome); err != nil {
 		return err
 	}
 
 	for _, user := range body.Users {
 		sn := state.NewIdentScreenName(user.ScreenName)
-		if err := s.localBuddyListManager.DenyBuddy(sess.IdentScreenName(), sn); err != nil {
+		if err := s.clientSideBuddyListManager.DenyBuddy(ctx, sess.IdentScreenName(), sn); err != nil {
 			return err
 		}
 	}
@@ -77,20 +78,20 @@ func (s PermitDenyService) AddPermListEntries(
 	if len(body.Users) == 1 {
 		sn := state.NewIdentScreenName(body.Users[0].ScreenName)
 		if sn.String() == sess.IdentScreenName().String() {
-			if err := s.localBuddyListManager.SetPDMode(sess.IdentScreenName(), wire.FeedbagPDModeDenyAll); err != nil {
+			if err := s.clientSideBuddyListManager.SetPDMode(ctx, sess.IdentScreenName(), wire.FeedbagPDModeDenyAll); err != nil {
 				return err
 			}
 			return s.maybeBroadcastVisibility(ctx, sess, nil)
 		}
 	}
 
-	if err := s.localBuddyListManager.SetPDMode(sess.IdentScreenName(), wire.FeedbagPDModePermitSome); err != nil {
+	if err := s.clientSideBuddyListManager.SetPDMode(ctx, sess.IdentScreenName(), wire.FeedbagPDModePermitSome); err != nil {
 		return err
 	}
 
 	for _, user := range body.Users {
 		sn := state.NewIdentScreenName(user.ScreenName)
-		if err := s.localBuddyListManager.PermitBuddy(sess.IdentScreenName(), sn); err != nil {
+		if err := s.clientSideBuddyListManager.PermitBuddy(ctx, sess.IdentScreenName(), sn); err != nil {
 			return err
 		}
 	}
@@ -113,7 +114,7 @@ func (s PermitDenyService) DelDenyListEntries(
 
 	for _, user := range body.Users {
 		sn := state.NewIdentScreenName(user.ScreenName)
-		if err := s.localBuddyListManager.RemoveDenyBuddy(sess.IdentScreenName(), sn); err != nil {
+		if err := s.clientSideBuddyListManager.RemoveDenyBuddy(ctx, sess.IdentScreenName(), sn); err != nil {
 			return err
 		}
 	}
@@ -134,7 +135,7 @@ func (s PermitDenyService) DelPermListEntries(
 
 	for _, user := range body.Users {
 		sn := state.NewIdentScreenName(user.ScreenName)
-		if err := s.localBuddyListManager.RemovePermitBuddy(sess.IdentScreenName(), sn); err != nil {
+		if err := s.clientSideBuddyListManager.RemovePermitBuddy(ctx, sess.IdentScreenName(), sn); err != nil {
 			return err
 		}
 	}

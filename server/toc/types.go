@@ -12,7 +12,7 @@ import (
 type BuddyService interface {
 	AddBuddies(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x04_BuddyAddBuddies) error
 	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
-	DelBuddies(_ context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies) error
+	DelBuddies(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x03_0x05_BuddyDelBuddies) error
 	RightsQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 }
 
@@ -42,11 +42,11 @@ type OServiceService interface {
 }
 
 type AuthService interface {
-	BUCPChallenge(bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
-	BUCPLogin(bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
-	FLAPLogin(frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error)
+	BUCPChallenge(ctx context.Context, bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
+	BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
+	FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error)
 	RegisterBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
-	RetrieveBOSSession(authCookie []byte) (*state.Session, error)
+	RetrieveBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	RegisterChatSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	Signout(ctx context.Context, sess *state.Session)
 	SignoutChat(ctx context.Context, sess *state.Session)
@@ -75,17 +75,27 @@ type PermitDenyService interface {
 // buddy lists. Once registered, a user becomes visible to other users' buddy
 // lists and vice versa.
 type BuddyListRegistry interface {
-	RegisterBuddyList(user state.IdentScreenName) error
-	UnregisterBuddyList(user state.IdentScreenName) error
+	RegisterBuddyList(ctx context.Context, user state.IdentScreenName) error
+	UnregisterBuddyList(ctx context.Context, user state.IdentScreenName) error
 }
 
 type TOCConfigStore interface {
-	SetTOCConfig(user state.IdentScreenName, config string) error
-	User(screenName state.IdentScreenName) (*state.User, error)
+	// SetTOCConfig sets the user's TOC config. The TOC config is the server-side
+	// buddy list functionality for TOC. This configuration is not available to
+	// OSCAR clients.
+	SetTOCConfig(ctx context.Context, user state.IdentScreenName, config string) error
+	User(ctx context.Context, screenName state.IdentScreenName) (*state.User, error)
 }
 
+// CookieBaker defines methods for issuing and verifying AIM authentication tokens ("cookies").
+// These tokens are used for authenticating client sessions with AIM services.
 type CookieBaker interface {
+	// Crack verifies and decodes a previously issued authentication token.
+	// Returns the original payload if the token is valid.
 	Crack(data []byte) ([]byte, error)
+
+	// Issue creates a new authentication token from the given payload.
+	// The resulting token can later be verified using Crack.
 	Issue(data []byte) ([]byte, error)
 }
 

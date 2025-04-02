@@ -311,7 +311,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			chatRoomManager := newMockChatRoomRegistry(t)
 			for _, params := range tc.mockParams.chatRoomByCookieParams {
 				chatRoomManager.EXPECT().
-					ChatRoomByCookie(params.cookie).
+					ChatRoomByCookie(context.Background(), params.cookie).
 					Return(params.room, params.err)
 			}
 			cookieIssuer := newMockCookieBaker(t)
@@ -323,9 +323,9 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			svc := NewOServiceServiceForBOS(tc.cfg, nil, slog.Default(), cookieIssuer, chatRoomManager, nil, nil)
+			svc := NewOServiceServiceForBOS(tc.cfg, nil, slog.Default(), cookieIssuer, chatRoomManager, nil, nil, nil)
 
-			outputSNAC, err := svc.ServiceRequest(nil, tc.userSession, tc.inputSNAC.Frame,
+			outputSNAC, err := svc.ServiceRequest(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x01_0x04_OServiceServiceRequest))
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
@@ -1557,7 +1557,7 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 
 func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 	cookieIssuer := newMockCookieBaker(t)
-	svc := NewOServiceServiceForBOS(config.Config{}, nil, slog.Default(), cookieIssuer, nil, nil, nil)
+	svc := NewOServiceServiceForBOS(config.Config{}, nil, slog.Default(), cookieIssuer, nil, nil, nil, nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1589,7 +1589,7 @@ func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForChat_OServiceHostOnline(t *testing.T) {
-	svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, nil, nil, nil, nil)
+	svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, nil, nil, nil, nil, nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1764,7 +1764,7 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 					Return(params.err)
 			}
 
-			svc := NewOServiceServiceForBOS(config.Config{}, nil, slog.Default(), nil, nil, nil, nil)
+			svc := NewOServiceServiceForBOS(config.Config{}, nil, slog.Default(), nil, nil, nil, nil, nil)
 			svc.buddyBroadcaster = buddyUpdateBroadcaster
 			haveErr := svc.ClientOnline(nil, tt.bodyIn, tt.sess)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
@@ -1877,7 +1877,7 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 			chatRoomManager := newMockChatRoomRegistry(t)
 			for _, params := range tt.mockParams.chatRoomByCookieParams {
 				chatRoomManager.EXPECT().
-					ChatRoomByCookie(params.cookie).
+					ChatRoomByCookie(context.Background(), params.cookie).
 					Return(params.room, params.err)
 			}
 			chatMessageRelayer := newMockChatMessageRelayer(t)
@@ -1895,16 +1895,16 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 					RelayToScreenName(mock.Anything, params.cookie, params.screenName, params.message)
 			}
 
-			svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, chatRoomManager, chatMessageRelayer, nil, nil)
+			svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, chatRoomManager, chatMessageRelayer, nil, nil, nil)
 
-			haveErr := svc.ClientOnline(nil, wire.SNAC_0x01_0x02_OServiceClientOnline{}, tt.joiningChatter)
+			haveErr := svc.ClientOnline(context.Background(), wire.SNAC_0x01_0x02_OServiceClientOnline{}, tt.joiningChatter)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
 		})
 	}
 }
 
 func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
-	svc := NewOServiceServiceForChatNav(config.Config{}, slog.Default(), nil, nil, nil)
+	svc := NewOServiceServiceForChatNav(config.Config{}, slog.Default(), nil, nil, nil, nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{
@@ -1925,7 +1925,7 @@ func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
 }
 
 func TestOServiceServiceForAlert_HostOnline(t *testing.T) {
-	svc := NewOServiceServiceForAlert(config.Config{}, slog.Default(), nil, nil, nil)
+	svc := NewOServiceServiceForAlert(config.Config{}, slog.Default(), nil, nil, nil, nil)
 
 	want := wire.SNACMessage{
 		Frame: wire.SNACFrame{

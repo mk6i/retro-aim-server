@@ -20,20 +20,20 @@ var blankGIF = []byte{
 
 func NewBARTService(
 	logger *slog.Logger,
-	bartManager BARTManager,
+	buddyIconManager BuddyIconManager,
 	messageRelayer MessageRelayer,
-	buddyListRetriever BuddyListRetriever,
+	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 ) BARTService {
 	return BARTService{
-		bartManager:            bartManager,
-		buddyUpdateBroadcaster: newBuddyNotifier(buddyListRetriever, messageRelayer, sessionRetriever),
+		buddyIconManager:       buddyIconManager,
+		buddyUpdateBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		logger:                 logger,
 	}
 }
 
 type BARTService struct {
-	bartManager            BARTManager
+	buddyIconManager       BuddyIconManager
 	buddyUpdateBroadcaster buddyBroadcaster
 	logger                 *slog.Logger
 }
@@ -45,7 +45,7 @@ func (s BARTService) UpsertItem(ctx context.Context, sess *state.Session, inFram
 	}
 	hash := h.Sum(nil)
 
-	if err := s.bartManager.BARTUpsert(hash, inBody.Data); err != nil {
+	if err := s.buddyIconManager.SetBuddyIcon(ctx, hash, inBody.Data); err != nil {
 		return wire.SNACMessage{}, err
 	}
 
@@ -83,7 +83,7 @@ func (s BARTService) RetrieveItem(ctx context.Context, sess *state.Session, inFr
 		icon = blankGIF
 	} else {
 		var err error
-		if icon, err = s.bartManager.BARTRetrieve(inBody.Hash); err != nil {
+		if icon, err = s.buddyIconManager.BuddyIcon(ctx, inBody.Hash); err != nil {
 			return wire.SNACMessage{}, err
 		}
 	}
