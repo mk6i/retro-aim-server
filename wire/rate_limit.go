@@ -4,17 +4,13 @@ import "time"
 
 type RateClass struct {
 	ID              uint16
-	WindowSize      uint32
-	ClearLevel      uint32
-	AlertLevel      uint32
-	LimitLevel      uint32
-	DisconnectLevel uint32
-	CurrentLevel    uint32
-	MaxLevel        uint32
-	V2Params        *struct {
-		LastTime     uint32
-		CurrentState uint8
-	} `oscar:"optional"`
+	WindowSize      int64
+	ClearLevel      int64
+	AlertLevel      int64
+	LimitLevel      int64
+	DisconnectLevel int64
+	CurrentLevel    int64
+	MaxLevel        int64
 }
 
 type RateLimitStatus int
@@ -26,23 +22,36 @@ const (
 	RateLimitStatusDisconnect RateLimitStatus = 4 // You're under the rate limit; all good
 )
 
-func CheckRateLimit(last time.Time, now time.Time, class RateClass, currentAvg time.Duration) (state RateLimitStatus, avg time.Duration) {
-	delta := last.Sub(now)
-	currentAvg = (currentAvg*time.Duration(class.WindowSize-1) + delta) / time.Duration(class.WindowSize)
+var class1 = RateClass{
+	ID:              0x01,
+	WindowSize:      0x0050,
+	ClearLevel:      0x09C4,
+	AlertLevel:      0x07D0,
+	LimitLevel:      0x05DC,
+	DisconnectLevel: 0x0320,
+	CurrentLevel:    0x0D69,
+	MaxLevel:        0x1770,
+}
 
-	if currentAvg > time.Duration(class.MaxLevel)*time.Millisecond {
-		currentAvg = time.Duration(class.MaxLevel)
+func CheckRateLimit(last time.Time, now time.Time, class RateClass, currentAvg int64) (RateLimitStatus, int64) {
+	delta := last.Sub(now).Milliseconds()
+
+	//   NewLevel = (Window - 1)/Window * OldLevel + 1/Window * CurrentTimeDiff
+	currentAvg = (class.WindowSize-1)/class.WindowSize*currentAvg + 1/class.WindowSize*delta
+
+	if currentAvg > class.MaxLevel {
+		currentAvg = class.MaxLevel
 	}
 
 	switch {
-	case currentAvg > time.Duration(class.ClearLevel)*time.Millisecond:
-		return RateLimitStatusClear, avg
-	case currentAvg < time.Duration(class.DisconnectLevel)*time.Millisecond:
-		return RateLimitStatusDisconnect, avg
-	case currentAvg < time.Duration(class.LimitLevel)*time.Millisecond:
-		return RateLimitStatusLimited, avg
-	case currentAvg < time.Duration(class.AlertLevel)*time.Millisecond:
-		return RateLimitStatusAlert, avg
+	case currentAvg > class.ClearLevel:
+		return RateLimitStatusClear, currentAvg
+	case currentAvg < class.DisconnectLevel:
+		return RateLimitStatusDisconnect, currentAvg
+	case currentAvg < class.LimitLevel:
+		return RateLimitStatusLimited, currentAvg
+	case currentAvg < class.AlertLevel:
+		return RateLimitStatusAlert, currentAvg
 	}
 
 	return RateLimitStatusClear, currentAvg
