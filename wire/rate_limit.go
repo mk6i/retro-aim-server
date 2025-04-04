@@ -9,7 +9,6 @@ type RateClass struct {
 	AlertLevel      int64
 	LimitLevel      int64
 	DisconnectLevel int64
-	CurrentLevel    int64
 	MaxLevel        int64
 }
 
@@ -23,36 +22,75 @@ const (
 )
 
 var class1 = RateClass{
-	ID:              0x01,
-	WindowSize:      0x0050,
-	ClearLevel:      0x09C4,
-	AlertLevel:      0x07D0,
-	LimitLevel:      0x05DC,
-	DisconnectLevel: 0x0320,
-	CurrentLevel:    0x0D69,
-	MaxLevel:        0x1770,
+	ID:              1,
+	WindowSize:      80,
+	ClearLevel:      2500,
+	AlertLevel:      1000,
+	LimitLevel:      500,
+	DisconnectLevel: 300,
+	MaxLevel:        8000,
 }
 
-func CheckRateLimit(last time.Time, now time.Time, class RateClass, currentAvg int64) (RateLimitStatus, int64) {
-	delta := last.Sub(now).Milliseconds()
+var class2 = RateClass{
+	ID:              2,
+	WindowSize:      80,
+	ClearLevel:      3000,
+	AlertLevel:      1000,
+	LimitLevel:      500,
+	DisconnectLevel: 300,
+	MaxLevel:        7000,
+}
 
-	//   NewLevel = (Window - 1)/Window * OldLevel + 1/Window * CurrentTimeDiff
-	currentAvg = (class.WindowSize-1)/class.WindowSize*currentAvg + 1/class.WindowSize*delta
+var class3 = RateClass{
+	ID:              3,
+	WindowSize:      20,
+	ClearLevel:      4100,
+	AlertLevel:      4000,
+	LimitLevel:      3000,
+	DisconnectLevel: 2000,
+	MaxLevel:        7000,
+}
 
-	if currentAvg > class.MaxLevel {
-		currentAvg = class.MaxLevel
+var class4 = RateClass{
+	ID:              4,
+	WindowSize:      20,
+	ClearLevel:      4500,
+	AlertLevel:      4300,
+	LimitLevel:      3200,
+	DisconnectLevel: 2000,
+	MaxLevel:        8000,
+}
+
+var class5 = RateClass{
+	ID:              5,
+	WindowSize:      10,
+	ClearLevel:      4500,
+	AlertLevel:      4300,
+	LimitLevel:      3200,
+	DisconnectLevel: 2000,
+	MaxLevel:        9000,
+}
+
+// CheckRateLimit calculates moving average
+func CheckRateLimit(last time.Time, now time.Time, class RateClass, curAvg int64) (status RateLimitStatus, newAvg int64) {
+	delta := now.Sub(last).Milliseconds()
+
+	curAvg = (curAvg*(class.WindowSize-1) + delta) / class.WindowSize
+
+	if curAvg > class.MaxLevel {
+		curAvg = class.MaxLevel
 	}
 
 	switch {
-	case currentAvg > class.ClearLevel:
-		return RateLimitStatusClear, currentAvg
-	case currentAvg < class.DisconnectLevel:
-		return RateLimitStatusDisconnect, currentAvg
-	case currentAvg < class.LimitLevel:
-		return RateLimitStatusLimited, currentAvg
-	case currentAvg < class.AlertLevel:
-		return RateLimitStatusAlert, currentAvg
+	case curAvg > class.ClearLevel:
+		return RateLimitStatusClear, curAvg
+	case curAvg < class.DisconnectLevel:
+		return RateLimitStatusDisconnect, curAvg
+	case curAvg < class.LimitLevel:
+		return RateLimitStatusLimited, curAvg
+	case curAvg < class.AlertLevel:
+		return RateLimitStatusAlert, curAvg
 	}
 
-	return RateLimitStatusClear, currentAvg
+	return RateLimitStatusClear, curAvg
 }
