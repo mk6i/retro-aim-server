@@ -25,65 +25,63 @@ var class1 = RateClass{
 	ID:              1,
 	WindowSize:      80,
 	ClearLevel:      2500,
-	AlertLevel:      1000,
-	LimitLevel:      500,
-	DisconnectLevel: 300,
-	MaxLevel:        8000,
+	AlertLevel:      2000,
+	LimitLevel:      1500,
+	DisconnectLevel: 800,
+	MaxLevel:        6000,
 }
 
 var class2 = RateClass{
 	ID:              2,
 	WindowSize:      80,
 	ClearLevel:      3000,
-	AlertLevel:      1000,
-	LimitLevel:      500,
-	DisconnectLevel: 300,
-	MaxLevel:        7000,
+	AlertLevel:      2000,
+	LimitLevel:      1500,
+	DisconnectLevel: 3000,
+	MaxLevel:        6000,
 }
 
 var class3 = RateClass{
 	ID:              3,
 	WindowSize:      20,
-	ClearLevel:      4100,
-	AlertLevel:      4000,
-	LimitLevel:      3000,
-	DisconnectLevel: 2000,
-	MaxLevel:        7000,
+	ClearLevel:      5100,
+	AlertLevel:      5000,
+	LimitLevel:      4000,
+	DisconnectLevel: 3000,
+	MaxLevel:        6000,
 }
 
 var class4 = RateClass{
 	ID:              4,
 	WindowSize:      20,
-	ClearLevel:      4500,
-	AlertLevel:      4300,
-	LimitLevel:      3200,
-	DisconnectLevel: 2000,
+	ClearLevel:      5500,
+	AlertLevel:      5300,
+	LimitLevel:      4200,
+	DisconnectLevel: 3000,
 	MaxLevel:        8000,
 }
 
 var class5 = RateClass{
 	ID:              5,
 	WindowSize:      10,
-	ClearLevel:      4500,
-	AlertLevel:      4300,
-	LimitLevel:      3200,
-	DisconnectLevel: 2000,
-	MaxLevel:        9000,
+	ClearLevel:      5500,
+	AlertLevel:      5300,
+	LimitLevel:      4200,
+	DisconnectLevel: 3000,
+	MaxLevel:        8000,
 }
 
 // CheckRateLimit calculates moving average
 func CheckRateLimit(last time.Time, now time.Time, class RateClass, curAvg int64) (status RateLimitStatus, newAvg int64) {
 	delta := now.Sub(last).Milliseconds()
 
-	curAvg = (curAvg*(class.WindowSize-1) + delta) / class.WindowSize
+	curAvg = (curAvg * (class.WindowSize - 1) / class.WindowSize) + (delta / class.WindowSize)
 
 	if curAvg > class.MaxLevel {
 		curAvg = class.MaxLevel
 	}
 
 	switch {
-	case curAvg > class.ClearLevel:
-		return RateLimitStatusClear, curAvg
 	case curAvg < class.DisconnectLevel:
 		return RateLimitStatusDisconnect, curAvg
 	case curAvg < class.LimitLevel:
