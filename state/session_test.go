@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"net/netip"
 	"sync"
 	"testing"
@@ -353,4 +354,23 @@ func TestSession_Close(t *testing.T) {
 	}
 	s.Close()
 	<-s.Closed()
+}
+
+func TestSession_CheckRateLimit(t *testing.T) {
+
+	sess := NewSession()
+
+	for i := 0; i < 500; i++ {
+		switch sess.CheckRateLimit(wire.ICBM, wire.ICBMChannelMsgToHost) {
+		case wire.RateLimitStatusLimited:
+			fmt.Println("limited")
+		case wire.RateLimitStatusAlert:
+			fmt.Println("alert")
+		case wire.RateLimitStatusClear:
+			fmt.Println("clear")
+		case wire.RateLimitStatusDisconnect:
+			fmt.Println("disconnect")
+		}
+		time.Sleep(1 * time.Second)
+	}
 }

@@ -48,32 +48,6 @@ func (s OServiceService) ClientVersions(_ context.Context, frame wire.SNACFrame,
 // rateLimitSNACV1 is the rate params reply sent to AIM 1.x clients that does
 // not contain LastTime and CurrentState fields.
 var rateLimitSNACV1 = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
-	RateClasses: []struct {
-		ID              uint16
-		WindowSize      uint32
-		ClearLevel      uint32
-		AlertLevel      uint32
-		LimitLevel      uint32
-		DisconnectLevel uint32
-		CurrentLevel    uint32
-		MaxLevel        uint32
-		V2Params        *struct {
-			LastTime     uint32
-			CurrentState uint8
-		} `oscar:"optional"`
-	}{
-		{
-			ID:              0x01,
-			WindowSize:      0x0050,
-			ClearLevel:      0x09C4,
-			AlertLevel:      0x07D0,
-			LimitLevel:      0x05DC,
-			DisconnectLevel: 0x0320,
-			CurrentLevel:    0x0D69,
-			MaxLevel:        0x1770,
-			V2Params:        nil,
-		},
-	},
 	RateGroups: []struct {
 		ID    uint16
 		Pairs []struct {
@@ -81,50 +55,16 @@ var rateLimitSNACV1 = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
 			SubGroup  uint16
 		} `oscar:"count_prefix=uint16"`
 	}{
-		{
-			ID: 1,
-			Pairs: []struct {
-				FoodGroup uint16
-				SubGroup  uint16
-			}{},
-		},
+		{ID: 1},
+		{ID: 2},
+		{ID: 3},
+		{ID: 4},
+		{ID: 5},
 	},
 }
 
 // rateLimitSNACV2 is the rate params reply sent to non-AIM 1.x clients.
 var rateLimitSNACV2 = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
-	RateClasses: []struct {
-		ID              uint16
-		WindowSize      uint32
-		ClearLevel      uint32
-		AlertLevel      uint32
-		LimitLevel      uint32
-		DisconnectLevel uint32
-		CurrentLevel    uint32
-		MaxLevel        uint32
-		V2Params        *struct {
-			LastTime     uint32
-			CurrentState uint8
-		} `oscar:"optional"`
-	}{
-		{
-			ID:              0x01,
-			WindowSize:      0x0050,
-			ClearLevel:      0x09C4,
-			AlertLevel:      0x07D0,
-			LimitLevel:      0x05DC,
-			DisconnectLevel: 0x0320,
-			CurrentLevel:    0x0D69,
-			MaxLevel:        0x1770,
-			V2Params: &struct {
-				LastTime     uint32
-				CurrentState uint8
-			}{
-				LastTime:     0x0000,
-				CurrentState: 0x0,
-			},
-		},
-	},
 	RateGroups: []struct {
 		ID    uint16
 		Pairs []struct {
@@ -132,325 +72,90 @@ var rateLimitSNACV2 = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
 			SubGroup  uint16
 		} `oscar:"count_prefix=uint16"`
 	}{
-		{
-			ID: 1,
-			Pairs: []struct {
-				FoodGroup uint16
-				SubGroup  uint16
-			}{},
-		},
+		{ID: 1},
+		{ID: 2},
+		{ID: 3},
+		{ID: 4},
+		{ID: 5},
 	},
 }
 
 // populate the rate limit SNAC with a rule for each subgroup
 func init() {
-	foodGroupToSubgroup := map[uint16][]uint16{
-		wire.OService: {
-			wire.OServiceErr,
-			wire.OServiceClientOnline,
-			wire.OServiceHostOnline,
-			wire.OServiceServiceRequest,
-			wire.OServiceServiceResponse,
-			wire.OServiceRateParamsQuery,
-			wire.OServiceRateParamsReply,
-			wire.OServiceRateParamsSubAdd,
-			wire.OServiceRateDelParamSub,
-			wire.OServiceRateParamChange,
-			wire.OServicePauseReq,
-			wire.OServicePauseAck,
-			wire.OServiceResume,
-			wire.OServiceUserInfoQuery,
-			wire.OServiceUserInfoUpdate,
-			wire.OServiceEvilNotification,
-			wire.OServiceIdleNotification,
-			wire.OServiceMigrateGroups,
-			wire.OServiceMotd,
-			wire.OServiceSetPrivacyFlags,
-			wire.OServiceWellKnownUrls,
-			wire.OServiceNoop,
-			wire.OServiceClientVersions,
-			wire.OServiceHostVersions,
-			wire.OServiceMaxConfigQuery,
-			wire.OServiceMaxConfigReply,
-			wire.OServiceStoreConfig,
-			wire.OServiceConfigQuery,
-			wire.OServiceConfigReply,
-			wire.OServiceSetUserInfoFields,
-			wire.OServiceProbeReq,
-			wire.OServiceProbeAck,
-			wire.OServiceBartReply,
-			wire.OServiceBartQuery2,
-			wire.OServiceBartReply2,
-		},
-		wire.Locate: {
-			wire.LocateErr,
-			wire.LocateRightsQuery,
-			wire.LocateRightsReply,
-			wire.LocateSetInfo,
-			wire.LocateUserInfoQuery,
-			wire.LocateUserInfoReply,
-			wire.LocateWatcherSubRequest,
-			wire.LocateWatcherNotification,
-			wire.LocateSetDirInfo,
-			wire.LocateSetDirReply,
-			wire.LocateGetDirInfo,
-			wire.LocateGetDirReply,
-			wire.LocateGroupCapabilityQuery,
-			wire.LocateGroupCapabilityReply,
-			wire.LocateSetKeywordInfo,
-			wire.LocateSetKeywordReply,
-			wire.LocateGetKeywordInfo,
-			wire.LocateGetKeywordReply,
-			wire.LocateFindListByEmail,
-			wire.LocateFindListReply,
-			wire.LocateUserInfoQuery2,
-		},
-		wire.Buddy: {
-			wire.BuddyErr,
-			wire.BuddyRightsQuery,
-			wire.BuddyRightsReply,
-			wire.BuddyAddBuddies,
-			wire.BuddyDelBuddies,
-			wire.BuddyWatcherListQuery,
-			wire.BuddyWatcherListResponse,
-			wire.BuddyWatcherSubRequest,
-			wire.BuddyWatcherNotification,
-			wire.BuddyRejectNotification,
-			wire.BuddyArrived,
-			wire.BuddyDeparted,
-			wire.BuddyAddTempBuddies,
-			wire.BuddyDelTempBuddies,
-		},
-		wire.ICBM: {
-			wire.ICBMErr,
-			wire.ICBMAddParameters,
-			wire.ICBMDelParameters,
-			wire.ICBMParameterQuery,
-			wire.ICBMParameterReply,
-			wire.ICBMChannelMsgToHost,
-			wire.ICBMChannelMsgToClient,
-			wire.ICBMEvilRequest,
-			wire.ICBMEvilReply,
-			wire.ICBMMissedCalls,
-			wire.ICBMClientErr,
-			wire.ICBMHostAck,
-			wire.ICBMSinStored,
-			wire.ICBMSinListQuery,
-			wire.ICBMSinListReply,
-			wire.ICBMSinRetrieve,
-			wire.ICBMSinDelete,
-			wire.ICBMNotifyRequest,
-			wire.ICBMNotifyReply,
-			wire.ICBMClientEvent,
-			wire.ICBMSinReply,
-		},
-		wire.Invite: {
-			wire.InviteRequestQuery,
-		},
-		wire.ChatNav: {
-			wire.ChatNavErr,
-			wire.ChatNavRequestChatRights,
-			wire.ChatNavRequestExchangeInfo,
-			wire.ChatNavRequestRoomInfo,
-			wire.ChatNavRequestMoreRoomInfo,
-			wire.ChatNavRequestOccupantList,
-			wire.ChatNavSearchForRoom,
-			wire.ChatNavCreateRoom,
-			wire.ChatNavNavInfo,
-		},
-		wire.Chat: {
-			wire.ChatErr,
-			wire.ChatRoomInfoUpdate,
-			wire.ChatUsersJoined,
-			wire.ChatUsersLeft,
-			wire.ChatChannelMsgToHost,
-			wire.ChatChannelMsgToClient,
-			wire.ChatEvilRequest,
-			wire.ChatEvilReply,
-			wire.ChatClientErr,
-			wire.ChatPauseRoomReq,
-			wire.ChatPauseRoomAck,
-			wire.ChatResumeRoom,
-			wire.ChatShowMyRow,
-			wire.ChatShowRowByUsername,
-			wire.ChatShowRowByNumber,
-			wire.ChatShowRowByName,
-			wire.ChatRowInfo,
-			wire.ChatListRows,
-			wire.ChatRowListInfo,
-			wire.ChatMoreRows,
-			wire.ChatMoveToRow,
-			wire.ChatToggleChat,
-			wire.ChatSendQuestion,
-			wire.ChatSendComment,
-			wire.ChatTallyVote,
-			wire.ChatAcceptBid,
-			wire.ChatSendInvite,
-			wire.ChatDeclineInvite,
-			wire.ChatAcceptInvite,
-			wire.ChatNotifyMessage,
-			wire.ChatGotoRow,
-			wire.ChatStageUserJoin,
-			wire.ChatStageUserLeft,
-			wire.ChatUnnamedSnac22,
-			wire.ChatClose,
-			wire.ChatUserBan,
-			wire.ChatUserUnban,
-			wire.ChatJoined,
-			wire.ChatUnnamedSnac27,
-			wire.ChatUnnamedSnac28,
-			wire.ChatUnnamedSnac29,
-			wire.ChatRoomInfoOwner,
-		},
-		wire.BART: {
-			wire.BARTErr,
-			wire.BARTUploadQuery,
-			wire.BARTUploadReply,
-			wire.BARTDownloadQuery,
-			wire.BARTDownloadReply,
-			wire.BARTDownload2Query,
-			wire.BARTDownload2Reply,
-		},
-		wire.Feedbag: {
-			wire.FeedbagErr,
-			wire.FeedbagRightsQuery,
-			wire.FeedbagRightsReply,
-			wire.FeedbagQuery,
-			wire.FeedbagQueryIfModified,
-			wire.FeedbagReply,
-			wire.FeedbagUse,
-			wire.FeedbagInsertItem,
-			wire.FeedbagUpdateItem,
-			wire.FeedbagDeleteItem,
-			wire.FeedbagInsertClass,
-			wire.FeedbagUpdateClass,
-			wire.FeedbagDeleteClass,
-			wire.FeedbagStatus,
-			wire.FeedbagReplyNotModified,
-			wire.FeedbagDeleteUser,
-			wire.FeedbagStartCluster,
-			wire.FeedbagEndCluster,
-			wire.FeedbagAuthorizeBuddy,
-			wire.FeedbagPreAuthorizeBuddy,
-			wire.FeedbagPreAuthorizedBuddy,
-			wire.FeedbagRemoveMe,
-			wire.FeedbagRemoveMe2,
-			wire.FeedbagRequestAuthorizeToHost,
-			wire.FeedbagRequestAuthorizeToClient,
-			wire.FeedbagRespondAuthorizeToHost,
-			wire.FeedbagRespondAuthorizeToClient,
-			wire.FeedbagBuddyAdded,
-			wire.FeedbagRequestAuthorizeToBadog,
-			wire.FeedbagRespondAuthorizeToBadog,
-			wire.FeedbagBuddyAddedToBadog,
-			wire.FeedbagTestSnac,
-			wire.FeedbagForwardMsg,
-			wire.FeedbagIsAuthRequiredQuery,
-			wire.FeedbagIsAuthRequiredReply,
-			wire.FeedbagRecentBuddyUpdate,
-		},
-		wire.BUCP: {
-			wire.BUCPErr,
-			wire.BUCPLoginRequest,
-			wire.BUCPLoginResponse,
-			wire.BUCPRegisterRequest,
-			wire.BUCPChallengeRequest,
-			wire.BUCPChallengeResponse,
-			wire.BUCPAsasnRequest,
-			wire.BUCPSecuridRequest,
-			wire.BUCPRegistrationImageRequest,
-		},
-		wire.Alert: {
-			wire.AlertErr,
-			wire.AlertSetAlertRequest,
-			wire.AlertSetAlertReply,
-			wire.AlertGetSubsRequest,
-			wire.AlertGetSubsResponse,
-			wire.AlertNotifyCapabilities,
-			wire.AlertNotify,
-			wire.AlertGetRuleRequest,
-			wire.AlertGetRuleReply,
-			wire.AlertGetFeedRequest,
-			wire.AlertGetFeedReply,
-			wire.AlertRefreshFeed,
-			wire.AlertEvent,
-			wire.AlertQogSnac,
-			wire.AlertRefreshFeedStock,
-			wire.AlertNotifyTransport,
-			wire.AlertSetAlertRequestV2,
-			wire.AlertSetAlertReplyV2,
-			wire.AlertTransitReply,
-			wire.AlertNotifyAck,
-			wire.AlertNotifyDisplayCapabilities,
-			wire.AlertUserOnline,
-		},
-		wire.ICQ: {
-			wire.ICQErr,
-			wire.ICQDBQuery,
-			wire.ICQDBReply,
-		},
-		wire.PermitDeny: {
-			wire.PermitDenyErr,
-			wire.PermitDenyRightsQuery,
-			wire.PermitDenyRightsReply,
-			wire.PermitDenySetGroupPermitMask,
-			wire.PermitDenyAddPermListEntries,
-			wire.PermitDenyDelPermListEntries,
-			wire.PermitDenyAddDenyListEntries,
-			wire.PermitDenyDelDenyListEntries,
-			wire.PermitDenyBosErr,
-			wire.PermitDenyAddTempPermitListEntries,
-			wire.PermitDenyDelTempPermitListEntries,
-		},
-		wire.ODir: {
-			wire.ODirErr,
-			wire.ODirInfoQuery,
-			wire.ODirInfoReply,
-			wire.ODirKeywordListQuery,
-			wire.ODirKeywordListReply,
-		},
-		wire.UserLookup: {
-			wire.UserLookupFindByEmail,
-		},
-	}
-
-	for _, foodGroup := range []uint16{
-		wire.OService,
-		wire.Locate,
-		wire.Buddy,
-		wire.ICBM,
-		wire.Invite,
-		wire.ChatNav,
-		wire.Chat,
-		wire.BART,
-		wire.Feedbag,
-		wire.BUCP,
-		wire.Alert,
-		wire.ICQ,
-		wire.PermitDeny,
-		wire.ODir,
-		wire.UserLookup,
-	} {
-		subGroups := foodGroupToSubgroup[foodGroup]
-		for _, subGroup := range subGroups {
-			// build response for AIM 1.x clients
-			rateLimitSNACV1.RateGroups[0].Pairs = append(rateLimitSNACV1.RateGroups[0].Pairs, struct {
-				FoodGroup uint16
-				SubGroup  uint16
-			}{
-				FoodGroup: foodGroup,
-				SubGroup:  subGroup,
-			})
-			// build response for all other clients
-			rateLimitSNACV2.RateGroups[0].Pairs = append(rateLimitSNACV2.RateGroups[0].Pairs, struct {
-				FoodGroup uint16
-				SubGroup  uint16
-			}{
-				FoodGroup: foodGroup,
-				SubGroup:  subGroup,
-			})
+	for _, class := range wire.RateClasses {
+		// build response for AIM 1.x clients
+		rateLimitSNACV1.RateClasses = append(rateLimitSNACV1.RateClasses, struct {
+			ID              uint16
+			WindowSize      uint32
+			ClearLevel      uint32
+			AlertLevel      uint32
+			LimitLevel      uint32
+			DisconnectLevel uint32
+			CurrentLevel    uint32
+			MaxLevel        uint32
+			V2Params        *struct {
+				LastTime     uint32
+				CurrentState uint8
+			} `oscar:"optional"`
+		}{
+			ID:              uint16(class.ID),
+			WindowSize:      uint32(class.WindowSize),
+			ClearLevel:      uint32(class.ClearLevel),
+			AlertLevel:      uint32(class.AlertLevel),
+			LimitLevel:      uint32(class.LimitLevel),
+			DisconnectLevel: uint32(class.DisconnectLevel),
+			CurrentLevel:    uint32(class.MaxLevel),
+			MaxLevel:        uint32(class.MaxLevel),
+		})
+		for fg, v := range wire.RateGroups {
+			for sg, classID := range v {
+				rateLimitSNACV1.RateGroups[int(classID)-1].Pairs = append(rateLimitSNACV1.RateGroups[int(classID)-1].Pairs,
+					struct {
+						FoodGroup uint16
+						SubGroup  uint16
+					}{FoodGroup: fg, SubGroup: sg})
+			}
+		}
+		// build response for all other clients
+		rateLimitSNACV2.RateClasses = append(rateLimitSNACV2.RateClasses, struct {
+			ID              uint16
+			WindowSize      uint32
+			ClearLevel      uint32
+			AlertLevel      uint32
+			LimitLevel      uint32
+			DisconnectLevel uint32
+			CurrentLevel    uint32
+			MaxLevel        uint32
+			V2Params        *struct {
+				LastTime     uint32
+				CurrentState uint8
+			} `oscar:"optional"`
+		}{
+			ID:              uint16(class.ID),
+			WindowSize:      uint32(class.WindowSize),
+			ClearLevel:      uint32(class.ClearLevel),
+			AlertLevel:      uint32(class.AlertLevel),
+			LimitLevel:      uint32(class.LimitLevel),
+			DisconnectLevel: uint32(class.DisconnectLevel),
+			CurrentLevel:    uint32(class.MaxLevel),
+			MaxLevel:        uint32(class.MaxLevel),
+			V2Params: &struct {
+				LastTime     uint32
+				CurrentState uint8
+			}{},
+		})
+		for fg, v := range wire.RateGroups {
+			for sg, classID := range v {
+				rateLimitSNACV2.RateGroups[int(classID)-1].Pairs = append(rateLimitSNACV2.RateGroups[int(classID)-1].Pairs,
+					struct {
+						FoodGroup uint16
+						SubGroup  uint16
+					}{FoodGroup: fg, SubGroup: sg})
+			}
 		}
 	}
+
+	fmt.Printf("%+v\n", rateLimitSNACV2)
 }
 
 // RateParamsQuery returns SNAC rate limits. It returns SNAC
@@ -476,6 +181,11 @@ func (s OServiceService) RateParamsQuery(ctx context.Context, sess *state.Sessio
 	limits := rateLimitSNACV2
 	if strings.Contains(sess.ClientID(), "AOL Instant Messenger (TM), version 1.") {
 		limits = rateLimitSNACV1
+	} else {
+		for i, _ := range limits.RateClasses {
+			limits.RateClasses[i].V2Params.LastTime = uint32(time.Now().Unix())
+			limits.RateClasses[i].V2Params.CurrentState = 0x02
+		}
 	}
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{

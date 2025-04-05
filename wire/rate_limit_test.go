@@ -7,7 +7,7 @@ import (
 )
 
 func TestCheckRateLimit(t *testing.T) {
-	class := class5
+	class := RateClasses[4]
 	curLevel := class.MaxLevel
 	last := time.Now()
 	now := last

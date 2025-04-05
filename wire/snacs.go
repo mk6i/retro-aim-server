@@ -291,6 +291,22 @@ type SNAC_0x01_0x07_OServiceRateParamsReply struct {
 	}
 }
 
+type SNAC_0x01_0x0A_OServiceRateParamsChange struct {
+	Code uint8
+	Rate struct {
+		ID              uint16
+		WindowSize      uint32
+		ClearLevel      uint32
+		AlertLevel      uint32
+		LimitLevel      uint32
+		DisconnectLevel uint32
+		CurrentLevel    uint32
+		MaxLevel        uint32
+		LastTime        uint32
+		State           uint8
+	}
+}
+
 type SNAC_0x01_0x08_OServiceRateParamsSubAdd struct {
 	TLVRestBlock
 }

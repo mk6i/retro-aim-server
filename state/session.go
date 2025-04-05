@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"net/netip"
 	"sync"
 	"time"
@@ -44,19 +45,33 @@ type Session struct {
 	userStatusBitmask uint32
 	clientID          string
 	remoteAddr        *netip.AddrPort
+	rateByClass       map[wire.RateLimitClassID]*rateLimitParams
+}
+
+type rateLimitParams struct {
+	curLevel int64
+	lastSet  time.Time
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
 // up to 1000 pending messages before blocking.
 func NewSession() *Session {
+	now := time.Now()
 	return &Session{
 		msgCh:             make(chan wire.SNACMessage, 1000),
 		nowFn:             time.Now,
 		stopCh:            make(chan struct{}),
-		signonTime:        time.Now(),
+		signonTime:        now,
 		caps:              make([][16]byte, 0),
 		userInfoBitmask:   wire.OServiceUserFlagOSCARFree,
 		userStatusBitmask: wire.OServiceUserStatusAvailable,
+		rateByClass: map[wire.RateLimitClassID]*rateLimitParams{
+			1: {wire.RateClasses[0].MaxLevel, now},
+			2: {wire.RateClasses[1].MaxLevel, now},
+			3: {wire.RateClasses[2].MaxLevel, now},
+			4: {wire.RateClasses[3].MaxLevel, now},
+			5: {wire.RateClasses[4].MaxLevel, now},
+		},
 	}
 }
 
@@ -353,6 +368,10 @@ func (s *Session) RelayMessage(msg wire.SNACMessage) SessSendStatus {
 func (s *Session) Close() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	s.close()
+}
+
+func (s *Session) close() {
 	if s.closed {
 		return
 	}
@@ -377,4 +396,28 @@ func (s *Session) ClientID() string {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.clientID
+}
+
+func (s *Session) CheckRateLimit(foodGroup, subGroup uint16) wire.RateLimitStatus {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	class, ok := wire.RateClassLookup(foodGroup, subGroup)
+	if !ok {
+		panic(fmt.Sprintf("no rate class found for food group %s sub group %s",
+			wire.FoodGroupName(foodGroup), wire.SubGroupName(foodGroup, subGroup)))
+	}
+
+	params := s.rateByClass[class.ID]
+	now := s.nowFn()
+
+	status, newLevel := wire.CheckRateLimit(params.lastSet, now, class, params.curLevel)
+	params.curLevel = newLevel
+	params.lastSet = now
+
+	if status == wire.RateLimitStatusDisconnect {
+		s.close()
+	}
+
+	return status
 }

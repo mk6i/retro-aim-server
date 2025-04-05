@@ -82,6 +82,27 @@ func newICBMErr(requestID uint32, errCode uint16) *wire.SNACMessage {
 // the wire.ICBMChannelMsgToHost message contains a request acknowledgement
 // flag.
 func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x06_ICBMChannelMsgToHost) (*wire.SNACMessage, error) {
+	status := sess.CheckRateLimit(inFrame.FoodGroup, inFrame.SubGroup)
+	switch status {
+	case wire.RateLimitStatusLimited:
+		fmt.Println("user is rate limited")
+		return &wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceRateParamChange,
+			},
+			Body: wire.SNAC_0x01_0x0A_OServiceRateParamsChange{
+				Code: 0x0003,
+			},
+		}, nil
+	case wire.RateLimitStatusAlert:
+		fmt.Println("user is warned about rate limit")
+	case wire.RateLimitStatusClear:
+	case wire.RateLimitStatusDisconnect:
+		fmt.Println("user was disconnected due to rate limit")
+		return nil, nil
+	}
+
 	recip := state.NewIdentScreenName(inBody.ScreenName)
 
 	rel, err := s.relationshipFetcher.Relationship(ctx, sess.IdentScreenName(), recip)
@@ -164,7 +185,7 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 	}
 
 	// ack message back to sender
-	return &wire.SNACMessage{
+	s.messageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.ICBM,
 			SubGroup:  wire.ICBMHostAck,
@@ -175,7 +196,41 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 			ChannelID:  inBody.ChannelID,
 			ScreenName: inBody.ScreenName,
 		},
-	}, nil
+	})
+
+	s.messageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.OService,
+			SubGroup:  wire.OServiceRateParamChange,
+		},
+		Body: wire.SNAC_0x01_0x0A_OServiceRateParamsChange{
+			Code: 0x02,
+			Rate: struct {
+				ID              uint16
+				WindowSize      uint32
+				ClearLevel      uint32
+				AlertLevel      uint32
+				LimitLevel      uint32
+				DisconnectLevel uint32
+				CurrentLevel    uint32
+				MaxLevel        uint32
+				LastTime        uint32
+				State           uint8
+			}{
+				ID:              1,
+				WindowSize:      80,
+				ClearLevel:      2500,
+				AlertLevel:      2000,
+				LimitLevel:      1500,
+				DisconnectLevel: 800,
+				CurrentLevel:    500,
+				MaxLevel:        6000,
+				LastTime:        uint32(time.Now().UnixMilli()),
+				State:           2,
+			},
+		},
+	})
+	return nil, nil
 }
 
 // addExternalIP appends the client's IP address to the TLV if it's an ICBM
