@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -100,6 +101,8 @@ func (rt ChatServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 	}
 
 	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
 		chatSess.Close()
 		rt.SignoutChat(ctx, chatSess)
 	}()

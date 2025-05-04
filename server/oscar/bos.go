@@ -175,6 +175,8 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 
 	defer func() {
 		sess.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
 		if rt.DepartureNotifier != nil {
 			if err := rt.DepartureNotifier.BroadcastBuddyDeparted(ctx, sess); err != nil {
 				rt.Logger.ErrorContext(ctx, "error sending buddy departure notifications", "err", err.Error())
