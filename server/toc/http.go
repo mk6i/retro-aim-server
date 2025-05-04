@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"net"
 	"net/http"
 
 	"golang.org/x/net/html"
@@ -69,10 +70,27 @@ func init() {
 // NewServeMux creates and returns an HTTP mux that serves all TOC routes.
 func (s OSCARProxy) NewServeMux() http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("GET /info", s.AuthMiddleware(http.HandlerFunc(s.ProfileHandler)))
-	mux.Handle("GET /dir_info", s.AuthMiddleware(http.HandlerFunc(s.DirInfoHandler)))
-	mux.Handle("GET /dir_search", s.AuthMiddleware(http.HandlerFunc(s.DirSearchHandler)))
+	mux.Handle("GET /info", s.RateLimiterMiddleware(s.AuthMiddleware(http.HandlerFunc(s.ProfileHandler))))
+	mux.Handle("GET /dir_info", s.RateLimiterMiddleware(s.AuthMiddleware(http.HandlerFunc(s.DirInfoHandler))))
+	mux.Handle("GET /dir_search", s.RateLimiterMiddleware(s.AuthMiddleware(http.HandlerFunc(s.DirSearchHandler))))
 	return mux
+}
+
+func (s OSCARProxy) RateLimiterMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			s.Logger.Error("failed to parse remote address", "err", err.Error())
+			return
+		}
+
+		if !s.HTTPIPRateLimiter.Allow(ip) {
+			http.Error(w, "rate limited", http.StatusTooManyRequests)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // AuthMiddleware is an HTTP middleware that enforces authentication using an

@@ -16,8 +16,9 @@ import (
 )
 
 var (
-	cmdInternalSvcErr = "ERROR:989:internal server error"
-	errDisconnect     = errors.New("got booted by another session")
+	cmdInternalSvcErr    = "ERROR:989:internal server error"
+	rateLimitExceededErr = "ERROR:903"
+	errDisconnect        = errors.New("got booted by another session")
 )
 
 // RecvBOS routes incoming SNAC messages from the BOS server to their

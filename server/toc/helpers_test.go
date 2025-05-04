@@ -2,6 +2,7 @@ package toc
 
 import (
 	"context"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 
@@ -286,6 +287,53 @@ func newTestSession(screenName state.DisplayScreenName, options ...func(session 
 	s := state.NewSession()
 	s.SetIdentScreenName(screenName.IdentScreenName())
 	s.SetDisplayScreenName(screenName)
+	s.SetRateClasses(time.Now(), wire.NewRateLimitClasses([5]wire.RateClass{
+		{
+			ID:              1,
+			WindowSize:      80,
+			ClearLevel:      2500,
+			AlertLevel:      2000,
+			LimitLevel:      1500,
+			DisconnectLevel: 800,
+			MaxLevel:        6000,
+		},
+		{
+			ID:              2,
+			WindowSize:      80,
+			ClearLevel:      3000,
+			AlertLevel:      2000,
+			LimitLevel:      1500,
+			DisconnectLevel: 1000,
+			MaxLevel:        6000,
+		},
+		{
+			ID:              3,
+			WindowSize:      20,
+			ClearLevel:      5100,
+			AlertLevel:      5000,
+			LimitLevel:      4000,
+			DisconnectLevel: 3000,
+			MaxLevel:        6000,
+		},
+		{
+			ID:              4,
+			WindowSize:      20,
+			ClearLevel:      5500,
+			AlertLevel:      5300,
+			LimitLevel:      4200,
+			DisconnectLevel: 3000,
+			MaxLevel:        8000,
+		},
+		{
+			ID:              5,
+			WindowSize:      10,
+			ClearLevel:      5500,
+			AlertLevel:      5300,
+			LimitLevel:      4200,
+			DisconnectLevel: 3000,
+			MaxLevel:        8000,
+		},
+	}))
 	for _, op := range options {
 		op(s)
 	}

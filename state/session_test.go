@@ -1,6 +1,7 @@
 package state
 
 import (
+	"math"
 	"net/netip"
 	"sync"
 	"testing"
@@ -353,4 +354,226 @@ func TestSession_Close(t *testing.T) {
 	}
 	s.Close()
 	<-s.Closed()
+}
+
+func TestSession_EvaluateRateLimit_ObserveRateChanges(t *testing.T) {
+	classParams := [5]wire.RateClass{
+		{
+			ID:              1,
+			WindowSize:      80,
+			ClearLevel:      2500,
+			AlertLevel:      2000,
+			LimitLevel:      1500,
+			DisconnectLevel: 800,
+			MaxLevel:        6000,
+		},
+		{
+			ID:              2,
+			WindowSize:      80,
+			ClearLevel:      3000,
+			AlertLevel:      2000,
+			LimitLevel:      1500,
+			DisconnectLevel: 1000,
+			MaxLevel:        6000,
+		},
+		{
+			ID:              3,
+			WindowSize:      20,
+			ClearLevel:      5100,
+			AlertLevel:      5000,
+			LimitLevel:      4000,
+			DisconnectLevel: 3000,
+			MaxLevel:        6000,
+		},
+		{
+			ID:              4,
+			WindowSize:      20,
+			ClearLevel:      5500,
+			AlertLevel:      5300,
+			LimitLevel:      4200,
+			DisconnectLevel: 3000,
+			MaxLevel:        8000,
+		},
+		{
+			ID:              5,
+			WindowSize:      10,
+			ClearLevel:      5500,
+			AlertLevel:      5300,
+			LimitLevel:      4200,
+			DisconnectLevel: 3000,
+			MaxLevel:        8000,
+		},
+	}
+	rateClasses := wire.NewRateLimitClasses(classParams)
+
+	t.Run("we can action every 5 seconds indefinitely without getting rate limited", func(t *testing.T) {
+		now := time.Now()
+
+		sess := NewSession()
+		sess.SetRateClasses(now, rateClasses)
+
+		rateClass := rateClasses.Get(3)
+		sess.SubscribeRateLimits([]wire.RateLimitClassID{rateClass.ID})
+
+		for i := 0; i < 100; i++ {
+			now = now.Add(5 * time.Second)
+			have := sess.EvaluateRateLimit(now, rateClass.ID)
+			assert.Equal(t, wire.RateLimitStatusClear, have)
+		}
+	})
+
+	t.Run("reach disconnect threshold", func(t *testing.T) {
+		now := time.Now()
+
+		sess := NewSession()
+		sess.SetRateClasses(now, rateClasses)
+
+		rateClass := rateClasses.Get(3)
+		sess.SubscribeRateLimits([]wire.RateLimitClassID{rateClass.ID})
+
+		// record some event in the rate limiter
+		want := []wire.RateLimitStatus{
+			wire.RateLimitStatusClear,
+			wire.RateLimitStatusClear,
+			wire.RateLimitStatusClear,
+			wire.RateLimitStatusClear,
+			wire.RateLimitStatusAlert,
+			wire.RateLimitStatusAlert,
+			wire.RateLimitStatusAlert,
+			wire.RateLimitStatusAlert,
+			wire.RateLimitStatusAlert,
+			wire.RateLimitStatusLimited,
+			wire.RateLimitStatusLimited,
+			wire.RateLimitStatusLimited,
+			wire.RateLimitStatusLimited,
+			wire.RateLimitStatusLimited,
+			wire.RateLimitStatusLimited,
+			wire.RateLimitStatusLimited,
+			wire.RateLimitStatusLimited,
+			wire.RateLimitStatusDisconnect,
+		}
+		for i := 0; i < len(want); i++ {
+			now = now.Add(1 * time.Second)
+			have := sess.EvaluateRateLimit(now, rateClass.ID)
+			assert.Equal(t, want[i], have)
+		}
+
+		select {
+		case <-sess.Closed():
+		default:
+			t.Error("expected session to be closed")
+		}
+	})
+
+	t.Run("reach rate limit threshold, wait for clear threshold", func(t *testing.T) {
+		now := time.Now()
+
+		sess := NewSession()
+		sess.SetRateClasses(now, rateClasses)
+
+		rateClass := rateClasses.Get(3)
+		sess.SubscribeRateLimits([]wire.RateLimitClassID{rateClass.ID})
+
+		// first reach the rate limit threshold
+		want := []wire.RateLimitStatus{
+			wire.RateLimitStatusClear,
+			wire.RateLimitStatusClear,
+			wire.RateLimitStatusClear,
+			wire.RateLimitStatusClear,
+			wire.RateLimitStatusAlert,
+			wire.RateLimitStatusAlert,
+			wire.RateLimitStatusAlert,
+			wire.RateLimitStatusAlert,
+			wire.RateLimitStatusAlert,
+			wire.RateLimitStatusLimited,
+		}
+		for i := 0; i < len(want); i++ {
+			now = now.Add(1 * time.Second)
+			have := sess.EvaluateRateLimit(now, rateClass.ID)
+			assert.Equal(t, want[i], have)
+
+			if i > 0 && want[i-1] != want[i] {
+				classChanges, rateChanges := sess.ObserveRateChanges(now)
+				assert.Empty(t, classChanges)
+				if assert.NotEmpty(t, rateChanges) {
+					rateDelta := rateChanges[0]
+					assert.Equal(t, rateClass, rateDelta.RateClass)
+					assert.Equal(t, want[i], rateDelta.CurrentStatus)
+					assert.True(t, rateDelta.Subscribed)
+					if want[i] == wire.RateLimitStatusLimited {
+						assert.True(t, rateDelta.LimitedNow)
+					}
+				}
+			}
+		}
+
+		// this is a rearranged moving average formula that determines how many
+		// milliseconds it will take to reach the clear threshold
+		timeToRecover := int(math.Ceil((time.Duration(rateClass.ClearLevel*rateClass.WindowSize-sess.rateByClassID[rateClass.ID-1].CurrentLevel*(rateClass.WindowSize-1)) * time.Millisecond).Seconds()))
+		assert.True(t, timeToRecover > 0)
+
+		// indicate the time rate limiting kicked in
+		timeLimited := now
+
+		for i := 0; i < timeToRecover; i++ {
+			now = now.Add(1 * time.Second)
+			classDelta, stateDelta := sess.ObserveRateChanges(now)
+			assert.Empty(t, classDelta)
+
+			if i == timeToRecover-1 {
+				// assert that the clear threshold has been met.
+				assert.ElementsMatch(t, stateDelta, []RateClassState{
+					{
+						RateClass:     rateClass,
+						CurrentLevel:  5140,
+						CurrentStatus: wire.RateLimitStatusClear,
+						LastTime:      timeLimited,
+						Subscribed:    true,
+						LimitedNow:    false,
+					}})
+			} else {
+				// assert that no changed have been observed, it's still rate-limited
+				assert.Nil(t, stateDelta)
+			}
+		}
+	})
+
+	t.Run("observe a rate class change", func(t *testing.T) {
+		now := time.Now()
+
+		sess := NewSession()
+		sess.SetRateClasses(now, rateClasses)
+
+		rateClass := rateClasses.Get(3)
+		sess.SubscribeRateLimits([]wire.RateLimitClassID{rateClass.ID})
+
+		now = now.Add(1 * time.Second)
+		classDelta, stateDelta := sess.ObserveRateChanges(now)
+		assert.Empty(t, classDelta)
+		assert.Empty(t, stateDelta)
+
+		paramsCopy := classParams
+		paramsCopy[rateClass.ID-1].LimitLevel++
+
+		newRateClasses := wire.NewRateLimitClasses(paramsCopy)
+
+		now = now.Add(1 * time.Second)
+		sess.SetRateClasses(now, newRateClasses)
+
+		now = now.Add(1 * time.Second)
+		classDelta, stateDelta = sess.ObserveRateChanges(now)
+		assert.Equal(t, classDelta[0].RateClass, newRateClasses.Get(rateClass.ID))
+		assert.Empty(t, stateDelta)
+	})
+}
+
+func TestSession_SetAndGetFoodGroupVersions(t *testing.T) {
+	versions := [wire.MDir + 1]uint16{}
+	versions[wire.Feedbag] = 1
+	versions[wire.OService] = 2
+
+	s := NewSession()
+	s.SetFoodGroupVersions(versions)
+
+	assert.Equal(t, versions, s.FoodGroupVersions())
 }

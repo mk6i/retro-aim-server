@@ -762,6 +762,12 @@ func sessOptUIN(UIN uint32) func(session *state.Session) {
 	}
 }
 
+func sessOptFoodGroupVersions(versions [wire.MDir + 1]uint16) func(session *state.Session) {
+	return func(session *state.Session) {
+		session.SetFoodGroupVersions(versions)
+	}
+}
+
 // sessClientID sets the client ID
 func sessClientID(clientID string) func(session *state.Session) {
 	return func(session *state.Session) {

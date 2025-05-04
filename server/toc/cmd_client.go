@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -128,6 +129,8 @@ type OSCARProxy struct {
 	OServiceServiceChat OServiceService
 	PermitDenyService   PermitDenyService
 	TOCConfigStore      TOCConfigStore
+	SNACRateLimits      wire.SNACRateLimits
+	HTTPIPRateLimiter   *IPRateLimiter
 }
 
 // RecvClientCmd processes a client TOC command and returns a server reply.
@@ -246,6 +249,10 @@ func (s OSCARProxy) RecvClientCmd(
 //
 // Command syntax: toc_add_buddy <Buddy User 1> [<Buddy User2> [<Buddy User 3> [...]]]
 func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, args []byte) string {
+	if msg, isLimited := s.checkRateLimit(ctx, me, wire.Buddy, wire.BuddyAddBuddies); isLimited {
+		return msg
+	}
+
 	users, err := parseArgs(args)
 	if err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
@@ -276,6 +283,10 @@ func (s OSCARProxy) AddBuddy(ctx context.Context, me *state.Session, args []byte
 //
 // Command syntax: toc_add_permit [ <User 1> [<User 2> [...]]]
 func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, args []byte) string {
+	if msg, isLimited := s.checkRateLimit(ctx, me, wire.PermitDeny, wire.PermitDenyAddDenyListEntries); isLimited {
+		return msg
+	}
+
 	users, err := parseArgs(args)
 	if err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
@@ -305,6 +316,10 @@ func (s OSCARProxy) AddPermit(ctx context.Context, me *state.Session, args []byt
 //
 // Command syntax: toc_add_deny [ <User 1> [<User 2> [...]]]
 func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, args []byte) string {
+	if msg, isLimited := s.checkRateLimit(ctx, me, wire.PermitDeny, wire.PermitDenyAddDenyListEntries); isLimited {
+		return msg
+	}
+
 	users, err := parseArgs(args)
 	if err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
@@ -332,6 +347,10 @@ func (s OSCARProxy) AddDeny(ctx context.Context, me *state.Session, args []byte)
 //
 // Command syntax: toc_change_passwd <existing_passwd> <new_passwd>
 func (s OSCARProxy) ChangePassword(ctx context.Context, me *state.Session, args []byte) string {
+	if msg, isLimited := s.checkRateLimit(ctx, me, wire.Admin, wire.AdminInfoChangeRequest); isLimited {
+		return msg
+	}
+
 	var oldPass, newPass string
 
 	if _, err := parseArgs(args, &oldPass, &newPass); err != nil {
@@ -388,6 +407,7 @@ func (s OSCARProxy) ChatAccept(
 	chatRegistry *ChatRegistry,
 	args []byte,
 ) (int, string) {
+
 	var chatIDStr string
 
 	if _, err := parseArgs(args, &chatIDStr); err != nil {
@@ -401,6 +421,10 @@ func (s OSCARProxy) ChatAccept(
 	chatInfo, found := chatRegistry.LookupRoom(chatID)
 	if !found {
 		return 0, s.runtimeErr(ctx, fmt.Errorf("chatRegistry.LookupRoom: no chat found for ID %d", chatID))
+	}
+
+	if msg, isLimited := s.checkRateLimit(ctx, me, wire.ChatNav, wire.ChatNavRequestRoomInfo); isLimited {
+		return 0, msg
 	}
 
 	reqRoomSNAC := wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
@@ -435,6 +459,10 @@ func (s OSCARProxy) ChatAccept(
 		return 0, s.runtimeErr(ctx, errors.New("roomInfo.Bytes: missing wire.ChatRoomTLVRoomName"))
 	}
 
+	if msg, isLimited := s.checkRateLimit(ctx, me, wire.OService, wire.OServiceServiceRequest); isLimited {
+		return 0, msg
+	}
+
 	svcReqSNAC := wire.SNAC_0x01_0x04_OServiceServiceRequest{
 		FoodGroup: wire.Chat,
 		TLVRestBlock: wire.TLVRestBlock{
@@ -466,6 +494,10 @@ func (s OSCARProxy) ChatAccept(
 	chatSess, err := s.AuthService.RegisterChatSession(ctx, loginCookie)
 	if err != nil {
 		return 0, s.runtimeErr(ctx, fmt.Errorf("AuthService.RegisterChatSession: %w", err))
+	}
+
+	if msg, isLimited := s.checkRateLimit(ctx, me, wire.OService, wire.OServiceClientOnline); isLimited {
+		return 0, msg
 	}
 
 	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, chatSess); err != nil {
@@ -505,6 +537,10 @@ func (s OSCARProxy) ChatInvite(ctx context.Context, me *state.Session, chatRegis
 	}
 
 	for _, guest := range users {
+		if msg, isLimited := s.checkRateLimit(ctx, me, wire.ICBM, wire.ICBMChannelMsgToHost); isLimited {
+			return msg
+		}
+
 		snac := wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
 			ChannelID:  wire.ICBMChannelRendezvous,
 			ScreenName: guest,
@@ -568,6 +604,10 @@ func (s OSCARProxy) ChatJoin(
 		return 0, s.runtimeErr(ctx, fmt.Errorf("strconv.Atoi: %w", err))
 	}
 
+	if msg, isLimited := s.checkRateLimit(ctx, me, wire.Chat, wire.ChatRoomInfoUpdate); isLimited {
+		return 0, msg
+	}
+
 	mkRoomReq := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
 		Exchange: uint16(exchange),
 		Cookie:   "create",
@@ -597,6 +637,10 @@ func (s OSCARProxy) ChatJoin(
 	inBody := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{}
 	if err := wire.UnmarshalBE(&inBody, bytes.NewReader(buf)); err != nil {
 		return 0, s.runtimeErr(ctx, fmt.Errorf("wire.UnmarshalBE: %w", err))
+	}
+
+	if msg, isLimited := s.checkRateLimit(ctx, me, wire.OService, wire.OServiceServiceRequest); isLimited {
+		return 0, msg
 	}
 
 	svcReqSNAC := wire.SNAC_0x01_0x04_OServiceServiceRequest{
@@ -630,6 +674,10 @@ func (s OSCARProxy) ChatJoin(
 	chatSess, err := s.AuthService.RegisterChatSession(ctx, loginCookie)
 	if err != nil {
 		return 0, s.runtimeErr(ctx, fmt.Errorf("AuthService.RegisterChatSession: %w", err))
+	}
+
+	if msg, isLimited := s.checkRateLimit(ctx, me, wire.OService, wire.OServiceClientOnline); isLimited {
+		return 0, msg
 	}
 
 	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, chatSess); err != nil {
@@ -706,6 +754,10 @@ func (s OSCARProxy) ChatSend(ctx context.Context, chatRegistry *ChatRegistry, ar
 	me := chatRegistry.RetrieveSess(chatID)
 	if me == nil {
 		return s.runtimeErr(ctx, fmt.Errorf("chatRegistry.RetrieveSess: session for chat ID `%d` not found", chatID))
+	}
+
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.Chat, wire.ChatChannelMsgToHost); isLimited {
+		return errMsg
 	}
 
 	block := wire.TLVRestBlock{}
@@ -789,6 +841,10 @@ func (s OSCARProxy) ChatWhisper(ctx context.Context, chatRegistry *ChatRegistry,
 		return s.runtimeErr(ctx, fmt.Errorf("chatRegistry.RetrieveSess: session for chat ID `%d` not found", chatID))
 	}
 
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.Chat, wire.ChatChannelMsgToHost); isLimited {
+		return errMsg
+	}
+
 	block := wire.TLVRestBlock{}
 	block.Append(wire.NewTLVBE(wire.ChatTLVSenderInformation, me.TLVUserInfo()))
 	block.Append(wire.NewTLVBE(wire.ChatTLVWhisperToUser, recip))
@@ -820,6 +876,10 @@ func (s OSCARProxy) ChatWhisper(ctx context.Context, chatRegistry *ChatRegistry,
 //
 // Command syntax: toc_evil <User> <norm|anon>
 func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, args []byte) string {
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.ICBM, wire.ICBMEvilRequest); isLimited {
+		return errMsg
+	}
+
 	var user, scope string
 
 	if _, err := parseArgs(args, &user, &scope); err != nil {
@@ -865,6 +925,10 @@ func (s OSCARProxy) Evil(ctx context.Context, me *state.Session, args []byte) st
 //
 // Command syntax: toc_format_nickname <new_format>
 func (s OSCARProxy) FormatNickname(ctx context.Context, me *state.Session, args []byte) string {
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.Admin, wire.AdminInfoChangeRequest); isLimited {
+		return errMsg
+	}
+
 	var newFormat string
 
 	if _, err := parseArgs(args, &newFormat); err != nil {
@@ -922,6 +986,10 @@ func (s OSCARProxy) FormatNickname(ctx context.Context, me *state.Session, args 
 //
 // Command syntax: toc_dir_search <info information>
 func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, args []byte) string {
+	if status := me.EvaluateRateLimit(time.Now(), 1); status == wire.RateLimitStatusLimited {
+		return rateLimitExceededErr
+	}
+
 	var info string
 
 	if _, err := parseArgs(args, &info); err != nil {
@@ -976,6 +1044,10 @@ func (s OSCARProxy) GetDirSearchURL(ctx context.Context, me *state.Session, args
 //
 // Command syntax: toc_get_dir <username>
 func (s OSCARProxy) GetDirURL(ctx context.Context, me *state.Session, args []byte) string {
+	if status := me.EvaluateRateLimit(time.Now(), 1); status == wire.RateLimitStatusLimited {
+		return rateLimitExceededErr
+	}
+
 	var user string
 
 	if _, err := parseArgs(args, &user); err != nil {
@@ -1002,6 +1074,10 @@ func (s OSCARProxy) GetDirURL(ctx context.Context, me *state.Session, args []byt
 //
 // Command syntax: toc_get_info <username>
 func (s OSCARProxy) GetInfoURL(ctx context.Context, me *state.Session, args []byte) string {
+	if status := me.EvaluateRateLimit(time.Now(), 1); status == wire.RateLimitStatusLimited {
+		return rateLimitExceededErr
+	}
+
 	var user string
 
 	if _, err := parseArgs(args, &user); err != nil {
@@ -1031,6 +1107,10 @@ func (s OSCARProxy) GetInfoURL(ctx context.Context, me *state.Session, args []by
 //
 // Command syntax: toc_get_status <screenname>
 func (s OSCARProxy) GetStatus(ctx context.Context, me *state.Session, args []byte) string {
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.Locate, wire.LocateUserInfoQuery); isLimited {
+		return errMsg
+	}
+
 	var them string
 
 	if _, err := parseArgs(args, &them); err != nil {
@@ -1076,6 +1156,9 @@ func (s OSCARProxy) GetStatus(ctx context.Context, me *state.Session, args []byt
 //
 // Command syntax: toc_init_done
 func (s OSCARProxy) InitDone(ctx context.Context, sess *state.Session) string {
+	if errMsg, isLimited := s.checkRateLimit(ctx, sess, wire.OService, wire.OServiceClientOnline); isLimited {
+		return errMsg
+	}
 	if err := s.OServiceServiceBOS.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("OServiceServiceBOS.ClientOnliney: %w", err))
 	}
@@ -1090,6 +1173,10 @@ func (s OSCARProxy) InitDone(ctx context.Context, sess *state.Session) string {
 //
 // Command syntax: toc_remove_buddy <Buddy User 1> [<Buddy User2> [<Buddy User 3> [...]]]
 func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, args []byte) string {
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.Buddy, wire.BuddyDelBuddies); isLimited {
+		return errMsg
+	}
+
 	users, err := parseArgs(args)
 	if err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
@@ -1121,6 +1208,10 @@ func (s OSCARProxy) RemoveBuddy(ctx context.Context, me *state.Session, args []b
 //
 // Command syntax: toc_rvous_accept <nick> <cookie> <service>
 func (s OSCARProxy) RvousAccept(ctx context.Context, me *state.Session, args []byte) string {
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.ICBM, wire.ICBMChannelMsgToHost); isLimited {
+		return errMsg
+	}
+
 	var nick, cookie, service string
 
 	if _, err := parseArgs(args, &nick, &cookie, &service); err != nil {
@@ -1174,6 +1265,10 @@ func (s OSCARProxy) RvousAccept(ctx context.Context, me *state.Session, args []b
 //
 // Command syntax: toc_rvous_cancel <nick> <cookie> <service>
 func (s OSCARProxy) RvousCancel(ctx context.Context, me *state.Session, args []byte) string {
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.ICBM, wire.ICBMChannelMsgToHost); isLimited {
+		return errMsg
+	}
+
 	var nick, cookie, service string
 
 	if _, err := parseArgs(args, &nick, &cookie, &service); err != nil {
@@ -1229,6 +1324,10 @@ func (s OSCARProxy) RvousCancel(ctx context.Context, me *state.Session, args []b
 //
 // Command syntax: toc_send_im <Destination User> <Message> [auto]
 func (s OSCARProxy) SendIM(ctx context.Context, sender *state.Session, args []byte) string {
+	if msg, isLimited := s.checkRateLimit(ctx, sender, wire.ICBM, wire.ICBMChannelMsgToHost); isLimited {
+		return msg
+	}
+
 	var recip, msg string
 
 	autoReply, err := parseArgs(args, &recip, &msg)
@@ -1277,6 +1376,10 @@ func (s OSCARProxy) SendIM(ctx context.Context, sender *state.Session, args []by
 //
 // Command syntax: toc_set_away [<away message>]
 func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, args []byte) string {
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.Locate, wire.LocateSetInfo); isLimited {
+		return errMsg
+	}
+
 	maybeMsg, err := parseArgs(args)
 	if err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
@@ -1315,6 +1418,10 @@ func (s OSCARProxy) SetAway(ctx context.Context, me *state.Session, args []byte)
 //
 // Command syntax: toc_set_caps [ <Capability 1> [<Capability 2> [...]]]
 func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, args []byte) string {
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.Locate, wire.LocateSetInfo); isLimited {
+		return errMsg
+	}
+
 	params, err := parseArgs(args)
 	if err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("parseArgs: %w", err))
@@ -1373,6 +1480,10 @@ func (s OSCARProxy) SetCaps(ctx context.Context, me *state.Session, args []byte)
 //
 // Command syntax: toc_set_config <Config Info>
 func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, args []byte) string {
+	if status := me.EvaluateRateLimit(time.Now(), 1); status == wire.RateLimitStatusLimited {
+		return rateLimitExceededErr
+	}
+
 	// most TOC clients don't quote the config info argument, despite what the
 	// documentation specifies. this makes the argument payload incompatible
 	// for CSV parsing. since this command takes a single argument, we can get
@@ -1408,6 +1519,10 @@ func (s OSCARProxy) SetConfig(ctx context.Context, me *state.Session, args []byt
 //
 // Command syntax: toc_set_dir <info information>
 func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, args []byte) string {
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.Locate, wire.LocateSetDirInfo); isLimited {
+		return errMsg
+	}
+
 	var info string
 
 	if _, err := parseArgs(args, &info); err != nil {
@@ -1457,6 +1572,10 @@ func (s OSCARProxy) SetDir(ctx context.Context, me *state.Session, args []byte) 
 //
 // Command syntax: toc_set_idle <idle secs>
 func (s OSCARProxy) SetIdle(ctx context.Context, me *state.Session, args []byte) string {
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.OService, wire.OServiceIdleNotification); isLimited {
+		return errMsg
+	}
+
 	var idleTimeStr string
 
 	if _, err := parseArgs(args, &idleTimeStr); err != nil {
@@ -1486,6 +1605,10 @@ func (s OSCARProxy) SetIdle(ctx context.Context, me *state.Session, args []byte)
 //
 // Command syntax: toc_set_info <info information>
 func (s OSCARProxy) SetInfo(ctx context.Context, me *state.Session, args []byte) string {
+	if errMsg, isLimited := s.checkRateLimit(ctx, me, wire.Locate, wire.LocateSetInfo); isLimited {
+		return errMsg
+	}
+
 	var info string
 
 	if _, err := parseArgs(args, &info); err != nil {
@@ -1648,6 +1771,23 @@ func parseArgs(payload []byte, args ...*string) (varArgs []string, err error) {
 func (s OSCARProxy) runtimeErr(ctx context.Context, err error) string {
 	s.Logger.ErrorContext(ctx, "internal service error", "err", err.Error())
 	return cmdInternalSvcErr
+}
+
+func (s OSCARProxy) checkRateLimit(ctx context.Context, sender *state.Session, foodGroup uint16, subGroup uint16) (string, bool) {
+	rateClassID, ok := s.SNACRateLimits.RateClassLookup(foodGroup, subGroup)
+	if !ok {
+		s.Logger.ErrorContext(ctx, "rate limit not found, allowing request through")
+		return "", false
+	}
+
+	if status := sender.EvaluateRateLimit(time.Now(), rateClassID); status == wire.RateLimitStatusLimited {
+		s.Logger.DebugContext(ctx, "(toc) rate limit exceeded, dropping SNAC",
+			"foodgroup", wire.FoodGroupName(foodGroup),
+			"subgroup", wire.SubGroupName(foodGroup, subGroup))
+		return rateLimitExceededErr, true
+	}
+
+	return "", false
 }
 
 // unescape removes escaping from the following TOC characters: \ { } ( ) [ ] $ "

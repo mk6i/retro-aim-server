@@ -2,10 +2,12 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"testing"
 
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
+	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 
 	"github.com/stretchr/testify/assert"
@@ -179,9 +181,10 @@ func TestOServiceHandler_ClientVersions(t *testing.T) {
 		},
 	}
 
+	sess := state.NewSession()
 	svc := newMockOServiceService(t)
 	svc.EXPECT().
-		ClientVersions(mock.Anything, input.Frame, input.Body).
+		ClientVersions(mock.Anything, sess, input.Frame, input.Body).
 		Return(output)
 
 	h := OServiceHandler{
@@ -199,7 +202,7 @@ func TestOServiceHandler_ClientVersions(t *testing.T) {
 	buf := &bytes.Buffer{}
 	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
-	assert.NoError(t, h.ClientVersions(nil, nil, input.Frame, buf, responseWriter))
+	assert.NoError(t, h.ClientVersions(context.Background(), sess, input.Frame, buf, responseWriter))
 }
 
 func TestOServiceHandler_RateParamsQuery(t *testing.T) {
@@ -260,17 +263,15 @@ func TestOServiceHandler_RateParamsSubAdd(t *testing.T) {
 			SubGroup:  wire.OServiceRateParamsSubAdd,
 		},
 		Body: wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(0x01, []byte{1, 2, 3, 4}),
-				},
-			},
+			ClassIDs: []uint16{1, 2, 3, 4},
 		},
 	}
 
+	sess := state.NewSession()
+
 	svc := newMockOServiceService(t)
 	svc.EXPECT().
-		RateParamsSubAdd(mock.Anything, input.Body)
+		RateParamsSubAdd(mock.Anything, sess, input.Body)
 
 	h := OServiceHandler{
 		OServiceService: svc,
@@ -279,12 +280,10 @@ func TestOServiceHandler_RateParamsSubAdd(t *testing.T) {
 		},
 	}
 
-	responseWriter := newMockResponseWriter(t)
-
 	buf := &bytes.Buffer{}
 	assert.NoError(t, wire.MarshalBE(input.Body, buf))
 
-	assert.NoError(t, h.RateParamsSubAdd(nil, nil, input.Frame, buf, responseWriter))
+	assert.NoError(t, h.RateParamsSubAdd(context.Background(), sess, input.Frame, buf, nil))
 }
 
 func TestOServiceHandler_SetUserInfoFields(t *testing.T) {

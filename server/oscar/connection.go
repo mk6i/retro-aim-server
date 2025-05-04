@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"time"
 
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
@@ -33,7 +34,8 @@ func sendInvalidSNACErr(frameIn wire.SNACFrame, rw ResponseWriter) error {
 // or when the session closes.
 //
 // todo: this method has too many params and should be folded into a new type
-func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient, r io.Reader, logger *slog.Logger, router Handler) error {
+func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient, r io.Reader, logger *slog.Logger, router Handler, rateLimitUpdater RateLimitUpdater, snacRateLimits wire.SNACRateLimits) error {
+
 	defer func() {
 		logger.InfoContext(ctx, "user disconnected")
 	}()
@@ -71,6 +73,19 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 				if err := wire.UnmarshalBE(&inFrame, flapBuf); err != nil {
 					return err
 				}
+
+				rateClassID, ok := snacRateLimits.RateClassLookup(inFrame.FoodGroup, inFrame.SubGroup)
+				if ok {
+					if status := sess.EvaluateRateLimit(time.Now(), rateClassID); status == wire.RateLimitStatusLimited {
+						logger.DebugContext(ctx, "rate limit exceeded, dropping SNAC",
+							"foodgroup", wire.FoodGroupName(inFrame.FoodGroup),
+							"subgroup", wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
+						break
+					}
+				} else {
+					logger.ErrorContext(ctx, "rate limit not found, allowing request through")
+				}
+
 				// route a client request to the appropriate service handler. the
 				// handler may write a response to the client connection.
 				if err := router.Handle(ctx, sess, inFrame, flapBuf, flapc); err != nil {
@@ -102,6 +117,14 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 				return err
 			}
 			middleware.LogRequest(ctx, logger, m.Frame, m.Body)
+		case <-time.After(1 * time.Second):
+			msgs := rateLimitUpdater.RateLimitUpdates(ctx, sess, time.Now())
+			for _, rate := range msgs {
+				if err := flapc.SendSNAC(rate.Frame, rate.Body); err != nil {
+					middleware.LogRequestError(ctx, logger, rate.Frame, err)
+					return err
+				}
+			}
 		case <-sess.Closed():
 			block := wire.TLVRestBlock{}
 			// error code indicating user signed in a different location

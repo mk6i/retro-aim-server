@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"time"
 
 	"github.com/kelseyhightower/envconfig"
+	"golang.org/x/time/rate"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/foodgroup"
@@ -16,6 +18,7 @@ import (
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/server/toc"
 	"github.com/mk6i/retro-aim-server/state"
+	"github.com/mk6i/retro-aim-server/wire"
 )
 
 // Container groups together common dependencies.
@@ -25,6 +28,8 @@ type Container struct {
 	hmacCookieBaker        state.HMACCookieBaker
 	inMemorySessionManager *state.InMemorySessionManager
 	logger                 *slog.Logger
+	rateLimitClasses       wire.RateLimitClasses
+	snacRateLimits         wire.SNACRateLimits
 	sqLiteUserStore        *state.SQLiteUserStore
 }
 
@@ -56,7 +61,8 @@ func MakeCommonDeps() (Container, error) {
 	c.logger = middleware.NewLogger(c.cfg)
 	c.inMemorySessionManager = state.NewInMemorySessionManager(c.logger)
 	c.chatSessionManager = state.NewInMemoryChatSessionManager(c.logger)
-
+	c.rateLimitClasses = wire.DefaultRateLimitClasses()
+	c.snacRateLimits = wire.DefaultSNACRateLimits()
 	return c, nil
 }
 
@@ -81,6 +87,7 @@ func Admin(deps Container) oscar.AdminServer {
 		deps.chatSessionManager,
 		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
+		deps.rateLimitClasses,
 	)
 	oServiceService := foodgroup.NewOServiceServiceForAdmin(
 		deps.cfg,
@@ -89,6 +96,8 @@ func Admin(deps Container) oscar.AdminServer {
 		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
 		deps.sqLiteUserStore,
+		deps.rateLimitClasses,
+		deps.snacRateLimits,
 	)
 
 	return oscar.AdminServer{
@@ -98,9 +107,11 @@ func Admin(deps Container) oscar.AdminServer {
 			AdminHandler:    handler.NewAdminHandler(logger, adminService),
 			OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
 		}),
-		Logger:         logger,
-		OnlineNotifier: oServiceService,
-		ListenAddr:     net.JoinHostPort("", deps.cfg.AdminPort),
+		Logger:           logger,
+		OnlineNotifier:   oServiceService,
+		ListenAddr:       net.JoinHostPort("", deps.cfg.AdminPort),
+		RateLimitUpdater: oServiceService,
+		SNACRateLimits:   deps.snacRateLimits,
 	}
 }
 
@@ -118,6 +129,7 @@ func Alert(deps Container) oscar.BOSServer {
 		deps.chatSessionManager,
 		deps.sqLiteUserStore,
 		nil,
+		deps.rateLimitClasses,
 	)
 	oServiceService := foodgroup.NewOServiceServiceForAlert(
 		deps.cfg,
@@ -126,6 +138,8 @@ func Alert(deps Container) oscar.BOSServer {
 		deps.sqLiteUserStore,
 		sessionManager,
 		deps.sqLiteUserStore,
+		deps.rateLimitClasses,
+		deps.snacRateLimits,
 	)
 
 	return oscar.BOSServer{
@@ -135,9 +149,11 @@ func Alert(deps Container) oscar.BOSServer {
 			AlertHandler:    handler.NewAlertHandler(logger),
 			OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
 		}),
-		Logger:         logger,
-		OnlineNotifier: oServiceService,
-		ListenAddr:     net.JoinHostPort("", deps.cfg.AlertPort),
+		Logger:           logger,
+		OnlineNotifier:   oServiceService,
+		ListenAddr:       net.JoinHostPort("", deps.cfg.AlertPort),
+		RateLimitUpdater: oServiceService,
+		SNACRateLimits:   deps.snacRateLimits,
 	}
 }
 
@@ -154,12 +170,14 @@ func Auth(deps Container) oscar.AuthServer {
 		deps.chatSessionManager,
 		deps.sqLiteUserStore,
 		nil,
+		deps.rateLimitClasses,
 	)
 
 	return oscar.AuthServer{
-		AuthService: authHandler,
-		Config:      deps.cfg,
-		Logger:      logger,
+		AuthService:   authHandler,
+		Config:        deps.cfg,
+		Logger:        logger,
+		IPRateLimiter: oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 	}
 }
 
@@ -184,6 +202,7 @@ func BART(deps Container) oscar.BOSServer {
 		deps.chatSessionManager,
 		deps.sqLiteUserStore,
 		nil,
+		deps.rateLimitClasses,
 	)
 	oServiceService := foodgroup.NewOServiceServiceForBART(
 		deps.cfg,
@@ -192,6 +211,8 @@ func BART(deps Container) oscar.BOSServer {
 		deps.sqLiteUserStore,
 		sessionManager,
 		deps.sqLiteUserStore,
+		deps.rateLimitClasses,
+		deps.snacRateLimits,
 	)
 
 	return oscar.BOSServer{
@@ -201,9 +222,11 @@ func BART(deps Container) oscar.BOSServer {
 			BARTHandler:     handler.NewBARTHandler(logger, bartService),
 			OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
 		}),
-		ListenAddr:     net.JoinHostPort("", deps.cfg.BARTPort),
-		Logger:         logger,
-		OnlineNotifier: oServiceService,
+		ListenAddr:       net.JoinHostPort("", deps.cfg.BARTPort),
+		Logger:           logger,
+		OnlineNotifier:   oServiceService,
+		RateLimitUpdater: oServiceService,
+		SNACRateLimits:   deps.snacRateLimits,
 	}
 }
 
@@ -220,6 +243,7 @@ func BOS(deps Container) oscar.BOSServer {
 		deps.chatSessionManager,
 		deps.sqLiteUserStore,
 		nil,
+		deps.rateLimitClasses,
 	)
 	bartService := foodgroup.NewBARTService(
 		logger,
@@ -257,6 +281,7 @@ func BOS(deps Container) oscar.BOSServer {
 		deps.sqLiteUserStore,
 		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
+		deps.snacRateLimits,
 	)
 	icqService := foodgroup.NewICQService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore,
 		logger, deps.inMemorySessionManager, deps.sqLiteUserStore)
@@ -276,6 +301,8 @@ func BOS(deps Container) oscar.BOSServer {
 		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
 		deps.sqLiteUserStore,
+		deps.rateLimitClasses,
+		deps.snacRateLimits,
 	)
 	userLookupService := foodgroup.NewUserLookupService(deps.sqLiteUserStore)
 
@@ -298,9 +325,11 @@ func BOS(deps Container) oscar.BOSServer {
 			PermitDenyHandler: handler.NewPermitDenyHandler(logger, permitDenyService),
 			UserLookupHandler: handler.NewUserLookupHandler(logger, userLookupService),
 		}),
-		Logger:         logger,
-		OnlineNotifier: oServiceService,
-		ListenAddr:     net.JoinHostPort("", deps.cfg.BOSPort),
+		Logger:           logger,
+		OnlineNotifier:   oServiceService,
+		ListenAddr:       net.JoinHostPort("", deps.cfg.BOSPort),
+		RateLimitUpdater: oServiceService,
+		SNACRateLimits:   deps.snacRateLimits,
 	}
 }
 
@@ -318,6 +347,7 @@ func Chat(deps Container) oscar.ChatServer {
 		deps.chatSessionManager,
 		deps.sqLiteUserStore,
 		nil,
+		deps.rateLimitClasses,
 	)
 	chatService := foodgroup.NewChatService(deps.chatSessionManager)
 	oServiceService := foodgroup.NewOServiceServiceForChat(
@@ -329,6 +359,8 @@ func Chat(deps Container) oscar.ChatServer {
 		deps.sqLiteUserStore,
 		sessionManager,
 		deps.sqLiteUserStore,
+		deps.rateLimitClasses,
+		deps.snacRateLimits,
 	)
 
 	return oscar.ChatServer{
@@ -338,8 +370,10 @@ func Chat(deps Container) oscar.ChatServer {
 			ChatHandler:     handler.NewChatHandler(logger, chatService),
 			OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
 		}),
-		Logger:         logger,
-		OnlineNotifier: oServiceService,
+		Logger:           logger,
+		OnlineNotifier:   oServiceService,
+		SNACRateLimits:   deps.snacRateLimits,
+		RateLimitUpdater: oServiceService,
 	}
 }
 
@@ -357,6 +391,7 @@ func ChatNav(deps Container) oscar.BOSServer {
 		deps.chatSessionManager,
 		deps.sqLiteUserStore,
 		nil,
+		deps.rateLimitClasses,
 	)
 	chatNavService := foodgroup.NewChatNavService(logger, deps.sqLiteUserStore)
 	oServiceService := foodgroup.NewOServiceServiceForChatNav(
@@ -366,6 +401,8 @@ func ChatNav(deps Container) oscar.BOSServer {
 		deps.sqLiteUserStore,
 		sessionManager,
 		deps.sqLiteUserStore,
+		deps.rateLimitClasses,
+		deps.snacRateLimits,
 	)
 
 	return oscar.BOSServer{
@@ -375,9 +412,11 @@ func ChatNav(deps Container) oscar.BOSServer {
 			ChatNavHandler:  handler.NewChatNavHandler(chatNavService, logger),
 			OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
 		}),
-		Logger:         logger,
-		OnlineNotifier: oServiceService,
-		ListenAddr:     net.JoinHostPort("", deps.cfg.ChatNavPort),
+		Logger:           logger,
+		OnlineNotifier:   oServiceService,
+		ListenAddr:       net.JoinHostPort("", deps.cfg.ChatNavPort),
+		RateLimitUpdater: oServiceService,
+		SNACRateLimits:   deps.snacRateLimits,
 	}
 }
 
@@ -407,8 +446,14 @@ func ODir(deps Container) oscar.BOSServer {
 		deps.chatSessionManager,
 		deps.sqLiteUserStore,
 		nil,
+		deps.rateLimitClasses,
 	)
-	oServiceService := foodgroup.NewOServiceServiceForODir(deps.cfg, logger)
+	oServiceService := foodgroup.NewOServiceServiceForODir(
+		deps.cfg,
+		logger,
+		deps.rateLimitClasses,
+		deps.snacRateLimits,
+	)
 	oDirService := foodgroup.NewODirService(logger, deps.sqLiteUserStore)
 
 	return oscar.BOSServer{
@@ -418,9 +463,11 @@ func ODir(deps Container) oscar.BOSServer {
 			OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
 			ODirHandler:     handler.NewODirHandler(logger, oDirService),
 		}),
-		Logger:         logger,
-		OnlineNotifier: oServiceService,
-		ListenAddr:     net.JoinHostPort("", deps.cfg.ODirPort),
+		Logger:           logger,
+		OnlineNotifier:   oServiceService,
+		ListenAddr:       net.JoinHostPort("", deps.cfg.ODirPort),
+		RateLimitUpdater: oServiceService,
+		SNACRateLimits:   deps.snacRateLimits,
 	}
 }
 
@@ -449,6 +496,7 @@ func TOC(deps Container) toc.Server {
 				deps.chatSessionManager,
 				deps.sqLiteUserStore,
 				nil,
+				deps.rateLimitClasses,
 			),
 			BuddyListRegistry: deps.sqLiteUserStore,
 			BuddyService: foodgroup.NewBuddyService(
@@ -466,6 +514,7 @@ func TOC(deps Container) toc.Server {
 				deps.sqLiteUserStore,
 				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
+				deps.snacRateLimits,
 			),
 			LocateService: foodgroup.NewLocateService(
 				deps.sqLiteUserStore,
@@ -484,6 +533,8 @@ func TOC(deps Container) toc.Server {
 				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
 				deps.sqLiteUserStore,
+				deps.rateLimitClasses,
+				deps.snacRateLimits,
 			),
 			PermitDenyService: foodgroup.NewPermitDenyService(
 				deps.sqLiteUserStore,
@@ -503,8 +554,13 @@ func TOC(deps Container) toc.Server {
 				deps.sqLiteUserStore,
 				sessionManager,
 				deps.sqLiteUserStore,
+				deps.rateLimitClasses,
+				deps.snacRateLimits,
 			),
-			ChatNavService: foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
+			ChatNavService:    foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
+			SNACRateLimits:    deps.snacRateLimits,
+			HTTPIPRateLimiter: toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 		},
+		LoginIPRateLimiter: toc.NewIPRateLimiter(rate.Every(10*time.Minute), 10, 20*time.Minute),
 	}
 }

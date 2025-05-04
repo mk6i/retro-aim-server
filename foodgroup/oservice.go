@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -22,6 +21,9 @@ type OServiceService struct {
 	cfg              config.Config
 	logger           *slog.Logger
 	foodGroups       []uint16
+	rateLimitClasses wire.RateLimitClasses
+	snacRateLimits   wire.SNACRateLimits
+	timeNow          func() time.Time
 }
 
 // ClientVersions informs the server what food group versions the client
@@ -32,7 +34,31 @@ type OServiceService struct {
 // implicitly accommodates any food group version for Windows AIM clients 5.x.
 // It returns SNAC wire.OServiceHostVersions containing the server's supported
 // food group versions.
-func (s OServiceService) ClientVersions(_ context.Context, frame wire.SNACFrame, inBody wire.SNAC_0x01_0x17_OServiceClientVersions) wire.SNACMessage {
+// todo this documentation
+func (s OServiceService) ClientVersions(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x17_OServiceClientVersions) wire.SNACMessage {
+	var versions [wire.MDir + 1]uint16
+
+	if len(bodyIn.Versions)%2 != 0 {
+		s.logger.ErrorContext(ctx, "got uneven food group length")
+		return wire.SNACMessage{}
+	}
+
+	for i := 0; i < len(bodyIn.Versions); i += 2 {
+		fg := bodyIn.Versions[i]
+		if fg < wire.OService || fg > wire.MDir {
+			s.logger.ErrorContext(ctx, "invalid food group ID", "id", fg)
+			continue
+		}
+		ver := bodyIn.Versions[i+1]
+		if ver < 1 {
+			s.logger.ErrorContext(ctx, "invalid food group version", "version", ver)
+			continue
+		}
+		versions[fg] = ver
+	}
+
+	sess.SetFoodGroupVersions(versions)
+
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.OService,
@@ -40,416 +66,8 @@ func (s OServiceService) ClientVersions(_ context.Context, frame wire.SNACFrame,
 			RequestID: frame.RequestID,
 		},
 		Body: wire.SNAC_0x01_0x18_OServiceHostVersions{
-			Versions: inBody.Versions,
+			Versions: bodyIn.Versions,
 		},
-	}
-}
-
-// rateLimitSNACV1 is the rate params reply sent to AIM 1.x clients that does
-// not contain LastTime and CurrentState fields.
-var rateLimitSNACV1 = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
-	RateClasses: []struct {
-		ID              uint16
-		WindowSize      uint32
-		ClearLevel      uint32
-		AlertLevel      uint32
-		LimitLevel      uint32
-		DisconnectLevel uint32
-		CurrentLevel    uint32
-		MaxLevel        uint32
-		V2Params        *struct {
-			LastTime     uint32
-			CurrentState uint8
-		} `oscar:"optional"`
-	}{
-		{
-			ID:              0x01,
-			WindowSize:      0x0050,
-			ClearLevel:      0x09C4,
-			AlertLevel:      0x07D0,
-			LimitLevel:      0x05DC,
-			DisconnectLevel: 0x0320,
-			CurrentLevel:    0x0D69,
-			MaxLevel:        0x1770,
-			V2Params:        nil,
-		},
-	},
-	RateGroups: []struct {
-		ID    uint16
-		Pairs []struct {
-			FoodGroup uint16
-			SubGroup  uint16
-		} `oscar:"count_prefix=uint16"`
-	}{
-		{
-			ID: 1,
-			Pairs: []struct {
-				FoodGroup uint16
-				SubGroup  uint16
-			}{},
-		},
-	},
-}
-
-// rateLimitSNACV2 is the rate params reply sent to non-AIM 1.x clients.
-var rateLimitSNACV2 = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
-	RateClasses: []struct {
-		ID              uint16
-		WindowSize      uint32
-		ClearLevel      uint32
-		AlertLevel      uint32
-		LimitLevel      uint32
-		DisconnectLevel uint32
-		CurrentLevel    uint32
-		MaxLevel        uint32
-		V2Params        *struct {
-			LastTime     uint32
-			CurrentState uint8
-		} `oscar:"optional"`
-	}{
-		{
-			ID:              0x01,
-			WindowSize:      0x0050,
-			ClearLevel:      0x09C4,
-			AlertLevel:      0x07D0,
-			LimitLevel:      0x05DC,
-			DisconnectLevel: 0x0320,
-			CurrentLevel:    0x0D69,
-			MaxLevel:        0x1770,
-			V2Params: &struct {
-				LastTime     uint32
-				CurrentState uint8
-			}{
-				LastTime:     0x0000,
-				CurrentState: 0x0,
-			},
-		},
-	},
-	RateGroups: []struct {
-		ID    uint16
-		Pairs []struct {
-			FoodGroup uint16
-			SubGroup  uint16
-		} `oscar:"count_prefix=uint16"`
-	}{
-		{
-			ID: 1,
-			Pairs: []struct {
-				FoodGroup uint16
-				SubGroup  uint16
-			}{},
-		},
-	},
-}
-
-// populate the rate limit SNAC with a rule for each subgroup
-func init() {
-	foodGroupToSubgroup := map[uint16][]uint16{
-		wire.OService: {
-			wire.OServiceErr,
-			wire.OServiceClientOnline,
-			wire.OServiceHostOnline,
-			wire.OServiceServiceRequest,
-			wire.OServiceServiceResponse,
-			wire.OServiceRateParamsQuery,
-			wire.OServiceRateParamsReply,
-			wire.OServiceRateParamsSubAdd,
-			wire.OServiceRateDelParamSub,
-			wire.OServiceRateParamChange,
-			wire.OServicePauseReq,
-			wire.OServicePauseAck,
-			wire.OServiceResume,
-			wire.OServiceUserInfoQuery,
-			wire.OServiceUserInfoUpdate,
-			wire.OServiceEvilNotification,
-			wire.OServiceIdleNotification,
-			wire.OServiceMigrateGroups,
-			wire.OServiceMotd,
-			wire.OServiceSetPrivacyFlags,
-			wire.OServiceWellKnownUrls,
-			wire.OServiceNoop,
-			wire.OServiceClientVersions,
-			wire.OServiceHostVersions,
-			wire.OServiceMaxConfigQuery,
-			wire.OServiceMaxConfigReply,
-			wire.OServiceStoreConfig,
-			wire.OServiceConfigQuery,
-			wire.OServiceConfigReply,
-			wire.OServiceSetUserInfoFields,
-			wire.OServiceProbeReq,
-			wire.OServiceProbeAck,
-			wire.OServiceBartReply,
-			wire.OServiceBartQuery2,
-			wire.OServiceBartReply2,
-		},
-		wire.Locate: {
-			wire.LocateErr,
-			wire.LocateRightsQuery,
-			wire.LocateRightsReply,
-			wire.LocateSetInfo,
-			wire.LocateUserInfoQuery,
-			wire.LocateUserInfoReply,
-			wire.LocateWatcherSubRequest,
-			wire.LocateWatcherNotification,
-			wire.LocateSetDirInfo,
-			wire.LocateSetDirReply,
-			wire.LocateGetDirInfo,
-			wire.LocateGetDirReply,
-			wire.LocateGroupCapabilityQuery,
-			wire.LocateGroupCapabilityReply,
-			wire.LocateSetKeywordInfo,
-			wire.LocateSetKeywordReply,
-			wire.LocateGetKeywordInfo,
-			wire.LocateGetKeywordReply,
-			wire.LocateFindListByEmail,
-			wire.LocateFindListReply,
-			wire.LocateUserInfoQuery2,
-		},
-		wire.Buddy: {
-			wire.BuddyErr,
-			wire.BuddyRightsQuery,
-			wire.BuddyRightsReply,
-			wire.BuddyAddBuddies,
-			wire.BuddyDelBuddies,
-			wire.BuddyWatcherListQuery,
-			wire.BuddyWatcherListResponse,
-			wire.BuddyWatcherSubRequest,
-			wire.BuddyWatcherNotification,
-			wire.BuddyRejectNotification,
-			wire.BuddyArrived,
-			wire.BuddyDeparted,
-			wire.BuddyAddTempBuddies,
-			wire.BuddyDelTempBuddies,
-		},
-		wire.ICBM: {
-			wire.ICBMErr,
-			wire.ICBMAddParameters,
-			wire.ICBMDelParameters,
-			wire.ICBMParameterQuery,
-			wire.ICBMParameterReply,
-			wire.ICBMChannelMsgToHost,
-			wire.ICBMChannelMsgToClient,
-			wire.ICBMEvilRequest,
-			wire.ICBMEvilReply,
-			wire.ICBMMissedCalls,
-			wire.ICBMClientErr,
-			wire.ICBMHostAck,
-			wire.ICBMSinStored,
-			wire.ICBMSinListQuery,
-			wire.ICBMSinListReply,
-			wire.ICBMSinRetrieve,
-			wire.ICBMSinDelete,
-			wire.ICBMNotifyRequest,
-			wire.ICBMNotifyReply,
-			wire.ICBMClientEvent,
-			wire.ICBMSinReply,
-		},
-		wire.Invite: {
-			wire.InviteRequestQuery,
-		},
-		wire.ChatNav: {
-			wire.ChatNavErr,
-			wire.ChatNavRequestChatRights,
-			wire.ChatNavRequestExchangeInfo,
-			wire.ChatNavRequestRoomInfo,
-			wire.ChatNavRequestMoreRoomInfo,
-			wire.ChatNavRequestOccupantList,
-			wire.ChatNavSearchForRoom,
-			wire.ChatNavCreateRoom,
-			wire.ChatNavNavInfo,
-		},
-		wire.Chat: {
-			wire.ChatErr,
-			wire.ChatRoomInfoUpdate,
-			wire.ChatUsersJoined,
-			wire.ChatUsersLeft,
-			wire.ChatChannelMsgToHost,
-			wire.ChatChannelMsgToClient,
-			wire.ChatEvilRequest,
-			wire.ChatEvilReply,
-			wire.ChatClientErr,
-			wire.ChatPauseRoomReq,
-			wire.ChatPauseRoomAck,
-			wire.ChatResumeRoom,
-			wire.ChatShowMyRow,
-			wire.ChatShowRowByUsername,
-			wire.ChatShowRowByNumber,
-			wire.ChatShowRowByName,
-			wire.ChatRowInfo,
-			wire.ChatListRows,
-			wire.ChatRowListInfo,
-			wire.ChatMoreRows,
-			wire.ChatMoveToRow,
-			wire.ChatToggleChat,
-			wire.ChatSendQuestion,
-			wire.ChatSendComment,
-			wire.ChatTallyVote,
-			wire.ChatAcceptBid,
-			wire.ChatSendInvite,
-			wire.ChatDeclineInvite,
-			wire.ChatAcceptInvite,
-			wire.ChatNotifyMessage,
-			wire.ChatGotoRow,
-			wire.ChatStageUserJoin,
-			wire.ChatStageUserLeft,
-			wire.ChatUnnamedSnac22,
-			wire.ChatClose,
-			wire.ChatUserBan,
-			wire.ChatUserUnban,
-			wire.ChatJoined,
-			wire.ChatUnnamedSnac27,
-			wire.ChatUnnamedSnac28,
-			wire.ChatUnnamedSnac29,
-			wire.ChatRoomInfoOwner,
-		},
-		wire.BART: {
-			wire.BARTErr,
-			wire.BARTUploadQuery,
-			wire.BARTUploadReply,
-			wire.BARTDownloadQuery,
-			wire.BARTDownloadReply,
-			wire.BARTDownload2Query,
-			wire.BARTDownload2Reply,
-		},
-		wire.Feedbag: {
-			wire.FeedbagErr,
-			wire.FeedbagRightsQuery,
-			wire.FeedbagRightsReply,
-			wire.FeedbagQuery,
-			wire.FeedbagQueryIfModified,
-			wire.FeedbagReply,
-			wire.FeedbagUse,
-			wire.FeedbagInsertItem,
-			wire.FeedbagUpdateItem,
-			wire.FeedbagDeleteItem,
-			wire.FeedbagInsertClass,
-			wire.FeedbagUpdateClass,
-			wire.FeedbagDeleteClass,
-			wire.FeedbagStatus,
-			wire.FeedbagReplyNotModified,
-			wire.FeedbagDeleteUser,
-			wire.FeedbagStartCluster,
-			wire.FeedbagEndCluster,
-			wire.FeedbagAuthorizeBuddy,
-			wire.FeedbagPreAuthorizeBuddy,
-			wire.FeedbagPreAuthorizedBuddy,
-			wire.FeedbagRemoveMe,
-			wire.FeedbagRemoveMe2,
-			wire.FeedbagRequestAuthorizeToHost,
-			wire.FeedbagRequestAuthorizeToClient,
-			wire.FeedbagRespondAuthorizeToHost,
-			wire.FeedbagRespondAuthorizeToClient,
-			wire.FeedbagBuddyAdded,
-			wire.FeedbagRequestAuthorizeToBadog,
-			wire.FeedbagRespondAuthorizeToBadog,
-			wire.FeedbagBuddyAddedToBadog,
-			wire.FeedbagTestSnac,
-			wire.FeedbagForwardMsg,
-			wire.FeedbagIsAuthRequiredQuery,
-			wire.FeedbagIsAuthRequiredReply,
-			wire.FeedbagRecentBuddyUpdate,
-		},
-		wire.BUCP: {
-			wire.BUCPErr,
-			wire.BUCPLoginRequest,
-			wire.BUCPLoginResponse,
-			wire.BUCPRegisterRequest,
-			wire.BUCPChallengeRequest,
-			wire.BUCPChallengeResponse,
-			wire.BUCPAsasnRequest,
-			wire.BUCPSecuridRequest,
-			wire.BUCPRegistrationImageRequest,
-		},
-		wire.Alert: {
-			wire.AlertErr,
-			wire.AlertSetAlertRequest,
-			wire.AlertSetAlertReply,
-			wire.AlertGetSubsRequest,
-			wire.AlertGetSubsResponse,
-			wire.AlertNotifyCapabilities,
-			wire.AlertNotify,
-			wire.AlertGetRuleRequest,
-			wire.AlertGetRuleReply,
-			wire.AlertGetFeedRequest,
-			wire.AlertGetFeedReply,
-			wire.AlertRefreshFeed,
-			wire.AlertEvent,
-			wire.AlertQogSnac,
-			wire.AlertRefreshFeedStock,
-			wire.AlertNotifyTransport,
-			wire.AlertSetAlertRequestV2,
-			wire.AlertSetAlertReplyV2,
-			wire.AlertTransitReply,
-			wire.AlertNotifyAck,
-			wire.AlertNotifyDisplayCapabilities,
-			wire.AlertUserOnline,
-		},
-		wire.ICQ: {
-			wire.ICQErr,
-			wire.ICQDBQuery,
-			wire.ICQDBReply,
-		},
-		wire.PermitDeny: {
-			wire.PermitDenyErr,
-			wire.PermitDenyRightsQuery,
-			wire.PermitDenyRightsReply,
-			wire.PermitDenySetGroupPermitMask,
-			wire.PermitDenyAddPermListEntries,
-			wire.PermitDenyDelPermListEntries,
-			wire.PermitDenyAddDenyListEntries,
-			wire.PermitDenyDelDenyListEntries,
-			wire.PermitDenyBosErr,
-			wire.PermitDenyAddTempPermitListEntries,
-			wire.PermitDenyDelTempPermitListEntries,
-		},
-		wire.ODir: {
-			wire.ODirErr,
-			wire.ODirInfoQuery,
-			wire.ODirInfoReply,
-			wire.ODirKeywordListQuery,
-			wire.ODirKeywordListReply,
-		},
-		wire.UserLookup: {
-			wire.UserLookupFindByEmail,
-		},
-	}
-
-	for _, foodGroup := range []uint16{
-		wire.OService,
-		wire.Locate,
-		wire.Buddy,
-		wire.ICBM,
-		wire.Invite,
-		wire.ChatNav,
-		wire.Chat,
-		wire.BART,
-		wire.Feedbag,
-		wire.BUCP,
-		wire.Alert,
-		wire.ICQ,
-		wire.PermitDeny,
-		wire.ODir,
-		wire.UserLookup,
-	} {
-		subGroups := foodGroupToSubgroup[foodGroup]
-		for _, subGroup := range subGroups {
-			// build response for AIM 1.x clients
-			rateLimitSNACV1.RateGroups[0].Pairs = append(rateLimitSNACV1.RateGroups[0].Pairs, struct {
-				FoodGroup uint16
-				SubGroup  uint16
-			}{
-				FoodGroup: foodGroup,
-				SubGroup:  subGroup,
-			})
-			// build response for all other clients
-			rateLimitSNACV2.RateGroups[0].Pairs = append(rateLimitSNACV2.RateGroups[0].Pairs, struct {
-				FoodGroup uint16
-				SubGroup  uint16
-			}{
-				FoodGroup: foodGroup,
-				SubGroup:  subGroup,
-			})
-		}
 	}
 }
 
@@ -473,10 +91,85 @@ func init() {
 // exist in this response. When support for a new food group is added to the
 // server, update this function accordingly.
 func (s OServiceService) RateParamsQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame) wire.SNACMessage {
-	limits := rateLimitSNACV2
-	if strings.Contains(sess.ClientID(), "AOL Instant Messenger (TM), version 1.") {
-		limits = rateLimitSNACV1
+	// not contain LastTime and CurrentStatus fields.
+	var limits = wire.SNAC_0x01_0x07_OServiceRateParamsReply{
+		RateClasses: []wire.RateParamsSNAC{},
+		RateGroups: []struct {
+			ID    uint16
+			Pairs []struct {
+				FoodGroup uint16
+				SubGroup  uint16
+			} `oscar:"count_prefix=uint16"`
+		}{
+			{
+				ID: 1,
+				Pairs: []struct {
+					FoodGroup uint16
+					SubGroup  uint16
+				}{},
+			},
+			{
+				ID: 2,
+				Pairs: []struct {
+					FoodGroup uint16
+					SubGroup  uint16
+				}{},
+			},
+			{
+				ID: 3,
+				Pairs: []struct {
+					FoodGroup uint16
+					SubGroup  uint16
+				}{},
+			},
+			{
+				ID: 4,
+				Pairs: []struct {
+					FoodGroup uint16
+					SubGroup  uint16
+				}{},
+			},
+			{
+				ID: 5,
+				Pairs: []struct {
+					FoodGroup uint16
+					SubGroup  uint16
+				}{},
+			},
+		},
 	}
+
+	for _, class := range s.rateLimitClasses.All() {
+		str := wire.RateParamsSNAC{
+			ID:              uint16(class.ID),
+			WindowSize:      uint32(class.WindowSize),
+			ClearLevel:      uint32(class.ClearLevel),
+			AlertLevel:      uint32(class.AlertLevel),
+			LimitLevel:      uint32(class.LimitLevel),
+			DisconnectLevel: uint32(class.DisconnectLevel),
+			CurrentLevel:    uint32(class.MaxLevel),
+			MaxLevel:        uint32(class.MaxLevel),
+		}
+		if sess.FoodGroupVersions()[wire.OService] > 1 {
+			str.V2Params = &struct {
+				LastTime      uint32
+				DroppingSNACs uint8
+			}{
+				LastTime: uint32(s.timeNow().Add(-time.Second).Unix()),
+			}
+		}
+		limits.RateClasses = append(limits.RateClasses, str)
+	}
+
+	for snacClass := range s.snacRateLimits.All() {
+		classID := int(snacClass.RateLimitClass) - 1
+		limits.RateGroups[classID].Pairs = append(limits.RateGroups[classID].Pairs,
+			struct {
+				FoodGroup uint16
+				SubGroup  uint16
+			}{FoodGroup: snacClass.FoodGroup, SubGroup: snacClass.SubGroup})
+	}
+
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.OService,
@@ -561,9 +254,27 @@ func (s OServiceService) SetPrivacyFlags(ctx context.Context, bodyIn wire.SNAC_0
 	}
 }
 
-// RateParamsSubAdd exists to capture the SNAC input in unit tests to
-// verify it's correctly unmarshalled.
-func (s OServiceService) RateParamsSubAdd(context.Context, wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd) {
+// RateParamsSubAdd subscribes to rate parameter changes. AOL's OSCAR spec says
+// that notifications will be queued after calling this method. I don't see the
+// point of doing that since all clients appear to call RateParamsQuery at
+// sign-on for all rate classes.
+func (s OServiceService) RateParamsSubAdd(ctx context.Context, sess *state.Session, snac wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd) {
+	ids := make([]wire.RateLimitClassID, 0, len(snac.ClassIDs))
+
+	for _, id := range snac.ClassIDs {
+		if id < 1 || id > 5 {
+			s.logger.DebugContext(ctx, "snac class ID out of range")
+			continue
+		}
+		ids = append(ids, wire.RateLimitClassID(id))
+	}
+
+	if len(ids) == 0 {
+		return
+	}
+
+	s.logger.DebugContext(ctx, "subscribing to rate limit updates", "classes", ids)
+	sess.SubscribeRateLimits(ids)
 }
 
 func (s OServiceService) ServiceRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
@@ -604,6 +315,89 @@ func (s OServiceService) HostOnline() wire.SNACMessage {
 	}
 }
 
+// RateLimitUpdates produces update messages reflecting any recent changes in
+// rate limit class params or rate limit states for the current session.
+// Changes are reported relative to the previous invocation for this session.
+// Only newly observed transitions or updated rate parameters will be included.
+func (s OServiceService) RateLimitUpdates(ctx context.Context, sess *state.Session, now time.Time) []wire.SNACMessage {
+	msgs := make([]wire.SNACMessage, 0, 5)
+	classDelta, stateDelta := sess.ObserveRateChanges(now)
+
+	for _, curRate := range classDelta {
+		s.logger.DebugContext(ctx, "rate limit class changed", "class", curRate.ID)
+		msgs = append(msgs, buildRateLimitUpdate(1, curRate, sess, now))
+	}
+
+	for _, curRate := range stateDelta {
+		s.logger.DebugContext(ctx, "rate limit state changed",
+			"class", curRate.ID,
+			"state", curRate.CurrentStatus)
+		var code uint16
+		switch curRate.CurrentStatus {
+		case wire.RateLimitStatusLimited:
+			code = 3
+		case wire.RateLimitStatusAlert:
+			code = 2
+		case wire.RateLimitStatusClear:
+			code = 4
+		case wire.RateLimitStatusDisconnect:
+			s.logger.DebugContext(ctx, "rate limit status disconnected, no point in returning status update")
+			continue
+		}
+
+		msgs = append(msgs, buildRateLimitUpdate(code, curRate, sess, now))
+	}
+
+	return msgs
+}
+
+// buildRateLimitUpdate constructs a SNAC message notifying the client of a rate limit
+// threshold update or a change in rate limiting status for a specific class.
+//
+// The message format varies depending on the client's supported protocol version.
+// If OService version 2 or higher is supported, additional metadata such as
+// time since last status change and whether SNACs are currently being dropped
+// will be included.
+func buildRateLimitUpdate(code uint16, curRate state.RateClassState, sess *state.Session, now time.Time) wire.SNACMessage {
+	var droppingSNACs uint8
+	if curRate.CurrentStatus == wire.RateLimitStatusLimited {
+		droppingSNACs = 1
+	}
+
+	rate := wire.RateParamsSNAC{
+		ID:              uint16(curRate.ID),
+		WindowSize:      uint32(curRate.WindowSize),
+		ClearLevel:      uint32(curRate.ClearLevel),
+		AlertLevel:      uint32(curRate.AlertLevel),
+		LimitLevel:      uint32(curRate.LimitLevel),
+		DisconnectLevel: uint32(curRate.DisconnectLevel),
+		CurrentLevel:    uint32(curRate.CurrentLevel),
+		MaxLevel:        uint32(curRate.MaxLevel),
+	}
+
+	if sess.FoodGroupVersions()[wire.OService] > 1 {
+		rate.V2Params = &struct {
+			LastTime      uint32
+			DroppingSNACs uint8
+		}{
+			LastTime:      uint32(max(0, now.Unix()-curRate.LastTime.Unix())),
+			DroppingSNACs: droppingSNACs,
+		}
+	}
+
+	return wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.OService,
+			SubGroup:  wire.OServiceRateParamChange,
+			RequestID: wire.ReqIDFromServer,
+		},
+		Body: wire.SNAC_0x01_0x0A_OServiceRateParamsChange{
+			Code: code,
+			Rate: rate,
+		},
+	}
+}
+
 // NewOServiceServiceForBOS creates a new instance of OServiceServiceForBOS.
 func NewOServiceServiceForBOS(
 	cfg config.Config,
@@ -614,6 +408,8 @@ func NewOServiceServiceForBOS(
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 	buddyIconManager BuddyIconManager,
+	rateLimitClasses wire.RateLimitClasses,
+	snacRateLimits wire.SNACRateLimits,
 ) *OServiceServiceForBOS {
 	return &OServiceServiceForBOS{
 		chatRoomManager: chatRoomManager,
@@ -638,6 +434,9 @@ func NewOServiceServiceForBOS(
 				wire.Popup,
 				wire.Stats,
 			},
+			rateLimitClasses: rateLimitClasses,
+			snacRateLimits:   snacRateLimits,
+			timeNow:          time.Now,
 		},
 	}
 }
@@ -875,6 +674,8 @@ func NewOServiceServiceForChat(
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 	buddyIconManager BuddyIconManager,
+	rateLimitClasses wire.RateLimitClasses,
+	snacRateLimits wire.SNACRateLimits,
 ) *OServiceServiceForChat {
 	return &OServiceServiceForChat{
 		OServiceService: OServiceService{
@@ -885,6 +686,9 @@ func NewOServiceServiceForChat(
 				wire.OService,
 				wire.Chat,
 			},
+			rateLimitClasses: rateLimitClasses,
+			snacRateLimits:   snacRateLimits,
+			timeNow:          time.Now,
 		},
 		chatRoomManager:    chatRoomManager,
 		chatMessageRelayer: chatMessageRelayer,
@@ -929,6 +733,8 @@ func NewOServiceServiceForChatNav(
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 	buddyIconManager BuddyIconManager,
+	rateLimitClasses wire.RateLimitClasses,
+	snacRateLimits wire.SNACRateLimits,
 ) *OServiceService {
 	return &OServiceService{
 		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
@@ -938,6 +744,9 @@ func NewOServiceServiceForChatNav(
 			wire.ChatNav,
 			wire.OService,
 		},
+		rateLimitClasses: rateLimitClasses,
+		snacRateLimits:   snacRateLimits,
+		timeNow:          time.Now,
 	}
 }
 
@@ -950,6 +759,8 @@ func NewOServiceServiceForAlert(
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 	buddyIconManager BuddyIconManager,
+	rateLimitClasses wire.RateLimitClasses,
+	snacRateLimits wire.SNACRateLimits,
 ) *OServiceService {
 	return &OServiceService{
 		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
@@ -959,12 +770,20 @@ func NewOServiceServiceForAlert(
 			wire.Alert,
 			wire.OService,
 		},
+		rateLimitClasses: rateLimitClasses,
+		snacRateLimits:   snacRateLimits,
+		timeNow:          time.Now,
 	}
 }
 
 // NewOServiceServiceForODir creates a new instance of OServiceService for the
 // ODir server.
-func NewOServiceServiceForODir(cfg config.Config, logger *slog.Logger) *OServiceService {
+func NewOServiceServiceForODir(
+	cfg config.Config,
+	logger *slog.Logger,
+	rateLimitClasses wire.RateLimitClasses,
+	snacRateLimits wire.SNACRateLimits,
+) *OServiceService {
 	return &OServiceService{
 		cfg:    cfg,
 		logger: logger,
@@ -972,6 +791,9 @@ func NewOServiceServiceForODir(cfg config.Config, logger *slog.Logger) *OService
 			wire.ODir,
 			wire.OService,
 		},
+		rateLimitClasses: rateLimitClasses,
+		snacRateLimits:   snacRateLimits,
+		timeNow:          time.Now,
 	}
 }
 
@@ -983,6 +805,8 @@ func NewOServiceServiceForAdmin(
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 	buddyIconManager BuddyIconManager,
+	rateLimitClasses wire.RateLimitClasses,
+	snacRateLimits wire.SNACRateLimits,
 ) *OServiceService {
 	return &OServiceService{
 		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
@@ -992,6 +816,9 @@ func NewOServiceServiceForAdmin(
 			wire.OService,
 			wire.Admin,
 		},
+		rateLimitClasses: rateLimitClasses,
+		snacRateLimits:   snacRateLimits,
+		timeNow:          time.Now,
 	}
 }
 
@@ -1004,6 +831,8 @@ func NewOServiceServiceForBART(
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 	buddyIconManager BuddyIconManager,
+	rateLimitClasses wire.RateLimitClasses,
+	snacRateLimits wire.SNACRateLimits,
 ) *OServiceService {
 	return &OServiceService{
 		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
@@ -1013,5 +842,8 @@ func NewOServiceServiceForBART(
 			wire.BART,
 			wire.OService,
 		},
+		rateLimitClasses: rateLimitClasses,
+		snacRateLimits:   snacRateLimits,
+		timeNow:          time.Now,
 	}
 }

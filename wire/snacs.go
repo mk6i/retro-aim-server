@@ -244,6 +244,21 @@ type SNAC_0x01_0x05_OServiceServiceResponse struct {
 	TLVRestBlock
 }
 
+type RateParamsSNAC struct {
+	ID              uint16
+	WindowSize      uint32
+	ClearLevel      uint32
+	AlertLevel      uint32
+	LimitLevel      uint32
+	DisconnectLevel uint32
+	CurrentLevel    uint32
+	MaxLevel        uint32
+	V2Params        *struct {
+		LastTime      uint32
+		DroppingSNACs uint8
+	} `oscar:"optional"`
+}
+
 //	SNAC_0x01_0x07_OServiceRateParamsReply contains rate limits for rate classes and groups.
 //
 // Rate Classes:
@@ -261,28 +276,15 @@ type SNAC_0x01_0x05_OServiceServiceResponse struct {
 //   - MaxLevel: The maximum rate value; if the current value surpasses this,
 //     it should be reset. The upper limit for a rate average.
 //   - LastTime: Time elapsed since the last message was received by the server.
-//   - CurrentState: Indicates whether the server is dropping SNACs for this rate class.
+//   - CurrentStatus: Indicates whether the server is dropping SNACs for this rate class.
 //
 // Rate Groups:
 //   - ID: Unique identifier for the rate group.
 //   - Pairs: List of SNAC types associated with the rate group, including FoodGroup
 //     (e.g., wire.ICBM) and SubGroup (e.g., wire.ICBMChannelMsgToHost).
 type SNAC_0x01_0x07_OServiceRateParamsReply struct {
-	RateClasses []struct {
-		ID              uint16
-		WindowSize      uint32
-		ClearLevel      uint32
-		AlertLevel      uint32
-		LimitLevel      uint32
-		DisconnectLevel uint32
-		CurrentLevel    uint32
-		MaxLevel        uint32
-		V2Params        *struct {
-			LastTime     uint32
-			CurrentState uint8
-		} `oscar:"optional"`
-	} `oscar:"count_prefix=uint16"`
-	RateGroups []struct {
+	RateClasses []RateParamsSNAC `oscar:"count_prefix=uint16"`
+	RateGroups  []struct {
 		ID    uint16
 		Pairs []struct {
 			FoodGroup uint16
@@ -291,8 +293,13 @@ type SNAC_0x01_0x07_OServiceRateParamsReply struct {
 	}
 }
 
+type SNAC_0x01_0x0A_OServiceRateParamsChange struct {
+	Code uint16
+	Rate RateParamsSNAC
+}
+
 type SNAC_0x01_0x08_OServiceRateParamsSubAdd struct {
-	TLVRestBlock
+	ClassIDs []uint16
 }
 
 type SNAC_0x01_0x0F_OServiceUserInfoUpdate struct {
@@ -797,6 +804,16 @@ type SNAC_0x04_0x14_ICBMClientEvent struct {
 }
 
 //
+// 0x05: Advert
+//
+
+const (
+	AdvertErr      uint16 = 0x0001
+	AdvertAdsQuery uint16 = 0x0002
+	AdvertAdsReply uint16 = 0x0003
+)
+
+//
 // 0x06: Invite
 //
 
@@ -912,6 +929,15 @@ type SNAC_0x07_0x07_AdminConfirmReply struct {
 }
 
 //
+// 0x08: Popup
+//
+
+const (
+	PopupErr     uint16 = 0x0001
+	PopupDisplay uint16 = 0x0002
+)
+
+//
 // 0x09: PermitDeny
 //
 
@@ -990,6 +1016,27 @@ type SNAC_0x0A_0x02_UserLookupFindByEmail struct {
 type SNAC_0x0A_0x03_UserLookupFindReply struct {
 	TLVRestBlock
 }
+
+//
+// 0x0B: Stats
+//
+
+const (
+	StatsErr                  uint16 = 0x0001
+	StatsSetMinReportInterval uint16 = 0x0002
+	StatsReportEvents         uint16 = 0x0003
+	StatsReportAck            uint16 = 0x0004
+)
+
+//
+// 0x0C: Translate
+//
+
+const (
+	TranslateErr     uint16 = 0x0001
+	TranslateRequest uint16 = 0x0002
+	TranslateReply   uint16 = 0x0003
+)
 
 //
 // 0x0D: ChatNav
@@ -1335,6 +1382,7 @@ type SNAC_0x10_0x05_BARTDownloadReply struct {
 	Data       []byte `oscar:"len_prefix=uint16"`
 }
 
+//
 // 0x13: Feedbag
 //
 

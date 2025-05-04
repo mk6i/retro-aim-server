@@ -9,12 +9,15 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 
 	"github.com/google/uuid"
+	"github.com/patrickmn/go-cache"
+	"golang.org/x/time/rate"
 )
 
 type AuthService interface {
@@ -28,12 +31,69 @@ type AuthService interface {
 	SignoutChat(ctx context.Context, sess *state.Session)
 }
 
+// IPRateLimiter enforces a per-IP rate limit using a token bucket algorithm.
+// It caches individual rate limiters by IP address and supports tagging requests
+// as originating from the BUCP or FLAP auth.
+//
+// The limiter uses an in-memory cache with TTL expiration, so rate limits reset
+// after the TTL if no activity is observed for a given IP.
+type IPRateLimiter struct {
+	cache *cache.Cache // In-memory cache mapping IPs to rate limiters with optional BUCP tag
+	rate  rate.Limit   // Requests allowed per second
+	burst int          // Maximum burst size allowed
+}
+
+type rateLimitEntry struct {
+	isBUCP  bool
+	limiter *rate.Limiter
+}
+
+// NewIPRateLimiter initializes a new IPRateLimiter with the specified rate,
+// burst size, and TTL for each IP's limiter. Entries expire after 2×TTL.
+func NewIPRateLimiter(rate rate.Limit, burst int, ttl time.Duration) *IPRateLimiter {
+	return &IPRateLimiter{
+		cache: cache.New(ttl, 2*ttl),
+		rate:  rate,
+		burst: burst,
+	}
+}
+
+// SetBUCP marks the rate limiter for the given IP as originating from BUCP auth
+// (default FLAP auth).
+func (l *IPRateLimiter) SetBUCP(ip string) {
+	limiter, found := l.cache.Get(ip)
+	if !found {
+		limiter = &rateLimitEntry{
+			isBUCP:  true,
+			limiter: rate.NewLimiter(l.rate, l.burst),
+		}
+		l.cache.Set(ip, limiter, cache.DefaultExpiration)
+	}
+	limiter.(*rateLimitEntry).isBUCP = true
+}
+
+// Allow checks if a request from the given IP is allowed under its rate limit.
+// It returns whether the request is allowed and whether the connection uses
+// BUCP auth.
+func (l *IPRateLimiter) Allow(ip string) (allowed bool, isBUCP bool) {
+	limiter, found := l.cache.Get(ip)
+	if !found {
+		limiter = &rateLimitEntry{
+			limiter: rate.NewLimiter(l.rate, l.burst),
+		}
+		l.cache.Set(ip, limiter, cache.DefaultExpiration)
+	}
+	entry := limiter.(*rateLimitEntry)
+	return entry.limiter.Allow(), entry.isBUCP
+}
+
 // AuthServer is an authentication server for both FLAP (AIM v1.0-3.0) and BUCP
 // (AIM v3.5-5.9) authentication flows.
 type AuthServer struct {
 	AuthService
 	config.Config
 	Logger *slog.Logger
+	*IPRateLimiter
 }
 
 // Start starts the authentication server and listens for new connections.
@@ -82,13 +142,49 @@ func (rt AuthServer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (rt AuthServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCloser) error {
-	defer rwc.Close()
+func (rt AuthServer) handleNewConnection(ctx context.Context, conn net.Conn) error {
+	defer conn.Close()
 
-	flapc := wire.NewFlapClient(100, rwc, rwc)
+	flapc := wire.NewFlapClient(100, conn, conn)
+
+	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
+	if err != nil {
+		rt.Logger.Error("failed to parse remote address", "err", err.Error())
+		return err
+	}
+
+	if ok, isBUCP := rt.Allow(ip); !ok {
+		rt.Logger.Error("user rate limited at login", "remote", ip)
+		tlv := wire.TLVRestBlock{
+			TLVList: []wire.TLV{
+				wire.NewTLVBE(wire.LoginTLVTagsErrorSubcode, wire.LoginErrRateLimitExceeded),
+			},
+		}
+		// gives wrong response if you quickly switch between BUCP/FLAP clients
+		if isBUCP {
+			return flapc.SendSNAC(
+				wire.SNACFrame{
+					FoodGroup: wire.BUCP,
+					SubGroup:  wire.BUCPLoginResponse,
+				},
+				wire.SNAC_0x17_0x03_BUCPLoginResponse{
+					TLVRestBlock: tlv,
+				},
+			)
+		} else {
+			return flapc.SendSignoffFrame(tlv)
+		}
+	}
+
+	// auth must complete within the next 30 seconds
+	if err := conn.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
+		return fmt.Errorf("failed to set deadline: %w", err)
+	}
+
 	if err := flapc.SendSignonFrame(nil); err != nil {
 		return err
 	}
+
 	signonFrame, err := flapc.ReceiveSignonFrame()
 	if err != nil {
 		return err
@@ -103,6 +199,8 @@ func (rt AuthServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 		return rt.processFLAPAuth(ctx, signonFrame, flapc)
 	}
 
+	rt.SetBUCP(ip)
+
 	return rt.processBUCPAuth(ctx, flapc)
 }
 
@@ -115,11 +213,19 @@ func (rt AuthServer) processFLAPAuth(ctx context.Context, signonFrame wire.FLAPS
 }
 
 func (rt AuthServer) processBUCPAuth(ctx context.Context, flapc *wire.FlapClient) error {
+	frames := 0
+
 	for {
 		frame, err := flapc.ReceiveFLAP()
 		if err != nil {
 			return err
 		}
+
+		if frames > 10 {
+			// a lot of frames received, the client is misbehaving
+			return fmt.Errorf("too many auth flap packets received")
+		}
+		frames++
 
 		switch frame.FrameType {
 		case wire.FLAPFrameSignoff:

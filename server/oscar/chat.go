@@ -22,6 +22,8 @@ type ChatServer struct {
 	Logger *slog.Logger
 	OnlineNotifier
 	config.Config
+	RateLimitUpdater
+	wire.SNACRateLimits
 }
 
 // Start creates a TCP server that implements that chat flow.
@@ -108,5 +110,5 @@ func (rt ChatServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteCl
 	}
 
 	ctx = context.WithValue(ctx, "screenName", chatSess.IdentScreenName())
-	return dispatchIncomingMessages(ctx, chatSess, flapc, rwc, rt.Logger, rt.Handler)
+	return dispatchIncomingMessages(ctx, chatSess, flapc, rwc, rt.Logger, rt.Handler, rt.RateLimitUpdater, rt.SNACRateLimits)
 }

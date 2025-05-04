@@ -3,24 +3,45 @@ package oscar
 import (
 	"bytes"
 	"context"
-	"io"
 	"log/slog"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/mk6i/retro-aim-server/wire"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/time/rate"
 )
 
+type fakeConn struct {
+	net.Conn // embed the real connection
+	local    net.Addr
+	remote   net.Addr
+}
+
+func (f fakeConn) RemoteAddr() net.Addr { return f.remote }
+
 func TestBUCPAuthService_handleNewConnection(t *testing.T) {
-	clientReader, serverWriter := io.Pipe()
-	serverReader, clientWriter := io.Pipe()
+	serverConn, clientConn := net.Pipe()
+
+	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
+	if err != nil {
+		panic(err)
+	}
+
+	clientFake := fakeConn{
+		Conn:   clientConn,
+		local:  addr,
+		remote: addr,
+	}
 
 	go func() {
+		defer serverConn.Close()
+
 		// < receive FLAPSignonFrame
 		flap := wire.FLAPFrame{}
-		assert.NoError(t, wire.UnmarshalBE(&flap, serverReader))
+		assert.NoError(t, wire.UnmarshalBE(&flap, serverConn))
 		flapSignonFrame := wire.FLAPSignonFrame{}
 		assert.NoError(t, wire.UnmarshalBE(&flapSignonFrame, bytes.NewBuffer(flap.Payload)))
 
@@ -35,10 +56,10 @@ func TestBUCPAuthService_handleNewConnection(t *testing.T) {
 			FrameType:   wire.FLAPFrameSignon,
 			Payload:     buf.Bytes(),
 		}
-		assert.NoError(t, wire.MarshalBE(flap, serverWriter))
+		assert.NoError(t, wire.MarshalBE(flap, serverConn))
 
 		// > send SNAC_0x17_0x06_BUCPChallengeRequest
-		flapc := wire.NewFlapClient(0, serverReader, serverWriter)
+		flapc := wire.NewFlapClient(0, serverConn, serverConn)
 		frame := wire.SNACFrame{
 			FoodGroup: wire.BUCP,
 			SubGroup:  wire.BUCPChallengeRequest,
@@ -65,8 +86,6 @@ func TestBUCPAuthService_handleNewConnection(t *testing.T) {
 		frame = wire.SNACFrame{}
 		assert.NoError(t, flapc.ReceiveSNAC(&frame, &wire.SNAC_0x17_0x03_BUCPLoginResponse{}))
 		assert.Equal(t, wire.SNACFrame{FoodGroup: wire.BUCP, SubGroup: wire.BUCPLoginResponse}, frame)
-
-		assert.NoError(t, serverWriter.Close())
 	}()
 
 	authService := newMockAuthService(t)
@@ -90,12 +109,10 @@ func TestBUCPAuthService_handleNewConnection(t *testing.T) {
 		}, nil)
 
 	rt := AuthServer{
-		AuthService: authService,
-		Logger:      slog.Default(),
+		AuthService:   authService,
+		Logger:        slog.Default(),
+		IPRateLimiter: NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 	}
-	rwc := pipeRWC{
-		PipeReader: clientReader,
-		PipeWriter: clientWriter,
-	}
-	assert.NoError(t, rt.handleNewConnection(context.Background(), rwc))
+
+	assert.NoError(t, rt.handleNewConnection(context.Background(), clientFake))
 }

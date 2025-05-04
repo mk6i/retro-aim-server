@@ -1276,7 +1276,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 }
 
 func TestICBMService_ParameterQuery(t *testing.T) {
-	svc := NewICBMService(nil, nil, nil, nil, nil)
+	svc := NewICBMService(nil, nil, nil, nil, nil, wire.DefaultSNACRateLimits())
 
 	have := svc.ParameterQuery(nil, wire.SNACFrame{RequestID: 1234})
 	want := wire.SNACMessage{
@@ -1328,7 +1328,7 @@ func TestICBMService_ClientErr(t *testing.T) {
 	messageRelayer.EXPECT().
 		RelayToScreenName(mock.Anything, state.NewIdentScreenName("recipientScreenName"), expect)
 
-	svc := NewICBMService(nil, messageRelayer, nil, nil, nil)
+	svc := NewICBMService(nil, messageRelayer, nil, nil, nil, wire.DefaultSNACRateLimits())
 
 	err := svc.ClientErr(context.Background(), sess, wire.SNACFrame{RequestID: 1234}, inBody)
 	assert.NoError(t, err)

@@ -23,6 +23,9 @@ packages:
       UserManager:
         config:
           filename: "mock_user_manager_test.go"
+      RateLimitUpdater:
+        config:
+          filename: "mock_rate_limit_updater_test.go"
   github.com/mk6i/retro-aim-server/server/http:
     interfaces:
       AccountManager:

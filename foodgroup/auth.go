@@ -27,6 +27,7 @@ func NewAuthService(
 	chatMessageRelayer ChatMessageRelayer,
 	accountManager AccountManager,
 	adminServerSessionRetriever SessionRetriever,
+	classes wire.RateLimitClasses,
 ) *AuthService {
 	return &AuthService{
 		chatSessionRegistry: chatSessionRegistry,
@@ -38,6 +39,7 @@ func NewAuthService(
 		accountManager:      accountManager,
 		// hack - adminServerSessionRetriever is just used for admin server
 		adminServerSessionRetriever: adminServerSessionRetriever,
+		rateLimitClasses:            classes,
 	}
 }
 
@@ -53,6 +55,7 @@ type AuthService struct {
 	userManager                 UserManager
 	accountManager              AccountManager
 	adminServerSessionRetriever SessionRetriever
+	rateLimitClasses            wire.RateLimitClasses
 }
 
 // RegisterChatSession adds a user to a chat room. The authCookie param is an
@@ -75,6 +78,9 @@ func (s AuthService) RegisterChatSession(ctx context.Context, authCookie []byte)
 	if err != nil {
 		return nil, fmt.Errorf("AddSession: %w", err)
 	}
+
+	sess.SetRateClasses(time.Now(), s.rateLimitClasses)
+
 	return sess, err
 }
 
@@ -119,6 +125,8 @@ func (s AuthService) RegisterBOSSession(ctx context.Context, authCookie []byte) 
 	} else if !confirmed {
 		sess.SetUserInfoFlag(wire.OServiceUserFlagUnconfirmed)
 	}
+
+	sess.SetRateClasses(time.Now(), s.rateLimitClasses)
 
 	// set string containing OSCAR client name and version
 	sess.SetClientID(c.ClientID)

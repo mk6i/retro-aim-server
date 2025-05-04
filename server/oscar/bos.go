@@ -44,6 +44,11 @@ type ChatSessionManager interface {
 	RemoveUserFromAllChats(user state.IdentScreenName)
 }
 
+// RateLimitUpdater provides rate limit updates for subscribed rate limit classes.
+type RateLimitUpdater interface {
+	RateLimitUpdates(ctx context.Context, sess *state.Session, now time.Time) []wire.SNACMessage
+}
+
 // BOSServer provides client connection lifecycle management for the BOS
 // service.
 type BOSServer struct {
@@ -56,6 +61,8 @@ type BOSServer struct {
 	OnlineNotifier
 	config.Config
 	ChatSessionManager *state.InMemoryChatSessionManager
+	RateLimitUpdater
+	wire.SNACRateLimits
 }
 
 // Start starts a TCP server and listens for connections. The initial
@@ -203,5 +210,5 @@ func (rt BOSServer) handleNewConnection(ctx context.Context, rwc io.ReadWriteClo
 		sess.SetRemoteAddr(&ip)
 	}
 
-	return dispatchIncomingMessages(ctx, sess, flapc, rwc, rt.Logger, rt.Handler)
+	return dispatchIncomingMessages(ctx, sess, flapc, rwc, rt.Logger, rt.Handler, rt.RateLimitUpdater, rt.SNACRateLimits)
 }

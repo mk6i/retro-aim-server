@@ -7,12 +7,12 @@ import (
 	"log/slog"
 	"sync"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"time"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestHandleChatConnection_MessageRelay(t *testing.T) {
@@ -25,7 +25,8 @@ func TestHandleChatConnection_MessageRelay(t *testing.T) {
 	clientReader, serverWriter := io.Pipe()
 	go func() {
 		flapc := wire.NewFlapClient(0, nil, serverWriter)
-		err := dispatchIncomingMessages(context.Background(), sess, flapc, serverReader, slog.Default(), nil)
+		rateLimitUpdater := newMockRateLimitUpdater(t)
+		err := dispatchIncomingMessages(context.Background(), sess, flapc, serverReader, slog.Default(), nil, rateLimitUpdater, wire.DefaultSNACRateLimits())
 		assert.NoError(t, err)
 	}()
 
@@ -91,6 +92,7 @@ func TestHandleChatConnection_ClientRequest(t *testing.T) {
 	sessionManager := state.NewInMemorySessionManager(slog.Default())
 	// add session so that the function can terminate upon closure
 	sess, _ := sessionManager.AddSession(nil, "bob")
+	sess.SetRateClasses(time.Now(), defaultRateLimitClasses())
 
 	inboundMsgs := []wire.SNACMessage{
 		{
@@ -144,7 +146,8 @@ func TestHandleChatConnection_ClientRequest(t *testing.T) {
 	clientReader, serverWriter := io.Pipe()
 	go func() {
 		flapc := wire.NewFlapClient(0, nil, serverWriter)
-		assert.NoError(t, dispatchIncomingMessages(context.Background(), sess, flapc, serverReader, slog.Default(), router))
+		rateLimitUpdater := newMockRateLimitUpdater(t)
+		assert.NoError(t, dispatchIncomingMessages(context.Background(), sess, flapc, serverReader, slog.Default(), router, rateLimitUpdater, wire.DefaultSNACRateLimits()))
 	}()
 
 	// send client messages
@@ -164,4 +167,56 @@ func TestHandleChatConnection_ClientRequest(t *testing.T) {
 	flap := wire.FLAPFrame{}
 	assert.NoError(t, wire.UnmarshalBE(&flap, clientReader))
 	assert.Equal(t, wire.FLAPFrameSignoff, flap.FrameType)
+}
+
+func defaultRateLimitClasses() wire.RateLimitClasses {
+	return wire.NewRateLimitClasses(
+		[5]wire.RateClass{
+			{
+				ID:              1,
+				WindowSize:      80,
+				ClearLevel:      2500,
+				AlertLevel:      2000,
+				LimitLevel:      1500,
+				DisconnectLevel: 800,
+				MaxLevel:        6000,
+			},
+			{
+				ID:              2,
+				WindowSize:      80,
+				ClearLevel:      3000,
+				AlertLevel:      2000,
+				LimitLevel:      1500,
+				DisconnectLevel: 1000,
+				MaxLevel:        6000,
+			},
+			{
+				ID:              3,
+				WindowSize:      20,
+				ClearLevel:      5100,
+				AlertLevel:      5000,
+				LimitLevel:      4000,
+				DisconnectLevel: 3000,
+				MaxLevel:        6000,
+			},
+			{
+				ID:              4,
+				WindowSize:      20,
+				ClearLevel:      5500,
+				AlertLevel:      5300,
+				LimitLevel:      4200,
+				DisconnectLevel: 3000,
+				MaxLevel:        8000,
+			},
+			{
+				ID:              5,
+				WindowSize:      10,
+				ClearLevel:      5500,
+				AlertLevel:      5300,
+				LimitLevel:      4200,
+				DisconnectLevel: 3000,
+				MaxLevel:        8000,
+			},
+		},
+	)
 }

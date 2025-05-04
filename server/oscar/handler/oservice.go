@@ -14,11 +14,11 @@ import (
 
 type OServiceService interface {
 	ClientOnline(ctx context.Context, bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error
-	ClientVersions(ctx context.Context, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x17_OServiceClientVersions) wire.SNACMessage
+	ClientVersions(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x17_OServiceClientVersions) wire.SNACMessage
 	HostOnline() wire.SNACMessage
 	IdleNotification(ctx context.Context, sess *state.Session, bodyIn wire.SNAC_0x01_0x11_OServiceIdleNotification) error
 	RateParamsQuery(ctx context.Context, sess *state.Session, frame wire.SNACFrame) wire.SNACMessage
-	RateParamsSubAdd(context.Context, wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd)
+	RateParamsSubAdd(context.Context, *state.Session, wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd)
 	ServiceRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error)
 	SetPrivacyFlags(ctx context.Context, bodyIn wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags)
 	SetUserInfoFields(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (wire.SNACMessage, error)
@@ -45,14 +45,14 @@ func (h OServiceHandler) RateParamsQuery(ctx context.Context, sess *state.Sessio
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }
 
-func (h OServiceHandler) RateParamsSubAdd(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, _ oscar.ResponseWriter) error {
+func (h OServiceHandler) RateParamsSubAdd(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd{}
 	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
-	h.OServiceService.RateParamsSubAdd(ctx, inBody)
+	h.OServiceService.RateParamsSubAdd(ctx, sess, inBody)
 	h.LogRequest(ctx, inFrame, inBody)
-	return wire.UnmarshalBE(&inBody, r)
+	return nil
 }
 
 func (h OServiceHandler) UserInfoQuery(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, _ io.Reader, rw oscar.ResponseWriter) error {
@@ -70,12 +70,12 @@ func (h OServiceHandler) IdleNotification(ctx context.Context, sess *state.Sessi
 	return h.OServiceService.IdleNotification(ctx, sess, inBody)
 }
 
-func (h OServiceHandler) ClientVersions(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
+func (h OServiceHandler) ClientVersions(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw oscar.ResponseWriter) error {
 	inBody := wire.SNAC_0x01_0x17_OServiceClientVersions{}
 	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
-	outSNAC := h.OServiceService.ClientVersions(ctx, inFrame, inBody)
+	outSNAC := h.OServiceService.ClientVersions(ctx, sess, inFrame, inBody)
 	h.LogRequestAndResponse(ctx, inFrame, inBody, outSNAC.Frame, outSNAC.Body)
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
 }

@@ -22,6 +22,7 @@ func NewICBMService(
 	offlineMessageSaver OfflineMessageManager,
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
+	snacRateLimits wire.SNACRateLimits,
 ) *ICBMService {
 	return &ICBMService{
 		relationshipFetcher: relationshipFetcher,
@@ -30,6 +31,7 @@ func NewICBMService(
 		offlineMessageSaver: offlineMessageSaver,
 		timeNow:             time.Now,
 		sessionRetriever:    sessionRetriever,
+		snacRateLimits:      snacRateLimits,
 	}
 }
 
@@ -43,6 +45,7 @@ type ICBMService struct {
 	offlineMessageSaver OfflineMessageManager
 	timeNow             func() time.Time
 	sessionRetriever    SessionRetriever
+	snacRateLimits      wire.SNACRateLimits
 }
 
 // ParameterQuery returns ICBM service parameters.

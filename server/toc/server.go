@@ -15,7 +15,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/patrickmn/go-cache"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/time/rate"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -88,13 +90,44 @@ func (l *channelListener) Addr() net.Addr {
 	return nil
 }
 
+// IPRateLimiter provides per-IP rate limiting using a token bucket algorithm.
+// It caches individual rate limiters per IP address with automatic TTL expiration.
+type IPRateLimiter struct {
+	cache *cache.Cache // In-memory cache of rate limiters keyed by IP
+	rate  rate.Limit   // Allowed request rate (events per second)
+	burst int          // Maximum burst size
+}
+
+// NewIPRateLimiter returns a new IPRateLimiter that limits each IP to the specified
+// rate and burst, with limiter state expiring after the given TTL.
+// Entries are retained for up to 2×TTL to reduce churn under frequent lookups.
+func NewIPRateLimiter(rate rate.Limit, burst int, ttl time.Duration) *IPRateLimiter {
+	return &IPRateLimiter{
+		cache: cache.New(ttl, 2*ttl),
+		rate:  rate,
+		burst: burst,
+	}
+}
+
+// Allow returns true if the request from the given IP is allowed under its rate limit.
+// If no limiter exists for the IP, one is created and tracked in the cache.
+func (l *IPRateLimiter) Allow(ip string) (allowed bool) {
+	limiter, found := l.cache.Get(ip)
+	if !found {
+		limiter = rate.NewLimiter(l.rate, l.burst)
+		l.cache.Set(ip, limiter, cache.DefaultExpiration)
+	}
+	return limiter.(*rate.Limiter).Allow()
+}
+
 // Server implements a TOC protocol server that multiplexes TOC/HTTP and
 // TOC/FLAP requests. It acts as a gateway, forwarding all TOC requests
 // to the OSCAR server for processing.
 type Server struct {
-	BOSProxy   OSCARProxy
-	ListenAddr string
-	Logger     *slog.Logger
+	BOSProxy           OSCARProxy
+	ListenAddr         string
+	Logger             *slog.Logger
+	LoginIPRateLimiter *IPRateLimiter
 }
 
 func (rt Server) Start(ctx context.Context) error {
@@ -204,6 +237,19 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 	clientFlap, err := rt.initFLAP(conn)
 	if err != nil {
 		return err
+	}
+
+	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
+	if err != nil {
+		rt.Logger.Error("failed to parse remote address", "err", err.Error())
+		return err
+	}
+
+	if ok := rt.LoginIPRateLimiter.Allow(ip); !ok {
+		if err := clientFlap.SendDataFrame([]byte("ERROR:983")); err != nil {
+			return fmt.Errorf("clientFlap.SendDataFrame: %w", err)
+		}
+		return nil
 	}
 
 	sessBOS, err := rt.login(ctx, clientFlap)

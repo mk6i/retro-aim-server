@@ -508,6 +508,7 @@ func TestOSCARProxy_RecvClientCmd_FormatNickname(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_format_nickname`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -954,6 +955,7 @@ func TestOSCARProxy_RecvClientCmd_ChatInvite(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_chat_invite`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -1281,6 +1283,7 @@ func TestOSCARProxy_RecvClientCmd_ChatLeave(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_chat_leave`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -1497,6 +1500,7 @@ func TestOSCARProxy_RecvClientCmd_ChatSend(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_chat_send`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -1623,6 +1627,7 @@ func TestOSCARProxy_RecvClientCmd_ChatWhisper(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_chat_whisper`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -1777,6 +1782,7 @@ func TestOSCARProxy_RecvClientCmd_Evil(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_evil`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -2005,6 +2011,7 @@ func TestOSCARProxy_RecvClientCmd_ChangePassword(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_change_passwd`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -2102,6 +2109,7 @@ func TestOSCARProxy_RecvClientCmd_GetDirSearchURL(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_dir_search`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -2119,8 +2127,9 @@ func TestOSCARProxy_RecvClientCmd_GetDirSearchURL(t *testing.T) {
 			}
 
 			svc := OSCARProxy{
-				Logger:      slog.Default(),
-				CookieBaker: cookieBaker,
+				Logger:         slog.Default(),
+				CookieBaker:    cookieBaker,
+				SNACRateLimits: wire.DefaultSNACRateLimits(),
 			}
 			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
@@ -2177,6 +2186,7 @@ func TestOSCARProxy_RecvClientCmd_GetDirURL(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_get_dir`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -2252,6 +2262,7 @@ func TestOSCARProxy_RecvClientCmd_GetInfoURL(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_get_info`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -2413,6 +2424,7 @@ func TestOSCARProxy_RecvClientCmd_GetStatus(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_get_status`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -2681,6 +2693,7 @@ func TestOSCARProxy_RecvClientCmd_RvousAccept(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_rvous_accept`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -2790,6 +2803,7 @@ func TestOSCARProxy_RecvClientCmd_RvousCancel(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_rvous_cancel`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -2950,6 +2964,7 @@ func TestOSCARProxy_RecvClientCmd_SendIM(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_send_im`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -3291,6 +3306,7 @@ func TestOSCARProxy_RecvClientCmd_SetConfig(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_set_config`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -3469,6 +3485,7 @@ func TestOSCARProxy_RecvClientCmd_SetDir(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_set_dir`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -3553,6 +3570,7 @@ func TestOSCARProxy_RecvClientCmd_SetIdle(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_set_idle`),
 			wantMsg:  cmdInternalSvcErr,
 		},
@@ -3640,6 +3658,7 @@ func TestOSCARProxy_RecvClientCmd_SetInfo(t *testing.T) {
 		},
 		{
 			name:     "bad command",
+			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_set_info`),
 			wantMsg:  cmdInternalSvcErr,
 		},

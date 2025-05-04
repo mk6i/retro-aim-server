@@ -11,6 +11,31 @@ import (
 // SessSendStatus is the result of sending a message to a user.
 type SessSendStatus int
 
+// RateClassState tracks the rate limiting state for a specific rate class
+// within a user's session.
+//
+// It embeds the static wire.RateClass configuration and maintains dynamic,
+// per-session state used to evaluate rate limits in real time.
+type RateClassState struct {
+	// static rate limit configuration for this class
+	wire.RateClass
+	// CurrentLevel is the current exponential moving average for this rate
+	// class.
+	CurrentLevel int32
+	// LastTime represents the last time a SNAC message was sent for this rate
+	// class.
+	LastTime time.Time
+	// CurrentStatus is the last recorded rate limit status for this rate class.
+	CurrentStatus wire.RateLimitStatus
+	// Subscribed indicates whether the user wants to receive rate limit
+	// parameter updates for this rate class.
+	Subscribed bool
+	// LimitedNow indicates whether the user is currently rate limited for this
+	// rate class; the user is blocked from sending SNACs in this rate class
+	// until the clear threshold is met.
+	LimitedNow bool
+}
+
 const (
 	// SessSendOK indicates message was sent to recipient
 	SessSendOK SessSendStatus = iota
@@ -24,40 +49,96 @@ const (
 // Session represents a user's current session. Unless stated otherwise, all
 // methods may be safely accessed by multiple goroutines.
 type Session struct {
-	awayMessage       string
-	caps              [][16]byte
-	chatRoomCookie    string
-	closed            bool
-	displayScreenName DisplayScreenName
-	identScreenName   IdentScreenName
-	idle              bool
-	idleTime          time.Time
-	msgCh             chan wire.SNACMessage
-	mutex             sync.RWMutex
-	nowFn             func() time.Time
-	signonComplete    bool
-	signonTime        time.Time
-	stopCh            chan struct{}
-	uin               uint32
-	warning           uint16
-	userInfoBitmask   uint16
-	userStatusBitmask uint32
-	clientID          string
-	remoteAddr        *netip.AddrPort
+	awayMessage        string
+	caps               [][16]byte
+	chatRoomCookie     string
+	closed             bool
+	displayScreenName  DisplayScreenName
+	identScreenName    IdentScreenName
+	idle               bool
+	idleTime           time.Time
+	msgCh              chan wire.SNACMessage
+	mutex              sync.RWMutex
+	nowFn              func() time.Time
+	signonComplete     bool
+	signonTime         time.Time
+	stopCh             chan struct{}
+	uin                uint32
+	warning            uint16
+	userInfoBitmask    uint16
+	userStatusBitmask  uint32
+	clientID           string
+	remoteAddr         *netip.AddrPort
+	lastObservedStates [5]RateClassState
+	rateByClassID      [5]RateClassState
+	foodGroupVersions  [wire.MDir + 1]uint16
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
 // up to 1000 pending messages before blocking.
 func NewSession() *Session {
+	now := time.Now()
 	return &Session{
 		msgCh:             make(chan wire.SNACMessage, 1000),
 		nowFn:             time.Now,
 		stopCh:            make(chan struct{}),
-		signonTime:        time.Now(),
+		signonTime:        now,
 		caps:              make([][16]byte, 0),
 		userInfoBitmask:   wire.OServiceUserFlagOSCARFree,
 		userStatusBitmask: wire.OServiceUserStatusAvailable,
+		foodGroupVersions: func() [wire.MDir + 1]uint16 {
+			// initialize default food groups versions to 1.0
+			vals := [wire.MDir + 1]uint16{}
+			vals[wire.OService] = 1
+			vals[wire.Locate] = 1
+			vals[wire.Buddy] = 1
+			vals[wire.ICBM] = 1
+			vals[wire.Advert] = 1
+			vals[wire.Invite] = 1
+			vals[wire.Admin] = 1
+			vals[wire.Popup] = 1
+			vals[wire.PermitDeny] = 1
+			vals[wire.UserLookup] = 1
+			vals[wire.Stats] = 1
+			vals[wire.Translate] = 1
+			vals[wire.ChatNav] = 1
+			vals[wire.Chat] = 1
+			vals[wire.ODir] = 1
+			vals[wire.BART] = 1
+			vals[wire.Feedbag] = 1
+			vals[wire.ICQ] = 1
+			vals[wire.BUCP] = 1
+			vals[wire.Alert] = 1
+			vals[wire.Plugin] = 1
+			vals[wire.UnnamedFG24] = 1
+			vals[wire.MDir] = 1
+			return vals
+		}(),
 	}
+}
+
+func (s *Session) SetRateClasses(now time.Time, classes wire.RateLimitClasses) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	var newStates [5]RateClassState
+	for i, class := range classes.All() {
+		newStates[i] = RateClassState{
+			CurrentLevel:  class.MaxLevel,
+			CurrentStatus: wire.RateLimitStatusClear,
+			LastTime:      now,
+			RateClass:     class,
+			Subscribed:    s.lastObservedStates[i].Subscribed,
+		}
+	}
+
+	if s.lastObservedStates[0].ID == 0 {
+		s.lastObservedStates = newStates
+	} else {
+		s.lastObservedStates = s.rateByClassID
+	}
+
+	s.rateByClassID = newStates
 }
 
 // SetRemoteAddr sets the user's remote IP address
@@ -353,6 +434,10 @@ func (s *Session) RelayMessage(msg wire.SNACMessage) SessSendStatus {
 func (s *Session) Close() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	s.close()
+}
+
+func (s *Session) close() {
 	if s.closed {
 		return
 	}
@@ -377,4 +462,89 @@ func (s *Session) ClientID() string {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.clientID
+}
+
+// SubscribeRateLimits subscribes the Session to updates for the specified
+// rate limit classes. Future calls to ObserveRateChanges will report changes
+// for these classes.
+func (s *Session) SubscribeRateLimits(classes []wire.RateLimitClassID) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	for _, classID := range classes {
+		s.rateByClassID[classID-1].Subscribed = true
+	}
+}
+
+// ObserveRateChanges updates rate limit states for all known classes and returns
+// any classes and class states that have changed since the previous observation.
+func (s *Session) ObserveRateChanges(now time.Time) (classDelta []RateClassState, stateDelta []RateClassState) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	for i, params := range s.rateByClassID {
+		if !params.Subscribed {
+			continue
+		}
+
+		state, level := wire.CheckRateLimit(params.LastTime, now, params.RateClass, params.CurrentLevel, params.LimitedNow)
+		s.rateByClassID[i].CurrentStatus = state
+
+		// clear limited now flag if passing from limited state to clear state
+		if s.rateByClassID[i].LimitedNow && state == wire.RateLimitStatusClear {
+			s.rateByClassID[i].LimitedNow = false
+			s.rateByClassID[i].CurrentLevel = level
+		}
+
+		// did rate class change?
+		if params.RateClass != s.lastObservedStates[i].RateClass {
+			classDelta = append(classDelta, s.rateByClassID[i])
+		}
+
+		// did rate limit status change?
+		if s.lastObservedStates[i].CurrentStatus != s.rateByClassID[i].CurrentStatus {
+			stateDelta = append(stateDelta, s.rateByClassID[i])
+		}
+
+		// save it for next time
+		s.lastObservedStates[i] = s.rateByClassID[i]
+	}
+
+	return classDelta, stateDelta
+}
+
+// EvaluateRateLimit checks and updates the session’s rate limit state
+// for the given rate class ID. If the rate status reaches 'disconnect',
+// the session is closed.
+func (s *Session) EvaluateRateLimit(now time.Time, rateClassID wire.RateLimitClassID) wire.RateLimitStatus {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	rateClass := &s.rateByClassID[rateClassID-1]
+
+	status, newLevel := wire.CheckRateLimit(rateClass.LastTime, now, rateClass.RateClass, rateClass.CurrentLevel, rateClass.LimitedNow)
+	rateClass.CurrentLevel = newLevel
+	rateClass.CurrentStatus = status
+	rateClass.LastTime = now
+	rateClass.LimitedNow = status == wire.RateLimitStatusLimited
+
+	if status == wire.RateLimitStatusDisconnect {
+		s.close()
+	}
+
+	return status
+}
+
+// SetFoodGroupVersions sets the client's supported food group versions
+func (s *Session) SetFoodGroupVersions(versions [wire.MDir + 1]uint16) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.foodGroupVersions = versions
+}
+
+// FoodGroupVersions retrieves the client's supported food group versions.
+func (s *Session) FoodGroupVersions() [wire.MDir + 1]uint16 {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.foodGroupVersions
 }

@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/time/rate"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -622,13 +624,16 @@ func TestOSCARProxy_NewServeMux(t *testing.T) {
 			}
 
 			svc := OSCARProxy{
-				CookieBaker:      cookieBaker,
-				DirSearchService: dirSearchSvc,
-				LocateService:    locateSvc,
-				Logger:           slog.Default(),
+				CookieBaker:       cookieBaker,
+				DirSearchService:  dirSearchSvc,
+				LocateService:     locateSvc,
+				Logger:            slog.Default(),
+				HTTPIPRateLimiter: NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
+				SNACRateLimits:    wire.DefaultSNACRateLimits(),
 			}
 
 			req, err := http.NewRequest(http.MethodGet, tc.path, nil)
+			req.RemoteAddr = "127.0.0.1:1234"
 			if err != nil {
 				t.Fatalf("Failed to create request: %v", err)
 			}
