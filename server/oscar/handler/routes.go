@@ -23,6 +23,7 @@ type Handlers struct {
 	ODirHandler
 	OServiceHandler
 	PermitDenyHandler
+	StatsHandler
 	UserLookupHandler
 }
 
@@ -91,6 +92,8 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.PermitDeny, wire.PermitDenyDelPermListEntries, h.PermitDenyHandler.DelPermListEntries)
 	router.Register(wire.PermitDeny, wire.PermitDenyRightsQuery, h.PermitDenyHandler.RightsQuery)
 	router.Register(wire.PermitDeny, wire.PermitDenySetGroupPermitMask, h.PermitDenyHandler.SetGroupPermitMask)
+
+	router.Register(wire.Stats, wire.StatsReportEvents, h.StatsHandler.ReportEvents)
 
 	router.Register(wire.UserLookup, wire.UserLookupFindByEmail, h.UserLookupHandler.FindByEmail)
 

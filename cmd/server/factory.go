@@ -323,6 +323,7 @@ func BOS(deps Container) oscar.BOSServer {
 			LocateHandler:     handler.NewLocateHandler(locateService, logger),
 			OServiceHandler:   handler.NewOServiceHandler(logger, oServiceService),
 			PermitDenyHandler: handler.NewPermitDenyHandler(logger, permitDenyService),
+			StatsHandler:      handler.NewStatsHandler(logger),
 			UserLookupHandler: handler.NewUserLookupHandler(logger, userLookupService),
 		}),
 		Logger:           logger,

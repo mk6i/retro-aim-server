@@ -299,6 +299,12 @@ var subGroupName = map[uint16]map[uint16]string{
 		ODirKeywordListQuery: "ODirKeywordListQuery",
 		ODirKeywordListReply: "ODirKeywordListReply",
 	},
+	Stats: {
+		StatsErr:                  "StatsErr",
+		StatsSetMinReportInterval: "StatsSetMinReportInterval",
+		StatsReportEvents:         "StatsReportEvents",
+		StatsReportAck:            "StatsReportAck",
+	},
 }
 
 // SubGroupName gets the string name of a subgroup within a food group. It
