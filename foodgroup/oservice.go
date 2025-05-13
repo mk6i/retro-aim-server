@@ -189,9 +189,7 @@ func (s OServiceService) UserInfoQuery(_ context.Context, sess *state.Session, i
 			SubGroup:  wire.OServiceUserInfoUpdate,
 			RequestID: inFrame.RequestID,
 		},
-		Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-			TLVUserInfo: sess.TLVUserInfo(),
-		},
+		Body: newOServiceUserInfoUpdate(sess),
 	}
 }
 
@@ -220,9 +218,7 @@ func (s OServiceService) SetUserInfoFields(ctx context.Context, sess *state.Sess
 			SubGroup:  wire.OServiceUserInfoUpdate,
 			RequestID: inFrame.RequestID,
 		},
-		Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-			TLVUserInfo: sess.TLVUserInfo(),
-		},
+		Body: newOServiceUserInfoUpdate(sess),
 	}, nil
 }
 
@@ -845,5 +841,24 @@ func NewOServiceServiceForBART(
 		rateLimitClasses: rateLimitClasses,
 		snacRateLimits:   snacRateLimits,
 		timeNow:          time.Now,
+	}
+}
+
+// newOServiceUserInfoUpdate constructs SNAC(0x01,0x0F) for user info updates.
+// For OService version 4 and above, it appends a duplicate TLVUserInfo block.
+// AIM 6+ expects at least two user info blocks to support multi-session:
+// the first represents overall state; subsequent ones represent client instances.
+func newOServiceUserInfoUpdate(sess *state.Session) wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate {
+	info := sess.TLVUserInfo()
+	userInfo := []wire.TLVUserInfo{info}
+
+	if sess.FoodGroupVersions()[wire.OService] >= 4 {
+		// ideally, the second block should contain only instance-specific TLVs,
+		// but since the exact structure is unclear, we temporarily duplicate the first.
+		userInfo = append(userInfo, info)
+	}
+
+	return wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+		UserInfo: userInfo,
 	}
 }

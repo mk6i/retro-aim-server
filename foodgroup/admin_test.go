@@ -472,7 +472,7 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 		expectErr error
 	}{
 		{
-			name:        "user changes screen name format successfully",
+			name:        "user changes screen name format successfully aim < 6",
 			userSession: newTestSession("chattingchuck"),
 			mockParams: mockParams{
 				accountManagerParams: accountManagerParams{
@@ -499,7 +499,77 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 									SubGroup:  wire.OServiceUserInfoUpdate,
 								},
 								Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-									TLVUserInfo: newTestSession("Chatting Chuck").TLVUserInfo(),
+									UserInfo: []wire.TLVUserInfo{
+										newTestSession("Chatting Chuck").TLVUserInfo(),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+					RequestID: 1337,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "user changes screen name format successfully aim >= 6",
+			userSession: newTestSession("chattingchuck", sessOptSetFoodGroupVersion(wire.OService, 4)),
+			mockParams: mockParams{
+				accountManagerParams: accountManagerParams{
+					accountManagerUpdateDisplayScreenNameParams: accountManagerUpdateDisplayScreenNameParams{
+						{
+							displayScreenName: state.DisplayScreenName("Chatting Chuck"),
+						},
+					},
+				},
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
+						{
+							screenName: state.NewIdentScreenName("Chatting Chuck"),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("Chatting Chuck"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.OService,
+									SubGroup:  wire.OServiceUserInfoUpdate,
+								},
+								Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+									UserInfo: []wire.TLVUserInfo{
+										newTestSession("Chatting Chuck").TLVUserInfo(),
+										newTestSession("Chatting Chuck").TLVUserInfo(),
+									},
 								},
 							},
 						},

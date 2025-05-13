@@ -161,14 +161,15 @@ const (
 	OServiceBartQuery2        uint16 = 0x0022
 	OServiceBartReply2        uint16 = 0x0023
 
-	OServiceUserInfoUserFlags  uint16 = 0x01
-	OServiceUserInfoSignonTOD  uint16 = 0x03
-	OServiceUserInfoIdleTime   uint16 = 0x04
-	OServiceUserInfoStatus     uint16 = 0x06
-	OServiceUserInfoICQDC      uint16 = 0x0C
-	OServiceUserInfoOscarCaps  uint16 = 0x0D
-	OServiceUserInfoBARTInfo   uint16 = 0x1D
-	OServiceUserInfoUserFlags2 uint16 = 0x1F
+	OServiceUserInfoUserFlags       uint16 = 0x01
+	OServiceUserInfoSignonTOD       uint16 = 0x03
+	OServiceUserInfoIdleTime        uint16 = 0x04
+	OServiceUserInfoStatus          uint16 = 0x06
+	OServiceUserInfoICQDC           uint16 = 0x0C
+	OServiceUserInfoOscarCaps       uint16 = 0x0D
+	OServiceUserInfoBARTInfo        uint16 = 0x1D
+	OServiceUserInfoMySubscriptions uint16 = 0x1E
+	OServiceUserInfoUserFlags2      uint16 = 0x1F
 
 	OServiceUserStatusAvailable         uint32 = 0x00000000 // user is available
 	OServiceUserStatusAway              uint32 = 0x00000001 // user is away
@@ -303,7 +304,7 @@ type SNAC_0x01_0x08_OServiceRateParamsSubAdd struct {
 }
 
 type SNAC_0x01_0x0F_OServiceUserInfoUpdate struct {
-	TLVUserInfo
+	UserInfo []TLVUserInfo
 }
 
 type SNAC_0x01_0x10_OServiceEvilNotification struct {

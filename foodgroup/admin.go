@@ -218,9 +218,7 @@ func (s AdminService) InfoChangeRequest(ctx context.Context, sess *state.Session
 				FoodGroup: wire.OService,
 				SubGroup:  wire.OServiceUserInfoUpdate,
 			},
-			Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-				TLVUserInfo: sess.TLVUserInfo(),
-			},
+			Body: newOServiceUserInfoUpdate(sess),
 		})
 		tlvList.Append(wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, proposedName.String()))
 		return getAdminChangeReply(tlvList), nil

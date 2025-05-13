@@ -762,8 +762,10 @@ func sessOptUIN(UIN uint32) func(session *state.Session) {
 	}
 }
 
-func sessOptFoodGroupVersions(versions [wire.MDir + 1]uint16) func(session *state.Session) {
+func sessOptSetFoodGroupVersion(foodGroup uint16, version uint16) func(session *state.Session) {
 	return func(session *state.Session) {
+		var versions [wire.MDir + 1]uint16
+		versions[foodGroup] = version
 		session.SetFoodGroupVersions(versions)
 	}
 }

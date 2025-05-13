@@ -306,8 +306,9 @@ func TestOServiceHandler_SetUserInfoFields(t *testing.T) {
 			SubGroup:  wire.OServiceUserInfoUpdate,
 		},
 		Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-			TLVUserInfo: wire.TLVUserInfo{
-				ScreenName: "screen-name",
+			UserInfo: []wire.TLVUserInfo{
+				{ScreenName: "screen-name"},
+				{ScreenName: "screen-name"},
 			},
 		},
 	}
@@ -349,8 +350,9 @@ func TestOServiceHandler_UserInfoQuery(t *testing.T) {
 			SubGroup:  wire.OServiceUserInfoUpdate,
 		},
 		Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-			TLVUserInfo: wire.TLVUserInfo{
-				ScreenName: "screen-name",
+			UserInfo: []wire.TLVUserInfo{
+				{ScreenName: "screen-name"},
+				{ScreenName: "screen-name"},
 			},
 		},
 	}

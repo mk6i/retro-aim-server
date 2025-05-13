@@ -366,7 +366,7 @@ func TestSetUserInfoFields(t *testing.T) {
 		mockParams mockParams
 	}{
 		{
-			name:        "set user status to visible",
+			name:        "set user status to visible aim < 6",
 			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -387,7 +387,9 @@ func TestSetUserInfoFields(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-					TLVUserInfo: newTestSession("me").TLVUserInfo(),
+					UserInfo: []wire.TLVUserInfo{
+						newTestSession("me").TLVUserInfo(),
+					},
 				},
 			},
 			mockParams: mockParams{
@@ -401,7 +403,7 @@ func TestSetUserInfoFields(t *testing.T) {
 			},
 		},
 		{
-			name:        "set user status to invisible",
+			name:        "set user status to invisible aim < 6",
 			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -422,7 +424,85 @@ func TestSetUserInfoFields(t *testing.T) {
 					RequestID: 1234,
 				},
 				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-					TLVUserInfo: newTestSession("me", sessOptInvisible).TLVUserInfo(),
+					UserInfo: []wire.TLVUserInfo{
+						newTestSession("me", sessOptInvisible).TLVUserInfo(),
+					},
+				},
+			},
+			mockParams: mockParams{
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastBuddyDepartedParams: broadcastBuddyDepartedParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "set user status to visible aim >= 6",
+			userSession: newTestSession("me", sessOptSetFoodGroupVersion(wire.OService, 4)),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0000)),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceUserInfoUpdate,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+					UserInfo: []wire.TLVUserInfo{
+						newTestSession("me").TLVUserInfo(),
+						newTestSession("me").TLVUserInfo(),
+					},
+				},
+			},
+			mockParams: mockParams{
+				buddyBroadcasterParams: buddyBroadcasterParams{
+					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "set user status to invisible aim >= 6",
+			userSession: newTestSession("me", sessOptSetFoodGroupVersion(wire.OService, 4)),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0100)),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceUserInfoUpdate,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+					UserInfo: []wire.TLVUserInfo{
+						newTestSession("me", sessOptInvisible).TLVUserInfo(),
+						newTestSession("me", sessOptInvisible).TLVUserInfo(),
+					},
 				},
 			},
 			mockParams: mockParams{
@@ -754,11 +834,8 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 		timeNow func() time.Time
 	}{
 		{
-			name: "get rate limits for AIM > 1.x clients",
-			userSession: newTestSession("me", sessOptFoodGroupVersions([wire.MDir + 1]uint16{
-				0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // set OService version
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			})),
+			name:        "get rate limits for AIM > 1.x clients",
+			userSession: newTestSession("me", sessOptSetFoodGroupVersion(wire.OService, 3)),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{RequestID: 1234},
 			},
@@ -1081,26 +1158,64 @@ func TestOServiceService_ClientVersions(t *testing.T) {
 }
 
 func TestOServiceService_UserInfoQuery(t *testing.T) {
-	svc := OServiceService{
-		cfg:    config.Config{},
-		logger: slog.Default(),
-	}
-	sess := newTestSession("me")
-
-	want := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceUserInfoUpdate,
-			RequestID: 1234,
+	tests := []struct {
+		name    string
+		sess    *state.Session
+		given   wire.SNACMessage
+		want    wire.SNACMessage
+		wantErr error
+	}{
+		{
+			name: "happy path windows aim < 6",
+			sess: newTestSession("me"),
+			given: wire.SNACMessage{
+				Frame: wire.SNACFrame{RequestID: 1234},
+			},
+			want: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceUserInfoUpdate,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+					UserInfo: []wire.TLVUserInfo{
+						newTestSession("me").TLVUserInfo(),
+					},
+				},
+			},
 		},
-		Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-			TLVUserInfo: sess.TLVUserInfo(),
+		{
+			name: "happy path windows aim >= 6",
+			sess: newTestSession("me", sessOptSetFoodGroupVersion(wire.OService, 4)),
+			given: wire.SNACMessage{
+				Frame: wire.SNACFrame{RequestID: 1234},
+			},
+			want: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceUserInfoUpdate,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+					UserInfo: []wire.TLVUserInfo{
+						newTestSession("me").TLVUserInfo(),
+						newTestSession("me").TLVUserInfo(),
+					},
+				},
+			},
 		},
 	}
 
-	have := svc.UserInfoQuery(nil, sess, wire.SNACFrame{RequestID: 1234})
-
-	assert.Equal(t, want, have)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := OServiceService{
+				cfg:    config.Config{},
+				logger: slog.Default(),
+			}
+			have := svc.UserInfoQuery(context.Background(), tt.sess, tt.given.Frame)
+			assert.Equal(t, tt.want, have)
+		})
+	}
 }
 
 func TestOServiceService_IdleNotification(t *testing.T) {
