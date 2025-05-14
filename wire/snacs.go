@@ -1029,6 +1029,17 @@ const (
 	StatsReportAck            uint16 = 0x0004
 )
 
+type SNAC_0x0B_0x02_StatsSetMinReportInterval struct {
+	MinReportInterval uint16
+}
+
+type SNAC_0x0B_0x03_StatsReportEvents struct {
+	TLVRestBlock
+}
+
+type SNAC_0x0B_0x04_StatsReportAck struct {
+}
+
 //
 // 0x0C: Translate
 //

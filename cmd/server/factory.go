@@ -305,6 +305,7 @@ func BOS(deps Container) oscar.BOSServer {
 		deps.snacRateLimits,
 	)
 	userLookupService := foodgroup.NewUserLookupService(deps.sqLiteUserStore)
+	statsService := foodgroup.NewStatsService()
 
 	return oscar.BOSServer{
 		AuthService:        authService,
@@ -323,6 +324,7 @@ func BOS(deps Container) oscar.BOSServer {
 			LocateHandler:     handler.NewLocateHandler(locateService, logger),
 			OServiceHandler:   handler.NewOServiceHandler(logger, oServiceService),
 			PermitDenyHandler: handler.NewPermitDenyHandler(logger, permitDenyService),
+			StatsHandler:      handler.NewStatsHandler(logger, statsService),
 			UserLookupHandler: handler.NewUserLookupHandler(logger, userLookupService),
 		}),
 		Logger:           logger,

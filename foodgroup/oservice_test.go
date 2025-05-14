@@ -1311,6 +1311,23 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 						},
 					},
 				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.Stats,
+									SubGroup:  wire.StatsSetMinReportInterval,
+									RequestID: wire.ReqIDFromServer,
+								},
+								Body: wire.SNAC_0x0B_0x02_StatsSetMinReportInterval{
+									MinReportInterval: 1,
+								},
+							},
+						},
+					},
+				},
 			},
 			wantSess: newTestSession("me", sessOptCannedSignonTime, sessOptSignonComplete),
 		},
@@ -1320,13 +1337,18 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tt.mockParams.broadcastVisibilityParams {
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter, params.doSendDepartures).
+					BroadcastVisibility(matchContext(), matchSession(params.from), params.filter, params.doSendDepartures).
 					Return(params.err)
 			}
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().
+					RelayToScreenName(matchContext(), params.screenName, params.message)
+			}
 
-			svc := NewOServiceServiceForBOS(config.Config{}, nil, slog.Default(), nil, nil, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits())
+			svc := NewOServiceServiceForBOS(config.Config{}, messageRelayer, slog.Default(), nil, nil, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits())
 			svc.buddyBroadcaster = buddyUpdateBroadcaster
-			haveErr := svc.ClientOnline(nil, tt.bodyIn, tt.sess)
+			haveErr := svc.ClientOnline(context.Background(), tt.bodyIn, tt.sess)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
 			assert.Equal(t, tt.wantSess.SignonComplete(), tt.sess.SignonComplete())
 		})

@@ -657,6 +657,18 @@ func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x0
 		return fmt.Errorf("unable to send buddy arrival notification: %w", err)
 	}
 
+	msg := wire.SNACMessage{
+		Frame: wire.SNACFrame{
+			FoodGroup: wire.Stats,
+			SubGroup:  wire.StatsSetMinReportInterval,
+			RequestID: wire.ReqIDFromServer,
+		},
+		Body: wire.SNAC_0x0B_0x02_StatsSetMinReportInterval{
+			MinReportInterval: 1,
+		},
+	}
+	s.messageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), msg)
+
 	return nil
 }
 
