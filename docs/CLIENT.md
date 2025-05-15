@@ -1,6 +1,8 @@
-# AIM Client Setup
+# Windows AIM 5.x Client Setup
 
-This guide explains how to install and configure AIM clients for Retro AIM Server.
+This guide explains how to install and configure Windows AIM 5.x clients for Retro AIM Server.
+
+AIM 5.x is recommended if you want to experience the last version of AIM with the "classic" early-2000s feel.
 
 ## Installation
 
@@ -24,11 +26,16 @@ Get started with the [AIM for macOS project](https://github.com/mk6i/aim-for-mac
 
 ### Windows 10/11
 
-All versions of AIM 5.x run on Windows 10/11 with varying degrees of success. To get started, install AIM
-[5.0.2829](http://www.oldversion.com/windows/aol-instant-messenger-5-0-2829). Set [Windows XP compatibility mode](https://support.microsoft.com/en-us/windows/make-older-apps-or-programs-compatible-with-windows-783d6dd7-b439-bdb0-0490-54eea0f45938)
-on the executable once installed.
+1. Download AIM 5.9.6089 (available on [NINA wiki](https://wiki.nina.chat/wiki/Clients/AOL_Instant_Messenger#Windows)).
+2. Install AIM and exit out of the application post-installation.
+3. Open **Task Manager** and kill the **AOL Instant Messenger (32 bit)** process to make sure the application is
+   actually terminated.
+4. Open **File Explorer** and navigate to `C:\Program Files (x86)\AIM`.
+5. Delete `aimapi.dll`.
+6. Set [Windows XP compatibility mode](https://support.microsoft.com/en-us/windows/make-older-apps-or-programs-compatible-with-windows-783d6dd7-b439-bdb0-0490-54eea0f45938)
+on `aim.exe`.
 
-Newer 5.x versions exhibit a quirk where `aim.exe` randomly hangs on startup, which can be mitigated by [AIM Tamer](http://iwarg.ddns.net/phoenix/index.php?action=downloads).
+7. Launch AIM.
 
 ## Configuration
 
@@ -45,6 +52,6 @@ Once installed, configure AIM to connect to Retro AIM Server.
 3. In the `Host` field, enter the value of `OSCAR_HOST` found in `config/settings`. In the `Port` field, enter the
    value of `AUTH_PORT` found in `config/settings.env`.
    <p>
-      <img width="618" alt="Screen Shot 2024-03-29 at 11 22 19 PM" src="https://github.com/mk6i/mkdb/assets/2894330/da17c457-a773-4b82-b4ba-cb81f9a2e085">
+      <img width="618" alt="screenshot of AIM host dialog" src="https://github.com/mk6i/mkdb/assets/2894330/da17c457-a773-4b82-b4ba-cb81f9a2e085">
    </p>
 4. Click OK and sign in to AIM!
