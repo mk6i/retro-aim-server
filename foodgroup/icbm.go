@@ -146,9 +146,8 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		clientIM.Append(tlv)
 	}
 
-	if inBody.ChannelID == wire.ICBMChannelIM || inBody.ChannelID == wire.ICBMChannelMIME {
-		// tell the receiver that we want to receive their typing events.
-		// todo: only send this TLV if the sender opts to disclose typing events
+	if sess.TypingEventsEnabled() && (inBody.ChannelID == wire.ICBMChannelIM || inBody.ChannelID == wire.ICBMChannelMIME) {
+		// tell the receiver that we want to receive their typing events
 		clientIM.Append(wire.NewTLVBE(wire.ICBMTLVWantEvents, []byte{}))
 	}
 

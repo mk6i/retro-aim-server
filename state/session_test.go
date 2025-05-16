@@ -585,3 +585,12 @@ func TestSession_SetAndGetFoodGroupVersions(t *testing.T) {
 
 	assert.Equal(t, versions, s.FoodGroupVersions())
 }
+
+func TestSession_SetAndGetTypingEventsEnabled(t *testing.T) {
+	s := NewSession()
+	assert.False(t, s.TypingEventsEnabled())
+	s.SetTypingEventsEnabled(true)
+	assert.True(t, s.TypingEventsEnabled())
+	s.SetTypingEventsEnabled(false)
+	assert.False(t, s.TypingEventsEnabled())
+}

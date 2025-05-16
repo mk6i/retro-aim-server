@@ -192,6 +192,8 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 		}
 	}
 
+	setSessionBuddyPrefs(items, sess)
+
 	if err := s.feedbagManager.FeedbagUpsert(ctx, sess.IdentScreenName(), items); err != nil {
 		return wire.SNACMessage{}, err
 	}
@@ -230,6 +232,16 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 		},
 		Body: snacPayloadOut,
 	}, nil
+}
+
+func setSessionBuddyPrefs(items []wire.FeedbagItem, sess *state.Session) {
+	for _, item := range items {
+		if item.ClassID == wire.FeedbagClassIdBuddyPrefs && item.HasTag(201) {
+			buddyPrefs, _ := item.Uint32LE(201)
+			sess.SetTypingEventsEnabled(buddyPrefs&0x4000 == 0x4000)
+			break
+		}
+	}
 }
 
 // broadcastIconUpdate informs clients about buddy icon update. If the BART
@@ -337,6 +349,11 @@ func (s FeedbagService) Use(ctx context.Context, sess *state.Session) error {
 	if err := s.feedbagManager.UseFeedbag(ctx, sess.IdentScreenName()); err != nil {
 		return fmt.Errorf("could not use feedbag: %w", err)
 	}
+	items, err := s.feedbagManager.Feedbag(ctx, sess.IdentScreenName())
+	if err != nil {
+		return fmt.Errorf("feedbagManager.Feedbag: %w", err)
+	}
+	setSessionBuddyPrefs(items, sess)
 	return nil
 }
 

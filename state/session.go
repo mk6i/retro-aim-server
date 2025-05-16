@@ -49,29 +49,30 @@ const (
 // Session represents a user's current session. Unless stated otherwise, all
 // methods may be safely accessed by multiple goroutines.
 type Session struct {
-	awayMessage        string
-	caps               [][16]byte
-	chatRoomCookie     string
-	closed             bool
-	displayScreenName  DisplayScreenName
-	identScreenName    IdentScreenName
-	idle               bool
-	idleTime           time.Time
-	msgCh              chan wire.SNACMessage
-	mutex              sync.RWMutex
-	nowFn              func() time.Time
-	signonComplete     bool
-	signonTime         time.Time
-	stopCh             chan struct{}
-	uin                uint32
-	warning            uint16
-	userInfoBitmask    uint16
-	userStatusBitmask  uint32
-	clientID           string
-	remoteAddr         *netip.AddrPort
-	lastObservedStates [5]RateClassState
-	rateByClassID      [5]RateClassState
-	foodGroupVersions  [wire.MDir + 1]uint16
+	awayMessage         string
+	caps                [][16]byte
+	chatRoomCookie      string
+	closed              bool
+	displayScreenName   DisplayScreenName
+	identScreenName     IdentScreenName
+	idle                bool
+	idleTime            time.Time
+	msgCh               chan wire.SNACMessage
+	mutex               sync.RWMutex
+	nowFn               func() time.Time
+	signonComplete      bool
+	signonTime          time.Time
+	stopCh              chan struct{}
+	uin                 uint32
+	warning             uint16
+	userInfoBitmask     uint16
+	userStatusBitmask   uint32
+	clientID            string
+	remoteAddr          *netip.AddrPort
+	lastObservedStates  [5]RateClassState
+	rateByClassID       [5]RateClassState
+	foodGroupVersions   [wire.MDir + 1]uint16
+	typingEventsEnabled bool
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
@@ -549,4 +550,20 @@ func (s *Session) FoodGroupVersions() [wire.MDir + 1]uint16 {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.foodGroupVersions
+}
+
+// TypingEventsEnabled indicates whether the client wants to send and receive
+// typing events.
+func (s *Session) TypingEventsEnabled() bool {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.typingEventsEnabled
+}
+
+// SetTypingEventsEnabled sets whether the client wants to send and receive
+// typing events.
+func (s *Session) SetTypingEventsEnabled(enabled bool) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.typingEventsEnabled = enabled
 }
