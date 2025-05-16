@@ -382,6 +382,8 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 		mockParams mockParams
 		// expectOutput is the SNAC sent from the server to client
 		expectOutput wire.SNACMessage
+		// wantTypingEventsEnabled indicates that the session should have typing events enabled
+		wantTypingEventsEnabled bool
 	}{
 		{
 			name:        "add buddies",
@@ -443,6 +445,108 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 					Results: []uint16{0x0000, 0x0000},
 				},
 			},
+		},
+		{
+			name:        "disable typing events",
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x13_0x08_FeedbagInsertItem{
+					Items: []wire.FeedbagItem{
+						{
+							ClassID: wire.FeedbagClassIdBuddyPrefs,
+							TLVLBlock: wire.TLVLBlock{
+								TLVList: wire.TLVList{
+									wire.NewTLVBE(wire.FeedbagAttributesBuddyPrefs, uint32(0x8000)),
+								},
+							},
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				feedbagManagerParams: feedbagManagerParams{
+					feedbagUpsertParams: feedbagUpsertParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							items: []wire.FeedbagItem{
+								{
+									ClassID: wire.FeedbagClassIdBuddyPrefs,
+									TLVLBlock: wire.TLVLBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.FeedbagAttributesBuddyPrefs, uint32(0x8000)),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagStatus,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x13_0x0E_FeedbagStatus{
+					Results: []uint16{0x0000},
+				},
+			},
+			wantTypingEventsEnabled: false,
+		},
+		{
+			name:        "enable typing events",
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x13_0x08_FeedbagInsertItem{
+					Items: []wire.FeedbagItem{
+						{
+							ClassID: wire.FeedbagClassIdBuddyPrefs,
+							TLVLBlock: wire.TLVLBlock{
+								TLVList: wire.TLVList{
+									wire.NewTLVBE(wire.FeedbagAttributesBuddyPrefs, uint32(wire.FeedbagBuddyPrefsWantsTypingEvents)),
+								},
+							},
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				feedbagManagerParams: feedbagManagerParams{
+					feedbagUpsertParams: feedbagUpsertParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							items: []wire.FeedbagItem{
+								{
+									ClassID: wire.FeedbagClassIdBuddyPrefs,
+									TLVLBlock: wire.TLVLBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.FeedbagAttributesBuddyPrefs, uint32(wire.FeedbagBuddyPrefsWantsTypingEvents)),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagStatus,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x13_0x0E_FeedbagStatus{
+					Results: []uint16{0x0000},
+				},
+			},
+			wantTypingEventsEnabled: true,
 		},
 		{
 			name:        "block buddies",
@@ -917,6 +1021,8 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				tc.inputSNAC.Body.(wire.SNAC_0x13_0x08_FeedbagInsertItem).Items)
 			assert.NoError(t, err)
 			assert.Equal(t, output, tc.expectOutput)
+
+			assert.Equal(t, tc.wantTypingEventsEnabled, tc.userSession.TypingEventsEnabled())
 		})
 	}
 }
@@ -1038,7 +1144,7 @@ func TestFeedbagService_Use(t *testing.T) {
 	tests := []struct {
 		// name is the name of the test
 		name string
-		// joiningChatter is the session of the arriving user
+		// sess is the user's session
 		sess *state.Session
 		// bodyIn is the SNAC body sent from the arriving user's client to the
 		// server
@@ -1046,43 +1152,117 @@ func TestFeedbagService_Use(t *testing.T) {
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
-		wantErr    error
+		// wantTypingEventsEnabled indicates that the session should have
+		// typing events enabled
+		wantTypingEventsEnabled bool
+		// wantErr indicates an error is expected
+		wantErr error
 	}{
 		{
-			name:   "notify arriving user's buddies of its arrival and populate the arriving user's buddy list",
+			name:   "enable user's feedbag, no feedbag buddy params item",
 			sess:   newTestSession("me"),
 			bodyIn: wire.SNAC_0x01_0x02_OServiceClientOnline{},
 			mockParams: mockParams{
 				feedbagManagerParams: feedbagManagerParams{
-					buddiesParams: buddiesParams{
+					useParams: useParams{
 						{
 							screenName: state.NewIdentScreenName("me"),
-							results: []state.IdentScreenName{
-								state.NewIdentScreenName("buddy1"),
-								state.NewIdentScreenName("buddy3"),
+						},
+					},
+					feedbagParams: feedbagParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+						},
+					},
+				},
+			},
+			wantTypingEventsEnabled: false,
+		},
+		{
+			name:   "enable user's feedbag and set typing events disabled",
+			sess:   newTestSession("me"),
+			bodyIn: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+			mockParams: mockParams{
+				feedbagManagerParams: feedbagManagerParams{
+					useParams: useParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+						},
+					},
+					feedbagParams: feedbagParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							results: []wire.FeedbagItem{
+								{
+									ClassID: wire.FeedbagClassIdBuddyPrefs,
+									TLVLBlock: wire.TLVLBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.FeedbagAttributesBuddyPrefs, uint32(0x8000)),
+										},
+									},
+								},
 							},
 						},
 					},
 				},
 			},
+			wantTypingEventsEnabled: false,
+		},
+		{
+			name:   "enable user's feedbag and set typing events enabled",
+			sess:   newTestSession("me"),
+			bodyIn: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+			mockParams: mockParams{
+				feedbagManagerParams: feedbagManagerParams{
+					useParams: useParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+						},
+					},
+					feedbagParams: feedbagParams{
+						{
+							screenName: state.NewIdentScreenName("me"),
+							results: []wire.FeedbagItem{
+								{
+									ClassID: wire.FeedbagClassIdBuddyPrefs,
+									TLVLBlock: wire.TLVLBlock{
+										TLVList: wire.TLVList{
+											wire.NewTLVBE(wire.FeedbagAttributesBuddyPrefs, uint32(wire.FeedbagBuddyPrefsWantsTypingEvents)),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantTypingEventsEnabled: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			feedbagManager := newMockFeedbagManager(t)
-			for _, params := range tt.mockParams.buddiesParams {
+			for _, params := range tt.mockParams.useParams {
 				feedbagManager.EXPECT().
 					UseFeedbag(matchContext(), params.screenName).
 					Return(nil)
+			}
+			for _, params := range tt.mockParams.feedbagParams {
+				feedbagManager.EXPECT().
+					Feedbag(matchContext(), params.screenName).
+					Return(params.results, nil)
 			}
 
 			svc := NewFeedbagService(slog.Default(), nil, feedbagManager, nil, nil, nil)
 
 			haveErr := svc.Use(context.Background(), tt.sess)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
+
+			assert.Equal(t, tt.wantTypingEventsEnabled, tt.sess.TypingEventsEnabled())
 		})
 	}
 }
+
 func TestFeedbagService_RespondAuthorizeToHost(t *testing.T) {
 	tests := []struct {
 		name       string

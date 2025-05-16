@@ -296,6 +296,7 @@ type feedbagManagerParams struct {
 	feedbagParams
 	feedbagLastModifiedParams
 	feedbagDeleteParams
+	useParams
 }
 
 // adjacentUsersParams is the list of parameters passed at the mock
@@ -318,6 +319,12 @@ type feedbagUpsertParams []struct {
 type buddiesParams []struct {
 	screenName state.IdentScreenName
 	results    []state.IdentScreenName
+}
+
+// useParams is the list of parameters passed at the mock
+// FeedbagManager.Use call site
+type useParams []struct {
+	screenName state.IdentScreenName
 }
 
 // feedbagParams is the list of parameters passed at the mock
@@ -760,6 +767,11 @@ func sessOptUIN(UIN uint32) func(session *state.Session) {
 	return func(session *state.Session) {
 		session.SetUIN(UIN)
 	}
+}
+
+// sessOptCaps sets caps
+func sessOptWantTypingEvents(session *state.Session) {
+	session.SetTypingEventsEnabled(true)
 }
 
 func sessOptSetFoodGroupVersion(foodGroup uint16, version uint16) func(session *state.Session) {

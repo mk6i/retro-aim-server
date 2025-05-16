@@ -196,6 +196,8 @@ func (s FeedbagService) UpsertItem(ctx context.Context, sess *state.Session, inF
 		return wire.SNACMessage{}, err
 	}
 
+	setSessionBuddyPrefs(items, sess)
+
 	var filter []state.IdentScreenName
 	var alertAll bool
 	for _, item := range items {
@@ -337,6 +339,11 @@ func (s FeedbagService) Use(ctx context.Context, sess *state.Session) error {
 	if err := s.feedbagManager.UseFeedbag(ctx, sess.IdentScreenName()); err != nil {
 		return fmt.Errorf("could not use feedbag: %w", err)
 	}
+	items, err := s.feedbagManager.Feedbag(ctx, sess.IdentScreenName())
+	if err != nil {
+		return fmt.Errorf("feedbagManager.Feedbag: %w", err)
+	}
+	setSessionBuddyPrefs(items, sess)
 	return nil
 }
 
@@ -379,4 +386,15 @@ func (s FeedbagService) RespondAuthorizeToHost(ctx context.Context, sess *state.
 	})
 
 	return nil
+}
+
+// setSessionBuddyPrefs sets session preferences based on the feedbag buddy prefs item, if present.
+func setSessionBuddyPrefs(items []wire.FeedbagItem, sess *state.Session) {
+	for _, item := range items {
+		if item.ClassID == wire.FeedbagClassIdBuddyPrefs && item.HasTag(wire.FeedbagAttributesBuddyPrefs) {
+			buddyPrefs, _ := item.Uint32BE(wire.FeedbagAttributesBuddyPrefs)
+			sess.SetTypingEventsEnabled(buddyPrefs&wire.FeedbagBuddyPrefsWantsTypingEvents == wire.FeedbagBuddyPrefsWantsTypingEvents)
+			break
+		}
+	}
 }
