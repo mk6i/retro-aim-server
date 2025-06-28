@@ -200,6 +200,64 @@ func (_c *mockAuthService_FLAPLogin_Call) RunAndReturn(run func(context.Context,
 	return _c
 }
 
+// KerberosLogin provides a mock function with given fields: ctx, inBody, newUserFn
+func (_m *mockAuthService) KerberosLogin(ctx context.Context, inBody wire.SNAC_0x050C_0x0002_KerberosLoginRequest, newUserFn func(state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error) {
+	ret := _m.Called(ctx, inBody, newUserFn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for KerberosLogin")
+	}
+
+	var r0 wire.SNACMessage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, wire.SNAC_0x050C_0x0002_KerberosLoginRequest, func(state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)); ok {
+		return rf(ctx, inBody, newUserFn)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, wire.SNAC_0x050C_0x0002_KerberosLoginRequest, func(state.DisplayScreenName) (state.User, error)) wire.SNACMessage); ok {
+		r0 = rf(ctx, inBody, newUserFn)
+	} else {
+		r0 = ret.Get(0).(wire.SNACMessage)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, wire.SNAC_0x050C_0x0002_KerberosLoginRequest, func(state.DisplayScreenName) (state.User, error)) error); ok {
+		r1 = rf(ctx, inBody, newUserFn)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockAuthService_KerberosLogin_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'KerberosLogin'
+type mockAuthService_KerberosLogin_Call struct {
+	*mock.Call
+}
+
+// KerberosLogin is a helper method to define mock.On call
+//   - ctx context.Context
+//   - inBody wire.SNAC_0x050C_0x0002_KerberosLoginRequest
+//   - newUserFn func(state.DisplayScreenName)(state.User , error)
+func (_e *mockAuthService_Expecter) KerberosLogin(ctx interface{}, inBody interface{}, newUserFn interface{}) *mockAuthService_KerberosLogin_Call {
+	return &mockAuthService_KerberosLogin_Call{Call: _e.mock.On("KerberosLogin", ctx, inBody, newUserFn)}
+}
+
+func (_c *mockAuthService_KerberosLogin_Call) Run(run func(ctx context.Context, inBody wire.SNAC_0x050C_0x0002_KerberosLoginRequest, newUserFn func(state.DisplayScreenName) (state.User, error))) *mockAuthService_KerberosLogin_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(wire.SNAC_0x050C_0x0002_KerberosLoginRequest), args[2].(func(state.DisplayScreenName) (state.User, error)))
+	})
+	return _c
+}
+
+func (_c *mockAuthService_KerberosLogin_Call) Return(_a0 wire.SNACMessage, _a1 error) *mockAuthService_KerberosLogin_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockAuthService_KerberosLogin_Call) RunAndReturn(run func(context.Context, wire.SNAC_0x050C_0x0002_KerberosLoginRequest, func(state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)) *mockAuthService_KerberosLogin_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RegisterBOSSession provides a mock function with given fields: ctx, authCookie
 func (_m *mockAuthService) RegisterBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error) {
 	ret := _m.Called(ctx, authCookie)

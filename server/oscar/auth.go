@@ -24,9 +24,10 @@ type AuthService interface {
 	BUCPChallenge(ctx context.Context, bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
 	BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
 	FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error)
+	KerberosLogin(ctx context.Context, inBody wire.SNAC_0x050C_0x0002_KerberosLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
 	RegisterBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
-	RetrieveBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	RegisterChatSession(ctx context.Context, authCookie []byte) (*state.Session, error)
+	RetrieveBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	Signout(ctx context.Context, sess *state.Session)
 	SignoutChat(ctx context.Context, sess *state.Session)
 }

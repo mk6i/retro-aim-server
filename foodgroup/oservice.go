@@ -868,6 +868,10 @@ func newOServiceUserInfoUpdate(sess *state.Session) wire.SNAC_0x01_0x0F_OService
 		// ideally, the second block should contain only instance-specific TLVs,
 		// but since the exact structure is unclear, we temporarily duplicate the first.
 		userInfo = append(userInfo, info)
+		// identify the primary session
+		userInfo[0].Append(wire.NewTLVBE(wire.OServiceUserInfoPrimaryInstance, []byte{0x01}))
+		// identify the first session (currently only 1x concurrent session supported)
+		userInfo[1].Append(wire.NewTLVBE(wire.OServiceUserInfoMyInstanceNum, []byte{0x01}))
 	}
 
 	return wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{

@@ -422,6 +422,22 @@ func ChatNav(deps Container) oscar.BOSServer {
 	}
 }
 
+// KerberosAPI creates an HTTP server for the Kerberos server.
+func KerberosAPI(deps Container) *oscar.KerberosServer {
+	authService := foodgroup.NewAuthService(
+		deps.cfg,
+		deps.inMemorySessionManager,
+		deps.chatSessionManager,
+		deps.sqLiteUserStore,
+		deps.hmacCookieBaker,
+		deps.chatSessionManager,
+		deps.sqLiteUserStore,
+		nil,
+		deps.rateLimitClasses,
+	)
+	return oscar.NewKerberosServer(deps.cfg, deps.logger, authService)
+}
+
 // MgmtAPI creates an HTTP server for the management API.
 func MgmtAPI(deps Container) *http.Server {
 	bld := config.Build{

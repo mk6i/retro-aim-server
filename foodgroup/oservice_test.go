@@ -460,12 +460,7 @@ func TestSetUserInfoFields(t *testing.T) {
 					SubGroup:  wire.OServiceUserInfoUpdate,
 					RequestID: 1234,
 				},
-				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-					UserInfo: []wire.TLVUserInfo{
-						newTestSession("me").TLVUserInfo(),
-						newTestSession("me").TLVUserInfo(),
-					},
-				},
+				Body: newMultiSessionInfoUpdate(newTestSession("me")),
 			},
 			mockParams: mockParams{
 				buddyBroadcasterParams: buddyBroadcasterParams{
@@ -498,12 +493,7 @@ func TestSetUserInfoFields(t *testing.T) {
 					SubGroup:  wire.OServiceUserInfoUpdate,
 					RequestID: 1234,
 				},
-				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-					UserInfo: []wire.TLVUserInfo{
-						newTestSession("me", sessOptInvisible).TLVUserInfo(),
-						newTestSession("me", sessOptInvisible).TLVUserInfo(),
-					},
-				},
+				Body: newMultiSessionInfoUpdate(newTestSession("me", sessOptInvisible)),
 			},
 			mockParams: mockParams{
 				buddyBroadcasterParams: buddyBroadcasterParams{
@@ -1196,12 +1186,7 @@ func TestOServiceService_UserInfoQuery(t *testing.T) {
 					SubGroup:  wire.OServiceUserInfoUpdate,
 					RequestID: 1234,
 				},
-				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-					UserInfo: []wire.TLVUserInfo{
-						newTestSession("me").TLVUserInfo(),
-						newTestSession("me").TLVUserInfo(),
-					},
-				},
+				Body: newMultiSessionInfoUpdate(newTestSession("me")),
 			},
 		},
 	}

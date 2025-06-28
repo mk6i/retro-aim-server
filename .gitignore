@@ -3,3 +3,4 @@
 *.sqlite
 dist/
 *.DS_Store
+certs/

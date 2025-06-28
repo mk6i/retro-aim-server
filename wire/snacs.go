@@ -37,6 +37,7 @@ const (
 	UnnamedFG24 uint16 = 0x0024
 	MDir        uint16 = 0x0025
 	ARS         uint16 = 0x044A
+	Kerberos    uint16 = 0x050C
 )
 
 //
@@ -91,6 +92,7 @@ const (
 	LoginTLVTagsErrorSubcode        uint16 = 0x08
 	LoginTLVTagsPasswordHash        uint16 = 0x25
 	LoginTLVTagsRoastedTOCPassword  uint16 = 0x1337
+	LoginTLVTagsPlaintextPassword   uint16 = 0x1338
 )
 
 const (
@@ -170,6 +172,8 @@ const (
 	OServiceUserInfoBARTInfo        uint16 = 0x1D
 	OServiceUserInfoMySubscriptions uint16 = 0x1E
 	OServiceUserInfoUserFlags2      uint16 = 0x1F
+	OServiceUserInfoMyInstanceNum   uint16 = 0x14
+	OServiceUserInfoPrimaryInstance uint16 = 0x28
 
 	OServiceUserStatusAvailable         uint32 = 0x00000000 // user is available
 	OServiceUserStatusAway              uint32 = 0x00000001 // user is away
@@ -2154,6 +2158,255 @@ const (
 	AlertNotifyDisplayCapabilities uint16 = 0x0016
 	AlertUserOnline                uint16 = 0x0017
 )
+
+//
+// Kerberos Auth (AIM 6+)
+//
+
+const (
+	KerberosLoginRequest             uint16 = 0x0002
+	KerberosLoginSuccessResponse     uint16 = 0x0003
+	KerberosKerberosLoginErrResponse uint16 = 0x0004
+
+	KerberosTLVTicketRequest uint16 = 0x0002
+	KerberosTLVBOSServerInfo uint16 = 0x0003
+	KerberosTLVHostname      uint16 = 0x0005
+	KerberosTLVCookie        uint16 = 0x0006
+
+	KerberosErrAuthFailure uint16 = 0x0401
+)
+
+// SNAC_0x050C_0x0002_KerberosLoginRequest represents a Kerberos-like login request
+// sent by the AIM client as part of the OSCAR authentication handshake using SNAC(0x050C, 0x0002).
+type SNAC_0x050C_0x0002_KerberosLoginRequest struct {
+	// RequestID is a client-generated identifier that matches the one echoed in the server response.
+	RequestID uint32
+
+	// ClientIP is the client's IPv4 address in network byte order.
+	ClientIP uint32
+
+	// ClientCOOLVersionMajor is the major version of the AIM client "COOL" protocol.
+	ClientCOOLVersionMajor uint32
+
+	// ClientCOOLVersionMinor is the minor version of the AIM client "COOL" protocol.
+	ClientCOOLVersionMinor uint32
+
+	// PaddingOrZero is always observed as 0x00000000 and may be reserved/padding.
+	PaddingOrZero uint32
+
+	// KerberosPayload contains TLV-encoded data, typically including the AP-REQ (TLV 0x0005).
+	KerberosPayload TLVBlock
+
+	// LocaleFlags1 appears to contain locale or encoding hints, possibly bitflags.
+	LocaleFlags1 uint32
+
+	// LocaleFlags2 is another locale- or feature-related field, typically zero.
+	LocaleFlags2 uint32
+
+	// CountryCode is the user's ISO 3166-1 alpha-2 country code (e.g., "US").
+	CountryCode string `oscar:"len_prefix=uint16"`
+
+	// LanguageCode is the user's ISO 639-1 language code (e.g., "en").
+	LanguageCode string `oscar:"len_prefix=uint16"`
+
+	// ServiceContextBlock is a TLV block containing client realm and service info.
+	ServiceContextBlock TLVBlock
+
+	// VersionOrFlags is likely a protocol feature version or flag mask (exact meaning unknown).
+	VersionOrFlags uint32
+
+	// AuthType is a 1-byte value (usually 0x00 or 0x01), possibly denoting password type or encoding.
+	AuthType byte
+
+	// ClientPrincipal is the Kerberos principal name (username).
+	ClientPrincipal string `oscar:"len_prefix=uint16"`
+
+	// ServicePrincipal is the Kerberos service string (e.g., "im/boss").
+	ServicePrincipal string `oscar:"len_prefix=uint16"`
+
+	// Reserved1 is typically zero; possibly a padding or reserved field.
+	Reserved1 uint32
+
+	// RealmCount is typically 0x0002; may indicate how many realms or tickets are requested.
+	RealmCount uint16
+
+	// TicketRequestMetadata is a TLV block describing requested tickets (e.g., realm, lifetime, enctype).
+	TicketRequestMetadata TLVBlock
+}
+
+// SNAC_0x050C_0x0003_KerberosLoginSuccessResponse represents the server's response to a successful
+// Kerberos-like login request in AIM's OSCAR protocol. It includes the client identity and issued tickets.
+type SNAC_0x050C_0x0003_KerberosLoginSuccessResponse struct {
+	// RequestID matches the KerberosRequestID from the original client request (for correlation).
+	RequestID uint32
+
+	// Epoch is a server-issued timestamp indicating when the client was authenticated.
+	// This is often used as the start time for ticket validity.
+	Epoch uint32
+
+	// Reserved is a 4-byte field, usually zero. Possibly reserved for future use or alignment.
+	Reserved uint32
+
+	// ClientPrincipal is the Kerberos principal name of the authenticated client.
+	ClientPrincipal string `oscar:"len_prefix=uint16"`
+
+	// ClientRealm is the Kerberos realm in which the client was authenticated (e.g., "AOL").
+	ClientRealm string `oscar:"len_prefix=uint16"`
+
+	// Tickets contains one or more issued Kerberos tickets, including service tickets and/or a TGT.
+	// These are encoded in ASN.1 DER and include session keys, expiration, and encrypted blobs.
+	Tickets []KerberosTicket `oscar:"count_prefix=uint16"`
+
+	// Extensions is a TLVBlock containing optional metadata. May include:
+	// - Client capabilities
+	// - Locales or language tags
+	// - Echoed usernames
+	// - Additional authentication hints
+	Extensions TLVBlock
+}
+
+// SNAC_0x050C_0x0004_KerberosLoginErrResponse represents a login failure response
+// sent by the AIM server in reply to a Kerberos-style login attempt (SNAC 0x050C/0x0002).
+//
+// This SNAC is typically sent when authentication fails due to an invalid password,
+// unknown screen name, or protocol-level issues. It includes a human-readable message
+// and an error code, along with optional TLV metadata.
+type SNAC_0x050C_0x0004_KerberosLoginErrResponse struct {
+	// KerbRequestID matches the KerberosRequestID from the original login request,
+	// allowing the client to correlate the response to the appropriate attempt.
+	KerbRequestID uint32
+
+	// ScreenName is the screen name the client attempted to authenticate as.
+	// This is echoed back by the server for clarity/debugging.
+	ScreenName string `oscar:"len_prefix=uint16"`
+
+	// ErrCode is a 2-byte error code indicating the reason for login failure.
+	// The only supported value is 0x0401, which indicates an invalid username
+	// or password.
+	ErrCode uint16
+
+	// Message is a UTF-8 string providing a user-facing explanation of the error
+	// (e.g., "Invalid screen name or password").
+	Message string `oscar:"len_prefix=uint16"`
+
+	// Unknown1 is an unknown flag.
+	Unknown1 uint32
+
+	// Metadata is a TLVBlock that may contain additional metadata about the failure.
+	Metadata TLVBlock
+}
+
+// KerberosLoginRequestTicket appears inside TLV 0x0002 of the
+// Ticket-Request Metadata block that the AIM client bundles into
+// its "Kerberos Login Request" (SNAC 0x050C/0x0002).
+type KerberosLoginRequestTicket struct {
+	// Marker might indicate the payload type.
+	Marker uint32
+
+	// Version might indicate the internal structure version.
+	Version uint16
+
+	// Flags contains unknown flags.
+	Flags uint32
+
+	// PwdLen is the length (in bytes) of the following Password string.
+	// The field is kept explicit even though the struct tag also carries
+	// the length-prefix rule.
+	PwdLen uint16
+
+	// Password holds the user’s password.
+	Password string `oscar:"len_prefix=uint16"`
+
+	// PasswordMetadata may hold additional metadata about the password.
+	PasswordMetadata TLVBlock
+}
+
+// KerberosTicket represents one service ticket returned inside the
+// SNAC(0x050C, 0x0003) "Kerberos Login Success" response.
+//
+// TicketBlob follows the general layout of an RFC 4120 Ticket,
+// but is delivered in AIM’s TLV wrapper rather than a full KRB-TGS-REP.
+type KerberosTicket struct {
+	// PVNO is the Kerberos protocol-version number carried
+	// in the ticket header.  In Kerberos V5 this is always 0x0005.
+	PVNO uint16
+
+	// EncTicket is the raw ASN.1 DER-encoded Ticket structure
+	// (encrypted to the service key).  Length is given by the preceding
+	// uint16 in the OSCAR stream.
+	EncTicket []byte `oscar:"len_prefix=uint16"`
+
+	// TicketRealm is the realm to which the service principal belongs
+	// (e.g. "AOL").
+	TicketRealm string `oscar:"len_prefix=uint16"`
+
+	// ServicePrincipal is the complete service-principal name for which
+	// the ticket is valid (e.g. "im/boss").
+	ServicePrincipal string `oscar:"len_prefix=uint16"`
+
+	// ClientRealm is the Kerberos realm of the authenticated user.
+	ClientRealm string `oscar:"len_prefix=uint16"`
+
+	// ClientPrincipal is the principal name inside that realm.
+	ClientPrincipal string `oscar:"len_prefix=uint16"`
+
+	// KVNO (Key Version Number) tells the service which
+	// long-term key to use when decrypting EncTicket.
+	KVNO uint8
+
+	// SessionKey is the clear-text session key that the KDC also placed,
+	// encrypted, inside EncTicket.  Provided here for the client’s
+	// convenience so it doesn’t have to decrypt the ticket itself.
+	SessionKey []byte `oscar:"len_prefix=uint16"`
+
+	// Unknown1 is typically zero. Possibly reserved or unused.
+	Unknown1 uint32
+
+	// Unknown2 is a possible bitfield.
+	Unknown2 uint32
+
+	// AuthTime is the time when the initial authentication occurred (UNIX epoch).
+	AuthTime uint32
+
+	// StartTime is when the ticket becomes valid (UNIX epoch).
+	StartTime uint32
+
+	// EndTime is when the ticket expires (UNIX epoch).
+	EndTime uint32
+
+	// RenewTill is likely the latest time the ticket can be renewed (UNIX epoch).
+	RenewTill uint32
+
+	// Unknown5 is a possible bitfield.
+	Unknown4 uint32
+
+	// Unknown5 is a possible bitfield.
+	Unknown5 uint32
+
+	// Unknown6 is a possible bitfield.
+	Unknown6 uint32
+
+	// ConnectionMetadata holds metadata used for the next connection (IP address, cookie, etc).
+	ConnectionMetadata TLVBlock
+}
+
+// KerberosBOSServerInfo provides the client with connection parameters for contacting
+// the BOS (Basic OSCAR Service) server.
+//
+// This TLV is typically returned by the server inside a successful Kerberos login response
+// (SNAC 0x050C/0x0003).
+type KerberosBOSServerInfo struct {
+	// Unknown may signify a version or feature flag block.
+	Unknown uint16
+
+	// ConnectionInfo is a TLV block defining the next server to contact (BOS).
+	// Includes IP address, port, session cookie, and other required fields for login.
+	ConnectionInfo TLVBlock
+}
+
+//
+// Misc
+//
 
 type TLVUserInfo struct {
 	ScreenName   string `oscar:"len_prefix=uint8"`

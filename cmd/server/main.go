@@ -71,6 +71,7 @@ func main() {
 	start(BOS(deps))
 	start(Chat(deps))
 	start(ChatNav(deps))
+	start(KerberosAPI(deps))
 	start(MgmtAPI(deps))
 	start(ODir(deps))
 	start(TOC(deps))
