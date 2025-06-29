@@ -320,6 +320,7 @@ func getUserHandler(w http.ResponseWriter, r *http.Request, userManager UserMana
 			ScreenName:      u.DisplayScreenName.String(),
 			IsICQ:           u.IsICQ,
 			SuspendedStatus: suspendedStatus,
+			IsBot:           u.IsBot,
 		}
 	}
 
@@ -684,6 +685,7 @@ func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager U
 		Profile:         profile,
 		IsICQ:           user.IsICQ,
 		SuspendedStatus: suspendedStatusText,
+		IsBot:           user.IsBot,
 	}
 
 	if err := json.NewEncoder(w).Encode(out); err != nil {
@@ -729,8 +731,7 @@ func patchUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager
 				return
 			}
 			if suspendedStatus != user.SuspendedStatus {
-				err := a.UpdateSuspendedStatus(r.Context(), suspendedStatus, user.IdentScreenName)
-				if err != nil {
+				if err := a.UpdateSuspendedStatus(r.Context(), suspendedStatus, user.IdentScreenName); err != nil {
 					logger.Error("error in PATCH /user/{screenname}/account", "err", err.Error())
 					http.Error(w, "internal server error", http.StatusInternalServerError)
 					return
@@ -741,6 +742,15 @@ func patchUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager
 			errorMsg(w, "suspended_status must be empty str or one of deleted,expired,suspended,suspended_age", http.StatusBadRequest)
 			return
 		}
+	}
+
+	if input.IsBot != nil && user.IsBot != *input.IsBot {
+		if err := a.SetBotStatus(r.Context(), *input.IsBot, user.IdentScreenName); err != nil {
+			logger.Error("error in PATCH /user/{screenname}/account", "err", err.Error())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		modifiedUser = true
 	}
 
 	if !modifiedUser {

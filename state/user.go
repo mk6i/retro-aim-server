@@ -203,6 +203,8 @@ type User struct {
 	// TOCConfig is the user's saved server-side info (buddy list, etc) for
 	// on the TOC service.
 	TOCConfig string
+	// IsBot indicates whether the user is a bot.
+	IsBot bool
 }
 
 // AIMNameAndAddr holds name and address AIM directory information.

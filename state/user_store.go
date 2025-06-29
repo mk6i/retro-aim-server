@@ -97,7 +97,7 @@ func (f SQLiteUserStore) runMigrations() error {
 }
 
 func (f SQLiteUserStore) AllUsers(ctx context.Context) ([]User, error) {
-	q := `SELECT identScreenName, displayScreenName, isICQ FROM users`
+	q := `SELECT identScreenName, displayScreenName, isICQ, isBot FROM users`
 	rows, err := f.db.QueryContext(ctx, q)
 	if err != nil {
 		return nil, err
@@ -107,14 +107,15 @@ func (f SQLiteUserStore) AllUsers(ctx context.Context) ([]User, error) {
 	var users []User
 	for rows.Next() {
 		var identSN, displaySN string
-		var isICQ bool
-		if err := rows.Scan(&identSN, &displaySN, &isICQ); err != nil {
+		var isICQ, isBot bool
+		if err := rows.Scan(&identSN, &displaySN, &isICQ, &isBot); err != nil {
 			return nil, err
 		}
 		users = append(users, User{
 			IdentScreenName:   NewIdentScreenName(identSN),
 			DisplayScreenName: DisplayScreenName(displaySN),
 			IsICQ:             isICQ,
+			IsBot:             isBot,
 		})
 	}
 
@@ -341,6 +342,7 @@ func (f SQLiteUserStore) queryUsers(ctx context.Context, whereClause string, que
 			confirmStatus,
 			regStatus,
 			suspendedStatus,
+			isBot,
 			isICQ,
 			icq_affiliations_currentCode1,
 			icq_affiliations_currentCode2,
@@ -433,6 +435,7 @@ func (f SQLiteUserStore) queryUsers(ctx context.Context, whereClause string, que
 			&u.ConfirmStatus,
 			&u.RegStatus,
 			&u.SuspendedStatus,
+			&u.IsBot,
 			&u.IsICQ,
 			&u.ICQAffiliations.CurrentCode1,
 			&u.ICQAffiliations.CurrentCode2,
@@ -520,8 +523,8 @@ func (f SQLiteUserStore) InsertUser(ctx context.Context, u User) error {
 		return errors.New("inserting user with UIN and isICQ=false")
 	}
 	q := `
-		INSERT INTO users (identScreenName, displayScreenName, authKey, weakMD5Pass, strongMD5Pass, isICQ)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO users (identScreenName, displayScreenName, authKey, weakMD5Pass, strongMD5Pass, isICQ, isBot)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (identScreenName) DO NOTHING
 	`
 	result, err := f.db.ExecContext(ctx,
@@ -532,6 +535,7 @@ func (f SQLiteUserStore) InsertUser(ctx context.Context, u User) error {
 		u.WeakMD5Pass,
 		u.StrongMD5Pass,
 		u.IsICQ,
+		u.IsBot,
 	)
 	if err != nil {
 		return err
@@ -1228,6 +1232,16 @@ func (f SQLiteUserStore) UpdateSuspendedStatus(ctx context.Context, suspendedSta
 		WHERE identScreenName = ?
 	`
 	_, err := f.db.ExecContext(ctx, q, suspendedStatus, screenName.String())
+	return err
+}
+
+func (f SQLiteUserStore) SetBotStatus(ctx context.Context, isBot bool, screenName IdentScreenName) error {
+	q := `
+		UPDATE users
+		SET isBot = ?
+		WHERE identScreenName = ?
+	`
+	_, err := f.db.ExecContext(ctx, q, isBot, screenName.String())
 	return err
 }
 

@@ -371,6 +371,7 @@ func TestSQLiteUserStore_Users(t *testing.T) {
 		{
 			IdentScreenName:   NewIdentScreenName("userC"),
 			DisplayScreenName: "userC",
+			IsBot:             true,
 		},
 		{
 			IdentScreenName:   NewIdentScreenName("100003"),
@@ -3238,5 +3239,43 @@ func TestSQLiteUserStore_UpdateSuspendedStatus(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, user.SuspendedStatus, wire.LoginErrSuspendedAccountAge)
+}
 
+func TestSQLiteUserStore_SetBotStatus(t *testing.T) {
+	defer func() {
+		assert.NoError(t, os.Remove(testFile))
+	}()
+
+	f, err := NewSQLiteUserStore(testFile)
+	assert.NoError(t, err)
+
+	screenName := NewIdentScreenName("userA")
+
+	insertedUser := &User{
+		IdentScreenName:   screenName,
+		DisplayScreenName: DisplayScreenName("usera"),
+		AuthKey:           "theauthkey",
+		StrongMD5Pass:     []byte("thepasshash"),
+		IsBot:             false,
+	}
+	err = f.InsertUser(context.Background(), *insertedUser)
+	assert.NoError(t, err)
+
+	user, err := f.User(context.Background(), screenName)
+	assert.NoError(t, err)
+	assert.False(t, user.IsBot)
+
+	err = f.SetBotStatus(context.Background(), true, screenName)
+	assert.NoError(t, err)
+
+	user, err = f.User(context.Background(), screenName)
+	assert.NoError(t, err)
+	assert.True(t, user.IsBot)
+
+	err = f.SetBotStatus(context.Background(), false, screenName)
+	assert.NoError(t, err)
+
+	user, err = f.User(context.Background(), screenName)
+	assert.NoError(t, err)
+	assert.False(t, user.IsBot)
 }

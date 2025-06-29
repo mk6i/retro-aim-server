@@ -276,7 +276,7 @@ func TestUserAccountHandler_GET(t *testing.T) {
 		{
 			name:              "valid aim account",
 			requestScreenName: state.NewIdentScreenName("userA"),
-			want:              `{"id":"usera","screen_name":"userA","profile":"My Profile Text","email_address":"\u003cuserA@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":""}`,
+			want:              `{"id":"usera","screen_name":"userA","profile":"My Profile Text","email_address":"\u003cuserA@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":"","is_bot":false}`,
 			statusCode:        http.StatusOK,
 			mockParams: mockParams{
 				userManagerParams: userManagerParams{
@@ -324,9 +324,60 @@ func TestUserAccountHandler_GET(t *testing.T) {
 			},
 		},
 		{
+			name:              "valid aim bot account",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			want:              `{"id":"usera","screen_name":"userA","profile":"My Profile Text","email_address":"\u003cuserA@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":"","is_bot":true}`,
+			statusCode:        http.StatusOK,
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result: &state.User{
+								DisplayScreenName: "userA",
+								IdentScreenName:   state.NewIdentScreenName("userA"),
+								SuspendedStatus:   0x0,
+								IsBot:             true,
+							},
+						},
+					},
+				},
+				accountManagerParams: accountManagerParams{
+					EmailAddressParams: EmailAddressParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result: &mail.Address{
+								Address: "userA@aol.com",
+							},
+						},
+					},
+					RegStatusParams: RegStatusParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result:     uint16(0x02),
+						},
+					},
+					ConfirmStatusParams: ConfirmStatusParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result:     true,
+						},
+					},
+				},
+				profileRetrieverParams: profileRetrieverParams{
+					retrieveProfileParams: retrieveProfileParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result:     "My Profile Text",
+						},
+					},
+				},
+			},
+		},
+		{
 			name:              "suspended aim account",
 			requestScreenName: state.NewIdentScreenName("userB"),
-			want:              `{"id":"userb","screen_name":"userB","profile":"My Profile Text","email_address":"\u003cuserB@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":"suspended"}`,
+			want:              `{"id":"userb","screen_name":"userB","profile":"My Profile Text","email_address":"\u003cuserB@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":"suspended","is_bot":false}`,
 			statusCode:        http.StatusOK,
 			mockParams: mockParams{
 				userManagerParams: userManagerParams{
@@ -546,6 +597,87 @@ func TestUserAccountHandler_PATCH(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:              "setting bot flag (before: false, after: true)",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			statusCode:        http.StatusNoContent,
+			body:              `{"is_bot":true}`,
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result: &state.User{
+								DisplayScreenName: "userA",
+								IdentScreenName:   state.NewIdentScreenName("userA"),
+								SuspendedStatus:   0x0,
+								IsBot:             false,
+							},
+						},
+					},
+				},
+				accountManagerParams: accountManagerParams{
+					setBotStatusParams: setBotStatusParams{
+						{
+							isBot:      true,
+							screenName: state.NewIdentScreenName("userA"),
+							err:        nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:              "setting bot flag (before: true, after: false)",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			statusCode:        http.StatusNoContent,
+			body:              `{"is_bot":false}`,
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result: &state.User{
+								DisplayScreenName: "userA",
+								IdentScreenName:   state.NewIdentScreenName("userA"),
+								SuspendedStatus:   0x0,
+								IsBot:             true,
+							},
+						},
+					},
+				},
+				accountManagerParams: accountManagerParams{
+					setBotStatusParams: setBotStatusParams{
+						{
+							isBot:      false,
+							screenName: state.NewIdentScreenName("userA"),
+							err:        nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:              "setting bot flag (before: true, after: true)",
+			requestScreenName: state.NewIdentScreenName("userA"),
+			statusCode:        http.StatusNotModified,
+			body:              `{"is_bot":true}`,
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: state.NewIdentScreenName("userA"),
+							result: &state.User{
+								DisplayScreenName: "userA",
+								IdentScreenName:   state.NewIdentScreenName("userA"),
+								SuspendedStatus:   0x0,
+								IsBot:             true,
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tt {
@@ -565,6 +697,11 @@ func TestUserAccountHandler_PATCH(t *testing.T) {
 			for _, params := range tc.mockParams.accountManagerParams.updateSuspendedStatusParams {
 				accountManager.EXPECT().
 					UpdateSuspendedStatus(matchContext(), params.suspendedStatus, params.screenName).
+					Return(params.err)
+			}
+			for _, params := range tc.mockParams.accountManagerParams.setBotStatusParams {
+				accountManager.EXPECT().
+					SetBotStatus(matchContext(), params.isBot, params.screenName).
 					Return(params.err)
 			}
 
@@ -871,7 +1008,7 @@ func TestUserHandler_GET(t *testing.T) {
 		},
 		{
 			name:       "user store containing 3 users",
-			want:       `[{"id":"usera","screen_name":"userA","is_icq":false,"suspended_status":""},{"id":"userb","screen_name":"userB","is_icq":false,"suspended_status":""},{"id":"100003","screen_name":"100003","is_icq":true,"suspended_status":""}]`,
+			want:       `[{"id":"usera","screen_name":"userA","is_icq":false,"suspended_status":"","is_bot":false},{"id":"userb","screen_name":"userB","is_icq":false,"suspended_status":"","is_bot":true},{"id":"100003","screen_name":"100003","is_icq":true,"suspended_status":"","is_bot":false}]`,
 			statusCode: http.StatusOK,
 			mockParams: mockParams{
 				userManagerParams: userManagerParams{
@@ -885,6 +1022,7 @@ func TestUserHandler_GET(t *testing.T) {
 								{
 									DisplayScreenName: "userB",
 									IdentScreenName:   state.NewIdentScreenName("userB"),
+									IsBot:             true,
 								},
 								{
 									DisplayScreenName: "100003",

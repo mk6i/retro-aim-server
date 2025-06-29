@@ -197,6 +197,54 @@ func (_c *mockAccountManager_RegStatus_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// SetBotStatus provides a mock function with given fields: ctx, isBot, screenName
+func (_m *mockAccountManager) SetBotStatus(ctx context.Context, isBot bool, screenName state.IdentScreenName) error {
+	ret := _m.Called(ctx, isBot, screenName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetBotStatus")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, bool, state.IdentScreenName) error); ok {
+		r0 = rf(ctx, isBot, screenName)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockAccountManager_SetBotStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetBotStatus'
+type mockAccountManager_SetBotStatus_Call struct {
+	*mock.Call
+}
+
+// SetBotStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - isBot bool
+//   - screenName state.IdentScreenName
+func (_e *mockAccountManager_Expecter) SetBotStatus(ctx interface{}, isBot interface{}, screenName interface{}) *mockAccountManager_SetBotStatus_Call {
+	return &mockAccountManager_SetBotStatus_Call{Call: _e.mock.On("SetBotStatus", ctx, isBot, screenName)}
+}
+
+func (_c *mockAccountManager_SetBotStatus_Call) Run(run func(ctx context.Context, isBot bool, screenName state.IdentScreenName)) *mockAccountManager_SetBotStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(bool), args[2].(state.IdentScreenName))
+	})
+	return _c
+}
+
+func (_c *mockAccountManager_SetBotStatus_Call) Return(_a0 error) *mockAccountManager_SetBotStatus_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockAccountManager_SetBotStatus_Call) RunAndReturn(run func(context.Context, bool, state.IdentScreenName) error) *mockAccountManager_SetBotStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateSuspendedStatus provides a mock function with given fields: ctx, suspendedStatus, screenName
 func (_m *mockAccountManager) UpdateSuspendedStatus(ctx context.Context, suspendedStatus uint16, screenName state.IdentScreenName) error {
 	ret := _m.Called(ctx, suspendedStatus, screenName)
