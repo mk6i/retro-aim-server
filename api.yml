@@ -160,9 +160,8 @@ paths:
                   type: boolean
                   nullable: true
                   description: >
-                    Indicates whether the account is for a bot. If enabled, client requests are rate limited at
-                    the most lenient tier in order to ensure that simultaneous interactions with multiple users do not
-                    kick the bot from the server. Make sure you trust the bot and bot owner before enabling this flag.
+                    Indicates whether the account is for a bot. Bots are exempt from rate limiting... make sure you 
+                    trust the bot and bot owner before enabling this flag.
   /user/{screenname}/icon:
     get:
       summary: Get AIM buddy icon for a screen name
