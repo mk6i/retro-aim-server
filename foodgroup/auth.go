@@ -128,6 +128,10 @@ func (s AuthService) RegisterBOSSession(ctx context.Context, authCookie []byte) 
 		sess.SetUserInfoFlag(wire.OServiceUserFlagUnconfirmed)
 	}
 
+	if u.IsBot {
+		sess.SetUserInfoFlag(wire.OServiceUserFlagBot)
+	}
+
 	sess.SetRateClasses(time.Now(), s.rateLimitClasses)
 
 	// set string containing OSCAR client name and version

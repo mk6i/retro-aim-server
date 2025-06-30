@@ -1581,6 +1581,51 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 			},
 		},
 		{
+			name:   "successfully register an AIM bot session",
+			cookie: aimCookie,
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					cookieCrackParams: cookieCrackParams{
+						{
+							dataOut:  aimCookie,
+							cookieIn: aimCookie,
+						},
+					},
+				},
+				sessionRegistryParams: sessionRegistryParams{
+					addSessionParams: addSessionParams{
+						{
+							screenName: screenName,
+							result:     newTestSession(screenName),
+						},
+					},
+				},
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: screenName.IdentScreenName(),
+							result: &state.User{
+								IdentScreenName:   screenName.IdentScreenName(),
+								DisplayScreenName: screenName,
+								IsBot:             true,
+							},
+						},
+					},
+				},
+				accountManagerParams: accountManagerParams{
+					accountManagerConfirmStatusParams: accountManagerConfirmStatusParams{
+						{
+							screenName:    screenName.IdentScreenName(),
+							confirmStatus: true,
+						},
+					},
+				},
+			},
+			wantSess: func(session *state.Session) bool {
+				return session.UserInfoBitmask()&wire.OServiceUserFlagBot == wire.OServiceUserFlagBot
+			},
+		},
+		{
 			name:   "successfully register an ICQ session",
 			cookie: icqCookie,
 			mockParams: mockParams{
