@@ -30,6 +30,8 @@ type AuthService interface {
 	RetrieveBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	Signout(ctx context.Context, sess *state.Session)
 	SignoutChat(ctx context.Context, sess *state.Session)
+
+	GetSession(ctx context.Context, authCookie []byte) (uint16, *state.Session, error)
 }
 
 // IPRateLimiter enforces a per-IP rate limit using a token bucket algorithm.
