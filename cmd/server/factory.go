@@ -466,11 +466,16 @@ func ODir(deps Container) oscar.BOSServer {
 		nil,
 		deps.rateLimitClasses,
 	)
+
 	oServiceService := foodgroup.NewOServiceServiceForODir(
 		deps.cfg,
 		logger,
 		deps.rateLimitClasses,
 		deps.snacRateLimits,
+		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
+		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
 	)
 	oDirService := foodgroup.NewODirService(logger, deps.sqLiteUserStore)
 

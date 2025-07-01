@@ -226,6 +226,7 @@ func (s OServiceService) SetUserInfoFields(ctx context.Context, sess *state.Sess
 // Set session idle time to the value of bodyIn.IdleTime. Return a user arrival
 // message to all users who have this user on their buddy list.
 func (s OServiceService) IdleNotification(ctx context.Context, sess *state.Session, bodyIn wire.SNAC_0x01_0x11_OServiceIdleNotification) error {
+	fmt.Printf("\n\ngot idle notification!\n\n")
 	if bodyIn.IdleTime == 0 {
 		sess.UnsetIdle()
 	} else {
@@ -791,10 +792,15 @@ func NewOServiceServiceForODir(
 	logger *slog.Logger,
 	rateLimitClasses wire.RateLimitClasses,
 	snacRateLimits wire.SNACRateLimits,
+	messageRelayer MessageRelayer,
+	relationshipFetcher RelationshipFetcher,
+	sessionRetriever SessionRetriever,
+	buddyIconManager BuddyIconManager,
 ) *OServiceService {
 	return &OServiceService{
-		cfg:    cfg,
-		logger: logger,
+		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		cfg:              cfg,
+		logger:           logger,
 		foodGroups: []uint16{
 			wire.ODir,
 			wire.OService,
