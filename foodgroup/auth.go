@@ -266,9 +266,9 @@ func (s AuthService) BUCPChallenge(ctx context.Context, bodyIn wire.SNAC_0x17_0x
 // (wire.LoginTLVTagsReconnectHere) and an authorization cookie
 // (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
 // (wire.LoginTLVTagsErrorSubcode).
-func (s AuthService) BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error) {
+func (s AuthService) BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error), connectHere string) (wire.SNACMessage, error) {
 
-	block, err := s.login(ctx, bodyIn.TLVList, newUserFn)
+	block, err := s.login(ctx, bodyIn.TLVList, newUserFn, connectHere)
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}
@@ -294,8 +294,8 @@ func (s AuthService) BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_B
 // (wire.LoginTLVTagsReconnectHere) and an authorization cookie
 // (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
 // (wire.LoginTLVTagsErrorSubcode).
-func (s AuthService) FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error) {
-	return s.login(ctx, frame.TLVList, newUserFn)
+func (s AuthService) FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error), connectHere string) (wire.TLVRestBlock, error) {
+	return s.login(ctx, frame.TLVList, newUserFn, connectHere)
 }
 
 // KerberosLogin handles AIM-style Kerberos authentication for AIM 6.0+.
@@ -327,7 +327,7 @@ func (s AuthService) KerberosLogin(
 		wire.NewTLVBE(wire.LoginTLVTagsPlaintextPassword, info.Password),
 	}
 
-	result, err := s.login(ctx, list, newUserFn)
+	result, err := s.login(ctx, list, newUserFn, "") //todo
 	if err != nil {
 		return wire.SNACMessage{}, fmt.Errorf("login: %w", err)
 	}
@@ -451,7 +451,7 @@ func (l *loginProperties) fromTLV(list wire.TLVList) error {
 
 // login validates a user's credentials and creates their session. it returns
 // metadata used in both BUCP and FLAP authentication responses.
-func (s AuthService) login(ctx context.Context, tlv wire.TLVList, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error) {
+func (s AuthService) login(ctx context.Context, tlv wire.TLVList, newUserFn func(screenName state.DisplayScreenName) (state.User, error), here string) (wire.TLVRestBlock, error) {
 
 	props := loginProperties{}
 	if err := props.fromTLV(tlv); err != nil {

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -16,7 +15,6 @@ import (
 	"github.com/mk6i/retro-aim-server/server/oscar"
 	"github.com/mk6i/retro-aim-server/server/oscar/handler"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
-	"github.com/mk6i/retro-aim-server/server/toc"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
@@ -170,6 +168,12 @@ func OSCAR(deps Container) oscar.Server {
 				AdvertiseHost: "127.0.0.1",
 				AdvertisePort: "5190",
 			},
+			{
+				Hostname:      "0.0.0.0",
+				Port:          "5191",
+				AdvertiseHost: "127.0.0.1",
+				AdvertisePort: "5191",
+			},
 		},
 		Logger:           logger,
 		OnlineNotifier:   oServiceService,
@@ -207,95 +211,95 @@ func MgmtAPI(deps Container) *http.Server {
 }
 
 // TOC creates a TOC server.
-func TOC(deps Container) toc.Server {
-	logger := deps.logger.With("svc", "TOC")
-	sessionManager := state.NewInMemorySessionManager(logger)
-	return toc.Server{
-		Logger:     logger,
-		ListenAddr: net.JoinHostPort(deps.cfg.TOCHost, deps.cfg.TOCPort),
-		BOSProxy: toc.OSCARProxy{
-			AdminService: foodgroup.NewAdminService(
-				deps.sqLiteUserStore,
-				deps.sqLiteUserStore,
-				deps.sqLiteUserStore,
-				deps.inMemorySessionManager,
-				deps.inMemorySessionManager,
-				deps.logger,
-			),
-			AuthService: foodgroup.NewAuthService(
-				deps.cfg,
-				deps.inMemorySessionManager,
-				deps.chatSessionManager,
-				deps.sqLiteUserStore,
-				deps.hmacCookieBaker,
-				deps.chatSessionManager,
-				deps.sqLiteUserStore,
-				nil,
-				deps.rateLimitClasses,
-			),
-			BuddyListRegistry: deps.sqLiteUserStore,
-			BuddyService: foodgroup.NewBuddyService(
-				deps.inMemorySessionManager,
-				deps.sqLiteUserStore,
-				deps.sqLiteUserStore,
-				deps.inMemorySessionManager,
-				deps.sqLiteUserStore,
-			),
-			CookieBaker:      deps.hmacCookieBaker,
-			DirSearchService: foodgroup.NewODirService(logger, deps.sqLiteUserStore),
-			ICBMService: foodgroup.NewICBMService(
-				deps.sqLiteUserStore,
-				deps.inMemorySessionManager,
-				deps.sqLiteUserStore,
-				deps.sqLiteUserStore,
-				deps.inMemorySessionManager,
-				deps.snacRateLimits,
-			),
-			LocateService: foodgroup.NewLocateService(
-				deps.sqLiteUserStore,
-				deps.inMemorySessionManager,
-				deps.sqLiteUserStore,
-				deps.sqLiteUserStore,
-				deps.inMemorySessionManager,
-			),
-			Logger: logger,
-			OServiceServiceBOS: foodgroup.NewOServiceServiceForBOS(
-				deps.cfg,
-				deps.inMemorySessionManager,
-				logger,
-				deps.hmacCookieBaker,
-				deps.sqLiteUserStore,
-				deps.sqLiteUserStore,
-				deps.inMemorySessionManager,
-				deps.sqLiteUserStore,
-				deps.rateLimitClasses,
-				deps.snacRateLimits,
-			),
-			PermitDenyService: foodgroup.NewPermitDenyService(
-				deps.sqLiteUserStore,
-				deps.sqLiteUserStore,
-				deps.sqLiteUserStore,
-				deps.inMemorySessionManager,
-				deps.inMemorySessionManager,
-			),
-			TOCConfigStore: deps.sqLiteUserStore,
-			ChatService:    foodgroup.NewChatService(deps.chatSessionManager),
-			OServiceServiceChat: foodgroup.NewOServiceServiceForChat(
-				deps.cfg,
-				logger,
-				sessionManager,
-				deps.sqLiteUserStore,
-				deps.chatSessionManager,
-				deps.sqLiteUserStore,
-				sessionManager,
-				deps.sqLiteUserStore,
-				deps.rateLimitClasses,
-				deps.snacRateLimits,
-			),
-			ChatNavService:    foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
-			SNACRateLimits:    deps.snacRateLimits,
-			HTTPIPRateLimiter: toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
-		},
-		LoginIPRateLimiter: toc.NewIPRateLimiter(rate.Every(10*time.Minute), 10, 20*time.Minute),
-	}
-}
+//func TOC(deps Container) toc.Server {
+//	logger := deps.logger.With("svc", "TOC")
+//	sessionManager := state.NewInMemorySessionManager(logger)
+//	return toc.Server{
+//		Logger:     logger,
+//		ListenAddr: net.JoinHostPort(deps.cfg.TOCHost, deps.cfg.TOCPort),
+//		BOSProxy: toc.OSCARProxy{
+//			AdminService: foodgroup.NewAdminService(
+//				deps.sqLiteUserStore,
+//				deps.sqLiteUserStore,
+//				deps.sqLiteUserStore,
+//				deps.inMemorySessionManager,
+//				deps.inMemorySessionManager,
+//				deps.logger,
+//			),
+//			AuthService: foodgroup.NewAuthService(
+//				deps.cfg,
+//				deps.inMemorySessionManager,
+//				deps.chatSessionManager,
+//				deps.sqLiteUserStore,
+//				deps.hmacCookieBaker,
+//				deps.chatSessionManager,
+//				deps.sqLiteUserStore,
+//				nil,
+//				deps.rateLimitClasses,
+//			),
+//			BuddyListRegistry: deps.sqLiteUserStore,
+//			BuddyService: foodgroup.NewBuddyService(
+//				deps.inMemorySessionManager,
+//				deps.sqLiteUserStore,
+//				deps.sqLiteUserStore,
+//				deps.inMemorySessionManager,
+//				deps.sqLiteUserStore,
+//			),
+//			CookieBaker:      deps.hmacCookieBaker,
+//			DirSearchService: foodgroup.NewODirService(logger, deps.sqLiteUserStore),
+//			ICBMService: foodgroup.NewICBMService(
+//				deps.sqLiteUserStore,
+//				deps.inMemorySessionManager,
+//				deps.sqLiteUserStore,
+//				deps.sqLiteUserStore,
+//				deps.inMemorySessionManager,
+//				deps.snacRateLimits,
+//			),
+//			LocateService: foodgroup.NewLocateService(
+//				deps.sqLiteUserStore,
+//				deps.inMemorySessionManager,
+//				deps.sqLiteUserStore,
+//				deps.sqLiteUserStore,
+//				deps.inMemorySessionManager,
+//			),
+//			Logger: logger,
+//			OServiceServiceBOS: foodgroup.NewOServiceServiceForBOS(
+//				deps.cfg,
+//				deps.inMemorySessionManager,
+//				logger,
+//				deps.hmacCookieBaker,
+//				deps.sqLiteUserStore,
+//				deps.sqLiteUserStore,
+//				deps.inMemorySessionManager,
+//				deps.sqLiteUserStore,
+//				deps.rateLimitClasses,
+//				deps.snacRateLimits,
+//			),
+//			PermitDenyService: foodgroup.NewPermitDenyService(
+//				deps.sqLiteUserStore,
+//				deps.sqLiteUserStore,
+//				deps.sqLiteUserStore,
+//				deps.inMemorySessionManager,
+//				deps.inMemorySessionManager,
+//			),
+//			TOCConfigStore: deps.sqLiteUserStore,
+//			ChatService:    foodgroup.NewChatService(deps.chatSessionManager),
+//			OServiceServiceChat: foodgroup.NewOServiceServiceForChat(
+//				deps.cfg,
+//				logger,
+//				sessionManager,
+//				deps.sqLiteUserStore,
+//				deps.chatSessionManager,
+//				deps.sqLiteUserStore,
+//				sessionManager,
+//				deps.sqLiteUserStore,
+//				deps.rateLimitClasses,
+//				deps.snacRateLimits,
+//			),
+//			ChatNavService:    foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
+//			SNACRateLimits:    deps.snacRateLimits,
+//			HTTPIPRateLimiter: toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
+//		},
+//		LoginIPRateLimiter: toc.NewIPRateLimiter(rate.Every(10*time.Minute), 10, 20*time.Minute),
+//	}
+//}

@@ -658,7 +658,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 				cookieBaker: cookieBaker,
 				userManager: userManager,
 			}
-			outputSNAC, err := svc.BUCPLogin(context.Background(), tc.inputSNAC, tc.newUserFn)
+			outputSNAC, err := svc.BUCPLogin(context.Background(), tc.inputSNAC, tc.newUserFn, "")
 			assert.ErrorIs(t, err, tc.wantErr)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
@@ -1116,7 +1116,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 				cookieBaker: cookieBaker,
 				userManager: userManager,
 			}
-			outputSNAC, err := svc.FLAPLogin(context.Background(), tc.inputSNAC, tc.newUserFn)
+			outputSNAC, err := svc.FLAPLogin(context.Background(), tc.inputSNAC, tc.newUserFn, "")
 			assert.ErrorIs(t, err, tc.wantErr)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
 		})
