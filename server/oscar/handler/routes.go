@@ -32,6 +32,10 @@ type Handlers struct {
 func NewBOSRouter(h Handlers) oscar.Router {
 	router := oscar.NewRouter()
 
+	router.Register(wire.Admin, wire.AdminAcctConfirmRequest, h.AdminHandler.ConfirmRequest)
+	router.Register(wire.Admin, wire.AdminInfoChangeRequest, h.AdminHandler.InfoChangeRequest)
+	router.Register(wire.Admin, wire.AdminInfoQuery, h.AdminHandler.InfoQuery)
+
 	router.Register(wire.Alert, wire.AlertNotifyCapabilities, h.AlertHandler.NotifyCapabilities)
 	router.Register(wire.Alert, wire.AlertNotifyDisplayCapabilities, h.AlertHandler.NotifyDisplayCapabilities)
 
@@ -42,6 +46,8 @@ func NewBOSRouter(h Handlers) oscar.Router {
 	router.Register(wire.Buddy, wire.BuddyDelBuddies, h.BuddyHandler.DelBuddies)
 	router.Register(wire.Buddy, wire.BuddyRightsQuery, h.BuddyHandler.RightsQuery)
 
+	router.Register(wire.Chat, wire.ChatChannelMsgToHost, h.ChatHandler.ChannelMsgToHost)
+	
 	router.Register(wire.ChatNav, wire.ChatNavCreateRoom, h.ChatNavHandler.CreateRoom)
 	router.Register(wire.ChatNav, wire.ChatNavRequestChatRights, h.ChatNavHandler.RequestChatRights)
 	router.Register(wire.ChatNav, wire.ChatNavRequestExchangeInfo, h.ChatNavHandler.RequestExchangeInfo)
@@ -179,10 +185,6 @@ func NewAdminRouter(h Handlers) oscar.Router {
 	router.Register(wire.OService, wire.OServiceRateParamsQuery, h.OServiceHandler.RateParamsQuery)
 	router.Register(wire.OService, wire.OServiceRateParamsSubAdd, h.OServiceHandler.RateParamsSubAdd)
 	router.Register(wire.OService, wire.OServiceSetPrivacyFlags, h.OServiceHandler.SetPrivacyFlags)
-
-	router.Register(wire.Admin, wire.AdminAcctConfirmRequest, h.AdminHandler.ConfirmRequest)
-	router.Register(wire.Admin, wire.AdminInfoChangeRequest, h.AdminHandler.InfoChangeRequest)
-	router.Register(wire.Admin, wire.AdminInfoQuery, h.AdminHandler.InfoQuery)
 
 	return router
 }
