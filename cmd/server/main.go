@@ -64,16 +64,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	start(Admin(deps))
-	start(Alert(deps))
-	start(Auth(deps))
-	start(BART(deps))
-	start(BOS(deps))
-	start(Chat(deps))
-	start(ChatNav(deps))
+	start(OSCAR(deps))
 	start(KerberosAPI(deps))
 	start(MgmtAPI(deps))
-	start(ODir(deps))
 	start(TOC(deps))
 
 	if err := g.Wait(); err != nil {

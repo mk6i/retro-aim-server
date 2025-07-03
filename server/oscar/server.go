@@ -65,7 +65,7 @@ type AuthService interface {
 	RetrieveBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	Signout(ctx context.Context, sess *state.Session)
 	SignoutChat(ctx context.Context, sess *state.Session)
-	GetSession(ctx context.Context, authCookie []byte) (uint16, *state.Session, error)
+	CrackCookie(authCookie []byte) (uint16, error)
 }
 
 // IPRateLimiter enforces a per-IP rate limit using a token bucket algorithm.
@@ -231,7 +231,7 @@ func (s Server) routeConnection(ctx context.Context, rwc net.Conn) error {
 		return s.connectToService(ctx, flap, flapc, ip, rwc)
 	}
 
-	return s.doAuthStuff(ctx, rwc, ip, flapc)
+	return s.doAuthStuff(ctx, flap, rwc, ip, flapc)
 }
 
 func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame, flapc *wire.FlapClient, ip string, rwc net.Conn) error {
@@ -240,18 +240,22 @@ func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame,
 		return errors.New("unable to get session id from payload")
 	}
 
-	fg, sess, err := s.GetSession(ctx, authCookie)
+	fg, err := s.CrackCookie(authCookie)
 	if err != nil {
 		return err
 	}
-	if sess == nil {
-		return errors.New("session not found")
-	}
 
-	ctx = context.WithValue(ctx, "screenName", sess.IdentScreenName())
-
+	var sess *state.Session
 	switch fg {
-	case 2: // BOS
+	case 0: // BOS
+		sess, err = s.AuthService.RegisterBOSSession(ctx, authCookie)
+		if err != nil {
+			return err
+		}
+		if sess == nil {
+			return errors.New("session not found")
+		}
+
 		if err := s.BuddyListRegistry.RegisterBuddyList(ctx, sess.IdentScreenName()); err != nil {
 			return fmt.Errorf("unable to init buddy list: %w", err)
 		}
@@ -280,24 +284,63 @@ func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame,
 			}
 			sess.SetRemoteAddr(&ip)
 		}
-	case 3: // Chat
+
+		go s.receiveSessMessages(ctx, sess, flapc)
+
+	case wire.Chat: // Chat
+		sess, err = s.AuthService.RegisterChatSession(ctx, authCookie)
+		if err != nil {
+			return err
+		}
+		if sess == nil {
+			return errors.New("session not found")
+		}
+
 		defer func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			s.SignoutChat(ctx, sess)
 		}()
 
+		go s.receiveSessMessages(ctx, sess, flapc)
+
+	default:
+		sess, err = s.AuthService.RetrieveBOSSession(ctx, authCookie)
+		if err != nil {
+			return err
+		}
+		if sess == nil {
+			return errors.New("session not found")
+		}
 	}
+
+	ctx = context.WithValue(ctx, "screenName", sess.IdentScreenName())
 
 	msg := s.OnlineNotifier.HostOnline()
 	if err := flapc.SendSNAC(msg.Frame, msg.Body); err != nil {
 		return err
 	}
 
-	return dispatchIncomingMessages(ctx, sess, flapc, rwc, s.Logger, s.Handler, s.RateLimitUpdater, s.SNACRateLimits)
+	return s.dispatchIncomingMessages(ctx, sess, flapc, rwc)
 }
 
-func (s Server) doAuthStuff(ctx context.Context, conn net.Conn, ip string, flapc *wire.FlapClient) error {
+func (s Server) receiveSessMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case m := <-sess.ReceiveMessage():
+			// forward a notification sent from another client to this client
+			if err := flapc.SendSNAC(m.Frame, m.Body); err != nil {
+				middleware.LogRequestError(ctx, s.Logger, m.Frame, err)
+			} else {
+				middleware.LogRequest(ctx, s.Logger, m.Frame, m.Body)
+			}
+		}
+	}
+}
+
+func (s Server) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, conn net.Conn, ip string, flapc *wire.FlapClient) error {
 	if ok, isBUCP := s.Allow(ip); !ok {
 		s.Logger.Error("user rate limited at login", "remote", ip)
 		tlv := wire.TLVRestBlock{
@@ -321,27 +364,18 @@ func (s Server) doAuthStuff(ctx context.Context, conn net.Conn, ip string, flapc
 		}
 	}
 
-	// auth must complete within the next 30 seconds
-	if err := conn.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
-		return fmt.Errorf("failed to set deadline: %w", err)
-	}
-
-	if err := flapc.SendSignonFrame(nil); err != nil {
-		return err
-	}
-
-	signonFrame, err := flapc.ReceiveSignonFrame()
-	if err != nil {
-		return err
-	}
+	//// auth must complete within the next 30 seconds
+	//if err := conn.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
+	//	return fmt.Errorf("failed to set deadline: %w", err)
+	//}
 
 	// decide whether the client is using BUCP or FLAP authentication based on
 	// the presence of the screen name TLV. this block used to check for the
 	// presence of the roasted password TLV, however that proved an unreliable
 	// indicator of FLAP-auth because older ICQ clients appear to omit the
 	// roasted password TLV when the password is not stored client-side.
-	if _, hasScreenName := signonFrame.Uint16BE(wire.LoginTLVTagsScreenName); hasScreenName {
-		return s.processFLAPAuth(ctx, signonFrame, flapc)
+	if _, hasScreenName := flap.Uint16BE(wire.LoginTLVTagsScreenName); hasScreenName {
+		return s.processFLAPAuth(ctx, flap, flapc)
 	}
 
 	s.SetBUCP(ip)
@@ -445,12 +479,10 @@ func sendInvalidSNACErr(frameIn wire.SNACFrame, rw ResponseWriter) error {
 // This function ensures that the same sequence number is incremented for both
 // types of messages. The function terminates upon receiving a connection error
 // or when the session closes.
-//
-// todo: this method has too many params and should be folded into a new type
-func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient, r io.Reader, logger *slog.Logger, router Handler, rateLimitUpdater RateLimitUpdater, snacRateLimits wire.SNACRateLimits) error {
+func (s Server) dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient, r io.Reader) error {
 
 	defer func() {
-		logger.InfoContext(ctx, "user disconnected")
+		s.Logger.InfoContext(ctx, "user disconnected")
 	}()
 
 	// buffered so that the go routine has room to exit
@@ -487,22 +519,22 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 					return err
 				}
 
-				rateClassID, ok := snacRateLimits.RateClassLookup(inFrame.FoodGroup, inFrame.SubGroup)
+				rateClassID, ok := s.SNACRateLimits.RateClassLookup(inFrame.FoodGroup, inFrame.SubGroup)
 				if ok {
 					if status := sess.EvaluateRateLimit(time.Now(), rateClassID); status == wire.RateLimitStatusLimited {
-						logger.DebugContext(ctx, "rate limit exceeded, dropping SNAC",
+						s.Logger.DebugContext(ctx, "rate limit exceeded, dropping SNAC",
 							"foodgroup", wire.FoodGroupName(inFrame.FoodGroup),
 							"subgroup", wire.SubGroupName(inFrame.FoodGroup, inFrame.SubGroup))
 						break
 					}
 				} else {
-					logger.ErrorContext(ctx, "rate limit not found, allowing request through")
+					s.Logger.ErrorContext(ctx, "rate limit not found, allowing request through")
 				}
 
 				// route a client request to the appropriate service handler. the
 				// handler may write a response to the client connection.
-				if err := router.Handle(ctx, sess, inFrame, flapBuf, flapc); err != nil {
-					middleware.LogRequestError(ctx, logger, inFrame, err)
+				if err := s.Handler.Handle(ctx, sess, inFrame, flapBuf, flapc); err != nil {
+					middleware.LogRequestError(ctx, s.Logger, inFrame, err)
 					if errors.Is(err, ErrRouteNotFound) {
 						if err1 := sendInvalidSNACErr(inFrame, flapc); err1 != nil {
 							return errors.Join(err1, err)
@@ -516,25 +548,18 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 			case wire.FLAPFrameError:
 				return fmt.Errorf("got FLAPFrameError. flap: %v", flap)
 			case wire.FLAPFrameSignoff:
-				logger.InfoContext(ctx, "got FLAPFrameSignoff", "flap", flap)
+				s.Logger.InfoContext(ctx, "got FLAPFrameSignoff", "flap", flap)
 				return nil
 			case wire.FLAPFrameKeepAlive:
-				logger.DebugContext(ctx, "keepalive heartbeat")
+				s.Logger.DebugContext(ctx, "keepalive heartbeat")
 			default:
 				return fmt.Errorf("got unknown FLAP frame type. flap: %v", flap)
 			}
-		case m := <-sess.ReceiveMessage():
-			// forward a notification sent from another client to this client
-			if err := flapc.SendSNAC(m.Frame, m.Body); err != nil {
-				middleware.LogRequestError(ctx, logger, m.Frame, err)
-				return err
-			}
-			middleware.LogRequest(ctx, logger, m.Frame, m.Body)
 		case <-time.After(1 * time.Second):
-			msgs := rateLimitUpdater.RateLimitUpdates(ctx, sess, time.Now())
+			msgs := s.RateLimitUpdater.RateLimitUpdates(ctx, sess, time.Now())
 			for _, rate := range msgs {
 				if err := flapc.SendSNAC(rate.Frame, rate.Body); err != nil {
-					middleware.LogRequestError(ctx, logger, rate.Frame, err)
+					middleware.LogRequestError(ctx, s.Logger, rate.Frame, err)
 					return err
 				}
 			}
@@ -556,7 +581,7 @@ func dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *w
 			return nil
 		case err := <-errCh:
 			if !errors.Is(io.EOF, err) {
-				logger.ErrorContext(ctx, "client disconnected with error", "err", err)
+				s.Logger.ErrorContext(ctx, "client disconnected with error", "err", err)
 			}
 			return nil
 		}

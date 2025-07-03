@@ -89,8 +89,23 @@ func (s AuthService) RegisterChatSession(ctx context.Context, authCookie []byte)
 // bosCookie represents a token containing client metadata passed to the BOS
 // service upon connection.
 type bosCookie struct {
+	Service    uint16
 	ScreenName state.DisplayScreenName `oscar:"len_prefix=uint8"`
 	ClientID   string                  `oscar:"len_prefix=uint8"`
+}
+
+func (s AuthService) CrackCookie(authCookie []byte) (uint16, error) {
+	buf, err := s.cookieBaker.Crack(authCookie)
+	if err != nil {
+		return 0, err
+	}
+
+	c := bosCookie{}
+	if err := wire.UnmarshalBE(&c, bytes.NewBuffer(buf)); err != nil {
+		return 0, err
+	}
+
+	return c.Service, nil
 }
 
 // RegisterBOSSession adds a new session to the session registry.
@@ -528,6 +543,7 @@ func (s AuthService) createUser(ctx context.Context, props loginProperties, newU
 
 func (s AuthService) loginSuccessResponse(props loginProperties) (wire.TLVRestBlock, error) {
 	loginCookie := bosCookie{
+		Service:    0,
 		ScreenName: props.screenName,
 		ClientID:   props.clientID,
 	}
@@ -544,7 +560,7 @@ func (s AuthService) loginSuccessResponse(props loginProperties) (wire.TLVRestBl
 	return wire.TLVRestBlock{
 		TLVList: []wire.TLV{
 			wire.NewTLVBE(wire.LoginTLVTagsScreenName, props.screenName),
-			wire.NewTLVBE(wire.LoginTLVTagsReconnectHere, net.JoinHostPort(s.config.OSCARHost, s.config.BOSPort)),
+			wire.NewTLVBE(wire.LoginTLVTagsReconnectHere, net.JoinHostPort("127.0.0.1", "5190")),
 			wire.NewTLVBE(wire.LoginTLVTagsAuthorizationCookie, cookie),
 		},
 	}, nil
