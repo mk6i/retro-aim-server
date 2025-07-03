@@ -57,8 +57,8 @@ type RateLimitUpdater interface {
 
 type AuthService interface {
 	BUCPChallenge(ctx context.Context, bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
-	BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
-	FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error)
+	BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error), here string) (wire.SNACMessage, error)
+	FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error), here string) (wire.TLVRestBlock, error)
 	KerberosLogin(ctx context.Context, inBody wire.SNAC_0x050C_0x0002_KerberosLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
 	RegisterBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
 	RegisterChatSession(ctx context.Context, authCookie []byte) (*state.Session, error)
@@ -191,7 +191,7 @@ func (s Server) acceptConnection(l Listener, ctx context.Context) error {
 			defer wg.Done()
 			connCtx := context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 			s.Logger.DebugContext(connCtx, "accepted connection")
-			if err := s.routeConnection(connCtx, conn); err != nil {
+			if err := s.routeConnection(connCtx, conn, l); err != nil {
 				s.Logger.Info("user session failed", "err", err.Error())
 			}
 		}()
@@ -206,7 +206,7 @@ func (s Server) acceptConnection(l Listener, ctx context.Context) error {
 	return nil
 }
 
-func (s Server) routeConnection(ctx context.Context, rwc net.Conn) error {
+func (s Server) routeConnection(ctx context.Context, rwc net.Conn, l Listener) error {
 	defer func() {
 		rwc.Close()
 	}()
@@ -231,7 +231,7 @@ func (s Server) routeConnection(ctx context.Context, rwc net.Conn) error {
 		return s.connectToService(ctx, flap, flapc, ip, rwc)
 	}
 
-	return s.doAuthStuff(ctx, flap, rwc, ip, flapc)
+	return s.doAuthStuff(ctx, flap, rwc, ip, flapc, l)
 }
 
 func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame, flapc *wire.FlapClient, ip string, rwc net.Conn) error {
@@ -340,7 +340,7 @@ func (s Server) receiveSessMessages(ctx context.Context, sess *state.Session, fl
 	}
 }
 
-func (s Server) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, conn net.Conn, ip string, flapc *wire.FlapClient) error {
+func (s Server) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, conn net.Conn, ip string, flapc *wire.FlapClient, l Listener) error {
 	if ok, isBUCP := s.Allow(ip); !ok {
 		s.Logger.Error("user rate limited at login", "remote", ip)
 		tlv := wire.TLVRestBlock{
@@ -375,23 +375,23 @@ func (s Server) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, conn
 	// indicator of FLAP-auth because older ICQ clients appear to omit the
 	// roasted password TLV when the password is not stored client-side.
 	if _, hasScreenName := flap.Uint16BE(wire.LoginTLVTagsScreenName); hasScreenName {
-		return s.processFLAPAuth(ctx, flap, flapc)
+		return s.processFLAPAuth(ctx, flap, flapc, net.JoinHostPort(l.AdvertiseHost, l.AdvertisePort))
 	}
 
 	s.SetBUCP(ip)
 
-	return s.processBUCPAuth(ctx, flapc)
+	return s.processBUCPAuth(ctx, flapc, net.JoinHostPort(l.AdvertiseHost, l.AdvertisePort))
 }
 
-func (s Server) processFLAPAuth(ctx context.Context, signonFrame wire.FLAPSignonFrame, flapc *wire.FlapClient) error {
-	tlv, err := s.AuthService.FLAPLogin(ctx, signonFrame, state.NewStubUser)
+func (s Server) processFLAPAuth(ctx context.Context, signonFrame wire.FLAPSignonFrame, flapc *wire.FlapClient, connectHere string) error {
+	tlv, err := s.AuthService.FLAPLogin(ctx, signonFrame, state.NewStubUser, connectHere)
 	if err != nil {
 		return err
 	}
 	return flapc.SendSignoffFrame(tlv)
 }
 
-func (s Server) processBUCPAuth(ctx context.Context, flapc *wire.FlapClient) error {
+func (s Server) processBUCPAuth(ctx context.Context, flapc *wire.FlapClient, connectHere string) error {
 	frames := 0
 
 	for {
@@ -442,7 +442,7 @@ func (s Server) processBUCPAuth(ctx context.Context, flapc *wire.FlapClient) err
 				if err := wire.UnmarshalBE(&loginRequest, buf); err != nil {
 					return err
 				}
-				outSNAC, err := s.BUCPLogin(ctx, loginRequest, state.NewStubUser)
+				outSNAC, err := s.BUCPLogin(ctx, loginRequest, state.NewStubUser, connectHere)
 				if err != nil {
 					return err
 				}

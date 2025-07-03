@@ -67,7 +67,7 @@ func main() {
 	start(OSCAR(deps))
 	start(KerberosAPI(deps))
 	start(MgmtAPI(deps))
-	start(TOC(deps))
+	//start(TOC(deps))
 
 	if err := g.Wait(); err != nil {
 		fmt.Println(err.Error())
