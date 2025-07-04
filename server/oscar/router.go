@@ -43,7 +43,7 @@ type Router struct {
 // its group and subGroup identifiers found in the SNAC frame. It returns an
 // ErrRouteNotFound error if no matching handler is found for the group:subGroup
 // pair in the request.
-func (rt Router) Handle(ctx context.Context, server uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter) error {
+func (rt Router) Handle(ctx context.Context, server uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, connectHere string) error {
 	switch {
 	case inFrame.FoodGroup == wire.Admin && inFrame.SubGroup == wire.AdminAcctConfirmRequest:
 		return rt.AdminHandler.ConfirmRequest(ctx, sess, inFrame, r, rw)
@@ -123,6 +123,10 @@ func (rt Router) Handle(ctx context.Context, server uint16, sess *state.Session,
 		return rt.LocateHandler.UserInfoQuery(ctx, sess, inFrame, r, rw)
 	case inFrame.FoodGroup == wire.Locate && inFrame.SubGroup == wire.LocateUserInfoQuery2:
 		return rt.LocateHandler.UserInfoQuery2(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ODir && inFrame.SubGroup == wire.ODirInfoQuery:
+		return rt.ODirHandler.InfoQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ODir && inFrame.SubGroup == wire.ODirKeywordListQuery:
+		return rt.ODirHandler.KeywordListQuery(ctx, sess, inFrame, r, rw)
 	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceClientOnline:
 		return rt.OServiceHandler.ClientOnline(ctx, server, sess, inFrame, r, rw)
 	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceClientVersions:
@@ -136,7 +140,7 @@ func (rt Router) Handle(ctx context.Context, server uint16, sess *state.Session,
 	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceRateParamsSubAdd:
 		return rt.OServiceHandler.RateParamsSubAdd(ctx, sess, inFrame, r, rw)
 	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceServiceRequest:
-		return rt.OServiceHandler.ServiceRequest(ctx, server, sess, inFrame, r, rw)
+		return rt.OServiceHandler.ServiceRequest(ctx, server, sess, inFrame, r, rw, connectHere)
 	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceSetPrivacyFlags:
 		return rt.OServiceHandler.SetPrivacyFlags(ctx, sess, inFrame, r, rw)
 	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceSetUserInfoFields:

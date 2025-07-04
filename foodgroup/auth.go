@@ -21,12 +21,12 @@ import (
 func NewAuthService(
 	cfg config.Config,
 	sessionManager SessionRegistry,
+	sessionRetriever SessionRetriever,
 	chatSessionRegistry ChatSessionRegistry,
 	userManager UserManager,
 	cookieBaker CookieBaker,
 	chatMessageRelayer ChatMessageRelayer,
 	accountManager AccountManager,
-	adminServerSessionRetriever SessionRetriever,
 	classes wire.RateLimitClasses,
 ) *AuthService {
 	return &AuthService{
@@ -34,13 +34,12 @@ func NewAuthService(
 		config:              cfg,
 		cookieBaker:         cookieBaker,
 		sessionManager:      sessionManager,
+		sessionRetriever:    sessionRetriever,
 		userManager:         userManager,
 		chatMessageRelayer:  chatMessageRelayer,
 		accountManager:      accountManager,
-		// hack - adminServerSessionRetriever is just used for admin server
-		adminServerSessionRetriever: adminServerSessionRetriever,
-		rateLimitClasses:            classes,
-		timeNow:                     time.Now,
+		rateLimitClasses:    classes,
+		timeNow:             time.Now,
 	}
 }
 
@@ -48,16 +47,16 @@ func NewAuthService(
 // supports both FLAP (AIM v1.0-v3.0) and BUCP (AIM v3.5-v5.9) authentication
 // modes.
 type AuthService struct {
-	chatMessageRelayer          ChatMessageRelayer
-	chatSessionRegistry         ChatSessionRegistry
-	config                      config.Config
-	cookieBaker                 CookieBaker
-	sessionManager              SessionRegistry
-	userManager                 UserManager
-	accountManager              AccountManager
-	adminServerSessionRetriever SessionRetriever
-	rateLimitClasses            wire.RateLimitClasses
-	timeNow                     func() time.Time
+	chatMessageRelayer  ChatMessageRelayer
+	chatSessionRegistry ChatSessionRegistry
+	config              config.Config
+	cookieBaker         CookieBaker
+	sessionManager      SessionRegistry
+	sessionRetriever    SessionRetriever
+	userManager         UserManager
+	accountManager      AccountManager
+	rateLimitClasses    wire.RateLimitClasses
+	timeNow             func() time.Time
 }
 
 // RegisterChatSession adds a user to a chat room. The authCookie param is an
@@ -72,7 +71,7 @@ func (s AuthService) RegisterChatSession(ctx context.Context, authCookie []byte)
 	if err != nil {
 		return nil, err
 	}
-	c := chatLoginCookie{}
+	c := bosCookie{}
 	if err := wire.UnmarshalBE(&c, bytes.NewBuffer(token)); err != nil {
 		return nil, err
 	}
@@ -92,6 +91,7 @@ type bosCookie struct {
 	Service    uint16
 	ScreenName state.DisplayScreenName `oscar:"len_prefix=uint8"`
 	ClientID   string                  `oscar:"len_prefix=uint8"`
+	ChatCookie string                  `oscar:"len_prefix=uint8"`
 }
 
 func (s AuthService) CrackCookie(authCookie []byte) (uint16, error) {
@@ -185,7 +185,7 @@ func (s AuthService) RetrieveBOSSession(ctx context.Context, authCookie []byte) 
 		return nil, fmt.Errorf("user not found")
 	}
 
-	return s.adminServerSessionRetriever.RetrieveSession(u.IdentScreenName), nil
+	return s.sessionRetriever.RetrieveSession(u.IdentScreenName), nil
 }
 
 // Signout removes this user's session and notifies users who have this user on

@@ -17,7 +17,7 @@ type OServiceService interface {
 	IdleNotification(ctx context.Context, sess *state.Session, bodyIn wire.SNAC_0x01_0x11_OServiceIdleNotification) error
 	RateParamsQuery(ctx context.Context, sess *state.Session, frame wire.SNACFrame) wire.SNACMessage
 	RateParamsSubAdd(context.Context, *state.Session, wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd)
-	ServiceRequest(ctx context.Context, service uint16, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error)
+	ServiceRequest(ctx context.Context, service uint16, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest, connectHere string) (wire.SNACMessage, error)
 	SetPrivacyFlags(ctx context.Context, bodyIn wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags)
 	SetUserInfoFields(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields) (wire.SNACMessage, error)
 	UserInfoQuery(ctx context.Context, sess *state.Session, frame wire.SNACFrame) wire.SNACMessage
@@ -107,12 +107,12 @@ func (h OServiceHandler) SetPrivacyFlags(ctx context.Context, sess *state.Sessio
 	return nil
 }
 
-func (h OServiceHandler) ServiceRequest(ctx context.Context, service uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter) error {
+func (h OServiceHandler) ServiceRequest(ctx context.Context, service uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, connectHere string) error {
 	inBody := wire.SNAC_0x01_0x04_OServiceServiceRequest{}
 	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
-	outSNAC, err := h.OServiceService.ServiceRequest(ctx, service, sess, inFrame, inBody)
+	outSNAC, err := h.OServiceService.ServiceRequest(ctx, service, sess, inFrame, inBody, connectHere)
 	if err != nil {
 		return err
 	}
