@@ -26,7 +26,7 @@ import (
 // at the beginning of the protocol sequence which lists all food groups
 // managed by the server.
 type OnlineNotifier interface {
-	HostOnline() wire.SNACMessage
+	HostOnline(service uint16) wire.SNACMessage
 }
 
 // BuddyListRegistry is the interface for keeping track of users with active
@@ -139,7 +139,7 @@ type Server struct {
 	DepartureNotifier
 	Logger *slog.Logger
 	OnlineNotifier
-	Handler
+	Handler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter) error
 	RateLimitUpdater
 	wire.SNACRateLimits
 	*IPRateLimiter
@@ -240,13 +240,13 @@ func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame,
 		return errors.New("unable to get session id from payload")
 	}
 
-	fg, err := s.CrackCookie(authCookie)
+	server, err := s.CrackCookie(authCookie)
 	if err != nil {
 		return err
 	}
 
 	var sess *state.Session
-	switch fg {
+	switch server {
 	case 0: // BOS
 		sess, err = s.AuthService.RegisterBOSSession(ctx, authCookie)
 		if err != nil {
@@ -316,12 +316,12 @@ func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame,
 
 	ctx = context.WithValue(ctx, "screenName", sess.IdentScreenName())
 
-	msg := s.OnlineNotifier.HostOnline()
+	msg := s.OnlineNotifier.HostOnline(server)
 	if err := flapc.SendSNAC(msg.Frame, msg.Body); err != nil {
 		return err
 	}
 
-	return s.dispatchIncomingMessages(ctx, sess, flapc, rwc)
+	return s.dispatchIncomingMessages(ctx, server, sess, flapc, rwc)
 }
 
 func (s Server) receiveSessMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient) {
@@ -479,7 +479,7 @@ func sendInvalidSNACErr(frameIn wire.SNACFrame, rw ResponseWriter) error {
 // This function ensures that the same sequence number is incremented for both
 // types of messages. The function terminates upon receiving a connection error
 // or when the session closes.
-func (s Server) dispatchIncomingMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient, r io.Reader) error {
+func (s Server) dispatchIncomingMessages(ctx context.Context, fg uint16, sess *state.Session, flapc *wire.FlapClient, r io.Reader) error {
 
 	defer func() {
 		s.Logger.InfoContext(ctx, "user disconnected")
@@ -533,7 +533,7 @@ func (s Server) dispatchIncomingMessages(ctx context.Context, sess *state.Sessio
 
 				// route a client request to the appropriate service handler. the
 				// handler may write a response to the client connection.
-				if err := s.Handler.Handle(ctx, sess, inFrame, flapBuf, flapc); err != nil {
+				if err := s.Handler(ctx, fg, sess, inFrame, flapBuf, flapc); err != nil {
 					middleware.LogRequestError(ctx, s.Logger, inFrame, err)
 					if errors.Is(err, ErrRouteNotFound) {
 						if err1 := sendInvalidSNACErr(inFrame, flapc); err1 != nil {
