@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -18,7 +17,7 @@ import (
 // provides an assortment of services useful across multiple food groups.
 type OServiceService struct {
 	buddyBroadcaster buddyBroadcaster
-	cfg              config.Config
+	cfg              config.Config // todo remove
 	logger           *slog.Logger
 	rateLimitClasses wire.RateLimitClasses
 	snacRateLimits   wire.SNACRateLimits
@@ -56,13 +55,6 @@ func NewOServiceService(
 		chatRoomManager:    chatRoomManager,
 		chatMessageRelayer: chatMessageRelayer,
 	}
-}
-
-// chatLoginCookie represents credentials used to authenticate a user chat
-// session.
-type chatLoginCookie struct {
-	ChatCookie string                  `oscar:"len_prefix=uint8"`
-	ScreenName state.DisplayScreenName `oscar:"len_prefix=uint8"`
 }
 
 // ClientVersions informs the server what food group versions the client
@@ -524,7 +516,7 @@ func buildRateLimitUpdate(code uint16, curRate state.RateClassState, sess *state
 
 // ServiceRequest handles service discovery, providing a host name and metadata
 // for connecting to the food group service specified in inFrame.
-func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
+func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest, connectHere string) (wire.SNACMessage, error) {
 	if service != wire.BOS {
 		return wire.SNACMessage{
 			Frame: wire.SNACFrame{
@@ -549,6 +541,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 	switch inBody.FoodGroup {
 	case wire.Admin:
 		cookie, err := fnIssueCookie(bosCookie{
+			Service:    wire.Admin,
 			ScreenName: sess.DisplayScreenName(),
 		})
 		if err != nil {
@@ -563,7 +556,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.AdminPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, connectHere),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Admin),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -574,6 +567,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 		}, nil
 	case wire.Alert:
 		cookie, err := fnIssueCookie(bosCookie{
+			Service:    wire.Alert,
 			ScreenName: sess.DisplayScreenName(),
 		})
 		if err != nil {
@@ -588,7 +582,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.AlertPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, connectHere),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Alert),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -599,6 +593,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 		}, nil
 	case wire.BART:
 		cookie, err := fnIssueCookie(bosCookie{
+			Service:    wire.BART,
 			ScreenName: sess.DisplayScreenName(),
 		})
 		if err != nil {
@@ -613,7 +608,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.BARTPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, connectHere),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.BART),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -624,6 +619,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 		}, nil
 	case wire.ChatNav:
 		cookie, err := fnIssueCookie(bosCookie{
+			Service:    wire.ChatNav,
 			ScreenName: sess.DisplayScreenName(),
 		})
 		if err != nil {
@@ -638,7 +634,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ChatNavPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, connectHere),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ChatNav),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -663,7 +659,8 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			return wire.SNACMessage{}, fmt.Errorf("unable to retrieve room info: %w", err)
 		}
 
-		cookie, err := fnIssueCookie(chatLoginCookie{
+		cookie, err := fnIssueCookie(bosCookie{
+			Service:    wire.Chat,
 			ChatCookie: room.Cookie(),
 			ScreenName: sess.DisplayScreenName(),
 		})
@@ -680,7 +677,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ChatPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, connectHere),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Chat),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -691,6 +688,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 		}, nil
 	case wire.ODir:
 		cookie, err := fnIssueCookie(bosCookie{
+			Service:    wire.ODir,
 			ScreenName: sess.DisplayScreenName(),
 		})
 		if err != nil {
@@ -705,7 +703,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ODirPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, connectHere),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ODir),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),

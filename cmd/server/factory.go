@@ -67,17 +67,7 @@ func MakeCommonDeps() (Container, error) {
 func OSCAR(deps Container) oscar.Server {
 	logger := deps.logger.With("svc", "OSCAR")
 
-	authService := foodgroup.NewAuthService(
-		deps.cfg,
-		deps.inMemorySessionManager,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		deps.hmacCookieBaker,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		nil,
-		deps.rateLimitClasses,
-	)
+	authService := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, deps.chatSessionManager, deps.sqLiteUserStore, deps.rateLimitClasses)
 	bartService := foodgroup.NewBARTService(
 		logger,
 		deps.sqLiteUserStore,
@@ -92,6 +82,7 @@ func OSCAR(deps Container) oscar.Server {
 		deps.inMemorySessionManager,
 		deps.sqLiteUserStore,
 	)
+	chatService := foodgroup.NewChatService(deps.chatSessionManager)
 	chatNavService := foodgroup.NewChatNavService(logger, deps.sqLiteUserStore)
 	feedbagService := foodgroup.NewFeedbagService(
 		logger,
@@ -140,6 +131,7 @@ func OSCAR(deps Container) oscar.Server {
 	)
 	userLookupService := foodgroup.NewUserLookupService(deps.sqLiteUserStore)
 	statsService := foodgroup.NewStatsService()
+	oDirService := foodgroup.NewODirService(logger, deps.sqLiteUserStore)
 
 	return oscar.Server{
 		AuthService:        authService,
@@ -150,11 +142,13 @@ func OSCAR(deps Container) oscar.Server {
 			AlertHandler:      oscar.NewAlertHandler(logger),
 			BARTHandler:       oscar.NewBARTHandler(logger, bartService),
 			BuddyHandler:      oscar.NewBuddyHandler(logger, buddyService),
+			ChatHandler:       oscar.NewChatHandler(logger, chatService),
 			ChatNavHandler:    oscar.NewChatNavHandler(chatNavService, logger),
 			FeedbagHandler:    oscar.NewFeedbagHandler(logger, feedbagService),
-			ICQHandler:        oscar.NewICQHandler(logger, icqService),
 			ICBMHandler:       oscar.NewICBMHandler(logger, icbmService),
+			ICQHandler:        oscar.NewICQHandler(logger, icqService),
 			LocateHandler:     oscar.NewLocateHandler(locateService, logger),
+			ODirHandler:       oscar.NewODirHandler(logger, oDirService),
 			OServiceHandler:   oscar.NewOServiceHandler(logger, oServiceService),
 			PermitDenyHandler: oscar.NewPermitDenyHandler(logger, permitDenyService),
 			StatsHandler:      oscar.NewStatsHandler(logger, statsService),
@@ -184,17 +178,7 @@ func OSCAR(deps Container) oscar.Server {
 
 // KerberosAPI creates an HTTP server for the Kerberos server.
 func KerberosAPI(deps Container) *oscar.KerberosServer {
-	authService := foodgroup.NewAuthService(
-		deps.cfg,
-		deps.inMemorySessionManager,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		deps.hmacCookieBaker,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		nil,
-		deps.rateLimitClasses,
-	)
+	authService := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, deps.chatSessionManager, deps.sqLiteUserStore, deps.rateLimitClasses)
 	return oscar.NewKerberosServer(deps.cfg, deps.logger, authService)
 }
 
