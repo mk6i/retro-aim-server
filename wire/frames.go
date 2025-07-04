@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sync"
 )
 
 type SNACError struct {
@@ -67,6 +68,7 @@ func NewFlapClient(startSeq uint32, r io.Reader, w io.Writer) *FlapClient {
 		sequence: startSeq,
 		r:        r,
 		w:        w,
+		mutex:    sync.Mutex{},
 	}
 }
 
@@ -78,6 +80,7 @@ type FlapClient struct {
 	sequence uint32
 	r        io.Reader
 	w        io.Writer
+	mutex    sync.Mutex
 }
 
 // Fixes a race condition caused by testify. Yup...
@@ -99,6 +102,9 @@ func (f *FlapClient) SendSignonFrame(tlvs []TLV) error {
 	if err := MarshalBE(signonFrame, buf); err != nil {
 		return err
 	}
+
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 
 	flap := FLAPFrame{
 		StartMarker: 42,
@@ -151,6 +157,9 @@ func (f *FlapClient) SendSignoffFrame(tlvs TLVRestBlock) error {
 		return err
 	}
 
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
 	flap := FLAPFrame{
 		StartMarker: 42,
 		FrameType:   FLAPFrameSignoff,
@@ -176,6 +185,9 @@ func (f *FlapClient) SendSNAC(frame SNACFrame, body any) error {
 		return err
 	}
 
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
 	flap := FLAPFrame{
 		StartMarker: 42,
 		FrameType:   FLAPFrameData,
@@ -191,6 +203,9 @@ func (f *FlapClient) SendSNAC(frame SNACFrame, body any) error {
 }
 
 func (f *FlapClient) SendDataFrame(payload []byte) error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
 	flap := FLAPFrame{
 		StartMarker: 42,
 		FrameType:   FLAPFrameData,
@@ -206,6 +221,9 @@ func (f *FlapClient) SendDataFrame(payload []byte) error {
 }
 
 func (f *FlapClient) SendKeepAliveFrame() error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
 	flap := FLAPFrame{
 		StartMarker: 42,
 		FrameType:   FLAPFrameKeepAlive,
@@ -234,6 +252,9 @@ func (f *FlapClient) ReceiveSNAC(frame *SNACFrame, body any) error {
 
 // Disconnect sends a signoff FLAP frame.
 func (f *FlapClient) Disconnect() error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
 	flap := FLAPFrameDisconnect{
 		StartMarker: 42,
 		FrameType:   FLAPFrameSignoff,
