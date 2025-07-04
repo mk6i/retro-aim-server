@@ -3,7 +3,6 @@ package oscar
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -20,54 +19,148 @@ type ResponseWriter interface {
 	SendSNAC(frame wire.SNACFrame, body any) error
 }
 
-// Handler defines an interface for routing and processing OSCAR protocol
-// requests based on their food group categorization. Implementers of this
-// interface should provide logic to handle incoming requests, perform
-// necessary operations, and possibly generate responses.
-type Handler interface {
-	Handle(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter) error
-}
-
-// NewRouter creates a new Router instance.
-func NewRouter() Router {
-	return Router{
-		entries: make(map[uint16]map[uint16]Handler),
-	}
-}
-
 // Router defines a structure for routing OSCAR protocol requests to
 // appropriate handlers based on group:subGroup identifiers.
 type Router struct {
-	entries map[uint16]map[uint16]Handler
-}
-
-// HandlerFunc defines a function type that implements the Handler interface.
-// This allows using simple functions as handlers for processing OSCAR requests.
-type HandlerFunc func(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter) error
-
-// Handle executes the HandlerFunc, facilitating the Handler interface implementation.
-func (f HandlerFunc) Handle(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter) error {
-	return f(ctx, sess, inFrame, r, rw)
-}
-
-// Register adds a new route to the router by associating a HandlerFunc with a
-// specific group:subGroup pair. If a handler is already registered for the
-// group:subGroup pair, it will be overwritten with the new handler.
-func (rt Router) Register(group uint16, subGroup uint16, fn HandlerFunc) {
-	if _, ok := rt.entries[group]; !ok {
-		rt.entries[group] = make(map[uint16]Handler)
-	}
-	rt.entries[group][subGroup] = fn
+	AdminHandler
+	AlertHandler
+	BARTHandler
+	BuddyHandler
+	ChatHandler
+	ChatNavHandler
+	FeedbagHandler
+	ICBMHandler
+	ICQHandler
+	LocateHandler
+	ODirHandler
+	OServiceHandler
+	PermitDenyHandler
+	StatsHandler
+	UserLookupHandler
 }
 
 // Handle directs an incoming OSCAR request to the appropriate handler based on
 // its group and subGroup identifiers found in the SNAC frame. It returns an
 // ErrRouteNotFound error if no matching handler is found for the group:subGroup
 // pair in the request.
-func (rt Router) Handle(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter) error {
-	h, ok := rt.entries[inFrame.FoodGroup][inFrame.SubGroup]
-	if !ok {
-		return fmt.Errorf("%w. group: %d subgroup: %d", ErrRouteNotFound, inFrame.FoodGroup, inFrame.SubGroup)
+func (rt Router) Handle(ctx context.Context, server uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter) error {
+	switch {
+	case inFrame.FoodGroup == wire.Admin && inFrame.SubGroup == wire.AdminAcctConfirmRequest:
+		return rt.AdminHandler.ConfirmRequest(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Admin && inFrame.SubGroup == wire.AdminInfoChangeRequest:
+		return rt.AdminHandler.InfoChangeRequest(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Admin && inFrame.SubGroup == wire.AdminInfoQuery:
+		return rt.AdminHandler.InfoQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Alert && inFrame.SubGroup == wire.AlertNotifyCapabilities:
+		return rt.AlertHandler.NotifyCapabilities(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Alert && inFrame.SubGroup == wire.AlertNotifyDisplayCapabilities:
+		return rt.AlertHandler.NotifyDisplayCapabilities(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.BART && inFrame.SubGroup == wire.BARTDownloadQuery:
+		return rt.BARTHandler.DownloadQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.BART && inFrame.SubGroup == wire.BARTUploadQuery:
+		return rt.BARTHandler.UploadQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Buddy && inFrame.SubGroup == wire.BuddyAddBuddies:
+		return rt.BuddyHandler.AddBuddies(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Buddy && inFrame.SubGroup == wire.BuddyDelBuddies:
+		return rt.BuddyHandler.DelBuddies(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Buddy && inFrame.SubGroup == wire.BuddyRightsQuery:
+		return rt.BuddyHandler.RightsQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Chat && inFrame.SubGroup == wire.ChatChannelMsgToHost:
+		return rt.ChatHandler.ChannelMsgToHost(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ChatNav && inFrame.SubGroup == wire.ChatNavCreateRoom:
+		return rt.ChatNavHandler.CreateRoom(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ChatNav && inFrame.SubGroup == wire.ChatNavRequestChatRights:
+		return rt.ChatNavHandler.RequestChatRights(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ChatNav && inFrame.SubGroup == wire.ChatNavRequestExchangeInfo:
+		return rt.ChatNavHandler.RequestExchangeInfo(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ChatNav && inFrame.SubGroup == wire.ChatNavRequestRoomInfo:
+		return rt.ChatNavHandler.RequestRoomInfo(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Feedbag && inFrame.SubGroup == wire.FeedbagDeleteItem:
+		return rt.FeedbagHandler.DeleteItem(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Feedbag && inFrame.SubGroup == wire.FeedbagEndCluster:
+		return rt.FeedbagHandler.EndCluster(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Feedbag && inFrame.SubGroup == wire.FeedbagInsertItem:
+		return rt.FeedbagHandler.InsertItem(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Feedbag && inFrame.SubGroup == wire.FeedbagQuery:
+		return rt.FeedbagHandler.Query(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Feedbag && inFrame.SubGroup == wire.FeedbagQueryIfModified:
+		return rt.FeedbagHandler.QueryIfModified(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Feedbag && inFrame.SubGroup == wire.FeedbagRespondAuthorizeToHost:
+		return rt.FeedbagHandler.RespondAuthorizeToHost(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Feedbag && inFrame.SubGroup == wire.FeedbagRightsQuery:
+		return rt.FeedbagHandler.RightsQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Feedbag && inFrame.SubGroup == wire.FeedbagStartCluster:
+		return rt.FeedbagHandler.StartCluster(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Feedbag && inFrame.SubGroup == wire.FeedbagUpdateItem:
+		return rt.FeedbagHandler.UpdateItem(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Feedbag && inFrame.SubGroup == wire.FeedbagUse:
+		return rt.FeedbagHandler.Use(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ICQ && inFrame.SubGroup == wire.ICQDBQuery:
+		return rt.ICQHandler.DBQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ICBM && inFrame.SubGroup == wire.ICBMAddParameters:
+		return rt.ICBMHandler.AddParameters(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ICBM && inFrame.SubGroup == wire.ICBMChannelMsgToHost:
+		return rt.ICBMHandler.ChannelMsgToHost(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ICBM && inFrame.SubGroup == wire.ICBMClientErr:
+		return rt.ICBMHandler.ClientErr(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ICBM && inFrame.SubGroup == wire.ICBMClientEvent:
+		return rt.ICBMHandler.ClientEvent(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ICBM && inFrame.SubGroup == wire.ICBMEvilRequest:
+		return rt.ICBMHandler.EvilRequest(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.ICBM && inFrame.SubGroup == wire.ICBMParameterQuery:
+		return rt.ICBMHandler.ParameterQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Locate && inFrame.SubGroup == wire.LocateGetDirInfo:
+		return rt.LocateHandler.GetDirInfo(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Locate && inFrame.SubGroup == wire.LocateRightsQuery:
+		return rt.LocateHandler.RightsQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Locate && inFrame.SubGroup == wire.LocateSetDirInfo:
+		return rt.LocateHandler.SetDirInfo(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Locate && inFrame.SubGroup == wire.LocateSetInfo:
+		return rt.LocateHandler.SetInfo(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Locate && inFrame.SubGroup == wire.LocateSetKeywordInfo:
+		return rt.LocateHandler.SetKeywordInfo(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Locate && inFrame.SubGroup == wire.LocateUserInfoQuery:
+		return rt.LocateHandler.UserInfoQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Locate && inFrame.SubGroup == wire.LocateUserInfoQuery2:
+		return rt.LocateHandler.UserInfoQuery2(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceClientOnline:
+		return rt.OServiceHandler.ClientOnline(ctx, server, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceClientVersions:
+		return rt.OServiceHandler.ClientVersions(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceIdleNotification:
+		return rt.OServiceHandler.IdleNotification(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceNoop:
+		return rt.OServiceHandler.Noop(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceRateParamsQuery:
+		return rt.OServiceHandler.RateParamsQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceRateParamsSubAdd:
+		return rt.OServiceHandler.RateParamsSubAdd(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceServiceRequest:
+		return rt.OServiceHandler.ServiceRequest(ctx, server, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceSetPrivacyFlags:
+		return rt.OServiceHandler.SetPrivacyFlags(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceSetUserInfoFields:
+		return rt.OServiceHandler.SetUserInfoFields(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.OService && inFrame.SubGroup == wire.OServiceUserInfoQuery:
+		return rt.OServiceHandler.UserInfoQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.PermitDeny && inFrame.SubGroup == wire.PermitDenyAddDenyListEntries:
+		return rt.PermitDenyHandler.AddDenyListEntries(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.PermitDeny && inFrame.SubGroup == wire.PermitDenyAddPermListEntries:
+		return rt.PermitDenyHandler.AddPermListEntries(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.PermitDeny && inFrame.SubGroup == wire.PermitDenyDelDenyListEntries:
+		return rt.PermitDenyHandler.DelDenyListEntries(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.PermitDeny && inFrame.SubGroup == wire.PermitDenyDelPermListEntries:
+		return rt.PermitDenyHandler.DelPermListEntries(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.PermitDeny && inFrame.SubGroup == wire.PermitDenyRightsQuery:
+		return rt.PermitDenyHandler.RightsQuery(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.PermitDeny && inFrame.SubGroup == wire.PermitDenySetGroupPermitMask:
+		return rt.PermitDenyHandler.SetGroupPermitMask(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.Stats && inFrame.SubGroup == wire.StatsReportEvents:
+		return rt.StatsHandler.ReportEvents(ctx, sess, inFrame, r, rw)
+	case inFrame.FoodGroup == wire.UserLookup && inFrame.SubGroup == wire.UserLookupFindByEmail:
+		return rt.UserLookupHandler.FindByEmail(ctx, sess, inFrame, r, rw)
+
 	}
-	return h.Handle(ctx, sess, inFrame, r, rw)
+
+	return ErrRouteNotFound
 }

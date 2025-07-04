@@ -13,7 +13,6 @@ import (
 	"github.com/mk6i/retro-aim-server/foodgroup"
 	"github.com/mk6i/retro-aim-server/server/http"
 	"github.com/mk6i/retro-aim-server/server/oscar"
-	"github.com/mk6i/retro-aim-server/server/oscar/handler"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -126,7 +125,7 @@ func OSCAR(deps Container) oscar.Server {
 		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
 	)
-	oServiceService := foodgroup.NewOServiceServiceForBOS(
+	oServiceService := foodgroup.NewOServiceService(
 		deps.cfg,
 		deps.inMemorySessionManager,
 		logger,
@@ -137,6 +136,7 @@ func OSCAR(deps Container) oscar.Server {
 		deps.sqLiteUserStore,
 		deps.rateLimitClasses,
 		deps.snacRateLimits,
+		deps.chatSessionManager,
 	)
 	userLookupService := foodgroup.NewUserLookupService(deps.sqLiteUserStore)
 	statsService := foodgroup.NewStatsService()
@@ -146,20 +146,20 @@ func OSCAR(deps Container) oscar.Server {
 		BuddyListRegistry:  deps.sqLiteUserStore,
 		DepartureNotifier:  buddyService,
 		ChatSessionManager: deps.chatSessionManager,
-		Handler: handler.NewBOSRouter(handler.Handlers{
-			AlertHandler:      handler.NewAlertHandler(logger),
-			BARTHandler:       handler.NewBARTHandler(logger, bartService),
-			BuddyHandler:      handler.NewBuddyHandler(logger, buddyService),
-			ChatNavHandler:    handler.NewChatNavHandler(chatNavService, logger),
-			FeedbagHandler:    handler.NewFeedbagHandler(logger, feedbagService),
-			ICQHandler:        handler.NewICQHandler(logger, icqService),
-			ICBMHandler:       handler.NewICBMHandler(logger, icbmService),
-			LocateHandler:     handler.NewLocateHandler(locateService, logger),
-			OServiceHandler:   handler.NewOServiceHandler(logger, oServiceService),
-			PermitDenyHandler: handler.NewPermitDenyHandler(logger, permitDenyService),
-			StatsHandler:      handler.NewStatsHandler(logger, statsService),
-			UserLookupHandler: handler.NewUserLookupHandler(logger, userLookupService),
-		}),
+		Handler: oscar.Router{
+			AlertHandler:      oscar.NewAlertHandler(logger),
+			BARTHandler:       oscar.NewBARTHandler(logger, bartService),
+			BuddyHandler:      oscar.NewBuddyHandler(logger, buddyService),
+			ChatNavHandler:    oscar.NewChatNavHandler(chatNavService, logger),
+			FeedbagHandler:    oscar.NewFeedbagHandler(logger, feedbagService),
+			ICQHandler:        oscar.NewICQHandler(logger, icqService),
+			ICBMHandler:       oscar.NewICBMHandler(logger, icbmService),
+			LocateHandler:     oscar.NewLocateHandler(locateService, logger),
+			OServiceHandler:   oscar.NewOServiceHandler(logger, oServiceService),
+			PermitDenyHandler: oscar.NewPermitDenyHandler(logger, permitDenyService),
+			StatsHandler:      oscar.NewStatsHandler(logger, statsService),
+			UserLookupHandler: oscar.NewUserLookupHandler(logger, userLookupService),
+		}.Handle,
 		IPRateLimiter: oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 		Listeners: []oscar.Listener{
 			{

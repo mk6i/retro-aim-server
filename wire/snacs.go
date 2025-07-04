@@ -13,6 +13,7 @@ import (
 //
 
 const (
+	BOS         uint16 = 0x0000
 	OService    uint16 = 0x0001
 	Locate      uint16 = 0x0002
 	Buddy       uint16 = 0x0003
