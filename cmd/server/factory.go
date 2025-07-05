@@ -67,6 +67,14 @@ func MakeCommonDeps() (Container, error) {
 func OSCAR(deps Container) oscar.Server {
 	logger := deps.logger.With("svc", "OSCAR")
 
+	adminService := foodgroup.NewAdminService(
+		deps.sqLiteUserStore,
+		deps.sqLiteUserStore,
+		deps.sqLiteUserStore,
+		deps.inMemorySessionManager,
+		deps.inMemorySessionManager,
+		deps.logger,
+	)
 	authService := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, deps.chatSessionManager, deps.sqLiteUserStore, deps.rateLimitClasses)
 	bartService := foodgroup.NewBARTService(
 		logger,
@@ -138,21 +146,24 @@ func OSCAR(deps Container) oscar.Server {
 		BuddyListRegistry:  deps.sqLiteUserStore,
 		DepartureNotifier:  buddyService,
 		ChatSessionManager: deps.chatSessionManager,
-		Handler: oscar.Router{
-			AlertHandler:      oscar.NewAlertHandler(logger),
-			BARTHandler:       oscar.NewBARTHandler(logger, bartService),
-			BuddyHandler:      oscar.NewBuddyHandler(logger, buddyService),
-			ChatHandler:       oscar.NewChatHandler(logger, chatService),
-			ChatNavHandler:    oscar.NewChatNavHandler(chatNavService, logger),
-			FeedbagHandler:    oscar.NewFeedbagHandler(logger, feedbagService),
-			ICBMHandler:       oscar.NewICBMHandler(logger, icbmService),
-			ICQHandler:        oscar.NewICQHandler(logger, icqService),
-			LocateHandler:     oscar.NewLocateHandler(locateService, logger),
-			ODirHandler:       oscar.NewODirHandler(logger, oDirService),
-			OServiceHandler:   oscar.NewOServiceHandler(logger, oServiceService),
-			PermitDenyHandler: oscar.NewPermitDenyHandler(logger, permitDenyService),
-			StatsHandler:      oscar.NewStatsHandler(logger, statsService),
-			UserLookupHandler: oscar.NewUserLookupHandler(logger, userLookupService),
+		Handler: oscar.Handler{
+			AdminService:      adminService,
+			BARTService:       bartService,
+			BuddyService:      buddyService,
+			ChatNavService:    chatNavService,
+			ChatService:       chatService,
+			FeedbagService:    feedbagService,
+			ICBMService:       icbmService,
+			ICQService:        icqService,
+			LocateService:     locateService,
+			ODirService:       oDirService,
+			OServiceService:   oServiceService,
+			PermitDenyService: permitDenyService,
+			StatsService:      statsService,
+			UserLookupService: userLookupService,
+			RouteLogger: middleware.RouteLogger{
+				Logger: logger,
+			},
 		}.Handle,
 		IPRateLimiter: oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 		Listeners: []oscar.Listener{
