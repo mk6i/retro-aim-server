@@ -66,16 +66,8 @@ type AuthService struct {
 // This method does not verify that the user and chat room exist because it
 // implicitly trusts the contents of the token signed by
 // {{OServiceService.ServiceRequest}}.
-func (s AuthService) RegisterChatSession(ctx context.Context, authCookie []byte) (*state.Session, error) {
-	token, err := s.cookieBaker.Crack(authCookie)
-	if err != nil {
-		return nil, err
-	}
-	c := bosCookie{}
-	if err := wire.UnmarshalBE(&c, bytes.NewBuffer(token)); err != nil {
-		return nil, err
-	}
-	sess, err := s.chatSessionRegistry.AddSession(ctx, c.ChatCookie, c.ScreenName)
+func (s AuthService) RegisterChatSession(ctx context.Context, serverCookie state.ServerCookie) (*state.Session, error) {
+	sess, err := s.chatSessionRegistry.AddSession(ctx, serverCookie.ChatCookie, serverCookie.ScreenName)
 	if err != nil {
 		return nil, fmt.Errorf("AddSession: %w", err)
 	}
@@ -85,42 +77,24 @@ func (s AuthService) RegisterChatSession(ctx context.Context, authCookie []byte)
 	return sess, err
 }
 
-// bosCookie represents a token containing client metadata passed to the BOS
-// service upon connection.
-type bosCookie struct {
-	Service    uint16
-	ScreenName state.DisplayScreenName `oscar:"len_prefix=uint8"`
-	ClientID   string                  `oscar:"len_prefix=uint8"`
-	ChatCookie string                  `oscar:"len_prefix=uint8"`
-}
+func (s AuthService) CrackCookie(authCookie []byte) (state.ServerCookie, error) {
+	c := state.ServerCookie{}
 
-func (s AuthService) CrackCookie(authCookie []byte) (uint16, error) {
 	buf, err := s.cookieBaker.Crack(authCookie)
 	if err != nil {
-		return 0, err
+		return c, err
 	}
 
-	c := bosCookie{}
 	if err := wire.UnmarshalBE(&c, bytes.NewBuffer(buf)); err != nil {
-		return 0, err
+		return c, err
 	}
 
-	return c.Service, nil
+	return c, nil
 }
 
 // RegisterBOSSession adds a new session to the session registry.
-func (s AuthService) RegisterBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error) {
-	buf, err := s.cookieBaker.Crack(authCookie)
-	if err != nil {
-		return nil, err
-	}
-
-	c := bosCookie{}
-	if err := wire.UnmarshalBE(&c, bytes.NewBuffer(buf)); err != nil {
-		return nil, err
-	}
-
-	u, err := s.userManager.User(ctx, c.ScreenName.IdentScreenName())
+func (s AuthService) RegisterBOSSession(ctx context.Context, serverCookie state.ServerCookie) (*state.Session, error) {
+	u, err := s.userManager.User(ctx, serverCookie.ScreenName.IdentScreenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
 	}
@@ -150,7 +124,7 @@ func (s AuthService) RegisterBOSSession(ctx context.Context, authCookie []byte) 
 	sess.SetRateClasses(time.Now(), s.rateLimitClasses)
 
 	// set string containing OSCAR client name and version
-	sess.SetClientID(c.ClientID)
+	sess.SetClientID(serverCookie.ClientID)
 
 	if u.DisplayScreenName.IsUIN() {
 		sess.SetUserInfoFlag(wire.OServiceUserFlagICQ)
@@ -166,18 +140,8 @@ func (s AuthService) RegisterBOSSession(ctx context.Context, authCookie []byte) 
 }
 
 // RetrieveBOSSession returns a user's existing session
-func (s AuthService) RetrieveBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error) {
-	buf, err := s.cookieBaker.Crack(authCookie)
-	if err != nil {
-		return nil, err
-	}
-
-	c := bosCookie{}
-	if err := wire.UnmarshalBE(&c, bytes.NewBuffer(buf)); err != nil {
-		return nil, err
-	}
-
-	u, err := s.userManager.User(ctx, c.ScreenName.IdentScreenName())
+func (s AuthService) RetrieveBOSSession(ctx context.Context, serverCookie state.ServerCookie) (*state.Session, error) {
+	u, err := s.userManager.User(ctx, serverCookie.ScreenName.IdentScreenName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
 	}
@@ -377,7 +341,7 @@ func (s AuthService) KerberosLogin(
 								Unknown: 1,
 								ConnectionInfo: wire.TLVBlock{
 									TLVList: wire.TLVList{
-										wire.NewTLVBE(wire.KerberosTLVHostname, net.JoinHostPort(s.config.OSCARHost, s.config.BOSPort)),
+										//wire.NewTLVBE(wire.KerberosTLVHostname, net.JoinHostPort(s.config.OSCARHost, s.config.BOSPort)),
 										wire.NewTLVBE(wire.KerberosTLVCookie, cookie),
 									},
 								},
@@ -542,8 +506,8 @@ func (s AuthService) createUser(ctx context.Context, props loginProperties, newU
 }
 
 func (s AuthService) loginSuccessResponse(props loginProperties) (wire.TLVRestBlock, error) {
-	loginCookie := bosCookie{
-		Service:    0,
+	loginCookie := state.ServerCookie{
+		Service:    wire.BOS,
 		ScreenName: props.screenName,
 		ClientID:   props.clientID,
 	}

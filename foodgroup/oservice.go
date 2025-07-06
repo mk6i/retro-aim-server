@@ -540,7 +540,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 
 	switch inBody.FoodGroup {
 	case wire.Admin:
-		cookie, err := fnIssueCookie(bosCookie{
+		cookie, err := fnIssueCookie(state.ServerCookie{
 			Service:    wire.Admin,
 			ScreenName: sess.DisplayScreenName(),
 		})
@@ -566,7 +566,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			},
 		}, nil
 	case wire.Alert:
-		cookie, err := fnIssueCookie(bosCookie{
+		cookie, err := fnIssueCookie(state.ServerCookie{
 			Service:    wire.Alert,
 			ScreenName: sess.DisplayScreenName(),
 		})
@@ -592,7 +592,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			},
 		}, nil
 	case wire.BART:
-		cookie, err := fnIssueCookie(bosCookie{
+		cookie, err := fnIssueCookie(state.ServerCookie{
 			Service:    wire.BART,
 			ScreenName: sess.DisplayScreenName(),
 		})
@@ -618,7 +618,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			},
 		}, nil
 	case wire.ChatNav:
-		cookie, err := fnIssueCookie(bosCookie{
+		cookie, err := fnIssueCookie(state.ServerCookie{
 			Service:    wire.ChatNav,
 			ScreenName: sess.DisplayScreenName(),
 		})
@@ -659,7 +659,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			return wire.SNACMessage{}, fmt.Errorf("unable to retrieve room info: %w", err)
 		}
 
-		cookie, err := fnIssueCookie(bosCookie{
+		cookie, err := fnIssueCookie(state.ServerCookie{
 			Service:    wire.Chat,
 			ChatCookie: room.Cookie(),
 			ScreenName: sess.DisplayScreenName(),
@@ -687,7 +687,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			},
 		}, nil
 	case wire.ODir:
-		cookie, err := fnIssueCookie(bosCookie{
+		cookie, err := fnIssueCookie(state.ServerCookie{
 			Service:    wire.ODir,
 			ScreenName: sess.DisplayScreenName(),
 		})
