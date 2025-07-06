@@ -70,10 +70,9 @@ var (
 //   - ErrAIMHandleInvalidFormat: if the screen name does not start with a
 //     letter, ends with a space, or contains invalid characters
 func (s DisplayScreenName) ValidateAIMHandle() error {
-	// Must contain min 3 letters, max 16 letters and spaces.
 	c := 0
 	for _, r := range s {
-		if unicode.IsLetter(r) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			c++
 		}
 		if c == 3 {

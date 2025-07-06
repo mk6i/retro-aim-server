@@ -215,6 +215,7 @@ func TestDisplayScreenName_ValidateAIMHandle(t *testing.T) {
 	}{
 		{"Valid handle no spaces", "User123", nil},
 		{"Valid handle with min character count and space", "U SR", nil},
+		{"Valid handle with min character including letters and numbers", "dj3520", nil},
 		{"Valid handle with max character count", "JustTheRightSize", nil},
 		{"Valid handle with max character count and spaces", "Just   RightSize", nil},
 		{"Too short", "Us", ErrAIMHandleLength},
