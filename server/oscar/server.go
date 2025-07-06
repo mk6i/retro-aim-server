@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"net"
 	"net/netip"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,52 +23,6 @@ import (
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
-
-// OnlineNotifier returns a OServiceHostOnline SNAC that is sent to the client
-// at the beginning of the protocol sequence which lists all food groups
-// managed by the server.
-type OnlineNotifier interface {
-	HostOnline(service uint16) wire.SNACMessage
-}
-
-// BuddyListRegistry is the interface for keeping track of users with active
-// buddy lists. Once registered, a user becomes visible to other users' buddy
-// lists and vice versa.
-type BuddyListRegistry interface {
-	ClearBuddyListRegistry(ctx context.Context) error
-	RegisterBuddyList(ctx context.Context, user state.IdentScreenName) error
-	UnregisterBuddyList(ctx context.Context, user state.IdentScreenName) error
-}
-
-// DepartureNotifier is the interface for sending buddy departure notifications
-// when a client disconnects.
-type DepartureNotifier interface {
-	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
-}
-
-// ChatSessionManager is the interface for closing chat sessions
-// when a client disconnects.
-type ChatSessionManager interface {
-	RemoveUserFromAllChats(user state.IdentScreenName)
-}
-
-// RateLimitUpdater provides rate limit updates for subscribed rate limit classes.
-type RateLimitUpdater interface {
-	RateLimitUpdates(ctx context.Context, sess *state.Session, now time.Time) []wire.SNACMessage
-}
-
-type AuthService interface {
-	BUCPChallenge(ctx context.Context, bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
-	BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error), here string) (wire.SNACMessage, error)
-	FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error), here string) (wire.TLVRestBlock, error)
-	KerberosLogin(ctx context.Context, inBody wire.SNAC_0x050C_0x0002_KerberosLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
-	RegisterBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
-	RegisterChatSession(ctx context.Context, authCookie []byte) (*state.Session, error)
-	RetrieveBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
-	Signout(ctx context.Context, sess *state.Session)
-	SignoutChat(ctx context.Context, sess *state.Session)
-	CrackCookie(authCookie []byte) (uint16, error)
-}
 
 // IPRateLimiter enforces a per-IP rate limit using a token bucket algorithm.
 // It caches individual rate limiters by IP address and supports tagging requests
@@ -129,6 +85,56 @@ type Listener struct {
 	Port          string
 	AdvertiseHost string
 	AdvertisePort string
+}
+
+func ParseListenersCfg(listeners string, advertisedListeners string) ([]Listener, error) {
+	var ret []Listener
+
+	ml := make(map[string]*url.URL)
+	for _, lStr := range strings.Split(listeners, ",") {
+		u, err := url.Parse(lStr)
+		if err != nil {
+			return nil, fmt.Errorf("parsing listener URI: %w", err)
+		}
+		if _, exists := ml[u.Scheme]; exists {
+			return nil, errors.New("duplicate listener definition")
+		}
+		ml[u.Scheme] = u
+	}
+
+	mal := make(map[string]*url.URL)
+	for _, lStr := range strings.Split(advertisedListeners, ",") {
+		u, err := url.Parse(lStr)
+		if err != nil {
+			return nil, fmt.Errorf("parsing listener URI: %w", err)
+		}
+		if _, exists := mal[u.Scheme]; exists {
+			return nil, errors.New("duplicate listener definition")
+		}
+		mal[u.Scheme] = u
+	}
+
+	for k := range ml {
+		if _, ok := mal[k]; !ok {
+			return nil, fmt.Errorf("missing key %s", k)
+		}
+	}
+	for k := range mal {
+		if _, ok := ml[k]; !ok {
+			return nil, fmt.Errorf("missing key %s", k)
+		}
+	}
+
+	for k, v := range ml {
+		ret = append(ret, Listener{
+			Hostname:      v.Hostname(),
+			Port:          v.Port(),
+			AdvertiseHost: mal[k].Hostname(),
+			AdvertisePort: mal[k].Port(),
+		})
+	}
+
+	return ret, nil
 }
 
 type Server struct {
@@ -231,7 +237,7 @@ func (s Server) routeConnection(ctx context.Context, rwc net.Conn, l Listener) e
 		return s.connectToService(ctx, flap, flapc, rwc, l)
 	}
 
-	return s.doAuthStuff(ctx, flap, rwc, ip, flapc, l)
+	return s.doAuthStuff(ctx, flap, ip, flapc, l)
 }
 
 func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame, flapc *wire.FlapClient, rwc net.Conn, l Listener) error {
@@ -240,15 +246,15 @@ func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame,
 		return errors.New("unable to get session id from payload")
 	}
 
-	server, err := s.CrackCookie(authCookie)
+	cookie, err := s.CrackCookie(authCookie)
 	if err != nil {
 		return err
 	}
 
 	var sess *state.Session
-	switch server {
-	case 0: // BOS
-		sess, err = s.AuthService.RegisterBOSSession(ctx, authCookie)
+	switch cookie.Service {
+	case wire.BOS:
+		sess, err = s.AuthService.RegisterBOSSession(ctx, cookie)
 		if err != nil {
 			return err
 		}
@@ -287,8 +293,8 @@ func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame,
 
 		go s.receiveSessMessages(ctx, sess, flapc)
 
-	case wire.Chat: // Chat
-		sess, err = s.AuthService.RegisterChatSession(ctx, authCookie)
+	case wire.Chat:
+		sess, err = s.AuthService.RegisterChatSession(ctx, cookie)
 		if err != nil {
 			return err
 		}
@@ -303,9 +309,8 @@ func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame,
 		}()
 
 		go s.receiveSessMessages(ctx, sess, flapc)
-
 	default:
-		sess, err = s.AuthService.RetrieveBOSSession(ctx, authCookie)
+		sess, err = s.AuthService.RetrieveBOSSession(ctx, cookie)
 		if err != nil {
 			return err
 		}
@@ -316,12 +321,12 @@ func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame,
 
 	ctx = context.WithValue(ctx, "screenName", sess.IdentScreenName())
 
-	msg := s.OnlineNotifier.HostOnline(server)
+	msg := s.OnlineNotifier.HostOnline(cookie.Service)
 	if err := flapc.SendSNAC(msg.Frame, msg.Body); err != nil {
 		return err
 	}
 
-	return s.dispatchIncomingMessages(ctx, server, sess, flapc, rwc, l)
+	return s.dispatchIncomingMessages(ctx, cookie.Service, sess, flapc, rwc, l)
 }
 
 func (s Server) receiveSessMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient) {
@@ -340,7 +345,7 @@ func (s Server) receiveSessMessages(ctx context.Context, sess *state.Session, fl
 	}
 }
 
-func (s Server) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, conn net.Conn, ip string, flapc *wire.FlapClient, l Listener) error {
+func (s Server) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, ip string, flapc *wire.FlapClient, l Listener) error {
 	if ok, isBUCP := s.Allow(ip); !ok {
 		s.Logger.Error("user rate limited at login", "remote", ip)
 		tlv := wire.TLVRestBlock{

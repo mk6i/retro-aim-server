@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -28,6 +27,7 @@ type Container struct {
 	rateLimitClasses       wire.RateLimitClasses
 	snacRateLimits         wire.SNACRateLimits
 	sqLiteUserStore        *state.SQLiteUserStore
+	Listeners              []oscar.Listener
 }
 
 // MakeCommonDeps creates common dependencies used by the food group services.
@@ -39,11 +39,7 @@ func MakeCommonDeps() (Container, error) {
 		return c, fmt.Errorf("unable to process app config: %s\n", err.Error())
 	}
 
-	if c.cfg.OSCARHost == "0.0.0.0" {
-		return c, errors.New("invalid config: OSCAR_HOST cannot be set to " +
-			"the 'all interfaces' IP (0.0.0.0). it must be a specific IP " +
-			"address or hostname reachable by AIM/ICQ clients")
-	}
+	c.Listeners, err = oscar.ParseListenersCfg(c.cfg.Listeners, c.cfg.AdvertisedListeners)
 
 	c.sqLiteUserStore, err = state.NewSQLiteUserStore(c.cfg.DBPath)
 	if err != nil {
@@ -165,21 +161,8 @@ func OSCAR(deps Container) oscar.Server {
 				Logger: logger,
 			},
 		}.Handle,
-		IPRateLimiter: oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
-		Listeners: []oscar.Listener{
-			{
-				Hostname:      "0.0.0.0",
-				Port:          "5190",
-				AdvertiseHost: "127.0.0.1",
-				AdvertisePort: "5190",
-			},
-			{
-				Hostname:      "0.0.0.0",
-				Port:          "5191",
-				AdvertiseHost: "127.0.0.1",
-				AdvertisePort: "5191",
-			},
-		},
+		IPRateLimiter:    oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
+		Listeners:        deps.Listeners,
 		Logger:           logger,
 		OnlineNotifier:   oServiceService,
 		RateLimitUpdater: oServiceService,

@@ -2,10 +2,59 @@ package oscar
 
 import (
 	"context"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
+
+// OnlineNotifier returns a OServiceHostOnline SNAC that is sent to the client
+// at the beginning of the protocol sequence which lists all food groups
+// managed by the server.
+type OnlineNotifier interface {
+	HostOnline(service uint16) wire.SNACMessage
+}
+
+// BuddyListRegistry is the interface for keeping track of users with active
+// buddy lists. Once registered, a user becomes visible to other users' buddy
+// lists and vice versa.
+type BuddyListRegistry interface {
+	ClearBuddyListRegistry(ctx context.Context) error
+	RegisterBuddyList(ctx context.Context, user state.IdentScreenName) error
+	UnregisterBuddyList(ctx context.Context, user state.IdentScreenName) error
+}
+
+// DepartureNotifier is the interface for sending buddy departure notifications
+// when a client disconnects.
+type DepartureNotifier interface {
+	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
+}
+
+// ChatSessionManager is the interface for closing chat sessions
+// when a client disconnects.
+type ChatSessionManager interface {
+	RemoveUserFromAllChats(user state.IdentScreenName)
+}
+
+// RateLimitUpdater provides rate limit updates for subscribed rate limit classes.
+type RateLimitUpdater interface {
+	RateLimitUpdates(ctx context.Context, sess *state.Session, now time.Time) []wire.SNACMessage
+}
+
+type AuthService interface {
+	BUCPChallenge(ctx context.Context, bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
+	BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error), here string) (wire.SNACMessage, error)
+	CrackCookie(authCookie []byte) (state.ServerCookie, error)
+	FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error), here string) (wire.TLVRestBlock, error)
+	KerberosLogin(ctx context.Context, inBody wire.SNAC_0x050C_0x0002_KerberosLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
+	RegisterBOSSession(ctx context.Context, authCookie state.ServerCookie) (*state.Session, error)
+	RegisterChatSession(ctx context.Context, authCookie state.ServerCookie) (*state.Session, error)
+	RetrieveBOSSession(ctx context.Context, authCookie state.ServerCookie) (*state.Session, error)
+	Signout(ctx context.Context, sess *state.Session)
+	SignoutChat(ctx context.Context, sess *state.Session)
+}
 
 type AdminService interface {
 	ConfirmRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame) (wire.SNACMessage, error)
