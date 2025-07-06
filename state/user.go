@@ -70,16 +70,20 @@ var (
 //   - ErrAIMHandleInvalidFormat: if the screen name does not start with a
 //     letter, ends with a space, or contains invalid characters
 func (s DisplayScreenName) ValidateAIMHandle() error {
+	if len(s) > 16 {
+		return ErrAIMHandleLength
+	}
+
 	c := 0
 	for _, r := range s {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
 			c++
-		}
-		if c == 3 {
-			break
+		case r != ' ':
+			return ErrAIMHandleInvalidFormat
 		}
 	}
-	if c < 3 || len(s) > 16 {
+	if c < 3 {
 		return ErrAIMHandleLength
 	}
 
@@ -87,12 +91,6 @@ func (s DisplayScreenName) ValidateAIMHandle() error {
 	// letters, numbers, and spaces.
 	if !unicode.IsLetter(rune(s[0])) || s[len(s)-1] == ' ' {
 		return ErrAIMHandleInvalidFormat
-	}
-
-	for _, ch := range s {
-		if !unicode.IsLetter(ch) && !unicode.IsDigit(ch) && ch != ' ' {
-			return ErrAIMHandleInvalidFormat
-		}
 	}
 
 	return nil

@@ -221,6 +221,7 @@ func TestDisplayScreenName_ValidateAIMHandle(t *testing.T) {
 		{"Too short", "Us", ErrAIMHandleLength},
 		{"Too short due to spaces", "U S", ErrAIMHandleLength},
 		{"Too long", "ThisIsAReallyLongScreenName", ErrAIMHandleLength},
+		{"Too many spaces", "User           123 ", ErrAIMHandleLength},
 		{"Starts with number", "1User", ErrAIMHandleInvalidFormat},
 		{"Ends with space", "User123 ", ErrAIMHandleInvalidFormat},
 		{"Contains invalid character", "User@123", ErrAIMHandleInvalidFormat},
