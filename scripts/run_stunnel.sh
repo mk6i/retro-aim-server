@@ -10,6 +10,7 @@ fi
 PEM_PATH="$1"
 
 docker run --rm -it \
+  --add-host=host.docker.internal:host-gateway \
   -v "$PEM_PATH:/etc/stunnel/certs/server.pem:ro" \
   -v "$(pwd)/config/ssl/stunnel.conf:/etc/stunnel/stunnel.conf:ro" \
   -p 443:443 \

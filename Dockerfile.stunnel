@@ -1,7 +1,7 @@
 ###############################################################################
 # Build stage – compile OpenSSL 1.0.2u and stunnel 5.75
 ###############################################################################
-FROM debian:bookworm-slim AS build
+FROM debian:12.11-slim AS build
 
 ARG OPENSSL_VERSION=1.0.2u
 ARG OPENSSL_TAG=OpenSSL_1_0_2u
