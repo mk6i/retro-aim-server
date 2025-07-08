@@ -2,6 +2,9 @@
 
 This guide covers some optional configuration steps to get the best experience from Retro AIM Server.
 
+- [Configure User Directory Keywords](#configure-user-directory-keywords)
+- [Configure SSL for Connecting AIM 6.2+](#configure-ssl-for-connecting-aim-62)
+
 ## Configure User Directory Keywords
 
 AIM users can make themselves searchable by interest in the user directory by configuring up to 5 interest keywords.

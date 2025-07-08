@@ -1,0 +1,60 @@
+services:
+  cert-gen:
+    image: ras-certgen:latest
+    volumes:
+      - ./certs:/work/certs
+    working_dir: /work/certs
+    entrypoint: [ "/bin/sh", "-c" ]
+    environment:
+      - OSCAR_HOST=${OSCAR_HOST}
+    command: >
+      '
+      openssl req -x509 -newkey rsa:1024 \
+        -keyout key.pem \
+        -out cert.pem \
+        -sha256 -days 365 -nodes \
+        -subj "/CN=${OSCAR_HOST}" &&
+      cat cert.pem key.pem > server.pem &&
+      rm cert.pem key.pem
+      '
+
+  nss-gen:
+    image: ras-certgen:latest
+    volumes:
+      - ./certs:/work/certs
+    working_dir: /work/certs
+    entrypoint: [ "/bin/sh", "-c" ]
+    environment:
+      - OSCAR_HOST=${OSCAR_HOST}
+    command: >
+      '
+      mkdir -p nss &&
+      certutil -N -d nss --empty-password &&
+      certutil -A -n "RAS" -t "CT,,C" -i server.pem -d nss
+      '
+
+  retro-aim-server:
+    image: ras:latest
+    ports:
+      - "5190:5190"
+      - "5191:5191"
+      - "5192:5192"
+      - "5193:5193"
+      - "5194:5194"
+      - "5195:5195"
+      - "5196:5196"
+      - "5197:5197"
+      - "8080:8080"
+    env_file:
+      - ./config/settings.env
+    environment:
+      - OSCAR_HOST=${OSCAR_HOST}
+
+  stunnel:
+    image: ras-stunnel:5.75-openssl-1.0.2u
+    ports:
+      - "443:443"
+    volumes:
+      - ./config/ssl/stunnel.conf:/etc/stunnel/stunnel.conf:ro
+      - ./certs:/etc/stunnel/certs:ro
+    command: stunnel.conf

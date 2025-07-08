@@ -1,20 +1,27 @@
 # Windows AIM 6.x Client Setup
 
-This guide explains how to install and configure **AIM (versions 6.0–6.1)** for use with **Retro AIM Server**.
+This guide explains how to install and configure **AIM 6.x** for use with **Retro AIM Server**.
 
 <p align="center">
    <img alt="screenshot of AIM sign-on screen" src="https://github.com/user-attachments/assets/057c72fe-3d60-4dad-a602-8ff95c4fcbe1">
 </p>
 
-## Installation
+Installation guides are available for the following versions:
+
+- [AIM 6.0-6.1](#aim-60-61-setup) (BUCP auth)
+- [AIM 6.2-6.5](#aim-6265312-setup) (Kerberos auth)
+
+## AIM 6.0-6.1 Setup
+
+### Installation
 
 1. Download AIM 6.x (recommended **AIM 6.1.46.1**) from
    the [NINA wiki](https://wiki.nina.chat/wiki/Clients/AOL_Instant_Messenger#Windows).
 2. Run the installer and complete the installation.
 3. Close the AIM application.
-4. Open **Task Manager** and end the **AIM (32 bit)** process if it’s still running.
+4. Open **Task Manager** and end the **AIM (32 bit)** process if it's still running.
 
-## Configure Authentication Mode
+### Configure Authentication Mode
 
 AIM 6.x does not expose server settings via the UI. You'll need to edit configuration files manually.
 
@@ -40,7 +47,7 @@ To switch from the default Kerberos-based auth (AAM/AAMUAS) to BUCP:
 
 7. Save the file.
 
-## Configure Server Hostname
+### Configure Server Hostname
 
 To point the client to your Retro AIM Server:
 
@@ -60,6 +67,37 @@ To point the client to your Retro AIM Server:
    ```
 
 6. Save the file.
+
+## AIM 6.2–6.5.3.12 Setup
+
+### Installation
+
+1. Download an AIM 6.2–6.5 client (recommended **AIM 6.5.3.12**) from the  
+   [NINA wiki](https://wiki.nina.chat/wiki/Clients/AOL_Instant_Messenger#Windows).
+2. Run the installer and complete the installation.
+3. Close the AIM application.
+4. Open **Task Manager** and end the **AIM (32 bit)** process if it's still running.
+
+### Install SSL Certificate Database
+
+Install your server's SSL certificate database generated from the [server setup guide](DOCKER.md) or provided by the
+server operator.
+
+Copy the following files to `%APPDATA%\acccore\nss`. Note that the `nss` directory must be created if it does not exist.
+
+- `cert8.db`
+- `key3.db`
+- `secmod.db`
+
+### Configure Server Hostname
+
+Tell AIM where to connect:
+
+1. Start AIM.
+2. Open **Settings**, then go to the **Connection** tab.
+3. In the **Host** field, enter the domain name that matches the certificate's Common Name (CN).
+4. In the **Port** field, enter `443`.
+5. Click **Save**, then sign in!
 
 ## Enable Legacy JavaScript Engine (Windows 11 24H2+ Only)
 
