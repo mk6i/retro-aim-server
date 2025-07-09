@@ -68,11 +68,11 @@ To point the client to your Retro AIM Server:
 
 6. Save the file.
 
-## AIM 6.2–6.5 Setup
+## AIM 6.2–6.5.3.12 Setup
 
 ### Installation
 
-1. Download an AIM 6.2–6.5 client (recommended **AIM 6.5.9.1**) from the  
+1. Download an AIM 6.2–6.5 client (recommended **AIM 6.5.3.12**) from the  
    [NINA wiki](https://wiki.nina.chat/wiki/Clients/AOL_Instant_Messenger#Windows).
 2. Run the installer and complete the installation.
 3. Close the AIM application.
@@ -83,7 +83,7 @@ To point the client to your Retro AIM Server:
 Follow [these steps](CLIENT.md) to generate a certificate database or request one from the server operator, if
 applicable.
 
-Copy the following files to `%APPDATA%\accore\nss`:
+Copy the following files to `%APPDATA%\acccore\nss`:
 
 - `cert8.db`
 - `key3.db`
