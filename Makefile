@@ -23,6 +23,10 @@ release: ## Run a clean, full GoReleaser run (publish + validate)
 release-dry-run: ## GoReleaser dry-run (skips validate & publish)
 	$(DOCKER_RUN_GO_RELEASER) --clean --skip=validate --skip=publish
 
+.PHONY: ras-image
+ras-image: ## Build Retro AIM Server image
+	docker build -t ras:main -f Dockerfile .
+
 ################################################################################
 # SSL Helpers
 ################################################################################
@@ -31,7 +35,7 @@ CERT_DIR       ?= certs
 CERT_GEN_IMAGE ?= cert-nss
 CERT_NAME      ?= ras.dev
 CERT_NSSDB_DIR := $(CERT_DIR)/nssdb
-CERT_PEM       := $(CERT_DIR)/$(CERT_NAME).pem
+CERT_PEM       := $(CERT_DIR)/server.pem
 
 .PHONY: stunnel-image
 stunnel-image: ## Build stunnel image pinned to v5.75 / OpenSSL 1.0.2u

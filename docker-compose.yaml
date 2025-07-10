@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  retro-aim-server:
+    image: ras:main
+    ports:
+      - "5190:5190"
+      - "5191:5191"
+      - "5192:5192"
+      - "5193:5193"
+      - "5194:5194"
+      - "5195:5195"
+      - "5196:5196"
+      - "5197:5197"
+      - "8080:8080"
+    environment:
+      - OSCAR_HOST=ras.dev
+    env_file:
+      - ./config/settings.env
+
+  stunnel:
+    image: stunnel:5.75-openssl-1.0.2u
+    ports:
+      - "443:443"
+    volumes:
+      - ./config/ssl/stunnel.conf:/etc/stunnel/stunnel.conf:ro
+      - ./certs/server.pem:/etc/stunnel/certs/server.pem:ro
+    command: stunnel.conf
