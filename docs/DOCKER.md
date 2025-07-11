@@ -79,17 +79,8 @@ client.
 If `OSCAR_HOST` (e.g., `ras.dev`) is not a real domain with DNS configured, you'll need to add it to each client's hosts
 file so clients can resolve it.
 
-**On Linux/macOS:**
-
-```
-/etc/hosts
-```
-
-**On Windows:**
-
-```
-C:\Windows\System32\drivers\etc\hosts
-```
+- Linux/macOS: `/etc/hosts`
+- Windows: `C:\Windows\System32\drivers\etc\hosts`
 
 Add a line like this, replacing the IP with your server's IP address:
 
