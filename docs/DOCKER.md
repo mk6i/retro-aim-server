@@ -6,7 +6,7 @@ This guide explains how to set up an SSL-enabled instance of Retro AIM Server us
 
 - Git
 - [Docker Desktop](https://docs.docker.com/get-started/get-docker/)
-- Unix-like terminal (use WSL2 for Windows)
+- Unix-like terminal with Makefile installed (use WSL2 for Windows)
 
 ## Getting Started
 
@@ -33,7 +33,7 @@ make docker-images
 
 #### Option A: Generate a Self-Signed Certificate
 
-If you don’t have an SSL certificate, you can generate a self-signed certificate. The following creates a certificate
+If you don't have an SSL certificate, you can generate a self-signed certificate. The following creates a certificate
 under `certs/server.pem`.
 
 ```bash
@@ -67,7 +67,32 @@ make docker-run OSCAR_HOST=ras.dev
 
 Replace `ras.dev` with the hostname clients will use to connect.
 
-### 6. Install Client Certificates
+### 6. Client Configuration
+
+#### Certificate Database
 
 Follow the [AIM 6.x client setup instructions](AIM6.md#aim-6265312-setup) to install the `certs/nss/` database on each
 client.
+
+#### Resolving Hostname
+
+If `OSCAR_HOST` (e.g., `ras.dev`) is not a real domain with DNS configured, you'll need to add it to each client's hosts
+file so clients can resolve it.
+
+**On Linux/macOS:**
+
+```
+/etc/hosts
+```
+
+**On Windows:**
+
+```
+C:\Windows\System32\drivers\etc\hosts
+```
+
+Add a line like this, replacing the IP with your server's IP address:
+
+```
+127.0.0.1 ras.dev
+```
