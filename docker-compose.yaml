@@ -1,6 +1,26 @@
-version: '3.8'
-
 services:
+  cert-gen:
+    image: cert-nss
+    profiles: ["manual"]  # exclude from `docker compose up`
+    volumes:
+      - ./certs:/work/certs
+    working_dir: /work/certs
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      '
+      rm -r -f nssdb &&
+      mkdir -p nssdb &&
+      openssl req -x509 -newkey rsa:1024 \
+        -keyout key.pem \
+        -out cert.pem \
+        -sha256 -days 365 -nodes \
+        -subj "/CN=ras.dev" &&
+      cat cert.pem key.pem > server.pem &&
+      rm cert.pem key.pem &&
+      certutil -N -d nssdb --empty-password &&
+      certutil -A -n "RAS" -t "CT,,C" -i server.pem -d nssdb
+      '
+
   retro-aim-server:
     image: ras:main
     ports:
@@ -24,5 +44,5 @@ services:
       - "443:443"
     volumes:
       - ./config/ssl/stunnel.conf:/etc/stunnel/stunnel.conf:ro
-      - ./certs/server.pem:/etc/stunnel/certs/server.pem:ro
+      - ./certs:/etc/stunnel/certs:ro
     command: stunnel.conf
