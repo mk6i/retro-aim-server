@@ -1,23 +1,34 @@
 services:
   cert-gen:
     image: ras-certgen:latest
-    profiles: ["manual"]  # exclude from `docker compose up`
     volumes:
       - ./certs:/work/certs
     working_dir: /work/certs
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: [ "/bin/sh", "-c" ]
     environment:
       - OSCAR_HOST=${OSCAR_HOST}
     command: >
       '
-      mkdir -p nss &&
       openssl req -x509 -newkey rsa:1024 \
         -keyout key.pem \
         -out cert.pem \
         -sha256 -days 365 -nodes \
         -subj "/CN=${OSCAR_HOST}" &&
       cat cert.pem key.pem > server.pem &&
-      rm cert.pem key.pem &&
+      rm cert.pem key.pem
+      '
+
+  nss-gen:
+    image: ras-certgen:latest
+    volumes:
+      - ./certs:/work/certs
+    working_dir: /work/certs
+    entrypoint: [ "/bin/sh", "-c" ]
+    environment:
+      - OSCAR_HOST=${OSCAR_HOST}
+    command: >
+      '
+      mkdir -p nss &&
       certutil -N -d nss --empty-password &&
       certutil -A -n "RAS" -t "CT,,C" -i server.pem -d nss
       '

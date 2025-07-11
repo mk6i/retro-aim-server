@@ -9,7 +9,7 @@ This guide explains how to install and configure **AIM 6.x** for use with **Retr
 Installation guides are available for the following versions:
 
 - [AIM 6.0-6.1](#aim-60-61-setup) (BUCP auth)
-- [AIM 6.2-6.5](#aim-6265-setup) (Kerberos auth)
+- [AIM 6.2-6.5](#aim-6265312-setup) (Kerberos auth)
 
 ## AIM 6.0-6.1 Setup
 
@@ -78,10 +78,10 @@ To point the client to your Retro AIM Server:
 3. Close the AIM application.
 4. Open **Task Manager** and end the **AIM (32 bit)** process if it's still running.
 
-### Install Certificate Database
+### Install SSL Certificate Database
 
-Follow [these steps](CLIENT.md) to generate a certificate database or request one from the server operator, if
-applicable.
+Follow [these steps](DOCKER.md#4-generate-nss-certificate-database) to generate an SSL certificate database or request
+one from the server operator.
 
 Copy the following files to `%APPDATA%\acccore\nss`:
 
