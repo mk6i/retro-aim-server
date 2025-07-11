@@ -41,7 +41,7 @@ docker-images: docker-image-ras docker-image-stunnel docker-image-certgen
 
 .PHONY: docker-run
 docker-run:
-	OSCAR_HOST=$(OSCAR_HOST) docker compose up retro-aim-server stunnel
+	OSCAR_HOST=$(OSCAR_HOST) docker compose up -d retro-aim-server stunnel
 
 ################################################################################
 # SSL Helpers
@@ -49,11 +49,11 @@ docker-run:
 
 .PHONY: docker-cert
 docker-cert: clean-certs ## Create SSL certificates for server
-	OSCAR_HOST=$(OSCAR_HOST) docker compose run --rm cert-gen
+	OSCAR_HOST=$(OSCAR_HOST) docker compose run --no-TTY --rm cert-gen
 
 .PHONY: docker-nss
 docker-nss: ## Create NSS certificate database for AIM 6.x clients
-	OSCAR_HOST=$(OSCAR_HOST) docker compose run --rm nss-gen
+	OSCAR_HOST=$(OSCAR_HOST) docker compose run --no-TTY --rm nss-gen
 
 .PHONY: clean-certs
 clean-certs: ## Remove all generated certificates & NSS DB
