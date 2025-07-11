@@ -8,6 +8,15 @@ This guide explains how to set up an SSL-enabled instance of Retro AIM Server us
 - [Docker Desktop](https://docs.docker.com/get-started/get-docker/)
 - Unix-like terminal with Makefile installed (use WSL2 for Windows)
 
+## Quickstart script
+
+This script will follow the steps written below and ask for user input.
+
+```bash
+curl -sSL https://github.com/mk6i/retro-aim-server/docker-setup.sh | bash
+```
+
+
 ## Getting Started
 
 ### 1. Clone the Repository
