@@ -1,28 +1,29 @@
 services:
   cert-gen:
-    image: cert-nss
+    image: ras-certgen:latest
     profiles: ["manual"]  # exclude from `docker compose up`
     volumes:
       - ./certs:/work/certs
     working_dir: /work/certs
     entrypoint: ["/bin/sh", "-c"]
+    environment:
+      - OSCAR_HOST=${OSCAR_HOST}
     command: >
       '
-      rm -r -f nssdb &&
-      mkdir -p nssdb &&
+      mkdir -p nss &&
       openssl req -x509 -newkey rsa:1024 \
         -keyout key.pem \
         -out cert.pem \
         -sha256 -days 365 -nodes \
-        -subj "/CN=ras.dev" &&
+        -subj "/CN=${OSCAR_HOST}" &&
       cat cert.pem key.pem > server.pem &&
       rm cert.pem key.pem &&
-      certutil -N -d nssdb --empty-password &&
-      certutil -A -n "RAS" -t "CT,,C" -i server.pem -d nssdb
+      certutil -N -d nss --empty-password &&
+      certutil -A -n "RAS" -t "CT,,C" -i server.pem -d nss
       '
 
   retro-aim-server:
-    image: ras:main
+    image: ras:latest
     ports:
       - "5190:5190"
       - "5191:5191"
@@ -33,13 +34,13 @@ services:
       - "5196:5196"
       - "5197:5197"
       - "8080:8080"
-    environment:
-      - OSCAR_HOST=ras.dev
     env_file:
       - ./config/settings.env
+    environment:
+      - OSCAR_HOST=${OSCAR_HOST}
 
   stunnel:
-    image: stunnel:5.75-openssl-1.0.2u
+    image: ras-stunnel:5.75-openssl-1.0.2u
     ports:
       - "443:443"
     volumes:
