@@ -49,6 +49,7 @@ docker-run:
 
 .PHONY: docker-cert
 docker-cert: clean-certs ## Create SSL certificates for server
+	mkdir -p certs/
 	OSCAR_HOST=$(OSCAR_HOST) docker compose run --no-TTY --rm cert-gen
 
 .PHONY: docker-nss
