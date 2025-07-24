@@ -125,65 +125,76 @@ func (l *IPRateLimiter) Allow(ip string) (allowed bool) {
 // to the OSCAR server for processing.
 type Server struct {
 	BOSProxy           OSCARProxy
-	ListenAddr         string
+	Listeners          []string
 	Logger             *slog.Logger
 	LoginIPRateLimiter *IPRateLimiter
 }
 
 func (rt Server) Start(ctx context.Context) error {
-	listener, err := net.Listen("tcp", rt.ListenAddr)
-	if err != nil {
-		return fmt.Errorf("unable to start TOC server: %w", err)
-	}
 
-	rt.Logger.InfoContext(ctx, "starting server", "listen_host", rt.ListenAddr)
+	errGroup, ctx := errgroup.WithContext(ctx)
 
-	go func() {
-		<-ctx.Done()
-		_ = listener.Close()
-	}()
+	for _, l := range rt.Listeners {
 
-	httpServer := &http.Server{
-		Handler: rt.BOSProxy.NewServeMux(),
-		BaseContext: func(net.Listener) context.Context {
-			return ctx
-		},
-	}
-
-	httpCh := make(chan net.Conn)
-	defer close(httpCh)
-
-	go func() {
-		_ = httpServer.Serve(&channelListener{ch: httpCh})
-	}()
-
-	wg := sync.WaitGroup{}
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			if errors.Is(err, net.ErrClosed) {
-				break
+		errGroup.Go(func() error {
+			listener, err := net.Listen("tcp", l)
+			if err != nil {
+				return fmt.Errorf("unable to start TOC server: %w", err)
 			}
-			rt.Logger.ErrorContext(ctx, "accept failed", "err", err.Error())
-			continue
-		}
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := rt.dispatchConn(conn, ctx, httpCh); err != nil {
-				rt.Logger.ErrorContext(ctx, "client disconnected with error", "err", err.Error())
+			rt.Logger.InfoContext(ctx, "starting server", "listen_host", l)
+
+			go func() {
+				<-ctx.Done()
+				_ = listener.Close()
+			}()
+
+			httpServer := &http.Server{
+				Handler: rt.BOSProxy.NewServeMux(),
+				BaseContext: func(net.Listener) context.Context {
+					return ctx
+				},
 			}
-		}()
+
+			httpCh := make(chan net.Conn)
+			defer close(httpCh)
+
+			errGroup.Go(func() error {
+				return httpServer.Serve(&channelListener{ch: httpCh})
+			})
+
+			wg := sync.WaitGroup{}
+			for {
+				conn, err := listener.Accept()
+				if err != nil {
+					if errors.Is(err, net.ErrClosed) {
+						break
+					}
+					rt.Logger.ErrorContext(ctx, "accept failed", "err", err.Error())
+					continue
+				}
+
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					if err := rt.dispatchConn(conn, ctx, httpCh); err != nil {
+						rt.Logger.ErrorContext(ctx, "client disconnected with error", "err", err.Error())
+					}
+				}()
+			}
+
+			// todo just wait for error group?
+			if !waitForShutdown(&wg) {
+				rt.Logger.ErrorContext(ctx, "shutdown complete, but connections didn't close cleanly")
+			} else {
+				rt.Logger.InfoContext(ctx, "shutdown complete")
+			}
+
+			return nil
+		})
 	}
 
-	if !waitForShutdown(&wg) {
-		rt.Logger.ErrorContext(ctx, "shutdown complete, but connections didn't close cleanly")
-	} else {
-		rt.Logger.InfoContext(ctx, "shutdown complete")
-	}
-
-	return nil
+	return errGroup.Wait()
 }
 
 // dispatchConn inspects and routes an incoming connection. If the connection

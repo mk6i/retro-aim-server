@@ -9,12 +9,11 @@ import (
 	"log/slog"
 	"net"
 	"net/netip"
-	"net/url"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/patrickmn/go-cache"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
@@ -80,65 +79,8 @@ func (l *IPRateLimiter) Allow(ip string) (allowed bool, isBUCP bool) {
 	return entry.limiter.Allow(), entry.isBUCP
 }
 
-type Listener struct {
-	Hostname      string
-	Port          string
-	AdvertiseHost string
-	AdvertisePort string
-}
-
-func ParseListenersCfg(listeners string, advertisedListeners string) ([]Listener, error) {
-	var ret []Listener
-
-	ml := make(map[string]*url.URL)
-	for _, lStr := range strings.Split(listeners, ",") {
-		u, err := url.Parse(lStr)
-		if err != nil {
-			return nil, fmt.Errorf("parsing listener URI: %w", err)
-		}
-		if _, exists := ml[u.Scheme]; exists {
-			return nil, errors.New("duplicate listener definition")
-		}
-		ml[u.Scheme] = u
-	}
-
-	mal := make(map[string]*url.URL)
-	for _, lStr := range strings.Split(advertisedListeners, ",") {
-		u, err := url.Parse(lStr)
-		if err != nil {
-			return nil, fmt.Errorf("parsing listener URI: %w", err)
-		}
-		if _, exists := mal[u.Scheme]; exists {
-			return nil, errors.New("duplicate listener definition")
-		}
-		mal[u.Scheme] = u
-	}
-
-	for k := range ml {
-		if _, ok := mal[k]; !ok {
-			return nil, fmt.Errorf("missing key %s", k)
-		}
-	}
-	for k := range mal {
-		if _, ok := ml[k]; !ok {
-			return nil, fmt.Errorf("missing key %s", k)
-		}
-	}
-
-	for k, v := range ml {
-		ret = append(ret, Listener{
-			Hostname:      v.Hostname(),
-			Port:          v.Port(),
-			AdvertiseHost: mal[k].Hostname(),
-			AdvertisePort: mal[k].Port(),
-		})
-	}
-
-	return ret, nil
-}
-
 type Server struct {
-	Listeners []Listener
+	Listeners []config.Listener
 	AuthService
 	BuddyListRegistry
 	ChatSessionManager *state.InMemoryChatSessionManager
@@ -167,8 +109,8 @@ func (s Server) Start(ctx context.Context) error {
 	return errGroup.Wait()
 }
 
-func (s Server) acceptConnection(l Listener, ctx context.Context) error {
-	listener, err := net.Listen("tcp", net.JoinHostPort(l.Hostname, l.Port))
+func (s Server) acceptConnection(l config.Listener, ctx context.Context) error {
+	listener, err := net.Listen("tcp", l.BOSListenAddress)
 	if err != nil {
 		return fmt.Errorf("unable to start BOS server: %w", err)
 	}
@@ -178,8 +120,7 @@ func (s Server) acceptConnection(l Listener, ctx context.Context) error {
 		listener.Close()
 	}()
 
-	s.Logger.Info("starting server", "listen_host", net.JoinHostPort(l.Hostname, l.Port),
-		"advertise_host", net.JoinHostPort(l.AdvertiseHost, l.AdvertisePort))
+	s.Logger.Info("starting server", "listen_host", l.BOSListenAddress, "advertise_host", l.BOSAdvertisedHosts)
 
 	wg := sync.WaitGroup{}
 	for {
@@ -212,7 +153,7 @@ func (s Server) acceptConnection(l Listener, ctx context.Context) error {
 	return nil
 }
 
-func (s Server) routeConnection(ctx context.Context, rwc net.Conn, l Listener) error {
+func (s Server) routeConnection(ctx context.Context, rwc net.Conn, l config.Listener) error {
 	defer func() {
 		rwc.Close()
 	}()
@@ -240,7 +181,7 @@ func (s Server) routeConnection(ctx context.Context, rwc net.Conn, l Listener) e
 	return s.doAuthStuff(ctx, flap, ip, flapc, l)
 }
 
-func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame, flapc *wire.FlapClient, rwc net.Conn, l Listener) error {
+func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame, flapc *wire.FlapClient, rwc net.Conn, l config.Listener) error {
 	authCookie, ok := flap.Bytes(wire.OServiceTLVTagsLoginCookie)
 	if !ok {
 		return errors.New("unable to get session id from payload")
@@ -345,7 +286,7 @@ func (s Server) receiveSessMessages(ctx context.Context, sess *state.Session, fl
 	}
 }
 
-func (s Server) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, ip string, flapc *wire.FlapClient, l Listener) error {
+func (s Server) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, ip string, flapc *wire.FlapClient, l config.Listener) error {
 	if ok, isBUCP := s.Allow(ip); !ok {
 		s.Logger.Error("user rate limited at login", "remote", ip)
 		tlv := wire.TLVRestBlock{
@@ -380,12 +321,12 @@ func (s Server) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, ip s
 	// indicator of FLAP-auth because older ICQ clients appear to omit the
 	// roasted password TLV when the password is not stored client-side.
 	if _, hasScreenName := flap.Uint16BE(wire.LoginTLVTagsScreenName); hasScreenName {
-		return s.processFLAPAuth(ctx, flap, flapc, net.JoinHostPort(l.AdvertiseHost, l.AdvertisePort))
+		return s.processFLAPAuth(ctx, flap, flapc, l.BOSAdvertisedHosts)
 	}
 
 	s.SetBUCP(ip)
 
-	return s.processBUCPAuth(ctx, flapc, net.JoinHostPort(l.AdvertiseHost, l.AdvertisePort))
+	return s.processBUCPAuth(ctx, flapc, l.BOSAdvertisedHosts)
 }
 
 func (s Server) processFLAPAuth(ctx context.Context, signonFrame wire.FLAPSignonFrame, flapc *wire.FlapClient, connectHere string) error {
@@ -484,7 +425,7 @@ func sendInvalidSNACErr(frameIn wire.SNACFrame, rw ResponseWriter) error {
 // This function ensures that the same sequence number is incremented for both
 // types of messages. The function terminates upon receiving a connection error
 // or when the session closes.
-func (s Server) dispatchIncomingMessages(ctx context.Context, fg uint16, sess *state.Session, flapc *wire.FlapClient, r io.Reader, l Listener) error {
+func (s Server) dispatchIncomingMessages(ctx context.Context, fg uint16, sess *state.Session, flapc *wire.FlapClient, r io.Reader, l config.Listener) error {
 
 	defer func() {
 		s.Logger.InfoContext(ctx, "user disconnected")
@@ -538,7 +479,7 @@ func (s Server) dispatchIncomingMessages(ctx context.Context, fg uint16, sess *s
 
 				// route a client request to the appropriate service handler. the
 				// handler may write a response to the client connection.
-				if err := s.Handler(ctx, fg, sess, inFrame, flapBuf, flapc, net.JoinHostPort(l.AdvertiseHost, l.AdvertisePort)); err != nil {
+				if err := s.Handler(ctx, fg, sess, inFrame, flapBuf, flapc, l.BOSAdvertisedHosts); err != nil {
 					middleware.LogRequestError(ctx, s.Logger, inFrame, err)
 					if errors.Is(err, ErrRouteNotFound) {
 						if err1 := sendInvalidSNACErr(inFrame, flapc); err1 != nil {

@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
-	"net"
+	"strings"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -29,7 +29,7 @@ type Container struct {
 	rateLimitClasses       wire.RateLimitClasses
 	snacRateLimits         wire.SNACRateLimits
 	sqLiteUserStore        *state.SQLiteUserStore
-	Listeners              []oscar.Listener
+	Listeners              []config.Listener
 }
 
 // MakeCommonDeps creates common dependencies used by the food group services.
@@ -41,7 +41,10 @@ func MakeCommonDeps() (Container, error) {
 		return c, fmt.Errorf("unable to process app config: %s\n", err.Error())
 	}
 
-	c.Listeners, err = oscar.ParseListenersCfg(c.cfg.Listeners, c.cfg.AdvertisedListeners)
+	c.Listeners, err = config.ParseListenersCfg(c.cfg.BOSListeners, c.cfg.BOSAdvertisedHosts, c.cfg.KerberosListeners)
+	if err != nil {
+		return c, fmt.Errorf("unable to parse listener config: %s\n", err.Error())
+	}
 
 	c.sqLiteUserStore, err = state.NewSQLiteUserStore(c.cfg.DBPath)
 	if err != nil {
@@ -185,7 +188,7 @@ func OSCAR(deps Container) oscar.Server {
 // KerberosAPI creates an HTTP server for the Kerberos server.
 func KerberosAPI(deps Container) *oscar.KerberosServer {
 	authService := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, deps.chatSessionManager, deps.sqLiteUserStore, deps.rateLimitClasses)
-	return oscar.NewKerberosServer(deps.cfg, deps.logger, authService)
+	return oscar.NewKerberosServer(deps.Listeners, deps.logger, authService)
 }
 
 // MgmtAPI creates an HTTP server for the management API.
@@ -195,7 +198,7 @@ func MgmtAPI(deps Container) *http.Server {
 		Commit:  commit,
 		Date:    date,
 	}
-	return http.NewManagementAPI(bld, deps.cfg, deps.sqLiteUserStore, deps.inMemorySessionManager, deps.sqLiteUserStore,
+	return http.NewManagementAPI(bld, deps.cfg.APIListener, deps.sqLiteUserStore, deps.inMemorySessionManager, deps.sqLiteUserStore,
 		deps.sqLiteUserStore, deps.chatSessionManager, deps.sqLiteUserStore, deps.inMemorySessionManager,
 		deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.logger)
 }
@@ -204,8 +207,8 @@ func MgmtAPI(deps Container) *http.Server {
 func TOC(deps Container) toc.Server {
 	logger := deps.logger.With("svc", "TOC")
 	return toc.Server{
-		Logger:     logger,
-		ListenAddr: net.JoinHostPort(deps.cfg.TOCHost, deps.cfg.TOCPort),
+		Logger:    logger,
+		Listeners: strings.Split(deps.cfg.TOCListeners, ","),
 		BOSProxy: toc.OSCARProxy{
 			AdminService: foodgroup.NewAdminService(
 				deps.sqLiteUserStore,

@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -21,22 +20,7 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-func NewManagementAPI(
-	bld config.Build,
-	cfg config.Config,
-	userManager UserManager,
-	sessionRetriever SessionRetriever,
-	chatRoomRetriever ChatRoomRetriever,
-	chatRoomCreator ChatRoomCreator,
-	chatSessionRetriever ChatSessionRetriever,
-	directoryManager DirectoryManager,
-	messageRelayer MessageRelayer,
-	bartRetriever BuddyIconRetriever,
-	feedbagRetriever FeedBagRetriever,
-	accountManager AccountManager,
-	profileRetriever ProfileRetriever,
-	logger *slog.Logger,
-) *Server {
+func NewManagementAPI(bld config.Build, listener string, userManager UserManager, sessionRetriever SessionRetriever, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatSessionRetriever ChatSessionRetriever, directoryManager DirectoryManager, messageRelayer MessageRelayer, bartRetriever BuddyIconRetriever, feedbagRetriever FeedBagRetriever, accountManager AccountManager, profileRetriever ProfileRetriever, logger *slog.Logger) *Server {
 	mux := http.NewServeMux()
 
 	// Handlers for '/user' route
@@ -139,12 +123,11 @@ func NewManagementAPI(
 
 	return &Server{
 		Server: http.Server{
-			Addr:    net.JoinHostPort(cfg.ApiHost, cfg.ApiPort),
+			Addr:    listener,
 			Handler: mux,
 		},
 		Logger: logger,
 	}
-
 }
 
 type Server struct {

@@ -7,65 +7,71 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
+	"golang.org/x/sync/errgroup"
 )
 
-func NewKerberosServer(
-	cfg config.Config,
-	logger *slog.Logger,
-	authService AuthService,
-) *KerberosServer {
-	mux := http.NewServeMux()
+func NewKerberosServer(listeners []config.Listener, logger *slog.Logger, authService AuthService) *KerberosServer {
+	servers := make([]*http.Server, 0, len(listeners))
+	for _, l := range listeners {
 
-	mux.HandleFunc("POST /", func(writer http.ResponseWriter, request *http.Request) {
-		postKerberosHandler(writer, request, authService, logger)
-	})
+		mux := http.NewServeMux()
+
+		mux.HandleFunc("POST /", func(writer http.ResponseWriter, request *http.Request) {
+			postKerberosHandler(writer, request, authService, logger)
+		})
+
+		servers = append(servers, &http.Server{
+			Addr:    l.KerberosListenAddress,
+			Handler: mux,
+		})
+	}
 
 	return &KerberosServer{
-		Server: http.Server{
-			Addr:    net.JoinHostPort("", cfg.KerberosPort),
-			Handler: mux,
-		},
-		Logger: logger,
+		Servers: servers,
+		Logger:  logger,
 	}
 }
 
 // KerberosServer hosts an HTTP endpoint capable of handling AIM-style Kerberos
 // authentication. The messages are structured as SNACs transmitted over HTTP.
 type KerberosServer struct {
-	http.Server
-	Logger *slog.Logger
+	Servers []*http.Server
+	Logger  *slog.Logger
 }
 
 func (s *KerberosServer) Start(ctx context.Context) error {
-	ch := make(chan error)
+	errGroup, ctx := errgroup.WithContext(ctx)
 
-	go func() {
-		s.Logger.Info("starting kerberos server", "addr", s.Addr)
-		if err := s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			ch <- fmt.Errorf("unable to start kerberos server: %w", err)
-		}
-	}()
+	for _, server := range s.Servers {
+		errGroup.Go(func() error {
+			s.Logger.Info("starting kerberos server", "addr", server.Addr)
+			if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+				return fmt.Errorf("unable to start kerberos server: %w", err)
+			}
+			return nil
+		})
 
-	select {
-	case <-ctx.Done():
-	case err := <-ch:
-		return err
+		errGroup.Go(func() error {
+			<-ctx.Done()
+
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			if err := server.Shutdown(shutdownCtx); err != nil {
+				s.Logger.Error("unable to shutdown kerberos server", "err", err.Error())
+			}
+
+			return nil
+		})
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := s.Shutdown(shutdownCtx); err != nil {
-		s.Logger.Error("unable to shutdown kerberos server", "err", err.Error())
-	}
-	return nil
+	return errGroup.Wait()
 }
 
 // postKerberosHandler handles AIM-style Kerberos authentication for AIM 6.0+.
