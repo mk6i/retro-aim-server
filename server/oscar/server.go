@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"net"
 	"net/netip"
@@ -15,7 +16,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/patrickmn/go-cache"
-	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
@@ -23,64 +23,152 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-// IPRateLimiter enforces a per-IP rate limit using a token bucket algorithm.
-// It caches individual rate limiters by IP address and supports tagging requests
-// as originating from the BUCP or FLAP auth.
-//
-// The limiter uses an in-memory cache with TTL expiration, so rate limits reset
-// after the TTL if no activity is observed for a given IP.
-type IPRateLimiter struct {
-	cache *cache.Cache // In-memory cache mapping IPs to rate limiters with optional BUCP tag
-	rate  rate.Limit   // Requests allowed per second
-	burst int          // Maximum burst size allowed
-}
-
-type rateLimitEntry struct {
-	isBUCP  bool
-	limiter *rate.Limiter
-}
-
-// NewIPRateLimiter initializes a new IPRateLimiter with the specified rate,
-// burst size, and TTL for each IP's limiter. Entries expire after 2×TTL.
-func NewIPRateLimiter(rate rate.Limit, burst int, ttl time.Duration) *IPRateLimiter {
-	return &IPRateLimiter{
-		cache: cache.New(ttl, 2*ttl),
-		rate:  rate,
-		burst: burst,
+func NewServer(
+	authService AuthService,
+	buddyListRegistry BuddyListRegistry,
+	chatSessionManager *state.InMemoryChatSessionManager,
+	departureNotifier DepartureNotifier,
+	logger *slog.Logger,
+	onlineNotifier OnlineNotifier,
+	handler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, connectHere string) error,
+	rateLimitUpdater RateLimitUpdater,
+	limits wire.SNACRateLimits,
+	limiter *IPRateLimiter,
+	listenerCfg []config.Listener,
+) *Server {
+	oscarSvc := oscarServer{
+		AuthService:        authService,
+		BuddyListRegistry:  buddyListRegistry,
+		ChatSessionManager: chatSessionManager,
+		DepartureNotifier:  departureNotifier,
+		Logger:             logger,
+		OnlineNotifier:     onlineNotifier,
+		Handler:            handler,
+		RateLimitUpdater:   rateLimitUpdater,
+		SNACRateLimits:     limits,
+		IPRateLimiter:      limiter,
 	}
-}
 
-// SetBUCP marks the rate limiter for the given IP as originating from BUCP auth
-// (default FLAP auth).
-func (l *IPRateLimiter) SetBUCP(ip string) {
-	limiter, found := l.cache.Get(ip)
-	if !found {
-		limiter = &rateLimitEntry{
-			isBUCP:  true,
-			limiter: rate.NewLimiter(l.rate, l.burst),
-		}
-		l.cache.Set(ip, limiter, cache.DefaultExpiration)
-	}
-	limiter.(*rateLimitEntry).isBUCP = true
-}
+	ctx, cancel := context.WithCancel(context.Background())
 
-// Allow checks if a request from the given IP is allowed under its rate limit.
-// It returns whether the request is allowed and whether the connection uses
-// BUCP auth.
-func (l *IPRateLimiter) Allow(ip string) (allowed bool, isBUCP bool) {
-	limiter, found := l.cache.Get(ip)
-	if !found {
-		limiter = &rateLimitEntry{
-			limiter: rate.NewLimiter(l.rate, l.burst),
-		}
-		l.cache.Set(ip, limiter, cache.DefaultExpiration)
+	return &Server{
+		listenerCfg:    listenerCfg,
+		conns:          make(map[net.Conn]struct{}),
+		closed:         make(chan struct{}),
+		handler:        oscarSvc.routeConnection,
+		shutdownCtx:    ctx,
+		shutdownCancel: cancel,
 	}
-	entry := limiter.(*rateLimitEntry)
-	return entry.limiter.Allow(), entry.isBUCP
 }
 
 type Server struct {
-	Listeners []config.Listener
+	listenerCfg []config.Listener
+	listeners   []net.Listener
+
+	connsMu sync.Mutex
+	conns   map[net.Conn]struct{}
+
+	wg sync.WaitGroup
+
+	shutdownCtx    context.Context
+	shutdownCancel context.CancelFunc
+	closed         chan struct{}
+
+	handler func(ctx context.Context, conn net.Conn, advertisedHost string) error
+}
+
+func (s *Server) ListenAndServe() error {
+	for _, cfg := range s.listenerCfg {
+		ln, err := net.Listen("tcp", cfg.BOSListenAddress)
+		if err != nil {
+			log.Printf("Failed to listen on cfg %v: %v", cfg, err)
+			s.cleanupConnections()
+			s.shutdownCancel()
+			return err
+		}
+		s.listeners = append(s.listeners, ln)
+		log.Printf("Listening on %s", cfg.BOSListenAddress)
+		go s.acceptLoop(ln, cfg.BOSAdvertisedHost)
+	}
+
+	<-s.closed // block until Shutdown is called
+	return nil
+}
+
+func (s *Server) acceptLoop(ln net.Listener, advertisedHost string) {
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return
+			}
+			log.Printf("Accept error: %v", err)
+			continue
+		}
+
+		// track connection
+		s.connsMu.Lock()
+		s.conns[conn] = struct{}{}
+		s.connsMu.Unlock()
+
+		s.wg.Add(1)
+		go s.handleConnection(s.shutdownCtx, conn, advertisedHost)
+	}
+}
+
+func (s *Server) handleConnection(ctx context.Context, conn net.Conn, advertisedHost string) {
+	defer func() {
+		s.wg.Done()
+
+		// untrack connections
+		s.connsMu.Lock()
+		delete(s.conns, conn)
+		s.connsMu.Unlock()
+
+		_ = conn.Close()
+	}()
+	s.handler(ctx, conn, advertisedHost)
+}
+
+func (s *Server) Shutdown(ctx context.Context) error {
+	log.Println("Initiating graceful shutdown...")
+	s.shutdownCancel()
+	s.cleanupConnections()
+
+	// Wait for handlers to complete
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("All connections drained.")
+	case <-ctx.Done():
+		log.Println("Shutdown timeout reached.")
+	}
+
+	close(s.closed)
+
+	return nil
+}
+
+func (s *Server) cleanupConnections() {
+	for _, ln := range s.listeners {
+		_ = ln.Close()
+	}
+	s.listeners = nil
+
+	// Close all active connections
+	s.connsMu.Lock()
+	for conn := range s.conns {
+		_ = conn.Close()
+	}
+	s.connsMu.Unlock()
+}
+
+type oscarServer struct {
 	AuthService
 	BuddyListRegistry
 	ChatSessionManager *state.InMemoryChatSessionManager
@@ -93,69 +181,9 @@ type Server struct {
 	*IPRateLimiter
 }
 
-func (s Server) Start(ctx context.Context) error {
-	if err := s.BuddyListRegistry.ClearBuddyListRegistry(ctx); err != nil {
-		return fmt.Errorf("unable to clear client-side buddy list: %s", err.Error())
-	}
-
-	errGroup, ctx := errgroup.WithContext(ctx)
-
-	for _, l := range s.Listeners {
-		errGroup.Go(func() error {
-			return s.acceptConnection(l, ctx)
-		})
-	}
-
-	return errGroup.Wait()
-}
-
-func (s Server) acceptConnection(l config.Listener, ctx context.Context) error {
-	listener, err := net.Listen("tcp", l.BOSListenAddress)
-	if err != nil {
-		return fmt.Errorf("unable to start BOS server: %w", err)
-	}
-
-	go func() {
-		<-ctx.Done()
-		listener.Close()
-	}()
-
-	s.Logger.Info("starting server", "listen_host", l.BOSListenAddress, "advertise_host", l.BOSAdvertisedHosts)
-
-	wg := sync.WaitGroup{}
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			if errors.Is(err, net.ErrClosed) {
-				break
-			}
-			s.Logger.Error("accept failed", "err", err.Error())
-			continue
-		}
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			connCtx := context.WithValue(ctx, "ip", conn.RemoteAddr().String())
-			s.Logger.DebugContext(connCtx, "accepted connection")
-			if err := s.routeConnection(connCtx, conn, l); err != nil {
-				s.Logger.Info("user session failed", "err", err.Error())
-			}
-		}()
-	}
-
-	if !waitForShutdown(&wg) {
-		s.Logger.Error("shutdown complete, but connections didn't close cleanly")
-	} else {
-		s.Logger.Info("shutdown complete")
-	}
-
-	return nil
-}
-
-func (s Server) routeConnection(ctx context.Context, rwc net.Conn, l config.Listener) error {
+func (s oscarServer) routeConnection(ctx context.Context, rwc net.Conn, advertisedHost string) error {
 	defer func() {
-		rwc.Close()
+		_ = rwc.Close()
 	}()
 
 	ip, _, err := net.SplitHostPort(rwc.RemoteAddr().String())
@@ -175,13 +203,13 @@ func (s Server) routeConnection(ctx context.Context, rwc net.Conn, l config.List
 	}
 
 	if flap.HasTag(wire.OServiceTLVTagsLoginCookie) {
-		return s.connectToService(ctx, flap, flapc, rwc, l)
+		return s.connectToService(ctx, flap, flapc, rwc, advertisedHost)
 	}
 
-	return s.doAuthStuff(ctx, flap, ip, flapc, l)
+	return s.doAuthStuff(ctx, flap, ip, flapc, advertisedHost)
 }
 
-func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame, flapc *wire.FlapClient, rwc net.Conn, l config.Listener) error {
+func (s oscarServer) connectToService(ctx context.Context, flap wire.FLAPSignonFrame, flapc *wire.FlapClient, rwc net.Conn, advertisedHost string) error {
 	authCookie, ok := flap.Bytes(wire.OServiceTLVTagsLoginCookie)
 	if !ok {
 		return errors.New("unable to get session id from payload")
@@ -267,10 +295,10 @@ func (s Server) connectToService(ctx context.Context, flap wire.FLAPSignonFrame,
 		return err
 	}
 
-	return s.dispatchIncomingMessages(ctx, cookie.Service, sess, flapc, rwc, l)
+	return s.dispatchIncomingMessages(ctx, cookie.Service, sess, flapc, rwc, advertisedHost)
 }
 
-func (s Server) receiveSessMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient) {
+func (s oscarServer) receiveSessMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -286,7 +314,7 @@ func (s Server) receiveSessMessages(ctx context.Context, sess *state.Session, fl
 	}
 }
 
-func (s Server) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, ip string, flapc *wire.FlapClient, l config.Listener) error {
+func (s oscarServer) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, ip string, flapc *wire.FlapClient, advertisedHost string) error {
 	if ok, isBUCP := s.Allow(ip); !ok {
 		s.Logger.Error("user rate limited at login", "remote", ip)
 		tlv := wire.TLVRestBlock{
@@ -321,15 +349,15 @@ func (s Server) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, ip s
 	// indicator of FLAP-auth because older ICQ clients appear to omit the
 	// roasted password TLV when the password is not stored client-side.
 	if _, hasScreenName := flap.Uint16BE(wire.LoginTLVTagsScreenName); hasScreenName {
-		return s.processFLAPAuth(ctx, flap, flapc, l.BOSAdvertisedHosts)
+		return s.processFLAPAuth(ctx, flap, flapc, advertisedHost)
 	}
 
 	s.SetBUCP(ip)
 
-	return s.processBUCPAuth(ctx, flapc, l.BOSAdvertisedHosts)
+	return s.processBUCPAuth(ctx, flapc, advertisedHost)
 }
 
-func (s Server) processFLAPAuth(ctx context.Context, signonFrame wire.FLAPSignonFrame, flapc *wire.FlapClient, connectHere string) error {
+func (s oscarServer) processFLAPAuth(ctx context.Context, signonFrame wire.FLAPSignonFrame, flapc *wire.FlapClient, connectHere string) error {
 	tlv, err := s.AuthService.FLAPLogin(ctx, signonFrame, state.NewStubUser, connectHere)
 	if err != nil {
 		return err
@@ -337,7 +365,7 @@ func (s Server) processFLAPAuth(ctx context.Context, signonFrame wire.FLAPSignon
 	return flapc.SendSignoffFrame(tlv)
 }
 
-func (s Server) processBUCPAuth(ctx context.Context, flapc *wire.FlapClient, connectHere string) error {
+func (s oscarServer) processBUCPAuth(ctx context.Context, flapc *wire.FlapClient, connectHere string) error {
 	frames := 0
 
 	for {
@@ -425,7 +453,7 @@ func sendInvalidSNACErr(frameIn wire.SNACFrame, rw ResponseWriter) error {
 // This function ensures that the same sequence number is incremented for both
 // types of messages. The function terminates upon receiving a connection error
 // or when the session closes.
-func (s Server) dispatchIncomingMessages(ctx context.Context, fg uint16, sess *state.Session, flapc *wire.FlapClient, r io.Reader, l config.Listener) error {
+func (s oscarServer) dispatchIncomingMessages(ctx context.Context, fg uint16, sess *state.Session, flapc *wire.FlapClient, r io.Reader, advertisedHost string) error {
 
 	defer func() {
 		s.Logger.InfoContext(ctx, "user disconnected")
@@ -479,7 +507,7 @@ func (s Server) dispatchIncomingMessages(ctx context.Context, fg uint16, sess *s
 
 				// route a client request to the appropriate service handler. the
 				// handler may write a response to the client connection.
-				if err := s.Handler(ctx, fg, sess, inFrame, flapBuf, flapc, l.BOSAdvertisedHosts); err != nil {
+				if err := s.Handler(ctx, fg, sess, inFrame, flapBuf, flapc, advertisedHost); err != nil {
 					middleware.LogRequestError(ctx, s.Logger, inFrame, err)
 					if errors.Is(err, ErrRouteNotFound) {
 						if err1 := sendInvalidSNACErr(inFrame, flapc); err1 != nil {
@@ -534,22 +562,58 @@ func (s Server) dispatchIncomingMessages(ctx context.Context, fg uint16, sess *s
 	}
 }
 
-// waitForShutdown returns when either the wg completes or 5 seconds has
-// passed. This is a temporary hack to ensure that the server shuts down even
-// if all the TCP connections do not drain. Return true if the shutdown is
-// clean.
-func waitForShutdown(wg *sync.WaitGroup) bool {
-	ch := make(chan struct{})
+// IPRateLimiter enforces a per-IP rate limit using a token bucket algorithm.
+// It caches individual rate limiters by IP address and supports tagging requests
+// as originating from the BUCP or FLAP auth.
+//
+// The limiter uses an in-memory cache with TTL expiration, so rate limits reset
+// after the TTL if no activity is observed for a given IP.
+type IPRateLimiter struct {
+	cache *cache.Cache // In-memory cache mapping IPs to rate limiters with optional BUCP tag
+	rate  rate.Limit   // Requests allowed per second
+	burst int          // Maximum burst size allowed
+}
 
-	go func() {
-		wg.Wait() // goroutine leak if wg never completes
-		close(ch)
-	}()
+type rateLimitEntry struct {
+	isBUCP  bool
+	limiter *rate.Limiter
+}
 
-	select {
-	case <-ch:
-		return true
-	case <-time.After(time.Second * 5):
-		return false
+// NewIPRateLimiter initializes a new IPRateLimiter with the specified rate,
+// burst size, and TTL for each IP's limiter. Entries expire after 2×TTL.
+func NewIPRateLimiter(rate rate.Limit, burst int, ttl time.Duration) *IPRateLimiter {
+	return &IPRateLimiter{
+		cache: cache.New(ttl, 2*ttl),
+		rate:  rate,
+		burst: burst,
 	}
+}
+
+// SetBUCP marks the rate limiter for the given IP as originating from BUCP auth
+// (default FLAP auth).
+func (l *IPRateLimiter) SetBUCP(ip string) {
+	limiter, found := l.cache.Get(ip)
+	if !found {
+		limiter = &rateLimitEntry{
+			isBUCP:  true,
+			limiter: rate.NewLimiter(l.rate, l.burst),
+		}
+		l.cache.Set(ip, limiter, cache.DefaultExpiration)
+	}
+	limiter.(*rateLimitEntry).isBUCP = true
+}
+
+// Allow checks if a request from the given IP is allowed under its rate limit.
+// It returns whether the request is allowed and whether the connection uses
+// BUCP auth.
+func (l *IPRateLimiter) Allow(ip string) (allowed bool, isBUCP bool) {
+	limiter, found := l.cache.Get(ip)
+	if !found {
+		limiter = &rateLimitEntry{
+			limiter: rate.NewLimiter(l.rate, l.burst),
+		}
+		l.cache.Set(ip, limiter, cache.DefaultExpiration)
+	}
+	entry := limiter.(*rateLimitEntry)
+	return entry.limiter.Allow(), entry.isBUCP
 }

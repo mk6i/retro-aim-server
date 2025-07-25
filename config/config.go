@@ -29,7 +29,7 @@ type Build struct {
 
 type Listener struct {
 	BOSListenAddress      string
-	BOSAdvertisedHosts    string
+	BOSAdvertisedHost     string
 	KerberosListenAddress string
 }
 
@@ -58,10 +58,10 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 		if _, ok := m[u.Scheme]; !ok {
 			m[u.Scheme] = &Listener{}
 		}
-		if m[u.Scheme].BOSAdvertisedHosts != "" {
+		if m[u.Scheme].BOSAdvertisedHost != "" {
 			return nil, errors.New("duplicate listener definition")
 		}
-		m[u.Scheme].BOSAdvertisedHosts = net.JoinHostPort(u.Hostname(), u.Port())
+		m[u.Scheme].BOSAdvertisedHost = net.JoinHostPort(u.Hostname(), u.Port())
 	}
 
 	for _, lStr := range strings.Split(kerberosListeners, ",") {
@@ -82,7 +82,7 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 
 	for k, v := range m {
 		switch {
-		case v.BOSAdvertisedHosts == "":
+		case v.BOSAdvertisedHost == "":
 			return nil, fmt.Errorf("missing BOS advertise address for listener `%s://`", k)
 		case v.BOSListenAddress == "":
 			return nil, fmt.Errorf("missing BOS listen address for listener `%s://`", k)

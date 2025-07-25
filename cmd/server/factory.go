@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -65,7 +66,7 @@ func MakeCommonDeps() (Container, error) {
 }
 
 // OSCAR creates an OSCAR server for the OSCAR food group.
-func OSCAR(deps Container) oscar.Server {
+func OSCAR(deps Container) *oscar.Server {
 	logger := deps.logger.With("svc", "OSCAR")
 
 	adminService := foodgroup.NewAdminService(
@@ -152,12 +153,18 @@ func OSCAR(deps Container) oscar.Server {
 	statsService := foodgroup.NewStatsService()
 	oDirService := foodgroup.NewODirService(logger, deps.sqLiteUserStore)
 
-	return oscar.Server{
-		AuthService:        authService,
-		BuddyListRegistry:  deps.sqLiteUserStore,
-		DepartureNotifier:  buddyService,
-		ChatSessionManager: deps.chatSessionManager,
-		Handler: oscar.Handler{
+	if err := deps.sqLiteUserStore.ClearBuddyListRegistry(context.Background()); err != nil {
+		panic(err)
+	}
+
+	return oscar.NewServer(
+		authService,
+		deps.sqLiteUserStore,
+		deps.chatSessionManager,
+		buddyService,
+		logger,
+		oServiceService,
+		oscar.Handler{
 			AdminService:      adminService,
 			BARTService:       bartService,
 			BuddyService:      buddyService,
@@ -176,13 +183,11 @@ func OSCAR(deps Container) oscar.Server {
 				Logger: logger,
 			},
 		}.Handle,
-		IPRateLimiter:    oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
-		Listeners:        deps.Listeners,
-		Logger:           logger,
-		OnlineNotifier:   oServiceService,
-		RateLimitUpdater: oServiceService,
-		SNACRateLimits:   deps.snacRateLimits,
-	}
+		oServiceService,
+		deps.snacRateLimits,
+		oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
+		deps.Listeners,
+	)
 }
 
 // KerberosAPI creates an HTTP server for the Kerberos server.
