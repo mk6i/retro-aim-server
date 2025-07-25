@@ -1,4 +1,4 @@
-package oscar
+package kerberos
 
 import (
 	"bytes"
@@ -8,22 +8,23 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"time"
+
+	"github.com/mk6i/retro-aim-server/server/oscar"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
-	"golang.org/x/sync/errgroup"
 )
 
-func NewKerberosServer(listeners []config.Listener, logger *slog.Logger, authService AuthService) *KerberosServer {
+func NewKerberosServer(listeners []config.Listener, logger *slog.Logger, authService oscar.AuthService) *Server {
 	servers := make([]*http.Server, 0, len(listeners))
 	for _, l := range listeners {
 
 		mux := http.NewServeMux()
 
 		mux.HandleFunc("POST /", func(writer http.ResponseWriter, request *http.Request) {
-			postKerberosHandler(writer, request, authService, logger)
+			postHandler(writer, request, authService, logger)
 		})
 
 		servers = append(servers, &http.Server{
@@ -32,50 +33,49 @@ func NewKerberosServer(listeners []config.Listener, logger *slog.Logger, authSer
 		})
 	}
 
-	return &KerberosServer{
-		Servers: servers,
-		Logger:  logger,
+	return &Server{
+		servers: servers,
+		logger:  logger,
 	}
 }
 
-// KerberosServer hosts an HTTP endpoint capable of handling AIM-style Kerberos
+// Server hosts an HTTP endpoint capable of handling AIM-style Kerberos
 // authentication. The messages are structured as SNACs transmitted over HTTP.
-type KerberosServer struct {
-	Servers []*http.Server
-	Logger  *slog.Logger
+type Server struct {
+	servers []*http.Server
+	logger  *slog.Logger
 }
 
-func (s *KerberosServer) Start(ctx context.Context) error {
-	errGroup, ctx := errgroup.WithContext(ctx)
+func (s *Server) ListenAndServe() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	for _, server := range s.Servers {
-		errGroup.Go(func() error {
-			s.Logger.Info("starting kerberos server", "addr", server.Addr)
+	g, ctx := errgroup.WithContext(ctx)
+	for _, server := range s.servers {
+		g.Go(func() error {
+			s.logger.Info("starting server", "addr", server.Addr)
 			if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+				cancel()
 				return fmt.Errorf("unable to start kerberos server: %w", err)
 			}
 			return nil
 		})
-
-		errGroup.Go(func() error {
-			<-ctx.Done()
-
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			if err := server.Shutdown(shutdownCtx); err != nil {
-				s.Logger.Error("unable to shutdown kerberos server", "err", err.Error())
-			}
-
-			return nil
-		})
 	}
 
-	return errGroup.Wait()
+	return g.Wait()
 }
 
-// postKerberosHandler handles AIM-style Kerberos authentication for AIM 6.0+.
-func postKerberosHandler(w http.ResponseWriter, r *http.Request, authService AuthService, logger *slog.Logger) {
+func (s *Server) Shutdown(ctx context.Context) error {
+	defer s.logger.Info("shutdown complete")
+
+	for _, srv := range s.servers {
+		_ = srv.Shutdown(ctx)
+	}
+	return nil
+}
+
+// postHandler handles AIM-style Kerberos authentication for AIM 6.0+.
+func postHandler(w http.ResponseWriter, r *http.Request, authService oscar.AuthService, logger *slog.Logger) {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "unable to read HTTP body", http.StatusBadRequest)
@@ -88,7 +88,7 @@ func postKerberosHandler(w http.ResponseWriter, r *http.Request, authService Aut
 		http.Error(w, "unable to read kerberos login SNAC header", http.StatusBadRequest)
 		return
 	}
-	if header.FoodGroup != wire.Kerberos && header.FoodGroup != wire.KerberosLoginRequest {
+	if header.FoodGroup != wire.Kerberos || header.SubGroup != wire.KerberosLoginRequest {
 		http.Error(w, "unexpected SNAC type", http.StatusBadRequest)
 		return
 	}

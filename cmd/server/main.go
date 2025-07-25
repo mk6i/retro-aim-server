@@ -50,33 +50,34 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	type starter interface {
-		Start(ctx context.Context) error
-	}
-
-	g, ctx := errgroup.WithContext(ctx)
-	start := func(fn starter) {
-		g.Go(func() error { return fn.Start(ctx) })
-	}
-
 	deps, err := MakeCommonDeps()
 	if err != nil {
 		fmt.Printf("error initializing common deps: %v\n", err)
 		os.Exit(1)
 	}
 
+	g, ctx := errgroup.WithContext(ctx)
+	
 	oscar := OSCAR(deps)
 	g.Go(oscar.ListenAndServe)
 
-	start(KerberosAPI(deps))
-	start(MgmtAPI(deps))
-	//start(TOC(deps))
+	kerb := KerberosAPI(deps)
+	g.Go(kerb.ListenAndServe)
+
+	api := MgmtAPI(deps)
+	g.Go(api.ListenAndServe)
+
+	toc := TOC(deps)
+	g.Go(toc.ListenAndServe)
 
 	select {
 	case <-ctx.Done():
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = oscar.Shutdown(shutdownCtx)
+		_ = kerb.Shutdown(shutdownCtx)
+		_ = api.Shutdown(shutdownCtx)
+		_ = toc.Shutdown(shutdownCtx)
 	}
 
 	if err = g.Wait(); err != nil {

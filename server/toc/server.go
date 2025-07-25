@@ -120,87 +120,178 @@ func (l *IPRateLimiter) Allow(ip string) (allowed bool) {
 	return limiter.(*rate.Limiter).Allow()
 }
 
+func NewServer(listenerCfg []string, logger *slog.Logger, BOSProxy OSCARProxy, ipRateLimiter *IPRateLimiter) *Server {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	s := &Server{
+		bosProxy:           BOSProxy,
+		conns:              make(map[net.Conn]struct{}),
+		listenerCfg:        listenerCfg,
+		logger:             logger,
+		loginIPRateLimiter: ipRateLimiter,
+		servers:            make([]*http.Server, 0, len(listenerCfg)),
+		shutdownCancel:     cancel,
+		shutdownCtx:        ctx,
+	}
+
+	for range listenerCfg {
+		s.servers = append(s.servers, &http.Server{
+			Handler: BOSProxy.NewServeMux(),
+			BaseContext: func(net.Listener) context.Context {
+				return context.Background()
+			},
+		})
+	}
+
+	return s
+}
+
 // Server implements a TOC protocol server that multiplexes TOC/HTTP and
 // TOC/FLAP requests. It acts as a gateway, forwarding all TOC requests
 // to the OSCAR server for processing.
 type Server struct {
-	BOSProxy           OSCARProxy
-	Listeners          []string
-	Logger             *slog.Logger
-	LoginIPRateLimiter *IPRateLimiter
+	bosProxy           OSCARProxy
+	logger             *slog.Logger
+	loginIPRateLimiter *IPRateLimiter
+
+	listenerCfg []string
+	listeners   []net.Listener
+	servers     []*http.Server
+
+	connMu sync.Mutex
+	conns  map[net.Conn]struct{}
+
+	connWg   sync.WaitGroup
+	listenWg sync.WaitGroup
+
+	shutdownCtx    context.Context
+	shutdownCancel context.CancelFunc
 }
 
-func (rt Server) Start(ctx context.Context) error {
+func (s *Server) ListenAndServe() error {
+	g, ctx := errgroup.WithContext(s.shutdownCtx)
 
-	errGroup, ctx := errgroup.WithContext(ctx)
+	for _, cfg := range s.listenerCfg {
+		ln, err := net.Listen("tcp", cfg)
+		if err != nil {
+			s.cleanupListeners()
+			fmt.Println("shutting down...")
+			s.shutdownCancel()
+			return fmt.Errorf("unable to start TOC server: %w", err)
+		}
 
-	for _, l := range rt.Listeners {
+		s.logger.InfoContext(ctx, "starting server", "listen_host", cfg)
 
-		errGroup.Go(func() error {
-			listener, err := net.Listen("tcp", l)
-			if err != nil {
-				return fmt.Errorf("unable to start TOC server: %w", err)
+		s.listeners = append(s.listeners, ln)
+		s.listenWg.Add(1)
+
+		httpCh := make(chan net.Conn)
+		//defer close(httpCh)
+
+		httpServer := &http.Server{
+			Handler: s.bosProxy.NewServeMux(),
+			BaseContext: func(net.Listener) context.Context {
+				return ctx
+			},
+		}
+
+		g.Go(func() error {
+			if err := httpServer.Serve(&channelListener{ch: httpCh}); err != nil {
+				fmt.Println("Shutting down?")
+				s.shutdownCancel()
+				return err
 			}
-
-			rt.Logger.InfoContext(ctx, "starting server", "listen_host", l)
-
-			go func() {
-				<-ctx.Done()
-				_ = listener.Close()
-			}()
-
-			httpServer := &http.Server{
-				Handler: rt.BOSProxy.NewServeMux(),
-				BaseContext: func(net.Listener) context.Context {
-					return ctx
-				},
-			}
-
-			httpCh := make(chan net.Conn)
-			defer close(httpCh)
-
-			errGroup.Go(func() error {
-				return httpServer.Serve(&channelListener{ch: httpCh})
-			})
-
-			wg := sync.WaitGroup{}
-			for {
-				conn, err := listener.Accept()
-				if err != nil {
-					if errors.Is(err, net.ErrClosed) {
-						break
-					}
-					rt.Logger.ErrorContext(ctx, "accept failed", "err", err.Error())
-					continue
-				}
-
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					if err := rt.dispatchConn(conn, ctx, httpCh); err != nil {
-						rt.Logger.ErrorContext(ctx, "client disconnected with error", "err", err.Error())
-					}
-				}()
-			}
-
-			// todo just wait for error group?
-			if !waitForShutdown(&wg) {
-				rt.Logger.ErrorContext(ctx, "shutdown complete, but connections didn't close cleanly")
-			} else {
-				rt.Logger.InfoContext(ctx, "shutdown complete")
-			}
-
 			return nil
 		})
+
+		g.Go(func() error {
+			s.acceptLoop(ctx, ln, httpCh)
+			return nil
+		})
+
+		return nil
 	}
 
-	return errGroup.Wait()
+	return g.Wait()
 }
 
-// dispatchConn inspects and routes an incoming connection. If the connection
+func (s *Server) Shutdown(ctx context.Context) error {
+	s.logger.Debug("Initiating graceful shutdown...")
+	fmt.Println("shutting down...")
+	s.shutdownCancel()
+	s.cleanupListeners()
+
+	// Wait for handlers to complete
+	done := make(chan struct{})
+	go func() {
+		s.connWg.Wait()
+		s.listenWg.Wait()
+		close(done)
+	}()
+
+	for _, srv := range s.servers {
+		_ = srv.Shutdown(ctx)
+	}
+
+	select {
+	case <-done:
+		s.logger.Info("shutdown complete")
+	case <-ctx.Done():
+		s.logger.Info("shutdown complete, but connections didn't close cleanly")
+	}
+
+	return nil
+}
+
+func (s *Server) cleanupListeners() {
+	for _, ln := range s.listeners {
+		_ = ln.Close()
+	}
+	s.listeners = nil
+}
+
+func (s *Server) acceptLoop(ctx context.Context, ln net.Listener, httpCh chan net.Conn) {
+	defer s.listenWg.Done()
+
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return
+			}
+			s.logger.Error("accept error", "err", err.Error())
+			continue
+		}
+
+		// track connection
+		s.connMu.Lock()
+		s.conns[conn] = struct{}{}
+		s.connMu.Unlock()
+
+		s.connWg.Add(1)
+
+		go func() {
+			if err := s.handleConnection(conn, ctx, httpCh); err != nil {
+				s.logger.InfoContext(ctx, "user session failed", "err", err.Error())
+			}
+		}()
+	}
+}
+
+// handleConnection inspects and routes an incoming connection. If the connection
 // starts with "FLAP", handle as TOC/FLAP; otherwise, dispatch for HTTP
 // processing.
-func (rt Server) dispatchConn(conn net.Conn, ctx context.Context, httpCh chan net.Conn) error {
+func (s *Server) handleConnection(conn net.Conn, ctx context.Context, httpCh chan net.Conn) error {
+	defer func() {
+		// untrack connections
+		s.connMu.Lock()
+		delete(s.conns, conn)
+		s.connMu.Unlock()
+
+		_ = conn.Close()
+		s.connWg.Done()
+	}()
+
 	bufCon := newBufferedConn(conn)
 
 	doFlap := "FLAP"
@@ -211,14 +302,14 @@ func (rt Server) dispatchConn(conn net.Conn, ctx context.Context, httpCh chan ne
 
 	// handle TOC/FLAP
 	if string(buf) == doFlap {
-		if err = rt.dispatchFLAP(ctx, bufCon); err != nil {
+		if err = s.dispatchFLAP(ctx, bufCon); err != nil {
 			switch {
 			case errors.Is(err, io.EOF):
 			case errors.Is(err, net.ErrClosed):
 			case errors.Is(err, syscall.ECONNRESET):
 				return nil
 			default:
-				return fmt.Errorf("rt.dispatchFLAP: %w", err)
+				return fmt.Errorf("s.dispatchFLAP: %w", err)
 			}
 		}
 		return nil
@@ -233,7 +324,7 @@ func (rt Server) dispatchConn(conn net.Conn, ctx context.Context, httpCh chan ne
 	}
 }
 
-func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
+func (s *Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 	var once sync.Once
 
 	closeConn := func() {
@@ -245,27 +336,27 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 
 	ctx = context.WithValue(ctx, "ip", conn.RemoteAddr().String())
 
-	clientFlap, err := rt.initFLAP(conn)
+	clientFlap, err := s.initFLAP(conn)
 	if err != nil {
 		return err
 	}
 
 	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
 	if err != nil {
-		rt.Logger.Error("failed to parse remote address", "err", err.Error())
+		s.logger.Error("failed to parse remote address", "err", err.Error())
 		return err
 	}
 
-	if ok := rt.LoginIPRateLimiter.Allow(ip); !ok {
+	if ok := s.loginIPRateLimiter.Allow(ip); !ok {
 		if err := clientFlap.SendDataFrame([]byte("ERROR:983")); err != nil {
 			return fmt.Errorf("clientFlap.SendDataFrame: %w", err)
 		}
 		return nil
 	}
 
-	sessBOS, err := rt.login(ctx, clientFlap)
+	sessBOS, err := s.login(ctx, clientFlap)
 	if err != nil {
-		return fmt.Errorf("rt.login: %w", err)
+		return fmt.Errorf("s.login: %w", err)
 	}
 	if sessBOS == nil {
 		return nil // user not found
@@ -284,9 +375,9 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 
 	chatRegistry := NewChatRegistry()
 
-	defer rt.BOSProxy.Signout(ctx, sessBOS, chatRegistry)
+	defer s.bosProxy.Signout(ctx, sessBOS, chatRegistry)
 
-	return rt.handleTOCRequest(ctx, closeConn, sessBOS, chatRegistry, clientFlap)
+	return s.handleTOCRequest(ctx, closeConn, sessBOS, chatRegistry, clientFlap)
 }
 
 // handleTOCRequest processes incoming TOC requests and coordinates their handling.
@@ -297,7 +388,7 @@ func (rt Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 //     io.EOF if the client disconnected.
 //   - errTOCProcessing if an error occurs while processing the TOC command.
 //   - errServerWrite if an error occurs while sending the TOC response.
-func (rt Server) handleTOCRequest(
+func (s *Server) handleTOCRequest(
 	ctx context.Context,
 	closeConn func(),
 	sessBOS *state.Session,
@@ -311,20 +402,20 @@ func (rt Server) handleTOCRequest(
 
 	// process TOC client requests and enqueue TOC server responses
 	g.Go(func() error {
-		err := rt.runClientCommands(ctx, g.Go, sessBOS, chatRegistry, clientFlap, msgCh)
+		err := s.runClientCommands(ctx, g.Go, sessBOS, chatRegistry, clientFlap, msgCh)
 		return errors.Join(err, errClientReq)
 	})
 
 	// translate OSCAR server responses to TOC responses and enqueue them
 	g.Go(func() error {
-		err := rt.BOSProxy.RecvBOS(ctx, sessBOS, chatRegistry, msgCh)
+		err := s.bosProxy.RecvBOS(ctx, sessBOS, chatRegistry, msgCh)
 		closeConn() // unblock runClientCommands
 		return errors.Join(err, errTOCProcessing)
 	})
 
 	// send TOC server responses to the client
 	g.Go(func() error {
-		err := rt.sendToClient(ctx, msgCh, clientFlap)
+		err := s.sendToClient(ctx, msgCh, clientFlap)
 		closeConn() // unblock runClientCommands
 		return errors.Join(err, errServerWrite)
 	})
@@ -332,7 +423,7 @@ func (rt Server) handleTOCRequest(
 	return g.Wait()
 }
 
-func (rt Server) runClientCommands(ctx context.Context, doAsync func(f func() error), sessBOS *state.Session, chatRegistry *ChatRegistry, clientFlap *wire.FlapClient, toCh chan<- []byte) error {
+func (s *Server) runClientCommands(ctx context.Context, doAsync func(f func() error), sessBOS *state.Session, chatRegistry *ChatRegistry, clientFlap *wire.FlapClient, toCh chan<- []byte) error {
 	for {
 		clientFrame, err := clientFlap.ReceiveFLAP()
 		if err != nil {
@@ -354,7 +445,7 @@ func (rt Server) runClientCommands(ctx context.Context, doAsync func(f func() er
 				return errors.New("TOC command exceeds maximum length (2048)")
 			}
 
-			msg := rt.BOSProxy.RecvClientCmd(ctx, sessBOS, chatRegistry, clientFrame.Payload, toCh, doAsync)
+			msg := s.bosProxy.RecvClientCmd(ctx, sessBOS, chatRegistry, clientFrame.Payload, toCh, doAsync)
 			if len(msg) > 0 {
 				select {
 				case toCh <- []byte(msg):
@@ -368,7 +459,7 @@ func (rt Server) runClientCommands(ctx context.Context, doAsync func(f func() er
 	}
 }
 
-func (rt Server) sendToClient(ctx context.Context, toClient <-chan []byte, clientFlap *wire.FlapClient) error {
+func (s *Server) sendToClient(ctx context.Context, toClient <-chan []byte, clientFlap *wire.FlapClient) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -377,21 +468,21 @@ func (rt Server) sendToClient(ctx context.Context, toClient <-chan []byte, clien
 			if err := clientFlap.SendDataFrame(msg); err != nil {
 				return fmt.Errorf("clientFlap.SendDataFrame: %w", err)
 			}
-			if rt.Logger.Enabled(ctx, slog.LevelDebug) {
-				rt.Logger.DebugContext(ctx, "server response", "command", msg)
+			if s.logger.Enabled(ctx, slog.LevelDebug) {
+				s.logger.DebugContext(ctx, "server response", "command", msg)
 			} else {
 				// just log the command, omit params
 				idx := len(msg)
 				if col := bytes.IndexByte(msg, ':'); col > -1 {
 					idx = col
 				}
-				rt.Logger.InfoContext(ctx, "server response", "command", msg[0:idx])
+				s.logger.InfoContext(ctx, "server response", "command", msg[0:idx])
 			}
 		}
 	}
 }
 
-func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state.Session, error) {
+func (s *Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state.Session, error) {
 	clientFrame, err := clientFlap.ReceiveFLAP()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
@@ -410,7 +501,7 @@ func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state
 		return nil, errors.New("expected toc_signon")
 	}
 
-	sessBOS, reply := rt.BOSProxy.Signon(ctx, args)
+	sessBOS, reply := s.bosProxy.Signon(ctx, args)
 	for _, m := range reply {
 		if err := clientFlap.SendDataFrame([]byte(m)); err != nil {
 			return nil, fmt.Errorf("clientFlap.SendDataFrame: %w", err)
@@ -422,7 +513,7 @@ func (rt Server) login(ctx context.Context, clientFlap *wire.FlapClient) (*state
 
 // initFLAP sets up a new FLAP connection. It returns a flap client if the
 // connection successfully initialized.
-func (rt Server) initFLAP(rw io.ReadWriter) (*wire.FlapClient, error) {
+func (s *Server) initFLAP(rw io.ReadWriter) (*wire.FlapClient, error) {
 	expected := "FLAPON\r\n\r\n"
 	buf := make([]byte, len(expected))
 
@@ -444,24 +535,4 @@ func (rt Server) initFLAP(rw io.ReadWriter) (*wire.FlapClient, error) {
 	}
 
 	return clientFlap, nil
-}
-
-// waitForShutdown returns when either the wg completes or 5 seconds has
-// passed. This is a temporary hack to ensure that the server shuts down even
-// if all the TCP connections do not drain. Return true if the shutdown is
-// clean.
-func waitForShutdown(wg *sync.WaitGroup) bool {
-	ch := make(chan struct{})
-
-	go func() {
-		wg.Wait() // goroutine leak if wg never completes
-		close(ch)
-	}()
-
-	select {
-	case <-ch:
-		return true
-	case <-time.After(time.Second * 5):
-		return false
-	}
 }

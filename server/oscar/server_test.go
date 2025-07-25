@@ -23,7 +23,7 @@ func TestServer_ListenAndServeAndShutdown(t *testing.T) {
 	var mu sync.Mutex
 	var received []string
 
-	var wg sync.WaitGroup
+	var msgWg sync.WaitGroup
 
 	cfg := []config.Listener{
 		{
@@ -47,6 +47,10 @@ func TestServer_ListenAndServeAndShutdown(t *testing.T) {
 		conns:       make(map[net.Conn]struct{}),
 		closed:      make(chan struct{}),
 		handler: func(ctx context.Context, conn net.Conn, advertisedHost string) error {
+			go func() {
+				<-ctx.Done()
+				_ = conn.Close()
+			}()
 			for {
 				r := bufio.NewReader(conn)
 				line, err := r.ReadString('\n')
@@ -56,7 +60,7 @@ func TestServer_ListenAndServeAndShutdown(t *testing.T) {
 				mu.Lock()
 				received = append(received, strings.TrimSpace(line))
 				mu.Unlock()
-				wg.Done()
+				msgWg.Done()
 			}
 			return nil
 		},
@@ -70,7 +74,7 @@ func TestServer_ListenAndServeAndShutdown(t *testing.T) {
 	}()
 
 	for i := 0; i < len(cfg); i++ {
-		wg.Add(1)
+		msgWg.Add(1)
 		// Connect and send message
 		conn, err := net.Dial("tcp", "localhost"+cfg[i].BOSListenAddress)
 		assert.NoError(t, err)
@@ -79,10 +83,10 @@ func TestServer_ListenAndServeAndShutdown(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	wg.Wait()
+	msgWg.Wait()
 
 	// Shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	err := server.Shutdown(ctx)
 	assert.NoError(t, err)

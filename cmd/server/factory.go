@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
+	"github.com/mk6i/retro-aim-server/server/kerberos"
 	"golang.org/x/time/rate"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -191,9 +192,10 @@ func OSCAR(deps Container) *oscar.Server {
 }
 
 // KerberosAPI creates an HTTP server for the Kerberos server.
-func KerberosAPI(deps Container) *oscar.KerberosServer {
+func KerberosAPI(deps Container) *kerberos.Server {
+	logger := deps.logger.With("svc", "kerberos")
 	authService := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, deps.chatSessionManager, deps.sqLiteUserStore, deps.rateLimitClasses)
-	return oscar.NewKerberosServer(deps.Listeners, deps.logger, authService)
+	return kerberos.NewKerberosServer(deps.Listeners, logger, authService)
 }
 
 // MgmtAPI creates an HTTP server for the management API.
@@ -203,18 +205,19 @@ func MgmtAPI(deps Container) *http.Server {
 		Commit:  commit,
 		Date:    date,
 	}
+	logger := deps.logger.With("svc", "API")
 	return http.NewManagementAPI(bld, deps.cfg.APIListener, deps.sqLiteUserStore, deps.inMemorySessionManager, deps.sqLiteUserStore,
 		deps.sqLiteUserStore, deps.chatSessionManager, deps.sqLiteUserStore, deps.inMemorySessionManager,
-		deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.logger)
+		deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, logger)
 }
 
 // TOC creates a TOC server.
-func TOC(deps Container) toc.Server {
+func TOC(deps Container) *toc.Server {
 	logger := deps.logger.With("svc", "TOC")
-	return toc.Server{
-		Logger:    logger,
-		Listeners: strings.Split(deps.cfg.TOCListeners, ","),
-		BOSProxy: toc.OSCARProxy{
+	return toc.NewServer(
+		strings.Split(deps.cfg.TOCListeners, ","),
+		logger,
+		toc.OSCARProxy{
 			AdminService: foodgroup.NewAdminService(
 				deps.sqLiteUserStore,
 				deps.sqLiteUserStore,
@@ -286,6 +289,6 @@ func TOC(deps Container) toc.Server {
 			SNACRateLimits:    deps.snacRateLimits,
 			HTTPIPRateLimiter: toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 		},
-		LoginIPRateLimiter: toc.NewIPRateLimiter(rate.Every(10*time.Minute), 10, 20*time.Minute),
-	}
+		toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
+	)
 }

@@ -29,7 +29,7 @@ func NewServer(
 	departureNotifier DepartureNotifier,
 	logger *slog.Logger,
 	onlineNotifier OnlineNotifier,
-	handler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, connectHere string) error,
+	handler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, advertisedHost string) error,
 	rateLimitUpdater RateLimitUpdater,
 	limits wire.SNACRateLimits,
 	limiter *IPRateLimiter,
@@ -67,10 +67,11 @@ type Server struct {
 	listenerCfg []config.Listener
 	listeners   []net.Listener
 
-	mu    sync.Mutex
-	conns map[net.Conn]struct{}
+	connMu sync.Mutex
+	conns  map[net.Conn]struct{}
 
-	wg sync.WaitGroup
+	connWg   sync.WaitGroup
+	listenWg sync.WaitGroup
 
 	shutdownCtx    context.Context
 	shutdownCancel context.CancelFunc
@@ -87,49 +88,20 @@ func (s *Server) ListenAndServe() error {
 			s.shutdownCancel()
 			return fmt.Errorf("failed to listen on %s: %w", cfg.BOSListenAddress, err)
 		}
+		s.logger.Info(
+			"starting server",
+			"listen_address",
+			cfg.BOSListenAddress,
+			"advertised_host",
+			cfg.BOSAdvertisedHost,
+		)
 		s.listeners = append(s.listeners, ln)
-		s.logger.Info("starting server", "listen_address", cfg.BOSListenAddress, "advertised_host", cfg.BOSAdvertisedHost)
+		s.listenWg.Add(1)
 		go s.acceptLoop(ln, cfg.BOSAdvertisedHost)
 	}
 
 	<-s.closed // block until Shutdown is called
 	return nil
-}
-
-func (s *Server) acceptLoop(ln net.Listener, advertisedHost string) {
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			if errors.Is(err, net.ErrClosed) {
-				return
-			}
-			s.logger.Error("accept error", "err", err.Error())
-			continue
-		}
-
-		// track connection
-		s.mu.Lock()
-		s.conns[conn] = struct{}{}
-		s.mu.Unlock()
-
-		s.wg.Add(1)
-		go s.handleConnection(s.shutdownCtx, conn, advertisedHost)
-	}
-}
-
-func (s *Server) handleConnection(ctx context.Context, conn net.Conn, advertisedHost string) {
-	defer func() {
-		// untrack connections
-		s.mu.Lock()
-		delete(s.conns, conn)
-		s.mu.Unlock()
-
-		_ = conn.Close()
-		s.wg.Done()
-	}()
-	if err := s.handler(ctx, conn, advertisedHost); err != nil {
-		s.logger.InfoContext(ctx, "user session failed", "err", err.Error())
-	}
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
@@ -140,7 +112,8 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	// Wait for handlers to complete
 	done := make(chan struct{})
 	go func() {
-		s.wg.Wait()
+		s.connWg.Wait()
+		s.listenWg.Wait()
 		close(done)
 	}()
 
@@ -154,6 +127,44 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	close(s.closed)
 
 	return nil
+}
+
+func (s *Server) acceptLoop(ln net.Listener, advertisedHost string) {
+	defer s.listenWg.Done()
+
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return
+			}
+			s.logger.Error("accept error", "err", err.Error())
+			continue
+		}
+
+		// track connection
+		s.connMu.Lock()
+		s.conns[conn] = struct{}{}
+		s.connMu.Unlock()
+
+		s.connWg.Add(1)
+		go s.handleConnection(s.shutdownCtx, conn, advertisedHost)
+	}
+}
+
+func (s *Server) handleConnection(ctx context.Context, conn net.Conn, advertisedHost string) {
+	defer func() {
+		// untrack connections
+		s.connMu.Lock()
+		delete(s.conns, conn)
+		s.connMu.Unlock()
+
+		_ = conn.Close()
+		s.connWg.Done()
+	}()
+	if err := s.handler(ctx, conn, advertisedHost); err != nil {
+		s.logger.InfoContext(ctx, "user session failed", "err", err.Error())
+	}
 }
 
 func (s *Server) cleanupListeners() {
@@ -176,14 +187,14 @@ type oscarServer struct {
 	*IPRateLimiter
 }
 
-func (s oscarServer) routeConnection(ctx context.Context, rwc net.Conn, advertisedHost string) error {
-	ip, _, err := net.SplitHostPort(rwc.RemoteAddr().String())
+func (s oscarServer) routeConnection(ctx context.Context, conn net.Conn, advertisedHost string) error {
+	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
 	if err != nil {
 		s.Logger.Error("failed to parse remote address", "err", err.Error())
 		return err
 	}
 
-	flapc := wire.NewFlapClient(100, rwc, rwc)
+	flapc := wire.NewFlapClient(100, conn, conn)
 
 	if err := flapc.SendSignonFrame(nil); err != nil {
 		return err
@@ -194,13 +205,19 @@ func (s oscarServer) routeConnection(ctx context.Context, rwc net.Conn, advertis
 	}
 
 	if flap.HasTag(wire.OServiceTLVTagsLoginCookie) {
-		return s.connectToService(ctx, flap, flapc, rwc, advertisedHost)
+		return s.connectToService(ctx, flap, flapc, conn, advertisedHost)
 	}
 
-	return s.doAuthStuff(ctx, flap, ip, flapc, advertisedHost)
+	return s.doAuthStuff(ctx, flap, ip, conn, flapc, advertisedHost)
 }
 
-func (s oscarServer) connectToService(ctx context.Context, flap wire.FLAPSignonFrame, flapc *wire.FlapClient, rwc net.Conn, advertisedHost string) error {
+func (s oscarServer) connectToService(
+	ctx context.Context,
+	flap wire.FLAPSignonFrame,
+	flapc *wire.FlapClient,
+	conn net.Conn,
+	advertisedHost string,
+) error {
 	authCookie, ok := flap.Bytes(wire.OServiceTLVTagsLoginCookie)
 	if !ok {
 		return errors.New("unable to get session id from payload")
@@ -286,7 +303,7 @@ func (s oscarServer) connectToService(ctx context.Context, flap wire.FLAPSignonF
 		return err
 	}
 
-	return s.dispatchIncomingMessages(ctx, cookie.Service, sess, flapc, rwc, advertisedHost)
+	return s.dispatchIncomingMessages(ctx, cookie.Service, sess, flapc, conn, advertisedHost)
 }
 
 func (s oscarServer) receiveSessMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient) {
@@ -305,7 +322,14 @@ func (s oscarServer) receiveSessMessages(ctx context.Context, sess *state.Sessio
 	}
 }
 
-func (s oscarServer) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame, ip string, flapc *wire.FlapClient, advertisedHost string) error {
+func (s oscarServer) doAuthStuff(
+	ctx context.Context,
+	flap wire.FLAPSignonFrame,
+	ip string,
+	conn net.Conn,
+	flapc *wire.FlapClient,
+	advertisedHost string,
+) error {
 	if ok, isBUCP := s.Allow(ip); !ok {
 		s.Logger.Error("user rate limited at login", "remote", ip)
 		tlv := wire.TLVRestBlock{
@@ -329,10 +353,10 @@ func (s oscarServer) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame,
 		}
 	}
 
-	//// auth must complete within the next 30 seconds
-	//if err := conn.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
-	//	return fmt.Errorf("failed to set deadline: %w", err)
-	//}
+	// auth must complete within the next 30 seconds
+	if err := conn.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
+		return fmt.Errorf("failed to set deadline: %w", err)
+	}
 
 	// decide whether the client is using BUCP or FLAP authentication based on
 	// the presence of the screen name TLV. this block used to check for the
@@ -348,15 +372,20 @@ func (s oscarServer) doAuthStuff(ctx context.Context, flap wire.FLAPSignonFrame,
 	return s.processBUCPAuth(ctx, flapc, advertisedHost)
 }
 
-func (s oscarServer) processFLAPAuth(ctx context.Context, signonFrame wire.FLAPSignonFrame, flapc *wire.FlapClient, connectHere string) error {
-	tlv, err := s.AuthService.FLAPLogin(ctx, signonFrame, state.NewStubUser, connectHere)
+func (s oscarServer) processFLAPAuth(
+	ctx context.Context,
+	signonFrame wire.FLAPSignonFrame,
+	flapc *wire.FlapClient,
+	advertisedHost string,
+) error {
+	tlv, err := s.AuthService.FLAPLogin(ctx, signonFrame, state.NewStubUser, advertisedHost)
 	if err != nil {
 		return err
 	}
 	return flapc.SendSignoffFrame(tlv)
 }
 
-func (s oscarServer) processBUCPAuth(ctx context.Context, flapc *wire.FlapClient, connectHere string) error {
+func (s oscarServer) processBUCPAuth(ctx context.Context, flapc *wire.FlapClient, advertisedHost string) error {
 	frames := 0
 
 	for {
@@ -407,7 +436,7 @@ func (s oscarServer) processBUCPAuth(ctx context.Context, flapc *wire.FlapClient
 				if err := wire.UnmarshalBE(&loginRequest, buf); err != nil {
 					return err
 				}
-				outSNAC, err := s.BUCPLogin(ctx, loginRequest, state.NewStubUser, connectHere)
+				outSNAC, err := s.BUCPLogin(ctx, loginRequest, state.NewStubUser, advertisedHost)
 				if err != nil {
 					return err
 				}
@@ -444,8 +473,14 @@ func sendInvalidSNACErr(frameIn wire.SNACFrame, rw ResponseWriter) error {
 // This function ensures that the same sequence number is incremented for both
 // types of messages. The function terminates upon receiving a connection error
 // or when the session closes.
-func (s oscarServer) dispatchIncomingMessages(ctx context.Context, fg uint16, sess *state.Session, flapc *wire.FlapClient, r io.Reader, advertisedHost string) error {
-
+func (s oscarServer) dispatchIncomingMessages(
+	ctx context.Context,
+	fg uint16,
+	sess *state.Session,
+	flapc *wire.FlapClient,
+	r io.ReadCloser,
+	advertisedHost string,
+) error {
 	defer func() {
 		s.Logger.InfoContext(ctx, "user disconnected")
 	}()
@@ -521,10 +556,10 @@ func (s oscarServer) dispatchIncomingMessages(ctx context.Context, fg uint16, se
 				return fmt.Errorf("got unknown FLAP frame type. flap: %v", flap)
 			}
 		case <-time.After(1 * time.Second):
-			msgs := s.RateLimitUpdater.RateLimitUpdates(ctx, sess, time.Now())
-			for _, rate := range msgs {
-				if err := flapc.SendSNAC(rate.Frame, rate.Body); err != nil {
-					middleware.LogRequestError(ctx, s.Logger, rate.Frame, err)
+			updates := s.RateLimitUpdater.RateLimitUpdates(ctx, sess, time.Now())
+			for _, update := range updates {
+				if err := flapc.SendSNAC(update.Frame, update.Body); err != nil {
+					middleware.LogRequestError(ctx, s.Logger, update.Frame, err)
 					return err
 				}
 			}

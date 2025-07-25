@@ -146,7 +146,7 @@ package oscar
 //	h := OServiceHandler{
 //		OServiceService: svc,
 //		RouteLogger: middleware.RouteLogger{
-//			Logger: slog.Default(),
+//			logger: slog.Default(),
 //		},
 //	}
 //
@@ -191,7 +191,7 @@ package oscar
 //	h := OServiceHandler{
 //		OServiceService: svc,
 //		RouteLogger: middleware.RouteLogger{
-//			Logger: slog.Default(),
+//			logger: slog.Default(),
 //		},
 //	}
 //
@@ -242,7 +242,7 @@ package oscar
 //	h := OServiceHandler{
 //		OServiceService: svc,
 //		RouteLogger: middleware.RouteLogger{
-//			Logger: slog.Default(),
+//			logger: slog.Default(),
 //		},
 //	}
 //
@@ -277,7 +277,7 @@ package oscar
 //	h := OServiceHandler{
 //		OServiceService: svc,
 //		RouteLogger: middleware.RouteLogger{
-//			Logger: slog.Default(),
+//			logger: slog.Default(),
 //		},
 //	}
 //
@@ -322,7 +322,7 @@ package oscar
 //	h := OServiceHandler{
 //		OServiceService: svc,
 //		RouteLogger: middleware.RouteLogger{
-//			Logger: slog.Default(),
+//			logger: slog.Default(),
 //		},
 //	}
 //
@@ -366,7 +366,7 @@ package oscar
 //	h := OServiceHandler{
 //		OServiceService: svc,
 //		RouteLogger: middleware.RouteLogger{
-//			Logger: slog.Default(),
+//			logger: slog.Default(),
 //		},
 //	}
 //
@@ -392,7 +392,7 @@ package oscar
 //
 //	h := OServiceHandler{
 //		RouteLogger: middleware.RouteLogger{
-//			Logger: slog.Default(),
+//			logger: slog.Default(),
 //		},
 //	}
 //
@@ -421,7 +421,7 @@ package oscar
 //	h := OServiceHandler{
 //		OServiceService: svc,
 //		RouteLogger: middleware.RouteLogger{
-//			Logger: slog.Default(),
+//			logger: slog.Default(),
 //		},
 //	}
 //
