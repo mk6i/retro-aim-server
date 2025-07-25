@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"net"
 	"net/netip"
@@ -14,10 +13,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mk6i/retro-aim-server/config"
 	"github.com/patrickmn/go-cache"
 	"golang.org/x/time/rate"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -52,16 +51,19 @@ func NewServer(
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Server{
-		listenerCfg:    listenerCfg,
-		conns:          make(map[net.Conn]struct{}),
 		closed:         make(chan struct{}),
+		conns:          make(map[net.Conn]struct{}),
 		handler:        oscarSvc.routeConnection,
-		shutdownCtx:    ctx,
+		listenerCfg:    listenerCfg,
+		logger:         logger,
 		shutdownCancel: cancel,
+		shutdownCtx:    ctx,
 	}
 }
 
 type Server struct {
+	logger *slog.Logger
+
 	listenerCfg []config.Listener
 	listeners   []net.Listener
 
@@ -77,17 +79,24 @@ type Server struct {
 	handler func(ctx context.Context, conn net.Conn, advertisedHost string) error
 }
 
+func (s *Server) Start(ctx context.Context) error {
+	go func() {
+		<-ctx.Done()
+		_ = s.Shutdown(ctx)
+	}()
+	return s.ListenAndServe()
+}
+
 func (s *Server) ListenAndServe() error {
 	for _, cfg := range s.listenerCfg {
 		ln, err := net.Listen("tcp", cfg.BOSListenAddress)
 		if err != nil {
-			log.Printf("Failed to listen on cfg %v: %v", cfg, err)
 			s.cleanupConnections()
 			s.shutdownCancel()
-			return err
+			return fmt.Errorf("failed to listen on %s: %w", cfg.BOSListenAddress, err)
 		}
 		s.listeners = append(s.listeners, ln)
-		log.Printf("Listening on %s", cfg.BOSListenAddress)
+		s.logger.Info("starting server", "listen_host", cfg.BOSListenAddress, "oscar_host", cfg.BOSListenAddress)
 		go s.acceptLoop(ln, cfg.BOSAdvertisedHost)
 	}
 
@@ -102,7 +111,7 @@ func (s *Server) acceptLoop(ln net.Listener, advertisedHost string) {
 			if errors.Is(err, net.ErrClosed) {
 				return
 			}
-			log.Printf("Accept error: %v", err)
+			s.logger.Error("accept error", "err", err.Error())
 			continue
 		}
 
@@ -127,11 +136,13 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn, advertised
 
 		_ = conn.Close()
 	}()
-	s.handler(ctx, conn, advertisedHost)
+	if err := s.handler(ctx, conn, advertisedHost); err != nil {
+		s.logger.InfoContext(ctx, "user session failed", "err", err.Error())
+	}
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
-	log.Println("Initiating graceful shutdown...")
+	s.logger.Debug("Initiating graceful shutdown...")
 	s.shutdownCancel()
 	s.cleanupConnections()
 
@@ -144,9 +155,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 	select {
 	case <-done:
-		log.Println("All connections drained.")
+		s.logger.Debug("All connections drained.")
 	case <-ctx.Done():
-		log.Println("Shutdown timeout reached.")
+		s.logger.Debug("Shutdown timeout reached.")
 	}
 
 	close(s.closed)
@@ -171,7 +182,7 @@ func (s *Server) cleanupConnections() {
 type oscarServer struct {
 	AuthService
 	BuddyListRegistry
-	ChatSessionManager *state.InMemoryChatSessionManager
+	ChatSessionManager
 	DepartureNotifier
 	Logger *slog.Logger
 	OnlineNotifier
@@ -182,10 +193,6 @@ type oscarServer struct {
 }
 
 func (s oscarServer) routeConnection(ctx context.Context, rwc net.Conn, advertisedHost string) error {
-	defer func() {
-		_ = rwc.Close()
-	}()
-
 	ip, _, err := net.SplitHostPort(rwc.RemoteAddr().String())
 	if err != nil {
 		s.Logger.Error("failed to parse remote address", "err", err.Error())

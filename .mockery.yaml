@@ -26,6 +26,15 @@ packages:
       RateLimitUpdater:
         config:
           filename: "mock_rate_limit_updater_test.go"
+      BuddyListRegistry:
+        config:
+          filename: "mock_buddy_list_registry_test.go"
+      DepartureNotifier:
+        config:
+          filename: "mock_departure_notifier_test.go"
+      ChatSessionManager:
+        config:
+          filename: "mock_chat_session_manager_test.go"
   github.com/mk6i/retro-aim-server/server/http:
     interfaces:
       AccountManager:

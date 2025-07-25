@@ -20,17 +20,17 @@ func (_m *mockOnlineNotifier) EXPECT() *mockOnlineNotifier_Expecter {
 	return &mockOnlineNotifier_Expecter{mock: &_m.Mock}
 }
 
-// HostOnline provides a mock function with no fields
-func (_m *mockOnlineNotifier) HostOnline() wire.SNACMessage {
-	ret := _m.Called()
+// HostOnline provides a mock function with given fields: service
+func (_m *mockOnlineNotifier) HostOnline(service uint16) wire.SNACMessage {
+	ret := _m.Called(service)
 
 	if len(ret) == 0 {
 		panic("no return value specified for HostOnline")
 	}
 
 	var r0 wire.SNACMessage
-	if rf, ok := ret.Get(0).(func() wire.SNACMessage); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(uint16) wire.SNACMessage); ok {
+		r0 = rf(service)
 	} else {
 		r0 = ret.Get(0).(wire.SNACMessage)
 	}
@@ -44,13 +44,14 @@ type mockOnlineNotifier_HostOnline_Call struct {
 }
 
 // HostOnline is a helper method to define mock.On call
-func (_e *mockOnlineNotifier_Expecter) HostOnline() *mockOnlineNotifier_HostOnline_Call {
-	return &mockOnlineNotifier_HostOnline_Call{Call: _e.mock.On("HostOnline")}
+//   - service uint16
+func (_e *mockOnlineNotifier_Expecter) HostOnline(service interface{}) *mockOnlineNotifier_HostOnline_Call {
+	return &mockOnlineNotifier_HostOnline_Call{Call: _e.mock.On("HostOnline", service)}
 }
 
-func (_c *mockOnlineNotifier_HostOnline_Call) Run(run func()) *mockOnlineNotifier_HostOnline_Call {
+func (_c *mockOnlineNotifier_HostOnline_Call) Run(run func(service uint16)) *mockOnlineNotifier_HostOnline_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(uint16))
 	})
 	return _c
 }
@@ -60,7 +61,7 @@ func (_c *mockOnlineNotifier_HostOnline_Call) Return(_a0 wire.SNACMessage) *mock
 	return _c
 }
 
-func (_c *mockOnlineNotifier_HostOnline_Call) RunAndReturn(run func() wire.SNACMessage) *mockOnlineNotifier_HostOnline_Call {
+func (_c *mockOnlineNotifier_HostOnline_Call) RunAndReturn(run func(uint16) wire.SNACMessage) *mockOnlineNotifier_HostOnline_Call {
 	_c.Call.Return(run)
 	return _c
 }
