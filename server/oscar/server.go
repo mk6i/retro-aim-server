@@ -67,8 +67,8 @@ type Server struct {
 	listenerCfg []config.Listener
 	listeners   []net.Listener
 
-	connsMu sync.Mutex
-	conns   map[net.Conn]struct{}
+	mu    sync.Mutex
+	conns map[net.Conn]struct{}
 
 	wg sync.WaitGroup
 
@@ -79,24 +79,16 @@ type Server struct {
 	handler func(ctx context.Context, conn net.Conn, advertisedHost string) error
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	go func() {
-		<-ctx.Done()
-		_ = s.Shutdown(ctx)
-	}()
-	return s.ListenAndServe()
-}
-
 func (s *Server) ListenAndServe() error {
 	for _, cfg := range s.listenerCfg {
 		ln, err := net.Listen("tcp", cfg.BOSListenAddress)
 		if err != nil {
-			s.cleanupConnections()
+			s.cleanupListeners()
 			s.shutdownCancel()
 			return fmt.Errorf("failed to listen on %s: %w", cfg.BOSListenAddress, err)
 		}
 		s.listeners = append(s.listeners, ln)
-		s.logger.Info("starting server", "listen_host", cfg.BOSListenAddress, "oscar_host", cfg.BOSListenAddress)
+		s.logger.Info("starting server", "listen_address", cfg.BOSListenAddress, "advertised_host", cfg.BOSAdvertisedHost)
 		go s.acceptLoop(ln, cfg.BOSAdvertisedHost)
 	}
 
@@ -116,9 +108,9 @@ func (s *Server) acceptLoop(ln net.Listener, advertisedHost string) {
 		}
 
 		// track connection
-		s.connsMu.Lock()
+		s.mu.Lock()
 		s.conns[conn] = struct{}{}
-		s.connsMu.Unlock()
+		s.mu.Unlock()
 
 		s.wg.Add(1)
 		go s.handleConnection(s.shutdownCtx, conn, advertisedHost)
@@ -127,14 +119,13 @@ func (s *Server) acceptLoop(ln net.Listener, advertisedHost string) {
 
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn, advertisedHost string) {
 	defer func() {
-		s.wg.Done()
-
 		// untrack connections
-		s.connsMu.Lock()
+		s.mu.Lock()
 		delete(s.conns, conn)
-		s.connsMu.Unlock()
+		s.mu.Unlock()
 
 		_ = conn.Close()
+		s.wg.Done()
 	}()
 	if err := s.handler(ctx, conn, advertisedHost); err != nil {
 		s.logger.InfoContext(ctx, "user session failed", "err", err.Error())
@@ -144,7 +135,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn, advertised
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.logger.Debug("Initiating graceful shutdown...")
 	s.shutdownCancel()
-	s.cleanupConnections()
+	s.cleanupListeners()
 
 	// Wait for handlers to complete
 	done := make(chan struct{})
@@ -155,9 +146,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 	select {
 	case <-done:
-		s.logger.Debug("All connections drained.")
+		s.logger.Info("shutdown complete")
 	case <-ctx.Done():
-		s.logger.Debug("Shutdown timeout reached.")
+		s.logger.Info("shutdown complete, but connections didn't close cleanly")
 	}
 
 	close(s.closed)
@@ -165,18 +156,11 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) cleanupConnections() {
+func (s *Server) cleanupListeners() {
 	for _, ln := range s.listeners {
 		_ = ln.Close()
 	}
 	s.listeners = nil
-
-	// Close all active connections
-	s.connsMu.Lock()
-	for conn := range s.conns {
-		_ = conn.Close()
-	}
-	s.connsMu.Unlock()
 }
 
 type oscarServer struct {

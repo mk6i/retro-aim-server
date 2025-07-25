@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 	"golang.org/x/sync/errgroup"
@@ -64,10 +65,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	start(OSCAR(deps))
+	oscar := OSCAR(deps)
+	g.Go(oscar.ListenAndServe)
+
 	start(KerberosAPI(deps))
 	start(MgmtAPI(deps))
 	start(TOC(deps))
+
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = oscar.Shutdown(shutdownCtx)
+	}()
 
 	if err := g.Wait(); err != nil {
 		fmt.Println(err.Error())
