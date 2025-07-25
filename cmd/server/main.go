@@ -54,7 +54,7 @@ func main() {
 		Start(ctx context.Context) error
 	}
 
-	var g errgroup.Group
+	g, ctx := errgroup.WithContext(ctx)
 	start := func(fn starter) {
 		g.Go(func() error { return fn.Start(ctx) })
 	}
@@ -70,17 +70,17 @@ func main() {
 
 	start(KerberosAPI(deps))
 	start(MgmtAPI(deps))
-	start(TOC(deps))
+	//start(TOC(deps))
 
-	go func() {
-		<-ctx.Done()
+	select {
+	case <-ctx.Done():
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = oscar.Shutdown(shutdownCtx)
-	}()
+	}
 
-	if err := g.Wait(); err != nil {
-		fmt.Println(err.Error())
+	if err = g.Wait(); err != nil {
+		deps.logger.Error("server initialization failed", "err", err.Error())
 		os.Exit(1)
 	}
 }
