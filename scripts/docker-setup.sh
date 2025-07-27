@@ -15,7 +15,7 @@ NC='\033[0m'
 log()    { printf "%b\n" "${CYAN}[*] $1${NC}"; }
 success(){ printf "%b\n" "${GREEN}[✔] $1${NC}"; }
 warn()   { printf "%b\n" "${YELLOW}[!] $1${NC}"; }
-error()  { printf "%b\n" "${RED}[✖] $1${NC}"; exit 1; }
+error()  { printf "%b\n" "${RED}[✖] $1${NC}"; return 1; }
 
 check_os() {
     case "$(uname -s)" in
@@ -23,7 +23,7 @@ check_os() {
             : # supported
             ;;
         *)
-            error "Unsupported OS: $(uname -s)"
+            error "Unsupported OS: $(uname -s)" || return 1
             ;;
     esac
 }
@@ -31,39 +31,40 @@ check_os() {
 check_prereqs() {
     log "Checking for required tools..."
     for cmd in git docker make; do
-        command -v "$cmd" >/dev/null 2>&1 || error "Missing required command: $cmd"
+        command -v "$cmd" >/dev/null 2>&1 || error "Missing required command: $cmd" || return 1
     done
     success "All prerequisites are installed."
 }
 
 resolve_repo_root() {
-    # get script dir
     SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-    # If run from within the repo, detect root
-    if [ -d "$SCRIPT_DIR/../.git" ]; then
-        REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
+
+    # If this script is inside a Git repo already, use that
+    if git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        REPO_ROOT=$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)
     else
-        # Assume running via curl; clone fresh repo
         TMP_DIR="retro-aim-server"
-        if [ ! -d "$TMP_DIR" ]; then
+        if [ -d "$TMP_DIR/.git" ]; then
+            warn "Directory '$TMP_DIR' is already a git repo. Using existing directory."
+        else
             log "Cloning Retro AIM Server repository..."
-            git clone https://github.com/mk6i/retro-aim-server.git "$TMP_DIR" || error "Failed to clone repository"
+            git clone https://github.com/mk6i/retro-aim-server.git "$TMP_DIR" || error "Failed to clone repository" || return 1
         fi
         REPO_ROOT=$(cd "$TMP_DIR" && pwd)
     fi
-    cd "$REPO_ROOT" || error "Failed to enter repository directory"
+    cd "$REPO_ROOT" || error "Failed to enter repository directory" || return 1
 }
 
 build_images() {
     log "Building Docker images..."
-    make docker-images || error "Docker image build failed"
+    make docker-images || error "Docker image build failed" || return 1
     success "Docker images built successfully."
 }
 
 setup_ssl_cert() {
     printf "%b" "${YELLOW}Enter the OSCAR_HOST (e.g., ras.dev): ${NC}"
     read -r OSCAR_HOST
-    [ -n "$OSCAR_HOST" ] || error "OSCAR_HOST is required"
+    [ -n "$OSCAR_HOST" ] || error "OSCAR_HOST is required" || return 1
 
     log "SSL certificate options:"
     printf "%b\n" "${YELLOW}1) Generate self-signed certificate"
@@ -75,28 +76,28 @@ setup_ssl_cert() {
         1)
             log "Generating self-signed SSL certificate for $OSCAR_HOST..."
             rm -rf certs/*
-            OSCAR_HOST="$OSCAR_HOST" docker compose run --rm cert-gen || error "Failed to generate self-signed cert"
+            OSCAR_HOST="$OSCAR_HOST" docker compose run --rm cert-gen || error "Failed to generate self-signed cert" || return 1
             success "Self-signed certificate generated."
             ;;
         2)
-            [ -f "certs/server.pem" ] || error "certs/server.pem not found. Please place your PEM file there and rerun."
+            [ -f "certs/server.pem" ] || error "certs/server.pem not found. Please place your PEM file there and rerun." || return 1
             success "Using existing certificate at certs/server.pem."
             ;;
         *)
-            error "Invalid option for certificate setup."
+            error "Invalid option for certificate setup." || return 1
             ;;
     esac
 }
 
 generate_nss() {
     log "Generating NSS certificate database..."
-    make docker-nss || error "Failed to generate NSS cert DB"
+    make docker-nss || error "Failed to generate NSS cert DB" || return 1
     success "NSS certificate database created at certs/nss/"
 }
 
 start_server() {
     log "Starting Retro AIM Server with hostname $OSCAR_HOST..."
-    make docker-run OSCAR_HOST="$OSCAR_HOST" || error "Failed to start server"
+    make docker-run OSCAR_HOST="$OSCAR_HOST" || error "Failed to start server" || return 1
     success "Retro AIM Server is running."
 }
 
@@ -121,15 +122,15 @@ ${NC}"
 }
 
 main() {
-    check_os
-    check_prereqs
-    resolve_repo_root
-    build_images
-    setup_ssl_cert
-    generate_nss
-    start_server
+    check_os || return 1
+    check_prereqs || return 1
+    resolve_repo_root || return 1
+    build_images || return 1
+    setup_ssl_cert || return 1
+    generate_nss || return 1
+    start_server || return 1
     final_steps
 }
 
-main "$@"
+main "$@" || true
 
