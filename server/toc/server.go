@@ -363,8 +363,6 @@ func (s *Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 
 	chatRegistry := NewChatRegistry()
 
-	defer s.bosProxy.Signout(context.Background(), sessBOS, chatRegistry)
-
 	return s.handleTOCRequest(ctx, closeConn, sessBOS, chatRegistry, clientFlap)
 }
 
