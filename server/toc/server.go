@@ -81,6 +81,7 @@ func (l *channelListener) Accept() (net.Conn, error) {
 // Close closes the listener. Since channelListener does not manage an actual
 // network connection, this is a no-op and always returns nil.
 func (l *channelListener) Close() error {
+	close(l.ch)
 	return nil
 }
 
@@ -138,7 +139,7 @@ func NewServer(listenerCfg []string, logger *slog.Logger, BOSProxy OSCARProxy, i
 		s.servers = append(s.servers, &http.Server{
 			Handler: BOSProxy.NewServeMux(),
 			BaseContext: func(net.Listener) context.Context {
-				return context.Background()
+				return s.shutdownCtx
 			},
 		})
 	}
@@ -171,11 +172,10 @@ type Server struct {
 func (s *Server) ListenAndServe() error {
 	g, ctx := errgroup.WithContext(s.shutdownCtx)
 
-	for _, cfg := range s.listenerCfg {
+	for i, cfg := range s.listenerCfg {
 		ln, err := net.Listen("tcp", cfg)
 		if err != nil {
 			s.cleanupListeners()
-			fmt.Println("shutting down...")
 			s.shutdownCancel()
 			return fmt.Errorf("unable to start TOC server: %w", err)
 		}
@@ -186,18 +186,9 @@ func (s *Server) ListenAndServe() error {
 		s.listenWg.Add(1)
 
 		httpCh := make(chan net.Conn)
-		//defer close(httpCh)
-
-		httpServer := &http.Server{
-			Handler: s.bosProxy.NewServeMux(),
-			BaseContext: func(net.Listener) context.Context {
-				return ctx
-			},
-		}
 
 		g.Go(func() error {
-			if err := httpServer.Serve(&channelListener{ch: httpCh}); err != nil {
-				fmt.Println("Shutting down?")
+			if err := s.servers[i].Serve(&channelListener{ch: httpCh}); !errors.Is(err, http.ErrServerClosed) {
 				s.shutdownCancel()
 				return err
 			}
@@ -208,8 +199,6 @@ func (s *Server) ListenAndServe() error {
 			s.acceptLoop(ctx, ln, httpCh)
 			return nil
 		})
-
-		return nil
 	}
 
 	return g.Wait()
@@ -217,7 +206,6 @@ func (s *Server) ListenAndServe() error {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.logger.Debug("Initiating graceful shutdown...")
-	fmt.Println("shutting down...")
 	s.shutdownCancel()
 	s.cleanupListeners()
 
@@ -263,13 +251,6 @@ func (s *Server) acceptLoop(ctx context.Context, ln net.Listener, httpCh chan ne
 			continue
 		}
 
-		// track connection
-		s.connMu.Lock()
-		s.conns[conn] = struct{}{}
-		s.connMu.Unlock()
-
-		s.connWg.Add(1)
-
 		go func() {
 			if err := s.handleConnection(conn, ctx, httpCh); err != nil {
 				s.logger.InfoContext(ctx, "user session failed", "err", err.Error())
@@ -282,16 +263,6 @@ func (s *Server) acceptLoop(ctx context.Context, ln net.Listener, httpCh chan ne
 // starts with "FLAP", handle as TOC/FLAP; otherwise, dispatch for HTTP
 // processing.
 func (s *Server) handleConnection(conn net.Conn, ctx context.Context, httpCh chan net.Conn) error {
-	defer func() {
-		// untrack connections
-		s.connMu.Lock()
-		delete(s.conns, conn)
-		s.connMu.Unlock()
-
-		_ = conn.Close()
-		s.connWg.Done()
-	}()
-
 	bufCon := newBufferedConn(conn)
 
 	doFlap := "FLAP"
@@ -302,6 +273,23 @@ func (s *Server) handleConnection(conn net.Conn, ctx context.Context, httpCh cha
 
 	// handle TOC/FLAP
 	if string(buf) == doFlap {
+		defer func() {
+			// untrack connections
+			s.connMu.Lock()
+			delete(s.conns, conn)
+			s.connMu.Unlock()
+
+			_ = conn.Close()
+			s.connWg.Done()
+		}()
+
+		// track connection
+		s.connMu.Lock()
+		s.conns[conn] = struct{}{}
+		s.connMu.Unlock()
+
+		s.connWg.Add(1)
+
 		if err = s.dispatchFLAP(ctx, bufCon); err != nil {
 			switch {
 			case errors.Is(err, io.EOF):
@@ -375,7 +363,7 @@ func (s *Server) dispatchFLAP(ctx context.Context, conn net.Conn) error {
 
 	chatRegistry := NewChatRegistry()
 
-	defer s.bosProxy.Signout(ctx, sessBOS, chatRegistry)
+	defer s.bosProxy.Signout(context.Background(), sessBOS, chatRegistry)
 
 	return s.handleTOCRequest(ctx, closeConn, sessBOS, chatRegistry, clientFlap)
 }
