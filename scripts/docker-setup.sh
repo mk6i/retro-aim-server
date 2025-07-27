@@ -88,12 +88,8 @@ setup_ssl_cert() {
     log "SSL certificate options:"
     printf "%b\n" "${YELLOW}1) Generate self-signed certificate"
     printf "%b"   "2) Use existing PEM certificate at certs/server.pem${NC}\n"
-    printf "%b"   "${CYAN}Choose an option [1/2]: ${NC}"
-    if [ -t 0 ]; then
-        read -r cert_choice
-    else
-        read -r cert_choice < /dev/tty
-    fi
+
+    prompt cert_choice "${CYAN}Choose an option [1/2]: ${NC}" || return 1
 
     case "$cert_choice" in
         1)
@@ -135,7 +131,7 @@ Next Steps:
 2. Ensure clients can resolve '${OSCAR_HOST}' to your server IP.
    Add the following to each client's hosts file if DNS isn't used:
 
-${YELLOW}127.0.0.1 ${OSCAR_HOST}${NC}
+${YELLOW}127.0.0.1 $OSCAR_HOST${NC}
 
 ${GREEN}3. For AIM 6.x client setup instructions, see:
    https://github.com/mk6i/retro-aim-server/blob/main/docs/AIM6.md#aim-6265312-setup
