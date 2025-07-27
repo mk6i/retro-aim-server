@@ -17,6 +17,27 @@ success(){ printf "%b\n" "${GREEN}[✔] $1${NC}"; }
 warn()   { printf "%b\n" "${YELLOW}[!] $1${NC}"; }
 error()  { printf "%b\n" "${RED}[✖] $1${NC}"; return 1; }
 
+prompt() {
+    local varname=$1
+    local prompt_text=$2
+
+    if [ -t 0 ]; then
+        # Interactive shell
+        printf "%s" "$prompt_text"
+        read -r "$varname"
+    else
+        # Non-interactive shell (like curl | bash)
+        printf "%s" "$prompt_text" > /dev/tty
+        read -r "$varname" < /dev/tty
+    fi
+
+    if [ -z "${!varname}" ]; then
+        printf "%b\n" "${RED}[✖] Input required but not provided.${NC}" > /dev/tty
+        return 1
+    fi
+    printf "\n" > /dev/tty
+}
+
 check_os() {
     case "$(uname -s)" in
         Linux|Darwin)
@@ -62,15 +83,17 @@ build_images() {
 }
 
 setup_ssl_cert() {
-    printf "%b" "${YELLOW}Enter the OSCAR_HOST (e.g., ras.dev): ${NC}"
-    read -r OSCAR_HOST
-    [ -n "$OSCAR_HOST" ] || error "OSCAR_HOST is required" || return 1
+    prompt OSCAR_HOST "Enter the OSCAR_HOST (e.g., ras.dev): " || return 1
 
     log "SSL certificate options:"
     printf "%b\n" "${YELLOW}1) Generate self-signed certificate"
     printf "%b"   "2) Use existing PEM certificate at certs/server.pem${NC}\n"
     printf "%b"   "${CYAN}Choose an option [1/2]: ${NC}"
-    read -r cert_choice
+    if [ -t 0 ]; then
+        read -r cert_choice
+    else
+        read -r cert_choice < /dev/tty
+    fi
 
     case "$cert_choice" in
         1)
@@ -112,7 +135,7 @@ Next Steps:
 2. Ensure clients can resolve '${OSCAR_HOST}' to your server IP.
    Add the following to each client's hosts file if DNS isn't used:
 
-${YELLOW}127.0.0.1 $OSCAR_HOST${NC}
+${YELLOW}127.0.0.1 ${OSCAR_HOST}${NC}
 
 ${GREEN}3. For AIM 6.x client setup instructions, see:
    https://github.com/mk6i/retro-aim-server/blob/main/docs/AIM6.md#aim-6265312-setup
