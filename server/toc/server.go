@@ -65,23 +65,24 @@ func (b bufferedConn) Read(p []byte) (int, error) {
 // from a channel instead of a network socket. It is useful for attaching an
 // HTTP service to a connection on the fly.
 type channelListener struct {
-	ch chan net.Conn // Channel used to receive connections.
+	ch  chan net.Conn // Channel used to receive connections.
+	ctx context.Context
 }
 
 // Accept waits for and returns the next connection from the channel.
 // If the channel is closed, it returns io.EOF to indicate no more connections.
 func (l *channelListener) Accept() (net.Conn, error) {
-	ch, ok := <-l.ch
-	if !ok {
+	select {
+	case <-l.ctx.Done():
 		return nil, io.EOF
+	case ch := <-l.ch:
+		return ch, io.EOF
 	}
-	return ch, nil
 }
 
 // Close closes the listener. Since channelListener does not manage an actual
 // network connection, this is a no-op and always returns nil.
 func (l *channelListener) Close() error {
-	close(l.ch)
 	return nil
 }
 
@@ -188,7 +189,11 @@ func (s *Server) ListenAndServe() error {
 		httpCh := make(chan net.Conn)
 
 		g.Go(func() error {
-			if err := s.servers[i].Serve(&channelListener{ch: httpCh}); !errors.Is(err, http.ErrServerClosed) {
+			cl := &channelListener{
+				ch:  httpCh,
+				ctx: s.shutdownCtx,
+			}
+			if err := s.servers[i].Serve(cl); !errors.Is(err, http.ErrServerClosed) {
 				s.shutdownCancel()
 				return err
 			}
