@@ -45,8 +45,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		{
 			name: "AIM account exists, correct password, login OK",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "EXTERNAL://127.0.0.1:1234",
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -69,7 +68,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: func() []byte {
-								loginCookie := bosCookie{
+								loginCookie := state.ServerCookie{
 									ScreenName: user.DisplayScreenName,
 								}
 								buf := &bytes.Buffer{}
@@ -100,8 +99,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		{
 			name: "ICQ account exists, correct password, login OK",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -125,7 +123,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: func() []byte {
-								loginCookie := bosCookie{
+								loginCookie := state.ServerCookie{
 									ScreenName: user.DisplayScreenName,
 									ClientID:   "ICQ 2000b",
 								}
@@ -157,8 +155,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		{
 			name: "AIM account exists, incorrect password, login fails",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -196,8 +193,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		{
 			name: "AIM account doesn't exist, login fails",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -235,8 +231,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		{
 			name: "AIM account is suspended",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -276,8 +271,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		{
 			name: "ICQ account doesn't exist, login fails",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -315,9 +309,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		{
 			name: "account doesn't exist, authentication is disabled, account is created, login succeeds",
 			cfg: config.Config{
-				OSCARHost:   "127.0.0.1",
-				BOSPort:     "1234",
-				DisableAuth: true,
+				BOSAdvertisedHosts: "127.0.0.1:1234",
+				DisableAuth:        true,
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -345,7 +338,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: func() []byte {
-								loginCookie := bosCookie{
+								loginCookie := state.ServerCookie{
 									ScreenName: user.DisplayScreenName,
 								}
 								buf := &bytes.Buffer{}
@@ -379,9 +372,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		{
 			name: "AIM account doesn't exist, authentication is disabled, screen name has bad format, login fails",
 			cfg: config.Config{
-				OSCARHost:   "127.0.0.1",
-				BOSPort:     "1234",
-				DisableAuth: true,
+				BOSAdvertisedHosts: "127.0.0.1:1234",
+				DisableAuth:        true,
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -419,9 +411,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		{
 			name: "ICQ account doesn't exist, authentication is disabled, UIN has bad format, login fails",
 			cfg: config.Config{
-				OSCARHost:   "127.0.0.1",
-				BOSPort:     "1234",
-				DisableAuth: true,
+				BOSAdvertisedHosts: "127.0.0.1:1234",
+				DisableAuth:        true,
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -459,9 +450,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		{
 			name: "account exists, password is invalid, authentication is disabled, login succeeds",
 			cfg: config.Config{
-				OSCARHost:   "127.0.0.1",
-				BOSPort:     "1234",
-				DisableAuth: true,
+				BOSAdvertisedHosts: "127.0.0.1:1234",
+				DisableAuth:        true,
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -484,7 +474,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: func() []byte {
-								loginCookie := bosCookie{
+								loginCookie := state.ServerCookie{
 									ScreenName: user.DisplayScreenName,
 								}
 								buf := &bytes.Buffer{}
@@ -540,8 +530,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		{
 			name: "login with TOC client - success",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -564,7 +553,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: func() []byte {
-								loginCookie := bosCookie{
+								loginCookie := state.ServerCookie{
 									ScreenName: user.DisplayScreenName,
 								}
 								buf := &bytes.Buffer{}
@@ -595,8 +584,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 		{
 			name: "login with TOC client - failed",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.SNAC_0x17_0x02_BUCPLoginRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -693,8 +681,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 		{
 			name: "AIM account exists, correct password, login OK",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -717,7 +704,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: func() []byte {
-								loginCookie := bosCookie{
+								loginCookie := state.ServerCookie{
 									ScreenName: user.DisplayScreenName,
 								}
 								buf := &bytes.Buffer{}
@@ -740,8 +727,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 		{
 			name: "ICQ account exists, correct password, login OK",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -765,7 +751,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: func() []byte {
-								loginCookie := bosCookie{
+								loginCookie := state.ServerCookie{
 									ScreenName: user.DisplayScreenName,
 									ClientID:   "ICQ 2000b",
 								}
@@ -789,8 +775,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 		{
 			name: "AIM account exists, incorrect password, login fails",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -820,8 +805,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 		{
 			name: "AIM account doesn't exist, login fails",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -851,8 +835,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 		{
 			name: "ICQ account doesn't exist, login fails",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -883,9 +866,8 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 		{
 			name: "account doesn't exist, authentication is disabled, account is created, login succeeds",
 			cfg: config.Config{
-				OSCARHost:   "127.0.0.1",
-				BOSPort:     "1234",
-				DisableAuth: true,
+				BOSAdvertisedHosts: "127.0.0.1:1234",
+				DisableAuth:        true,
 			},
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -913,7 +895,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: func() []byte {
-								loginCookie := bosCookie{
+								loginCookie := state.ServerCookie{
 									ScreenName: user.DisplayScreenName,
 								}
 								buf := &bytes.Buffer{}
@@ -939,9 +921,8 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 		{
 			name: "account exists, password is invalid, authentication is disabled, login succeeds",
 			cfg: config.Config{
-				OSCARHost:   "127.0.0.1",
-				BOSPort:     "1234",
-				DisableAuth: true,
+				BOSAdvertisedHosts: "127.0.0.1:1234",
+				DisableAuth:        true,
 			},
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -964,7 +945,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: func() []byte {
-								loginCookie := bosCookie{
+								loginCookie := state.ServerCookie{
 									ScreenName: user.DisplayScreenName,
 								}
 								buf := &bytes.Buffer{}
@@ -1012,8 +993,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 		{
 			name: "login with AIM 1.1.19 for Java - success",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -1037,7 +1017,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: func() []byte {
-								loginCookie := bosCookie{
+								loginCookie := state.ServerCookie{
 									ScreenName: user.DisplayScreenName,
 									ClientID:   "AOL Instant Messenger (TM) version 1.1.19 for Java",
 								}
@@ -1061,8 +1041,7 @@ func TestAuthService_FLAPLogin(t *testing.T) {
 		{
 			name: "login with AIM 1.1.19 for Java - failed",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.FLAPSignonFrame{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -1153,8 +1132,7 @@ func TestAuthService_KerberosLogin(t *testing.T) {
 		{
 			name: "AIM account exists, correct password, login OK",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			timeNow: func() time.Time {
 				return time.Unix(1000, 0)
@@ -1183,7 +1161,7 @@ func TestAuthService_KerberosLogin(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: func() []byte {
-								loginCookie := bosCookie{
+								loginCookie := state.ServerCookie{
 									ScreenName: user.DisplayScreenName,
 								}
 								buf := &bytes.Buffer{}
@@ -1239,8 +1217,7 @@ func TestAuthService_KerberosLogin(t *testing.T) {
 		{
 			name: "AIM account exists, incorrect password, login failed",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			timeNow: func() time.Time {
 				return time.Unix(1000, 0)
@@ -1328,8 +1305,7 @@ func TestAuthService_BUCPChallengeRequest(t *testing.T) {
 		{
 			name: "login with valid username, expect OK login response",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.SNAC_0x17_0x06_BUCPChallengeRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -1364,9 +1340,8 @@ func TestAuthService_BUCPChallengeRequest(t *testing.T) {
 		{
 			name: "login with invalid username, expect OK login response (Cfg.DisableAuth=true)",
 			cfg: config.Config{
-				OSCARHost:   "127.0.0.1",
-				BOSPort:     "1234",
-				DisableAuth: true,
+				BOSAdvertisedHosts: "127.0.0.1:1234",
+				DisableAuth:        true,
 			},
 			inputSNAC: wire.SNAC_0x17_0x06_BUCPChallengeRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -1398,8 +1373,7 @@ func TestAuthService_BUCPChallengeRequest(t *testing.T) {
 		{
 			name: "login with invalid username, expect failed login response (Cfg.DisableAuth=false)",
 			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				BOSPort:   "1234",
+				BOSAdvertisedHosts: "1234",
 			},
 			inputSNAC: wire.SNAC_0x17_0x06_BUCPChallengeRequest{
 				TLVRestBlock: wire.TLVRestBlock{
@@ -1480,18 +1454,18 @@ func TestAuthService_BUCPChallengeRequest(t *testing.T) {
 func TestAuthService_RegisterChatSession_HappyPath(t *testing.T) {
 	sess := newTestSession("ScreenName")
 
-	chatCookie := "the-chat-cookie"
-	chatSessionRegistry := newMockChatSessionRegistry(t)
-	chatSessionRegistry.EXPECT().
-		AddSession(mock.Anything, chatCookie, sess.DisplayScreenName()).
-		Return(sess, nil)
-
-	c := chatLoginCookie{
-		ChatCookie: chatCookie,
+	serverCookie := state.ServerCookie{
+		ChatCookie: "the-chat-cookie",
 		ScreenName: sess.DisplayScreenName(),
 	}
+
+	chatSessionRegistry := newMockChatSessionRegistry(t)
+	chatSessionRegistry.EXPECT().
+		AddSession(mock.Anything, serverCookie.ChatCookie, sess.DisplayScreenName()).
+		Return(sess, nil)
+
 	chatCookieBuf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(c, chatCookieBuf))
+	assert.NoError(t, wire.MarshalBE(serverCookie, chatCookieBuf))
 
 	authCookie := []byte("the-auth-cookie")
 	cookieBaker := newMockCookieBaker(t)
@@ -1499,16 +1473,16 @@ func TestAuthService_RegisterChatSession_HappyPath(t *testing.T) {
 		Crack(authCookie).
 		Return(chatCookieBuf.Bytes(), nil)
 
-	svc := NewAuthService(config.Config{}, nil, chatSessionRegistry, nil, cookieBaker, nil, nil, wire.DefaultRateLimitClasses())
+	svc := NewAuthService(config.Config{}, nil, nil, chatSessionRegistry, nil, cookieBaker, nil, nil, wire.DefaultRateLimitClasses())
 
-	have, err := svc.RegisterChatSession(context.Background(), authCookie)
+	have, err := svc.RegisterChatSession(context.Background(), serverCookie)
 	assert.NoError(t, err)
 	assert.Equal(t, sess, have)
 }
 
 func TestAuthService_RegisterBOSSession(t *testing.T) {
 	screenName := state.DisplayScreenName("UserScreenName")
-	aimAuthCookie := bosCookie{
+	aimAuthCookie := state.ServerCookie{
 		ScreenName: screenName,
 	}
 	buf := &bytes.Buffer{}
@@ -1516,7 +1490,7 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 	aimCookie := buf.Bytes()
 
 	uin := state.DisplayScreenName("100003")
-	icqAuthCookie := bosCookie{
+	icqAuthCookie := state.ServerCookie{
 		ScreenName: uin,
 	}
 	buf = &bytes.Buffer{}
@@ -1527,7 +1501,7 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 		// name is the unit test name
 		name string
 		// cookieOut is the auth cookieOut that contains session information
-		cookie []byte
+		cookie state.ServerCookie
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
@@ -1538,7 +1512,7 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 	}{
 		{
 			name:   "successfully register an AIM session",
-			cookie: aimCookie,
+			cookie: aimAuthCookie,
 			mockParams: mockParams{
 				cookieBakerParams: cookieBakerParams{
 					cookieCrackParams: cookieCrackParams{
@@ -1582,7 +1556,7 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 		},
 		{
 			name:   "successfully register an AIM bot session",
-			cookie: aimCookie,
+			cookie: aimAuthCookie,
 			mockParams: mockParams{
 				cookieBakerParams: cookieBakerParams{
 					cookieCrackParams: cookieCrackParams{
@@ -1627,7 +1601,7 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 		},
 		{
 			name:   "successfully register an ICQ session",
-			cookie: icqCookie,
+			cookie: icqAuthCookie,
 			mockParams: mockParams{
 				cookieBakerParams: cookieBakerParams{
 					cookieCrackParams: cookieCrackParams{
@@ -1700,7 +1674,7 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 					Return(params.confirmStatus, nil)
 			}
 
-			svc := NewAuthService(config.Config{}, sessionRegistry, nil, userManager, cookieBaker, nil, accountManager, wire.DefaultRateLimitClasses())
+			svc := NewAuthService(config.Config{}, sessionRegistry, nil, nil, userManager, cookieBaker, nil, accountManager, wire.DefaultRateLimitClasses())
 
 			have, err := svc.RegisterBOSSession(context.Background(), tc.cookie)
 			assert.NoError(t, err)
@@ -1716,7 +1690,7 @@ func TestAuthService_RegisterBOSSession(t *testing.T) {
 func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
 	sess := newTestSession("screenName")
 
-	aimAuthCookie := bosCookie{
+	aimAuthCookie := state.ServerCookie{
 		ScreenName: sess.DisplayScreenName(),
 	}
 	buf := &bytes.Buffer{}
@@ -1738,9 +1712,9 @@ func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
 		User(matchContext(), sess.IdentScreenName()).
 		Return(&state.User{IdentScreenName: sess.IdentScreenName()}, nil)
 
-	svc := NewAuthService(config.Config{}, nil, nil, userManager, cookieBaker, nil, nil, wire.DefaultRateLimitClasses())
+	svc := NewAuthService(config.Config{}, nil, nil, nil, userManager, cookieBaker, nil, nil, wire.DefaultRateLimitClasses())
 
-	have, err := svc.RetrieveBOSSession(context.Background(), authCookie)
+	have, err := svc.RetrieveBOSSession(context.Background(), aimAuthCookie)
 	assert.NoError(t, err)
 	assert.Equal(t, sess, have)
 }
@@ -1748,7 +1722,7 @@ func TestAuthService_RetrieveBOSSession_HappyPath(t *testing.T) {
 func TestAuthService_RetrieveBOSSession_SessionNotFound(t *testing.T) {
 	sess := newTestSession("screenName")
 
-	aimAuthCookie := bosCookie{
+	aimAuthCookie := state.ServerCookie{
 		ScreenName: sess.DisplayScreenName(),
 	}
 	buf := &bytes.Buffer{}
@@ -1771,9 +1745,9 @@ func TestAuthService_RetrieveBOSSession_SessionNotFound(t *testing.T) {
 		User(matchContext(), sess.IdentScreenName()).
 		Return(&state.User{IdentScreenName: sess.IdentScreenName()}, nil)
 
-	svc := NewAuthService(config.Config{}, nil, nil, userManager, cookieBaker, nil, nil, wire.DefaultRateLimitClasses())
+	svc := NewAuthService(config.Config{}, nil, nil, nil, userManager, cookieBaker, nil, nil, wire.DefaultRateLimitClasses())
 
-	have, err := svc.RetrieveBOSSession(context.Background(), authCookie)
+	have, err := svc.RetrieveBOSSession(context.Background(), aimAuthCookie)
 	assert.NoError(t, err)
 	assert.Nil(t, have)
 }
@@ -1864,7 +1838,7 @@ func TestAuthService_SignoutChat(t *testing.T) {
 					RemoveSession(matchSession(params.screenName))
 			}
 
-			svc := NewAuthService(config.Config{}, nil, sessionManager, nil, nil, chatMessageRelayer, nil, wire.DefaultRateLimitClasses())
+			svc := NewAuthService(config.Config{}, nil, nil, sessionManager, nil, nil, chatMessageRelayer, nil, wire.DefaultRateLimitClasses())
 			svc.SignoutChat(context.Background(), tt.userSession)
 		})
 	}
@@ -1909,7 +1883,7 @@ func TestAuthService_Signout(t *testing.T) {
 			for _, params := range tt.mockParams.removeSessionParams {
 				sessionManager.EXPECT().RemoveSession(matchSession(params.screenName))
 			}
-			svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil, nil, wire.DefaultRateLimitClasses())
+			svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil, nil, nil, wire.DefaultRateLimitClasses())
 
 			svc.Signout(context.Background(), tt.userSession)
 		})
