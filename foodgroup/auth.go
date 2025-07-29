@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -270,11 +269,7 @@ func (s AuthService) FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, 
 //
 // Several values in the response are poorly understood but necessary for proper
 // processing on the client side.
-func (s AuthService) KerberosLogin(
-	ctx context.Context,
-	inBody wire.SNAC_0x050C_0x0002_KerberosLoginRequest,
-	newUserFn func(screenName state.DisplayScreenName) (state.User, error),
-) (wire.SNACMessage, error) {
+func (s AuthService) KerberosLogin(ctx context.Context, inBody wire.SNAC_0x050C_0x0002_KerberosLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error), advertisedHost string) (wire.SNACMessage, error) {
 
 	b, ok := inBody.TicketRequestMetadata.Bytes(wire.KerberosTLVTicketRequest)
 	if !ok {
@@ -341,7 +336,7 @@ func (s AuthService) KerberosLogin(
 								Unknown: 1,
 								ConnectionInfo: wire.TLVBlock{
 									TLVList: wire.TLVList{
-										//wire.NewTLVBE(wire.KerberosTLVHostname, net.JoinHostPort(s.config.OSCARHost, s.config.BOSPort)),
+										wire.NewTLVBE(wire.KerberosTLVHostname, advertisedHost),
 										wire.NewTLVBE(wire.KerberosTLVCookie, cookie),
 									},
 								},
@@ -415,7 +410,7 @@ func (l *loginProperties) fromTLV(list wire.TLVList) error {
 
 // login validates a user's credentials and creates their session. it returns
 // metadata used in both BUCP and FLAP authentication responses.
-func (s AuthService) login(ctx context.Context, tlv wire.TLVList, newUserFn func(screenName state.DisplayScreenName) (state.User, error), here string) (wire.TLVRestBlock, error) {
+func (s AuthService) login(ctx context.Context, tlv wire.TLVList, newUserFn func(screenName state.DisplayScreenName) (state.User, error), advertisedHost string) (wire.TLVRestBlock, error) {
 
 	props := loginProperties{}
 	if err := props.fromTLV(tlv); err != nil {
@@ -431,7 +426,7 @@ func (s AuthService) login(ctx context.Context, tlv wire.TLVList, newUserFn func
 		// user not found
 		if s.config.DisableAuth {
 			// auth disabled, create the user
-			return s.createUser(ctx, props, newUserFn)
+			return s.createUser(ctx, props, newUserFn, advertisedHost)
 		}
 		// auth enabled, return separate login errors for ICQ and AIM
 		loginErr := wire.LoginErrInvalidUsernameOrPassword
@@ -448,7 +443,7 @@ func (s AuthService) login(ctx context.Context, tlv wire.TLVList, newUserFn func
 
 	if s.config.DisableAuth {
 		// user exists, but don't validate
-		return s.loginSuccessResponse(props)
+		return s.loginSuccessResponse(props, advertisedHost)
 	}
 
 	var loginOK bool
@@ -469,10 +464,10 @@ func (s AuthService) login(ctx context.Context, tlv wire.TLVList, newUserFn func
 		return loginFailureResponse(props, wire.LoginErrInvalidPassword), nil
 	}
 
-	return s.loginSuccessResponse(props)
+	return s.loginSuccessResponse(props, advertisedHost)
 }
 
-func (s AuthService) createUser(ctx context.Context, props loginProperties, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error) {
+func (s AuthService) createUser(ctx context.Context, props loginProperties, newUserFn func(screenName state.DisplayScreenName) (state.User, error), advertisedHost string) (wire.TLVRestBlock, error) {
 
 	var err error
 	if props.screenName.IsUIN() {
@@ -502,10 +497,10 @@ func (s AuthService) createUser(ctx context.Context, props loginProperties, newU
 		return wire.TLVRestBlock{}, err
 	}
 
-	return s.loginSuccessResponse(props)
+	return s.loginSuccessResponse(props, advertisedHost)
 }
 
-func (s AuthService) loginSuccessResponse(props loginProperties) (wire.TLVRestBlock, error) {
+func (s AuthService) loginSuccessResponse(props loginProperties, advertisedHost string) (wire.TLVRestBlock, error) {
 	loginCookie := state.ServerCookie{
 		Service:    wire.BOS,
 		ScreenName: props.screenName,
@@ -524,7 +519,7 @@ func (s AuthService) loginSuccessResponse(props loginProperties) (wire.TLVRestBl
 	return wire.TLVRestBlock{
 		TLVList: []wire.TLV{
 			wire.NewTLVBE(wire.LoginTLVTagsScreenName, props.screenName),
-			wire.NewTLVBE(wire.LoginTLVTagsReconnectHere, net.JoinHostPort("127.0.0.1", "5190")),
+			wire.NewTLVBE(wire.LoginTLVTagsReconnectHere, advertisedHost),
 			wire.NewTLVBE(wire.LoginTLVTagsAuthorizationCookie, cookie),
 		},
 	}, nil

@@ -259,7 +259,7 @@ func (_c *mockAuthService_FLAPLogin_Call) RunAndReturn(run func(context.Context,
 }
 
 // KerberosLogin provides a mock function with given fields: ctx, inBody, newUserFn
-func (_m *mockAuthService) KerberosLogin(ctx context.Context, inBody wire.SNAC_0x050C_0x0002_KerberosLoginRequest, newUserFn func(state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error) {
+func (_m *mockAuthService) KerberosLogin(ctx context.Context, inBody wire.SNAC_0x050C_0x0002_KerberosLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error), advertisedHost string) (wire.SNACMessage, error) {
 	ret := _m.Called(ctx, inBody, newUserFn)
 
 	if len(ret) == 0 {

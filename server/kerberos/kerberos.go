@@ -99,7 +99,7 @@ func postHandler(w http.ResponseWriter, r *http.Request, authService oscar.AuthS
 		return
 	}
 
-	response, err := authService.KerberosLogin(r.Context(), body, state.NewStubUser)
+	response, err := authService.KerberosLogin(r.Context(), body, state.NewStubUser, "")
 	if err != nil {
 		logger.Error("authService.KerberosLogin", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
