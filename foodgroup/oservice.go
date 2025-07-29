@@ -304,14 +304,52 @@ func (s OServiceService) RateParamsSubAdd(ctx context.Context, sess *state.Sessi
 	sess.SubscribeRateLimits(ids)
 }
 
-// HostOnline initiates the Alert protocol sequence.
-// It returns SNAC wire.OServiceHostOnline containing the list of food groups
-// supported by the Alert service.
-// Alert is provided by BOS in addition to the standalone Alert service.
-// AIM 4.x always creates a secondary TCP connection for Alert, whereas 5.x
-// can use the existing BOS connection for Alert services.
+// HostOnline returns SNAC wire.OServiceHostOnline containing the list of food
+// groups supported by the particular service.
 func (s OServiceService) HostOnline(service uint16) wire.SNACMessage {
 	switch service {
+	case wire.Admin:
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceHostOnline,
+				RequestID: wire.ReqIDFromServer,
+			},
+			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+				FoodGroups: []uint16{
+					wire.OService,
+					wire.Admin,
+				},
+			},
+		}
+	case wire.Alert:
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceHostOnline,
+				RequestID: wire.ReqIDFromServer,
+			},
+			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+				FoodGroups: []uint16{
+					wire.Alert,
+					wire.OService,
+				},
+			},
+		}
+	case wire.BART:
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceHostOnline,
+				RequestID: wire.ReqIDFromServer,
+			},
+			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+				FoodGroups: []uint16{
+					wire.BART,
+					wire.OService,
+				},
+			},
+		}
 	case wire.BOS:
 		return wire.SNACMessage{
 			Frame: wire.SNACFrame{
@@ -365,20 +403,6 @@ func (s OServiceService) HostOnline(service uint16) wire.SNACMessage {
 				},
 			},
 		}
-	case wire.Alert:
-		return wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.OService,
-				SubGroup:  wire.OServiceHostOnline,
-				RequestID: wire.ReqIDFromServer,
-			},
-			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
-				FoodGroups: []uint16{
-					wire.Alert,
-					wire.OService,
-				},
-			},
-		}
 	case wire.ODir:
 		return wire.SNACMessage{
 			Frame: wire.SNACFrame{
@@ -389,34 +413,6 @@ func (s OServiceService) HostOnline(service uint16) wire.SNACMessage {
 			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
 				FoodGroups: []uint16{
 					wire.ODir,
-					wire.OService,
-				},
-			},
-		}
-	case wire.Admin:
-		return wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.OService,
-				SubGroup:  wire.OServiceHostOnline,
-				RequestID: wire.ReqIDFromServer,
-			},
-			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
-				FoodGroups: []uint16{
-					wire.OService,
-					wire.Admin,
-				},
-			},
-		}
-	case wire.BART:
-		return wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.OService,
-				SubGroup:  wire.OServiceHostOnline,
-				RequestID: wire.ReqIDFromServer,
-			},
-			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
-				FoodGroups: []uint16{
-					wire.BART,
 					wire.OService,
 				},
 			},
@@ -736,9 +732,10 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 //   - Announce current user's arrival to other chat room participants
 //   - Send current user the chat room participant list
 func (s OServiceService) ClientOnline(ctx context.Context, service uint16, bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
+	sess.SetSignonComplete()
+
 	switch service {
 	case wire.BOS:
-		sess.SetSignonComplete()
 
 		if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, nil, false); err != nil {
 			return fmt.Errorf("unable to send buddy arrival notification: %w", err)
