@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 
-	"github.com/mk6i/retro-aim-server/server/oscar"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -17,14 +17,19 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-func NewKerberosServer(listeners []config.Listener, logger *slog.Logger, authService oscar.AuthService) *Server {
+type AuthService interface {
+	KerberosLogin(ctx context.Context, inBody wire.SNAC_0x050C_0x0002_KerberosLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error), advertisedHost string) (wire.SNACMessage, error)
+}
+
+func NewKerberosServer(listeners []config.Listener, logger *slog.Logger, authService AuthService) *Server {
 	servers := make([]*http.Server, 0, len(listeners))
+
 	for _, l := range listeners {
 
 		mux := http.NewServeMux()
 
 		mux.HandleFunc("POST /", func(writer http.ResponseWriter, request *http.Request) {
-			postHandler(writer, request, authService, logger)
+			postHandler(writer, request, authService, logger, l.BOSAdvertisedHost)
 		})
 
 		servers = append(servers, &http.Server{
@@ -42,8 +47,9 @@ func NewKerberosServer(listeners []config.Listener, logger *slog.Logger, authSer
 // Server hosts an HTTP endpoint capable of handling AIM-style Kerberos
 // authentication. The messages are structured as SNACs transmitted over HTTP.
 type Server struct {
-	servers []*http.Server
-	logger  *slog.Logger
+	servers   []*http.Server
+	listeners []net.Listener
+	logger    *slog.Logger
 }
 
 func (s *Server) ListenAndServe() error {
@@ -75,7 +81,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 }
 
 // postHandler handles AIM-style Kerberos authentication for AIM 6.0+.
-func postHandler(w http.ResponseWriter, r *http.Request, authService oscar.AuthService, logger *slog.Logger) {
+func postHandler(w http.ResponseWriter, r *http.Request, authService AuthService, logger *slog.Logger, listenAddress string) {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "unable to read HTTP body", http.StatusBadRequest)
@@ -99,7 +105,7 @@ func postHandler(w http.ResponseWriter, r *http.Request, authService oscar.AuthS
 		return
 	}
 
-	response, err := authService.KerberosLogin(r.Context(), body, state.NewStubUser, "")
+	response, err := authService.KerberosLogin(r.Context(), body, state.NewStubUser, listenAddress)
 	if err != nil {
 		logger.Error("authService.KerberosLogin", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)

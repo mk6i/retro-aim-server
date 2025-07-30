@@ -5,9 +5,8 @@ package oscar
 import (
 	context "context"
 
-	mock "github.com/stretchr/testify/mock"
-
 	state "github.com/mk6i/retro-aim-server/state"
+	mock "github.com/stretchr/testify/mock"
 
 	wire "github.com/mk6i/retro-aim-server/wire"
 )
