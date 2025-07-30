@@ -126,13 +126,13 @@ type flapLoginParams []struct {
 }
 
 type registerBOSSessionParams []struct {
-	authCookie []byte
+	authCookie state.ServerCookie
 	sess       *state.Session
 	err        error
 }
 
 type registerChatSessionParams []struct {
-	authCookie []byte
+	authCookie state.ServerCookie
 	sess       *state.Session
 	err        error
 }
@@ -146,11 +146,18 @@ type signoutChatParams []struct {
 }
 
 type authParams struct {
+	crackCookieParams
 	flapLoginParams
 	registerBOSSessionParams
 	registerChatSessionParams
 	signoutParams
 	signoutChatParams
+}
+
+type crackCookieParams []struct {
+	cookieIn  []byte
+	cookieOut state.ServerCookie
+	err       error
 }
 
 type setDirInfoParams []struct {
@@ -256,8 +263,7 @@ type mockParams struct {
 	dirSearchParams
 	icbmParams
 	locateParams
-	oServiceBOSParams  oServiceParams
-	oServiceChatParams oServiceParams
+	oServiceParams
 	permitDenyParams
 	tocConfigParams
 }
