@@ -16,440 +16,841 @@ import (
 )
 
 func TestHandler_AdminConfirmRequest(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Admin,
-			SubGroup:  wire.AdminAcctConfirmRequest,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x07_0x06_AdminConfirmRequest
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: wire.SNAC_0x07_0x06_AdminConfirmRequest{},
 		},
-		Body: wire.SNAC_0x07_0x06_AdminConfirmRequest{},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Admin,
-			SubGroup:  wire.AdminAcctConfirmReply,
+		{
+			name:          "service error",
+			inputBody:     wire.SNAC_0x07_0x06_AdminConfirmRequest{},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
-		Body: wire.SNAC_0x07_0x07_AdminConfirmReply{
-			Status: wire.AdminAcctConfirmStatusEmailSent,
-		},
-	}
-
-	svc := newMockAdminService(t)
-	svc.EXPECT().
-		ConfirmRequest(mock.Anything, mock.Anything, input.Frame).
-		Return(output, nil)
-
-	h := Handler{
-		AdminService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name:          "response writer error",
+			inputBody:     wire.SNAC_0x07_0x06_AdminConfirmRequest{},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminAcctConfirmRequest,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminAcctConfirmReply,
+				},
+				Body: wire.SNAC_0x07_0x07_AdminConfirmReply{
+					Status: wire.AdminAcctConfirmStatusEmailSent,
+				},
+			}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+			svc := newMockAdminService(t)
+			svc.EXPECT().
+				ConfirmRequest(mock.Anything, mock.Anything, input.Frame).
+				Return(output, tt.serviceError)
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			h := Handler{
+				AdminService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_AdminInfoQuery_RegistrationStatus(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Admin,
-			SubGroup:  wire.AdminInfoQuery,
-		},
-		Body: wire.SNAC_0x07_0x02_AdminInfoQuery{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(wire.AdminTLVRegistrationStatus, uint16(0x00))},
-			},
-		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Admin,
-			SubGroup:  wire.AdminInfoReply,
-		},
-		Body: wire.SNAC_0x07_0x03_AdminInfoReply{
-			Permissions: wire.AdminInfoPermissionsReadWrite,
-			TLVBlock: wire.TLVBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusFullDisclosure),
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x07_0x02_AdminInfoQuery
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x07_0x02_AdminInfoQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.AdminTLVRegistrationStatus, uint16(0x00)),
+					},
 				},
 			},
 		},
-	}
-
-	svc := newMockAdminService(t)
-	svc.EXPECT().
-		InfoQuery(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
-
-	h := Handler{
-		AdminService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x07_0x02_AdminInfoQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.AdminTLVRegistrationStatus, uint16(0x00)),
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x07_0x02_AdminInfoQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.AdminTLVRegistrationStatus, uint16(0x00)),
+					},
+				},
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoQuery,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoReply,
+				},
+				Body: wire.SNAC_0x07_0x03_AdminInfoReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVRegistrationStatus, wire.AdminInfoRegStatusFullDisclosure),
+						},
+					},
+				},
+			}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+			svc := newMockAdminService(t)
+			svc.EXPECT().
+				InfoQuery(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			h := Handler{
+				AdminService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_AdminInfoChangeRequest_ScreenNameFormatted(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Admin,
-			SubGroup:  wire.AdminInfoChangeRequest,
-		},
-		Body: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "Chatting Chuck")},
-			},
-		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Admin,
-			SubGroup:  wire.AdminInfoChangeReply,
-		},
-		Body: wire.SNAC_0x07_0x05_AdminChangeReply{
-			Permissions: wire.AdminInfoPermissionsReadWrite,
-			TLVBlock: wire.TLVBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x07_0x04_AdminInfoChangeRequest
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
+					},
 				},
 			},
 		},
-	}
-
-	svc := newMockAdminService(t)
-	svc.EXPECT().
-		InfoChangeRequest(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
-
-	h := Handler{
-		AdminService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x07_0x04_AdminInfoChangeRequest{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
+					},
+				},
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeRequest,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Admin,
+					SubGroup:  wire.AdminInfoChangeReply,
+				},
+				Body: wire.SNAC_0x07_0x05_AdminChangeReply{
+					Permissions: wire.AdminInfoPermissionsReadWrite,
+					TLVBlock: wire.TLVBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.AdminTLVScreenNameFormatted, "Chatting Chuck"),
+						},
+					},
+				},
+			}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+			svc := newMockAdminService(t)
+			svc.EXPECT().
+				InfoChangeRequest(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			h := Handler{
+				AdminService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_AlertNotifyCapabilities(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Alert,
-			SubGroup:  wire.AlertNotifyCapabilities,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNACFrame
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: wire.SNACFrame{},
 		},
-		Body: wire.SNACFrame{},
+		{
+			name:      "empty body",
+			inputBody: wire.SNACFrame{},
+		},
 	}
 
-	h := Handler{
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Alert,
+					SubGroup:  wire.AlertNotifyCapabilities,
+				},
+				Body: tt.inputBody,
+			}
+
+			h := Handler{
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, nil, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, nil, ""))
 }
 
 func TestHandler_AlertNotifyDisplayCapabilities(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Alert,
-			SubGroup:  wire.AlertNotifyDisplayCapabilities,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNACFrame
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: wire.SNACFrame{},
 		},
-		Body: wire.SNACFrame{},
+		{
+			name:      "empty body",
+			inputBody: wire.SNACFrame{},
+		},
 	}
 
-	h := Handler{
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Alert,
+					SubGroup:  wire.AlertNotifyDisplayCapabilities,
+				},
+				Body: tt.inputBody,
+			}
+
+			h := Handler{
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, nil, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, nil, ""))
 }
 
 func TestHandler_BARTDownloadQuery(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.BART,
-			SubGroup:  wire.BARTDownloadQuery,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x10_0x04_BARTDownloadQuery
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: wire.SNAC_0x10_0x04_BARTDownloadQuery{},
 		},
-		Body: wire.SNAC_0x10_0x04_BARTDownloadQuery{},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.BART,
-			SubGroup:  wire.BARTDownloadReply,
+		{
+			name:          "service error",
+			inputBody:     wire.SNAC_0x10_0x04_BARTDownloadQuery{},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
-		Body: wire.SNAC_0x10_0x05_BARTDownloadReply{
-			ScreenName: "the-screen-name",
-		},
-	}
-
-	svc := newMockBARTService(t)
-	svc.EXPECT().
-		RetrieveItem(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
-
-	h := Handler{
-		BARTService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name:          "response writer error",
+			inputBody:     wire.SNAC_0x10_0x04_BARTDownloadQuery{},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BART,
+					SubGroup:  wire.BARTDownloadQuery,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BART,
+					SubGroup:  wire.BARTDownloadReply,
+				},
+				Body: wire.SNAC_0x10_0x05_BARTDownloadReply{
+					ScreenName: "the-screen-name",
+				},
+			}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+			svc := newMockBARTService(t)
+			svc.EXPECT().
+				RetrieveItem(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			h := Handler{
+				BARTService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_BARTUploadQuery(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.BART,
-			SubGroup:  wire.BARTUploadQuery,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x10_0x02_BARTUploadQuery
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x10_0x02_BARTUploadQuery{
+				Type: 1,
+			},
 		},
-		Body: wire.SNAC_0x10_0x02_BARTUploadQuery{
-			Type: 1,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x10_0x02_BARTUploadQuery{
+				Type: 1,
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x10_0x02_BARTUploadQuery{
+				Type: 1,
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.BART,
-			SubGroup:  wire.BARTUploadReply,
-		},
-		Body: wire.SNAC_0x10_0x03_BARTUploadReply{
-			Code: wire.BARTReplyCodesSuccess,
-		},
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BART,
+					SubGroup:  wire.BARTUploadQuery,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BART,
+					SubGroup:  wire.BARTUploadReply,
+				},
+				Body: wire.SNAC_0x10_0x03_BARTUploadReply{
+					Code: wire.BARTReplyCodesSuccess,
+				},
+			}
+
+			svc := newMockBARTService(t)
+			svc.EXPECT().
+				UpsertItem(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				BARTService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	svc := newMockBARTService(t)
-	svc.EXPECT().
-		UpsertItem(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
-
-	h := Handler{
-		BARTService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_BuddyRightsQuery(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Buddy,
-			SubGroup:  wire.BuddyRightsQuery,
-		},
-		Body: wire.SNAC_0x03_0x02_BuddyRightsQuery{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(0x01, uint16(1000)),
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x03_0x02_BuddyRightsQuery
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x03_0x02_BuddyRightsQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(0x01, uint16(1000)),
+					},
 				},
 			},
 		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Buddy,
-			SubGroup:  wire.BuddyRightsReply,
-		},
-		Body: wire.SNAC_0x03_0x03_BuddyRightsReply{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(0x01, uint16(1000)),
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x03_0x02_BuddyRightsQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(0x01, uint16(1000)),
+					},
 				},
 			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockBuddyService(t)
-	svc.EXPECT().
-		RightsQuery(mock.Anything, input.Frame).
-		Return(output)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Buddy,
+					SubGroup:  wire.BuddyRightsQuery,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Buddy,
+					SubGroup:  wire.BuddyRightsReply,
+				},
+				Body: wire.SNAC_0x03_0x03_BuddyRightsReply{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(0x01, uint16(1000)),
+						},
+					},
+				},
+			}
 
-	h := Handler{
-		BuddyService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockBuddyService(t)
+			svc.EXPECT().
+				RightsQuery(mock.Anything, input.Frame).
+				Return(output)
+
+			h := Handler{
+				BuddyService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			responseWriter.EXPECT().
+				SendSNAC(output.Frame, output.Body).
+				Return(tt.responseError)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_BuddyAddBuddies(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Buddy,
-			SubGroup:  wire.BuddyAddBuddies,
-		},
-		Body: wire.SNAC_0x03_0x04_BuddyAddBuddies{
-			Buddies: []struct {
-				ScreenName string `oscar:"len_prefix=uint8"`
-			}{
-				{
-					ScreenName: "user1",
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x03_0x04_BuddyAddBuddies
+		serviceError  error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x03_0x04_BuddyAddBuddies{
+				Buddies: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: "user1",
+					},
 				},
 			},
 		},
-	}
-
-	svc := newMockBuddyService(t)
-	svc.EXPECT().
-		AddBuddies(mock.Anything, mock.Anything, input.Body).
-		Return(nil)
-
-	h := Handler{
-		BuddyService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x03_0x04_BuddyAddBuddies{
+				Buddies: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: "user1",
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	responseWriter := newMockResponseWriter(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Buddy,
+					SubGroup:  wire.BuddyAddBuddies,
+				},
+				Body: tt.inputBody,
+			}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+			svc := newMockBuddyService(t)
+			svc.EXPECT().
+				AddBuddies(mock.Anything, mock.Anything, input.Body).
+				Return(tt.serviceError)
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			h := Handler{
+				BuddyService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_BuddyDelBuddies(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Buddy,
-			SubGroup:  wire.BuddyDelBuddies,
-		},
-		Body: wire.SNAC_0x03_0x05_BuddyDelBuddies{
-			Buddies: []struct {
-				ScreenName string `oscar:"len_prefix=uint8"`
-			}{
-				{
-					ScreenName: "user1",
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x03_0x05_BuddyDelBuddies
+		serviceError  error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x03_0x05_BuddyDelBuddies{
+				Buddies: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: "user1",
+					},
 				},
 			},
 		},
-	}
-
-	svc := newMockBuddyService(t)
-	svc.EXPECT().
-		DelBuddies(mock.Anything, mock.Anything, input.Body).
-		Return(nil)
-
-	h := Handler{
-		BuddyService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x03_0x05_BuddyDelBuddies{
+				Buddies: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: "user1",
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	responseWriter := newMockResponseWriter(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Buddy,
+					SubGroup:  wire.BuddyDelBuddies,
+				},
+				Body: tt.inputBody,
+			}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+			svc := newMockBuddyService(t)
+			svc.EXPECT().
+				DelBuddies(mock.Anything, mock.Anything, input.Body).
+				Return(tt.serviceError)
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			h := Handler{
+				BuddyService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_ChatNavCreateRoom(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ChatNav,
-			SubGroup:  wire.ChatNavCreateRoom,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+				Exchange: 1,
+			},
 		},
-		Body: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-			Exchange: 1,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+				Exchange: 1,
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+				Exchange: 1,
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ChatNav,
-			SubGroup:  wire.ChatNavNavInfo,
-		},
-		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{},
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ChatNav,
+					SubGroup:  wire.ChatNavCreateRoom,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ChatNav,
+					SubGroup:  wire.ChatNavNavInfo,
+				},
+				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{},
+			}
+
+			sess := state.NewSession()
+
+			svc := newMockChatNavService(t)
+			svc.EXPECT().
+				CreateRoom(mock.Anything, sess, input.Frame, input.Body).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				ChatNavService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, sess, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	sess := state.NewSession()
-
-	svc := newMockChatNavService(t)
-	svc.EXPECT().
-		CreateRoom(mock.Anything, sess, input.Frame, input.Body).
-		Return(output, nil)
-
-	h := Handler{
-		ChatNavService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	ss := newMockResponseWriter(t)
-	ss.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, sess, input.Frame, buf, ss, ""))
 }
 
 func TestHandler_ChatNavCreateRoom_ReadErr(t *testing.T) {
@@ -496,581 +897,1070 @@ func TestHandler_ChatNavCreateRoom_ReadErr(t *testing.T) {
 }
 
 func TestHandler_ChatNavRequestChatRights(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ChatNav,
-			SubGroup:  wire.ChatNavRequestChatRights,
+	tests := []struct {
+		name          string
+		inputBody     struct{}
+		responseError error
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: struct{}{},
 		},
-		Body: struct{}{},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ChatNav,
-			SubGroup:  wire.ChatNavNavInfo,
-		},
-		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{},
-	}
-
-	svc := newMockChatNavService(t)
-	svc.EXPECT().
-		RequestChatRights(mock.Anything, input.Frame).
-		Return(output)
-
-	h := Handler{
-		ChatNavService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name:          "response writer error",
+			inputBody:     struct{}{},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	ss := newMockResponseWriter(t)
-	ss.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ChatNav,
+					SubGroup:  wire.ChatNavRequestChatRights,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ChatNav,
+					SubGroup:  wire.ChatNavNavInfo,
+				},
+				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{},
+			}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+			svc := newMockChatNavService(t)
+			svc.EXPECT().
+				RequestChatRights(mock.Anything, input.Frame).
+				Return(output)
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, ss, ""))
+			h := Handler{
+				ChatNavService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			responseWriter.EXPECT().
+				SendSNAC(output.Frame, output.Body).
+				Return(tt.responseError)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_ChatNavRequestRoomInfo(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ChatNav,
-			SubGroup:  wire.ChatNavRequestRoomInfo,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
+				Exchange: 1,
+			},
 		},
-		Body: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
-			Exchange: 1,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
+				Exchange: 1,
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
+				Exchange: 1,
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ChatNav,
-			SubGroup:  wire.ChatNavNavInfo,
-		},
-		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{},
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ChatNav,
+					SubGroup:  wire.ChatNavRequestRoomInfo,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ChatNav,
+					SubGroup:  wire.ChatNavNavInfo,
+				},
+				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{},
+			}
+
+			svc := newMockChatNavService(t)
+			svc.EXPECT().
+				RequestRoomInfo(mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				ChatNavService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	svc := newMockChatNavService(t)
-	svc.EXPECT().
-		RequestRoomInfo(mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
-
-	h := Handler{
-		ChatNavService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	ss := newMockResponseWriter(t)
-	ss.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, ss, ""))
 }
 
 func TestHandler_ChatNavRequestExchangeInfo(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ChatNav,
-			SubGroup:  wire.ChatNavRequestExchangeInfo,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo{
+				Exchange: 4,
+			},
 		},
-		Body: wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo{
-			Exchange: 4,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo{
+				Exchange: 4,
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x0D_0x03_ChatNavRequestExchangeInfo{
+				Exchange: 4,
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ChatNav,
-			SubGroup:  wire.ChatNavNavInfo,
-		},
-		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{},
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ChatNav,
+					SubGroup:  wire.ChatNavRequestExchangeInfo,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ChatNav,
+					SubGroup:  wire.ChatNavNavInfo,
+				},
+				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{},
+			}
+
+			svc := newMockChatNavService(t)
+			svc.EXPECT().
+				ExchangeInfo(mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				ChatNavService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	svc := newMockChatNavService(t)
-	svc.EXPECT().
-		ExchangeInfo(mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
-
-	h := Handler{
-		ChatNavService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	ss := newMockResponseWriter(t)
-	ss.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, ss, ""))
 }
 
-func TestHandler_ChatChannelMsgToHost_WithReflectedResponse(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Chat,
-			SubGroup:  wire.ChatChannelMsgToHost,
+func TestHandler_ChatChannelMsgToHost(t *testing.T) {
+	tests := []struct {
+		name            string
+		inputBody       wire.SNAC_0x0E_0x05_ChatChannelMsgToHost
+		serviceResponse *wire.SNACMessage
+		serviceError    error
+		responseError   error
+		expectedError   error
+	}{
+		{
+			name: "success with reflected response",
+			inputBody: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+				Channel: 4,
+			},
+			serviceResponse: &wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Chat,
+					SubGroup:  wire.ChatChannelMsgToClient,
+				},
+				Body: wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+					Channel: 4,
+				},
+			},
 		},
-		Body: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
-			Channel: 4,
+		{
+			name: "service error with reflected response",
+			inputBody: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+				Channel: 4,
+			},
+			serviceResponse: &wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Chat,
+					SubGroup:  wire.ChatChannelMsgToClient,
+				},
+				Body: wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+					Channel: 4,
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error with reflected response",
+			inputBody: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+				Channel: 4,
+			},
+			serviceResponse: &wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Chat,
+					SubGroup:  wire.ChatChannelMsgToClient,
+				},
+				Body: wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+					Channel: 4,
+				},
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "success without reflected response",
+			inputBody: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+				Channel: 4,
+			},
+			serviceResponse: nil, // nil response means no reflection back to caller
+		},
+		{
+			name: "service error without reflected response",
+			inputBody: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
+				Channel: 4,
+			},
+			serviceResponse: nil,
+			serviceError:    assert.AnError,
+			expectedError:   assert.AnError,
 		},
 	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Chat,
-			SubGroup:  wire.ChatChannelMsgToClient,
-		},
-		Body: wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
-			Channel: 4,
-		},
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Chat,
+					SubGroup:  wire.ChatChannelMsgToHost,
+				},
+				Body: tt.inputBody,
+			}
+
+			svc := newMockChatService(t)
+			svc.EXPECT().
+				ChannelMsgToHost(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(tt.serviceResponse, tt.serviceError)
+
+			h := Handler{
+				ChatService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil && tt.serviceResponse != nil {
+				responseWriter.EXPECT().
+					SendSNAC(tt.serviceResponse.Frame, tt.serviceResponse.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	svc := newMockChatService(t)
-	svc.EXPECT().
-		ChannelMsgToHost(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(&output, nil)
-
-	h := Handler{
-		ChatService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
-}
-
-func TestHandler_ChatChannelMsgToHost_WithoutReflectedResponse(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Chat,
-			SubGroup:  wire.ChatChannelMsgToHost,
-		},
-		Body: wire.SNAC_0x0E_0x05_ChatChannelMsgToHost{
-			Channel: 4,
-		},
-	}
-	// nil response from handler means the response is not reflected back to
-	// the caller
-	var output *wire.SNACMessage
-
-	svc := newMockChatService(t)
-	svc.EXPECT().
-		ChannelMsgToHost(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
-
-	h := Handler{
-		ChatService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	responseWriter := newMockResponseWriter(t) // omit mock handler call
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_FeedbagDeleteItem(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagDeleteItem,
-		},
-		Body: wire.SNAC_0x13_0x0A_FeedbagDeleteItem{
-			Items: []wire.FeedbagItem{
-				{
-					Name: "my-item",
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x13_0x0A_FeedbagDeleteItem
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x13_0x0A_FeedbagDeleteItem{
+				Items: []wire.FeedbagItem{
+					{
+						Name: "my-item",
+					},
 				},
 			},
 		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagStatus,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x13_0x0A_FeedbagDeleteItem{
+				Items: []wire.FeedbagItem{
+					{
+						Name: "my-item",
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
-		Body: wire.SNAC_0x13_0x0E_FeedbagStatus{
-			Results: []uint16{1234},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x13_0x0A_FeedbagDeleteItem{
+				Items: []wire.FeedbagItem{
+					{
+						Name: "my-item",
+					},
+				},
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockFeedbagService(t)
-	svc.EXPECT().
-		DeleteItem(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagDeleteItem,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagStatus,
+				},
+				Body: wire.SNAC_0x13_0x0E_FeedbagStatus{
+					Results: []uint16{1234},
+				},
+			}
 
-	h := Handler{
-		FeedbagService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockFeedbagService(t)
+			svc.EXPECT().
+				DeleteItem(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				FeedbagService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_FeedbagEndCluster(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagEndCluster,
-		},
-		Body: struct{}{},
-	}
-
-	svc := newMockFeedbagService(t)
-	h := Handler{
-		FeedbagService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+	tests := []struct {
+		name          string
+		inputBody     struct{}
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: struct{}{},
 		},
 	}
-	responseWriter := newMockResponseWriter(t)
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagEndCluster,
+				},
+				Body: tt.inputBody,
+			}
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			svc := newMockFeedbagService(t)
+			h := Handler{
+				FeedbagService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+			responseWriter := newMockResponseWriter(t)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_FeedbagInsertItem(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagInsertItem,
-		},
-		Body: wire.SNAC_0x13_0x08_FeedbagInsertItem{
-			Items: []wire.FeedbagItem{
-				{
-					Name: "my-item",
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x13_0x08_FeedbagInsertItem
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x13_0x08_FeedbagInsertItem{
+				Items: []wire.FeedbagItem{
+					{
+						Name: "my-item",
+					},
 				},
 			},
 		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagStatus,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x13_0x08_FeedbagInsertItem{
+				Items: []wire.FeedbagItem{
+					{
+						Name: "my-item",
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
-		Body: wire.SNAC_0x13_0x0E_FeedbagStatus{
-			Results: []uint16{1234},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x13_0x08_FeedbagInsertItem{
+				Items: []wire.FeedbagItem{
+					{
+						Name: "my-item",
+					},
+				},
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockFeedbagService(t)
-	svc.EXPECT().
-		UpsertItem(mock.Anything, mock.Anything, input.Frame, input.Body.(wire.SNAC_0x13_0x08_FeedbagInsertItem).Items).
-		Return(output, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagInsertItem,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagStatus,
+				},
+				Body: wire.SNAC_0x13_0x0E_FeedbagStatus{
+					Results: []uint16{1234},
+				},
+			}
 
-	h := Handler{
-		FeedbagService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockFeedbagService(t)
+			svc.EXPECT().
+				UpsertItem(mock.Anything, mock.Anything, input.Frame, tt.inputBody.Items).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				FeedbagService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_FeedbagQuery(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagQuery,
-		},
-		Body: wire.SNAC_0x13_0x02_FeedbagRightsQuery{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					{
-						Tag:   0x01,
-						Value: []byte{1, 2, 3, 4},
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x13_0x02_FeedbagRightsQuery
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x13_0x02_FeedbagRightsQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						{
+							Tag:   0x01,
+							Value: []byte{1, 2, 3, 4},
+						},
 					},
 				},
 			},
 		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagReply,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x13_0x02_FeedbagRightsQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						{
+							Tag:   0x01,
+							Value: []byte{1, 2, 3, 4},
+						},
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
-		Body: wire.SNAC_0x13_0x06_FeedbagReply{
-			Version: 4,
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x13_0x02_FeedbagRightsQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						{
+							Tag:   0x01,
+							Value: []byte{1, 2, 3, 4},
+						},
+					},
+				},
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockFeedbagService(t)
-	svc.EXPECT().
-		Query(mock.Anything, mock.Anything, input.Frame).
-		Return(output, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagQuery,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagReply,
+				},
+				Body: wire.SNAC_0x13_0x06_FeedbagReply{
+					Version: 4,
+				},
+			}
 
-	h := Handler{
-		FeedbagService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockFeedbagService(t)
+			svc.EXPECT().
+				Query(mock.Anything, mock.Anything, input.Frame).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				FeedbagService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_FeedbagQueryIfModified(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagQueryIfModified,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x13_0x05_FeedbagQueryIfModified
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x13_0x05_FeedbagQueryIfModified{
+				LastUpdate: 1234,
+			},
 		},
-		Body: wire.SNAC_0x13_0x05_FeedbagQueryIfModified{
-			LastUpdate: 1234,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x13_0x05_FeedbagQueryIfModified{
+				LastUpdate: 1234,
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x13_0x05_FeedbagQueryIfModified{
+				LastUpdate: 1234,
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagReply,
-		},
-		Body: wire.SNAC_0x13_0x06_FeedbagReply{
-			LastUpdate: 1234,
-		},
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagQueryIfModified,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagReply,
+				},
+				Body: wire.SNAC_0x13_0x06_FeedbagReply{
+					LastUpdate: 1234,
+				},
+			}
+
+			svc := newMockFeedbagService(t)
+			svc.EXPECT().
+				QueryIfModified(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				FeedbagService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	svc := newMockFeedbagService(t)
-	svc.EXPECT().
-		QueryIfModified(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
-
-	h := Handler{
-		FeedbagService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_FeedbagRightsQuery(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagRightsQuery,
-		},
-		Body: wire.SNAC_0x13_0x02_FeedbagRightsQuery{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					{
-						Tag:   0x01,
-						Value: []byte{1, 2, 3, 4},
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x13_0x02_FeedbagRightsQuery
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x13_0x02_FeedbagRightsQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						{
+							Tag:   0x01,
+							Value: []byte{1, 2, 3, 4},
+						},
 					},
 				},
 			},
 		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagRightsReply,
-		},
-		Body: wire.SNAC_0x13_0x03_FeedbagRightsReply{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					{
-						Tag:   0x01,
-						Value: []byte{1, 2, 3, 4},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x13_0x02_FeedbagRightsQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						{
+							Tag:   0x01,
+							Value: []byte{1, 2, 3, 4},
+						},
 					},
 				},
 			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockFeedbagService(t)
-	svc.EXPECT().
-		RightsQuery(mock.Anything, input.Frame).
-		Return(output)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagRightsQuery,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagRightsReply,
+				},
+				Body: wire.SNAC_0x13_0x03_FeedbagRightsReply{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							{
+								Tag:   0x01,
+								Value: []byte{1, 2, 3, 4},
+							},
+						},
+					},
+				},
+			}
 
-	h := Handler{
-		FeedbagService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockFeedbagService(t)
+			svc.EXPECT().
+				RightsQuery(mock.Anything, input.Frame).
+				Return(output)
+
+			h := Handler{
+				FeedbagService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			responseWriter.EXPECT().
+				SendSNAC(output.Frame, output.Body).
+				Return(tt.responseError)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_FeedbagStartCluster(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagStartCluster,
-		},
-		Body: wire.SNAC_0x13_0x11_FeedbagStartCluster{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					{
-						Tag:   0x01,
-						Value: []byte{1, 2, 3, 4},
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x13_0x11_FeedbagStartCluster
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x13_0x11_FeedbagStartCluster{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						{
+							Tag:   0x01,
+							Value: []byte{1, 2, 3, 4},
+						},
 					},
 				},
 			},
 		},
 	}
 
-	svc := newMockFeedbagService(t)
-	svc.EXPECT().
-		StartCluster(mock.Anything, input.Frame, input.Body)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagStartCluster,
+				},
+				Body: tt.inputBody,
+			}
 
-	h := Handler{
-		FeedbagService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockFeedbagService(t)
+			svc.EXPECT().
+				StartCluster(mock.Anything, input.Frame, input.Body)
+
+			h := Handler{
+				FeedbagService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_FeedbagUpdateItem(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagUpdateItem,
-		},
-		Body: wire.SNAC_0x13_0x09_FeedbagUpdateItem{
-			Items: []wire.FeedbagItem{
-				{
-					Name: "my-item",
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x13_0x09_FeedbagUpdateItem
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x13_0x09_FeedbagUpdateItem{
+				Items: []wire.FeedbagItem{
+					{
+						Name: "my-item",
+					},
 				},
 			},
 		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagStatus,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x13_0x09_FeedbagUpdateItem{
+				Items: []wire.FeedbagItem{
+					{
+						Name: "my-item",
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
-		Body: wire.SNAC_0x13_0x0E_FeedbagStatus{
-			Results: []uint16{1234},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x13_0x09_FeedbagUpdateItem{
+				Items: []wire.FeedbagItem{
+					{
+						Name: "my-item",
+					},
+				},
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockFeedbagService(t)
-	svc.EXPECT().
-		UpsertItem(mock.Anything, mock.Anything, input.Frame, input.Body.(wire.SNAC_0x13_0x09_FeedbagUpdateItem).Items).
-		Return(output, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagUpdateItem,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagStatus,
+				},
+				Body: wire.SNAC_0x13_0x0E_FeedbagStatus{
+					Results: []uint16{1234},
+				},
+			}
 
-	h := Handler{
-		FeedbagService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockFeedbagService(t)
+			svc.EXPECT().
+				UpsertItem(mock.Anything, mock.Anything, input.Frame, tt.inputBody.Items).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				FeedbagService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_FeedbagUse(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Feedbag,
-			SubGroup:  wire.FeedbagUse,
+	tests := []struct {
+		name          string
+		inputBody     struct{}
+		serviceError  error
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: struct{}{},
 		},
-		Body: struct{}{},
-	}
-
-	svc := newMockFeedbagService(t)
-	svc.EXPECT().
-		Use(mock.Anything, mock.Anything).
-		Return(nil)
-
-	h := Handler{
-		FeedbagService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name:          "service error",
+			inputBody:     struct{}{},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
-	responseWriter := newMockResponseWriter(t)
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Feedbag,
+					SubGroup:  wire.FeedbagUse,
+				},
+				Body: tt.inputBody,
+			}
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			svc := newMockFeedbagService(t)
+			svc.EXPECT().
+				Use(mock.Anything, mock.Anything).
+				Return(tt.serviceError)
+
+			h := Handler{
+				FeedbagService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+			responseWriter := newMockResponseWriter(t)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_FeedbagRespondAuthorizeToHost(t *testing.T) {
@@ -1104,218 +1994,403 @@ func TestHandler_FeedbagRespondAuthorizeToHost(t *testing.T) {
 }
 
 func TestHandler_ICBMAddParameters(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ICBM,
-			SubGroup:  wire.ICBMAddParameters,
-		},
-		Body: wire.SNAC_0x04_0x02_ICBMAddParameters{
-			Channel: 1,
-		},
-	}
-
-	svc := newMockICBMService(t)
-	h := Handler{
-		ICBMService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x04_0x02_ICBMAddParameters
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x04_0x02_ICBMAddParameters{
+				Channel: 1,
+			},
 		},
 	}
-	responseWriter := newMockResponseWriter(t)
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMAddParameters,
+				},
+				Body: tt.inputBody,
+			}
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			svc := newMockICBMService(t)
+			h := Handler{
+				ICBMService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+			responseWriter := newMockResponseWriter(t)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_ICBMChannelMsgToHost(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ICBM,
-			SubGroup:  wire.ICBMChannelMsgToHost,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x04_0x06_ICBMChannelMsgToHost
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				ScreenName: "recipient-screen-name",
+			},
 		},
-		Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
-			ScreenName: "recipient-screen-name",
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				ScreenName: "recipient-screen-name",
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+				ScreenName: "recipient-screen-name",
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ICBM,
-			SubGroup:  wire.ICBMHostAck,
-		},
-		Body: wire.SNAC_0x04_0x0C_ICBMHostAck{
-			ChannelID: 4,
-		},
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMChannelMsgToHost,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMHostAck,
+				},
+				Body: wire.SNAC_0x04_0x0C_ICBMHostAck{
+					ChannelID: 4,
+				},
+			}
+
+			svc := newMockICBMService(t)
+			svc.EXPECT().
+				ChannelMsgToHost(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(&output, tt.serviceError)
+
+			h := Handler{
+				ICBMService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	svc := newMockICBMService(t)
-	svc.EXPECT().
-		ChannelMsgToHost(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(&output, nil)
-
-	h := Handler{
-		ICBMService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_ICBMClientErr(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ICBM,
-			SubGroup:  wire.ICBMClientErr,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x04_0x0B_ICBMClientErr
+		serviceError  error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x04_0x0B_ICBMClientErr{
+				Code: 4,
+			},
 		},
-		Body: wire.SNAC_0x04_0x0B_ICBMClientErr{
-			Code: 4,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x04_0x0B_ICBMClientErr{
+				Code: 4,
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockICBMService(t)
-	svc.EXPECT().
-		ClientErr(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMClientErr,
+				},
+				Body: tt.inputBody,
+			}
 
-	h := Handler{
-		ICBMService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockICBMService(t)
+			svc.EXPECT().
+				ClientErr(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(tt.serviceError)
+
+			h := Handler{
+				ICBMService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_ICBMClientEvent(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ICBM,
-			SubGroup:  wire.ICBMClientEvent,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x04_0x14_ICBMClientEvent
+		serviceError  error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x04_0x14_ICBMClientEvent{
+				ScreenName: "recipient-screen-name",
+			},
 		},
-		Body: wire.SNAC_0x04_0x14_ICBMClientEvent{
-			ScreenName: "recipient-screen-name",
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x04_0x14_ICBMClientEvent{
+				ScreenName: "recipient-screen-name",
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockICBMService(t)
-	svc.EXPECT().
-		ClientEvent(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMClientEvent,
+				},
+				Body: tt.inputBody,
+			}
 
-	h := Handler{
-		ICBMService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockICBMService(t)
+			svc.EXPECT().
+				ClientEvent(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(tt.serviceError)
+
+			h := Handler{
+				ICBMService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_ICBMEvilRequest(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ICBM,
-			SubGroup:  wire.ICBMEvilRequest,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x04_0x08_ICBMEvilRequest
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+				ScreenName: "recipient-screen-name",
+			},
 		},
-		Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
-			ScreenName: "recipient-screen-name",
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+				ScreenName: "recipient-screen-name",
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+				ScreenName: "recipient-screen-name",
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ICBM,
-			SubGroup:  wire.ICBMEvilReply,
-		},
-		Body: wire.SNAC_0x04_0x09_ICBMEvilReply{
-			EvilDeltaApplied: 100,
-		},
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMEvilRequest,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMEvilReply,
+				},
+				Body: wire.SNAC_0x04_0x09_ICBMEvilReply{
+					EvilDeltaApplied: 100,
+				},
+			}
+
+			svc := newMockICBMService(t)
+			svc.EXPECT().
+				EvilRequest(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				ICBMService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	svc := newMockICBMService(t)
-	svc.EXPECT().
-		EvilRequest(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
-
-	h := Handler{
-		ICBMService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_ICBMParameterQuery(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ICBM,
-			SubGroup:  wire.ICBMParameterQuery,
+	tests := []struct {
+		name          string
+		inputBody     struct{}
+		responseError error
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: struct{}{},
 		},
-		Body: struct{}{}, // empty SNAC
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ICBM,
-			SubGroup:  wire.ICBMParameterReply,
-		},
-		Body: wire.SNAC_0x04_0x05_ICBMParameterReply{
-			MaxSlots: 100,
-		},
-	}
-
-	svc := newMockICBMService(t)
-	svc.EXPECT().
-		ParameterQuery(mock.Anything, input.Frame).
-		Return(output)
-
-	h := Handler{
-		ICBMService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name:          "response writer error",
+			inputBody:     struct{}{},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMParameterQuery,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMParameterReply,
+				},
+				Body: wire.SNAC_0x04_0x05_ICBMParameterReply{
+					MaxSlots: 100,
+				},
+			}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+			svc := newMockICBMService(t)
+			svc.EXPECT().
+				ParameterQuery(mock.Anything, input.Frame).
+				Return(output)
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			h := Handler{
+				ICBMService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			responseWriter.EXPECT().
+				SendSNAC(output.Frame, output.Body).
+				Return(tt.responseError)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_ICQDBQuery(t *testing.T) {
@@ -2344,902 +3419,1663 @@ func TestHandler_ICQDBQuery_QIP2005UINSearchBug(t *testing.T) {
 }
 
 func TestHandler_ODirInfoQuery(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ODir,
-			SubGroup:  wire.ODirInfoQuery,
-		},
-		Body: wire.SNAC_0x0F_0x02_InfoQuery{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(1, uint16(2)),
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x0F_0x02_InfoQuery
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x0F_0x02_InfoQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(1, uint16(2)),
+					},
 				},
 			},
 		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ODir,
-			SubGroup:  wire.ODirInfoReply,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x0F_0x02_InfoQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(1, uint16(2)),
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
-		Body: wire.SNAC_0x0F_0x03_InfoReply{
-			Status: 5, // OK has results/not found
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x0F_0x02_InfoQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(1, uint16(2)),
+					},
+				},
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockODirService(t)
-	svc.EXPECT().
-		InfoQuery(mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ODir,
+					SubGroup:  wire.ODirInfoQuery,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ODir,
+					SubGroup:  wire.ODirInfoReply,
+				},
+				Body: wire.SNAC_0x0F_0x03_InfoReply{
+					Status: 5, // OK has results/not found
+				},
+			}
 
-	h := Handler{
-		ODirService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockODirService(t)
+			svc.EXPECT().
+				InfoQuery(mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				ODirService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			ss := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				ss.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, ss, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	ss := newMockResponseWriter(t)
-	ss.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, ss, ""))
 }
 
 func TestHandler_ODirKeywordListQuery(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ODir,
-			SubGroup:  wire.ODirKeywordListQuery,
-		},
-		Body: wire.SNAC_0x0F_0x02_InfoQuery{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(1, uint16(2)),
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x0F_0x02_InfoQuery
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x0F_0x02_InfoQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(1, uint16(2)),
+					},
 				},
 			},
 		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.ODir,
-			SubGroup:  wire.ODirKeywordListReply,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x0F_0x02_InfoQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(1, uint16(2)),
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
-		Body: wire.SNAC_0x0F_0x04_KeywordListReply{
-			Status: 0x01,
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x0F_0x02_InfoQuery{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(1, uint16(2)),
+					},
+				},
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockODirService(t)
-	svc.EXPECT().
-		KeywordListQuery(mock.Anything, input.Frame).
-		Return(output, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ODir,
+					SubGroup:  wire.ODirKeywordListQuery,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ODir,
+					SubGroup:  wire.ODirKeywordListReply,
+				},
+				Body: wire.SNAC_0x0F_0x04_KeywordListReply{
+					Status: 0x01,
+				},
+			}
 
-	h := Handler{
-		ODirService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockODirService(t)
+			svc.EXPECT().
+				KeywordListQuery(mock.Anything, input.Frame).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				ODirService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			ss := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				ss.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, ss, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	ss := newMockResponseWriter(t)
-	ss.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, ss, ""))
 }
 
 func TestHandler_OServiceServiceClientOnline(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceClientOnline,
-		},
-		Body: wire.SNAC_0x01_0x02_OServiceClientOnline{
-			GroupVersions: []struct {
-				FoodGroup   uint16
-				Version     uint16
-				ToolID      uint16
-				ToolVersion uint16
-			}{
-				{
-					FoodGroup: 10,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x01_0x02_OServiceClientOnline
+		serviceError  error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x01_0x02_OServiceClientOnline{
+				GroupVersions: []struct {
+					FoodGroup   uint16
+					Version     uint16
+					ToolID      uint16
+					ToolVersion uint16
+				}{
+					{
+						FoodGroup: 10,
+					},
 				},
 			},
 		},
-	}
-
-	svc := newMockOServiceService(t)
-	svc.EXPECT().
-		ClientOnline(mock.Anything, wire.BOS, input.Body, mock.Anything).
-		Return(nil)
-
-	h := Handler{
-		OServiceService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x01_0x02_OServiceClientOnline{
+				GroupVersions: []struct {
+					FoodGroup   uint16
+					Version     uint16
+					ToolID      uint16
+					ToolVersion uint16
+				}{
+					{
+						FoodGroup: 10,
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceClientOnline,
+				},
+				Body: tt.inputBody,
+			}
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, nil, ""))
+			svc := newMockOServiceService(t)
+			svc.EXPECT().
+				ClientOnline(mock.Anything, wire.BOS, input.Body, mock.Anything).
+				Return(tt.serviceError)
+
+			h := Handler{
+				OServiceService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, nil, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_OServiceServiceServiceRequest(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceServiceRequest,
-		},
-		Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
-			FoodGroup: wire.Chat,
-		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceServiceResponse,
-		},
-		Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(0x01, uint16(1000)),
-				},
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x01_0x04_OServiceServiceRequest
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+				FoodGroup: wire.Chat,
 			},
 		},
-	}
-
-	svc := newMockOServiceService(t)
-	svc.EXPECT().
-		ServiceRequest(mock.Anything, wire.BOS, mock.Anything, input.Frame, input.Body, "127.0.0.1:1234").
-		Return(output, nil)
-
-	h := Handler{
-		OServiceService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+				FoodGroup: wire.Chat,
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+				FoodGroup: wire.Chat,
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceRequest,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(0x01, uint16(1000)),
+						},
+					},
+				},
+			}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+			svc := newMockOServiceService(t)
+			svc.EXPECT().
+				ServiceRequest(mock.Anything, wire.BOS, mock.Anything, input.Frame, input.Body, "127.0.0.1:1234").
+				Return(output, tt.serviceError)
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "127.0.0.1:1234"))
+			h := Handler{
+				OServiceService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "127.0.0.1:1234")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_OServiceServiceIdleNotification(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceIdleNotification,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x01_0x11_OServiceIdleNotification
+		serviceError  error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x01_0x11_OServiceIdleNotification{
+				IdleTime: 10,
+			},
 		},
-		Body: wire.SNAC_0x01_0x11_OServiceIdleNotification{
-			IdleTime: 10,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x01_0x11_OServiceIdleNotification{
+				IdleTime: 10,
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockOServiceService(t)
-	svc.EXPECT().
-		IdleNotification(mock.Anything, mock.Anything, input.Body).
-		Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceIdleNotification,
+				},
+				Body: tt.inputBody,
+			}
 
-	h := Handler{
-		OServiceService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockOServiceService(t)
+			svc.EXPECT().
+				IdleNotification(mock.Anything, mock.Anything, input.Body).
+				Return(tt.serviceError)
+
+			h := Handler{
+				OServiceService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_OServiceServiceClientVersions(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceClientVersions,
-		},
-		Body: wire.SNAC_0x01_0x17_OServiceClientVersions{
-			Versions: []uint16{
-				10,
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x01_0x17_OServiceClientVersions
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x01_0x17_OServiceClientVersions{
+				Versions: []uint16{
+					10,
+				},
 			},
 		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceHostVersions,
-		},
-		Body: wire.SNAC_0x01_0x18_OServiceHostVersions{
-			Versions: []uint16{
-				10,
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x01_0x17_OServiceClientVersions{
+				Versions: []uint16{
+					10,
+				},
 			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	sess := state.NewSession()
-	svc := newMockOServiceService(t)
-	svc.EXPECT().
-		ClientVersions(mock.Anything, sess, input.Frame, input.Body).
-		Return(output)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceClientVersions,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceHostVersions,
+				},
+				Body: wire.SNAC_0x01_0x18_OServiceHostVersions{
+					Versions: []uint16{
+						10,
+					},
+				},
+			}
 
-	h := Handler{
-		OServiceService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			sess := state.NewSession()
+			svc := newMockOServiceService(t)
+			svc.EXPECT().
+				ClientVersions(mock.Anything, sess, input.Frame, input.Body).
+				Return(output)
+
+			h := Handler{
+				OServiceService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			responseWriter.EXPECT().
+				SendSNAC(output.Frame, output.Body).
+				Return(tt.responseError)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.Background(), wire.BOS, sess, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.Background(), wire.BOS, sess, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_OServiceServiceRateParamsQuery(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceRateParamsQuery,
+	tests := []struct {
+		name          string
+		inputBody     struct{}
+		responseError error
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: struct{}{},
 		},
-		Body: struct{}{},
+		{
+			name:          "response writer error",
+			inputBody:     struct{}{},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
+		},
 	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceRateParamsReply,
-		},
-		Body: wire.SNAC_0x01_0x07_OServiceRateParamsReply{
-			RateGroups: []struct {
-				ID    uint16
-				Pairs []struct {
-					FoodGroup uint16
-					SubGroup  uint16
-				} `oscar:"count_prefix=uint16"`
-			}{
-				{
-					ID: 1,
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceRateParamsQuery,
 				},
-			},
-		},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceRateParamsReply,
+				},
+				Body: wire.SNAC_0x01_0x07_OServiceRateParamsReply{
+					RateGroups: []struct {
+						ID    uint16
+						Pairs []struct {
+							FoodGroup uint16
+							SubGroup  uint16
+						} `oscar:"count_prefix=uint16"`
+					}{
+						{
+							ID: 1,
+						},
+					},
+				},
+			}
+
+			svc := newMockOServiceService(t)
+			svc.EXPECT().
+				RateParamsQuery(mock.Anything, mock.Anything, input.Frame).
+				Return(output)
+
+			h := Handler{
+				OServiceService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			responseWriter.EXPECT().
+				SendSNAC(output.Frame, output.Body).
+				Return(tt.responseError)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	svc := newMockOServiceService(t)
-	svc.EXPECT().
-		RateParamsQuery(mock.Anything, mock.Anything, input.Frame).
-		Return(output)
-
-	h := Handler{
-		OServiceService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_OServiceServiceRateParamsSubAdd(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceRateParamsSubAdd,
-		},
-		Body: wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd{
-			ClassIDs: []uint16{1, 2, 3, 4},
-		},
-	}
-
-	sess := state.NewSession()
-
-	svc := newMockOServiceService(t)
-	svc.EXPECT().
-		RateParamsSubAdd(mock.Anything, sess, input.Body)
-
-	h := Handler{
-		OServiceService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x01_0x08_OServiceRateParamsSubAdd{
+				ClassIDs: []uint16{1, 2, 3, 4},
+			},
 		},
 	}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceRateParamsSubAdd,
+				},
+				Body: tt.inputBody,
+			}
 
-	assert.NoError(t, h.Handle(context.Background(), wire.BOS, sess, input.Frame, buf, nil, ""))
+			sess := state.NewSession()
+
+			svc := newMockOServiceService(t)
+			svc.EXPECT().
+				RateParamsSubAdd(mock.Anything, sess, input.Body)
+
+			h := Handler{
+				OServiceService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.Background(), wire.BOS, sess, input.Frame, buf, nil, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_OServiceServiceSetUserInfoFields(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceSetUserInfoFields,
-		},
-		Body: wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(0x01, []byte{1, 2, 3, 4}),
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(0x01, []byte{1, 2, 3, 4}),
+					},
 				},
 			},
 		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceUserInfoUpdate,
-		},
-		Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-			UserInfo: []wire.TLVUserInfo{
-				{ScreenName: "screen-name"},
-				{ScreenName: "screen-name"},
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(0x01, []byte{1, 2, 3, 4}),
+					},
+				},
 			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x01_0x1E_OServiceSetUserInfoFields{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(0x01, []byte{1, 2, 3, 4}),
+					},
+				},
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockOServiceService(t)
-	svc.EXPECT().
-		SetUserInfoFields(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceSetUserInfoFields,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceUserInfoUpdate,
+				},
+				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+					UserInfo: []wire.TLVUserInfo{
+						{ScreenName: "screen-name"},
+						{ScreenName: "screen-name"},
+					},
+				},
+			}
 
-	h := Handler{
-		OServiceService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockOServiceService(t)
+			svc.EXPECT().
+				SetUserInfoFields(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				OServiceService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_OServiceServiceUserInfoQuery(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceUserInfoQuery,
+	tests := []struct {
+		name          string
+		inputBody     struct{}
+		responseError error
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: struct{}{},
 		},
-		Body: struct{}{},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceUserInfoUpdate,
-		},
-		Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-			UserInfo: []wire.TLVUserInfo{
-				{ScreenName: "screen-name"},
-				{ScreenName: "screen-name"},
-			},
+		{
+			name:          "response writer error",
+			inputBody:     struct{}{},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockOServiceService(t)
-	svc.EXPECT().
-		UserInfoQuery(mock.Anything, mock.Anything, input.Frame).
-		Return(output)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceUserInfoQuery,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceUserInfoUpdate,
+				},
+				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+					UserInfo: []wire.TLVUserInfo{
+						{ScreenName: "screen-name"},
+						{ScreenName: "screen-name"},
+					},
+				},
+			}
 
-	h := Handler{
-		OServiceService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
+			svc := newMockOServiceService(t)
+			svc.EXPECT().
+				UserInfoQuery(mock.Anything, mock.Anything, input.Frame).
+				Return(output)
+
+			h := Handler{
+				OServiceService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			responseWriter.EXPECT().
+				SendSNAC(output.Frame, output.Body).
+				Return(tt.responseError)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_OServiceServiceNoop(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceNoop,
-		},
-		Body: struct{}{},
-	}
-
-	h := Handler{
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+	tests := []struct {
+		name          string
+		inputBody     struct{}
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: struct{}{},
 		},
 	}
 
-	responseWriter := newMockResponseWriter(t)
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceNoop,
+				},
+				Body: tt.inputBody,
+			}
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			h := Handler{
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_OServiceServiceSetPrivacyFlags(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceSetPrivacyFlags,
-		},
-		Body: wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags{
-			PrivacyFlags: wire.OServicePrivacyFlagMember,
-		},
-	}
-
-	svc := newMockOServiceService(t)
-	svc.EXPECT().
-		SetPrivacyFlags(mock.Anything, input.Body)
-
-	h := Handler{
-		OServiceService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x01_0x14_OServiceSetPrivacyFlags{
+				PrivacyFlags: wire.OServicePrivacyFlagMember,
+			},
 		},
 	}
 
-	responseWriter := newMockResponseWriter(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceSetPrivacyFlags,
+				},
+				Body: tt.inputBody,
+			}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+			svc := newMockOServiceService(t)
+			svc.EXPECT().
+				SetPrivacyFlags(mock.Anything, input.Body)
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			h := Handler{
+				OServiceService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_PermitDenyRightsQuery(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.PermitDeny,
-			SubGroup:  wire.PermitDenyRightsQuery,
+	tests := []struct {
+		name          string
+		inputBody     struct{}
+		responseError error
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: struct{}{},
 		},
-		Body: struct{}{},
+		{
+			name:          "response writer error",
+			inputBody:     struct{}{},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
+		},
 	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.PermitDeny,
-			SubGroup:  wire.PermitDenyRightsReply,
-		},
-		Body: wire.SNAC_0x09_0x03_PermitDenyRightsReply{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(0x01, uint16(1000)),
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.PermitDeny,
+					SubGroup:  wire.PermitDenyRightsQuery,
 				},
-			},
-		},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.PermitDeny,
+					SubGroup:  wire.PermitDenyRightsReply,
+				},
+				Body: wire.SNAC_0x09_0x03_PermitDenyRightsReply{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(0x01, uint16(1000)),
+						},
+					},
+				},
+			}
+
+			svc := newMockPermitDenyService(t)
+			svc.EXPECT().
+				RightsQuery(mock.Anything, input.Frame).
+				Return(output)
+
+			h := Handler{
+				PermitDenyService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			responseWriter.EXPECT().
+				SendSNAC(output.Frame, output.Body).
+				Return(tt.responseError)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
-	svc := newMockPermitDenyService(t)
-	svc.EXPECT().
-		RightsQuery(mock.Anything, input.Frame).
-		Return(output)
-
-	h := Handler{
-		PermitDenyService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
 }
 
 func TestHandler_PermitDenyAddDenyListEntries(t *testing.T) {
-	sess := state.NewSession()
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.PermitDeny,
-			SubGroup:  wire.PermitDenyAddDenyListEntries,
-		},
-		Body: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
-			Users: []struct {
-				ScreenName string `oscar:"len_prefix=uint8"`
-			}{
-				{
-					ScreenName: "friend1",
-				},
-				{
-					ScreenName: "friend2",
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries
+		serviceError  error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: "friend1",
+					},
+					{
+						ScreenName: "friend2",
+					},
 				},
 			},
 		},
-	}
-	svc := newMockPermitDenyService(t)
-	svc.EXPECT().
-		AddDenyListEntries(mock.Anything, sess, input.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	h := Handler{
-		PermitDenyService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x09_0x07_PermitDenyAddDenyListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: "friend1",
+					},
+					{
+						ScreenName: "friend2",
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, sess, input.Frame, buf, nil, ""))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sess := state.NewSession()
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.PermitDeny,
+					SubGroup:  wire.PermitDenyAddDenyListEntries,
+				},
+				Body: tt.inputBody,
+			}
+
+			svc := newMockPermitDenyService(t)
+			svc.EXPECT().
+				AddDenyListEntries(mock.Anything, sess, input.Body).
+				Return(tt.serviceError)
+
+			h := Handler{
+				PermitDenyService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, sess, input.Frame, buf, nil, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_PermitDenyDelDenyListEntries(t *testing.T) {
-	sess := state.NewSession()
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.PermitDeny,
-			SubGroup:  wire.PermitDenyDelDenyListEntries,
-		},
-		Body: wire.SNAC_0x09_0x08_PermitDenyDelDenyListEntries{
-			Users: []struct {
-				ScreenName string `oscar:"len_prefix=uint8"`
-			}{
-				{
-					ScreenName: "friend1",
-				},
-				{
-					ScreenName: "friend2",
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x09_0x08_PermitDenyDelDenyListEntries
+		serviceError  error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x09_0x08_PermitDenyDelDenyListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: "friend1",
+					},
+					{
+						ScreenName: "friend2",
+					},
 				},
 			},
 		},
-	}
-	svc := newMockPermitDenyService(t)
-	svc.EXPECT().
-		DelDenyListEntries(mock.Anything, sess, input.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	h := Handler{
-		PermitDenyService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x09_0x08_PermitDenyDelDenyListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: "friend1",
+					},
+					{
+						ScreenName: "friend2",
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, sess, input.Frame, buf, nil, ""))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sess := state.NewSession()
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.PermitDeny,
+					SubGroup:  wire.PermitDenyDelDenyListEntries,
+				},
+				Body: tt.inputBody,
+			}
+
+			svc := newMockPermitDenyService(t)
+			svc.EXPECT().
+				DelDenyListEntries(mock.Anything, sess, input.Body).
+				Return(tt.serviceError)
+
+			h := Handler{
+				PermitDenyService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, sess, input.Frame, buf, nil, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_PermitDenyAddPermListEntries(t *testing.T) {
-	sess := state.NewSession()
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.PermitDeny,
-			SubGroup:  wire.PermitDenyAddPermListEntries,
-		},
-		Body: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
-			Users: []struct {
-				ScreenName string `oscar:"len_prefix=uint8"`
-			}{
-				{
-					ScreenName: "friend1",
-				},
-				{
-					ScreenName: "friend2",
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries
+		serviceError  error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: "friend1",
+					},
+					{
+						ScreenName: "friend2",
+					},
 				},
 			},
 		},
-	}
-	svc := newMockPermitDenyService(t)
-	svc.EXPECT().
-		AddPermListEntries(mock.Anything, sess, input.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	h := Handler{
-		PermitDenyService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x09_0x05_PermitDenyAddPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: "friend1",
+					},
+					{
+						ScreenName: "friend2",
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, sess, input.Frame, buf, nil, ""))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sess := state.NewSession()
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.PermitDeny,
+					SubGroup:  wire.PermitDenyAddPermListEntries,
+				},
+				Body: tt.inputBody,
+			}
+
+			svc := newMockPermitDenyService(t)
+			svc.EXPECT().
+				AddPermListEntries(mock.Anything, sess, input.Body).
+				Return(tt.serviceError)
+
+			h := Handler{
+				PermitDenyService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, sess, input.Frame, buf, nil, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_PermitDenyDelPermListEntries(t *testing.T) {
-	sess := state.NewSession()
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.PermitDeny,
-			SubGroup:  wire.PermitDenyDelPermListEntries,
-		},
-		Body: wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries{
-			Users: []struct {
-				ScreenName string `oscar:"len_prefix=uint8"`
-			}{
-				{
-					ScreenName: "friend1",
-				},
-				{
-					ScreenName: "friend2",
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries
+		serviceError  error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: "friend1",
+					},
+					{
+						ScreenName: "friend2",
+					},
 				},
 			},
 		},
-	}
-	svc := newMockPermitDenyService(t)
-	svc.EXPECT().
-		DelPermListEntries(mock.Anything, sess, input.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	h := Handler{
-		PermitDenyService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
+					{
+						ScreenName: "friend1",
+					},
+					{
+						ScreenName: "friend2",
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, sess, input.Frame, buf, nil, ""))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sess := state.NewSession()
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.PermitDeny,
+					SubGroup:  wire.PermitDenyDelPermListEntries,
+				},
+				Body: tt.inputBody,
+			}
+
+			svc := newMockPermitDenyService(t)
+			svc.EXPECT().
+				DelPermListEntries(mock.Anything, sess, input.Body).
+				Return(tt.serviceError)
+
+			h := Handler{
+				PermitDenyService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, sess, input.Frame, buf, nil, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_PermitDenySetGroupPermitMask(t *testing.T) {
-	sess := state.NewSession()
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.PermitDeny,
-			SubGroup:  wire.PermitDenySetGroupPermitMask,
-		},
-		Body: wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries{
-			Users: []struct {
-				ScreenName string `oscar:"len_prefix=uint8"`
-			}{
-				{
-					ScreenName: "friend1",
-				},
-			},
-		},
-	}
-	svc := newMockPermitDenyService(t)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	h := Handler{
-		PermitDenyService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, sess, input.Frame, buf, nil, ""))
-}
-
-func TestUserLookupHandler_FindByEmail(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.UserLookup,
-			SubGroup:  wire.UserLookupFindByEmail,
-		},
-		Body: wire.SNAC_0x0A_0x02_UserLookupFindByEmail{
-			Email: []byte("haha@aol.com"),
-		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.UserLookup,
-			SubGroup:  wire.UserLookupFindReply,
-		},
-		Body: wire.SNAC_0x0A_0x03_UserLookupFindReply{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(0x01, uint16(0x02)),
-				},
-			},
-		},
-	}
-
-	svc := newMockUserLookupService(t)
-	svc.EXPECT().
-		FindByEmail(mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
-
-	h := Handler{
-		UserLookupService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	ss := newMockResponseWriter(t)
-	ss.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, ss, ""))
-}
-
-func TestHandler_LocateGetDirInfo(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Locate,
-			SubGroup:  wire.LocateGetDirInfo,
-		},
-		Body: wire.SNAC_0x02_0x0B_LocateGetDirInfo{
-			ScreenName: "screen-name",
-		},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Locate,
-			SubGroup:  wire.LocateGetDirReply,
-		},
-		Body: wire.SNAC_0x02_0x0C_LocateGetDirReply{
-			Status: 1,
-		},
-	}
-
-	svc := newMockLocateService(t)
-	svc.EXPECT().
-		DirInfo(mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
-
-	h := Handler{
-		LocateService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
-}
-
-func TestHandler_LocateRightsQuery(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Locate,
-			SubGroup:  wire.LocateRightsQuery,
-		},
-		Body: struct{}{},
-	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Locate,
-			SubGroup:  wire.LocateRightsReply,
-		},
-		Body: wire.SNAC_0x02_0x03_LocateRightsReply{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
-					wire.NewTLVBE(0x01, uint16(1000)),
-				},
-			},
-		},
-	}
-
-	svc := newMockLocateService(t)
-	svc.EXPECT().
-		RightsQuery(mock.Anything, input.Frame).
-		Return(output)
-
-	h := Handler{
-		LocateService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
-		},
-	}
-
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
-
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
-
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
-}
-
-func TestHandler_LocateSetDirInfo(t *testing.T) {
-	input := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Locate,
-			SubGroup:  wire.LocateSetDirInfo,
-		},
-		Body: wire.SNAC_0x02_0x09_LocateSetDirInfo{
-			TLVRestBlock: wire.TLVRestBlock{
-				TLVList: wire.TLVList{
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x09_0x06_PermitDenyDelPermListEntries{
+				Users: []struct {
+					ScreenName string `oscar:"len_prefix=uint8"`
+				}{
 					{
-						Tag:   0x01,
-						Value: []byte{1, 2, 3, 4},
+						ScreenName: "friend1",
 					},
 				},
 			},
 		},
 	}
-	output := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Locate,
-			SubGroup:  wire.LocateSetDirReply,
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sess := state.NewSession()
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.PermitDeny,
+					SubGroup:  wire.PermitDenySetGroupPermitMask,
+				},
+				Body: tt.inputBody,
+			}
+
+			svc := newMockPermitDenyService(t)
+
+			h := Handler{
+				PermitDenyService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, sess, input.Frame, buf, nil, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestUserLookupHandler_FindByEmail(t *testing.T) {
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x0A_0x02_UserLookupFindByEmail
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x0A_0x02_UserLookupFindByEmail{
+				Email: []byte("haha@aol.com"),
+			},
 		},
-		Body: wire.SNAC_0x02_0x0A_LocateSetDirReply{
-			Result: 1,
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x0A_0x02_UserLookupFindByEmail{
+				Email: []byte("haha@aol.com"),
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x0A_0x02_UserLookupFindByEmail{
+				Email: []byte("haha@aol.com"),
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	svc := newMockLocateService(t)
-	svc.EXPECT().
-		SetDirInfo(mock.Anything, mock.Anything, input.Frame, input.Body).
-		Return(output, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.UserLookup,
+					SubGroup:  wire.UserLookupFindByEmail,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.UserLookup,
+					SubGroup:  wire.UserLookupFindReply,
+				},
+				Body: wire.SNAC_0x0A_0x03_UserLookupFindReply{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(0x01, uint16(0x02)),
+						},
+					},
+				},
+			}
 
-	h := Handler{
-		LocateService: svc,
-		RouteLogger: middleware.RouteLogger{
-			Logger: slog.Default(),
+			svc := newMockUserLookupService(t)
+			svc.EXPECT().
+				FindByEmail(mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				UserLookupService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			ss := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				ss.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, ss, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestHandler_LocateGetDirInfo(t *testing.T) {
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x02_0x0B_LocateGetDirInfo
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x02_0x0B_LocateGetDirInfo{
+				ScreenName: "screen-name",
+			},
+		},
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x02_0x0B_LocateGetDirInfo{
+				ScreenName: "screen-name",
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x02_0x0B_LocateGetDirInfo{
+				ScreenName: "screen-name",
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
 		},
 	}
 
-	responseWriter := newMockResponseWriter(t)
-	responseWriter.EXPECT().
-		SendSNAC(output.Frame, output.Body).
-		Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateGetDirInfo,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateGetDirReply,
+				},
+				Body: wire.SNAC_0x02_0x0C_LocateGetDirReply{
+					Status: 1,
+				},
+			}
 
-	buf := &bytes.Buffer{}
-	assert.NoError(t, wire.MarshalBE(input.Body, buf))
+			svc := newMockLocateService(t)
+			svc.EXPECT().
+				DirInfo(mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
 
-	assert.NoError(t, h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, ""))
+			h := Handler{
+				LocateService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestHandler_LocateRightsQuery(t *testing.T) {
+	tests := []struct {
+		name          string
+		inputBody     struct{}
+		responseError error
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: struct{}{},
+		},
+		{
+			name:          "response writer error",
+			inputBody:     struct{}{},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateRightsQuery,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateRightsReply,
+				},
+				Body: wire.SNAC_0x02_0x03_LocateRightsReply{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(0x01, uint16(1000)),
+						},
+					},
+				},
+			}
+
+			svc := newMockLocateService(t)
+			svc.EXPECT().
+				RightsQuery(mock.Anything, input.Frame).
+				Return(output)
+
+			h := Handler{
+				LocateService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			responseWriter.EXPECT().
+				SendSNAC(output.Frame, output.Body).
+				Return(tt.responseError)
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestHandler_LocateSetDirInfo(t *testing.T) {
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x02_0x09_LocateSetDirInfo
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name: "success",
+			inputBody: wire.SNAC_0x02_0x09_LocateSetDirInfo{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						{
+							Tag:   0x01,
+							Value: []byte{1, 2, 3, 4},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "service error",
+			inputBody: wire.SNAC_0x02_0x09_LocateSetDirInfo{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						{
+							Tag:   0x01,
+							Value: []byte{1, 2, 3, 4},
+						},
+					},
+				},
+			},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name: "response writer error",
+			inputBody: wire.SNAC_0x02_0x09_LocateSetDirInfo{
+				TLVRestBlock: wire.TLVRestBlock{
+					TLVList: wire.TLVList{
+						{
+							Tag:   0x01,
+							Value: []byte{1, 2, 3, 4},
+						},
+					},
+				},
+			},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateSetDirInfo,
+				},
+				Body: tt.inputBody,
+			}
+			output := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Locate,
+					SubGroup:  wire.LocateSetDirReply,
+				},
+				Body: wire.SNAC_0x02_0x0A_LocateSetDirReply{
+					Result: 1,
+				},
+			}
+
+			svc := newMockLocateService(t)
+			svc.EXPECT().
+				SetDirInfo(mock.Anything, mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				LocateService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				responseWriter.EXPECT().
+					SendSNAC(output.Frame, output.Body).
+					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, "")
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestHandler_LocateSetInfo(t *testing.T) {
