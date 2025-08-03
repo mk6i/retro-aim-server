@@ -757,12 +757,12 @@ func (rt Handler) OServiceSetPrivacyFlags(ctx context.Context, sess *state.Sessi
 	return nil
 }
 
-func (rt Handler) OServiceServiceRequest(ctx context.Context, service uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, connectHere string) error {
+func (rt Handler) OServiceServiceRequest(ctx context.Context, service uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, advertisedHost string) error {
 	inBody := wire.SNAC_0x01_0x04_OServiceServiceRequest{}
 	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
-	outSNAC, err := rt.OServiceService.ServiceRequest(ctx, service, sess, inFrame, inBody, connectHere)
+	outSNAC, err := rt.OServiceService.ServiceRequest(ctx, service, sess, inFrame, inBody, advertisedHost)
 	if err != nil {
 		return err
 	}
@@ -911,7 +911,7 @@ func (rt Handler) UserLookupFindByEmail(ctx context.Context, _ *state.Session, i
 // its group and subGroup identifiers found in the SNAC frame. It returns an
 // ErrRouteNotFound error if no matching handler is found for the group:subGroup
 // pair in the request.
-func (rt Handler) Handle(ctx context.Context, server uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, connectHere string) error {
+func (rt Handler) Handle(ctx context.Context, server uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, advertisedHost string) error {
 	switch inFrame.FoodGroup {
 	case wire.Admin:
 		switch inFrame.SubGroup {
@@ -1043,7 +1043,7 @@ func (rt Handler) Handle(ctx context.Context, server uint16, sess *state.Session
 		case wire.OServiceRateParamsSubAdd:
 			return rt.OServiceRateParamsSubAdd(ctx, sess, inFrame, r, rw)
 		case wire.OServiceServiceRequest:
-			return rt.OServiceServiceRequest(ctx, server, sess, inFrame, r, rw, connectHere)
+			return rt.OServiceServiceRequest(ctx, server, sess, inFrame, r, rw, advertisedHost)
 		case wire.OServiceSetPrivacyFlags:
 			return rt.OServiceSetPrivacyFlags(ctx, sess, inFrame, r, rw)
 		case wire.OServiceSetUserInfoFields:

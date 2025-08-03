@@ -229,9 +229,9 @@ func (s AuthService) BUCPChallenge(ctx context.Context, bodyIn wire.SNAC_0x17_0x
 // (wire.LoginTLVTagsReconnectHere) and an authorization cookie
 // (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
 // (wire.LoginTLVTagsErrorSubcode).
-func (s AuthService) BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error), connectHere string) (wire.SNACMessage, error) {
+func (s AuthService) BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error), advertisedHost string) (wire.SNACMessage, error) {
 
-	block, err := s.login(ctx, bodyIn.TLVList, newUserFn, connectHere)
+	block, err := s.login(ctx, bodyIn.TLVList, newUserFn, advertisedHost)
 	if err != nil {
 		return wire.SNACMessage{}, err
 	}
@@ -257,8 +257,8 @@ func (s AuthService) BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_B
 // (wire.LoginTLVTagsReconnectHere) and an authorization cookie
 // (wire.LoginTLVTagsAuthorizationCookie). Else, an error code is set
 // (wire.LoginTLVTagsErrorSubcode).
-func (s AuthService) FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error), connectHere string) (wire.TLVRestBlock, error) {
-	return s.login(ctx, frame.TLVList, newUserFn, connectHere)
+func (s AuthService) FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error), advertisedHost string) (wire.TLVRestBlock, error) {
+	return s.login(ctx, frame.TLVList, newUserFn, advertisedHost)
 }
 
 // KerberosLogin handles AIM-style Kerberos authentication for AIM 6.0+.

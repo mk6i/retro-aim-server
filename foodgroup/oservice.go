@@ -512,7 +512,7 @@ func buildRateLimitUpdate(code uint16, curRate state.RateClassState, sess *state
 
 // ServiceRequest handles service discovery, providing a host name and metadata
 // for connecting to the food group service specified in inFrame.
-func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest, connectHere string) (wire.SNACMessage, error) {
+func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest, advertisedHost string) (wire.SNACMessage, error) {
 	if service != wire.BOS {
 		return wire.SNACMessage{
 			Frame: wire.SNACFrame{
@@ -552,7 +552,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, connectHere),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, advertisedHost),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Admin),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -578,7 +578,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, connectHere),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, advertisedHost),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Alert),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -604,7 +604,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, connectHere),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, advertisedHost),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.BART),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -630,7 +630,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, connectHere),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, advertisedHost),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ChatNav),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -673,7 +673,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, connectHere),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, advertisedHost),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Chat),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -699,7 +699,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, connectHere),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, advertisedHost),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ODir),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),

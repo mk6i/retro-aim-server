@@ -84,9 +84,9 @@ func (_c *mockAuthService_BUCPChallenge_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// BUCPLogin provides a mock function with given fields: ctx, bodyIn, newUserFn, connectHere
-func (_m *mockAuthService) BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(state.DisplayScreenName) (state.User, error), connectHere string) (wire.SNACMessage, error) {
-	ret := _m.Called(ctx, bodyIn, newUserFn, connectHere)
+// BUCPLogin provides a mock function with given fields: ctx, bodyIn, newUserFn, advertisedHost
+func (_m *mockAuthService) BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(state.DisplayScreenName) (state.User, error), advertisedHost string) (wire.SNACMessage, error) {
+	ret := _m.Called(ctx, bodyIn, newUserFn, advertisedHost)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BUCPLogin")
@@ -95,16 +95,16 @@ func (_m *mockAuthService) BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_
 	var r0 wire.SNACMessage
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, wire.SNAC_0x17_0x02_BUCPLoginRequest, func(state.DisplayScreenName) (state.User, error), string) (wire.SNACMessage, error)); ok {
-		return rf(ctx, bodyIn, newUserFn, connectHere)
+		return rf(ctx, bodyIn, newUserFn, advertisedHost)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, wire.SNAC_0x17_0x02_BUCPLoginRequest, func(state.DisplayScreenName) (state.User, error), string) wire.SNACMessage); ok {
-		r0 = rf(ctx, bodyIn, newUserFn, connectHere)
+		r0 = rf(ctx, bodyIn, newUserFn, advertisedHost)
 	} else {
 		r0 = ret.Get(0).(wire.SNACMessage)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, wire.SNAC_0x17_0x02_BUCPLoginRequest, func(state.DisplayScreenName) (state.User, error), string) error); ok {
-		r1 = rf(ctx, bodyIn, newUserFn, connectHere)
+		r1 = rf(ctx, bodyIn, newUserFn, advertisedHost)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -121,12 +121,12 @@ type mockAuthService_BUCPLogin_Call struct {
 //   - ctx context.Context
 //   - bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest
 //   - newUserFn func(state.DisplayScreenName)(state.User , error)
-//   - connectHere string
-func (_e *mockAuthService_Expecter) BUCPLogin(ctx interface{}, bodyIn interface{}, newUserFn interface{}, connectHere interface{}) *mockAuthService_BUCPLogin_Call {
-	return &mockAuthService_BUCPLogin_Call{Call: _e.mock.On("BUCPLogin", ctx, bodyIn, newUserFn, connectHere)}
+//   - advertisedHost string
+func (_e *mockAuthService_Expecter) BUCPLogin(ctx interface{}, bodyIn interface{}, newUserFn interface{}, advertisedHost interface{}) *mockAuthService_BUCPLogin_Call {
+	return &mockAuthService_BUCPLogin_Call{Call: _e.mock.On("BUCPLogin", ctx, bodyIn, newUserFn, advertisedHost)}
 }
 
-func (_c *mockAuthService_BUCPLogin_Call) Run(run func(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(state.DisplayScreenName) (state.User, error), connectHere string)) *mockAuthService_BUCPLogin_Call {
+func (_c *mockAuthService_BUCPLogin_Call) Run(run func(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(state.DisplayScreenName) (state.User, error), advertisedHost string)) *mockAuthService_BUCPLogin_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(wire.SNAC_0x17_0x02_BUCPLoginRequest), args[2].(func(state.DisplayScreenName) (state.User, error)), args[3].(string))
 	})

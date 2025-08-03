@@ -29,7 +29,7 @@ func NewServer(
 	departureNotifier DepartureNotifier,
 	logger *slog.Logger,
 	onlineNotifier OnlineNotifier,
-	handler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, advertisedHost string) error,
+	SNACHandler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, advertisedHost string) error,
 	rateLimitUpdater RateLimitUpdater,
 	limits wire.SNACRateLimits,
 	limiter *IPRateLimiter,
@@ -42,7 +42,7 @@ func NewServer(
 		DepartureNotifier:  departureNotifier,
 		Logger:             logger,
 		OnlineNotifier:     onlineNotifier,
-		Handler:            handler,
+		SNACHandler:        SNACHandler,
 		RateLimitUpdater:   rateLimitUpdater,
 		SNACRateLimits:     limits,
 		IPRateLimiter:      limiter,
@@ -181,7 +181,7 @@ type oscarServer struct {
 	DepartureNotifier
 	Logger *slog.Logger
 	OnlineNotifier
-	Handler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, connectHere string) error
+	SNACHandler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, advertisedHost string) error
 	RateLimitUpdater
 	wire.SNACRateLimits
 	*IPRateLimiter
@@ -205,13 +205,13 @@ func (s oscarServer) routeConnection(ctx context.Context, conn net.Conn, adverti
 	}
 
 	if flap.HasTag(wire.OServiceTLVTagsLoginCookie) {
-		return s.connectToService(ctx, flap, flapc, conn, advertisedHost)
+		return s.connectToOSCARService(ctx, flap, flapc, conn, advertisedHost)
 	}
 
-	return s.doAuthStuff(ctx, flap, ip, conn, flapc, advertisedHost)
+	return s.authenticate(ctx, flap, ip, conn, flapc, advertisedHost)
 }
 
-func (s oscarServer) connectToService(
+func (s oscarServer) connectToOSCARService(
 	ctx context.Context,
 	flap wire.FLAPSignonFrame,
 	flapc *wire.FlapClient,
@@ -322,7 +322,7 @@ func (s oscarServer) receiveSessMessages(ctx context.Context, sess *state.Sessio
 	}
 }
 
-func (s oscarServer) doAuthStuff(
+func (s oscarServer) authenticate(
 	ctx context.Context,
 	flap wire.FLAPSignonFrame,
 	ip string,
@@ -533,7 +533,7 @@ func (s oscarServer) dispatchIncomingMessages(
 
 				// route a client request to the appropriate service handler. the
 				// handler may write a response to the client connection.
-				if err := s.Handler(ctx, fg, sess, inFrame, flapBuf, flapc, advertisedHost); err != nil {
+				if err := s.SNACHandler(ctx, fg, sess, inFrame, flapBuf, flapc, advertisedHost); err != nil {
 					middleware.LogRequestError(ctx, s.Logger, inFrame, err)
 					if errors.Is(err, ErrRouteNotFound) {
 						if err1 := sendInvalidSNACErr(inFrame, flapc); err1 != nil {
