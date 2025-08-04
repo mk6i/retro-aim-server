@@ -193,7 +193,8 @@ func (s *Server) ListenAndServe() error {
 				ch:  httpCh,
 				ctx: s.shutdownCtx,
 			}
-			if err := s.servers[i].Serve(cl); !errors.Is(err, http.ErrServerClosed) {
+			if err := s.servers[i].Serve(cl); !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, io.EOF) {
+				fmt.Println("HAHA")
 				s.shutdownCancel()
 				return err
 			}

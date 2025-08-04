@@ -5,9 +5,9 @@ Description=Retro AIM Server
 Type=simple
 User=ras
 Group=ras
-Environment="API_LISTENERS=127.0.0.1:8080"
-Environment="BOS_ADVERTISED_HOSTS=EXTERNAL://127.0.0.1:5190"
-Environment="BOS_LISTENERS=EXTERNAL://0.0.0.0:5190"
+Environment="API_LISTENER=127.0.0.1:8080"
+Environment="OSCAR_ADVERTISED_LISTENERS=EXTERNAL://127.0.0.1:5190"
+Environment="OSCAR_LISTENERS=EXTERNAL://0.0.0.0:5190"
 Environment="KERBEROS_LISTENERS=EXTERNAL://0.0.0.0:1088"
 Environment="TOC_LISTENERS=0.0.0.0:9898"
 Environment="DB_PATH=/var/ras/oscar.sqlite"

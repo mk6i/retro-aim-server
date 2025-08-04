@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -92,9 +93,9 @@ func validateConfigMigration() error {
 
 	// New environment variables that should be present
 	newEnvVars := []string{
-		"API_LISTENERS",
-		"BOS_ADVERTISED_HOSTS",
-		"BOS_LISTENERS",
+		"API_LISTENER",
+		"OSCAR_ADVERTISED_LISTENERS",
+		"OSCAR_LISTENERS",
 		"KERBEROS_LISTENERS",
 		"TOC_LISTENERS",
 	}
@@ -137,21 +138,21 @@ func validateConfigMigration() error {
 			// Generate export commands based on old environment variables
 			errorMsg.WriteString("\nCopy/paste this updated configuration into your settings file:\n\n")
 
-			if contains(newEnvVarsMissing, "API_LISTENERS") {
+			if contains(newEnvVarsMissing, "API_LISTENER") {
 				apiHost := getEnvOrDefault("API_HOST", "127.0.0.1")
 				apiPort := getEnvOrDefault("API_PORT", "8080")
-				errorMsg.WriteString(fmt.Sprintf("export API_LISTENERS=%s:%s\n", apiHost, apiPort))
+				errorMsg.WriteString(fmt.Sprintf("export API_LISTENER=%s:%s\n", apiHost, apiPort))
 			}
 
-			if contains(newEnvVarsMissing, "BOS_ADVERTISED_HOSTS") {
+			if contains(newEnvVarsMissing, "OSCAR_ADVERTISED_LISTENERS") {
 				oscarHost := getEnvOrDefault("OSCAR_HOST", "127.0.0.1")
 				authPort := getEnvOrDefault("AUTH_PORT", "5190")
-				errorMsg.WriteString(fmt.Sprintf("export BOS_ADVERTISED_HOSTS=EXTERNAL://%s:%s\n", oscarHost, authPort))
+				errorMsg.WriteString(fmt.Sprintf("export OSCAR_ADVERTISED_LISTENERS=EXTERNAL://%s:%s\n", oscarHost, authPort))
 			}
 
-			if contains(newEnvVarsMissing, "BOS_LISTENERS") {
+			if contains(newEnvVarsMissing, "OSCAR_LISTENERS") {
 				authPort := getEnvOrDefault("AUTH_PORT", "5190")
-				errorMsg.WriteString(fmt.Sprintf("export BOS_LISTENERS=EXTERNAL://0.0.0.0:%s\n", authPort))
+				errorMsg.WriteString(fmt.Sprintf("export OSCAR_LISTENERS=EXTERNAL://0.0.0.0:%s\n", authPort))
 			}
 
 			if contains(newEnvVarsMissing, "KERBEROS_LISTENERS") {
@@ -166,7 +167,7 @@ func validateConfigMigration() error {
 			}
 		}
 
-		return fmt.Errorf(errorMsg.String())
+		return errors.New(errorMsg.String())
 	}
 
 	return nil
