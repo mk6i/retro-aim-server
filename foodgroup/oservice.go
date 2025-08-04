@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/config"
@@ -18,12 +17,44 @@ import (
 // provides an assortment of services useful across multiple food groups.
 type OServiceService struct {
 	buddyBroadcaster buddyBroadcaster
-	cfg              config.Config
+	cfg              config.Config // todo remove
 	logger           *slog.Logger
-	foodGroups       []uint16
 	rateLimitClasses wire.RateLimitClasses
 	snacRateLimits   wire.SNACRateLimits
 	timeNow          func() time.Time
+
+	chatRoomManager    ChatRoomRegistry
+	cookieIssuer       CookieBaker
+	messageRelayer     MessageRelayer
+	chatMessageRelayer ChatMessageRelayer
+}
+
+// NewOServiceService creates a new instance of NewOServiceService.
+func NewOServiceService(
+	cfg config.Config,
+	messageRelayer MessageRelayer,
+	logger *slog.Logger,
+	cookieIssuer CookieBaker,
+	chatRoomManager ChatRoomRegistry,
+	relationshipFetcher RelationshipFetcher,
+	sessionRetriever SessionRetriever,
+	buddyIconManager BuddyIconManager,
+	rateLimitClasses wire.RateLimitClasses,
+	snacRateLimits wire.SNACRateLimits,
+	chatMessageRelayer ChatMessageRelayer,
+) *OServiceService {
+	return &OServiceService{
+		cookieIssuer:       cookieIssuer,
+		messageRelayer:     messageRelayer,
+		buddyBroadcaster:   newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		cfg:                cfg,
+		logger:             logger,
+		rateLimitClasses:   rateLimitClasses,
+		snacRateLimits:     snacRateLimits,
+		timeNow:            time.Now,
+		chatRoomManager:    chatRoomManager,
+		chatMessageRelayer: chatMessageRelayer,
+	}
 }
 
 // ClientVersions informs the server what food group versions the client
@@ -273,40 +304,125 @@ func (s OServiceService) RateParamsSubAdd(ctx context.Context, sess *state.Sessi
 	sess.SubscribeRateLimits(ids)
 }
 
-func (s OServiceService) ServiceRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
+// HostOnline returns SNAC wire.OServiceHostOnline containing the list of food
+// groups supported by the particular service.
+func (s OServiceService) HostOnline(service uint16) wire.SNACMessage {
+	switch service {
+	case wire.Admin:
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceHostOnline,
+				RequestID: wire.ReqIDFromServer,
+			},
+			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+				FoodGroups: []uint16{
+					wire.OService,
+					wire.Admin,
+				},
+			},
+		}
+	case wire.Alert:
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceHostOnline,
+				RequestID: wire.ReqIDFromServer,
+			},
+			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+				FoodGroups: []uint16{
+					wire.Alert,
+					wire.OService,
+				},
+			},
+		}
+	case wire.BART:
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceHostOnline,
+				RequestID: wire.ReqIDFromServer,
+			},
+			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+				FoodGroups: []uint16{
+					wire.BART,
+					wire.OService,
+				},
+			},
+		}
+	case wire.BOS:
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceHostOnline,
+				RequestID: wire.ReqIDFromServer,
+			},
+			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+				FoodGroups: []uint16{
+					wire.Alert,
+					wire.BART,
+					wire.Buddy,
+					wire.Feedbag,
+					wire.ICBM,
+					wire.ICQ,
+					wire.Locate,
+					wire.OService,
+					wire.PermitDeny,
+					wire.UserLookup,
+					wire.Invite,
+					wire.Popup,
+					wire.Stats,
+				},
+			},
+		}
+	case wire.Chat:
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceHostOnline,
+				RequestID: wire.ReqIDFromServer,
+			},
+			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+				FoodGroups: []uint16{
+					wire.OService,
+					wire.Chat,
+				},
+			},
+		}
+	case wire.ChatNav:
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceHostOnline,
+				RequestID: wire.ReqIDFromServer,
+			},
+			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+				FoodGroups: []uint16{
+					wire.ChatNav,
+					wire.OService,
+				},
+			},
+		}
+	case wire.ODir:
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceHostOnline,
+				RequestID: wire.ReqIDFromServer,
+			},
+			Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+				FoodGroups: []uint16{
+					wire.ODir,
+					wire.OService,
+				},
+			},
+		}
+	}
+
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.OService,
 			SubGroup:  wire.OServiceErr,
-			RequestID: frame.RequestID,
-		},
-		Body: wire.SNACError{
-			Code: wire.ErrorCodeNotSupportedByHost,
-		},
-	}, nil
-}
-
-// ClientOnline informs the server that the client is ready.
-func (s OServiceService) ClientOnline(ctx context.Context, bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
-	s.logger.DebugContext(ctx, "client is online", "group_versions", bodyIn.GroupVersions)
-	return nil
-}
-
-// HostOnline initiates the Alert protocol sequence.
-// It returns SNAC wire.OServiceHostOnline containing the list of food groups
-// supported by the Alert service.
-// Alert is provided by BOS in addition to the standalone Alert service.
-// AIM 4.x always creates a secondary TCP connection for Alert, whereas 5.x
-// can use the existing BOS connection for Alert services.
-func (s OServiceService) HostOnline() wire.SNACMessage {
-	return wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceHostOnline,
-			RequestID: wire.ReqIDFromServer,
-		},
-		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
-			FoodGroups: s.foodGroups,
 		},
 	}
 }
@@ -394,68 +510,22 @@ func buildRateLimitUpdate(code uint16, curRate state.RateClassState, sess *state
 	}
 }
 
-// NewOServiceServiceForBOS creates a new instance of OServiceServiceForBOS.
-func NewOServiceServiceForBOS(
-	cfg config.Config,
-	messageRelayer MessageRelayer,
-	logger *slog.Logger,
-	cookieIssuer CookieBaker,
-	chatRoomManager ChatRoomRegistry,
-	relationshipFetcher RelationshipFetcher,
-	sessionRetriever SessionRetriever,
-	buddyIconManager BuddyIconManager,
-	rateLimitClasses wire.RateLimitClasses,
-	snacRateLimits wire.SNACRateLimits,
-) *OServiceServiceForBOS {
-	return &OServiceServiceForBOS{
-		chatRoomManager: chatRoomManager,
-		cookieIssuer:    cookieIssuer,
-		messageRelayer:  messageRelayer,
-		OServiceService: OServiceService{
-			buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
-			cfg:              cfg,
-			logger:           logger,
-			foodGroups: []uint16{
-				wire.Alert,
-				wire.BART,
-				wire.Buddy,
-				wire.Feedbag,
-				wire.ICBM,
-				wire.ICQ,
-				wire.Locate,
-				wire.OService,
-				wire.PermitDeny,
-				wire.UserLookup,
-				wire.Invite,
-				wire.Popup,
-				wire.Stats,
-			},
-			rateLimitClasses: rateLimitClasses,
-			snacRateLimits:   snacRateLimits,
-			timeNow:          time.Now,
-		},
-	}
-}
-
-// OServiceServiceForBOS provides functionality for the OService food group
-// running on the BOS server.
-type OServiceServiceForBOS struct {
-	OServiceService
-	chatRoomManager ChatRoomRegistry
-	cookieIssuer    CookieBaker
-	messageRelayer  MessageRelayer
-}
-
-// chatLoginCookie represents credentials used to authenticate a user chat
-// session.
-type chatLoginCookie struct {
-	ChatCookie string                  `oscar:"len_prefix=uint8"`
-	ScreenName state.DisplayScreenName `oscar:"len_prefix=uint8"`
-}
-
 // ServiceRequest handles service discovery, providing a host name and metadata
 // for connecting to the food group service specified in inFrame.
-func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error) {
+func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x01_0x04_OServiceServiceRequest, advertisedHost string) (wire.SNACMessage, error) {
+	if service != wire.BOS {
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.OService,
+				SubGroup:  wire.OServiceErr,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNACError{
+				Code: wire.ErrorCodeNotSupportedByHost,
+			},
+		}, nil
+	}
+
 	fnIssueCookie := func(val any) ([]byte, error) {
 		buf := &bytes.Buffer{}
 		if err := wire.MarshalBE(val, buf); err != nil {
@@ -466,7 +536,8 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 
 	switch inBody.FoodGroup {
 	case wire.Admin:
-		cookie, err := fnIssueCookie(bosCookie{
+		cookie, err := fnIssueCookie(state.ServerCookie{
+			Service:    wire.Admin,
 			ScreenName: sess.DisplayScreenName(),
 		})
 		if err != nil {
@@ -481,7 +552,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.AdminPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, advertisedHost),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Admin),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -491,7 +562,8 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			},
 		}, nil
 	case wire.Alert:
-		cookie, err := fnIssueCookie(bosCookie{
+		cookie, err := fnIssueCookie(state.ServerCookie{
+			Service:    wire.Alert,
 			ScreenName: sess.DisplayScreenName(),
 		})
 		if err != nil {
@@ -506,7 +578,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.AlertPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, advertisedHost),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Alert),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -516,7 +588,8 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			},
 		}, nil
 	case wire.BART:
-		cookie, err := fnIssueCookie(bosCookie{
+		cookie, err := fnIssueCookie(state.ServerCookie{
+			Service:    wire.BART,
 			ScreenName: sess.DisplayScreenName(),
 		})
 		if err != nil {
@@ -531,7 +604,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.BARTPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, advertisedHost),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.BART),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -541,7 +614,8 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			},
 		}, nil
 	case wire.ChatNav:
-		cookie, err := fnIssueCookie(bosCookie{
+		cookie, err := fnIssueCookie(state.ServerCookie{
+			Service:    wire.ChatNav,
 			ScreenName: sess.DisplayScreenName(),
 		})
 		if err != nil {
@@ -556,7 +630,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ChatNavPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, advertisedHost),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ChatNav),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -581,7 +655,8 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			return wire.SNACMessage{}, fmt.Errorf("unable to retrieve room info: %w", err)
 		}
 
-		cookie, err := fnIssueCookie(chatLoginCookie{
+		cookie, err := fnIssueCookie(state.ServerCookie{
+			Service:    wire.Chat,
 			ChatCookie: room.Cookie(),
 			ScreenName: sess.DisplayScreenName(),
 		})
@@ -598,7 +673,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ChatPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, advertisedHost),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Chat),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -608,7 +683,8 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			},
 		}, nil
 	case wire.ODir:
-		cookie, err := fnIssueCookie(bosCookie{
+		cookie, err := fnIssueCookie(state.ServerCookie{
+			Service:    wire.ODir,
 			ScreenName: sess.DisplayScreenName(),
 		})
 		if err != nil {
@@ -623,7 +699,7 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 			Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
 				TLVRestBlock: wire.TLVRestBlock{
 					TLVList: wire.TLVList{
-						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, net.JoinHostPort(s.cfg.OSCARHost, s.cfg.ODirPort)),
+						wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, advertisedHost),
 						wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, cookie),
 						wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ODir),
 						wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
@@ -648,217 +724,50 @@ func (s OServiceServiceForBOS) ServiceRequest(ctx context.Context, sess *state.S
 }
 
 // ClientOnline runs when the current user is ready to join.
-// It announces current user's arrival to users who have the current user on
-// their buddy list.
-func (s OServiceServiceForBOS) ClientOnline(ctx context.Context, _ wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
-	sess.SetSignonComplete()
-
-	if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, nil, false); err != nil {
-		return fmt.Errorf("unable to send buddy arrival notification: %w", err)
-	}
-
-	msg := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.Stats,
-			SubGroup:  wire.StatsSetMinReportInterval,
-			RequestID: wire.ReqIDFromServer,
-		},
-		Body: wire.SNAC_0x0B_0x02_StatsSetMinReportInterval{
-			MinReportInterval: 1,
-		},
-	}
-	s.messageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), msg)
-
-	return nil
-}
-
-// NewOServiceServiceForChat creates a new instance of NewOServiceServiceForChat.
-func NewOServiceServiceForChat(
-	cfg config.Config,
-	logger *slog.Logger,
-	messageRelayer MessageRelayer,
-	chatRoomManager ChatRoomRegistry,
-	chatMessageRelayer ChatMessageRelayer,
-	relationshipFetcher RelationshipFetcher,
-	sessionRetriever SessionRetriever,
-	buddyIconManager BuddyIconManager,
-	rateLimitClasses wire.RateLimitClasses,
-	snacRateLimits wire.SNACRateLimits,
-) *OServiceServiceForChat {
-	return &OServiceServiceForChat{
-		OServiceService: OServiceService{
-			buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
-			cfg:              cfg,
-			logger:           logger,
-			foodGroups: []uint16{
-				wire.OService,
-				wire.Chat,
-			},
-			rateLimitClasses: rateLimitClasses,
-			snacRateLimits:   snacRateLimits,
-			timeNow:          time.Now,
-		},
-		chatRoomManager:    chatRoomManager,
-		chatMessageRelayer: chatMessageRelayer,
-	}
-}
-
-// OServiceServiceForChat provides functionality for the OService food group
-// running on the Chat server.
-type OServiceServiceForChat struct {
-	OServiceService
-	chatRoomManager    ChatRoomRegistry
-	chatMessageRelayer ChatMessageRelayer
-}
-
-// ClientOnline runs when the current user is ready to join the chat.
-// Trigger the following actions:
+// If BOS:
+//   - Announce current user's arrival to users who have the current user on their buddy list
+//
+// If Chat:
 //   - Send current user the chat room metadata
 //   - Announce current user's arrival to other chat room participants
 //   - Send current user the chat room participant list
-func (s OServiceServiceForChat) ClientOnline(ctx context.Context, _ wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
-	room, err := s.chatRoomManager.ChatRoomByCookie(ctx, sess.ChatRoomCookie())
-	if err != nil {
-		return fmt.Errorf("error getting chat room: %w", err)
+func (s OServiceService) ClientOnline(ctx context.Context, service uint16, bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error {
+	sess.SetSignonComplete()
+
+	switch service {
+	case wire.BOS:
+
+		if err := s.buddyBroadcaster.BroadcastVisibility(ctx, sess, nil, false); err != nil {
+			return fmt.Errorf("unable to send buddy arrival notification: %w", err)
+		}
+
+		msg := wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.Stats,
+				SubGroup:  wire.StatsSetMinReportInterval,
+				RequestID: wire.ReqIDFromServer,
+			},
+			Body: wire.SNAC_0x0B_0x02_StatsSetMinReportInterval{
+				MinReportInterval: 1,
+			},
+		}
+		s.messageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), msg)
+	case wire.Chat:
+		room, err := s.chatRoomManager.ChatRoomByCookie(ctx, sess.ChatRoomCookie())
+		if err != nil {
+			return fmt.Errorf("error getting chat room: %w", err)
+		}
+
+		// Do not change the order of the following 3 methods. macOS client v4.0.9
+		// requires this exact sequence, otherwise the chat session prematurely
+		// closes seconds after users join a chat room.
+		setOnlineChatUsers(ctx, sess, s.chatMessageRelayer)
+		sendChatRoomInfoUpdate(ctx, sess, s.chatMessageRelayer, room)
+		alertUserJoined(ctx, sess, s.chatMessageRelayer)
+	default:
+		s.logger.DebugContext(ctx, "client is online", "group_versions", bodyIn.GroupVersions)
 	}
-
-	// Do not change the order of the following 3 methods. macOS client v4.0.9
-	// requires this exact sequence, otherwise the chat session prematurely
-	// closes seconds after users join a chat room.
-	setOnlineChatUsers(ctx, sess, s.chatMessageRelayer)
-	sendChatRoomInfoUpdate(ctx, sess, s.chatMessageRelayer, room)
-	alertUserJoined(ctx, sess, s.chatMessageRelayer)
-
 	return nil
-}
-
-// NewOServiceServiceForChatNav creates a new instance of OServiceService for
-// ChatNav.
-func NewOServiceServiceForChatNav(
-	cfg config.Config,
-	logger *slog.Logger,
-	messageRelayer MessageRelayer,
-	relationshipFetcher RelationshipFetcher,
-	sessionRetriever SessionRetriever,
-	buddyIconManager BuddyIconManager,
-	rateLimitClasses wire.RateLimitClasses,
-	snacRateLimits wire.SNACRateLimits,
-) *OServiceService {
-	return &OServiceService{
-		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
-		cfg:              cfg,
-		logger:           logger,
-		foodGroups: []uint16{
-			wire.ChatNav,
-			wire.OService,
-		},
-		rateLimitClasses: rateLimitClasses,
-		snacRateLimits:   snacRateLimits,
-		timeNow:          time.Now,
-	}
-}
-
-// NewOServiceServiceForAlert creates a new instance of OServiceService for the Alert
-// server.
-func NewOServiceServiceForAlert(
-	cfg config.Config,
-	logger *slog.Logger,
-	messageRelayer MessageRelayer,
-	relationshipFetcher RelationshipFetcher,
-	sessionRetriever SessionRetriever,
-	buddyIconManager BuddyIconManager,
-	rateLimitClasses wire.RateLimitClasses,
-	snacRateLimits wire.SNACRateLimits,
-) *OServiceService {
-	return &OServiceService{
-		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
-		cfg:              cfg,
-		logger:           logger,
-		foodGroups: []uint16{
-			wire.Alert,
-			wire.OService,
-		},
-		rateLimitClasses: rateLimitClasses,
-		snacRateLimits:   snacRateLimits,
-		timeNow:          time.Now,
-	}
-}
-
-// NewOServiceServiceForODir creates a new instance of OServiceService for the
-// ODir server.
-func NewOServiceServiceForODir(
-	cfg config.Config,
-	logger *slog.Logger,
-	rateLimitClasses wire.RateLimitClasses,
-	snacRateLimits wire.SNACRateLimits,
-	messageRelayer MessageRelayer,
-	relationshipFetcher RelationshipFetcher,
-	sessionRetriever SessionRetriever,
-	buddyIconManager BuddyIconManager,
-) *OServiceService {
-	return &OServiceService{
-		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
-		cfg:              cfg,
-		logger:           logger,
-		foodGroups: []uint16{
-			wire.ODir,
-			wire.OService,
-		},
-		rateLimitClasses: rateLimitClasses,
-		snacRateLimits:   snacRateLimits,
-		timeNow:          time.Now,
-	}
-}
-
-// NewOServiceServiceForAdmin creates a new instance of OServiceService for Admin server.
-func NewOServiceServiceForAdmin(
-	cfg config.Config,
-	logger *slog.Logger,
-	messageRelayer MessageRelayer,
-	relationshipFetcher RelationshipFetcher,
-	sessionRetriever SessionRetriever,
-	buddyIconManager BuddyIconManager,
-	rateLimitClasses wire.RateLimitClasses,
-	snacRateLimits wire.SNACRateLimits,
-) *OServiceService {
-	return &OServiceService{
-		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
-		cfg:              cfg,
-		logger:           logger,
-		foodGroups: []uint16{
-			wire.OService,
-			wire.Admin,
-		},
-		rateLimitClasses: rateLimitClasses,
-		snacRateLimits:   snacRateLimits,
-		timeNow:          time.Now,
-	}
-}
-
-// NewOServiceServiceForBART creates a new instance of OServiceService for the
-// BART server.
-func NewOServiceServiceForBART(
-	cfg config.Config,
-	logger *slog.Logger,
-	messageRelayer MessageRelayer,
-	relationshipFetcher RelationshipFetcher,
-	sessionRetriever SessionRetriever,
-	buddyIconManager BuddyIconManager,
-	rateLimitClasses wire.RateLimitClasses,
-	snacRateLimits wire.SNACRateLimits,
-) *OServiceService {
-	return &OServiceService{
-		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
-		cfg:              cfg,
-		logger:           logger,
-		foodGroups: []uint16{
-			wire.BART,
-			wire.OService,
-		},
-		rateLimitClasses: rateLimitClasses,
-		snacRateLimits:   snacRateLimits,
-		timeNow:          time.Now,
-	}
 }
 
 // newOServiceUserInfoUpdate constructs SNAC(0x01,0x0F) for user info updates.

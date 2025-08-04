@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -13,8 +15,8 @@ import (
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/foodgroup"
 	"github.com/mk6i/retro-aim-server/server/http"
+	"github.com/mk6i/retro-aim-server/server/kerberos"
 	"github.com/mk6i/retro-aim-server/server/oscar"
-	"github.com/mk6i/retro-aim-server/server/oscar/handler"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/server/toc"
 	"github.com/mk6i/retro-aim-server/state"
@@ -31,21 +33,25 @@ type Container struct {
 	rateLimitClasses       wire.RateLimitClasses
 	snacRateLimits         wire.SNACRateLimits
 	sqLiteUserStore        *state.SQLiteUserStore
+	Listeners              []config.Listener
 }
 
 // MakeCommonDeps creates common dependencies used by the food group services.
 func MakeCommonDeps() (Container, error) {
 	c := Container{}
 
+	if err := validateConfigMigration(); err != nil {
+		return c, fmt.Errorf("unable to validate config migration: %s\n", err.Error())
+	}
+
 	err := envconfig.Process("", &c.cfg)
 	if err != nil {
 		return c, fmt.Errorf("unable to process app config: %s\n", err.Error())
 	}
 
-	if c.cfg.OSCARHost == "0.0.0.0" {
-		return c, errors.New("invalid config: OSCAR_HOST cannot be set to " +
-			"the 'all interfaces' IP (0.0.0.0). it must be a specific IP " +
-			"address or hostname reachable by AIM/ICQ clients")
+	c.Listeners, err = config.ParseListenersCfg(c.cfg.BOSListeners, c.cfg.BOSAdvertisedHosts, c.cfg.KerberosListeners)
+	if err != nil {
+		return c, fmt.Errorf("unable to parse listener config: %s\n", err.Error())
 	}
 
 	c.sqLiteUserStore, err = state.NewSQLiteUserStore(c.cfg.DBPath)
@@ -66,9 +72,128 @@ func MakeCommonDeps() (Container, error) {
 	return c, nil
 }
 
-// Admin creates an OSCAR server for the Admin food group.
-func Admin(deps Container) oscar.AdminServer {
-	logger := deps.logger.With("svc", "ADMIN")
+func validateConfigMigration() error {
+	// Old environment variables that should be removed
+	oldEnvVars := []string{
+		"API_HOST",
+		"API_PORT",
+		"KERBEROS_PORT",
+		"ALERT_PORT",
+		"AUTH_PORT",
+		"BART_PORT",
+		"BOS_PORT",
+		"CHAT_NAV_PORT",
+		"CHAT_PORT",
+		"ADMIN_PORT",
+		"ODIR_PORT",
+		"OSCAR_HOST",
+		"TOC_HOST",
+		"TOC_PORT",
+	}
+
+	// New environment variables that should be present
+	newEnvVars := []string{
+		"API_LISTENER",
+		"OSCAR_ADVERTISED_LISTENERS",
+		"OSCAR_LISTENERS",
+		"KERBEROS_LISTENERS",
+		"TOC_LISTENERS",
+	}
+
+	var oldEnvVarsFound []string
+	var newEnvVarsMissing []string
+
+	// Check for old environment variables that should be removed
+	for _, envVar := range oldEnvVars {
+		if os.Getenv(envVar) != "" {
+			oldEnvVarsFound = append(oldEnvVarsFound, envVar)
+		}
+	}
+
+	// Check for new environment variables that should be present
+	for _, envVar := range newEnvVars {
+		if os.Getenv(envVar) == "" {
+			newEnvVarsMissing = append(newEnvVarsMissing, envVar)
+		}
+	}
+
+	// If there are any issues, return an error with details
+	if len(oldEnvVarsFound) > 0 || len(newEnvVarsMissing) > 0 {
+		var errorMsg strings.Builder
+		errorMsg.WriteString("Retro AIM Server v0.19.0 introduced some breaking configuration changes that you need to fix.\n")
+
+		if len(oldEnvVarsFound) > 0 {
+			errorMsg.WriteString("\nOld environment variables that must be removed:\n\n")
+			for _, envVar := range oldEnvVarsFound {
+				errorMsg.WriteString(fmt.Sprintf("  - %s\n", envVar))
+			}
+		}
+
+		if len(newEnvVarsMissing) > 0 {
+			errorMsg.WriteString("\nNew environment variables that must be provided:\n\n")
+			for _, envVar := range newEnvVarsMissing {
+				errorMsg.WriteString(fmt.Sprintf("  - %s\n", envVar))
+			}
+
+			// Generate export commands based on old environment variables
+			errorMsg.WriteString("\nCopy/paste this updated configuration into your settings file:\n\n")
+
+			if contains(newEnvVarsMissing, "API_LISTENER") {
+				apiHost := getEnvOrDefault("API_HOST", "127.0.0.1")
+				apiPort := getEnvOrDefault("API_PORT", "8080")
+				errorMsg.WriteString(fmt.Sprintf("export API_LISTENER=%s:%s\n", apiHost, apiPort))
+			}
+
+			if contains(newEnvVarsMissing, "OSCAR_ADVERTISED_LISTENERS") {
+				oscarHost := getEnvOrDefault("OSCAR_HOST", "127.0.0.1")
+				authPort := getEnvOrDefault("AUTH_PORT", "5190")
+				errorMsg.WriteString(fmt.Sprintf("export OSCAR_ADVERTISED_LISTENERS=EXTERNAL://%s:%s\n", oscarHost, authPort))
+			}
+
+			if contains(newEnvVarsMissing, "OSCAR_LISTENERS") {
+				authPort := getEnvOrDefault("AUTH_PORT", "5190")
+				errorMsg.WriteString(fmt.Sprintf("export OSCAR_LISTENERS=EXTERNAL://0.0.0.0:%s\n", authPort))
+			}
+
+			if contains(newEnvVarsMissing, "KERBEROS_LISTENERS") {
+				kerberosPort := getEnvOrDefault("KERBEROS_PORT", "1088")
+				errorMsg.WriteString(fmt.Sprintf("export KERBEROS_LISTENERS=EXTERNAL://0.0.0.0:%s\n", kerberosPort))
+			}
+
+			if contains(newEnvVarsMissing, "TOC_LISTENERS") {
+				tocHost := getEnvOrDefault("TOC_HOST", "0.0.0.0")
+				tocPort := getEnvOrDefault("TOC_PORT", "9898")
+				errorMsg.WriteString(fmt.Sprintf("export TOC_LISTENERS=%s:%s\n", tocHost, tocPort))
+			}
+		}
+
+		return errors.New(errorMsg.String())
+	}
+
+	return nil
+}
+
+// Helper function to check if a slice contains a string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// Helper function to get environment variable or return default
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// OSCAR creates an OSCAR server for the OSCAR food group.
+func OSCAR(deps Container) *oscar.Server {
+	logger := deps.logger.With("svc", "OSCAR")
 
 	adminService := foodgroup.NewAdminService(
 		deps.sqLiteUserStore,
@@ -81,168 +206,12 @@ func Admin(deps Container) oscar.AdminServer {
 	authService := foodgroup.NewAuthService(
 		deps.cfg,
 		deps.inMemorySessionManager,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		deps.hmacCookieBaker,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		deps.inMemorySessionManager,
-		deps.rateLimitClasses,
-	)
-	oServiceService := foodgroup.NewOServiceServiceForAdmin(
-		deps.cfg,
-		logger,
-		deps.inMemorySessionManager,
-		deps.sqLiteUserStore,
-		deps.inMemorySessionManager,
-		deps.sqLiteUserStore,
-		deps.rateLimitClasses,
-		deps.snacRateLimits,
-	)
-
-	return oscar.AdminServer{
-		AuthService: authService,
-		Config:      deps.cfg,
-		Handler: handler.NewAdminRouter(handler.Handlers{
-			AdminHandler:    handler.NewAdminHandler(logger, adminService),
-			OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
-		}),
-		Logger:           logger,
-		OnlineNotifier:   oServiceService,
-		ListenAddr:       net.JoinHostPort("", deps.cfg.AdminPort),
-		RateLimitUpdater: oServiceService,
-		SNACRateLimits:   deps.snacRateLimits,
-	}
-}
-
-// Alert creates an OSCAR server for the Alert food group.
-func Alert(deps Container) oscar.BOSServer {
-	logger := deps.logger.With("svc", "ALERT")
-
-	sessionManager := state.NewInMemorySessionManager(logger)
-	authService := foodgroup.NewAuthService(
-		deps.cfg,
-		sessionManager,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		deps.hmacCookieBaker,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		nil,
-		deps.rateLimitClasses,
-	)
-	oServiceService := foodgroup.NewOServiceServiceForAlert(
-		deps.cfg,
-		logger,
-		sessionManager,
-		deps.sqLiteUserStore,
-		sessionManager,
-		deps.sqLiteUserStore,
-		deps.rateLimitClasses,
-		deps.snacRateLimits,
-	)
-
-	return oscar.BOSServer{
-		AuthService: authService,
-		Config:      deps.cfg,
-		Handler: handler.NewAlertRouter(handler.Handlers{
-			AlertHandler:    handler.NewAlertHandler(logger),
-			OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
-		}),
-		Logger:           logger,
-		OnlineNotifier:   oServiceService,
-		ListenAddr:       net.JoinHostPort("", deps.cfg.AlertPort),
-		RateLimitUpdater: oServiceService,
-		SNACRateLimits:   deps.snacRateLimits,
-	}
-}
-
-// Auth creates an OSCAR server for the Auth food group.
-func Auth(deps Container) oscar.AuthServer {
-	logger := deps.logger.With("svc", "AUTH")
-
-	authHandler := foodgroup.NewAuthService(
-		deps.cfg,
 		deps.inMemorySessionManager,
 		deps.chatSessionManager,
 		deps.sqLiteUserStore,
 		deps.hmacCookieBaker,
 		deps.chatSessionManager,
 		deps.sqLiteUserStore,
-		nil,
-		deps.rateLimitClasses,
-	)
-
-	return oscar.AuthServer{
-		AuthService:   authHandler,
-		Config:        deps.cfg,
-		Logger:        logger,
-		IPRateLimiter: oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
-	}
-}
-
-// BART creates an OSCAR server for the BART food group.
-func BART(deps Container) oscar.BOSServer {
-	logger := deps.logger.With("svc", "BART")
-
-	sessionManager := state.NewInMemorySessionManager(logger)
-	bartService := foodgroup.NewBARTService(
-		logger,
-		deps.sqLiteUserStore,
-		sessionManager,
-		deps.sqLiteUserStore,
-		sessionManager,
-	)
-	authService := foodgroup.NewAuthService(
-		deps.cfg,
-		sessionManager,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		deps.hmacCookieBaker,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		nil,
-		deps.rateLimitClasses,
-	)
-	oServiceService := foodgroup.NewOServiceServiceForBART(
-		deps.cfg,
-		logger,
-		sessionManager,
-		deps.sqLiteUserStore,
-		sessionManager,
-		deps.sqLiteUserStore,
-		deps.rateLimitClasses,
-		deps.snacRateLimits,
-	)
-
-	return oscar.BOSServer{
-		AuthService: authService,
-		Config:      deps.cfg,
-		Handler: handler.NewBARTRouter(handler.Handlers{
-			BARTHandler:     handler.NewBARTHandler(logger, bartService),
-			OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
-		}),
-		ListenAddr:       net.JoinHostPort("", deps.cfg.BARTPort),
-		Logger:           logger,
-		OnlineNotifier:   oServiceService,
-		RateLimitUpdater: oServiceService,
-		SNACRateLimits:   deps.snacRateLimits,
-	}
-}
-
-// BOS creates an OSCAR server for the BOS food group.
-func BOS(deps Container) oscar.BOSServer {
-	logger := deps.logger.With("svc", "BOS")
-
-	authService := foodgroup.NewAuthService(
-		deps.cfg,
-		deps.inMemorySessionManager,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		deps.hmacCookieBaker,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		nil,
 		deps.rateLimitClasses,
 	)
 	bartService := foodgroup.NewBARTService(
@@ -259,6 +228,7 @@ func BOS(deps Container) oscar.BOSServer {
 		deps.inMemorySessionManager,
 		deps.sqLiteUserStore,
 	)
+	chatService := foodgroup.NewChatService(deps.chatSessionManager)
 	chatNavService := foodgroup.NewChatNavService(logger, deps.sqLiteUserStore)
 	feedbagService := foodgroup.NewFeedbagService(
 		logger,
@@ -292,7 +262,7 @@ func BOS(deps Container) oscar.BOSServer {
 		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
 	)
-	oServiceService := foodgroup.NewOServiceServiceForBOS(
+	oServiceService := foodgroup.NewOServiceService(
 		deps.cfg,
 		deps.inMemorySessionManager,
 		logger,
@@ -303,139 +273,54 @@ func BOS(deps Container) oscar.BOSServer {
 		deps.sqLiteUserStore,
 		deps.rateLimitClasses,
 		deps.snacRateLimits,
+		deps.chatSessionManager,
 	)
 	userLookupService := foodgroup.NewUserLookupService(deps.sqLiteUserStore)
 	statsService := foodgroup.NewStatsService()
+	oDirService := foodgroup.NewODirService(logger, deps.sqLiteUserStore)
 
-	return oscar.BOSServer{
-		AuthService:        authService,
-		BuddyListRegistry:  deps.sqLiteUserStore,
-		Config:             deps.cfg,
-		DepartureNotifier:  buddyService,
-		ChatSessionManager: deps.chatSessionManager,
-		Handler: handler.NewBOSRouter(handler.Handlers{
-			AlertHandler:      handler.NewAlertHandler(logger),
-			BARTHandler:       handler.NewBARTHandler(logger, bartService),
-			BuddyHandler:      handler.NewBuddyHandler(logger, buddyService),
-			ChatNavHandler:    handler.NewChatNavHandler(chatNavService, logger),
-			FeedbagHandler:    handler.NewFeedbagHandler(logger, feedbagService),
-			ICQHandler:        handler.NewICQHandler(logger, icqService),
-			ICBMHandler:       handler.NewICBMHandler(logger, icbmService),
-			LocateHandler:     handler.NewLocateHandler(locateService, logger),
-			OServiceHandler:   handler.NewOServiceHandler(logger, oServiceService),
-			PermitDenyHandler: handler.NewPermitDenyHandler(logger, permitDenyService),
-			StatsHandler:      handler.NewStatsHandler(logger, statsService),
-			UserLookupHandler: handler.NewUserLookupHandler(logger, userLookupService),
-		}),
-		Logger:           logger,
-		OnlineNotifier:   oServiceService,
-		ListenAddr:       net.JoinHostPort("", deps.cfg.BOSPort),
-		RateLimitUpdater: oServiceService,
-		SNACRateLimits:   deps.snacRateLimits,
+	if err := deps.sqLiteUserStore.ClearBuddyListRegistry(context.Background()); err != nil {
+		panic(err)
 	}
-}
 
-// Chat creates an OSCAR server for the Chat food group.
-func Chat(deps Container) oscar.ChatServer {
-	logger := deps.logger.With("svc", "CHAT")
-
-	sessionManager := state.NewInMemorySessionManager(logger)
-	authService := foodgroup.NewAuthService(
-		deps.cfg,
-		sessionManager,
-		deps.chatSessionManager,
+	return oscar.NewServer(
+		authService,
 		deps.sqLiteUserStore,
-		deps.hmacCookieBaker,
 		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		nil,
-		deps.rateLimitClasses,
-	)
-	chatService := foodgroup.NewChatService(deps.chatSessionManager)
-	oServiceService := foodgroup.NewOServiceServiceForChat(
-		deps.cfg,
+		buddyService,
 		logger,
-		sessionManager,
-		deps.sqLiteUserStore,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		sessionManager,
-		deps.sqLiteUserStore,
-		deps.rateLimitClasses,
+		oServiceService,
+		oscar.Handler{
+			AdminService:      adminService,
+			BARTService:       bartService,
+			BuddyService:      buddyService,
+			ChatNavService:    chatNavService,
+			ChatService:       chatService,
+			FeedbagService:    feedbagService,
+			ICBMService:       icbmService,
+			ICQService:        icqService,
+			LocateService:     locateService,
+			ODirService:       oDirService,
+			OServiceService:   oServiceService,
+			PermitDenyService: permitDenyService,
+			StatsService:      statsService,
+			UserLookupService: userLookupService,
+			RouteLogger: middleware.RouteLogger{
+				Logger: logger,
+			},
+		}.Handle,
+		oServiceService,
 		deps.snacRateLimits,
+		oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
+		deps.Listeners,
 	)
-
-	return oscar.ChatServer{
-		AuthService: authService,
-		Config:      deps.cfg,
-		Handler: handler.NewChatRouter(handler.Handlers{
-			ChatHandler:     handler.NewChatHandler(logger, chatService),
-			OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
-		}),
-		Logger:           logger,
-		OnlineNotifier:   oServiceService,
-		SNACRateLimits:   deps.snacRateLimits,
-		RateLimitUpdater: oServiceService,
-	}
-}
-
-// ChatNav creates an OSCAR server for the ChatNav food group.
-func ChatNav(deps Container) oscar.BOSServer {
-	logger := deps.logger.With("svc", "CHAT_NAV")
-
-	sessionManager := state.NewInMemorySessionManager(logger)
-	authService := foodgroup.NewAuthService(
-		deps.cfg,
-		sessionManager,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		deps.hmacCookieBaker,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		nil,
-		deps.rateLimitClasses,
-	)
-	chatNavService := foodgroup.NewChatNavService(logger, deps.sqLiteUserStore)
-	oServiceService := foodgroup.NewOServiceServiceForChatNav(
-		deps.cfg,
-		logger,
-		sessionManager,
-		deps.sqLiteUserStore,
-		sessionManager,
-		deps.sqLiteUserStore,
-		deps.rateLimitClasses,
-		deps.snacRateLimits,
-	)
-
-	return oscar.BOSServer{
-		AuthService: authService,
-		Config:      deps.cfg,
-		Handler: handler.NewChatNavRouter(handler.Handlers{
-			ChatNavHandler:  handler.NewChatNavHandler(chatNavService, logger),
-			OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
-		}),
-		Logger:           logger,
-		OnlineNotifier:   oServiceService,
-		ListenAddr:       net.JoinHostPort("", deps.cfg.ChatNavPort),
-		RateLimitUpdater: oServiceService,
-		SNACRateLimits:   deps.snacRateLimits,
-	}
 }
 
 // KerberosAPI creates an HTTP server for the Kerberos server.
-func KerberosAPI(deps Container) *oscar.KerberosServer {
-	authService := foodgroup.NewAuthService(
-		deps.cfg,
-		deps.inMemorySessionManager,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		deps.hmacCookieBaker,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		nil,
-		deps.rateLimitClasses,
-	)
-	return oscar.NewKerberosServer(deps.cfg, deps.logger, authService)
+func KerberosAPI(deps Container) *kerberos.Server {
+	logger := deps.logger.With("svc", "kerberos")
+	authService := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, deps.chatSessionManager, deps.sqLiteUserStore, deps.rateLimitClasses)
+	return kerberos.NewKerberosServer(deps.Listeners, logger, authService)
 }
 
 // MgmtAPI creates an HTTP server for the management API.
@@ -445,63 +330,19 @@ func MgmtAPI(deps Container) *http.Server {
 		Commit:  commit,
 		Date:    date,
 	}
-	return http.NewManagementAPI(bld, deps.cfg, deps.sqLiteUserStore, deps.inMemorySessionManager, deps.sqLiteUserStore,
+	logger := deps.logger.With("svc", "API")
+	return http.NewManagementAPI(bld, deps.cfg.APIListener, deps.sqLiteUserStore, deps.inMemorySessionManager, deps.sqLiteUserStore,
 		deps.sqLiteUserStore, deps.chatSessionManager, deps.sqLiteUserStore, deps.inMemorySessionManager,
-		deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.logger)
-}
-
-// ODir creates an OSCAR server for the ODir food group.
-func ODir(deps Container) oscar.BOSServer {
-	logger := deps.logger.With("svc", "ODIR")
-
-	sessionManager := state.NewInMemorySessionManager(logger)
-	authService := foodgroup.NewAuthService(
-		deps.cfg,
-		sessionManager,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		deps.hmacCookieBaker,
-		deps.chatSessionManager,
-		deps.sqLiteUserStore,
-		nil,
-		deps.rateLimitClasses,
-	)
-
-	oServiceService := foodgroup.NewOServiceServiceForODir(
-		deps.cfg,
-		logger,
-		deps.rateLimitClasses,
-		deps.snacRateLimits,
-		deps.inMemorySessionManager,
-		deps.sqLiteUserStore,
-		deps.inMemorySessionManager,
-		deps.sqLiteUserStore,
-	)
-	oDirService := foodgroup.NewODirService(logger, deps.sqLiteUserStore)
-
-	return oscar.BOSServer{
-		AuthService: authService,
-		Config:      deps.cfg,
-		Handler: handler.NewODirRouter(handler.Handlers{
-			OServiceHandler: handler.NewOServiceHandler(logger, oServiceService),
-			ODirHandler:     handler.NewODirHandler(logger, oDirService),
-		}),
-		Logger:           logger,
-		OnlineNotifier:   oServiceService,
-		ListenAddr:       net.JoinHostPort("", deps.cfg.ODirPort),
-		RateLimitUpdater: oServiceService,
-		SNACRateLimits:   deps.snacRateLimits,
-	}
+		deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, logger)
 }
 
 // TOC creates a TOC server.
-func TOC(deps Container) toc.Server {
+func TOC(deps Container) *toc.Server {
 	logger := deps.logger.With("svc", "TOC")
-	sessionManager := state.NewInMemorySessionManager(logger)
-	return toc.Server{
-		Logger:     logger,
-		ListenAddr: net.JoinHostPort(deps.cfg.TOCHost, deps.cfg.TOCPort),
-		BOSProxy: toc.OSCARProxy{
+	return toc.NewServer(
+		strings.Split(deps.cfg.TOCListeners, ","),
+		logger,
+		toc.OSCARProxy{
 			AdminService: foodgroup.NewAdminService(
 				deps.sqLiteUserStore,
 				deps.sqLiteUserStore,
@@ -513,12 +354,12 @@ func TOC(deps Container) toc.Server {
 			AuthService: foodgroup.NewAuthService(
 				deps.cfg,
 				deps.inMemorySessionManager,
+				deps.inMemorySessionManager,
 				deps.chatSessionManager,
 				deps.sqLiteUserStore,
 				deps.hmacCookieBaker,
 				deps.chatSessionManager,
 				deps.sqLiteUserStore,
-				nil,
 				deps.rateLimitClasses,
 			),
 			BuddyListRegistry: deps.sqLiteUserStore,
@@ -547,7 +388,7 @@ func TOC(deps Container) toc.Server {
 				deps.inMemorySessionManager,
 			),
 			Logger: logger,
-			OServiceServiceBOS: foodgroup.NewOServiceServiceForBOS(
+			OServiceService: foodgroup.NewOServiceService(
 				deps.cfg,
 				deps.inMemorySessionManager,
 				logger,
@@ -558,6 +399,7 @@ func TOC(deps Container) toc.Server {
 				deps.sqLiteUserStore,
 				deps.rateLimitClasses,
 				deps.snacRateLimits,
+				deps.chatSessionManager,
 			),
 			PermitDenyService: foodgroup.NewPermitDenyService(
 				deps.sqLiteUserStore,
@@ -566,24 +408,12 @@ func TOC(deps Container) toc.Server {
 				deps.inMemorySessionManager,
 				deps.inMemorySessionManager,
 			),
-			TOCConfigStore: deps.sqLiteUserStore,
-			ChatService:    foodgroup.NewChatService(deps.chatSessionManager),
-			OServiceServiceChat: foodgroup.NewOServiceServiceForChat(
-				deps.cfg,
-				logger,
-				sessionManager,
-				deps.sqLiteUserStore,
-				deps.chatSessionManager,
-				deps.sqLiteUserStore,
-				sessionManager,
-				deps.sqLiteUserStore,
-				deps.rateLimitClasses,
-				deps.snacRateLimits,
-			),
+			TOCConfigStore:    deps.sqLiteUserStore,
+			ChatService:       foodgroup.NewChatService(deps.chatSessionManager),
 			ChatNavService:    foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
 			SNACRateLimits:    deps.snacRateLimits,
 			HTTPIPRateLimiter: toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 		},
-		LoginIPRateLimiter: toc.NewIPRateLimiter(rate.Every(10*time.Minute), 10, 20*time.Minute),
-	}
+		toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
+	)
 }
