@@ -10,7 +10,7 @@ import (
 
 //go:generate go run github.com/mk6i/retro-aim-server/cmd/config_generator unix settings.env
 type Config struct {
-	APIListener        string `envconfig:"API_LISTENERS" required:"true" val:"0.0.0.0:8080" description:"tbd"`
+	APIListener        string `envconfig:"API_LISTENERS" required:"true" val:"127.0.0.1:8080" description:"tbd"`
 	BOSAdvertisedHosts string `envconfig:"BOS_ADVERTISED_HOSTS" required:"true" val:"EXTERNAL://127.0.0.1:5190" description:"tbd"`
 	BOSListeners       string `envconfig:"BOS_LISTENERS" required:"true" val:"EXTERNAL://0.0.0.0:5190" description:"tbd"`
 	KerberosListeners  string `envconfig:"KERBEROS_LISTENERS" required:"true" val:"EXTERNAL://0.0.0.0:1088" description:"tbd"`
