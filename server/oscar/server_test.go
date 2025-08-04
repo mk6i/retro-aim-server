@@ -77,10 +77,30 @@ func TestServer_ListenAndServeAndShutdown(t *testing.T) {
 	server.shutdownCtx, server.shutdownCancel = context.WithCancel(context.Background())
 
 	shutdownCh := make(chan struct{})
+
 	go func() {
 		defer close(shutdownCh)
 		assert.NoError(t, server.ListenAndServe())
 	}()
+
+	// Wait for server to be ready by checking if ports are listening
+	for i := 0; i < len(cfg); i++ {
+		maxRetries := 10
+		backoff := 5 * time.Millisecond
+
+		for attempt := 0; attempt < maxRetries; attempt++ {
+			conn, err := net.Dial("tcp", "localhost"+cfg[i].BOSListenAddress)
+			if err == nil {
+				conn.Close()
+				break
+			}
+			if attempt == maxRetries-1 {
+				t.Fatalf("Server not ready after %d attempts: %v", maxRetries, err)
+			}
+			time.Sleep(backoff)
+			backoff *= 2
+		}
+	}
 
 	for i := 0; i < len(cfg); i++ {
 		msgWg.Add(1)
