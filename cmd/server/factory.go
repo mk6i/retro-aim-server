@@ -4,16 +4,17 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
-	"github.com/mk6i/retro-aim-server/server/kerberos"
 	"golang.org/x/time/rate"
 
 	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/foodgroup"
 	"github.com/mk6i/retro-aim-server/server/http"
+	"github.com/mk6i/retro-aim-server/server/kerberos"
 	"github.com/mk6i/retro-aim-server/server/oscar"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/server/toc"
@@ -37,6 +38,10 @@ type Container struct {
 // MakeCommonDeps creates common dependencies used by the food group services.
 func MakeCommonDeps() (Container, error) {
 	c := Container{}
+
+	if err := validateConfigMigration(); err != nil {
+		return c, fmt.Errorf("unable to validate config migration: %s\n", err.Error())
+	}
 
 	err := envconfig.Process("", &c.cfg)
 	if err != nil {
@@ -64,6 +69,125 @@ func MakeCommonDeps() (Container, error) {
 	c.rateLimitClasses = wire.DefaultRateLimitClasses()
 	c.snacRateLimits = wire.DefaultSNACRateLimits()
 	return c, nil
+}
+
+func validateConfigMigration() error {
+	// Old environment variables that should be removed
+	oldEnvVars := []string{
+		"API_HOST",
+		"API_PORT",
+		"KERBEROS_PORT",
+		"ALERT_PORT",
+		"AUTH_PORT",
+		"BART_PORT",
+		"BOS_PORT",
+		"CHAT_NAV_PORT",
+		"CHAT_PORT",
+		"ADMIN_PORT",
+		"ODIR_PORT",
+		"OSCAR_HOST",
+		"TOC_HOST",
+		"TOC_PORT",
+	}
+
+	// New environment variables that should be present
+	newEnvVars := []string{
+		"API_LISTENERS",
+		"BOS_ADVERTISED_HOSTS",
+		"BOS_LISTENERS",
+		"KERBEROS_LISTENERS",
+		"TOC_LISTENERS",
+	}
+
+	var oldEnvVarsFound []string
+	var newEnvVarsMissing []string
+
+	// Check for old environment variables that should be removed
+	for _, envVar := range oldEnvVars {
+		if os.Getenv(envVar) != "" {
+			oldEnvVarsFound = append(oldEnvVarsFound, envVar)
+		}
+	}
+
+	// Check for new environment variables that should be present
+	for _, envVar := range newEnvVars {
+		if os.Getenv(envVar) == "" {
+			newEnvVarsMissing = append(newEnvVarsMissing, envVar)
+		}
+	}
+
+	// If there are any issues, return an error with details
+	if len(oldEnvVarsFound) > 0 || len(newEnvVarsMissing) > 0 {
+		var errorMsg strings.Builder
+		errorMsg.WriteString("Retro AIM Server v0.19.0 introduced some breaking configuration changes that you need to fix.\n")
+
+		if len(oldEnvVarsFound) > 0 {
+			errorMsg.WriteString("\nOld environment variables that must be removed:\n\n")
+			for _, envVar := range oldEnvVarsFound {
+				errorMsg.WriteString(fmt.Sprintf("  - %s\n", envVar))
+			}
+		}
+
+		if len(newEnvVarsMissing) > 0 {
+			errorMsg.WriteString("\nNew environment variables that must be provided:\n\n")
+			for _, envVar := range newEnvVarsMissing {
+				errorMsg.WriteString(fmt.Sprintf("  - %s\n", envVar))
+			}
+
+			// Generate export commands based on old environment variables
+			errorMsg.WriteString("\nCopy/paste this updated configuration into your settings file:\n\n")
+
+			if contains(newEnvVarsMissing, "API_LISTENERS") {
+				apiHost := getEnvOrDefault("API_HOST", "127.0.0.1")
+				apiPort := getEnvOrDefault("API_PORT", "8080")
+				errorMsg.WriteString(fmt.Sprintf("export API_LISTENERS=%s:%s\n", apiHost, apiPort))
+			}
+
+			if contains(newEnvVarsMissing, "BOS_ADVERTISED_HOSTS") {
+				oscarHost := getEnvOrDefault("OSCAR_HOST", "127.0.0.1")
+				authPort := getEnvOrDefault("AUTH_PORT", "5190")
+				errorMsg.WriteString(fmt.Sprintf("export BOS_ADVERTISED_HOSTS=EXTERNAL://%s:%s\n", oscarHost, authPort))
+			}
+
+			if contains(newEnvVarsMissing, "BOS_LISTENERS") {
+				authPort := getEnvOrDefault("AUTH_PORT", "5190")
+				errorMsg.WriteString(fmt.Sprintf("export BOS_LISTENERS=EXTERNAL://0.0.0.0:%s\n", authPort))
+			}
+
+			if contains(newEnvVarsMissing, "KERBEROS_LISTENERS") {
+				kerberosPort := getEnvOrDefault("KERBEROS_PORT", "1088")
+				errorMsg.WriteString(fmt.Sprintf("export KERBEROS_LISTENERS=EXTERNAL://0.0.0.0:%s\n", kerberosPort))
+			}
+
+			if contains(newEnvVarsMissing, "TOC_LISTENERS") {
+				tocHost := getEnvOrDefault("TOC_HOST", "0.0.0.0")
+				tocPort := getEnvOrDefault("TOC_PORT", "9898")
+				errorMsg.WriteString(fmt.Sprintf("export TOC_LISTENERS=%s:%s\n", tocHost, tocPort))
+			}
+		}
+
+		return fmt.Errorf(errorMsg.String())
+	}
+
+	return nil
+}
+
+// Helper function to check if a slice contains a string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// Helper function to get environment variable or return default
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
 
 // OSCAR creates an OSCAR server for the OSCAR food group.
