@@ -28,15 +28,15 @@ func TestServer_ListenAndServeAndShutdown(t *testing.T) {
 
 	cfg := []config.Listener{
 		{
-			BOSListenAddress:  ":1000",
+			BOSListenAddress:  ":15000",
 			BOSAdvertisedHost: "localhost",
 		},
 		{
-			BOSListenAddress:  ":2000",
+			BOSListenAddress:  ":15001",
 			BOSAdvertisedHost: "localhost",
 		},
 		{
-			BOSListenAddress:  ":3000",
+			BOSListenAddress:  ":15002",
 			BOSAdvertisedHost: "localhost",
 		},
 	}
