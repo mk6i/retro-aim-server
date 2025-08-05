@@ -1178,6 +1178,7 @@ func TestAuthService_KerberosLogin(t *testing.T) {
 											TLVList: wire.TLVList{
 												wire.NewTLVBE(wire.KerberosTLVHostname, "127.0.0.1:5190"),
 												wire.NewTLVBE(wire.KerberosTLVCookie, []byte("the-cookie")),
+												wire.NewTLVBE(wire.KerberosTLVConnSettings, wire.KerberosConnUseSSL),
 											},
 										},
 									}),

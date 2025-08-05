@@ -338,6 +338,7 @@ func (s AuthService) KerberosLogin(ctx context.Context, inBody wire.SNAC_0x050C_
 									TLVList: wire.TLVList{
 										wire.NewTLVBE(wire.KerberosTLVHostname, advertisedHost),
 										wire.NewTLVBE(wire.KerberosTLVCookie, cookie),
+										wire.NewTLVBE(wire.KerberosTLVConnSettings, wire.KerberosConnUseSSL),
 									},
 								},
 							}),
