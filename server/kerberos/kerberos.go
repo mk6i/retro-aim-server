@@ -25,6 +25,9 @@ func NewKerberosServer(listeners []config.Listener, logger *slog.Logger, authSer
 	servers := make([]*http.Server, 0, len(listeners))
 
 	for _, l := range listeners {
+		if l.KerberosListenAddress == "" {
+			continue
+		}
 
 		mux := http.NewServeMux()
 

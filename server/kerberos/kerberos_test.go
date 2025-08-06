@@ -133,8 +133,12 @@ func TestKerberosLoginHandler(t *testing.T) {
 			wantStatus:         http.StatusOK,
 		},
 		{
-			name:               "no listeners defined - server exits cleanly",
-			listeners:          []config.Listener{},
+			name: "no kerberos listeners defined - server exits cleanly",
+			listeners: []config.Listener{
+				{
+					BOSAdvertisedHost: "localhost:5192",
+				},
+			},
 			request:            wire.SNACMessage{},
 			response:           wire.SNACMessage{},
 			responseErr:        nil,
@@ -215,6 +219,9 @@ func TestKerberosLoginHandler(t *testing.T) {
 
 			// Wait for server to be ready by checking if ports are listening
 			for i := 0; i < len(tt.listeners); i++ {
+				if tt.listeners[i].KerberosListenAddress == "" {
+					continue
+				}
 				maxRetries := 10
 				backoff := 5 * time.Millisecond
 
@@ -234,6 +241,10 @@ func TestKerberosLoginHandler(t *testing.T) {
 
 			// Test against all listeners
 			for i, listener := range tt.listeners {
+				if listener.KerberosListenAddress == "" {
+					continue
+				}
+
 				b := &bytes.Buffer{}
 				assert.NoError(t, wire.MarshalBE(tt.request, b))
 
