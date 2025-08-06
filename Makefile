@@ -12,9 +12,14 @@ DOCKER_RUN_GO_RELEASER := @docker run \
 	$(DOCKER_IMAGE_TAG_GO_RELEASER)
 OSCAR_HOST ?= ras.dev
 
-.PHONY: config
-config: ## Generate config file template from Config struct
-	go generate ./config
+.PHONY: config-basic config-ssl config
+config-basic: ## Generate basic config file template
+	go run ./cmd/config_generator unix config/settings.env basic
+
+config-ssl: ## Generate SSL config file template
+	go run ./cmd/config_generator unix config/ssl/settings.env ssl
+
+config: config-basic config-ssl ## Generate all config file templates from Config struct
 
 .PHONY: release
 release: ## Run a clean, full GoReleaser run (publish + validate)
@@ -41,7 +46,15 @@ docker-images: docker-image-ras docker-image-stunnel docker-image-certgen
 
 .PHONY: docker-run
 docker-run:
+	OSCAR_HOST=$(OSCAR_HOST) docker compose up retro-aim-server stunnel
+
+.PHONY: docker-run-bg
+docker-run-bg: ## Run Retro AIM Server in background with docker-compose
 	OSCAR_HOST=$(OSCAR_HOST) docker compose up -d retro-aim-server stunnel
+
+.PHONY: docker-run-stop
+docker-run-stop: ## Stop Retro AIM Server docker-compose services
+	OSCAR_HOST=$(OSCAR_HOST) docker compose down
 
 ################################################################################
 # SSL Helpers

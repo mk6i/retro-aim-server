@@ -24,8 +24,6 @@ services:
       - ./certs:/work/certs
     working_dir: /work/certs
     entrypoint: [ "/bin/sh", "-c" ]
-    environment:
-      - OSCAR_HOST=${OSCAR_HOST}
     command: >
       '
       mkdir -p nss &&
@@ -37,23 +35,16 @@ services:
     image: ras:latest
     ports:
       - "5190:5190"
-      - "5191:5191"
-      - "5192:5192"
-      - "5193:5193"
-      - "5194:5194"
-      - "5195:5195"
-      - "5196:5196"
-      - "5197:5197"
+      - "9898:9898"
       - "8080:8080"
     env_file:
-      - ./config/settings.env
-    environment:
-      - OSCAR_HOST=${OSCAR_HOST}
+      - ./config/ssl/settings.env
 
   stunnel:
     image: ras-stunnel:5.75-openssl-1.0.2u
     ports:
       - "443:443"
+      - "5193:5193"
     volumes:
       - ./config/ssl/stunnel.conf:/etc/stunnel/stunnel.conf:ro
       - ./certs:/etc/stunnel/certs:ro
