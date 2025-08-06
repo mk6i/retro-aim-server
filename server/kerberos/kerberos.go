@@ -53,6 +53,11 @@ type Server struct {
 }
 
 func (s *Server) ListenAndServe() error {
+	if len(s.servers) == 0 {
+		s.logger.Info("no kerberos listeners defined, moving on")
+		return nil
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

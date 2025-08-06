@@ -12,7 +12,7 @@ import (
 type Config struct {
 	BOSListeners       string `envconfig:"OSCAR_LISTENERS" required:"true" val:"LOCAL://0.0.0.0:5190" description:"Network listeners for core OSCAR services. For multi-homed servers, allows users to connect from multiple networks. For example, you can allow both LAN and Internet clients to connect to the same server using different connection settings.\n\nFormat:\n\t- Comma-separated list of [NAME]://[HOSTNAME]:[PORT]\n\t- Listener names and ports must be unique\n\t- Listener names are user-defined\n\t- Each listener needs OSCAR_ADVERTISED_LISTENERS/KERBEROS_LISTENERS configs\n\nExamples:\n\t// Listen on all interfaces\n\tLAN://0.0.0.0:5190\n\t// Separate Internet and LAN config\n\tWAN://142.250.176.206:5190,LAN://192.168.1.10:5191"`
 	BOSAdvertisedHosts string `envconfig:"OSCAR_ADVERTISED_LISTENERS" required:"true" val:"LOCAL://127.0.0.1:5190" description:"Hostnames published by the server that clients connect to for accessing various OSCAR services. These hostnames are NOT the bind addresses. For multi-homed use servers, allows clients to connect using separate hostnames per network.\n\nFormat:\n\t- Comma-separated list of [NAME]://[HOSTNAME]:[PORT]\n\t- Each listener config must correspond to a config in OSCAR_LISTENERS\n\t- Clients MUST be able to connect to these hostnames\n\nExamples:\n\t// Local LAN config, server behind NAT\n\tLAN://0.0.0.0:5190\n\t// Separate Internet and LAN config\n\tWAN://aim.example.com:5190,LAN://192.168.1.10:5191"`
-	KerberosListeners  string `envconfig:"KERBEROS_LISTENERS" required:"true" val:"LOCAL://0.0.0.0:1088" description:"Network listeners for Kerberos authentication. See OSCAR_LISTENERS doc for more details.\n\nExamples:\n\t// Listen on all interfaces\n\tLAN://0.0.0.0:1088\n\t// Separate Internet and LAN config\n\tWAN://142.250.176.206:1088,LAN://192.168.1.10:1087"`
+	KerberosListeners  string `envconfig:"KERBEROS_LISTENERS" required:"false" val:"LOCAL://0.0.0.0:1088" description:"Network listeners for Kerberos authentication. See OSCAR_LISTENERS doc for more details.\n\nExamples:\n\t// Listen on all interfaces\n\tLAN://0.0.0.0:1088\n\t// Separate Internet and LAN config\n\tWAN://142.250.176.206:1088,LAN://192.168.1.10:1087"`
 	TOCListeners       string `envconfig:"TOC_LISTENERS" required:"true" val:"0.0.0.0:9898" description:"Network listeners for TOC protocol service.\n\nFormat: Comma-separated list of hostname:port pairs.\n\nExamples:\n\t// All interfaces\n\t0.0.0.0:9898\n\t// Multiple listeners\n\t0.0.0.0:9898,192.168.1.10:9899"`
 	APIListener        string `envconfig:"API_LISTENER" required:"true" val:"127.0.0.1:8080" description:"Network listener for management API binds to. Only 1 listener can be specified. (Default 127.0.0.1 restricts to same machine only)."`
 
@@ -37,9 +37,16 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 	m := make(map[string]*Listener)
 
 	for _, lStr := range strings.Split(BOSListeners, ",") {
+		lStr = strings.TrimSpace(lStr)
+		if lStr == "" {
+			continue
+		}
 		u, err := url.Parse(lStr)
 		if err != nil {
 			return nil, fmt.Errorf("parsing listener URI: %w", err)
+		}
+		if u.Scheme == "" {
+			return nil, fmt.Errorf("invalid listener URI: missing scheme in %q", lStr)
 		}
 		if _, ok := m[u.Scheme]; !ok {
 			m[u.Scheme] = &Listener{}
@@ -51,9 +58,16 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 	}
 
 	for _, lStr := range strings.Split(BOSAdvertisedListeners, ",") {
+		lStr = strings.TrimSpace(lStr)
+		if lStr == "" {
+			continue
+		}
 		u, err := url.Parse(lStr)
 		if err != nil {
 			return nil, fmt.Errorf("parsing listener URI: %w", err)
+		}
+		if u.Scheme == "" {
+			return nil, fmt.Errorf("invalid listener URI: missing scheme in %q", lStr)
 		}
 		if _, ok := m[u.Scheme]; !ok {
 			m[u.Scheme] = &Listener{}
@@ -65,9 +79,16 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 	}
 
 	for _, lStr := range strings.Split(kerberosListeners, ",") {
+		lStr = strings.TrimSpace(lStr)
+		if lStr == "" {
+			continue
+		}
 		u, err := url.Parse(lStr)
 		if err != nil {
 			return nil, fmt.Errorf("parsing listener URI: %w", err)
+		}
+		if u.Scheme == "" {
+			return nil, fmt.Errorf("invalid listener URI: missing scheme in %q", lStr)
 		}
 		if _, ok := m[u.Scheme]; !ok {
 			m[u.Scheme] = &Listener{}
@@ -86,10 +107,13 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 			return nil, fmt.Errorf("missing BOS advertise address for listener `%s://`", k)
 		case v.BOSListenAddress == "":
 			return nil, fmt.Errorf("missing BOS listen address for listener `%s://`", k)
-		case v.KerberosListenAddress == "":
-			return nil, fmt.Errorf("missing kerberos listen address for listener `%s://`", k)
 		}
 		ret = append(ret, *v)
+	}
+
+	// Validate that there is at least one BOS listener
+	if len(ret) == 0 {
+		return nil, errors.New("at least one BOS listener is required")
 	}
 
 	return ret, nil

@@ -96,7 +96,6 @@ func validateConfigMigration() error {
 		"API_LISTENER",
 		"OSCAR_ADVERTISED_LISTENERS",
 		"OSCAR_LISTENERS",
-		"KERBEROS_LISTENERS",
 		"TOC_LISTENERS",
 	}
 
