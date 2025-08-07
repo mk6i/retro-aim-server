@@ -85,15 +85,16 @@ const (
 //
 
 const (
-	LoginTLVTagsScreenName          uint16 = 0x01
-	LoginTLVTagsRoastedPassword     uint16 = 0x02
-	LoginTLVTagsClientIdentity      uint16 = 0x03
-	LoginTLVTagsReconnectHere       uint16 = 0x05
-	LoginTLVTagsAuthorizationCookie uint16 = 0x06
-	LoginTLVTagsErrorSubcode        uint16 = 0x08
-	LoginTLVTagsPasswordHash        uint16 = 0x25
-	LoginTLVTagsRoastedTOCPassword  uint16 = 0x1337
-	LoginTLVTagsPlaintextPassword   uint16 = 0x1338
+	LoginTLVTagsScreenName              uint16 = 0x01
+	LoginTLVTagsRoastedPassword         uint16 = 0x02
+	LoginTLVTagsClientIdentity          uint16 = 0x03
+	LoginTLVTagsReconnectHere           uint16 = 0x05
+	LoginTLVTagsAuthorizationCookie     uint16 = 0x06
+	LoginTLVTagsErrorSubcode            uint16 = 0x08
+	LoginTLVTagsPasswordHash            uint16 = 0x25
+	LoginTLVTagsRoastedKerberosPassword uint16 = 0x1335
+	LoginTLVTagsRoastedTOCPassword      uint16 = 0x1337
+	LoginTLVTagsPlaintextPassword       uint16 = 0x1338
 )
 
 const (
@@ -2313,13 +2314,11 @@ type KerberosLoginRequestTicket struct {
 	// Flags contains unknown flags.
 	Flags uint32
 
-	// PwdLen is the length (in bytes) of the following Password string.
-	// The field is kept explicit even though the struct tag also carries
-	// the length-prefix rule.
-	PwdLen uint16
+	// Unknown is an unknown field.
+	Unknown uint16
 
 	// Password holds the user’s password.
-	Password string `oscar:"len_prefix=uint16"`
+	Password []byte `oscar:"len_prefix=uint16"`
 
 	// PasswordMetadata may hold additional metadata about the password.
 	PasswordMetadata TLVBlock

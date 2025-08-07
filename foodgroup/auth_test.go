@@ -1117,7 +1117,7 @@ func TestAuthService_KerberosLogin(t *testing.T) {
 				TicketRequestMetadata: wire.TLVBlock{
 					TLVList: wire.TLVList{
 						wire.NewTLVBE(wire.KerberosTLVTicketRequest, wire.KerberosLoginRequestTicket{
-							Password: "the_password",
+							Password: []byte("the_password"),
 						}),
 					},
 				},
@@ -1201,7 +1201,7 @@ func TestAuthService_KerberosLogin(t *testing.T) {
 				TicketRequestMetadata: wire.TLVBlock{
 					TLVList: wire.TLVList{
 						wire.NewTLVBE(wire.KerberosTLVTicketRequest, wire.KerberosLoginRequestTicket{
-							Password: "the_WRONG_password",
+							Password: []byte("the_WRONG_password"),
 						}),
 					},
 				},
@@ -1212,6 +1212,132 @@ func TestAuthService_KerberosLogin(t *testing.T) {
 						{
 							screenName: user.IdentScreenName,
 							result:     nil,
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Kerberos,
+					SubGroup:  wire.KerberosKerberosLoginErrResponse,
+				},
+				Body: wire.SNAC_0x050C_0x0004_KerberosLoginErrResponse{
+					KerbRequestID: 54321,
+					ScreenName:    user.DisplayScreenName.String(),
+					ErrCode:       wire.KerberosErrAuthFailure,
+					Message:       "Auth failure",
+				},
+			},
+		},
+		{
+			name:           "AIM account exists, correct roasted password, login OK",
+			advertisedHost: "127.0.0.1:5190",
+			timeNow: func() time.Time {
+				return time.Unix(1000, 0)
+			},
+			inputSNAC: wire.SNAC_0x050C_0x0002_KerberosLoginRequest{
+				RequestID:       54321,
+				ClientPrincipal: user.DisplayScreenName.String(),
+				TicketRequestMetadata: wire.TLVBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.KerberosTLVTicketRequest, wire.KerberosLoginRequestTicket{
+							Version:  4,
+							Password: wire.RoastKerberosPassword([]byte("the_password")),
+						}),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: user.IdentScreenName,
+							result:     &user,
+						},
+					},
+				},
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: func() []byte {
+								loginCookie := state.ServerCookie{
+									ScreenName: user.DisplayScreenName,
+								}
+								buf := &bytes.Buffer{}
+								assert.NoError(t, wire.MarshalBE(loginCookie, buf))
+								return buf.Bytes()
+							}(),
+							cookieOut: []byte("the-cookie"),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.Kerberos,
+					SubGroup:  wire.KerberosLoginSuccessResponse,
+				},
+				Body: wire.SNAC_0x050C_0x0003_KerberosLoginSuccessResponse{
+					RequestID:       54321,
+					Epoch:           1000,
+					ClientPrincipal: user.DisplayScreenName.String(),
+					ClientRealm:     "AOL",
+					Tickets: []wire.KerberosTicket{
+						{
+							PVNO:             0x5,
+							EncTicket:        []uint8{},
+							TicketRealm:      "AOL",
+							ServicePrincipal: "im/boss",
+							ClientRealm:      "AOL",
+							ClientPrincipal:  user.DisplayScreenName.String(),
+							AuthTime:         1000,
+							StartTime:        1000,
+							EndTime:          87400,
+							Unknown4:         0x60000000,
+							Unknown5:         0x40000000,
+							ConnectionMetadata: wire.TLVBlock{
+								TLVList: wire.TLVList{
+									wire.NewTLVBE(wire.KerberosTLVBOSServerInfo, wire.KerberosBOSServerInfo{
+										Unknown: 1,
+										ConnectionInfo: wire.TLVBlock{
+											TLVList: wire.TLVList{
+												wire.NewTLVBE(wire.KerberosTLVHostname, "127.0.0.1:5190"),
+												wire.NewTLVBE(wire.KerberosTLVCookie, []byte("the-cookie")),
+												wire.NewTLVBE(wire.KerberosTLVConnSettings, wire.KerberosConnUseSSL),
+											},
+										},
+									}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "AIM account exists, incorrect roasted password, login failed",
+			advertisedHost: "127.0.0.1:5190",
+			timeNow: func() time.Time {
+				return time.Unix(1000, 0)
+			},
+			inputSNAC: wire.SNAC_0x050C_0x0002_KerberosLoginRequest{
+				RequestID:       54321,
+				ClientPrincipal: user.DisplayScreenName.String(),
+				TicketRequestMetadata: wire.TLVBlock{
+					TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.KerberosTLVTicketRequest, wire.KerberosLoginRequestTicket{
+							Version:  4,
+							Password: wire.RoastKerberosPassword([]byte("the_WRONG_password")),
+						}),
+					},
+				},
+			},
+			mockParams: mockParams{
+				userManagerParams: userManagerParams{
+					getUserParams: getUserParams{
+						{
+							screenName: user.IdentScreenName,
+							result:     &user,
 						},
 					},
 				},

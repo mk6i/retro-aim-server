@@ -430,6 +430,12 @@ func (u *User) ValidatePlaintextPass(plaintextPass []byte) bool {
 	return bytes.Equal(u.WeakMD5Pass, md5Hash)
 }
 
+func (u *User) ValidateRoastedKerberosPass(roastedPass []byte) bool {
+	clearPass := wire.RoastKerberosPassword(roastedPass)
+	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey) // todo remove string conversion
+	return bytes.Equal(u.WeakMD5Pass, md5Hash)
+}
+
 // HashPassword computes MD5 hashes of the user's password. It computes both
 // weak and strong variants and stores them in the struct.
 func (u *User) HashPassword(passwd string) error {

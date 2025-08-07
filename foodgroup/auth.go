@@ -283,7 +283,12 @@ func (s AuthService) KerberosLogin(ctx context.Context, inBody wire.SNAC_0x050C_
 
 	list := wire.TLVList{
 		wire.NewTLVBE(wire.LoginTLVTagsScreenName, inBody.ClientPrincipal),
-		wire.NewTLVBE(wire.LoginTLVTagsPlaintextPassword, info.Password),
+	}
+
+	if info.Version >= 4 {
+		list = append(list, wire.NewTLVBE(wire.LoginTLVTagsRoastedKerberosPassword, info.Password))
+	} else {
+		list = append(list, wire.NewTLVBE(wire.LoginTLVTagsPlaintextPassword, info.Password))
 	}
 
 	result, err := s.login(ctx, list, newUserFn, "") //todo
@@ -352,16 +357,17 @@ func (s AuthService) KerberosLogin(ctx context.Context, inBody wire.SNAC_0x050C_
 
 // loginProperties represents the properties sent by the client at login.
 type loginProperties struct {
-	clientID          string
-	isBUCPAuth        bool
-	isFLAPAuth        bool
-	isFLAPJavaAuth    bool
-	isKerberosAuth    bool
-	isTOCAuth         bool
-	passwordHash      []byte
-	plaintextPassword []byte
-	roastedPass       []byte
-	screenName        state.DisplayScreenName
+	clientID                string
+	isBUCPAuth              bool
+	isFLAPAuth              bool
+	isFLAPJavaAuth          bool
+	isKerberosPlaintextAuth bool
+	isKerberosRoastedAuth   bool
+	isTOCAuth               bool
+	passwordHash            []byte
+	plaintextPassword       []byte
+	roastedPass             []byte
+	screenName              state.DisplayScreenName
 }
 
 // fromTLV creates an instance of loginProperties from a TLV list.
@@ -401,7 +407,10 @@ func (l *loginProperties) fromTLV(list wire.TLVList) error {
 		l.isTOCAuth = true
 	case list.HasTag(wire.LoginTLVTagsPlaintextPassword):
 		l.plaintextPassword, _ = list.Bytes(wire.LoginTLVTagsPlaintextPassword)
-		l.isKerberosAuth = true
+		l.isKerberosPlaintextAuth = true
+	case list.HasTag(wire.LoginTLVTagsRoastedKerberosPassword):
+		l.roastedPass, _ = list.Bytes(wire.LoginTLVTagsRoastedKerberosPassword)
+		l.isKerberosRoastedAuth = true
 	default:
 		l.isFLAPAuth = true
 	}
@@ -457,8 +466,10 @@ func (s AuthService) login(ctx context.Context, tlv wire.TLVList, newUserFn func
 		loginOK = user.ValidateRoastedJavaPass(props.roastedPass)
 	case props.isTOCAuth:
 		loginOK = user.ValidateRoastedTOCPass(props.roastedPass)
-	case props.isKerberosAuth:
+	case props.isKerberosPlaintextAuth:
 		loginOK = user.ValidatePlaintextPass(props.plaintextPassword)
+	case props.isKerberosRoastedAuth:
+		loginOK = user.ValidateRoastedKerberosPass(props.roastedPass)
 	}
 
 	if !loginOK {
