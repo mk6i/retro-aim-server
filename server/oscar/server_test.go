@@ -671,3 +671,278 @@ func Test_oscarServer_dispatchIncomingMessages_disconnect(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, wire.FLAPFrameSignoff, frame.FrameType)
 }
+
+func Test_oscarServer_receiveSessMessages_BOS_integration(t *testing.T) {
+	serverConn, clientConn := net.Pipe()
+	defer serverConn.Close()
+	defer clientConn.Close()
+
+	// Prepare session and mocks so we can exercise through routeConnection
+	sess := state.NewSession()
+
+	authService := newMockAuthService(t)
+	authService.EXPECT().
+		CrackCookie(mock.Anything).
+		Return(state.ServerCookie{Service: wire.BOS}, nil)
+	authService.EXPECT().
+		RegisterBOSSession(mock.Anything, state.ServerCookie{Service: wire.BOS}).
+		Return(sess, nil)
+
+	var signoutWG sync.WaitGroup
+	signoutWG.Add(1)
+	authService.EXPECT().
+		Signout(mock.Anything, sess).
+		Run(func(ctx context.Context, s *state.Session) { signoutWG.Done() })
+
+	onlineNotifier := newMockOnlineNotifier(t)
+	onlineNotifier.EXPECT().
+		HostOnline(mock.Anything).
+		Return(wire.SNACMessage{
+			Frame: wire.SNACFrame{FoodGroup: wire.OService, SubGroup: wire.OServiceHostOnline},
+			Body:  wire.SNAC_0x01_0x03_OServiceHostOnline{},
+		})
+
+	buddyListRegistry := newMockBuddyListRegistry(t)
+	buddyListRegistry.EXPECT().RegisterBuddyList(mock.Anything, mock.Anything).Return(nil)
+	buddyListRegistry.EXPECT().UnregisterBuddyList(mock.Anything, mock.Anything).Return(nil)
+
+	departureNotifier := newMockDepartureNotifier(t)
+	departureNotifier.EXPECT().BroadcastBuddyDeparted(mock.Anything, mock.Anything).Return(nil)
+
+	chatSessionManager := newMockChatSessionManager(t)
+	chatSessionManager.EXPECT().RemoveUserFromAllChats(mock.Anything)
+
+	server := oscarServer{
+		AuthService:        authService,
+		BuddyListRegistry:  buddyListRegistry,
+		ChatSessionManager: chatSessionManager,
+		DepartureNotifier:  departureNotifier,
+		OnlineNotifier:     onlineNotifier,
+		Logger:             slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	// Fake client connection with address
+	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
+	assert.NoError(t, err)
+	clientFake := fakeConn{Conn: serverConn, local: addr, remote: addr}
+
+	// Coordinate when the server has finished login and sent HostOnline
+	ready := make(chan struct{})
+
+	// Client goroutine: perform handshake and then read forwarded messages
+	go func() {
+		// < receive FLAPSignonFrame
+		flap := wire.FLAPFrame{}
+		_ = wire.UnmarshalBE(&flap, clientConn)
+		flapSignon := wire.FLAPSignonFrame{}
+		_ = wire.UnmarshalBE(&flapSignon, bytes.NewBuffer(flap.Payload))
+
+		// > send FLAPSignonFrame with login cookie
+		flapSignon = wire.FLAPSignonFrame{FLAPVersion: 1}
+		flapSignon.Append(wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")))
+		buf := &bytes.Buffer{}
+		_ = wire.MarshalBE(flapSignon, buf)
+		_ = wire.MarshalBE(wire.FLAPFrame{StartMarker: 42, FrameType: wire.FLAPFrameSignon, Payload: buf.Bytes()}, clientConn)
+
+		// Expect HostOnline
+		flapcClient := wire.NewFlapClient(0, clientConn, clientConn)
+		fr := wire.SNACFrame{}
+		body := wire.SNAC_0x01_0x03_OServiceHostOnline{}
+		_ = flapcClient.ReceiveSNAC(&fr, &body)
+		close(ready)
+	}()
+
+	// Run the server handler in background so we can drive the session
+	doneServer := make(chan error, 1)
+	go func() { doneServer <- server.routeConnection(context.Background(), clientFake, "") }()
+
+	// Wait for HostOnline to be received so session is ready
+	select {
+	case <-ready:
+	case <-time.After(5 * time.Second):
+		t.Fatal("server did not complete login in time")
+	}
+
+	// Now send messages via the session and verify client receives them
+	messages := []wire.SNACMessage{
+		{
+			Frame: wire.SNACFrame{FoodGroup: wire.Buddy, SubGroup: wire.BuddyArrived},
+			Body:  wire.SNAC_0x03_0x0B_BuddyArrived{TLVUserInfo: wire.TLVUserInfo{ScreenName: "user1"}},
+		},
+		{
+			Frame: wire.SNACFrame{FoodGroup: wire.Buddy, SubGroup: wire.BuddyDeparted},
+			Body:  wire.SNAC_0x03_0x0C_BuddyDeparted{TLVUserInfo: wire.TLVUserInfo{ScreenName: "user2"}},
+		},
+		{
+			Frame: wire.SNACFrame{FoodGroup: wire.ICBM, SubGroup: 0x07},
+			Body:  wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{Cookie: 12345, ChannelID: 1, TLVUserInfo: wire.TLVUserInfo{ScreenName: "sender"}},
+		},
+	}
+
+	for i, msg := range messages {
+		status := sess.RelayMessage(msg)
+		assert.Equal(t, state.SessSendOK, status, "Message %d should be sent successfully", i)
+	}
+
+	// Read and verify all messages from client side
+	for i, expected := range messages {
+		flapFrame := wire.FLAPFrame{}
+		err := wire.UnmarshalBE(&flapFrame, clientConn)
+		assert.NoError(t, err, "read FLAP frame %d", i)
+		assert.Equal(t, uint8(42), flapFrame.StartMarker)
+		assert.Equal(t, wire.FLAPFrameData, flapFrame.FrameType)
+
+		snac := wire.SNACFrame{}
+		buf := bytes.NewBuffer(flapFrame.Payload)
+		err = wire.UnmarshalBE(&snac, buf)
+		assert.NoError(t, err, "unmarshal SNAC %d", i)
+		assert.Equal(t, expected.Frame.FoodGroup, snac.FoodGroup)
+		assert.Equal(t, expected.Frame.SubGroup, snac.SubGroup)
+	}
+
+	// Close client to let server exit cleanly
+	_ = clientConn.Close()
+
+	// Wait for server handler to return
+	select {
+	case err := <-doneServer:
+		assert.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("routeConnection did not exit in time")
+	}
+
+	// Ensure signout ran
+	signoutWG.Wait()
+}
+
+func Test_oscarServer_receiveSessMessages_Chat_integration(t *testing.T) {
+	serverConn, clientConn := net.Pipe()
+	defer serverConn.Close()
+	defer clientConn.Close()
+
+	// Prepare session and mocks so we can exercise through routeConnection
+	sess := state.NewSession()
+
+	authService := newMockAuthService(t)
+	authService.EXPECT().
+		CrackCookie(mock.Anything).
+		Return(state.ServerCookie{Service: wire.Chat}, nil)
+	authService.EXPECT().
+		RegisterChatSession(mock.Anything, state.ServerCookie{Service: wire.Chat}).
+		Return(sess, nil)
+
+	var signoutWG sync.WaitGroup
+	signoutWG.Add(1)
+	authService.EXPECT().
+		SignoutChat(mock.Anything, sess).
+		Run(func(ctx context.Context, s *state.Session) { signoutWG.Done() })
+
+	onlineNotifier := newMockOnlineNotifier(t)
+	onlineNotifier.EXPECT().
+		HostOnline(mock.Anything).
+		Return(wire.SNACMessage{
+			Frame: wire.SNACFrame{FoodGroup: wire.OService, SubGroup: wire.OServiceHostOnline},
+			Body:  wire.SNAC_0x01_0x03_OServiceHostOnline{},
+		})
+
+	server := oscarServer{
+		AuthService:    authService,
+		OnlineNotifier: onlineNotifier,
+		Logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	// Fake client connection with address
+	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
+	assert.NoError(t, err)
+	clientFake := fakeConn{Conn: serverConn, local: addr, remote: addr}
+
+	ready := make(chan struct{})
+
+	// Client goroutine: perform handshake and then read forwarded messages
+	go func() {
+		// < receive FLAPSignonFrame
+		flap := wire.FLAPFrame{}
+		_ = wire.UnmarshalBE(&flap, clientConn)
+		flapSignon := wire.FLAPSignonFrame{}
+		_ = wire.UnmarshalBE(&flapSignon, bytes.NewBuffer(flap.Payload))
+
+		// > send FLAPSignonFrame with login cookie
+		flapSignon = wire.FLAPSignonFrame{FLAPVersion: 1}
+		flapSignon.Append(wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")))
+		buf := &bytes.Buffer{}
+		_ = wire.MarshalBE(flapSignon, buf)
+		_ = wire.MarshalBE(wire.FLAPFrame{StartMarker: 42, FrameType: wire.FLAPFrameSignon, Payload: buf.Bytes()}, clientConn)
+
+		// Expect HostOnline
+		flapcClient := wire.NewFlapClient(0, clientConn, clientConn)
+		fr := wire.SNACFrame{}
+		body := wire.SNAC_0x01_0x03_OServiceHostOnline{}
+		_ = flapcClient.ReceiveSNAC(&fr, &body)
+		close(ready)
+	}()
+
+	// Run the server handler in background so we can drive the session
+	doneServer := make(chan error, 1)
+	go func() { doneServer <- server.routeConnection(context.Background(), clientFake, "") }()
+
+	// Wait for HostOnline to be received so session is ready
+	select {
+	case <-ready:
+	case <-time.After(5 * time.Second):
+		t.Fatal("server did not complete login in time")
+	}
+
+	messages := []wire.SNACMessage{
+		{
+			Frame: wire.SNACFrame{FoodGroup: wire.Chat, SubGroup: wire.ChatUsersJoined},
+			Body:  wire.SNAC_0x0E_0x03_ChatUsersJoined{Users: []wire.TLVUserInfo{{ScreenName: "user1"}}},
+		},
+		{
+			Frame: wire.SNACFrame{FoodGroup: wire.Chat, SubGroup: wire.ChatUsersLeft},
+			Body:  wire.SNAC_0x0E_0x04_ChatUsersLeft{Users: []wire.TLVUserInfo{{ScreenName: "user2"}}},
+		},
+		{
+			Frame: wire.SNACFrame{FoodGroup: wire.Chat, SubGroup: wire.ChatChannelMsgToClient},
+			Body: wire.SNAC_0x0E_0x06_ChatChannelMsgToClient{
+				Cookie: 12345, Channel: 1,
+				TLVRestBlock: wire.TLVRestBlock{TLVList: wire.TLVList{
+					wire.NewTLVBE(wire.ChatTLVSenderInformation, wire.TLVUserInfo{ScreenName: "sender"}),
+					wire.NewTLVBE(wire.ChatTLVMessageInfo, wire.TLVRestBlock{TLVList: wire.TLVList{
+						wire.NewTLVBE(wire.ChatTLVMessageInfoText, "Hello chat!"),
+					}}),
+				}},
+			},
+		},
+	}
+
+	for i, msg := range messages {
+		status := sess.RelayMessage(msg)
+		assert.Equal(t, state.SessSendOK, status, "Message %d should be sent successfully", i)
+	}
+
+	for i, expected := range messages {
+		flapFrame := wire.FLAPFrame{}
+		err := wire.UnmarshalBE(&flapFrame, clientConn)
+		assert.NoError(t, err, "read FLAP frame %d", i)
+		assert.Equal(t, uint8(42), flapFrame.StartMarker)
+		assert.Equal(t, wire.FLAPFrameData, flapFrame.FrameType)
+
+		snac := wire.SNACFrame{}
+		buf := bytes.NewBuffer(flapFrame.Payload)
+		err = wire.UnmarshalBE(&snac, buf)
+		assert.NoError(t, err, "unmarshal SNAC %d", i)
+		assert.Equal(t, expected.Frame.FoodGroup, snac.FoodGroup)
+		assert.Equal(t, expected.Frame.SubGroup, snac.SubGroup)
+	}
+
+	_ = clientConn.Close()
+
+	select {
+	case err := <-doneServer:
+		assert.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("routeConnection did not exit in time")
+	}
+
+	signoutWG.Wait()
+}
