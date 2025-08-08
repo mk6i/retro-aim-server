@@ -120,6 +120,14 @@ func postHandler(w http.ResponseWriter, r *http.Request, authService AuthService
 		return
 	}
 
+	logger = logger.With("ip", r.RemoteAddr)
+	switch v := response.Body.(type) {
+	case wire.SNAC_0x050C_0x0003_KerberosLoginSuccessResponse:
+		logger.InfoContext(r.Context(), "successful kerberos login", "screen_name", v.ClientPrincipal)
+	case wire.SNAC_0x050C_0x0004_KerberosLoginErrResponse:
+		logger.InfoContext(r.Context(), "failed kerberos login", "screen_name", v.ScreenName)
+	}
+
 	w.Header().Set("Content-Type", "application/x-snac")
 
 	if err := wire.MarshalBE(response, w); err != nil {
