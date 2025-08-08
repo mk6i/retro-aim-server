@@ -619,3 +619,55 @@ func TestOscarServer_RouteConnection_Admin(t *testing.T) {
 
 	wg.Wait()
 }
+
+// Make sure the client receives signoff FLAP when the server shuts down via
+// context cancellation.
+func Test_oscarServer_dispatchIncomingMessages_shutdownSignoff(t *testing.T) {
+	clientConn, serverConn := net.Pipe()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		srv := oscarServer{
+			Logger: slog.Default(),
+		}
+		sess := state.NewSession()
+		flapc := wire.NewFlapClient(0, serverConn, serverConn)
+		err := srv.dispatchIncomingMessages(ctx, wire.BOS, sess, flapc, serverConn, "")
+		assert.NoError(t, err)
+	}()
+
+	cancel()
+	flapc := wire.NewFlapClient(0, clientConn, clientConn)
+	frame, err := flapc.ReceiveFLAP()
+	assert.NoError(t, err)
+	assert.Equal(t, wire.FLAPFrameSignoff, frame.FrameType)
+}
+
+// Make sure the client receives disconnection signoff FLAP when the session
+// gets logged off by a new session.
+func Test_oscarServer_dispatchIncomingMessages_disconnect(t *testing.T) {
+	clientConn, serverConn := net.Pipe()
+	ctx := context.Background()
+	sess := state.NewSession()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		srv := oscarServer{
+			Logger: slog.Default(),
+		}
+		flapc := wire.NewFlapClient(0, serverConn, serverConn)
+		err := srv.dispatchIncomingMessages(ctx, wire.BOS, sess, flapc, serverConn, "")
+		assert.NoError(t, err)
+	}()
+
+	sess.Close()
+	flapc := wire.NewFlapClient(0, clientConn, clientConn)
+	frame, err := flapc.ReceiveFLAP()
+	assert.NoError(t, err)
+	assert.Equal(t, wire.FLAPFrameSignoff, frame.FrameType)
+}

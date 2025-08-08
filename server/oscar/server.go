@@ -574,6 +574,12 @@ func (s oscarServer) dispatchIncomingMessages(
 			}
 			return nil
 		case <-ctx.Done():
+			block := wire.TLVRestBlock{}
+			// send explicit disconnect notification to client since proxies
+			// between client and server may not properly terminate connections
+			if err := flapc.SendSignoffFrame(block); err != nil {
+				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
+			}
 			// application is shutting down
 			if err := flapc.Disconnect(); err != nil {
 				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
