@@ -39,8 +39,6 @@ services:
       - "8080:8080"
     env_file:
       - ./config/ssl/settings.env
-    volumes:
-      - ./docker-data:/vol
 
   stunnel:
     image: ras-stunnel:5.75-openssl-1.0.2u
