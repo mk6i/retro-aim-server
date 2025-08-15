@@ -11,6 +11,8 @@ RUN go build -o retro_aim_server ./cmd/server
 
 FROM alpine:latest
 
+VOLUME ./docker-data /vol
+
 WORKDIR /app
 
 COPY --from=builder /app/retro_aim_server /app/
