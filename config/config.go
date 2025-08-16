@@ -8,6 +8,15 @@ import (
 	"strings"
 )
 
+const (
+	// URI format error message template
+	uriFormatErrorMsg = "invalid listener URI %q: %v. Valid format: SCHEME://HOST:PORT (e.g., LOCAL://0.0.0.0:5190)"
+	// Missing scheme error message template
+	missingSchemeErrorMsg = "invalid listener URI %q: missing scheme. Valid format: SCHEME://HOST:PORT (e.g., LOCAL://0.0.0.0:5190)"
+	// Duplicate listener error message
+	duplicateListenerErrorMsg = "duplicate listener definition"
+)
+
 //go:generate go run ../cmd/config_generator unix settings.env ssl
 type Config struct {
 	BOSListeners       string `envconfig:"OSCAR_LISTENERS" required:"true" basic:"LOCAL://0.0.0.0:5190" ssl:"PLAINTEXT://0.0.0.0:5190,SSL://0.0.0.0:5192" description:"Network listeners for core OSCAR services. For multi-homed servers, allows users to connect from multiple networks. For example, you can allow both LAN and Internet clients to connect to the same server using different connection settings.\n\nFormat:\n\t- Comma-separated list of [NAME]://[HOSTNAME]:[PORT]\n\t- Listener names and ports must be unique\n\t- Listener names are user-defined\n\t- Each listener needs OSCAR_ADVERTISED_LISTENERS/KERBEROS_LISTENERS configs\n\nExamples:\n\t// Listen on all interfaces\n\tLAN://0.0.0.0:5190\n\t// Separate Internet and LAN config\n\tWAN://142.250.176.206:5190,LAN://192.168.1.10:5191"`
@@ -34,67 +43,79 @@ type Listener struct {
 }
 
 func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerberosListeners string) ([]Listener, error) {
-	m := make(map[string]*Listener)
-
-	for _, lStr := range strings.Split(BOSListeners, ",") {
-		lStr = strings.TrimSpace(lStr)
-		if lStr == "" {
-			continue
+	// Helper function to parse and validate a single URI
+	parseURI := func(uriStr string) (*url.URL, error) {
+		uriStr = strings.TrimSpace(uriStr)
+		if uriStr == "" {
+			return nil, nil
 		}
-		u, err := url.Parse(lStr)
+
+		u, err := url.Parse(uriStr)
 		if err != nil {
-			return nil, fmt.Errorf("parsing listener URI: %w", err)
+			return nil, fmt.Errorf(uriFormatErrorMsg, uriStr, err)
 		}
 		if u.Scheme == "" {
-			return nil, fmt.Errorf("invalid listener URI: missing scheme in %q", lStr)
+			return nil, fmt.Errorf(missingSchemeErrorMsg, uriStr)
 		}
+
+		return u, nil
+	}
+
+	m := make(map[string]*Listener)
+
+	// Parse BOS listeners
+	for _, uriStr := range strings.Split(BOSListeners, ",") {
+		u, err := parseURI(uriStr)
+		if err != nil {
+			return nil, err
+		}
+		if u == nil {
+			continue
+		}
+
 		if _, ok := m[u.Scheme]; !ok {
 			m[u.Scheme] = &Listener{}
 		}
 		if m[u.Scheme].BOSListenAddress != "" {
-			return nil, errors.New("duplicate listener definition")
+			return nil, errors.New(duplicateListenerErrorMsg)
 		}
 		m[u.Scheme].BOSListenAddress = net.JoinHostPort(u.Hostname(), u.Port())
 	}
 
-	for _, lStr := range strings.Split(BOSAdvertisedListeners, ",") {
-		lStr = strings.TrimSpace(lStr)
-		if lStr == "" {
+	// Parse BOS advertised listeners
+	for _, uriStr := range strings.Split(BOSAdvertisedListeners, ",") {
+		u, err := parseURI(uriStr)
+		if err != nil {
+			return nil, err
+		}
+		if u == nil {
 			continue
 		}
-		u, err := url.Parse(lStr)
-		if err != nil {
-			return nil, fmt.Errorf("parsing listener URI: %w", err)
-		}
-		if u.Scheme == "" {
-			return nil, fmt.Errorf("invalid listener URI: missing scheme in %q", lStr)
-		}
+
 		if _, ok := m[u.Scheme]; !ok {
 			m[u.Scheme] = &Listener{}
 		}
 		if m[u.Scheme].BOSAdvertisedHost != "" {
-			return nil, errors.New("duplicate listener definition")
+			return nil, errors.New(duplicateListenerErrorMsg)
 		}
 		m[u.Scheme].BOSAdvertisedHost = net.JoinHostPort(u.Hostname(), u.Port())
 	}
 
-	for _, lStr := range strings.Split(kerberosListeners, ",") {
-		lStr = strings.TrimSpace(lStr)
-		if lStr == "" {
+	// Parse Kerberos listeners
+	for _, uriStr := range strings.Split(kerberosListeners, ",") {
+		u, err := parseURI(uriStr)
+		if err != nil {
+			return nil, err
+		}
+		if u == nil {
 			continue
 		}
-		u, err := url.Parse(lStr)
-		if err != nil {
-			return nil, fmt.Errorf("parsing listener URI: %w", err)
-		}
-		if u.Scheme == "" {
-			return nil, fmt.Errorf("invalid listener URI: missing scheme in %q", lStr)
-		}
+
 		if _, ok := m[u.Scheme]; !ok {
 			m[u.Scheme] = &Listener{}
 		}
 		if m[u.Scheme].KerberosListenAddress != "" {
-			return nil, errors.New("duplicate listener definition")
+			return nil, errors.New(duplicateListenerErrorMsg)
 		}
 		m[u.Scheme].KerberosListenAddress = net.JoinHostPort(u.Hostname(), u.Port())
 	}
@@ -111,7 +132,6 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 		ret = append(ret, *v)
 	}
 
-	// Validate that there is at least one BOS listener
 	if len(ret) == 0 {
 		return nil, errors.New("at least one BOS listener is required")
 	}

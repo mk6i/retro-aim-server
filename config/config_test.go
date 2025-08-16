@@ -113,7 +113,7 @@ func TestParseListenersCfg(t *testing.T) {
 			kerberosListeners:      "",
 			want:                   nil,
 			wantErr:                true,
-			errContains:            "invalid listener URI: missing scheme",
+			errContains:            "missing scheme. Valid format",
 		},
 		{
 			name:                   "invalid URI format in advertised",
@@ -122,7 +122,7 @@ func TestParseListenersCfg(t *testing.T) {
 			kerberosListeners:      "",
 			want:                   nil,
 			wantErr:                true,
-			errContains:            "invalid listener URI: missing scheme",
+			errContains:            "missing scheme. Valid format",
 		},
 		{
 			name:                   "invalid URI format in kerberos",
@@ -131,7 +131,16 @@ func TestParseListenersCfg(t *testing.T) {
 			kerberosListeners:      "invalid-uri",
 			want:                   nil,
 			wantErr:                true,
-			errContains:            "invalid listener URI: missing scheme",
+			errContains:            "missing scheme. Valid format",
+		},
+		{
+			name:                   "URI with underscore in scheme",
+			bosListeners:           "LOCAL_://0.0.0.0:5190",
+			bosAdvertisedListeners: "LOCAL://127.0.0.1:5190",
+			kerberosListeners:      "",
+			want:                   nil,
+			wantErr:                true,
+			errContains:            "Valid format: SCHEME://HOST:PORT",
 		},
 		{
 			name:                   "complex multi-listener setup",
