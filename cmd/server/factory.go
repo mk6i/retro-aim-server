@@ -41,27 +41,31 @@ func MakeCommonDeps() (Container, error) {
 	c := Container{}
 
 	if err := validateConfigMigration(); err != nil {
-		return c, fmt.Errorf("unable to validate config migration: %s\n", err.Error())
+		return c, fmt.Errorf("unable to validate config migration: %s", err.Error())
 	}
 
 	err := envconfig.Process("", &c.cfg)
 	if err != nil {
-		return c, fmt.Errorf("unable to process app config: %s\n", err.Error())
+		return c, fmt.Errorf("unable to process app config: %s", err.Error())
 	}
 
-	c.Listeners, err = config.ParseListenersCfg(c.cfg.BOSListeners, c.cfg.BOSAdvertisedHosts, c.cfg.KerberosListeners)
+	if err := c.cfg.Validate(); err != nil {
+		return c, fmt.Errorf("configuration validation failed: %s", err.Error())
+	}
+
+	c.Listeners, err = c.cfg.ParseListenersCfg()
 	if err != nil {
-		return c, fmt.Errorf("unable to parse listener config: %s\n", err.Error())
+		return c, fmt.Errorf("unable to parse listener config: %s", err.Error())
 	}
 
 	c.sqLiteUserStore, err = state.NewSQLiteUserStore(c.cfg.DBPath)
 	if err != nil {
-		return c, fmt.Errorf("unable to create feedbag store: %s\n", err.Error())
+		return c, fmt.Errorf("unable to create feedbag store: %s", err.Error())
 	}
 
 	c.hmacCookieBaker, err = state.NewHMACCookieBaker()
 	if err != nil {
-		return c, fmt.Errorf("unable to create HMAC cookie baker: %s\n", err.Error())
+		return c, fmt.Errorf("unable to create HMAC cookie baker: %s", err.Error())
 	}
 
 	c.logger = middleware.NewLogger(c.cfg)
@@ -146,17 +150,17 @@ func validateConfigMigration() error {
 			if contains(newEnvVarsMissing, "OSCAR_ADVERTISED_LISTENERS") {
 				oscarHost := getEnvOrDefault("OSCAR_HOST", "127.0.0.1")
 				authPort := getEnvOrDefault("AUTH_PORT", "5190")
-				errorMsg.WriteString(fmt.Sprintf("export OSCAR_ADVERTISED_LISTENERS=EXTERNAL://%s:%s\n", oscarHost, authPort))
+				errorMsg.WriteString(fmt.Sprintf("export OSCAR_ADVERTISED_LISTENERS=LOCAL://%s:%s\n", oscarHost, authPort))
 			}
 
 			if contains(newEnvVarsMissing, "OSCAR_LISTENERS") {
 				authPort := getEnvOrDefault("AUTH_PORT", "5190")
-				errorMsg.WriteString(fmt.Sprintf("export OSCAR_LISTENERS=EXTERNAL://0.0.0.0:%s\n", authPort))
+				errorMsg.WriteString(fmt.Sprintf("export OSCAR_LISTENERS=LOCAL://0.0.0.0:%s\n", authPort))
 			}
 
 			if contains(newEnvVarsMissing, "KERBEROS_LISTENERS") {
 				kerberosPort := getEnvOrDefault("KERBEROS_PORT", "1088")
-				errorMsg.WriteString(fmt.Sprintf("export KERBEROS_LISTENERS=EXTERNAL://0.0.0.0:%s\n", kerberosPort))
+				errorMsg.WriteString(fmt.Sprintf("export KERBEROS_LISTENERS=LOCAL://0.0.0.0:%s\n", kerberosPort))
 			}
 
 			if contains(newEnvVarsMissing, "TOC_LISTENERS") {
@@ -317,7 +321,7 @@ func OSCAR(deps Container) *oscar.Server {
 
 // KerberosAPI creates an HTTP server for the Kerberos server.
 func KerberosAPI(deps Container) *kerberos.Server {
-	logger := deps.logger.With("svc", "kerberos")
+	logger := deps.logger.With("svc", "Kerberos")
 	authService := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, deps.chatSessionManager, deps.sqLiteUserStore, deps.rateLimitClasses)
 	return kerberos.NewKerberosServer(deps.Listeners, logger, authService)
 }

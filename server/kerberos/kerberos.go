@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 
 	"golang.org/x/sync/errgroup"
@@ -50,14 +49,13 @@ func NewKerberosServer(listeners []config.Listener, logger *slog.Logger, authSer
 // Server hosts an HTTP endpoint capable of handling AIM-style Kerberos
 // authentication. The messages are structured as SNACs transmitted over HTTP.
 type Server struct {
-	servers   []*http.Server
-	listeners []net.Listener
-	logger    *slog.Logger
+	servers []*http.Server
+	logger  *slog.Logger
 }
 
 func (s *Server) ListenAndServe() error {
 	if len(s.servers) == 0 {
-		s.logger.Info("no kerberos listeners defined, moving on")
+		s.logger.Debug("no kerberos listeners defined")
 		return nil
 	}
 
@@ -80,10 +78,11 @@ func (s *Server) ListenAndServe() error {
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
-	defer s.logger.Info("shutdown complete")
-
-	for _, srv := range s.servers {
-		_ = srv.Shutdown(ctx)
+	if len(s.servers) > 0 {
+		for _, srv := range s.servers {
+			_ = srv.Shutdown(ctx)
+		}
+		s.logger.Info("shutdown complete")
 	}
 	return nil
 }

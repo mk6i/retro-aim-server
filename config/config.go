@@ -25,6 +25,18 @@ func (e uriFormatError) Error() string {
 	return fmt.Sprintf("invalid listener URI %q: %v. Valid format: SCHEME://HOST:PORT (e.g., LOCAL://0.0.0.0:5190)", e.URI, e.Err)
 }
 
+type Build struct {
+	Version string `json:"version"`
+	Commit  string `json:"commit"`
+	Date    string `json:"date"`
+}
+
+type Listener struct {
+	BOSListenAddress      string
+	BOSAdvertisedHost     string
+	KerberosListenAddress string
+}
+
 //go:generate go run ../cmd/config_generator unix settings.env ssl
 type Config struct {
 	BOSListeners       string `envconfig:"OSCAR_LISTENERS" required:"true" basic:"LOCAL://0.0.0.0:5190" ssl:"PLAINTEXT://0.0.0.0:5190,SSL://0.0.0.0:5192" description:"Network listeners for core OSCAR services. For multi-homed servers, allows users to connect from multiple networks. For example, you can allow both LAN and Internet clients to connect to the same server using different connection settings.\n\nFormat:\n\t- Comma-separated list of [NAME]://[HOSTNAME]:[PORT]\n\t- Listener names and ports must be unique\n\t- Listener names are user-defined\n\t- Each listener needs OSCAR_ADVERTISED_LISTENERS/KERBEROS_LISTENERS configs\n\nExamples:\n\t// Listen on all interfaces\n\tLAN://0.0.0.0:5190\n\t// Separate Internet and LAN config\n\tWAN://142.250.176.206:5190,LAN://192.168.1.10:5191"`
@@ -38,19 +50,7 @@ type Config struct {
 	LogLevel    string `envconfig:"LOG_LEVEL" required:"true" basic:"info" ssl:"info" description:"Set logging granularity. Possible values: 'trace', 'debug', 'info', 'warn', 'error'."`
 }
 
-type Build struct {
-	Version string `json:"version"`
-	Commit  string `json:"commit"`
-	Date    string `json:"date"`
-}
-
-type Listener struct {
-	BOSListenAddress      string
-	BOSAdvertisedHost     string
-	KerberosListenAddress string
-}
-
-func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerberosListeners string) ([]Listener, error) {
+func (c *Config) ParseListenersCfg() ([]Listener, error) {
 	// Helper function to parse and validate a single URI
 	parseURI := func(uriStr string) (*url.URL, error) {
 		uriStr = strings.TrimSpace(uriStr)
@@ -62,8 +62,13 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 		if err != nil {
 			return nil, uriFormatError{URI: uriStr, Err: err}
 		}
-		if u.Scheme == "" {
+		switch {
+		case u.Scheme == "":
 			return nil, uriFormatError{URI: uriStr, Err: errors.New("missing scheme")}
+		case u.Hostname() == "":
+			return nil, uriFormatError{URI: uriStr, Err: errors.New("missing host")}
+		case u.Port() == "":
+			return nil, uriFormatError{URI: uriStr, Err: errors.New("missing port")}
 		}
 
 		return u, nil
@@ -72,7 +77,7 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 	m := make(map[string]*Listener)
 
 	// Parse BOS listeners
-	for _, uriStr := range strings.Split(BOSListeners, ",") {
+	for _, uriStr := range strings.Split(c.BOSListeners, ",") {
 		u, err := parseURI(uriStr)
 		if err != nil {
 			return nil, err
@@ -91,7 +96,7 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 	}
 
 	// Parse BOS advertised listeners
-	for _, uriStr := range strings.Split(BOSAdvertisedListeners, ",") {
+	for _, uriStr := range strings.Split(c.BOSAdvertisedHosts, ",") {
 		u, err := parseURI(uriStr)
 		if err != nil {
 			return nil, err
@@ -110,7 +115,7 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 	}
 
 	// Parse Kerberos listeners
-	for _, uriStr := range strings.Split(kerberosListeners, ",") {
+	for _, uriStr := range strings.Split(c.KerberosListeners, ",") {
 		u, err := parseURI(uriStr)
 		if err != nil {
 			return nil, err
@@ -145,4 +150,48 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 	}
 
 	return ret, nil
+}
+
+func (c *Config) Validate() error {
+	// Validate TOCListeners (format: hostname:port pairs)
+	for _, listener := range strings.Split(c.TOCListeners, ",") {
+		listener = strings.TrimSpace(listener)
+		if listener == "" {
+			continue
+		}
+
+		host, port, err := net.SplitHostPort(listener)
+		if err != nil {
+			return fmt.Errorf("invalid TOC listener %q: %v. Valid format: HOST:PORT (e.g., 0.0.0.0:9898)", listener, err)
+		}
+
+		if host == "" {
+			return fmt.Errorf("invalid TOC listener %q: missing host. Valid format: HOST:PORT (e.g., 0.0.0.0:9898)", listener)
+		}
+
+		if port == "" {
+			return fmt.Errorf("invalid TOC listener %q: missing port. Valid format: HOST:PORT (e.g., 0.0.0.0:9898)", listener)
+		}
+	}
+
+	// Validate APIListener (format: hostname:port pair, no scheme)
+	apiListener := strings.TrimSpace(c.APIListener)
+	if apiListener == "" {
+		return fmt.Errorf("APIListener is required and cannot be empty")
+	}
+
+	host, port, err := net.SplitHostPort(apiListener)
+	if err != nil {
+		return fmt.Errorf("invalid API listener %q: %v. Valid format: HOST:PORT (e.g., 127.0.0.1:8080)", c.APIListener, err)
+	}
+
+	if host == "" {
+		return fmt.Errorf("invalid API listener %q: missing host. Valid format: HOST:PORT (e.g., 127.0.0.1:8080)", c.APIListener)
+	}
+
+	if port == "" {
+		return fmt.Errorf("invalid API listener %q: missing port. Valid format: HOST:PORT (e.g., 127.0.0.1:8080)", c.APIListener)
+	}
+
+	return nil
 }

@@ -52,7 +52,7 @@ func main() {
 
 	deps, err := MakeCommonDeps()
 	if err != nil {
-		fmt.Printf("error initializing common deps: %v\n", err)
+		fmt.Printf("startup failed: %s\n", err)
 		os.Exit(1)
 	}
 
