@@ -8,14 +8,22 @@ import (
 	"strings"
 )
 
-const (
-	// URI format error message template
-	uriFormatErrorMsg = "invalid listener URI %q: %v. Valid format: SCHEME://HOST:PORT (e.g., LOCAL://0.0.0.0:5190)"
-	// Missing scheme error message template
-	missingSchemeErrorMsg = "invalid listener URI %q: missing scheme. Valid format: SCHEME://HOST:PORT (e.g., LOCAL://0.0.0.0:5190)"
-	// Duplicate listener error message
-	duplicateListenerErrorMsg = "duplicate listener definition"
+var (
+	// Simple error for duplicate listener definitions
+	errDuplicateListener = errors.New("duplicate listener definition")
+	// Simple error for missing BOS listeners
+	errNoBOSListeners = errors.New("at least one BOS listener is required")
 )
+
+// Custom error types for URI-related errors
+type uriFormatError struct {
+	URI string
+	Err error
+}
+
+func (e uriFormatError) Error() string {
+	return fmt.Sprintf("invalid listener URI %q: %v. Valid format: SCHEME://HOST:PORT (e.g., LOCAL://0.0.0.0:5190)", e.URI, e.Err)
+}
 
 //go:generate go run ../cmd/config_generator unix settings.env ssl
 type Config struct {
@@ -52,10 +60,10 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 
 		u, err := url.Parse(uriStr)
 		if err != nil {
-			return nil, fmt.Errorf(uriFormatErrorMsg, uriStr, err)
+			return nil, uriFormatError{URI: uriStr, Err: err}
 		}
 		if u.Scheme == "" {
-			return nil, fmt.Errorf(missingSchemeErrorMsg, uriStr)
+			return nil, uriFormatError{URI: uriStr, Err: errors.New("missing scheme")}
 		}
 
 		return u, nil
@@ -77,7 +85,7 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 			m[u.Scheme] = &Listener{}
 		}
 		if m[u.Scheme].BOSListenAddress != "" {
-			return nil, errors.New(duplicateListenerErrorMsg)
+			return nil, errDuplicateListener
 		}
 		m[u.Scheme].BOSListenAddress = net.JoinHostPort(u.Hostname(), u.Port())
 	}
@@ -96,7 +104,7 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 			m[u.Scheme] = &Listener{}
 		}
 		if m[u.Scheme].BOSAdvertisedHost != "" {
-			return nil, errors.New(duplicateListenerErrorMsg)
+			return nil, errDuplicateListener
 		}
 		m[u.Scheme].BOSAdvertisedHost = net.JoinHostPort(u.Hostname(), u.Port())
 	}
@@ -115,7 +123,7 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 			m[u.Scheme] = &Listener{}
 		}
 		if m[u.Scheme].KerberosListenAddress != "" {
-			return nil, errors.New(duplicateListenerErrorMsg)
+			return nil, errDuplicateListener
 		}
 		m[u.Scheme].KerberosListenAddress = net.JoinHostPort(u.Hostname(), u.Port())
 	}
@@ -133,7 +141,7 @@ func ParseListenersCfg(BOSListeners string, BOSAdvertisedListeners string, kerbe
 	}
 
 	if len(ret) == 0 {
-		return nil, errors.New("at least one BOS listener is required")
+		return nil, errNoBOSListeners
 	}
 
 	return ret, nil
