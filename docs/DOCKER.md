@@ -71,7 +71,7 @@ Replace `ras.dev` with the hostname clients will use to connect.
 
 #### Certificate Database
 
-Follow the [AIM 6.x client setup instructions](AIM6.md#aim-6265312-setup) to install the `certs/nss/` database on each
+Follow the [AIM 6.x client setup instructions](AIM_6_7.md#aim-6265312-setup) to install the `certs/nss/` database on each
 client.
 
 #### Resolving Hostname

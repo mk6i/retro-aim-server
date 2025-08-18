@@ -42,11 +42,17 @@ This guide explains how to download, configure and run Retro AIM Server on macOS
 
 4. **Configure Server Address**
 
-   Set `OSCAR_HOST` in `settings.env` to a hostname that AIM clients can connect to. The default setting is `127.0.0.1`,
-   which is enough to connect clients on the same machine.
+   Set the default listener in `OSCAR_ADVERTISED_LISTENERS_PLAIN` in `settings.env` to a hostname and port that the AIM
+   clients can connect to. If you are running the AIM client and server on the same machine, you don't need to change
+   the default value.
+
+   The format is `[NAME]://[HOSTNAME]:[PORT]` where:
+    - `LOCAL` is the listener name (can be any name you choose, as long as it matches the `OSCAR_LISTENERS` config)
+    - `127.0.0.1` is the hostname clients connect to
+    - `5190` is the port number clients connect to
 
    In order to connect AIM clients on your LAN (including VMs with bridged networking), you can find the appropriate IP
-   address by running the following command in the terminal:
+   address by running the following command in the terminal and use that IP instead of `127.0.0.1`:
 
    ```shell
    osascript -e "IPv4 address of (system info)"
@@ -65,8 +71,7 @@ This guide explains how to download, configure and run Retro AIM Server on macOS
 6. **Test**
 
    To do a quick sanity check, start an AIM client, sign in to the server, and send yourself an instant message.
-   Configure the AIM client to connect to the host set in `OSCAR_HOST` in `settings.env`. (If you didn't change the
-   config, the address is `127.0.0.1`.)
+   Configure the AIM client to connect to the host and port from `OSCAR_ADVERTISED_LISTENERS_PLAIN` in `settings.env`. If using the default server setting, set host to `127.0.0.1` and port `5190`.
 
    See the [Client Configuration Guide](./CLIENT.md) for more detail on setting up the AIM client.
 

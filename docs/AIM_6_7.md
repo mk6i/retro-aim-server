@@ -58,8 +58,9 @@ To point the client to your Retro AIM Server:
    ```
 3. Set the file filter to **All Files**.
 4. Open `serviceManifest.xml`.
-5. Find the `aol.aimcc.connect.host.address` preference and update it to match your `OSCAR_HOST` Retro AIM Server
-   config:
+5. Find the `aol.aimcc.connect.host.address` preference and update it to match the hostname from your
+   `OSCAR_ADVERTISED_LISTENERS_PLAIN` Retro AIM Server config. For example, if
+   `OSCAR_ADVERTISED_LISTENERS_PLAIN=LOCAL://127.0.0.1:5190`, use `127.0.0.1`.
 
    ```diff
    -<preferenceDefault key="aol.aimcc.connect.host.address" scope="identity" type="string">login.oscar.aol.com</preferenceDefault>

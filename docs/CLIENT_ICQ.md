@@ -148,8 +148,9 @@ Server's hostname in the Windows Registry.
 3. **Configure OSCAR Host**
 
     - Double-click the `Default Server Host` registry entry.
-    - Set `Value data` to the value of `OSCAR_HOST` found in Retro AIM Server
-      configuration `config/settings.env`.
+    - Set `Value data` to the hostname from `OSCAR_ADVERTISED_LISTENERS_PLAIN` found in Retro AIM Server
+      configuration `config/settings.env`. For example, if `OSCAR_ADVERTISED_LISTENERS_PLAIN=LOCAL://127.0.0.1:5190`, use
+      `127.0.0.1`.
     - Click OK.
 
    <p align="center">
@@ -163,7 +164,8 @@ Server's hostname in the Windows Registry.
 
     - Double-click the `Default Server Port` registry entry.
     - Tick the `Decimal` radio button.
-    - Set `Value data` to the value of `AUTH_PORT` found in Retro AIM Server configuration `config/settings.env`.
+    - Set `Value data` to the port number from `OSCAR_ADVERTISED_LISTENERS_PLAIN` found in Retro AIM Server configuration
+      `config/settings.env`. For example, if `OSCAR_ADVERTISED_LISTENERS_PLAIN=LOCAL://127.0.0.1:5190`, use `5190`.
     - Click OK.
 
    <p align="center">
