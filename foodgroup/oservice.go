@@ -601,7 +601,7 @@ func (s OServiceService) ServiceRequest(ctx context.Context, service uint16, ses
 
 	host := listener.BOSAdvertisedHostPlain
 	stateCode := wire.OServiceServiceResponseSSLStateNotUsed
-	
+
 	if inBody.HasTag(wire.OserviceTLVTagsSSLUseSSL) {
 		host = listener.BOSAdvertisedHostSSL
 		stateCode = wire.OServiceServiceResponseSSLStateResume
