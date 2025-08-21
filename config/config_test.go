@@ -7,218 +7,366 @@ import (
 func TestParseListenersCfg(t *testing.T) {
 	tests := []struct {
 		name                   string
-		bosListeners           string
-		bosAdvertisedListeners string
-		kerberosListeners      string
+		bosListeners           []string
+		bosAdvertisedListeners []string
+		bosAdvertisedHostsSSL  []string
+		kerberosListeners      []string
 		want                   []Listener
 		wantErr                bool
 		errContains            string
 	}{
 		{
 			name:                   "valid single listener with kerberos",
-			bosListeners:           "LOCAL://0.0.0.0:5190",
-			bosAdvertisedListeners: "LOCAL://127.0.0.1:5190",
-			kerberosListeners:      "LOCAL://0.0.0.0:1088",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{"LOCAL://0.0.0.0:1088"},
 			want: []Listener{
 				{
-					BOSListenAddress:      "0.0.0.0:5190",
-					BOSAdvertisedHost:     "127.0.0.1:5190",
-					KerberosListenAddress: "0.0.0.0:1088",
+					BOSListenAddress:       "0.0.0.0:5190",
+					BOSAdvertisedHostPlain: "127.0.0.1:5190",
+					KerberosListenAddress:  "0.0.0.0:1088",
 				},
 			},
 			wantErr: false,
 		},
 		{
 			name:                   "valid single listener without kerberos",
-			bosListeners:           "LOCAL://0.0.0.0:5190",
-			bosAdvertisedListeners: "LOCAL://127.0.0.1:5190",
-			kerberosListeners:      "",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{},
 			want: []Listener{
 				{
-					BOSListenAddress:      "0.0.0.0:5190",
-					BOSAdvertisedHost:     "127.0.0.1:5190",
-					KerberosListenAddress: "",
+					BOSListenAddress:       "0.0.0.0:5190",
+					BOSAdvertisedHostPlain: "127.0.0.1:5190",
+					KerberosListenAddress:  "",
 				},
 			},
 			wantErr: false,
 		},
 		{
 			name:                   "valid multiple listeners with mixed kerberos",
-			bosListeners:           "LAN://192.168.1.10:5190,WAN://0.0.0.0:5191",
-			bosAdvertisedListeners: "LAN://192.168.1.10:5190,WAN://example.com:5191",
-			kerberosListeners:      "LAN://192.168.1.10:1088",
+			bosListeners:           []string{"LAN://192.168.1.10:5190", "WAN://0.0.0.0:5191"},
+			bosAdvertisedListeners: []string{"LAN://192.168.1.10:5190", "WAN://example.com:5191"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{"LAN://192.168.1.10:1088"},
 			want: []Listener{
 				{
-					BOSListenAddress:      "192.168.1.10:5190",
-					BOSAdvertisedHost:     "192.168.1.10:5190",
-					KerberosListenAddress: "192.168.1.10:1088",
+					BOSListenAddress:       "192.168.1.10:5190",
+					BOSAdvertisedHostPlain: "192.168.1.10:5190",
+					KerberosListenAddress:  "192.168.1.10:1088",
 				},
 				{
-					BOSListenAddress:      "0.0.0.0:5191",
-					BOSAdvertisedHost:     "example.com:5191",
-					KerberosListenAddress: "",
+					BOSListenAddress:       "0.0.0.0:5191",
+					BOSAdvertisedHostPlain: "example.com:5191",
+					KerberosListenAddress:  "",
 				},
 			},
 			wantErr: false,
 		},
 		{
 			name:                   "missing BOS advertised host",
-			bosListeners:           "LOCAL://0.0.0.0:5190",
-			bosAdvertisedListeners: "",
-			kerberosListeners:      "",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "missing BOS advertise address",
 		},
 		{
 			name:                   "missing BOS listen address",
-			bosListeners:           "",
-			bosAdvertisedListeners: "LOCAL://127.0.0.1:5190",
-			kerberosListeners:      "",
+			bosListeners:           []string{},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "missing BOS listen address for listener `local://`",
 		},
 		{
 			name:                   "duplicate listener definition in BOS",
-			bosListeners:           "LOCAL://0.0.0.0:5190,LOCAL://0.0.0.0:5191",
-			bosAdvertisedListeners: "LOCAL://127.0.0.1:5190",
-			kerberosListeners:      "",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190", "LOCAL://0.0.0.0:5191"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "duplicate listener definition",
 		},
 		{
 			name:                   "duplicate listener definition in advertised",
-			bosListeners:           "LOCAL://0.0.0.0:5190",
-			bosAdvertisedListeners: "LOCAL://127.0.0.1:5190,LOCAL://127.0.0.1:5191",
-			kerberosListeners:      "",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190", "LOCAL://127.0.0.1:5191"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "duplicate listener definition",
 		},
 		{
 			name:                   "duplicate listener definition in kerberos",
-			bosListeners:           "LOCAL://0.0.0.0:5190",
-			bosAdvertisedListeners: "LOCAL://127.0.0.1:5190",
-			kerberosListeners:      "LOCAL://0.0.0.0:1088,LOCAL://0.0.0.0:1089",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{"LOCAL://0.0.0.0:1088", "LOCAL://0.0.0.0:1089"},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "duplicate listener definition",
 		},
 		{
 			name:                   "invalid URI format in BOS",
-			bosListeners:           "invalid-uri",
-			bosAdvertisedListeners: "LOCAL://127.0.0.1:5190",
-			kerberosListeners:      "",
+			bosListeners:           []string{"invalid-uri"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "missing scheme. Valid format",
 		},
 		{
 			name:                   "invalid URI format in advertised",
-			bosListeners:           "LOCAL://0.0.0.0:5190",
-			bosAdvertisedListeners: "invalid-uri",
-			kerberosListeners:      "",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"invalid-uri"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "missing scheme. Valid format",
 		},
 		{
 			name:                   "invalid URI format in kerberos",
-			bosListeners:           "LOCAL://0.0.0.0:5190",
-			bosAdvertisedListeners: "LOCAL://127.0.0.1:5190",
-			kerberosListeners:      "invalid-uri",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{"invalid-uri"},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "missing scheme. Valid format",
 		},
 		{
 			name:                   "URI with underscore in scheme",
-			bosListeners:           "LOCAL_://0.0.0.0:5190",
-			bosAdvertisedListeners: "LOCAL://127.0.0.1:5190",
-			kerberosListeners:      "",
+			bosListeners:           []string{"LOCAL_://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "Valid format: SCHEME://HOST:PORT",
 		},
 		{
 			name:                   "BOS listener missing port",
-			bosListeners:           "LOCAL://0.0.0.0",
-			bosAdvertisedListeners: "LOCAL://127.0.0.1:5190",
-			kerberosListeners:      "",
+			bosListeners:           []string{"LOCAL://0.0.0.0"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "missing port",
 		},
 		{
 			name:                   "BOS listener missing host",
-			bosListeners:           "LOCAL://:5190",
-			bosAdvertisedListeners: "LOCAL://127.0.0.1:5190",
-			kerberosListeners:      "",
+			bosListeners:           []string{"LOCAL://:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "missing host",
 		},
 		{
 			name:                   "complex multi-listener setup",
-			bosListeners:           "LAN://192.168.1.10:5190,WAN://0.0.0.0:5191,DOCKER://172.17.0.1:5192",
-			bosAdvertisedListeners: "DOCKER://172.17.0.1:5192,LAN://192.168.1.10:5190,WAN://example.com:5191",
-			kerberosListeners:      "WAN://0.0.0.0:1089,LAN://192.168.1.10:1088",
+			bosListeners:           []string{"LAN://192.168.1.10:5190", "WAN://0.0.0.0:5191", "DOCKER://172.17.0.1:5192"},
+			bosAdvertisedListeners: []string{"DOCKER://172.17.0.1:5192", "LAN://192.168.1.10:5190", "WAN://example.com:5191"},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{"WAN://0.0.0.0:1089", "LAN://192.168.1.10:1088"},
 			want: []Listener{
 				{
-					BOSListenAddress:      "192.168.1.10:5190",
-					BOSAdvertisedHost:     "192.168.1.10:5190",
-					KerberosListenAddress: "192.168.1.10:1088",
+					BOSListenAddress:       "192.168.1.10:5190",
+					BOSAdvertisedHostPlain: "192.168.1.10:5190",
+					BOSAdvertisedHostSSL:   "",
+					KerberosListenAddress:  "192.168.1.10:1088",
+					HasSSL:                 false,
 				},
 				{
-					BOSListenAddress:      "0.0.0.0:5191",
-					BOSAdvertisedHost:     "example.com:5191",
-					KerberosListenAddress: "0.0.0.0:1089",
+					BOSListenAddress:       "0.0.0.0:5191",
+					BOSAdvertisedHostPlain: "example.com:5191",
+					BOSAdvertisedHostSSL:   "",
+					KerberosListenAddress:  "0.0.0.0:1089",
+					HasSSL:                 false,
 				},
 				{
-					BOSListenAddress:      "172.17.0.1:5192",
-					BOSAdvertisedHost:     "172.17.0.1:5192",
-					KerberosListenAddress: "",
+					BOSListenAddress:       "172.17.0.1:5192",
+					BOSAdvertisedHostPlain: "172.17.0.1:5192",
+					BOSAdvertisedHostSSL:   "",
+					KerberosListenAddress:  "",
+					HasSSL:                 false,
 				},
 			},
 			wantErr: false,
 		},
 		{
 			name:                   "empty strings for all inputs",
-			bosListeners:           "",
-			bosAdvertisedListeners: "",
-			kerberosListeners:      "",
+			bosListeners:           []string{},
+			bosAdvertisedListeners: []string{},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "at least one BOS listener is required",
 		},
 		{
 			name:                   "whitespace-only strings",
-			bosListeners:           "   ",
-			bosAdvertisedListeners: "   ",
-			kerberosListeners:      "   ",
+			bosListeners:           []string{"   "},
+			bosAdvertisedListeners: []string{"   "},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{"   "},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "at least one BOS listener is required",
 		},
 		{
 			name:                   "only kerberos listeners provided",
-			bosListeners:           "",
-			bosAdvertisedListeners: "",
-			kerberosListeners:      "LOCAL://0.0.0.0:1088",
+			bosListeners:           []string{},
+			bosAdvertisedListeners: []string{},
+			bosAdvertisedHostsSSL:  []string{},
+			kerberosListeners:      []string{"LOCAL://0.0.0.0:1088"},
 			want:                   nil,
 			wantErr:                true,
 			errContains:            "missing BOS advertise address for listener `local://`",
+		},
+		{
+			name:                   "valid single listener with SSL",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{"LOCAL://127.0.0.1:5193"},
+			kerberosListeners:      []string{},
+			want: []Listener{
+				{
+					BOSListenAddress:       "0.0.0.0:5190",
+					BOSAdvertisedHostPlain: "127.0.0.1:5190",
+					BOSAdvertisedHostSSL:   "127.0.0.1:5193",
+					KerberosListenAddress:  "",
+					HasSSL:                 true,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name:                   "valid multiple listeners with mixed SSL",
+			bosListeners:           []string{"LAN://192.168.1.10:5190", "WAN://0.0.0.0:5191"},
+			bosAdvertisedListeners: []string{"LAN://192.168.1.10:5190", "WAN://example.com:5191"},
+			bosAdvertisedHostsSSL:  []string{"LAN://192.168.1.10:5193"},
+			kerberosListeners:      []string{},
+			want: []Listener{
+				{
+					BOSListenAddress:       "192.168.1.10:5190",
+					BOSAdvertisedHostPlain: "192.168.1.10:5190",
+					BOSAdvertisedHostSSL:   "192.168.1.10:5193",
+					KerberosListenAddress:  "",
+					HasSSL:                 true,
+				},
+				{
+					BOSListenAddress:       "0.0.0.0:5191",
+					BOSAdvertisedHostPlain: "example.com:5191",
+					BOSAdvertisedHostSSL:   "",
+					KerberosListenAddress:  "",
+					HasSSL:                 false,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name:                   "SSL host without corresponding BOS listener",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{"WAN://ssl.example.com:5193"},
+			kerberosListeners:      []string{},
+			want:                   nil,
+			wantErr:                true,
+			errContains:            "missing BOS advertise address for listener `wan://`",
+		},
+		{
+			name:                   "duplicate SSL listener definition",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{"LOCAL://127.0.0.1:5193", "LOCAL://127.0.0.1:5194"},
+			kerberosListeners:      []string{},
+			want:                   nil,
+			wantErr:                true,
+			errContains:            "duplicate listener definition",
+		},
+		{
+			name:                   "invalid URI format in SSL",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{"invalid-uri"},
+			kerberosListeners:      []string{},
+			want:                   nil,
+			wantErr:                true,
+			errContains:            "missing scheme. Valid format",
+		},
+		{
+			name:                   "SSL listener missing port",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{"LOCAL://127.0.0.1"},
+			kerberosListeners:      []string{},
+			want:                   nil,
+			wantErr:                true,
+			errContains:            "missing port",
+		},
+		{
+			name:                   "SSL listener missing host",
+			bosListeners:           []string{"LOCAL://0.0.0.0:5190"},
+			bosAdvertisedListeners: []string{"LOCAL://127.0.0.1:5190"},
+			bosAdvertisedHostsSSL:  []string{"LOCAL://:5193"},
+			kerberosListeners:      []string{},
+			want:                   nil,
+			wantErr:                true,
+			errContains:            "missing host",
+		},
+		{
+			name:                   "complex multi-listener setup with SSL",
+			bosListeners:           []string{"LAN://192.168.1.10:5190", "WAN://0.0.0.0:5191", "DOCKER://172.17.0.1:5192"},
+			bosAdvertisedListeners: []string{"DOCKER://172.17.0.1:5192", "LAN://192.168.1.10:5190", "WAN://example.com:5191"},
+			bosAdvertisedHostsSSL:  []string{"LAN://192.168.1.10:5193", "WAN://ssl.example.com:5194"},
+			kerberosListeners:      []string{"WAN://0.0.0.0:1089", "LAN://192.168.1.10:1088"},
+			want: []Listener{
+				{
+					BOSListenAddress:       "192.168.1.10:5190",
+					BOSAdvertisedHostPlain: "192.168.1.10:5190",
+					BOSAdvertisedHostSSL:   "192.168.1.10:5193",
+					KerberosListenAddress:  "192.168.1.10:1088",
+					HasSSL:                 true,
+				},
+				{
+					BOSListenAddress:       "0.0.0.0:5191",
+					BOSAdvertisedHostPlain: "example.com:5191",
+					BOSAdvertisedHostSSL:   "ssl.example.com:5194",
+					KerberosListenAddress:  "0.0.0.0:1089",
+					HasSSL:                 true,
+				},
+				{
+					BOSListenAddress:       "172.17.0.1:5192",
+					BOSAdvertisedHostPlain: "172.17.0.1:5192",
+					BOSAdvertisedHostSSL:   "",
+					KerberosListenAddress:  "",
+					HasSSL:                 false,
+				},
+			},
+			wantErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := &Config{
-				BOSListeners:       tt.bosListeners,
-				BOSAdvertisedHosts: tt.bosAdvertisedListeners,
-				KerberosListeners:  tt.kerberosListeners,
+				BOSListeners:            tt.bosListeners,
+				BOSAdvertisedHostsPlain: tt.bosAdvertisedListeners,
+				BOSAdvertisedHostsSSL:   tt.bosAdvertisedHostsSSL,
+				KerberosListeners:       tt.kerberosListeners,
 			}
 			got, err := config.ParseListenersCfg()
 
@@ -248,12 +396,12 @@ func TestParseListenersCfg(t *testing.T) {
 			wantMap := make(map[string]Listener)
 
 			for _, l := range got {
-				key := l.BOSListenAddress + "|" + l.BOSAdvertisedHost
+				key := l.BOSListenAddress + "|" + l.BOSAdvertisedHostPlain
 				gotMap[key] = l
 			}
 
 			for _, l := range tt.want {
-				key := l.BOSListenAddress + "|" + l.BOSAdvertisedHost
+				key := l.BOSListenAddress + "|" + l.BOSAdvertisedHostPlain
 				wantMap[key] = l
 			}
 
@@ -267,8 +415,14 @@ func TestParseListenersCfg(t *testing.T) {
 				if gotListener.BOSListenAddress != wantListener.BOSListenAddress {
 					t.Errorf("ParseListenersCfg() BOSListenAddress = %v, want %v", gotListener.BOSListenAddress, wantListener.BOSListenAddress)
 				}
-				if gotListener.BOSAdvertisedHost != wantListener.BOSAdvertisedHost {
-					t.Errorf("ParseListenersCfg() BOSAdvertisedHost = %v, want %v", gotListener.BOSAdvertisedHost, wantListener.BOSAdvertisedHost)
+				if gotListener.BOSAdvertisedHostPlain != wantListener.BOSAdvertisedHostPlain {
+					t.Errorf("ParseListenersCfg() BOSAdvertisedHostPlain = %v, want %v", gotListener.BOSAdvertisedHostPlain, wantListener.BOSAdvertisedHostPlain)
+				}
+				if gotListener.BOSAdvertisedHostSSL != wantListener.BOSAdvertisedHostSSL {
+					t.Errorf("ParseListenersCfg() BOSAdvertisedHostSSL = %v, want %v", gotListener.BOSAdvertisedHostSSL, wantListener.BOSAdvertisedHostSSL)
+				}
+				if gotListener.HasSSL != wantListener.HasSSL {
+					t.Errorf("ParseListenersCfg() HasSSL = %v, want %v", gotListener.HasSSL, wantListener.HasSSL)
 				}
 				if gotListener.KerberosListenAddress != wantListener.KerberosListenAddress {
 					t.Errorf("ParseListenersCfg() KerberosListenAddress = %v, want %v", gotListener.KerberosListenAddress, wantListener.KerberosListenAddress)
@@ -288,7 +442,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "valid config with all fields",
 			config: Config{
-				TOCListeners: "0.0.0.0:9898,192.168.1.10:9899",
+				TOCListeners: []string{"0.0.0.0:9898", "192.168.1.10:9899"},
 				APIListener:  "127.0.0.1:8080",
 			},
 			wantErr: false,
@@ -296,7 +450,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "valid config with single TOC listener",
 			config: Config{
-				TOCListeners: "0.0.0.0:9898",
+				TOCListeners: []string{"0.0.0.0:9898"},
 				APIListener:  "127.0.0.1:8080",
 			},
 			wantErr: false,
@@ -304,7 +458,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "valid config with empty TOC listeners",
 			config: Config{
-				TOCListeners: "",
+				TOCListeners: []string{},
 				APIListener:  "127.0.0.1:8080",
 			},
 			wantErr: false,
@@ -312,7 +466,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "valid config with empty API listener",
 			config: Config{
-				TOCListeners: "0.0.0.0:9898",
+				TOCListeners: []string{"0.0.0.0:9898"},
 				APIListener:  "",
 			},
 			wantErr:     true,
@@ -321,7 +475,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "valid config with all empty",
 			config: Config{
-				TOCListeners: "",
+				TOCListeners: []string{},
 				APIListener:  "",
 			},
 			wantErr:     true,
@@ -330,7 +484,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid TOC listener - missing port",
 			config: Config{
-				TOCListeners: "0.0.0.0",
+				TOCListeners: []string{"0.0.0.0"},
 				APIListener:  "127.0.0.1:8080",
 			},
 			wantErr:     true,
@@ -339,7 +493,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid TOC listener - missing host",
 			config: Config{
-				TOCListeners: ":9898",
+				TOCListeners: []string{":9898"},
 				APIListener:  "127.0.0.1:8080",
 			},
 			wantErr:     true,
@@ -348,7 +502,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid TOC listener - malformed",
 			config: Config{
-				TOCListeners: "invalid-format",
+				TOCListeners: []string{"invalid-format"},
 				APIListener:  "127.0.0.1:8080",
 			},
 			wantErr:     true,
@@ -357,7 +511,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid TOC listener in comma-separated list",
 			config: Config{
-				TOCListeners: "0.0.0.0:9898,invalid-format,192.168.1.10:9899",
+				TOCListeners: []string{"0.0.0.0:9898", "invalid-format", "192.168.1.10:9899"},
 				APIListener:  "127.0.0.1:8080",
 			},
 			wantErr:     true,
@@ -366,7 +520,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid API listener - missing port",
 			config: Config{
-				TOCListeners: "0.0.0.0:9898",
+				TOCListeners: []string{"0.0.0.0:9898"},
 				APIListener:  "127.0.0.1",
 			},
 			wantErr:     true,
@@ -375,7 +529,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid API listener - missing host",
 			config: Config{
-				TOCListeners: "0.0.0.0:9898",
+				TOCListeners: []string{"0.0.0.0:9898"},
 				APIListener:  ":8080",
 			},
 			wantErr:     true,
@@ -384,7 +538,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid API listener - malformed",
 			config: Config{
-				TOCListeners: "0.0.0.0:9898",
+				TOCListeners: []string{"0.0.0.0:9898"},
 				APIListener:  "invalid-format",
 			},
 			wantErr:     true,
@@ -393,7 +547,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "whitespace-only TOC listeners",
 			config: Config{
-				TOCListeners: "   ,  ,  ",
+				TOCListeners: []string{"   ", "  ", "  "},
 				APIListener:  "127.0.0.1:8080",
 			},
 			wantErr: false,
@@ -401,7 +555,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "whitespace-only API listener",
 			config: Config{
-				TOCListeners: "0.0.0.0:9898",
+				TOCListeners: []string{"0.0.0.0:9898"},
 				APIListener:  "   ",
 			},
 			wantErr:     true,

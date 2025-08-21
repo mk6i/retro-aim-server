@@ -28,16 +28,16 @@ func TestServer_ListenAndServeAndShutdown(t *testing.T) {
 
 	cfg := []config.Listener{
 		{
-			BOSListenAddress:  ":15000",
-			BOSAdvertisedHost: "localhost",
+			BOSListenAddress:       ":15000",
+			BOSAdvertisedHostPlain: "localhost",
 		},
 		{
-			BOSListenAddress:  ":15001",
-			BOSAdvertisedHost: "localhost",
+			BOSListenAddress:       ":15001",
+			BOSAdvertisedHostPlain: "localhost",
 		},
 		{
-			BOSListenAddress:  ":15002",
-			BOSAdvertisedHost: "localhost",
+			BOSListenAddress:       ":15002",
+			BOSAdvertisedHostPlain: "localhost",
 		},
 	}
 	responses := []string{"hello1", "hello2", "hello2"}
@@ -56,7 +56,7 @@ func TestServer_ListenAndServeAndShutdown(t *testing.T) {
 		cfg,
 	)
 
-	server.handler = func(ctx context.Context, conn net.Conn, advertisedHost string) error {
+	server.handler = func(ctx context.Context, conn net.Conn, listener config.Listener) error {
 		go func() {
 			<-ctx.Done()
 			_ = conn.Close()
@@ -228,7 +228,7 @@ func TestOscarServer_RouteConnection_Auth_BUCP(t *testing.T) {
 		Logger:        slog.Default(),
 		IPRateLimiter: NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 	}
-	assert.NoError(t, rt.routeConnection(context.Background(), clientFake, "localhost:5190"))
+	assert.NoError(t, rt.routeConnection(context.Background(), clientFake, config.Listener{BOSAdvertisedHostPlain: "localhost:5190"}))
 
 	wg.Wait()
 }
@@ -303,7 +303,7 @@ func TestOscarServer_RouteConnection_Auth_FLAP(t *testing.T) {
 		Logger:        slog.Default(),
 		IPRateLimiter: NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 	}
-	assert.NoError(t, rt.routeConnection(context.Background(), clientFake, "localhost:5190"))
+	assert.NoError(t, rt.routeConnection(context.Background(), clientFake, config.Listener{BOSAdvertisedHostPlain: "localhost:5190"}))
 
 	wg.Wait()
 }
@@ -404,7 +404,7 @@ func TestOscarServer_RouteConnection_BOS(t *testing.T) {
 		RemoveUserFromAllChats(mock.Anything)
 
 	wg.Add(1)
-	handler := func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, advertisedHost string) error {
+	handler := func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, listener config.Listener) error {
 		defer wg.Done()
 		return nil
 	}
@@ -418,7 +418,7 @@ func TestOscarServer_RouteConnection_BOS(t *testing.T) {
 		ChatSessionManager: chatSessionManager,
 		DepartureNotifier:  departureNotifier,
 	}
-	assert.NoError(t, rt.routeConnection(context.Background(), clientFake, ""))
+	assert.NoError(t, rt.routeConnection(context.Background(), clientFake, config.Listener{}))
 
 	wg.Wait()
 }
@@ -506,7 +506,7 @@ func TestOscarServer_RouteConnection_Chat(t *testing.T) {
 	chatSessionManager := newMockChatSessionManager(t)
 
 	wg.Add(1)
-	handler := func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, advertisedHost string) error {
+	handler := func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, listener config.Listener) error {
 		defer wg.Done()
 		return nil
 	}
@@ -520,7 +520,7 @@ func TestOscarServer_RouteConnection_Chat(t *testing.T) {
 		ChatSessionManager: chatSessionManager,
 		DepartureNotifier:  departureNotifier,
 	}
-	assert.NoError(t, rt.routeConnection(context.Background(), clientFake, ""))
+	assert.NoError(t, rt.routeConnection(context.Background(), clientFake, config.Listener{}))
 
 	wg.Wait()
 }
@@ -601,7 +601,7 @@ func TestOscarServer_RouteConnection_Admin(t *testing.T) {
 	chatSessionManager := newMockChatSessionManager(t)
 
 	wg.Add(1)
-	handler := func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, advertisedHost string) error {
+	handler := func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, listener config.Listener) error {
 		defer wg.Done()
 		return nil
 	}
@@ -615,7 +615,7 @@ func TestOscarServer_RouteConnection_Admin(t *testing.T) {
 		ChatSessionManager: chatSessionManager,
 		DepartureNotifier:  departureNotifier,
 	}
-	assert.NoError(t, rt.routeConnection(context.Background(), clientFake, ""))
+	assert.NoError(t, rt.routeConnection(context.Background(), clientFake, config.Listener{}))
 
 	wg.Wait()
 }
@@ -635,7 +635,7 @@ func Test_oscarServer_dispatchIncomingMessages_shutdownSignoff(t *testing.T) {
 		}
 		sess := state.NewSession()
 		flapc := wire.NewFlapClient(0, serverConn, serverConn)
-		err := srv.dispatchIncomingMessages(ctx, wire.BOS, sess, flapc, serverConn, "")
+		err := srv.dispatchIncomingMessages(ctx, wire.BOS, sess, flapc, serverConn, config.Listener{})
 		assert.NoError(t, err)
 	}()
 
@@ -661,7 +661,7 @@ func Test_oscarServer_dispatchIncomingMessages_disconnect(t *testing.T) {
 			Logger: slog.Default(),
 		}
 		flapc := wire.NewFlapClient(0, serverConn, serverConn)
-		err := srv.dispatchIncomingMessages(ctx, wire.BOS, sess, flapc, serverConn, "")
+		err := srv.dispatchIncomingMessages(ctx, wire.BOS, sess, flapc, serverConn, config.Listener{})
 		assert.NoError(t, err)
 	}()
 
@@ -754,7 +754,7 @@ func Test_oscarServer_receiveSessMessages_BOS_integration(t *testing.T) {
 
 	// Run the server handler in background so we can drive the session
 	doneServer := make(chan error, 1)
-	go func() { doneServer <- server.routeConnection(context.Background(), clientFake, "") }()
+	go func() { doneServer <- server.routeConnection(context.Background(), clientFake, config.Listener{}) }()
 
 	// Wait for HostOnline to be received so session is ready
 	select {
@@ -883,7 +883,7 @@ func Test_oscarServer_receiveSessMessages_Chat_integration(t *testing.T) {
 
 	// Run the server handler in background so we can drive the session
 	doneServer := make(chan error, 1)
-	go func() { doneServer <- server.routeConnection(context.Background(), clientFake, "") }()
+	go func() { doneServer <- server.routeConnection(context.Background(), clientFake, config.Listener{}) }()
 
 	// Wait for HostOnline to be received so session is ready
 	select {

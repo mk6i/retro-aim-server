@@ -31,7 +31,7 @@ func NewKerberosServer(listeners []config.Listener, logger *slog.Logger, authSer
 		mux := http.NewServeMux()
 
 		mux.HandleFunc("POST /", func(writer http.ResponseWriter, request *http.Request) {
-			postHandler(writer, request, authService, logger, l.BOSAdvertisedHost)
+			postHandler(writer, request, authService, logger, l.BOSAdvertisedHostSSL)
 		})
 
 		servers = append(servers, &http.Server{
@@ -122,7 +122,7 @@ func postHandler(w http.ResponseWriter, r *http.Request, authService AuthService
 	logger = logger.With("ip", r.RemoteAddr)
 	switch v := response.Body.(type) {
 	case wire.SNAC_0x050C_0x0003_KerberosLoginSuccessResponse:
-		logger.InfoContext(r.Context(), "successful kerberos login", "screen_name", v.ClientPrincipal)
+		logger.InfoContext(r.Context(), "successful kerberos login", "screen_name", v.ClientPrincipal, "redirect_to", listenAddress)
 	case wire.SNAC_0x050C_0x0004_KerberosLoginErrResponse:
 		logger.InfoContext(r.Context(), "failed kerberos login", "screen_name", v.ScreenName)
 	}

@@ -218,9 +218,15 @@ const (
 	OServiceTLVTagsGroupID       uint16 = 0x0D
 	OServiceTLVTagsSSLCertName   uint16 = 0x8D
 	OServiceTLVTagsSSLState      uint16 = 0x8E
+	OserviceTLVTagsSSLUseSSL     uint16 = 0x8C
 
 	OServiceDiscErrNewLogin   uint8 = 0x01
 	OServiceDiscErrAccDeleted uint8 = 0x02
+
+	OServiceServiceResponseSSLStateNotUsed uint8 = 0x00 // SSL is not supported or not requested for this connection
+	OServiceServiceResponseSSLStateUse     uint8 = 0x01 // SSL is being used
+	OServiceServiceResponseSSLStateResume  uint8 = 0x02 // SSL is being used and SSL resume is supported if desired
+
 )
 
 type SNAC_0x01_0x02_OServiceClientOnline struct {

@@ -1437,10 +1437,10 @@ func TestAuthService_BUCPChallengeRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "login with invalid username, expect OK login response (Cfg.DisableAuth=true)",
+			name:           "login with invalid username, expect OK login response (Cfg.DisableAuth=true)",
+			advertisedHost: "127.0.0.1:5190",
 			cfg: config.Config{
-				BOSAdvertisedHosts: "127.0.0.1:5190",
-				DisableAuth:        true,
+				DisableAuth: true,
 			},
 			inputSNAC: wire.SNAC_0x17_0x06_BUCPChallengeRequest{
 				TLVRestBlock: wire.TLVRestBlock{

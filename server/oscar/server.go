@@ -29,7 +29,7 @@ func NewServer(
 	departureNotifier DepartureNotifier,
 	logger *slog.Logger,
 	onlineNotifier OnlineNotifier,
-	SNACHandler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, advertisedHost string) error,
+	SNACHandler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, listener config.Listener) error,
 	rateLimitUpdater RateLimitUpdater,
 	limits wire.SNACRateLimits,
 	limiter *IPRateLimiter,
@@ -77,27 +77,27 @@ type Server struct {
 	shutdownCancel context.CancelFunc
 	closed         chan struct{}
 
-	handler func(ctx context.Context, conn net.Conn, advertisedHost string) error
+	handler func(ctx context.Context, conn net.Conn, listener config.Listener) error
 }
 
 func (s *Server) ListenAndServe() error {
-	for _, cfg := range s.listenerCfg {
-		ln, err := net.Listen("tcp", cfg.BOSListenAddress)
+	for _, listenCfg := range s.listenerCfg {
+		ln, err := net.Listen("tcp", listenCfg.BOSListenAddress)
 		if err != nil {
 			s.cleanupListeners()
 			s.shutdownCancel()
-			return fmt.Errorf("failed to listen on %s: %w", cfg.BOSListenAddress, err)
+			return fmt.Errorf("failed to listen on %s: %w", listenCfg.BOSListenAddress, err)
 		}
 		s.logger.Info(
 			"starting server",
 			"listen_address",
-			cfg.BOSListenAddress,
+			listenCfg.BOSListenAddress,
 			"advertised_host",
-			cfg.BOSAdvertisedHost,
+			listenCfg.BOSAdvertisedHostPlain,
 		)
 		s.listeners = append(s.listeners, ln)
 		s.listenWg.Add(1)
-		go s.acceptLoop(ln, cfg.BOSAdvertisedHost)
+		go s.acceptLoop(ln, listenCfg)
 	}
 
 	<-s.closed // block until Shutdown is called
@@ -129,7 +129,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) acceptLoop(ln net.Listener, advertisedHost string) {
+func (s *Server) acceptLoop(ln net.Listener, listener config.Listener) {
 	defer s.listenWg.Done()
 
 	for {
@@ -148,11 +148,11 @@ func (s *Server) acceptLoop(ln net.Listener, advertisedHost string) {
 		s.connMu.Unlock()
 
 		s.connWg.Add(1)
-		go s.handleConnection(s.shutdownCtx, conn, advertisedHost)
+		go s.handleConnection(s.shutdownCtx, conn, listener)
 	}
 }
 
-func (s *Server) handleConnection(ctx context.Context, conn net.Conn, advertisedHost string) {
+func (s *Server) handleConnection(ctx context.Context, conn net.Conn, listener config.Listener) {
 	defer func() {
 		// untrack connections
 		s.connMu.Lock()
@@ -162,7 +162,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn, advertised
 		_ = conn.Close()
 		s.connWg.Done()
 	}()
-	if err := s.handler(ctx, conn, advertisedHost); err != nil {
+	if err := s.handler(ctx, conn, listener); err != nil {
 		s.logger.InfoContext(ctx, "user session failed", "err", err.Error())
 	}
 }
@@ -181,13 +181,13 @@ type oscarServer struct {
 	DepartureNotifier
 	Logger *slog.Logger
 	OnlineNotifier
-	SNACHandler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, advertisedHost string) error
+	SNACHandler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, listener config.Listener) error
 	RateLimitUpdater
 	wire.SNACRateLimits
 	*IPRateLimiter
 }
 
-func (s oscarServer) routeConnection(ctx context.Context, conn net.Conn, advertisedHost string) error {
+func (s oscarServer) routeConnection(ctx context.Context, conn net.Conn, listener config.Listener) error {
 	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
 	if err != nil {
 		s.Logger.Error("failed to parse remote address", "err", err.Error())
@@ -205,10 +205,10 @@ func (s oscarServer) routeConnection(ctx context.Context, conn net.Conn, adverti
 	}
 
 	if flap.HasTag(wire.OServiceTLVTagsLoginCookie) {
-		return s.connectToOSCARService(ctx, flap, flapc, conn, advertisedHost)
+		return s.connectToOSCARService(ctx, flap, flapc, conn, listener)
 	}
 
-	return s.authenticate(ctx, flap, ip, conn, flapc, advertisedHost)
+	return s.authenticate(ctx, flap, ip, conn, flapc, listener.BOSAdvertisedHostPlain)
 }
 
 func (s oscarServer) connectToOSCARService(
@@ -216,7 +216,7 @@ func (s oscarServer) connectToOSCARService(
 	flap wire.FLAPSignonFrame,
 	flapc *wire.FlapClient,
 	conn net.Conn,
-	advertisedHost string,
+	listener config.Listener,
 ) error {
 	authCookie, ok := flap.Bytes(wire.OServiceTLVTagsLoginCookie)
 	if !ok {
@@ -227,6 +227,8 @@ func (s oscarServer) connectToOSCARService(
 	if err != nil {
 		return err
 	}
+
+	s.Logger.Debug("connecting to service", "service", wire.FoodGroupName(cookie.Service))
 
 	var sess *state.Session
 	switch cookie.Service {
@@ -303,7 +305,7 @@ func (s oscarServer) connectToOSCARService(
 		return err
 	}
 
-	return s.dispatchIncomingMessages(ctx, cookie.Service, sess, flapc, conn, advertisedHost)
+	return s.dispatchIncomingMessages(ctx, cookie.Service, sess, flapc, conn, listener)
 }
 
 func (s oscarServer) receiveSessMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient) {
@@ -479,7 +481,7 @@ func (s oscarServer) dispatchIncomingMessages(
 	sess *state.Session,
 	flapc *wire.FlapClient,
 	r io.ReadCloser,
-	advertisedHost string,
+	listener config.Listener,
 ) error {
 	defer func() {
 		s.Logger.InfoContext(ctx, "user disconnected")
@@ -533,7 +535,7 @@ func (s oscarServer) dispatchIncomingMessages(
 
 				// route a client request to the appropriate service handler. the
 				// handler may write a response to the client connection.
-				if err := s.SNACHandler(ctx, fg, sess, inFrame, flapBuf, flapc, advertisedHost); err != nil {
+				if err := s.SNACHandler(ctx, fg, sess, inFrame, flapBuf, flapc, listener); err != nil {
 					middleware.LogRequestError(ctx, s.Logger, inFrame, err)
 					if errors.Is(err, ErrRouteNotFound) {
 						if err1 := sendInvalidSNACErr(inFrame, flapc); err1 != nil {

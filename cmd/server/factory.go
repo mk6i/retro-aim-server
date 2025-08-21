@@ -98,7 +98,7 @@ func validateConfigMigration() error {
 	// New environment variables that should be present
 	newEnvVars := []string{
 		"API_LISTENER",
-		"OSCAR_ADVERTISED_LISTENERS",
+		"OSCAR_ADVERTISED_LISTENERS_PLAIN",
 		"OSCAR_LISTENERS",
 		"TOC_LISTENERS",
 	}
@@ -147,10 +147,10 @@ func validateConfigMigration() error {
 				errorMsg.WriteString(fmt.Sprintf("export API_LISTENER=%s:%s\n", apiHost, apiPort))
 			}
 
-			if contains(newEnvVarsMissing, "OSCAR_ADVERTISED_LISTENERS") {
+			if contains(newEnvVarsMissing, "OSCAR_ADVERTISED_LISTENERS_PLAIN") {
 				oscarHost := getEnvOrDefault("OSCAR_HOST", "127.0.0.1")
 				authPort := getEnvOrDefault("AUTH_PORT", "5190")
-				errorMsg.WriteString(fmt.Sprintf("export OSCAR_ADVERTISED_LISTENERS=LOCAL://%s:%s\n", oscarHost, authPort))
+				errorMsg.WriteString(fmt.Sprintf("export OSCAR_ADVERTISED_LISTENERS_PLAIN=LOCAL://%s:%s\n", oscarHost, authPort))
 			}
 
 			if contains(newEnvVarsMissing, "OSCAR_LISTENERS") {
@@ -343,7 +343,7 @@ func MgmtAPI(deps Container) *http.Server {
 func TOC(deps Container) *toc.Server {
 	logger := deps.logger.With("svc", "TOC")
 	return toc.NewServer(
-		strings.Split(deps.cfg.TOCListeners, ","),
+		deps.cfg.TOCListeners,
 		logger,
 		toc.OSCARProxy{
 			AdminService: foodgroup.NewAdminService(

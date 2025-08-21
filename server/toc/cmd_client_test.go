@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
@@ -865,7 +866,7 @@ func TestOSCARProxy_RecvClientCmd_ChatAccept(t *testing.T) {
 			oServiceSvc := newMockOServiceService(t)
 			for _, params := range tc.mockParams.oServiceParams.serviceRequestParams {
 				oServiceSvc.EXPECT().
-					ServiceRequest(ctx, wire.BOS, matchSession(params.me), wire.SNACFrame{}, params.bodyIn, "").
+					ServiceRequest(ctx, wire.BOS, matchSession(params.me), wire.SNACFrame{}, params.bodyIn, config.Listener{}).
 					Return(params.msg, params.err)
 			}
 			for _, params := range tc.mockParams.oServiceParams.clientOnlineParams {
@@ -1338,7 +1339,7 @@ func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 			bosOServiceSvc := newMockOServiceService(t)
 			for _, params := range tc.mockParams.oServiceParams.serviceRequestParams {
 				bosOServiceSvc.EXPECT().
-					ServiceRequest(ctx, wire.BOS, matchSession(params.me), wire.SNACFrame{}, params.bodyIn, "").
+					ServiceRequest(ctx, wire.BOS, matchSession(params.me), wire.SNACFrame{}, params.bodyIn, config.Listener{}).
 					Return(params.msg, params.err)
 			}
 			for _, params := range tc.mockParams.oServiceParams.clientOnlineParams {

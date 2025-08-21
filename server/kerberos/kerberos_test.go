@@ -34,8 +34,8 @@ func TestKerberosLoginHandler(t *testing.T) {
 			name: "successful login with single listener",
 			listeners: []config.Listener{
 				{
-					KerberosListenAddress: ":1088",
-					BOSAdvertisedHost:     "localhost:5190",
+					KerberosListenAddress:  ":1088",
+					BOSAdvertisedHostPlain: "localhost:5190",
 				},
 			},
 			request: wire.SNACMessage{
@@ -64,12 +64,12 @@ func TestKerberosLoginHandler(t *testing.T) {
 			name: "successful login with multiple listeners",
 			listeners: []config.Listener{
 				{
-					KerberosListenAddress: ":1088",
-					BOSAdvertisedHost:     "localhost:5190",
+					KerberosListenAddress:  ":1088",
+					BOSAdvertisedHostPlain: "localhost:5190",
 				},
 				{
-					KerberosListenAddress: ":1089",
-					BOSAdvertisedHost:     "localhost:5191",
+					KerberosListenAddress:  ":1089",
+					BOSAdvertisedHostPlain: "localhost:5191",
 				},
 			},
 			request: wire.SNACMessage{
@@ -98,16 +98,16 @@ func TestKerberosLoginHandler(t *testing.T) {
 			name: "successful login with three listeners",
 			listeners: []config.Listener{
 				{
-					KerberosListenAddress: ":1088",
-					BOSAdvertisedHost:     "localhost:5190",
+					KerberosListenAddress:  ":1088",
+					BOSAdvertisedHostPlain: "localhost:5190",
 				},
 				{
-					KerberosListenAddress: ":1089",
-					BOSAdvertisedHost:     "localhost:5191",
+					KerberosListenAddress:  ":1089",
+					BOSAdvertisedHostPlain: "localhost:5191",
 				},
 				{
-					KerberosListenAddress: ":1090",
-					BOSAdvertisedHost:     "localhost:5192",
+					KerberosListenAddress:  ":1090",
+					BOSAdvertisedHostPlain: "localhost:5192",
 				},
 			},
 			request: wire.SNACMessage{
@@ -136,7 +136,7 @@ func TestKerberosLoginHandler(t *testing.T) {
 			name: "no kerberos listeners defined - server exits cleanly",
 			listeners: []config.Listener{
 				{
-					BOSAdvertisedHost: "localhost:5192",
+					BOSAdvertisedHostPlain: "localhost:5192",
 				},
 			},
 			request:            wire.SNACMessage{},
@@ -150,8 +150,8 @@ func TestKerberosLoginHandler(t *testing.T) {
 			name: "invalid request SNAC type",
 			listeners: []config.Listener{
 				{
-					KerberosListenAddress: ":1088",
-					BOSAdvertisedHost:     "localhost:5190",
+					KerberosListenAddress:  ":1088",
+					BOSAdvertisedHostPlain: "localhost:5190",
 				},
 			},
 			request: wire.SNACMessage{
@@ -171,8 +171,8 @@ func TestKerberosLoginHandler(t *testing.T) {
 			name: "login runtime error",
 			listeners: []config.Listener{
 				{
-					KerberosListenAddress: ":1088",
-					BOSAdvertisedHost:     "localhost:5190",
+					KerberosListenAddress:  ":1088",
+					BOSAdvertisedHostPlain: "localhost:5190",
 				},
 			},
 			request: wire.SNACMessage{

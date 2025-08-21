@@ -32,18 +32,21 @@ type Build struct {
 }
 
 type Listener struct {
-	BOSListenAddress      string
-	BOSAdvertisedHost     string
-	KerberosListenAddress string
+	BOSListenAddress       string
+	BOSAdvertisedHostPlain string
+	BOSAdvertisedHostSSL   string
+	KerberosListenAddress  string
+	HasSSL                 bool
 }
 
 //go:generate go run ../cmd/config_generator unix settings.env ssl
 type Config struct {
-	BOSListeners       string `envconfig:"OSCAR_LISTENERS" required:"true" basic:"LOCAL://0.0.0.0:5190" ssl:"PLAINTEXT://0.0.0.0:5190,SSL://0.0.0.0:5192" description:"Network listeners for core OSCAR services. For multi-homed servers, allows users to connect from multiple networks. For example, you can allow both LAN and Internet clients to connect to the same server using different connection settings.\n\nFormat:\n\t- Comma-separated list of [NAME]://[HOSTNAME]:[PORT]\n\t- Listener names and ports must be unique\n\t- Listener names are user-defined\n\t- Each listener needs OSCAR_ADVERTISED_LISTENERS/KERBEROS_LISTENERS configs\n\nExamples:\n\t// Listen on all interfaces\n\tLAN://0.0.0.0:5190\n\t// Separate Internet and LAN config\n\tWAN://142.250.176.206:5190,LAN://192.168.1.10:5191"`
-	BOSAdvertisedHosts string `envconfig:"OSCAR_ADVERTISED_LISTENERS" required:"true" basic:"LOCAL://127.0.0.1:5190" ssl:"PLAINTEXT://127.0.0.1:5190,SSL://127.0.0.1:5193" description:"Hostnames published by the server that clients connect to for accessing various OSCAR services. These hostnames are NOT the bind addresses. For multi-homed use servers, allows clients to connect using separate hostnames per network.\n\nFormat:\n\t- Comma-separated list of [NAME]://[HOSTNAME]:[PORT]\n\t- Each listener config must correspond to a config in OSCAR_LISTENERS\n\t- Clients MUST be able to connect to these hostnames\n\nExamples:\n\t// Local LAN config, server behind NAT\n\tLAN://0.0.0.0:5190\n\t// Separate Internet and LAN config\n\tWAN://aim.example.com:5190,LAN://192.168.1.10:5191"`
-	KerberosListeners  string `envconfig:"KERBEROS_LISTENERS" required:"false" basic:"" ssl:"SSL://0.0.0.0:1088" description:"Network listeners for Kerberos authentication. See OSCAR_LISTENERS doc for more details.\n\nExamples:\n\t// Listen on all interfaces\n\tLAN://0.0.0.0:1088\n\t// Separate Internet and LAN config\n\tWAN://142.250.176.206:1088,LAN://192.168.1.10:1087"`
-	TOCListeners       string `envconfig:"TOC_LISTENERS" required:"true" basic:"0.0.0.0:9898" ssl:"0.0.0.0:9898" description:"Network listeners for TOC protocol service.\n\nFormat: Comma-separated list of hostname:port pairs.\n\nExamples:\n\t// All interfaces\n\t0.0.0.0:9898\n\t// Multiple listeners\n\t0.0.0.0:9898,192.168.1.10:9899"`
-	APIListener        string `envconfig:"API_LISTENER" required:"true" basic:"127.0.0.1:8080" ssl:"127.0.0.1:8080" description:"Network listener for management API binds to. Only 1 listener can be specified. (Default 127.0.0.1 restricts to same machine only)."`
+	BOSListeners            []string `envconfig:"OSCAR_LISTENERS" required:"true" basic:"LOCAL://0.0.0.0:5190" ssl:"LOCAL://0.0.0.0:5190" description:"Network listeners for core OSCAR services. For multi-homed servers, allows users to connect from multiple networks. For example, you can allow both LAN and Internet clients to connect to the same server using different connection settings.\n\nFormat:\n\t- Comma-separated list of [NAME]://[HOSTNAME]:[PORT]\n\t- Listener names and ports must be unique\n\t- Listener names are user-defined\n\t- Each listener needs a listener in OSCAR_ADVERTISED_LISTENERS_PLAIN\n\nExamples:\n\t// Listen on all interfaces\n\tLAN://0.0.0.0:5190\n\t// Separate Internet and LAN config\n\tWAN://142.250.176.206:5190,LAN://192.168.1.10:5191"`
+	BOSAdvertisedHostsPlain []string `envconfig:"OSCAR_ADVERTISED_LISTENERS_PLAIN" required:"true" basic:"LOCAL://127.0.0.1:5190" ssl:"LOCAL://127.0.0.1:5190" description:"Hostnames published by the server that clients connect to for accessing various OSCAR services. These hostnames are NOT the bind addresses. For multi-homed use servers, allows clients to connect using separate hostnames per network.\n\nFormat:\n\t- Comma-separated list of [NAME]://[HOSTNAME]:[PORT]\n\t- Each listener config must correspond to a config in OSCAR_LISTENERS\n\t- Clients MUST be able to connect to these hostnames\n\nExamples:\n\t// Local LAN config, server behind NAT\n\tLAN://0.0.0.0:5190\n\t// Separate Internet and LAN config\n\tWAN://aim.example.com:5190,LAN://192.168.1.10:5191"`
+	BOSAdvertisedHostsSSL   []string `envconfig:"OSCAR_ADVERTISED_LISTENERS_SSL" required:"false" basic:"" ssl:"LOCAL://ras.dev:5193" description:"Same as OSCAR_ADVERTISED_LISTENERS_PLAIN, except the hostname is for the server that terminates SSL."`
+	KerberosListeners       []string `envconfig:"KERBEROS_LISTENERS" required:"false" basic:"" ssl:"LOCAL://0.0.0.0:1088" description:"Network listeners for Kerberos authentication. See OSCAR_LISTENERS doc for more details.\n\nExamples:\n\t// Listen on all interfaces\n\tLAN://0.0.0.0:1088\n\t// Separate Internet and LAN config\n\tWAN://142.250.176.206:1088,LAN://192.168.1.10:1087"`
+	TOCListeners            []string `envconfig:"TOC_LISTENERS" required:"true" basic:"0.0.0.0:9898" ssl:"0.0.0.0:9898" description:"Network listeners for TOC protocol service.\n\nFormat: Comma-separated list of hostname:port pairs.\n\nExamples:\n\t// All interfaces\n\t0.0.0.0:9898\n\t// Multiple listeners\n\t0.0.0.0:9898,192.168.1.10:9899"`
+	APIListener             string   `envconfig:"API_LISTENER" required:"true" basic:"127.0.0.1:8080" ssl:"127.0.0.1:8080" description:"Network listener for management API binds to. Only 1 listener can be specified. (Default 127.0.0.1 restricts to same machine only)."`
 
 	DBPath      string `envconfig:"DB_PATH" required:"true" basic:"oscar.sqlite" ssl:"oscar.sqlite" description:"The path to the SQLite database file. The file and DB schema are auto-created if they doesn't exist."`
 	DisableAuth bool   `envconfig:"DISABLE_AUTH" required:"true" basic:"true" ssl:"true" description:"Disable password check and auto-create new users at login time. Useful for quickly creating new accounts during development without having to register new users via the management API."`
@@ -77,7 +80,7 @@ func (c *Config) ParseListenersCfg() ([]Listener, error) {
 	m := make(map[string]*Listener)
 
 	// Parse BOS listeners
-	for _, uriStr := range strings.Split(c.BOSListeners, ",") {
+	for _, uriStr := range c.BOSListeners {
 		u, err := parseURI(uriStr)
 		if err != nil {
 			return nil, err
@@ -95,8 +98,8 @@ func (c *Config) ParseListenersCfg() ([]Listener, error) {
 		m[u.Scheme].BOSListenAddress = net.JoinHostPort(u.Hostname(), u.Port())
 	}
 
-	// Parse BOS advertised listeners
-	for _, uriStr := range strings.Split(c.BOSAdvertisedHosts, ",") {
+	// Parse plaintext BOS advertised listeners
+	for _, uriStr := range c.BOSAdvertisedHostsPlain {
 		u, err := parseURI(uriStr)
 		if err != nil {
 			return nil, err
@@ -108,14 +111,34 @@ func (c *Config) ParseListenersCfg() ([]Listener, error) {
 		if _, ok := m[u.Scheme]; !ok {
 			m[u.Scheme] = &Listener{}
 		}
-		if m[u.Scheme].BOSAdvertisedHost != "" {
+		if m[u.Scheme].BOSAdvertisedHostPlain != "" {
 			return nil, errDuplicateListener
 		}
-		m[u.Scheme].BOSAdvertisedHost = net.JoinHostPort(u.Hostname(), u.Port())
+		m[u.Scheme].BOSAdvertisedHostPlain = net.JoinHostPort(u.Hostname(), u.Port())
+	}
+
+	// Parse SSL BOS advertised listeners
+	for _, uriStr := range c.BOSAdvertisedHostsSSL {
+		u, err := parseURI(uriStr)
+		if err != nil {
+			return nil, err
+		}
+		if u == nil {
+			continue
+		}
+
+		if _, ok := m[u.Scheme]; !ok {
+			m[u.Scheme] = &Listener{}
+		}
+		if m[u.Scheme].BOSAdvertisedHostSSL != "" {
+			return nil, errDuplicateListener
+		}
+		m[u.Scheme].HasSSL = true
+		m[u.Scheme].BOSAdvertisedHostSSL = net.JoinHostPort(u.Hostname(), u.Port())
 	}
 
 	// Parse Kerberos listeners
-	for _, uriStr := range strings.Split(c.KerberosListeners, ",") {
+	for _, uriStr := range c.KerberosListeners {
 		u, err := parseURI(uriStr)
 		if err != nil {
 			return nil, err
@@ -137,7 +160,7 @@ func (c *Config) ParseListenersCfg() ([]Listener, error) {
 
 	for k, v := range m {
 		switch {
-		case v.BOSAdvertisedHost == "":
+		case v.BOSAdvertisedHostPlain == "":
 			return nil, fmt.Errorf("missing BOS advertise address for listener `%s://`", k)
 		case v.BOSListenAddress == "":
 			return nil, fmt.Errorf("missing BOS listen address for listener `%s://`", k)
@@ -154,7 +177,7 @@ func (c *Config) ParseListenersCfg() ([]Listener, error) {
 
 func (c *Config) Validate() error {
 	// Validate TOCListeners (format: hostname:port pairs)
-	for _, listener := range strings.Split(c.TOCListeners, ",") {
+	for _, listener := range c.TOCListeners {
 		listener = strings.TrimSpace(listener)
 		if listener == "" {
 			continue
