@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/mk6i/retro-aim-server/config"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
@@ -537,104 +538,40 @@ func TestOSCARProxy_RecvClientCmd_FormatNickname(t *testing.T) {
 }
 
 func TestOSCARProxy_RecvClientCmd_ChatAccept(t *testing.T) {
-	fnNewChatNavParams := func(err error) chatNavParams {
-		ret := chatNavParams{
-			requestRoomInfoParams: requestRoomInfoParams{
-				{
-					inBody: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
-						Cookie:         "the-cookie",
-						Exchange:       4,
-						InstanceNumber: 0,
-					},
-				},
-			},
-		}
-		if err != nil {
-			ret.requestRoomInfoParams[0].err = err
-		} else {
-			ret.requestRoomInfoParams[0].msg = wire.SNACMessage{
-				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							wire.NewTLVBE(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-								Cookie: "the-cookie",
-								TLVBlock: wire.TLVBlock{
-									TLVList: wire.TLVList{
-										wire.NewTLVBE(wire.ChatRoomTLVRoomName, "cool room"),
-									},
-								},
-							}),
-						},
-					},
-				},
-			}
-		}
-		return ret
-	}
-
-	fnNewOServiceBOSParams := func(err error) oServiceParams {
-		ret := oServiceParams{
-			serviceRequestParams: serviceRequestParams{
-				{
-					me: state.NewIdentScreenName("me"),
-					bodyIn: wire.SNAC_0x01_0x04_OServiceServiceRequest{
-						FoodGroup: wire.Chat,
-						TLVRestBlock: wire.TLVRestBlock{
+	navInfo := wire.SNACMessage{
+		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLVBE(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+						Cookie: "the-cookie",
+						TLVBlock: wire.TLVBlock{
 							TLVList: wire.TLVList{
-								wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
-									Cookie: "the-cookie",
-								}),
+								wire.NewTLVBE(wire.ChatRoomTLVRoomName, "cool room"),
 							},
 						},
-					},
+					}),
 				},
 			},
-		}
-		if err != nil {
-			ret.serviceRequestParams[0].err = err
-		} else {
-			ret.serviceRequestParams[0].msg = wire.SNACMessage{
-				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, "chat-auth-cookie"),
-						},
-					},
-				},
-			}
-		}
-		return ret
+		},
 	}
-
-	fnNewAuthParams := func(err error) authParams {
-		ret := authParams{
-			registerChatSessionParams: registerChatSessionParams{
-				{
-					authCookie: []byte("chat-auth-cookie"),
-				},
+	svcReq := wire.SNAC_0x01_0x04_OServiceServiceRequest{
+		FoodGroup: wire.Chat,
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
+					Cookie: "the-cookie",
+				}),
 			},
-		}
-		if err != nil {
-			ret.registerChatSessionParams[0].err = err
-		} else {
-			ret.registerChatSessionParams[0].sess = newTestSession("me-chat")
-		}
-		return ret
+		},
 	}
-
-	fnNewOServiceChatParams := func(err error) oServiceParams {
-		ret := oServiceParams{
-			clientOnlineParams: clientOnlineParams{
-				{
-					body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
-					me:   state.NewIdentScreenName("me-chat"),
+	svcResp := wire.SNACMessage{
+		Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, "chat-auth-cookie"),
 				},
 			},
-		}
-		if err != nil {
-			ret.clientOnlineParams[0].err = err
-		}
-		return ret
+		},
 	}
 
 	cases := []struct {
@@ -669,16 +606,53 @@ func TestOSCARProxy_RecvClientCmd_ChatAccept(t *testing.T) {
 				return reg
 			}(),
 			mockParams: mockParams{
-				chatNavParams:      fnNewChatNavParams(nil),
-				oServiceBOSParams:  fnNewOServiceBOSParams(nil),
-				authParams:         fnNewAuthParams(nil),
-				oServiceChatParams: fnNewOServiceChatParams(nil),
+				chatNavParams: chatNavParams{
+					requestRoomInfoParams: requestRoomInfoParams{
+						{
+							inBody: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
+								Cookie:         "the-cookie",
+								Exchange:       4,
+								InstanceNumber: 0,
+							},
+							msg: navInfo,
+						},
+					},
+				},
+				oServiceParams: oServiceParams{
+					serviceRequestParams: serviceRequestParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							bodyIn: svcReq,
+							msg:    svcResp,
+						},
+					},
+					clientOnlineParams: clientOnlineParams{
+						{
+							body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+							me:   state.NewIdentScreenName("me"),
+						},
+					},
+				},
+				authParams: authParams{
+					crackCookieParams: crackCookieParams{
+						{
+							cookieIn:  []byte("chat-auth-cookie"),
+							cookieOut: state.ServerCookie{ChatCookie: "chat-auth-cookie"},
+						},
+					},
+					registerChatSessionParams: registerChatSessionParams{
+						{
+							authCookie: state.ServerCookie{ChatCookie: "chat-auth-cookie"},
+							sess:       newTestSession("me"),
+						},
+					},
+				},
 			},
 			wantMsg:           "CHAT_JOIN:0:cool room",
 			expectChatSession: true,
 		},
 		{
-			name:     "accept chat, receive error from chat oservice svc",
+			name:     "accept chat, receive error from client online",
 			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_chat_accept 0`),
 			givenChatRegistry: func() *ChatRegistry {
@@ -691,16 +665,54 @@ func TestOSCARProxy_RecvClientCmd_ChatAccept(t *testing.T) {
 				return reg
 			}(),
 			mockParams: mockParams{
-				chatNavParams:      fnNewChatNavParams(nil),
-				oServiceBOSParams:  fnNewOServiceBOSParams(nil),
-				authParams:         fnNewAuthParams(nil),
-				oServiceChatParams: fnNewOServiceChatParams(io.EOF),
+				chatNavParams: chatNavParams{
+					requestRoomInfoParams: requestRoomInfoParams{
+						{
+							inBody: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
+								Cookie:         "the-cookie",
+								Exchange:       4,
+								InstanceNumber: 0,
+							},
+							msg: navInfo,
+						},
+					},
+				},
+				oServiceParams: oServiceParams{
+					serviceRequestParams: serviceRequestParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							bodyIn: svcReq,
+							msg:    svcResp,
+						},
+					},
+					clientOnlineParams: clientOnlineParams{
+						{
+							body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+							me:   state.NewIdentScreenName("me"),
+							err:  io.EOF,
+						},
+					},
+				},
+				authParams: authParams{
+					crackCookieParams: crackCookieParams{
+						{
+							cookieIn:  []byte("chat-auth-cookie"),
+							cookieOut: state.ServerCookie{ChatCookie: "chat-auth-cookie"},
+						},
+					},
+					registerChatSessionParams: registerChatSessionParams{
+						{
+							authCookie: state.ServerCookie{ChatCookie: "chat-auth-cookie"},
+							sess:       newTestSession("me"),
+						},
+					},
+				},
 			},
 			wantMsg:           cmdInternalSvcErr,
 			expectChatSession: false,
 		},
 		{
-			name:     "accept chat, receive error from auth svc",
+			name:     "accept chat, receive error from register chat session",
 			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_chat_accept 0`),
 			givenChatRegistry: func() *ChatRegistry {
@@ -713,9 +725,42 @@ func TestOSCARProxy_RecvClientCmd_ChatAccept(t *testing.T) {
 				return reg
 			}(),
 			mockParams: mockParams{
-				chatNavParams:     fnNewChatNavParams(nil),
-				oServiceBOSParams: fnNewOServiceBOSParams(nil),
-				authParams:        fnNewAuthParams(io.EOF),
+				chatNavParams: chatNavParams{
+					requestRoomInfoParams: requestRoomInfoParams{
+						{
+							inBody: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
+								Cookie:         "the-cookie",
+								Exchange:       4,
+								InstanceNumber: 0,
+							},
+							msg: navInfo,
+						},
+					},
+				},
+				oServiceParams: oServiceParams{
+					serviceRequestParams: serviceRequestParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							bodyIn: svcReq,
+							msg:    svcResp,
+						},
+					},
+				},
+				authParams: authParams{
+					crackCookieParams: crackCookieParams{
+						{
+							cookieIn:  []byte("chat-auth-cookie"),
+							cookieOut: state.ServerCookie{ChatCookie: "chat-auth-cookie"},
+						},
+					},
+					registerChatSessionParams: registerChatSessionParams{
+						{
+							authCookie: state.ServerCookie{ChatCookie: "chat-auth-cookie"},
+							sess:       newTestSession("me"),
+							err:        io.EOF,
+						},
+					},
+				},
 			},
 			wantMsg:           cmdInternalSvcErr,
 			expectChatSession: false,
@@ -734,8 +779,27 @@ func TestOSCARProxy_RecvClientCmd_ChatAccept(t *testing.T) {
 				return reg
 			}(),
 			mockParams: mockParams{
-				chatNavParams:     fnNewChatNavParams(nil),
-				oServiceBOSParams: fnNewOServiceBOSParams(io.EOF),
+				chatNavParams: chatNavParams{
+					requestRoomInfoParams: requestRoomInfoParams{
+						{
+							inBody: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
+								Cookie:         "the-cookie",
+								Exchange:       4,
+								InstanceNumber: 0,
+							},
+							msg: navInfo,
+						},
+					},
+				},
+				oServiceParams: oServiceParams{
+					serviceRequestParams: serviceRequestParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							bodyIn: svcReq,
+							err:    io.EOF,
+						},
+					},
+				},
 			},
 			wantMsg:           cmdInternalSvcErr,
 			expectChatSession: false,
@@ -754,7 +818,18 @@ func TestOSCARProxy_RecvClientCmd_ChatAccept(t *testing.T) {
 				return reg
 			}(),
 			mockParams: mockParams{
-				chatNavParams: fnNewChatNavParams(io.EOF),
+				chatNavParams: chatNavParams{
+					requestRoomInfoParams: requestRoomInfoParams{
+						{
+							inBody: wire.SNAC_0x0D_0x04_ChatNavRequestRoomInfo{
+								Cookie:         "the-cookie",
+								Exchange:       4,
+								InstanceNumber: 0,
+							},
+							err: io.EOF,
+						},
+					},
+				},
 			},
 			wantMsg:           cmdInternalSvcErr,
 			expectChatSession: false,
@@ -788,16 +863,15 @@ func TestOSCARProxy_RecvClientCmd_ChatAccept(t *testing.T) {
 					RequestRoomInfo(ctx, wire.SNACFrame{}, params.inBody).
 					Return(params.msg, params.err)
 			}
-			bosOServiceSvc := newMockOServiceService(t)
-			for _, params := range tc.mockParams.oServiceBOSParams.serviceRequestParams {
-				bosOServiceSvc.EXPECT().
-					ServiceRequest(ctx, matchSession(params.me), wire.SNACFrame{}, params.bodyIn).
+			oServiceSvc := newMockOServiceService(t)
+			for _, params := range tc.mockParams.oServiceParams.serviceRequestParams {
+				oServiceSvc.EXPECT().
+					ServiceRequest(ctx, wire.BOS, matchSession(params.me), wire.SNACFrame{}, params.bodyIn, config.Listener{}).
 					Return(params.msg, params.err)
 			}
-			chatOServiceSvc := newMockOServiceService(t)
-			for _, params := range tc.mockParams.oServiceChatParams.clientOnlineParams {
-				chatOServiceSvc.EXPECT().
-					ClientOnline(ctx, params.body, matchSession(params.me)).
+			for _, params := range tc.mockParams.oServiceParams.clientOnlineParams {
+				oServiceSvc.EXPECT().
+					ClientOnline(ctx, wire.Chat, params.body, matchSession(params.me)).
 					Return(params.err)
 			}
 			authSvc := newMockAuthService(t)
@@ -806,13 +880,17 @@ func TestOSCARProxy_RecvClientCmd_ChatAccept(t *testing.T) {
 					RegisterChatSession(ctx, params.authCookie).
 					Return(params.sess, params.err)
 			}
+			for _, params := range tc.mockParams.authParams.crackCookieParams {
+				authSvc.EXPECT().
+					CrackCookie(params.cookieIn).
+					Return(params.cookieOut, params.err)
+			}
 
 			svc := OSCARProxy{
-				AuthService:         authSvc,
-				ChatNavService:      chatNavSvc,
-				Logger:              slog.Default(),
-				OServiceServiceBOS:  bosOServiceSvc,
-				OServiceServiceChat: chatOServiceSvc,
+				AuthService:     authSvc,
+				ChatNavService:  chatNavSvc,
+				Logger:          slog.Default(),
+				OServiceService: oServiceSvc,
 			}
 
 			g := &errgroup.Group{}
@@ -984,104 +1062,44 @@ func TestOSCARProxy_RecvClientCmd_ChatInvite(t *testing.T) {
 }
 
 func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
-	fnNewChatNavParams := func(err error) chatNavParams {
-		ret := chatNavParams{
-			createRoomParams: createRoomParams{
-				{
-					me: state.NewIdentScreenName("me"),
-					inBody: wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-						Exchange: 4,
-						Cookie:   "create",
-						TLVBlock: wire.TLVBlock{
-							TLVList: wire.TLVList{
-								wire.NewTLVBE(wire.ChatRoomTLVRoomName, "cool room :)"),
-							},
-						},
-					},
-				},
+	roomInfo := wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+		Exchange: 4,
+		Cookie:   "create",
+		TLVBlock: wire.TLVBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(wire.ChatRoomTLVRoomName, "cool room :)"),
 			},
-		}
-		if err != nil {
-			ret.createRoomParams[0].err = err
-		} else {
-			ret.createRoomParams[0].msg = wire.SNACMessage{
-				Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							wire.NewTLVBE(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
-								Cookie: "the-cookie",
-							}),
-						},
-					},
-				},
-			}
-		}
-		return ret
+		},
 	}
-
-	fnNewOServiceBOSParams := func(err error) oServiceParams {
-		ret := oServiceParams{
-			serviceRequestParams: serviceRequestParams{
-				{
-					me: state.NewIdentScreenName("me"),
-					bodyIn: wire.SNAC_0x01_0x04_OServiceServiceRequest{
-						FoodGroup: wire.Chat,
-						TLVRestBlock: wire.TLVRestBlock{
-							TLVList: wire.TLVList{
-								wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
-									Cookie: "the-cookie",
-								}),
-							},
-						},
-					},
+	navInfo := wire.SNACMessage{
+		Body: wire.SNAC_0x0D_0x09_ChatNavNavInfo{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLVBE(wire.ChatNavTLVRoomInfo, wire.SNAC_0x0E_0x02_ChatRoomInfoUpdate{
+						Cookie: "the-cookie",
+					}),
 				},
 			},
-		}
-		if err != nil {
-			ret.serviceRequestParams[0].err = err
-		} else {
-			ret.serviceRequestParams[0].msg = wire.SNACMessage{
-				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, "chat-auth-cookie"),
-						},
-					},
-				},
-			}
-		}
-		return ret
+		},
 	}
-
-	fnNewAuthParams := func(err error) authParams {
-		ret := authParams{
-			registerChatSessionParams: registerChatSessionParams{
-				{
-					authCookie: []byte("chat-auth-cookie"),
-				},
+	svcReq := wire.SNAC_0x01_0x04_OServiceServiceRequest{
+		FoodGroup: wire.Chat,
+		TLVRestBlock: wire.TLVRestBlock{
+			TLVList: wire.TLVList{
+				wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
+					Cookie: "the-cookie",
+				}),
 			},
-		}
-		if err != nil {
-			ret.registerChatSessionParams[0].err = err
-		} else {
-			ret.registerChatSessionParams[0].sess = newTestSession("me-chat")
-		}
-		return ret
+		},
 	}
-
-	fnNewOServiceChatParams := func(err error) oServiceParams {
-		ret := oServiceParams{
-			clientOnlineParams: clientOnlineParams{
-				{
-					body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
-					me:   state.NewIdentScreenName("me-chat"),
+	svcResp := wire.SNACMessage{
+		Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+			TLVRestBlock: wire.TLVRestBlock{
+				TLVList: wire.TLVList{
+					wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, "chat-auth-cookie"),
 				},
 			},
-		}
-		if err != nil {
-			ret.clientOnlineParams[0].err = err
-		}
-		return ret
+		},
 	}
 
 	cases := []struct {
@@ -1108,49 +1126,164 @@ func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 			givenCmd:          []byte(`toc_chat_join 4 "cool room :\)"`),
 			givenChatRegistry: NewChatRegistry(),
 			mockParams: mockParams{
-				chatNavParams:      fnNewChatNavParams(nil),
-				oServiceBOSParams:  fnNewOServiceBOSParams(nil),
-				authParams:         fnNewAuthParams(nil),
-				oServiceChatParams: fnNewOServiceChatParams(nil),
+				chatNavParams: chatNavParams{
+					createRoomParams: createRoomParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							inBody: roomInfo,
+							msg:    navInfo,
+						},
+					},
+				},
+				oServiceParams: oServiceParams{
+					serviceRequestParams: serviceRequestParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							bodyIn: svcReq,
+							msg:    svcResp,
+						},
+					},
+					clientOnlineParams: clientOnlineParams{
+						{
+							body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+							me:   state.NewIdentScreenName("me"),
+						},
+					},
+				},
+				authParams: authParams{
+					crackCookieParams: crackCookieParams{
+						{
+							cookieIn:  []byte("chat-auth-cookie"),
+							cookieOut: state.ServerCookie{ChatCookie: "chat-auth-cookie"},
+						},
+					},
+					registerChatSessionParams: registerChatSessionParams{
+						{
+							authCookie: state.ServerCookie{ChatCookie: "chat-auth-cookie"},
+							sess:       newTestSession("me"),
+						},
+					},
+				},
 			},
 			wantMsg:           "CHAT_JOIN:0:cool room :)",
 			expectChatSession: true,
 		},
 		{
-			name:              "join chat, receive error from chat oservice svc",
+			name:              "accept chat, receive error from client online",
 			me:                newTestSession("me"),
 			givenCmd:          []byte(`toc_chat_join 4 "cool room :\)"`),
 			givenChatRegistry: NewChatRegistry(),
 			mockParams: mockParams{
-				chatNavParams:      fnNewChatNavParams(nil),
-				oServiceBOSParams:  fnNewOServiceBOSParams(nil),
-				authParams:         fnNewAuthParams(nil),
-				oServiceChatParams: fnNewOServiceChatParams(io.EOF),
+				chatNavParams: chatNavParams{
+					createRoomParams: createRoomParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							inBody: roomInfo,
+							msg:    navInfo,
+						},
+					},
+				},
+				oServiceParams: oServiceParams{
+					serviceRequestParams: serviceRequestParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							bodyIn: svcReq,
+							msg:    svcResp,
+						},
+					},
+					clientOnlineParams: clientOnlineParams{
+						{
+							body: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+							me:   state.NewIdentScreenName("me"),
+							err:  io.EOF,
+						},
+					},
+				},
+				authParams: authParams{
+					crackCookieParams: crackCookieParams{
+						{
+							cookieIn:  []byte("chat-auth-cookie"),
+							cookieOut: state.ServerCookie{ChatCookie: "chat-auth-cookie"},
+						},
+					},
+					registerChatSessionParams: registerChatSessionParams{
+						{
+							authCookie: state.ServerCookie{ChatCookie: "chat-auth-cookie"},
+							sess:       newTestSession("me"),
+						},
+					},
+				},
 			},
 			wantMsg:           cmdInternalSvcErr,
 			expectChatSession: false,
 		},
 		{
-			name:              "join chat, receive error from auth svc",
+			name:              "join chat, receive error from register chat session",
 			me:                newTestSession("me"),
 			givenCmd:          []byte(`toc_chat_join 4 "cool room :\)"`),
 			givenChatRegistry: NewChatRegistry(),
 			mockParams: mockParams{
-				chatNavParams:     fnNewChatNavParams(nil),
-				oServiceBOSParams: fnNewOServiceBOSParams(nil),
-				authParams:        fnNewAuthParams(io.EOF),
+				chatNavParams: chatNavParams{
+					createRoomParams: createRoomParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							inBody: roomInfo,
+							msg:    navInfo,
+						},
+					},
+				},
+				oServiceParams: oServiceParams{
+					serviceRequestParams: serviceRequestParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							bodyIn: svcReq,
+							msg:    svcResp,
+						},
+					},
+				},
+				authParams: authParams{
+					crackCookieParams: crackCookieParams{
+						{
+							cookieIn:  []byte("chat-auth-cookie"),
+							cookieOut: state.ServerCookie{ChatCookie: "chat-auth-cookie"},
+						},
+					},
+					registerChatSessionParams: registerChatSessionParams{
+						{
+							authCookie: state.ServerCookie{ChatCookie: "chat-auth-cookie"},
+							sess:       newTestSession("me"),
+							err:        io.EOF,
+						},
+					},
+				},
 			},
 			wantMsg:           cmdInternalSvcErr,
 			expectChatSession: false,
 		},
 		{
-			name:              "join chat, receive error from BOS oservice svc",
+			name:              "join chat, receive error from service request",
 			me:                newTestSession("me"),
 			givenCmd:          []byte(`toc_chat_join 4 "cool room :\)"`),
 			givenChatRegistry: NewChatRegistry(),
 			mockParams: mockParams{
-				chatNavParams:     fnNewChatNavParams(nil),
-				oServiceBOSParams: fnNewOServiceBOSParams(io.EOF),
+				chatNavParams: chatNavParams{
+					createRoomParams: createRoomParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							inBody: roomInfo,
+							msg:    navInfo,
+						},
+					},
+				},
+				oServiceParams: oServiceParams{
+					serviceRequestParams: serviceRequestParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							bodyIn: svcReq,
+							err:    io.EOF,
+						},
+					},
+				},
 			},
 			wantMsg:           cmdInternalSvcErr,
 			expectChatSession: false,
@@ -1161,7 +1294,15 @@ func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 			givenCmd:          []byte(`toc_chat_join 4 "cool room :\)"`),
 			givenChatRegistry: NewChatRegistry(),
 			mockParams: mockParams{
-				chatNavParams: fnNewChatNavParams(io.EOF),
+				chatNavParams: chatNavParams{
+					createRoomParams: createRoomParams{
+						{
+							me:     state.NewIdentScreenName("me"),
+							inBody: roomInfo,
+							err:    io.EOF,
+						},
+					},
+				},
 			},
 			wantMsg:           cmdInternalSvcErr,
 			expectChatSession: false,
@@ -1196,15 +1337,14 @@ func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 					Return(params.msg, params.err)
 			}
 			bosOServiceSvc := newMockOServiceService(t)
-			for _, params := range tc.mockParams.oServiceBOSParams.serviceRequestParams {
+			for _, params := range tc.mockParams.oServiceParams.serviceRequestParams {
 				bosOServiceSvc.EXPECT().
-					ServiceRequest(ctx, matchSession(params.me), wire.SNACFrame{}, params.bodyIn).
+					ServiceRequest(ctx, wire.BOS, matchSession(params.me), wire.SNACFrame{}, params.bodyIn, config.Listener{}).
 					Return(params.msg, params.err)
 			}
-			chatOServiceSvc := newMockOServiceService(t)
-			for _, params := range tc.mockParams.oServiceChatParams.clientOnlineParams {
-				chatOServiceSvc.EXPECT().
-					ClientOnline(ctx, params.body, matchSession(params.me)).
+			for _, params := range tc.mockParams.oServiceParams.clientOnlineParams {
+				bosOServiceSvc.EXPECT().
+					ClientOnline(ctx, wire.Chat, params.body, matchSession(params.me)).
 					Return(params.err)
 			}
 			authSvc := newMockAuthService(t)
@@ -1213,13 +1353,17 @@ func TestOSCARProxy_RecvClientCmd_ChatJoin(t *testing.T) {
 					RegisterChatSession(ctx, params.authCookie).
 					Return(params.sess, params.err)
 			}
+			for _, params := range tc.mockParams.authParams.crackCookieParams {
+				authSvc.EXPECT().
+					CrackCookie(params.cookieIn).
+					Return(params.cookieOut, params.err)
+			}
 
 			svc := OSCARProxy{
-				AuthService:         authSvc,
-				ChatNavService:      chatNavSvc,
-				Logger:              slog.Default(),
-				OServiceServiceBOS:  bosOServiceSvc,
-				OServiceServiceChat: chatOServiceSvc,
+				AuthService:     authSvc,
+				ChatNavService:  chatNavSvc,
+				Logger:          slog.Default(),
+				OServiceService: bosOServiceSvc,
 			}
 
 			g := &errgroup.Group{}
@@ -2471,7 +2615,7 @@ func TestOSCARProxy_RecvClientCmd_InitDone(t *testing.T) {
 			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_init_done`),
 			mockParams: mockParams{
-				oServiceBOSParams: oServiceParams{
+				oServiceParams: oServiceParams{
 					clientOnlineParams: clientOnlineParams{
 						{
 							me:   state.NewIdentScreenName("me"),
@@ -2486,7 +2630,7 @@ func TestOSCARProxy_RecvClientCmd_InitDone(t *testing.T) {
 			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_init_done`),
 			mockParams: mockParams{
-				oServiceBOSParams: oServiceParams{
+				oServiceParams: oServiceParams{
 					clientOnlineParams: clientOnlineParams{
 						{
 							me:   state.NewIdentScreenName("me"),
@@ -2505,15 +2649,15 @@ func TestOSCARProxy_RecvClientCmd_InitDone(t *testing.T) {
 			ctx := context.Background()
 
 			oSvc := newMockOServiceService(t)
-			for _, params := range tc.mockParams.oServiceBOSParams.clientOnlineParams {
+			for _, params := range tc.mockParams.oServiceParams.clientOnlineParams {
 				oSvc.EXPECT().
-					ClientOnline(ctx, params.body, matchSession(params.me)).
+					ClientOnline(ctx, wire.BOS, params.body, matchSession(params.me)).
 					Return(params.err)
 			}
 
 			svc := OSCARProxy{
-				Logger:             slog.Default(),
-				OServiceServiceBOS: oSvc,
+				Logger:          slog.Default(),
+				OServiceService: oSvc,
 			}
 			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
@@ -3532,7 +3676,7 @@ func TestOSCARProxy_RecvClientCmd_SetIdle(t *testing.T) {
 			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_set_idle 10`),
 			mockParams: mockParams{
-				oServiceBOSParams: oServiceParams{
+				oServiceParams: oServiceParams{
 					idleNotificationParams: idleNotificationParams{
 						{
 							me: state.NewIdentScreenName("me"),
@@ -3549,7 +3693,7 @@ func TestOSCARProxy_RecvClientCmd_SetIdle(t *testing.T) {
 			me:       newTestSession("me"),
 			givenCmd: []byte(`toc_set_idle 10`),
 			mockParams: mockParams{
-				oServiceBOSParams: oServiceParams{
+				oServiceParams: oServiceParams{
 					idleNotificationParams: idleNotificationParams{
 						{
 							me: state.NewIdentScreenName("me"),
@@ -3581,15 +3725,15 @@ func TestOSCARProxy_RecvClientCmd_SetIdle(t *testing.T) {
 			ctx := context.Background()
 
 			oServiceSvc := newMockOServiceService(t)
-			for _, params := range tc.mockParams.oServiceBOSParams.idleNotificationParams {
+			for _, params := range tc.mockParams.oServiceParams.idleNotificationParams {
 				oServiceSvc.EXPECT().
 					IdleNotification(ctx, matchSession(params.me), params.bodyIn).
 					Return(params.err)
 			}
 
 			svc := OSCARProxy{
-				Logger:             slog.Default(),
-				OServiceServiceBOS: oServiceSvc,
+				Logger:          slog.Default(),
+				OServiceService: oServiceSvc,
 			}
 			msg := svc.RecvClientCmd(ctx, tc.me, nil, tc.givenCmd, nil, nil)
 
@@ -3728,9 +3872,15 @@ func TestOSCARProxy_Signon(t *testing.T) {
 							},
 						},
 					},
+					crackCookieParams: crackCookieParams{
+						{
+							cookieIn:  []byte("thecookie"),
+							cookieOut: state.ServerCookie{Service: wire.BOS},
+						},
+					},
 					registerBOSSessionParams: registerBOSSessionParams{
 						{
-							authCookie: []byte("thecookie"),
+							authCookie: state.ServerCookie{Service: wire.BOS},
 							sess:       newTestSession("me"),
 						},
 					},
@@ -3801,9 +3951,15 @@ func TestOSCARProxy_Signon(t *testing.T) {
 							},
 						},
 					},
+					crackCookieParams: crackCookieParams{
+						{
+							cookieIn:  []byte("thecookie"),
+							cookieOut: state.ServerCookie{Service: wire.BOS},
+						},
+					},
 					registerBOSSessionParams: registerBOSSessionParams{
 						{
-							authCookie: []byte("thecookie"),
+							authCookie: state.ServerCookie{Service: wire.BOS},
 							err:        io.EOF,
 						},
 					},
@@ -3834,9 +3990,15 @@ func TestOSCARProxy_Signon(t *testing.T) {
 							},
 						},
 					},
+					crackCookieParams: crackCookieParams{
+						{
+							cookieIn:  []byte("thecookie"),
+							cookieOut: state.ServerCookie{Service: wire.BOS},
+						},
+					},
 					registerBOSSessionParams: registerBOSSessionParams{
 						{
-							authCookie: []byte("thecookie"),
+							authCookie: state.ServerCookie{Service: wire.BOS},
 							sess:       newTestSession("me"),
 						},
 					},
@@ -3875,9 +4037,15 @@ func TestOSCARProxy_Signon(t *testing.T) {
 							},
 						},
 					},
+					crackCookieParams: crackCookieParams{
+						{
+							cookieIn:  []byte("thecookie"),
+							cookieOut: state.ServerCookie{Service: wire.BOS},
+						},
+					},
 					registerBOSSessionParams: registerBOSSessionParams{
 						{
-							authCookie: []byte("thecookie"),
+							authCookie: state.ServerCookie{Service: wire.BOS},
 							sess:       newTestSession("me"),
 						},
 					},
@@ -3923,9 +4091,15 @@ func TestOSCARProxy_Signon(t *testing.T) {
 							},
 						},
 					},
+					crackCookieParams: crackCookieParams{
+						{
+							cookieIn:  []byte("thecookie"),
+							cookieOut: state.ServerCookie{Service: wire.BOS},
+						},
+					},
 					registerBOSSessionParams: registerBOSSessionParams{
 						{
-							authCookie: []byte("thecookie"),
+							authCookie: state.ServerCookie{Service: wire.BOS},
 							sess:       newTestSession("me"),
 						},
 					},
@@ -3989,8 +4163,13 @@ func TestOSCARProxy_Signon(t *testing.T) {
 			authSvc := newMockAuthService(t)
 			for _, params := range tc.mockParams.flapLoginParams {
 				authSvc.EXPECT().
-					FLAPLogin(matchContext(), params.frame, mock.Anything).
+					FLAPLogin(matchContext(), params.frame, mock.Anything, "").
 					Return(params.tlv, params.err)
+			}
+			for _, params := range tc.mockParams.crackCookieParams {
+				authSvc.EXPECT().
+					CrackCookie(params.cookieIn).
+					Return(params.cookieOut, params.err)
 			}
 			for _, params := range tc.mockParams.registerBOSSessionParams {
 				authSvc.EXPECT().

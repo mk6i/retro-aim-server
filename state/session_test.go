@@ -573,6 +573,20 @@ func TestSession_EvaluateRateLimit_ObserveRateChanges(t *testing.T) {
 		assert.Equal(t, classDelta[0].RateClass, newRateClasses.Get(rateClass.ID))
 		assert.Empty(t, stateDelta)
 	})
+
+	t.Run("as a bot, I can action every second indefinitely without getting rate limited", func(t *testing.T) {
+		now := time.Now()
+
+		sess := NewSession()
+		sess.SetUserInfoFlag(wire.OServiceUserFlagBot)
+		sess.SetRateClasses(now, rateClasses)
+
+		for i := 0; i < 100; i++ {
+			now = now.Add(1 * time.Second)
+			have := sess.EvaluateRateLimit(now, wire.RateLimitClassID(1))
+			assert.Equal(t, wire.RateLimitStatusClear, have)
+		}
+	})
 }
 
 func TestSession_SetAndGetFoodGroupVersions(t *testing.T) {

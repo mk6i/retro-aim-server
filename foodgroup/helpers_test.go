@@ -828,3 +828,22 @@ func matchContext() interface{} {
 		return ok
 	})
 }
+
+// newMultiSessionInfoUpdate is a hack that returns a user info update SNAC with
+// primary and current instance user info blocks.
+func newMultiSessionInfoUpdate(session *state.Session) wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate {
+	return wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
+		UserInfo: []wire.TLVUserInfo{
+			func() wire.TLVUserInfo {
+				info := session.TLVUserInfo()
+				info.Append(wire.NewTLVBE(wire.OServiceUserInfoPrimaryInstance, []byte{0x01}))
+				return info
+			}(),
+			func() wire.TLVUserInfo {
+				info := session.TLVUserInfo()
+				info.Append(wire.NewTLVBE(wire.OServiceUserInfoMyInstanceNum, []byte{0x01}))
+				return info
+			}(),
+		},
+	}
+}

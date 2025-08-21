@@ -27,6 +27,9 @@ type AccountManager interface {
 
 	// UpdateSuspendedStatus updates the suspension status of a user account.
 	UpdateSuspendedStatus(ctx context.Context, suspendedStatus uint16, screenName state.IdentScreenName) error
+
+	// SetBotStatus updates the flag that indicates whether the user is a bot.
+	SetBotStatus(ctx context.Context, isBot bool, screenName state.IdentScreenName) error
 }
 
 // BuddyIconRetriever defines a method for retrieving a buddy icon image by its hash.
@@ -141,6 +144,7 @@ type userHandle struct {
 	ScreenName      string `json:"screen_name"`
 	IsICQ           bool   `json:"is_icq"`
 	SuspendedStatus string `json:"suspended_status"`
+	IsBot           bool   `json:"is_bot"`
 }
 
 type aimChatUserHandle struct {
@@ -157,10 +161,12 @@ type userAccountHandle struct {
 	Confirmed       bool   `json:"confirmed"`
 	IsICQ           bool   `json:"is_icq"`
 	SuspendedStatus string `json:"suspended_status"`
+	IsBot           bool   `json:"is_bot"`
 }
 
 type userAccountPatch struct {
 	SuspendedStatusText *string `json:"suspended_status"`
+	IsBot               *bool   `json:"is_bot"`
 }
 
 type sessionHandle struct {

@@ -1,0 +1,18 @@
+# use the last version of alpine that has a version of nss-tools with support
+# for the legacy dbm format compiled in.
+FROM alpine:3.16
+
+RUN apk add --no-cache \
+    openssl \
+    nss-tools \
+    bash \
+    ca-certificates \
+    curl
+
+WORKDIR /certs
+
+# Set default database type to legacy DBM (instead of sqlite), the only type
+# AIM 6 supports.
+ENV NSS_DEFAULT_DB_TYPE=dbm
+
+CMD ["/bin/bash"]

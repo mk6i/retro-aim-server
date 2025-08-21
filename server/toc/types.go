@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/mk6i/retro-aim-server/config"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -36,18 +37,19 @@ type ICBMService interface {
 }
 
 type OServiceService interface {
-	ClientOnline(ctx context.Context, _ wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error
+	ClientOnline(ctx context.Context, service uint16, bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline, sess *state.Session) error
 	IdleNotification(ctx context.Context, sess *state.Session, bodyIn wire.SNAC_0x01_0x11_OServiceIdleNotification) error
-	ServiceRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest) (wire.SNACMessage, error)
+	ServiceRequest(ctx context.Context, service uint16, sess *state.Session, frame wire.SNACFrame, bodyIn wire.SNAC_0x01_0x04_OServiceServiceRequest, listener config.Listener) (wire.SNACMessage, error)
 }
 
 type AuthService interface {
 	BUCPChallenge(ctx context.Context, bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
-	BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.SNACMessage, error)
-	FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error)) (wire.TLVRestBlock, error)
-	RegisterBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
-	RetrieveBOSSession(ctx context.Context, authCookie []byte) (*state.Session, error)
-	RegisterChatSession(ctx context.Context, authCookie []byte) (*state.Session, error)
+	BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error), advertisedHost string) (wire.SNACMessage, error)
+	CrackCookie(authCookie []byte) (state.ServerCookie, error)
+	FLAPLogin(ctx context.Context, frame wire.FLAPSignonFrame, newUserFn func(screenName state.DisplayScreenName) (state.User, error), here string) (wire.TLVRestBlock, error)
+	RegisterBOSSession(ctx context.Context, authCookie state.ServerCookie) (*state.Session, error)
+	RegisterChatSession(ctx context.Context, authCookie state.ServerCookie) (*state.Session, error)
+	RetrieveBOSSession(ctx context.Context, authCookie state.ServerCookie) (*state.Session, error)
 	Signout(ctx context.Context, sess *state.Session)
 	SignoutChat(ctx context.Context, sess *state.Session)
 }

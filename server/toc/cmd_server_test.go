@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -239,9 +240,7 @@ func TestOSCARProxy_RecvBOS_Eviled(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 
-			svc := OSCARProxy{
-				Logger: slog.Default(),
-			}
+			svc := testOSCARProxy(t)
 
 			ch := make(chan []byte)
 			wg := &sync.WaitGroup{}
@@ -249,7 +248,7 @@ func TestOSCARProxy_RecvBOS_Eviled(t *testing.T) {
 
 			go func() {
 				defer wg.Done()
-				err := svc.RecvBOS(ctx, tc.me, tc.chatRegistry, ch)
+				err := svc.RecvBOS(ctx, tc.me, NewChatRegistry(), ch)
 				assert.NoError(t, err)
 			}()
 
@@ -273,8 +272,6 @@ func TestOSCARProxy_RecvBOS_IMIn(t *testing.T) {
 		me *state.Session
 		// givenMsg is the incoming SNAC
 		givenMsg wire.SNACMessage
-		// chatRegistry is the chat registry for the current session
-		chatRegistry *ChatRegistry
 		// wantCmd is the expected TOC response
 		wantCmd []byte
 	}{
@@ -373,8 +370,7 @@ func TestOSCARProxy_RecvBOS_IMIn(t *testing.T) {
 					},
 				},
 			},
-			chatRegistry: NewChatRegistry(),
-			wantCmd:      []byte("CHAT_INVITE:the room:0:them:join my chat!"),
+			wantCmd: []byte("CHAT_INVITE:the room:0:them:join my chat!"),
 		},
 		{
 			name: "receive file transfer rendezvous IM",
@@ -413,9 +409,7 @@ func TestOSCARProxy_RecvBOS_IMIn(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 
-			svc := OSCARProxy{
-				Logger: slog.Default(),
-			}
+			svc := testOSCARProxy(t)
 
 			ch := make(chan []byte)
 			wg := &sync.WaitGroup{}
@@ -423,7 +417,7 @@ func TestOSCARProxy_RecvBOS_IMIn(t *testing.T) {
 
 			go func() {
 				defer wg.Done()
-				err := svc.RecvBOS(ctx, tc.me, tc.chatRegistry, ch)
+				err := svc.RecvBOS(ctx, tc.me, NewChatRegistry(), ch)
 				assert.NoError(t, err)
 			}()
 
@@ -514,9 +508,7 @@ func TestOSCARProxy_RecvBOS_UpdateBuddyArrival(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 
-			svc := OSCARProxy{
-				Logger: slog.Default(),
-			}
+			svc := testOSCARProxy(t)
 
 			ch := make(chan []byte)
 			wg := &sync.WaitGroup{}
@@ -524,7 +516,7 @@ func TestOSCARProxy_RecvBOS_UpdateBuddyArrival(t *testing.T) {
 
 			go func() {
 				defer wg.Done()
-				err := svc.RecvBOS(ctx, tc.me, nil, ch)
+				err := svc.RecvBOS(ctx, tc.me, NewChatRegistry(), ch)
 				assert.NoError(t, err)
 			}()
 
@@ -569,9 +561,7 @@ func TestOSCARProxy_RecvBOS_UpdateBuddyDeparted(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 
-			svc := OSCARProxy{
-				Logger: slog.Default(),
-			}
+			svc := testOSCARProxy(t)
 
 			ch := make(chan []byte)
 			wg := &sync.WaitGroup{}
@@ -579,7 +569,7 @@ func TestOSCARProxy_RecvBOS_UpdateBuddyDeparted(t *testing.T) {
 
 			go func() {
 				defer wg.Done()
-				err := svc.RecvBOS(ctx, tc.me, nil, ch)
+				err := svc.RecvBOS(ctx, tc.me, NewChatRegistry(), ch)
 				assert.NoError(t, err)
 			}()
 
@@ -596,4 +586,30 @@ func TestOSCARProxy_RecvBOS_UpdateBuddyDeparted(t *testing.T) {
 }
 
 func TestOSCARProxy_RecvBOS_Signout(t *testing.T) {
+}
+
+func testOSCARProxy(t *testing.T) OSCARProxy {
+	buddyService := newMockBuddyService(t)
+	buddyService.EXPECT().
+		BroadcastBuddyDeparted(mock.Anything, mock.Anything).
+		Maybe().
+		Return(nil)
+	buddyListRegistry := newMockBuddyListRegistry(t)
+	buddyListRegistry.EXPECT().
+		UnregisterBuddyList(mock.Anything, mock.Anything).
+		Maybe().
+		Return(nil)
+	authService := newMockAuthService(t)
+	authService.EXPECT().
+		Signout(mock.Anything, mock.Anything).
+		Maybe()
+	authService.EXPECT().
+		SignoutChat(mock.Anything, mock.Anything).
+		Maybe()
+	return OSCARProxy{
+		AuthService:       authService,
+		BuddyListRegistry: buddyListRegistry,
+		BuddyService:      buddyService,
+		Logger:            slog.Default(),
+	}
 }

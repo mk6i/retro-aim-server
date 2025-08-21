@@ -518,10 +518,15 @@ func (s *Session) ObserveRateChanges(now time.Time) (classDelta []RateClassState
 
 // EvaluateRateLimit checks and updates the session’s rate limit state
 // for the given rate class ID. If the rate status reaches 'disconnect',
-// the session is closed.
+// the session is closed. Rate limits are not enforced if the user is a bot
+// (has wire.OServiceUserFlagBot set in their user info bitmask).
 func (s *Session) EvaluateRateLimit(now time.Time, rateClassID wire.RateLimitClassID) wire.RateLimitStatus {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	if s.userInfoBitmask&wire.OServiceUserFlagBot == wire.OServiceUserFlagBot {
+		return wire.RateLimitStatusClear // don't rate limit bots
+	}
 
 	rateClass := &s.rateByClassID[rateClassID-1]
 

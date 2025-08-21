@@ -30,6 +30,10 @@ paths:
                     suspended_status:
                       type: string
                       description: User's suspended status
+                    is_bot:
+                      type: boolean
+                      nullable: true
+                      description: Indicates whether the user is a bot.
     post:
       summary: Create a new user
       description: Create a new AIM or ICQ user account.
@@ -115,6 +119,10 @@ paths:
                   suspended_status:
                     type: string
                     description: User's suspended status
+                  is_bot:
+                    type: boolean
+                    nullable: true
+                    description: Indicates whether the user is a bot.
         '404':
           description: User not found.
     patch:
@@ -144,11 +152,16 @@ paths:
               type: object
               properties:
                 suspended_status:
-                    type: string
-                    nullable: true
-                    enum: [deleted, expired, suspended, suspended_age]
-                    description: The suspended status of the account
-
+                  type: string
+                  nullable: true
+                  enum: [ deleted, expired, suspended, suspended_age ]
+                  description: The suspended status of the account
+                is_bot:
+                  type: boolean
+                  nullable: true
+                  description: >
+                    Indicates whether the account is for a bot. Bots are exempt from rate limiting... make sure you 
+                    trust the bot and bot owner before enabling this flag.
   /user/{screenname}/icon:
     get:
       summary: Get AIM buddy icon for a screen name

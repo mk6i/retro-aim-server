@@ -15,14 +15,16 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
+func TestOServiceService_ServiceRequest(t *testing.T) {
 	chatRoom := state.NewChatRoom("the-chat-room", state.NewIdentScreenName(""), state.PrivateExchange)
 
 	cases := []struct {
 		// name is the unit test name
 		name string
-		// config is the application config
-		cfg config.Config
+		// service is the OSCAR service type
+		service uint16
+		// listener is the connection listener
+		listener config.Listener
 		// userSession is the session of the user requesting the chat service
 		// info
 		userSession *state.Session
@@ -38,127 +40,9 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 		expectErr error
 	}{
 		{
-			name:        "request info for ICBM service, return invalid SNAC err",
-			userSession: newTestSession("me"),
-			inputSNAC: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					RequestID: 1234,
-				},
-				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
-					FoodGroup: wire.ICBM,
-				},
-			},
-			expectOutput: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.OService,
-					SubGroup:  wire.OServiceErr,
-					RequestID: 1234,
-				},
-				Body: wire.SNACError{
-					Code: wire.ErrorCodeServiceUnavailable,
-				},
-			},
-		},
-		{
-			name: "request info for connecting to chat nav, return chat nav connection metadata",
-			cfg: config.Config{
-				OSCARHost:   "127.0.0.1",
-				ChatNavPort: "1234",
-			},
-			userSession: newTestSession("me"),
-			inputSNAC: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					RequestID: 1234,
-				},
-				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
-					FoodGroup: wire.ChatNav,
-				},
-			},
-			expectOutput: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.OService,
-					SubGroup:  wire.OServiceServiceResponse,
-					RequestID: 1234,
-				},
-				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
-							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ChatNav),
-							wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
-							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
-						},
-					},
-				},
-			},
-			mockParams: mockParams{
-				cookieBakerParams: cookieBakerParams{
-					cookieIssueParams: cookieIssueParams{
-						{
-							dataIn: []byte{
-								0x02, 'm', 'e',
-								0x0, // no client ID
-							},
-							cookieOut: []byte("the-cookie"),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "request info for connecting to alert svc, return alert svc connection metadata",
-			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				AlertPort: "1234",
-			},
-			userSession: newTestSession("me"),
-			inputSNAC: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					RequestID: 1234,
-				},
-				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
-					FoodGroup: wire.Alert,
-				},
-			},
-			expectOutput: wire.SNACMessage{
-				Frame: wire.SNACFrame{
-					FoodGroup: wire.OService,
-					SubGroup:  wire.OServiceServiceResponse,
-					RequestID: 1234,
-				},
-				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
-					TLVRestBlock: wire.TLVRestBlock{
-						TLVList: wire.TLVList{
-							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
-							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
-							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Alert),
-							wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
-							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
-						},
-					},
-				},
-			},
-			mockParams: mockParams{
-				cookieBakerParams: cookieBakerParams{
-					cookieIssueParams: cookieIssueParams{
-						{
-							dataIn: []byte{
-								0x02, 'm', 'e',
-								0x0, // no client ID
-							},
-							cookieOut: []byte("the-cookie"),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "request info for connecting to admin svc, return admin svc connection metadata",
-			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				AdminPort: "1234",
-			},
+			name:        "request info for connecting to admin svc, return admin svc connection metadata",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234"},
 			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -180,7 +64,6 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
 							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
 							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Admin),
-							wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
 							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 						},
 					},
@@ -191,8 +74,10 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					cookieIssueParams: cookieIssueParams{
 						{
 							dataIn: []byte{
+								0x00, 0x07, // admin service
 								0x02, 'm', 'e',
 								0x0, // no client ID
+								0x0, // no chat cookie
 							},
 							cookieOut: []byte("the-cookie"),
 						},
@@ -201,11 +86,147 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "request info for connecting to chat room, return chat service and chat room metadata",
-			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				ChatPort:  "1234",
+			name:        "request info for connecting to alert svc, return alert svc connection metadata",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234"},
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.Alert,
+				},
 			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Alert),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: []byte{
+								0x00, 0x18, // alert service
+								0x02, 'm', 'e',
+								0x0, // no client ID
+								0x0, // no chat cookie
+							},
+							cookieOut: []byte("the-cookie"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "request info for connecting to BART service, return BART connection metadata",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234"},
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.BART,
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.BART),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: []byte{
+								0x00, 0x10, // chatnav service
+								0x02, 'm', 'e',
+								0x0, // no client ID
+								0x0, // no chat cookie
+							},
+							cookieOut: []byte("the-cookie"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "request info for connecting to chat nav, return chat nav connection metadata",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234"},
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.ChatNav,
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ChatNav),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: []byte{
+								0x00, 0x0d, // chatnav service
+								0x02, 'm', 'e',
+								0x0, // no client ID
+								0x0, // no chat cookie
+							},
+							cookieOut: []byte("the-cookie"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "request info for connecting to chat room, return chat service and chat room metadata",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234"},
 			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -236,7 +257,6 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
 							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-auth-cookie")),
 							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Chat),
-							wire.NewTLVBE(wire.OServiceTLVTagsSSLCertName, ""),
 							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
 						},
 					},
@@ -256,8 +276,10 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 						cookieIssueParams: cookieIssueParams{
 							{
 								dataIn: []byte{
+									0x00, 0x0e, // chat service,
+									0x02, 'm', 'e', // screen name
+									0x00, // no client ID
 									0x11, '4', '-', '0', '-', 't', 'h', 'e', '-', 'c', 'h', 'a', 't', '-', 'r', 'o', 'o', 'm',
-									0x02, 'm', 'e',
 								},
 								cookieOut: []byte("the-auth-cookie"),
 							},
@@ -267,11 +289,55 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			}(),
 		},
 		{
-			name: "request info for connecting to non-existent chat room, return ErrChatRoomNotFound",
-			cfg: config.Config{
-				OSCARHost: "127.0.0.1",
-				ChatPort:  "1234",
+			name:        "request info for connecting to BART service, return BART connection metadata",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234"},
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.ODir,
+				},
 			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1234"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ODir),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x00)),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: []byte{
+								0x00, 0x0F, // chatnav service
+								0x02, 'm', 'e',
+								0x0, // no client ID
+								0x0, // no chat cookie
+							},
+							cookieOut: []byte("the-cookie"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "request info for connecting to non-existent chat room, return ErrChatRoomNotFound",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234"},
 			userSession: newTestSession("me"),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
@@ -302,6 +368,403 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 			},
 			expectErr: state.ErrChatRoomNotFound,
 		},
+		{
+			name:        "request info from a non-BOS service",
+			service:     wire.Chat,
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.ICBM,
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeNotSupportedByHost,
+				},
+			},
+		},
+		{
+			name:        "request info for ICBM service, return invalid SNAC err",
+			service:     wire.BOS,
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.ICBM,
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeServiceUnavailable,
+				},
+			},
+		},
+		{
+			name:        "request info for connecting to admin svc with SSL, return admin svc SSL connection metadata",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234", BOSAdvertisedHostSSL: "127.0.0.1:1235", HasSSL: true},
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.Admin,
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OserviceTLVTagsSSLUseSSL, []byte{}),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1235"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Admin),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x02)),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: []byte{
+								0x00, 0x07, // admin service
+								0x02, 'm', 'e',
+								0x0, // no client ID
+								0x0, // no chat cookie
+							},
+							cookieOut: []byte("the-cookie"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "request info for connecting to alert svc with SSL, return alert svc SSL connection metadata",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234", BOSAdvertisedHostSSL: "127.0.0.1:1235", HasSSL: true},
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.Alert,
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OserviceTLVTagsSSLUseSSL, []byte{}),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1235"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Alert),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x02)),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: []byte{
+								0x00, 0x18, // alert service
+								0x02, 'm', 'e',
+								0x0, // no client ID
+								0x0, // no chat cookie
+							},
+							cookieOut: []byte("the-cookie"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "request info for connecting to BART service with SSL, return BART SSL connection metadata",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234", BOSAdvertisedHostSSL: "127.0.0.1:1235", HasSSL: true},
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.BART,
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OserviceTLVTagsSSLUseSSL, []byte{}),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1235"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.BART),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x02)),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: []byte{
+								0x00, 0x10, // BART service
+								0x02, 'm', 'e',
+								0x0, // no client ID
+								0x0, // no chat cookie
+							},
+							cookieOut: []byte("the-cookie"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "request info for connecting to chat nav with SSL, return chat nav SSL connection metadata",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234", BOSAdvertisedHostSSL: "127.0.0.1:1235", HasSSL: true},
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.ChatNav,
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OserviceTLVTagsSSLUseSSL, []byte{}),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1235"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ChatNav),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x02)),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: []byte{
+								0x00, 0x0d, // chatnav service
+								0x02, 'm', 'e',
+								0x0, // no client ID
+								0x0, // no chat cookie
+							},
+							cookieOut: []byte("the-cookie"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "request info for connecting to chat room with SSL, return chat service SSL connection metadata",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234", BOSAdvertisedHostSSL: "127.0.0.1:1235", HasSSL: true},
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.Chat,
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(0x01, wire.SNAC_0x01_0x04_TLVRoomInfo{
+								Exchange:       chatRoom.Exchange(),
+								Cookie:         chatRoom.Cookie(),
+								InstanceNumber: chatRoom.InstanceNumber(),
+							}),
+							wire.NewTLVBE(wire.OserviceTLVTagsSSLUseSSL, []byte{}),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1235"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-auth-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.Chat),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x02)),
+						},
+					},
+				},
+			},
+			mockParams: func() mockParams {
+				return mockParams{
+					chatRoomRegistryParams: chatRoomRegistryParams{
+						chatRoomByCookieParams: chatRoomByCookieParams{
+							{
+								cookie: chatRoom.Cookie(),
+								room:   chatRoom,
+							},
+						},
+					},
+					cookieBakerParams: cookieBakerParams{
+						cookieIssueParams: cookieIssueParams{
+							{
+								dataIn: []byte{
+									0x00, 0x0e, // chat service,
+									0x02, 'm', 'e', // screen name
+									0x00, // no client ID
+									0x11, '4', '-', '0', '-', 't', 'h', 'e', '-', 'c', 'h', 'a', 't', '-', 'r', 'o', 'o', 'm',
+								},
+								cookieOut: []byte("the-auth-cookie"),
+							},
+						},
+					},
+				}
+			}(),
+		},
+		{
+			name:        "request info for connecting to ODir service with SSL, return ODir SSL connection metadata",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234", BOSAdvertisedHostSSL: "127.0.0.1:1235", HasSSL: true},
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.ODir,
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OserviceTLVTagsSSLUseSSL, []byte{}),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceServiceResponse,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x05_OServiceServiceResponse{
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OServiceTLVTagsReconnectHere, "127.0.0.1:1235"),
+							wire.NewTLVBE(wire.OServiceTLVTagsLoginCookie, []byte("the-cookie")),
+							wire.NewTLVBE(wire.OServiceTLVTagsGroupID, wire.ODir),
+							wire.NewTLVBE(wire.OServiceTLVTagsSSLState, uint8(0x02)),
+						},
+					},
+				},
+			},
+			mockParams: mockParams{
+				cookieBakerParams: cookieBakerParams{
+					cookieIssueParams: cookieIssueParams{
+						{
+							dataIn: []byte{
+								0x00, 0x0F, // ODir service
+								0x02, 'm', 'e',
+								0x0, // no client ID
+								0x0, // no chat cookie
+							},
+							cookieOut: []byte("the-cookie"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:        "request SSL service but listener doesn't support SSL, return error",
+			service:     wire.BOS,
+			listener:    config.Listener{BOSAdvertisedHostPlain: "127.0.0.1:1234", HasSSL: false},
+			userSession: newTestSession("me"),
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x01_0x04_OServiceServiceRequest{
+					FoodGroup: wire.Admin,
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							wire.NewTLVBE(wire.OserviceTLVTagsSSLUseSSL, []byte{}),
+						},
+					},
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeGeneralFailure,
+				},
+			},
+			mockParams: mockParams{},
+		},
 	}
 
 	for _, tc := range cases {
@@ -321,13 +784,15 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 					Issue(params.dataIn).
 					Return(params.cookieOut, params.err)
 			}
+			chatMessageRelayer := newMockChatMessageRelayer(t)
+
 			//
 			// send input SNAC
 			//
-			svc := NewOServiceServiceForBOS(tc.cfg, nil, slog.Default(), cookieIssuer, chatRoomManager, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits())
+			svc := NewOServiceService(config.Config{}, nil, slog.Default(), cookieIssuer, chatRoomManager, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits(), chatMessageRelayer)
 
-			outputSNAC, err := svc.ServiceRequest(context.Background(), tc.userSession, tc.inputSNAC.Frame,
-				tc.inputSNAC.Body.(wire.SNAC_0x01_0x04_OServiceServiceRequest))
+			outputSNAC, err := svc.ServiceRequest(context.Background(), tc.service, tc.userSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(wire.SNAC_0x01_0x04_OServiceServiceRequest), tc.listener)
 			assert.ErrorIs(t, err, tc.expectErr)
 			if tc.expectErr != nil {
 				return
@@ -340,7 +805,7 @@ func TestOServiceServiceForBOS_ServiceRequest(t *testing.T) {
 	}
 }
 
-func TestSetUserInfoFields(t *testing.T) {
+func TestOServiceService_SetUserInfoFields(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
@@ -460,12 +925,7 @@ func TestSetUserInfoFields(t *testing.T) {
 					SubGroup:  wire.OServiceUserInfoUpdate,
 					RequestID: 1234,
 				},
-				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-					UserInfo: []wire.TLVUserInfo{
-						newTestSession("me").TLVUserInfo(),
-						newTestSession("me").TLVUserInfo(),
-					},
-				},
+				Body: newMultiSessionInfoUpdate(newTestSession("me")),
 			},
 			mockParams: mockParams{
 				buddyBroadcasterParams: buddyBroadcasterParams{
@@ -498,12 +958,7 @@ func TestSetUserInfoFields(t *testing.T) {
 					SubGroup:  wire.OServiceUserInfoUpdate,
 					RequestID: 1234,
 				},
-				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-					UserInfo: []wire.TLVUserInfo{
-						newTestSession("me", sessOptInvisible).TLVUserInfo(),
-						newTestSession("me", sessOptInvisible).TLVUserInfo(),
-					},
-				},
+				Body: newMultiSessionInfoUpdate(newTestSession("me", sessOptInvisible)),
 			},
 			mockParams: mockParams{
 				buddyBroadcasterParams: buddyBroadcasterParams{
@@ -818,8 +1273,6 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 	cases := []struct {
 		// name is the unit test name
 		name string
-		// config is the application config
-		cfg config.Config
 		// userSession is the session of the user requesting the chat service
 		// info
 		userSession *state.Session
@@ -1076,58 +1529,165 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 	}
 }
 
-func TestOServiceServiceForBOS_OServiceHostOnline(t *testing.T) {
-	cookieIssuer := newMockCookieBaker(t)
-	svc := NewOServiceServiceForBOS(config.Config{}, nil, slog.Default(), cookieIssuer, nil, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits())
-
-	want := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceHostOnline,
-			RequestID: wire.ReqIDFromServer,
+func TestOServiceService_HostOnline(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// service is the OSCAR service type
+		service uint16
+		// expectSNACFrame is the SNAC frame sent from the server to the recipient
+		// client
+		expectOutput wire.SNACMessage
+	}{
+		{
+			name:    "Admin service",
+			service: wire.Admin,
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceHostOnline,
+					RequestID: wire.ReqIDFromServer,
+				},
+				Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+					FoodGroups: []uint16{
+						wire.OService,
+						wire.Admin,
+					},
+				},
+			},
 		},
-		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
-			FoodGroups: []uint16{
-				wire.Alert,
-				wire.BART,
-				wire.Buddy,
-				wire.Feedbag,
-				wire.ICBM,
-				wire.ICQ,
-				wire.Locate,
-				wire.OService,
-				wire.PermitDeny,
-				wire.UserLookup,
-				wire.Invite,
-				wire.Popup,
-				wire.Stats,
+		{
+			name:    "Alert service",
+			service: wire.Alert,
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceHostOnline,
+					RequestID: wire.ReqIDFromServer,
+				},
+				Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+					FoodGroups: []uint16{
+						wire.Alert,
+						wire.OService,
+					},
+				},
+			},
+		},
+		{
+			name:    "BART service",
+			service: wire.BART,
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceHostOnline,
+					RequestID: wire.ReqIDFromServer,
+				},
+				Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+					FoodGroups: []uint16{
+						wire.BART,
+						wire.OService,
+					},
+				},
+			},
+		},
+		{
+			name:    "BOS service",
+			service: wire.BOS,
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceHostOnline,
+					RequestID: wire.ReqIDFromServer,
+				},
+				Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+					FoodGroups: []uint16{
+						wire.Alert,
+						wire.BART,
+						wire.Buddy,
+						wire.Feedbag,
+						wire.ICBM,
+						wire.ICQ,
+						wire.Locate,
+						wire.OService,
+						wire.PermitDeny,
+						wire.UserLookup,
+						wire.Invite,
+						wire.Popup,
+						wire.Stats,
+					},
+				},
+			},
+		},
+		{
+			name:    "Chat service",
+			service: wire.Chat,
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceHostOnline,
+					RequestID: wire.ReqIDFromServer,
+				},
+				Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+					FoodGroups: []uint16{
+						wire.OService,
+						wire.Chat,
+					},
+				},
+			},
+		},
+		{
+			name:    "ChatNav service",
+			service: wire.ChatNav,
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceHostOnline,
+					RequestID: wire.ReqIDFromServer,
+				},
+				Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+					FoodGroups: []uint16{
+						wire.ChatNav,
+						wire.OService,
+					},
+				},
+			},
+		},
+		{
+			name:    "ODir service",
+			service: wire.ODir,
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceHostOnline,
+					RequestID: wire.ReqIDFromServer,
+				},
+				Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
+					FoodGroups: []uint16{
+						wire.ODir,
+						wire.OService,
+					},
+				},
+			},
+		},
+		{
+			name:    "Oops, unsupported service",
+			service: wire.Kerberos,
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.OService,
+					SubGroup:  wire.OServiceErr,
+				},
 			},
 		},
 	}
 
-	have := svc.HostOnline()
-	assert.Equal(t, want, have)
-}
-
-func TestOServiceServiceForChat_OServiceHostOnline(t *testing.T) {
-	svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, nil, nil, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits())
-
-	want := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceHostOnline,
-			RequestID: wire.ReqIDFromServer,
-		},
-		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
-			FoodGroups: []uint16{
-				wire.OService,
-				wire.Chat,
-			},
-		},
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := NewOServiceService(config.Config{}, nil, slog.Default(), nil, nil, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits(), nil)
+			have := svc.HostOnline(tc.service)
+			assert.Equal(t, tc.expectOutput, have)
+		})
 	}
-
-	have := svc.HostOnline()
-	assert.Equal(t, want, have)
 }
 
 func TestOServiceService_ClientVersions(t *testing.T) {
@@ -1196,12 +1756,7 @@ func TestOServiceService_UserInfoQuery(t *testing.T) {
 					SubGroup:  wire.OServiceUserInfoUpdate,
 					RequestID: 1234,
 				},
-				Body: wire.SNAC_0x01_0x0F_OServiceUserInfoUpdate{
-					UserInfo: []wire.TLVUserInfo{
-						newTestSession("me").TLVUserInfo(),
-						newTestSession("me").TLVUserInfo(),
-					},
-				},
+				Body: newMultiSessionInfoUpdate(newTestSession("me")),
 			},
 		},
 	}
@@ -1280,7 +1835,11 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 	}
 }
 
-func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
+func TestOServiceService_ClientOnline(t *testing.T) {
+	chatRoom := state.NewChatRoom("the-chat-room", state.NewIdentScreenName("creator"), state.PrivateExchange)
+	chatter1 := newTestSession("chatter-1", sessOptChatRoomCookie(chatRoom.Cookie()))
+	chatter2 := newTestSession("chatter-2", sessOptChatRoomCookie(chatRoom.Cookie()))
+
 	tests := []struct {
 		// name is the name of the test
 		name string
@@ -1289,6 +1848,8 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 		// bodyIn is the SNAC body sent from the arriving user's client to the
 		// server
 		bodyIn wire.SNAC_0x01_0x02_OServiceClientOnline
+		// service is the OSCAR service type
+		service uint16
 		// wantErr is the expected error from the handler
 		wantErr error
 		// mockParams is the list of params sent to mocks that satisfy this
@@ -1298,9 +1859,10 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 		wantSess *state.Session
 	}{
 		{
-			name:   "notify that user is online",
-			sess:   newTestSession("me", sessOptCannedSignonTime),
-			bodyIn: wire.SNAC_0x01_0x02_OServiceClientOnline{},
+			name:    "notify that user is online",
+			sess:    newTestSession("me", sessOptCannedSignonTime),
+			bodyIn:  wire.SNAC_0x01_0x02_OServiceClientOnline{},
+			service: wire.BOS,
 			mockParams: mockParams{
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastVisibilityParams: broadcastVisibilityParams{
@@ -1331,52 +1893,11 @@ func TestOServiceServiceForBOS_ClientOnline(t *testing.T) {
 			},
 			wantSess: newTestSession("me", sessOptCannedSignonTime, sessOptSignonComplete),
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
-			for _, params := range tt.mockParams.broadcastVisibilityParams {
-				buddyUpdateBroadcaster.EXPECT().
-					BroadcastVisibility(matchContext(), matchSession(params.from), params.filter, params.doSendDepartures).
-					Return(params.err)
-			}
-			messageRelayer := newMockMessageRelayer(t)
-			for _, params := range tt.mockParams.relayToScreenNameParams {
-				messageRelayer.EXPECT().
-					RelayToScreenName(matchContext(), params.screenName, params.message)
-			}
-
-			svc := NewOServiceServiceForBOS(config.Config{}, messageRelayer, slog.Default(), nil, nil, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits())
-			svc.buddyBroadcaster = buddyUpdateBroadcaster
-			haveErr := svc.ClientOnline(context.Background(), tt.bodyIn, tt.sess)
-			assert.ErrorIs(t, tt.wantErr, haveErr)
-			assert.Equal(t, tt.wantSess.SignonComplete(), tt.sess.SignonComplete())
-		})
-	}
-}
-
-func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
-	chatRoom := state.NewChatRoom("the-chat-room", state.NewIdentScreenName("creator"), state.PrivateExchange)
-	chatter1 := newTestSession("chatter-1", sessOptChatRoomCookie(chatRoom.Cookie()))
-	chatter2 := newTestSession("chatter-2", sessOptChatRoomCookie(chatRoom.Cookie()))
-
-	tests := []struct {
-		// name is the name of the test
-		name string
-		// joiningChatter is the user joining the chat room
-		joiningChatter *state.Session
-		// bodyIn is the SNAC body sent from the arriving user's client to the
-		// server
-		bodyIn  wire.SNAC_0x01_0x02_OServiceClientOnline
-		wantErr error
-		// mockParams is the list of params sent to mocks that satisfy this
-		// method's dependencies
-		mockParams mockParams
-	}{
 		{
-			name:           "upon joining, send chat room metadata and participant list to joining user; alert arrival to existing participants",
-			joiningChatter: chatter1,
-			bodyIn:         wire.SNAC_0x01_0x02_OServiceClientOnline{},
+			name:    "upon joining, send chat room metadata and participant list to joining user; alert arrival to existing participants",
+			sess:    chatter1,
+			bodyIn:  wire.SNAC_0x01_0x02_OServiceClientOnline{},
+			service: wire.Chat,
 			mockParams: mockParams{
 				chatMessageRelayerParams: chatMessageRelayerParams{
 					chatRelayToAllExceptParams: chatRelayToAllExceptParams{
@@ -1452,10 +1973,22 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 					},
 				},
 			},
+			wantSess: newTestSession("me", sessOptCannedSignonTime, sessOptSignonComplete),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
+			for _, params := range tt.mockParams.broadcastVisibilityParams {
+				buddyUpdateBroadcaster.EXPECT().
+					BroadcastVisibility(matchContext(), matchSession(params.from), params.filter, params.doSendDepartures).
+					Return(params.err)
+			}
+			messageRelayer := newMockMessageRelayer(t)
+			for _, params := range tt.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().
+					RelayToScreenName(matchContext(), params.screenName, params.message)
+			}
 			chatRoomManager := newMockChatRoomRegistry(t)
 			for _, params := range tt.mockParams.chatRoomByCookieParams {
 				chatRoomManager.EXPECT().
@@ -1477,54 +2010,13 @@ func TestOServiceServiceForChat_ClientOnline(t *testing.T) {
 					RelayToScreenName(mock.Anything, params.cookie, params.screenName, params.message)
 			}
 
-			svc := NewOServiceServiceForChat(config.Config{}, slog.Default(), nil, chatRoomManager, chatMessageRelayer, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits())
-
-			haveErr := svc.ClientOnline(context.Background(), wire.SNAC_0x01_0x02_OServiceClientOnline{}, tt.joiningChatter)
+			svc := NewOServiceService(config.Config{}, messageRelayer, slog.Default(), nil, chatRoomManager, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits(), chatMessageRelayer)
+			svc.buddyBroadcaster = buddyUpdateBroadcaster
+			haveErr := svc.ClientOnline(context.Background(), tt.service, tt.bodyIn, tt.sess)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
+			assert.Equal(t, tt.wantSess.SignonComplete(), tt.sess.SignonComplete())
 		})
 	}
-}
-
-func TestOServiceServiceForChatNav_HostOnline(t *testing.T) {
-	svc := NewOServiceServiceForChatNav(config.Config{}, slog.Default(), nil, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits())
-
-	want := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceHostOnline,
-			RequestID: wire.ReqIDFromServer,
-		},
-		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
-			FoodGroups: []uint16{
-				wire.ChatNav,
-				wire.OService,
-			},
-		},
-	}
-
-	have := svc.HostOnline()
-	assert.Equal(t, want, have)
-}
-
-func TestOServiceServiceForAlert_HostOnline(t *testing.T) {
-	svc := NewOServiceServiceForAlert(config.Config{}, slog.Default(), nil, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits())
-
-	want := wire.SNACMessage{
-		Frame: wire.SNACFrame{
-			FoodGroup: wire.OService,
-			SubGroup:  wire.OServiceHostOnline,
-			RequestID: wire.ReqIDFromServer,
-		},
-		Body: wire.SNAC_0x01_0x03_OServiceHostOnline{
-			FoodGroups: []uint16{
-				wire.Alert,
-				wire.OService,
-			},
-		},
-	}
-
-	have := svc.HostOnline()
-	assert.Equal(t, want, have)
 }
 
 func TestOServiceService_SetPrivacyFlags(t *testing.T) {

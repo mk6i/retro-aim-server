@@ -4,9 +4,10 @@ import (
 	"context"
 	"net/mail"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
-	"github.com/stretchr/testify/mock"
 )
 
 type mockParams struct {
@@ -28,6 +29,7 @@ type accountManagerParams struct {
 	RegStatusParams
 	ConfirmStatusParams
 	updateSuspendedStatusParams
+	setBotStatusParams
 }
 
 // EmailAddressParams is the list of parameters passed at the mock
@@ -60,6 +62,14 @@ type updateSuspendedStatusParams []struct {
 	suspendedStatus uint16
 	screenName      state.IdentScreenName
 	err             error
+}
+
+// setBotStatusParams is the list of parameters passed at the mock
+// accountManager.SetBotStatus call site
+type setBotStatusParams []struct {
+	isBot      bool
+	screenName state.IdentScreenName
+	err        error
 }
 
 // bartRetrieverParams is a helper struct that contains mock parameters for

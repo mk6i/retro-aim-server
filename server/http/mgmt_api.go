@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -21,22 +20,7 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-func NewManagementAPI(
-	bld config.Build,
-	cfg config.Config,
-	userManager UserManager,
-	sessionRetriever SessionRetriever,
-	chatRoomRetriever ChatRoomRetriever,
-	chatRoomCreator ChatRoomCreator,
-	chatSessionRetriever ChatSessionRetriever,
-	directoryManager DirectoryManager,
-	messageRelayer MessageRelayer,
-	bartRetriever BuddyIconRetriever,
-	feedbagRetriever FeedBagRetriever,
-	accountManager AccountManager,
-	profileRetriever ProfileRetriever,
-	logger *slog.Logger,
-) *Server {
+func NewManagementAPI(bld config.Build, listener string, userManager UserManager, sessionRetriever SessionRetriever, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatSessionRetriever ChatSessionRetriever, directoryManager DirectoryManager, messageRelayer MessageRelayer, bartRetriever BuddyIconRetriever, feedbagRetriever FeedBagRetriever, accountManager AccountManager, profileRetriever ProfileRetriever, logger *slog.Logger) *Server {
 	mux := http.NewServeMux()
 
 	// Handlers for '/user' route
@@ -138,43 +122,32 @@ func NewManagementAPI(
 	})
 
 	return &Server{
-		Server: http.Server{
-			Addr:    net.JoinHostPort(cfg.ApiHost, cfg.ApiPort),
+		server: http.Server{
+			Addr:    listener,
 			Handler: mux,
 		},
-		Logger: logger,
+		logger: logger,
 	}
-
 }
 
 type Server struct {
-	http.Server
-	Logger *slog.Logger
+	server http.Server
+	logger *slog.Logger
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	ch := make(chan error)
+func (s *Server) ListenAndServe() error {
+	s.logger.Info("starting server", "addr", s.server.Addr)
 
-	go func() {
-		s.Logger.Info("starting management API server", "addr", s.Addr)
-		if err := s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			ch <- fmt.Errorf("unable to start management API server: %w", err)
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-	case err := <-ch:
-		return err
+	if err := s.server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("unable to start management API server: %w", err)
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := s.Shutdown(shutdownCtx); err != nil {
-		s.Logger.Error("unable to shutdown management API server", "err", err.Error())
-	}
 	return nil
+}
+
+func (s *Server) Shutdown(ctx context.Context) error {
+	defer s.logger.Info("shutdown complete")
+	return s.server.Shutdown(ctx)
 }
 
 // deleteUserHandler handles the DELETE /user endpoint.
@@ -320,6 +293,7 @@ func getUserHandler(w http.ResponseWriter, r *http.Request, userManager UserMana
 			ScreenName:      u.DisplayScreenName.String(),
 			IsICQ:           u.IsICQ,
 			SuspendedStatus: suspendedStatus,
+			IsBot:           u.IsBot,
 		}
 	}
 
@@ -684,6 +658,7 @@ func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager U
 		Profile:         profile,
 		IsICQ:           user.IsICQ,
 		SuspendedStatus: suspendedStatusText,
+		IsBot:           user.IsBot,
 	}
 
 	if err := json.NewEncoder(w).Encode(out); err != nil {
@@ -729,8 +704,7 @@ func patchUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager
 				return
 			}
 			if suspendedStatus != user.SuspendedStatus {
-				err := a.UpdateSuspendedStatus(r.Context(), suspendedStatus, user.IdentScreenName)
-				if err != nil {
+				if err := a.UpdateSuspendedStatus(r.Context(), suspendedStatus, user.IdentScreenName); err != nil {
 					logger.Error("error in PATCH /user/{screenname}/account", "err", err.Error())
 					http.Error(w, "internal server error", http.StatusInternalServerError)
 					return
@@ -741,6 +715,15 @@ func patchUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager
 			errorMsg(w, "suspended_status must be empty str or one of deleted,expired,suspended,suspended_age", http.StatusBadRequest)
 			return
 		}
+	}
+
+	if input.IsBot != nil && user.IsBot != *input.IsBot {
+		if err := a.SetBotStatus(r.Context(), *input.IsBot, user.IdentScreenName); err != nil {
+			logger.Error("error in PATCH /user/{screenname}/account", "err", err.Error())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		modifiedUser = true
 	}
 
 	if !modifiedUser {
