@@ -1,0 +1,2900 @@
+openapi: 3.0.3
+info:
+  title: Web AIM Server API
+  version: 0.1.1
+  description: |-
+    The Web AIM API lets developers incorporate core AIM functionality into any web page, including the ability to sign on, send and receive IMs, and obtain a user's Buddy List. By using the Web AIM API to build their applications, developers can take advantage of AIM's power and large user base, while having the freedom to extend AIM's functionality in innovative new ways. The APIs support both the building of real-time, interactive widgets and one-time queries. Developers can use as much or as little of the platform as they like.
+
+  contact:
+    name: Ukozi
+    url: ''
+    email: lucas@ukozi.com
+  termsOfService: ''
+servers:
+  - url: 'http://api.oscar.aol.com'
+  - url: 'https://api.oscar.aol.com'
+externalDocs:
+  description: Original AOL Developer Documents
+  url: https://web.archive.org/web/20081224031814/http://dev.aol.com/aim/web/serverapi_reference#expand$0
+paths:
+  /aim/startSession:
+    get:
+      operationId: startSession
+      tags:
+       - AIM
+      summary: Start a Web AIM session.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: a
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: events
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/EventType'
+          description: Comma separated list of events to subscribe to
+        - name: encodeData
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Base 64 encode the data in imdata events
+        - name: assertCaps
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Capability'
+          description: Comma separated list of capabilities to assert to other users
+        - name: interestCaps
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Capability'
+          description: Comma separated list of capabilities to ONLY receive from other users
+        - name: anonymous
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Start an anonymous session
+        - name: invisible
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Start an invisible session
+        - name: friendly
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'For anonymous sessions, this is an optional friendly name to display'
+        - name: language
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The language and locale to use in "<lang>-<locale>" format.
+        - name: clientName
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Client name - clientLogin parameter
+        - name: clientVersion
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Client version - clientLogin parameter
+        - name: ts
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+        - name: mobile
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Whether this is a mobile session.
+        - name: sessionTimeout
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Time in seconds before terminating idle web session.
+        - name: view
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/PresenceState'
+          description: How we should appear to other users.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+      description: A session is required for some APIs to deliver asynchronous events.
+  /aim/fetchEvents:
+    get:
+      operationId: fetchEvents
+      tags:
+       - AIM
+      summary: Fetch outstanding events for an aimsid.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: aimsid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication
+        - name: timeout
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Timeout in milliseconds that the server will wait before returning.
+        - name: peek
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: 'If true, then this fetch will not update the most recent seqNum returned.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+      description: |
+        Will continue waiting up to timeout milliseconds before returning.
+  /aim/deleteEvents:
+    get:
+      operationId: deleteEvents
+      tags:
+       - AIM
+      summary: To delete multiple events
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: aimsid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication
+        - name: eventNumber
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+          description: event numbers to delete. Multiple allowed.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /aim/endSession:
+    get:
+      operationId: endSession
+      tags:
+       - AIM
+      summary: 'To be used when the user logs out or navigates away from the application, endSession ends a Web AIM session.'
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: aimsid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /aim/startOSCARSession:
+    get:
+      operationId: startOSCARSession
+      tags:
+       - AIM
+      summary: Start a OSCAR AIM session.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: a
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: useTLS
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Request the connection to BOSS use TLS
+        - name: clientName
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Client name - clientLogin parameter
+        - name: clientVersion
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Client version - clientLogin parameter
+        - name: language
+          in: query
+          required: false
+          schema:
+            type: string
+          description: the required language and locale of the error/status messages.
+        - name: ts
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+      description: ' This API requires that the token came from a previous clientLogin call **and** that the URL is signed.'
+  /presence/get:
+    get:
+      operationId: getBuddyListPresence_dup
+      tags:
+       - Presence
+      summary: retrieve Buddy List presence.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'either an AIM Web Key or AIM Presence Key from http://dev.aol.com/aim'
+        - name: aimsid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication - k is not required
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: ts
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+        - name: t
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Target aimIds, returns the results in the users section. Multiple t parameters are allowed'
+        - name: bl
+          in: query
+          required: true
+          schema:
+            type: boolean
+          description: returns the Buddy List in the groups section
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+      description: Use the getPresence API with a special bl=1 parameter to retrieve Buddy List presence.
+  /presence/icon:
+    get:
+      operationId: getPresenceIcon
+      tags:
+       - Presence
+      summary: 'This method call is a shortcut to the anonymous presence icon for a user or email address, returning a HTTP 302 redirect to the correct standard presence icon.'
+      parameters:
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: t
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Target aimId, only one t or tw is allowed'
+        - name: tw
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Wimzi key, only one t or tw is allowed'
+        - name: emailLookup
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: 'For targets, do an email look up and return presence on valid aimIds'
+        - name: notFound
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: 'For email lookups that fail, use a special not found icon instead of offline'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /presence/setState:
+    get:
+      operationId: setState
+      tags:
+       - Presence
+      summary: Sets the user's Presence information. The setState method call requires an aimsid from a previous startSession call.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: aimsid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication
+        - name: view
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/PresenceState'
+          description: 'How we should appear to other users, offline and mobile are not valid in this case'
+        - name: away
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'If setting the state to away, this is the away message display to other users on mouse over'
+        - name: encodeData
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Base 64 encode the data in imdata events
+        - name: assertCaps
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Capability'
+          description: Comma separated list of capabilities to assert to other users.
+        - name: interestCaps
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Capability'
+          description: Comma separated list of capabilities to receive from other users. AssertCaps will also be received from other users.
+        - name: friendly
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'For anonymous sessions, this is an optional friendly name to display'
+        - name: invisible
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Invisible
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /presence/setStatus:
+    get:
+      operationId: setStatus
+      tags:
+       - Presence
+      summary: Sets the user's status message.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: aimsid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication - k is not required
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: ts
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+        - name: statusMsg
+          in: query
+          required: true
+          schema:
+            type: string
+          description: status message display to other users
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /presence/setProfile:
+    get:
+      operationId: setProfile
+      tags:
+       - Presence
+      summary: Set the AIM buddy info for a user.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: aimsid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication - k is not required
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: ts
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+        - name: profile
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'The new AIM Profile, or blank to clear the current AIM Profile'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /presence/getProfile:
+    get:
+      operationId: getProfile
+      tags:
+       - Presence
+      summary: Get the AIM Profile message for an aimId.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: aimsid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication - k is not required
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: ts
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /im/sendIM:
+    get:
+      operationId: sendIM
+      tags:
+       - IM
+      summary: Send an IM to an AIM user. Requires a valid aimsid from the startSession call or an AOL Authentication Token.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: aimsid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication - k is not required
+        - name: ts
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+        - name: t
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Destination aimId
+        - name: message
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'utf8 encoded message, limited to 1024 bytes'
+        - name: autoResponse
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: 'Set the auto response flag be set, can not be set with offlineIM'
+        - name: displaySMSSegmentData
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Set true to display SMS segment data
+        - name: offlineIM
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: 'Deliver as an offline IM when possible if the user isn''t online, autoResponse flag can no bet set'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  '':
+                    type: string
+                    x-stoplight:
+                      id: q9hpa5o01uszx
+  /expressions/get:
+    get:
+      operationId: getExpression
+      tags:
+       - Expressions
+      summary: 'Returns the expression information - the personalized icons, sounds, and background images - for an AIM user.'
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: t
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Target aimId
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ExpressionType'
+          description: 'The type of expression to return, if missing all expressions are returned. Required for the native and redirect format'
+        - name: defaultId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'If the user doesn''t have an expression, use this one instead'
+        - name: personality
+          in: query
+          required: false
+          schema:
+            type: string
+          description: personality name
+        - name: noCustom
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: 'if true a custom item isn''t returned, instead the defaultId is returned if available'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /buddylist/addBuddy:
+    get:
+      operationId: addBuddy
+      tags:
+       - BuddyList
+      summary: Add a buddy to the Buddy List.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: aimsid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication
+        - name: buddy
+          in: query
+          required: true
+          schema:
+            type: string
+          description: buddy name. Can be multipled.
+        - name: group
+          in: query
+          required: true
+          schema:
+            type: string
+          description: group name to add buddy to
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /preference/set:
+    get:
+      operationId: setPreference
+      tags:
+       - Preference
+      summary: Set preferences
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: aimsid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication - k is not required
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: ts
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+        - name: Preferences
+          in: query
+          required: true
+          schema:
+            type: boolean
+          description: 'The preference to set, the field name isn''t Preferences, instead it is a value from the enumeration'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /preference/get:
+    get:
+      operationId: getPreference
+      tags:
+       - Preference
+      summary: Get preferences
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: aimsid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication - k is not required
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: ts
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+        - name: Preferences
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: 'Optional selector of which preferences to return, otherwise all are returned'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /preference/setPermitDeny:
+    get:
+      operationId: setPermitDeny
+      tags:
+       - Preference
+      summary: Change the permit/deny settings.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: aimsid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication - k is not required
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: ts
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+        - name: pdAllow
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Allow specified aimId
+        - name: pdBlock
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Block specified aimId
+        - name: pdIgnore
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Ignore IMs from specified aimId
+        - name: pdAllowRemove
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Remove specified aimId from allow list
+        - name: pdBlockRemove
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Remove specified aimId from block list
+        - name: pdIgnoreRemove
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Remove specified aimId from ignore list
+        - name: pdMode
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/PdMode'
+          description: Set the overall permit/deny mode
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /preference/getPermitDeny:
+    get:
+      operationId: getPermitDeny
+      tags:
+       - Preference
+      summary: Get the current permit/deny settings.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: aimsid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication - k is not required
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: ts
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /location/googleEarth.kml:
+    get:
+      operationId: googleEarthkml
+      tags:
+       - Location
+      summary: A Google Earth Network Link that contains all different items supported
+      parameters: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /location/getRankedUsers.kml:
+    get:
+      operationId: getRankedUsersLocationskml
+      tags:
+       - Location
+      summary: A Google Earth Network Link that displays the locations of AIM Fight ranked users.
+      parameters: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /location/getRankedUsers:
+    get:
+      operationId: getRankedUsersLocations
+      tags:
+       - Location
+      summary: Return the locations of AIM Fight ranked users. The format parameter f=kml is also supported for Google Earth output
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: maxLocations
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: 'Max number of locations returned, locations are sorted by number of users'
+        - name: boundingBox
+          in: query
+          required: false
+          schema:
+            type: string
+          description: '[bboxWest],[bboxSouth],[bboxEast],[bboxNorth] - Return only items inside the bounding box'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /location/getIMConversations.kml:
+    get:
+      operationId: getIMConversationsLocationskml
+      tags:
+       - Location
+      summary: A Google Earth Network Link that displays IM conversations initiated in the last minute. The conversations are aged out over time.
+      parameters: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /location/getIMConversations:
+    get:
+      operationId: getIMConversationsLocations
+      tags:
+       - Location
+      summary: Return the locations for recently initiated IM conversations. The conversations are aged out over time.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: maxLocations
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: 'Max number of locations returned, locations are sorted by age and number of users'
+        - name: boundingBox
+          in: query
+          required: false
+          schema:
+            type: string
+          description: '[bboxWest],[bboxSouth],[bboxEast],[bboxNorth] - Return only items where one of the two points are inside the bounding box'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /buddyfeed/getUser:
+    get:
+      operationId: getUserFeed
+      tags:
+       - BuddyFeed
+      summary: Get the buddyfeed for a user. An extra format type of rss is supported.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: ts
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+        - name: t
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Target aimId
+        - name: feedCategory
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter feeds by this feed category. Can be multiple instances up to filters
+        - name: fullContent
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Return the full html content for published items
+        - name: maxItems
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Max total number of items
+        - name: bfUI
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: 'if provided and set to 1, Profile, away and status msgs are NOT retrieved'
+        - name: loc
+          in: query
+          required: false
+          schema:
+            type: string
+          description: the required language and locale of the error/status messages. This is always in "<lang>-<locale>" format.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /buddyfeed/getBuddylist:
+    get:
+      operationId: getBuddylistFeed
+      tags:
+       - BuddyFeed
+      summary: Get the buddyfeed for a user's entire buddylist. An extra format type of f=native for RSS is supported.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: the AIM Web Key from dev.aol.com/aim - use the same key for all calls
+        - name: s
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use trusted authentication, the source user'
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: ts
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+        - name: groupBy
+          in: query
+          required: false
+          schema:
+            type: string
+          description: '(T or F) F = Sort results in revchron order (default), T = Sort results by buddy/subsort in revchron order'
+        - name: maxItems
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Max total number of items
+        - name: maxItemsPerMember
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Max items per member
+        - name: maxMembers
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Max number of unique buddies to report on
+        - name: feedCategory
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter feeds by this feed category. Can be multiple instances up to filters
+        - name: bfUI
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: 'if provided and set to 1, Profile, away and status msgs are NOT retrieved'
+        - name: loc
+          in: query
+          required: false
+          schema:
+            type: string
+          description: the required language and locale of the error/status messages. This is always in "<lang>-<locale>" format.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /buddyfeed/pushFeed:
+    get:
+      operationId: pushFeed
+      tags:
+       - BuddyFeed
+      summary: Push a simple Buddy Feed Item
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: the AIM Web Key from dev.aol.com/aim - use the same key for all calls
+        - name: s
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use trusted authentication, the source user'
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: ts
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+        - name: feedTitle
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Channel/Feed title
+        - name: feedLink
+          in: query
+          required: true
+          schema:
+            type: string
+          description: URL to main feed page
+        - name: feedDesc
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Channel/Feed description
+        - name: feedPublisher
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Name of application publishing data
+        - name: itemTitle
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Title of item
+        - name: itemLink
+          in: query
+          required: true
+          schema:
+            type: string
+          description: URL to item location
+        - name: itemPubDate
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Item published date in UNIX time in secs since EPOCH. If not provided, server will use system time'
+        - name: itemGuid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Unique per item ID
+        - name: itemDesc
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Item description
+        - name: itemCategory
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Item Category
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /aim/getVanityInfo:
+    get:
+      operationId: getVanityInfo
+      tags:
+       - AIM
+      summary: Retrieve the vanity information for a user.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The format of the data returned
+        - name: c
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSONP callback
+        - name: r
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Request id
+        - name: k
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 'the AIM Web Key from http://dev.aol.com/aim - use the same key for all calls'
+        - name: aimsid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Use an AIM Session Id from the startSession call for authentication - k is not required
+        - name: a
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Use an AOL Authentication Token for authentication, from the getToken call'
+        - name: ts
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+          description: Epoch timestamp - clientLogin required parameter
+        - name: sig_sha256
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Signature - clientLogin required parameter.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /chat/createAndJoinChat:
+    get:
+      operationId: createAndJoinChat
+      tags:
+       - Chat
+      summary: Creates (if needed) and joins a chat room.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          description: Return format.
+          schema:
+            $ref: '#/components/schemas/Format'
+        - name: c
+          in: query
+          required: false
+          description: JSONP callback.
+          schema:
+            type: string
+        - name: r
+          in: query
+          required: false
+          description: Request id.
+          schema:
+            type: string
+        - name: aimsid
+          in: query
+          required: true
+          description: AIM Session Id from startSession.
+          schema:
+            type: string
+        - name: roomId
+          in: query
+          required: false
+          description: Room ID as returned by the API. Exactly one of roomId or roomName must be provided.
+          schema:
+            type: string
+        - name: roomName
+          in: query
+          required: false
+          description: Room name. Exactly one of roomId or roomName must be provided.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      statusCode:
+                        type: integer
+                      statusText:
+                        type: string
+                      data:
+                        type: object
+                        properties:
+                          chatsid:
+                            type: string
+                          room:
+                            $ref: '#/components/schemas/ChatRoom'
+                additionalProperties: true
+      description: This is a NINA addition to the original sp
+  /chat/sendMessage:
+    get:
+      operationId: sendMessage
+      tags:
+       - Chat
+      summary: Sends a message to a chat room.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          description: Return format.
+          schema:
+            $ref: '#/components/schemas/Format'
+        - name: c
+          in: query
+          required: false
+          description: JSONP callback.
+          schema:
+            type: string
+        - name: r
+          in: query
+          required: false
+          description: Request id.
+          schema:
+            type: string
+        - name: aimsid
+          in: query
+          required: true
+          description: AIM Session Id from startSession.
+          schema:
+            type: string
+        - name: chatsid
+          in: query
+          required: true
+          description: Chat session ID returned by createAndJoinChat.
+          schema:
+            type: string
+        - name: message
+          in: query
+          required: true
+          description: Message to send to the chat room.
+          schema:
+            type: string
+        - name: whisperTarget
+          in: query
+          required: false
+          description: Whisper target if the message is a whisper; omit for normal messages.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      statusCode:
+                        type: integer
+                      statusText:
+                        type: string
+                      data:
+                        type: object
+                        additionalProperties: true
+                additionalProperties: true
+      description: This is a NINA addition to the original spec.
+  /chat/setTyping:
+    get:
+      operationId: setTyping
+      tags:
+       - Chat
+      summary: Sets typing status for a chat room.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          description: Return format.
+          schema:
+            $ref: '#/components/schemas/Format'
+        - name: c
+          in: query
+          required: false
+          description: JSONP callback.
+          schema:
+            type: string
+        - name: r
+          in: query
+          required: false
+          description: Request id.
+          schema:
+            type: string
+        - name: aimsid
+          in: query
+          required: true
+          description: AIM Session Id from startSession.
+          schema:
+            type: string
+        - name: chatsid
+          in: query
+          required: true
+          description: Chat session ID returned by createAndJoinChat.
+          schema:
+            type: string
+        - name: typingStatus
+          in: query
+          required: true
+          description: New typing status.
+          schema:
+            $ref: '#/components/schemas/TypingStatus'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      statusCode:
+                        type: integer
+                      statusText:
+                        type: string
+                      data:
+                        type: object
+                        additionalProperties: true
+                additionalProperties: true
+      description: This is a NINA addition to the original spec.
+  /chat/leaveChat:
+    get:
+      operationId: leaveChat
+      tags:
+       - Chat
+      summary: Leaves the current chat room.
+      parameters:
+        - name: f
+          in: query
+          required: true
+          description: Return format.
+          schema:
+            $ref: '#/components/schemas/Format'
+        - name: c
+          in: query
+          required: false
+          description: JSONP callback.
+          schema:
+            type: string
+        - name: r
+          in: query
+          required: false
+          description: Request id.
+          schema:
+            type: string
+        - name: aimsid
+          in: query
+          required: true
+          description: AIM Session Id from startSession.
+          schema:
+            type: string
+        - name: chatsid
+          in: query
+          required: true
+          description: Chat session ID returned by createAndJoinChat.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: object
+                    properties:
+                      statusCode:
+                        type: integer
+                      statusText:
+                        type: string
+                      data:
+                        type: object
+                        additionalProperties: true
+                additionalProperties: true
+      description: This is a NINA addition to the original spec.
+components:
+  schemas:
+    Format:
+      type: string
+      enum:
+        - json
+        - xml
+        - php
+        - amf0
+        - amf3
+    PresenceState:
+      type: string
+      enum:
+        - online
+        - invisible
+        - notFound
+        - idle
+        - away
+        - mobile
+        - offline
+    UserType:
+      type: string
+      enum:
+        - aim
+        - icq
+        - sms
+        - interop
+    EventType:
+      type: string
+      enum:
+        - myInfo
+        - presence
+        - buddylist
+        - typing
+        - im
+        - dataIM
+        - clientError
+        - sessionEnded
+        - offlineIM
+        - sentIM
+        - sentDataIM
+        - chat
+    TypingStatus:
+      type: string
+      enum:
+        - none
+        - typing
+        - typed
+    ExpressionType:
+      type: string
+      enum:
+        - miniIcon
+        - buddyIcon
+        - arriveSound
+        - departSound
+        - imSound
+        - imChrome
+        - superBuddy
+        - immersiveChromeXML
+        - imChromeXML
+        - emoticon
+    DataIMType:
+      type: string
+      enum:
+        - invite
+        - accept
+        - deny
+        - data
+        - end
+    RejectReason:
+      type: string
+      enum:
+        - unsupported
+        - denied
+        - malformed
+        - timedOut
+        - notAvailable
+        - resources
+        - rateLimited
+        - noData
+        - version
+        - security
+    IMChannel:
+      type: string
+      enum:
+        - text
+        - data
+    ClientError:
+      type: string
+      enum:
+        - unsupported
+        - malformed
+        - channel
+    PdMode:
+      type: string
+      enum:
+        - permitAll
+        - permitSome
+        - permitOnList
+        - denySome
+        - denyAll
+    AddBuddyResultCodeValue:
+      type: string
+      enum:
+        - '0'
+        - '3'
+        - '17'
+        - '26'
+    Preferences:
+      type: string
+      enum:
+        - displayLogin
+        - displayEBuddy
+        - playEnter
+        - playExit
+        - viewIMTimestamps
+        - viewSmilies
+        - acceptIcons
+        - knockNonAOLIMs
+        - knockNonListIMs
+        - discloseIdle
+        - acceptCustomBart
+        - acceptNonListBart
+        - acceptBgs
+        - acceptChromes
+        - acceptBLSounds
+        - acceptIMsounds
+        - noSeeRecentBuddies
+        - acceptSMSLegal
+        - enterDoesCRLF
+        - playIMSound
+        - discloseTyping
+        - acceptSuperIcons
+        - acceptBLRichText
+        - reduceIMSound
+        - confirmDirectIM
+        - oneTabbedIMWindow
+        - buddyInfoOnMouseover
+        - discloseBuddyMatches
+        - catchIMs
+        - showFriendlyName
+        - discloseRadio
+        - showCapabilities
+        - showBuddyListFilter
+        - showAwayIdle
+        - showMobile
+        - sortBuddyList
+        - catchIMsForClient
+        - newMessageSmallNotification
+        - noFrequentBuddies
+        - blogAwayMessages
+        - blogAIMSigMessages
+        - blogNoComments
+        - friendOfFriend
+        - friendGetContactList
+        - compadInit
+        - sendBuddyFeed
+        - blkSendIMWhileAway
+        - showBuddyFeed
+        - noSaveVanityInfo
+        - acceptOffLineIM
+        - showGroups
+        - sortGroup
+        - showOffLineBuddies
+        - expandBuddies
+        - thirdPartyFeeds
+        - notifyReceivedInvite
+        - apfAutoAccept
+        - apfAutoAcceptBuddy
+        - blockAwayMsgFeed
+        - blockAIMProfileFeed
+        - blockAIMPagesFeed
+        - blockJournalsFeed
+        - blockLocationFeed
+        - blockStickiesFeed
+        - blockUncutFeed
+        - blockLinksFeed
+        - blockAIMBulletinFeed
+        - saveStatusMsg
+    PDResultCode:
+      type: string
+      enum:
+        - '0'
+        - '1'
+        - '2'
+        - '12'
+        - '16'
+    ChatRoomType:
+      type: string
+      enum:
+        - userCreated
+    ChatEventType:
+      type: string
+      enum:
+        - userInRoom
+        - userEntered
+        - userLeft
+        - message
+        - typing
+        - closed
+    Capability:
+      type: object
+      properties:
+        uuid:
+          type: string
+      required:
+        - uuid
+    Location:
+      type: object
+      properties:
+        desc:
+          type: string
+        street:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        state:
+          type: string
+        postcode:
+          type: string
+        accuracy:
+          type: string
+        lat:
+          type: string
+        lon:
+          type: string
+        accu_string:
+          type: string
+    QuietHours:
+      type: object
+      properties:
+        start:
+          type: string
+        end:
+          type: string
+      required:
+        - start
+        - end
+    LocationAllow:
+      type: object
+      properties:
+        aimId:
+          type: string
+        quietHours:
+          type: string
+      required:
+        - aimId
+    SmsSegment:
+      type: object
+      properties:
+        single:
+          type: integer
+          format: int32
+        initial:
+          type: integer
+          format: int32
+        trailing:
+          type: integer
+          format: int32
+      required:
+        - single
+        - initial
+        - trailing
+    Presence:
+      type: object
+      properties:
+        aimId:
+          type: string
+        displayId:
+          type: string
+        emailId:
+          type: string
+        friendly:
+          type: string
+        state:
+          $ref: '#/components/schemas/PresenceState'
+        onlineTime:
+          type: integer
+          format: int32
+        idleTime:
+          type: integer
+          format: int32
+        awayTime:
+          type: integer
+          format: int32
+        statusTime:
+          type: integer
+          format: int32
+        awayMsg:
+          type: string
+        profileMsg:
+          type: string
+        statusMsg:
+          type: string
+        buddyIcon:
+          type: string
+        presenceIcon:
+          type: string
+        memberSince:
+          type: integer
+          format: int32
+        capabilities:
+          type: string
+        location:
+          $ref: '#/components/schemas/Location'
+        ipCountry:
+          type: string
+        recent:
+          type: boolean
+        bot:
+          type: boolean
+        shared:
+          type: boolean
+        smsSegment:
+          $ref: '#/components/schemas/SmsSegment'
+        userType:
+          $ref: '#/components/schemas/UserType'
+      required:
+        - aimId
+        - state
+    Group:
+      type: object
+      properties:
+        name:
+          type: string
+        collapsed:
+          type: boolean
+        recent:
+          type: boolean
+        bot:
+          type: boolean
+        shared:
+          type: boolean
+        buddies:
+          type: string
+      required:
+        - name
+    Expression:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/ExpressionType'
+        id:
+          type: string
+        url:
+          type: string
+      required:
+        - type
+        - id
+        - url
+    Personality:
+      type: object
+      properties:
+        name:
+          type: string
+        expressions:
+          type: string
+      required:
+        - name
+    MyInfoEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        eventData:
+          $ref: '#/components/schemas/Presence'
+      required:
+        - type
+        - eventData
+    PresenceEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        eventData:
+          $ref: '#/components/schemas/Presence'
+      required:
+        - type
+        - eventData
+    TypingEventData:
+      type: object
+      properties:
+        aimId:
+          type: string
+        typingStatus:
+          $ref: '#/components/schemas/TypingStatus'
+      required:
+        - aimId
+        - typingStatus
+    TypingEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        eventData:
+          $ref: '#/components/schemas/TypingEventData'
+      required:
+        - type
+        - eventData
+    DataIMEventData:
+      type: object
+      properties:
+        source:
+          $ref: '#/components/schemas/Presence'
+        dataCapability:
+          $ref: '#/components/schemas/Capability'
+        dataType:
+          $ref: '#/components/schemas/DataIMType'
+        dataIM:
+          type: string
+        timestamp:
+          type: integer
+          format: int32
+        inviteMsg:
+          type: string
+      required:
+        - source
+        - dataCapability
+        - dataType
+        - dataIM
+        - timestamp
+    DataIMEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        eventData:
+          $ref: '#/components/schemas/DataIMEventData'
+      required:
+        - type
+        - eventData
+    sentDataIMEventData:
+      type: object
+      properties:
+        dest:
+          $ref: '#/components/schemas/Presence'
+        dataCapability:
+          $ref: '#/components/schemas/Capability'
+        dataType:
+          $ref: '#/components/schemas/DataIMType'
+        dataIM:
+          type: string
+        timestamp:
+          type: integer
+          format: int32
+        inviteMsg:
+          type: string
+      required:
+        - dest
+        - dataCapability
+        - dataType
+        - dataIM
+        - timestamp
+    sentDataIMEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        eventData:
+          $ref: '#/components/schemas/sentDataIMEventData'
+      required:
+        - type
+        - eventData
+    IMEventData:
+      type: object
+      properties:
+        source:
+          $ref: '#/components/schemas/Presence'
+        message:
+          type: string
+        autoResponse:
+          type: boolean
+        timestamp:
+          type: integer
+          format: int32
+      required:
+        - source
+        - message
+        - timestamp
+    IMEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        eventData:
+          $ref: '#/components/schemas/IMEventData'
+      required:
+        - type
+        - eventData
+    sentIMEventData:
+      type: object
+      properties:
+        dest:
+          $ref: '#/components/schemas/Presence'
+        message:
+          type: string
+        autoResponse:
+          type: boolean
+        timestamp:
+          type: integer
+          format: int32
+      required:
+        - dest
+        - message
+        - timestamp
+    sentIMEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        eventData:
+          $ref: '#/components/schemas/sentIMEventData'
+      required:
+        - type
+        - eventData
+    ClientErrorEventData:
+      type: object
+      properties:
+        source:
+          $ref: '#/components/schemas/Presence'
+        cookie:
+          type: string
+        channel:
+          $ref: '#/components/schemas/IMChannel'
+        code:
+          $ref: '#/components/schemas/ClientError'
+        rejectReason:
+          $ref: '#/components/schemas/RejectReason'
+        errorInfo:
+          type: string
+      required:
+        - source
+        - cookie
+        - channel
+        - code
+    ClientErrorEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        eventData:
+          $ref: '#/components/schemas/ClientErrorEventData'
+      required:
+        - type
+        - eventData
+    OfflineIMEventData:
+      type: object
+      properties:
+        aimId:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int32
+      required:
+        - aimId
+        - message
+        - timestamp
+    OfflineIMEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        eventData:
+          $ref: '#/components/schemas/OfflineIMEventData'
+      required:
+        - type
+        - eventData
+    BuddyListEventData:
+      type: object
+      properties:
+        groups:
+          type: string
+      required:
+        - groups
+    BuddyListEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        eventData:
+          $ref: '#/components/schemas/BuddyListEventData'
+      required:
+        - type
+        - eventData
+    SessionEndedEvent:
+      type: object
+      properties:
+        type:
+          type: string
+      required:
+        - type
+    Event:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/EventType'
+        eventData:
+          type: string
+        seqNum:
+          type: integer
+          format: int32
+      required:
+        - type
+        - eventData
+        - seqNum
+    SendImSubCode:
+      type: object
+      properties:
+        subError:
+          type: integer
+          format: int32
+        subReason:
+          type: string
+      required:
+        - subError
+        - subReason
+    BuddyFeedItem:
+      type: object
+      properties:
+        aimId:
+          type: string
+        title:
+          type: string
+        link:
+          type: string
+        domain:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        pubDate:
+          type: string
+        author:
+          type: string
+        guid:
+          type: string
+      required:
+        - aimId
+        - title
+        - link
+        - domain
+        - description
+        - category
+        - pubDate
+        - author
+        - guid
+    RankedUsersLocation:
+      type: object
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+          format: int32
+        lat:
+          type: number
+          format: float
+        lon:
+          type: number
+          format: float
+      required:
+        - name
+        - count
+        - lat
+        - lon
+    EventStatus:
+      type: object
+      properties:
+        event:
+          type: integer
+          format: int32
+        code:
+          type: integer
+          format: int32
+      required:
+        - event
+        - code
+    AddBuddyResultCode:
+      type: object
+      properties:
+        buddy:
+          type: string
+        resultCode:
+          $ref: '#/components/schemas/AddBuddyResultCodeValue'
+      required:
+        - buddy
+        - resultCode
+    IMConversationLocation:
+      type: object
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+          format: int32
+        age:
+          type: integer
+          format: int32
+        lat1:
+          type: number
+          format: float
+        lon1:
+          type: number
+          format: float
+        lat2:
+          type: number
+          format: float
+        lon2:
+          type: number
+          format: float
+      required:
+        - name
+        - count
+        - age
+        - lat1
+        - lon1
+        - lat2
+        - lon2
+    AIMFightUser:
+      type: object
+      properties:
+        aimId:
+          type: string
+        score:
+          type: integer
+          format: int32
+        rank:
+          type: integer
+          format: int32
+      required:
+        - aimId
+        - score
+        - rank
+    PDNameResult:
+      type: object
+      properties:
+        aimid:
+          type: string
+        statusCode:
+          $ref: '#/components/schemas/PDResultCode'
+      required:
+        - aimid
+        - statusCode
+    PDResults:
+      type: object
+      properties:
+        pdModeResult:
+          type: integer
+          format: int32
+        allowResults:
+          type: string
+        blockResults:
+          type: string
+        IgnoreResults:
+          type: string
+        allowRemoveResults:
+          type: string
+        blockRemoveResults:
+          type: string
+        IgnoreRemoveResults:
+          type: string
+      required:
+        - pdModeResult
+    ChatRoom:
+      type: object
+      properties:
+        roomName:
+          type: string
+        roomId:
+          type: string
+        instanceId:
+          type: integer
+          format: int32
+        description:
+          type: string
+        roomType:
+          $ref: '#/components/schemas/ChatRoomType'
+        categoryId:
+          type: string
+      required:
+        - roomName
+        - roomId
+        - instanceId
+        - description
+        - roomType
+    ChatEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        eventData:
+          $ref: '#/components/schemas/ChatEventData'
+      required:
+        - type
+        - eventData
+    ChatEventData:
+      type: object
+      properties:
+        chatsid:
+          type: string
+        eventType:
+          $ref: '#/components/schemas/ChatEventType'
+        eventData:
+          type: string
+      required:
+        - chatsid
+        - eventType
+        - eventData
