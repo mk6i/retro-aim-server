@@ -19,6 +19,7 @@ import (
 	"github.com/mk6i/retro-aim-server/server/oscar"
 	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/server/toc"
+	"github.com/mk6i/retro-aim-server/server/webapi"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
@@ -419,4 +420,81 @@ func TOC(deps Container) *toc.Server {
 		},
 		toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 	)
+}
+
+// WebAPI creates an HTTP server for the webapi protocol.
+func WebAPI(deps Container) *webapi.Server {
+	logger := deps.logger.With("svc", "webapi")
+	handler := webapi.Handler{
+		AdminService: foodgroup.NewAdminService(
+			deps.sqLiteUserStore,
+			deps.sqLiteUserStore,
+			deps.sqLiteUserStore,
+			deps.inMemorySessionManager,
+			deps.inMemorySessionManager,
+			deps.logger,
+		),
+		AuthService: foodgroup.NewAuthService(
+			deps.cfg,
+			deps.inMemorySessionManager,
+			deps.inMemorySessionManager,
+			deps.chatSessionManager,
+			deps.sqLiteUserStore,
+			deps.hmacCookieBaker,
+			deps.chatSessionManager,
+			deps.sqLiteUserStore,
+			deps.rateLimitClasses,
+		),
+		BuddyListRegistry: deps.sqLiteUserStore,
+		BuddyService: foodgroup.NewBuddyService(
+			deps.inMemorySessionManager,
+			deps.sqLiteUserStore,
+			deps.sqLiteUserStore,
+			deps.inMemorySessionManager,
+			deps.sqLiteUserStore,
+		),
+		CookieBaker:      deps.hmacCookieBaker,
+		DirSearchService: foodgroup.NewODirService(logger, deps.sqLiteUserStore),
+		ICBMService: foodgroup.NewICBMService(
+			deps.sqLiteUserStore,
+			deps.inMemorySessionManager,
+			deps.sqLiteUserStore,
+			deps.sqLiteUserStore,
+			deps.inMemorySessionManager,
+			deps.snacRateLimits,
+		),
+		LocateService: foodgroup.NewLocateService(
+			deps.sqLiteUserStore,
+			deps.inMemorySessionManager,
+			deps.sqLiteUserStore,
+			deps.sqLiteUserStore,
+			deps.inMemorySessionManager,
+		),
+		Logger: logger,
+		OServiceService: foodgroup.NewOServiceService(
+			deps.cfg,
+			deps.inMemorySessionManager,
+			logger,
+			deps.hmacCookieBaker,
+			deps.sqLiteUserStore,
+			deps.sqLiteUserStore,
+			deps.inMemorySessionManager,
+			deps.sqLiteUserStore,
+			deps.rateLimitClasses,
+			deps.snacRateLimits,
+			deps.chatSessionManager,
+		),
+		PermitDenyService: foodgroup.NewPermitDenyService(
+			deps.sqLiteUserStore,
+			deps.sqLiteUserStore,
+			deps.sqLiteUserStore,
+			deps.inMemorySessionManager,
+			deps.inMemorySessionManager,
+		),
+		TOCConfigStore: deps.sqLiteUserStore,
+		ChatService:    foodgroup.NewChatService(deps.chatSessionManager),
+		ChatNavService: foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
+		SNACRateLimits: deps.snacRateLimits,
+	}
+	return webapi.NewServer([]string{"0.0.0.0:8081"}, logger, handler)
 }

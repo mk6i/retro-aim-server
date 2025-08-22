@@ -11,6 +11,8 @@ import (
 
 	"github.com/joho/godotenv"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/mk6i/retro-aim-server/server/webapi"
 )
 
 var (
@@ -70,6 +72,12 @@ func main() {
 	toc := TOC(deps)
 	g.Go(toc.ListenAndServe)
 
+	var webAPI *webapi.Server
+	if os.Getenv("ENABLE_WEBAPI") == "1" {
+		webAPI = WebAPI(deps)
+		g.Go(webAPI.ListenAndServe)
+	}
+
 	select {
 	case <-ctx.Done():
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -78,6 +86,9 @@ func main() {
 		_ = kerb.Shutdown(shutdownCtx)
 		_ = api.Shutdown(shutdownCtx)
 		_ = toc.Shutdown(shutdownCtx)
+		if os.Getenv("ENABLE_WEBAPI") == "1" {
+			_ = webAPI.Shutdown(shutdownCtx)
+		}
 	}
 
 	if err = g.Wait(); err != nil {
