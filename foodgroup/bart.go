@@ -102,3 +102,46 @@ func (s BARTService) RetrieveItem(ctx context.Context, sess *state.Session, inFr
 		},
 	}, nil
 }
+
+func (s BARTService) RetrieveItemV2(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x10_0x06_BARTDownload2Query) ([]wire.SNACMessage, error) {
+	var result []wire.SNACMessage
+
+	for _, id := range inBody.IDs {
+		var icon []byte
+
+		if id.Type == wire.BARTTypesBuddyIcon {
+			if id.HasClearIconHash() {
+				icon = blankGIF
+			} else {
+				var err error
+				if icon, err = s.buddyIconManager.BuddyIcon(ctx, id.Hash); err != nil {
+					return nil, err
+				}
+			}
+		}
+
+		result = append(result, wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.BART,
+				SubGroup:  wire.BARTDownloadReply,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNAC_0x10_0x07_BARTDownload2Reply{
+				ScreenName: inBody.ScreenName,
+				ReplyID: wire.BartQueryReplyID{
+					QueryID: id,
+					Code:    0x00, // found
+					ReplyID: wire.BARTID{
+						Type: id.Type,
+						BARTInfo: wire.BARTInfo{
+							Flags: wire.BARTFlagsCustom,
+							Hash:  id.Hash,
+						},
+					},
+				},
+				Data: icon,
+			},
+		})
+	}
+	return result, nil
+}

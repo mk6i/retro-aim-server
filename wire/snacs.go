@@ -1400,9 +1400,30 @@ type SNAC_0x10_0x04_BARTDownloadQuery struct {
 	BARTID
 }
 
+type BartIDsWName struct {
+	ScreenName string   `oscar:"len_prefix=uint8"`
+	IDs        []BARTID `oscar:"len_prefix=uint8"`
+}
+type SNAC_0x10_0x06_BARTDownload2Query struct {
+	ScreenName string   `oscar:"len_prefix=uint8"`
+	IDs        []BARTID `oscar:"count_prefix=uint8"`
+}
+
 type SNAC_0x10_0x05_BARTDownloadReply struct {
 	ScreenName string `oscar:"len_prefix=uint8"`
 	BARTID     BARTID
+	Data       []byte `oscar:"len_prefix=uint16"`
+}
+
+type BartQueryReplyID struct {
+	QueryID BARTID
+	Code    uint8
+	ReplyID BARTID
+}
+
+type SNAC_0x10_0x07_BARTDownload2Reply struct {
+	ScreenName string `oscar:"len_prefix=uint8"`
+	ReplyID    BartQueryReplyID
 	Data       []byte `oscar:"len_prefix=uint16"`
 }
 
