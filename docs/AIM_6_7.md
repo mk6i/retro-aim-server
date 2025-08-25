@@ -1,6 +1,6 @@
-# Windows AIM 6.x Client Setup
+# Windows AIM 6.x/7.x Client Setup
 
-This guide explains how to install and configure **AIM 6.x** for use with **Retro AIM Server**.
+This guide explains how to install and configure **AIM 6.x and 7.x** for use with **Retro AIM Server**.
 
 <p align="center">
    <img alt="screenshot of AIM sign-on screen" src="https://github.com/user-attachments/assets/057c72fe-3d60-4dad-a602-8ff95c4fcbe1">
@@ -9,7 +9,7 @@ This guide explains how to install and configure **AIM 6.x** for use with **Retr
 Installation guides are available for the following versions:
 
 - [AIM 6.0-6.1](#aim-60-61-setup) (BUCP auth)
-- [AIM 6.2-6.5](#aim-6265312-setup) (Kerberos auth)
+- [AIM 6.2-7.5](#aim-62-75-setup) (Kerberos auth)
 
 ## AIM 6.0-6.1 Setup
 
@@ -69,11 +69,11 @@ To point the client to your Retro AIM Server:
 
 6. Save the file.
 
-## AIM 6.2–6.5.3.12 Setup
+## AIM 6.2-7.5 Setup
 
 ### Installation
 
-1. Download an AIM 6.2–6.5 client (recommended **AIM 6.5.3.12**) from the  
+1. Download an AIM 6.x or 7.x client (recommended **6.9.17.2** or **7.5.8.2**) from the  
    [NINA wiki](https://wiki.nina.chat/wiki/Clients/AOL_Instant_Messenger#Windows).
 2. Run the installer and complete the installation.
 3. Close the AIM application.
