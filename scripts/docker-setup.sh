@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
 # docker-setup.sh
-# POSIX-compatible installer for Retro AIM Server Docker Setup
+# Cross-platform installer for Retro AIM Server Docker Setup
+# Compatible with Linux and macOS
 
 set -e
+set -u  # Exit on undefined variables
 
 # ANSI color codes (fallback for POSIX shells that support it)
 RED='\033[0;31m'
@@ -12,30 +14,32 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-log()    { printf "%b\n" "${CYAN}[*] $1${NC}"; }
-success(){ printf "%b\n" "${GREEN}[✔] $1${NC}"; }
-warn()   { printf "%b\n" "${YELLOW}[!] $1${NC}"; }
-error()  { printf "%b\n" "${RED}[✖] $1${NC}"; return 1; }
+log()    { printf "%b\n" "${CYAN}[*] $1${NC}" >&2; }
+success(){ printf "%b\n" "${GREEN}[✔] $1${NC}" >&2; }
+warn()   { printf "%b\n" "${YELLOW}[!] $1${NC}" >&2; }
+error()  { printf "%b\n" "${RED}[✖] $1${NC}" >&2; return 1; }
 
 prompt() {
     local varname=$1
     local prompt_text=$2
 
-    if [ -t 0 ]; then
-        # Interactive shell
-        printf "%s" "$prompt_text"
+    if [ -t 0 ] && [ -t 1 ]; then
+        # Interactive shell with both stdin and stdout connected to terminal
+        printf "%b" "$prompt_text"
         read -r "$varname"
     else
-        # Non-interactive shell (like curl | bash)
-        printf "%s" "$prompt_text" > /dev/tty
+        # Non-interactive shell (like curl | bash) or output redirected
+        printf "%b" "$prompt_text" >&2
         read -r "$varname" < /dev/tty
     fi
 
-    if [ -z "${!varname}" ]; then
-        printf "%b\n" "${RED}[✖] Input required but not provided.${NC}" > /dev/tty
+    # Use eval for POSIX-compatible indirect variable access
+    local value
+    eval "value=\$$varname"
+    if [ -z "$value" ]; then
+        printf "%b\n" "${RED}[✖] Input required but not provided.${NC}" >&2
         return 1
     fi
-    printf "\n" > /dev/tty
 }
 
 check_os() {
@@ -44,7 +48,8 @@ check_os() {
             : # supported
             ;;
         *)
-            error "Unsupported OS: $(uname -s)" || return 1
+            error "Unsupported OS: $(uname -s)"
+            return 1
             ;;
     esac
 }
@@ -52,9 +57,23 @@ check_os() {
 check_prereqs() {
     log "Checking for required tools..."
     for cmd in git docker make; do
-        command -v "$cmd" >/dev/null 2>&1 || error "Missing required command: $cmd" || return 1
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            error "Missing required command: $cmd"
+            return 1
+        fi
     done
     success "All prerequisites are installed."
+}
+
+stop_existing_services() {
+    log "Stopping any existing Docker Compose services..."
+    if docker compose ps -q 2>/dev/null | grep -q .; then
+        log "Found running services, stopping them..."
+        docker compose down 2>/dev/null || true
+        success "Stopped existing services."
+    else
+        log "No running services found."
+    fi
 }
 
 resolve_repo_root() {
@@ -69,54 +88,82 @@ resolve_repo_root() {
             warn "Directory '$TMP_DIR' is already a git repo. Using existing directory."
         else
             log "Cloning Retro AIM Server repository..."
-            git clone https://github.com/mk6i/retro-aim-server.git "$TMP_DIR" || error "Failed to clone repository" || return 1
+            if ! git clone https://github.com/mk6i/retro-aim-server.git "$TMP_DIR"; then
+                error "Failed to clone repository"
+                return 1
+            fi
         fi
         REPO_ROOT=$(cd "$TMP_DIR" && pwd)
     fi
-    cd "$REPO_ROOT" || error "Failed to enter repository directory" || return 1
+    if ! cd "$REPO_ROOT"; then
+        error "Failed to enter repository directory"
+        return 1
+    fi
 }
 
 build_images() {
     log "Building Docker images..."
-    make docker-images || error "Docker image build failed" || return 1
+    if ! make docker-images; then
+        error "Docker image build failed"
+        return 1
+    fi
     success "Docker images built successfully."
 }
 
 setup_ssl_cert() {
-    prompt OSCAR_HOST "Enter the OSCAR_HOST (e.g., ras.dev): " || return 1
+    if ! prompt OSCAR_HOST "Enter the OSCAR_HOST (e.g., ras.dev): "; then
+        return 1
+    fi
 
     log "SSL certificate options:"
     printf "%b\n" "${YELLOW}1) Generate self-signed certificate"
     printf "%b"   "2) Use existing PEM certificate at certs/server.pem${NC}\n"
 
-    prompt cert_choice "${CYAN}Choose an option [1/2]: ${NC}" || return 1
+    if ! prompt cert_choice "${CYAN}Choose an option [1/2]: ${NC}"; then
+        return 1
+    fi
 
     case "$cert_choice" in
         1)
             log "Generating self-signed SSL certificate for $OSCAR_HOST..."
-            rm -rf certs/*
-            OSCAR_HOST="$OSCAR_HOST" docker compose run --rm cert-gen || error "Failed to generate self-signed cert" || return 1
+            make clean-certs
+            log "OSCAR_HOST set to ${OSCAR_HOST}"
+            if ! make docker-cert OSCAR_HOST="$OSCAR_HOST"; then
+                error "Failed to generate self-signed cert"
+                return 1
+            fi
             success "Self-signed certificate generated."
             ;;
         2)
-            [ -f "certs/server.pem" ] || error "certs/server.pem not found. Please place your PEM file there and rerun." || return 1
-            success "Using existing certificate at certs/server.pem."
+            if [ ! -f "certs/server.pem" ]; then
+                error "certs/server.pem not found. Please place your PEM file there and rerun."
+                return 1
+            else
+                success "Using existing certificate at certs/server.pem."
+            fi
             ;;
         *)
-            error "Invalid option for certificate setup." || return 1
+            error "Invalid option for certificate setup."
+            return 1
             ;;
     esac
 }
 
 generate_nss() {
     log "Generating NSS certificate database..."
-    make docker-nss || error "Failed to generate NSS cert DB" || return 1
+    if ! make docker-nss; then
+        error "Failed to generate NSS cert DB"
+        return 1
+    fi
     success "NSS certificate database created at certs/nss/"
 }
 
 start_server() {
     log "Starting Retro AIM Server with hostname $OSCAR_HOST..."
-    make docker-run OSCAR_HOST="$OSCAR_HOST" || error "Failed to start server" || return 1
+    if ! make docker-run OSCAR_HOST="$OSCAR_HOST"; then
+        error "Failed to start server"
+        return 1
+    fi
     success "Retro AIM Server is running."
 }
 
@@ -137,17 +184,18 @@ ${GREEN}3. For AIM 6.x client setup instructions, see:
    https://github.com/mk6i/retro-aim-server/blob/main/docs/AIM6.md#aim-6265312-setup
 
 Enjoy!
-${NC}"
+${NC}" >&2
 }
 
 main() {
-    check_os || return 1
-    check_prereqs || return 1
-    resolve_repo_root || return 1
-    build_images || return 1
-    setup_ssl_cert || return 1
-    generate_nss || return 1
-    start_server || return 1
+    check_os
+    check_prereqs
+    resolve_repo_root
+    stop_existing_services
+    build_images
+    setup_ssl_cert
+    generate_nss
+    start_server
     final_steps
 }
 
