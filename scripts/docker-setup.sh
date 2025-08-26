@@ -160,7 +160,7 @@ generate_nss() {
 
 start_server() {
     log "Starting Retro AIM Server with hostname $OSCAR_HOST..."
-    if ! make docker-run OSCAR_HOST="$OSCAR_HOST"; then
+    if ! make docker-run-bg OSCAR_HOST="$OSCAR_HOST"; then
         error "Failed to start server"
         return 1
     fi
