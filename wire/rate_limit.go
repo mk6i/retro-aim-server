@@ -97,6 +97,60 @@ func DefaultRateLimitClasses() RateLimitClasses {
 	}
 }
 
+// WarnedRateLimitClasses returns the default SNAC rate limit classes used when
+// people are warned.
+func WarnedRateLimitClasses() RateLimitClasses {
+	return RateLimitClasses{
+		classes: [5]RateClass{
+			{
+				ID:              1,
+				WindowSize:      80,
+				ClearLevel:      2500,
+				AlertLevel:      2000,
+				LimitLevel:      1500,
+				DisconnectLevel: 800,
+				MaxLevel:        6000,
+			},
+			{
+				ID:              2,
+				WindowSize:      80,
+				ClearLevel:      3000,
+				AlertLevel:      2000,
+				LimitLevel:      1500,
+				DisconnectLevel: 1000,
+				MaxLevel:        6000,
+			},
+			{
+				ID:              3,
+				WindowSize:      20,
+				ClearLevel:      5100,
+				AlertLevel:      5000,
+				LimitLevel:      4000,
+				DisconnectLevel: 3000,
+				MaxLevel:        6000,
+			},
+			{
+				ID:              4,
+				WindowSize:      20,
+				ClearLevel:      5500,
+				AlertLevel:      5300,
+				LimitLevel:      4200,
+				DisconnectLevel: 3000,
+				MaxLevel:        8000,
+			},
+			{
+				ID:              5,
+				WindowSize:      10,
+				ClearLevel:      5500,
+				AlertLevel:      5300,
+				LimitLevel:      4200,
+				DisconnectLevel: 3000,
+				MaxLevel:        8000,
+			},
+		},
+	}
+}
+
 // RateLimitClasses stores a fixed set of rate limit class definitions.
 //
 // Each RateClass defines thresholds and behavior for computing moving-average-based

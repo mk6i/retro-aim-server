@@ -317,6 +317,7 @@ func (s oscarServer) receiveSessMessages(ctx context.Context, sess *state.Sessio
 			if sess.Warning() > 0 {
 				sess.IncrementWarning(-50)
 				_ = s.BroadcastBuddyArrived(ctx, sess)
+				sess.ScaleRateLimit(3, -1000)
 			}
 		case m := <-sess.ReceiveMessage():
 			// forward a notification sent from another client to this client

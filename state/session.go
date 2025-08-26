@@ -479,6 +479,21 @@ func (s *Session) SubscribeRateLimits(classes []wire.RateLimitClassID) {
 	}
 }
 
+func (s *Session) ScaleRateLimit(classID wire.RateLimitClassID, level int32) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	///*
+	//   DisconnectLevel: int32(float64(rc.DisconnectLevel) * f),
+	//   LimitLevel:      int32(float64(rc.LimitLevel) * f),
+	//   AlertLevel:      int32(float64(rc.AlertLevel) * f),
+	//   ClearLevel:      int32(float64(rc.ClearLevel) * f),
+	//*/
+	s.rateByClassID[classID-1].LimitLevel += level
+	s.rateByClassID[classID-1].AlertLevel += level
+	//s.rateByClassID[classID-1].ClearLevel += 1000
+}
+
 // ObserveRateChanges updates rate limit states for all known classes and returns
 // any classes and class states that have changed since the previous observation.
 func (s *Session) ObserveRateChanges(now time.Time) (classDelta []RateClassState, stateDelta []RateClassState) {
