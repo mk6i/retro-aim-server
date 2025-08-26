@@ -114,6 +114,15 @@ setup_ssl_cert() {
     if ! prompt OSCAR_HOST "Enter the OSCAR_HOST (e.g., ras.dev): "; then
         return 1
     fi
+    
+    # Validate OSCAR_HOST format (basic hostname validation)
+    if ! echo "$OSCAR_HOST" | grep -qE '^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$'; then
+        error "Invalid hostname format: $OSCAR_HOST"
+        return 1
+    fi
+    
+    # Export OSCAR_HOST so docker-compose can use it
+    export OSCAR_HOST
 
     log "SSL certificate options:"
     printf "%b\n" "${YELLOW}1) Generate self-signed certificate"
@@ -188,16 +197,16 @@ ${NC}" >&2
 }
 
 main() {
-    check_os
-    check_prereqs
-    resolve_repo_root
-    stop_existing_services
-    build_images
-    setup_ssl_cert
-    generate_nss
-    start_server
+    check_os || return 1
+    check_prereqs || return 1
+    resolve_repo_root || return 1
+    stop_existing_services || return 1
+    build_images || return 1
+    setup_ssl_cert || return 1
+    generate_nss || return 1
+    start_server || return 1
     final_steps
 }
 
-main "$@" || true
+main "$@"
 
