@@ -64,7 +64,7 @@ type Session struct {
 	signonTime          time.Time
 	stopCh              chan struct{}
 	uin                 uint32
-	warning             uint16
+	warning             int16
 	userInfoBitmask     uint16
 	userStatusBitmask   uint32
 	clientID            string
@@ -188,7 +188,7 @@ func (s *Session) SetUserStatusBitmask(bitmask uint32) {
 
 // IncrementWarning increments the user's warning level. To decrease, pass a
 // negative increment value.
-func (s *Session) IncrementWarning(incr uint16) {
+func (s *Session) IncrementWarning(incr int16) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.warning += incr
@@ -336,7 +336,7 @@ func (s *Session) TLVUserInfo() wire.TLVUserInfo {
 	defer s.mutex.RUnlock()
 	return wire.TLVUserInfo{
 		ScreenName:   string(s.displayScreenName),
-		WarningLevel: s.warning,
+		WarningLevel: uint16(s.warning),
 		TLVBlock: wire.TLVBlock{
 			TLVList: s.userInfo(),
 		},
@@ -399,7 +399,7 @@ func (s *Session) Warning() uint16 {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	var w uint16
-	w = s.warning
+	w = uint16(s.warning)
 	return w
 }
 

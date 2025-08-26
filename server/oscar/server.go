@@ -313,6 +313,11 @@ func (s oscarServer) receiveSessMessages(ctx context.Context, sess *state.Sessio
 		select {
 		case <-ctx.Done():
 			return
+		case <-time.After(time.Minute * 5):
+			if sess.Warning() > 0 {
+				sess.IncrementWarning(-50)
+				_ = s.BroadcastBuddyArrived(ctx, sess)
+			}
 		case m := <-sess.ReceiveMessage():
 			// forward a notification sent from another client to this client
 			if err := flapc.SendSNAC(m.Frame, m.Body); err != nil {

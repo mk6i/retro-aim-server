@@ -314,7 +314,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 	if inBody.SendAs == 1 {
 		increase = evilDeltaAnon
 	}
-	recipSess.IncrementWarning(increase)
+	recipSess.IncrementWarning(int16(increase))
 
 	notif := wire.SNAC_0x01_0x10_OServiceEvilNotification{
 		NewEvil: recipSess.Warning(),
