@@ -49,8 +49,9 @@ Once installed, configure AIM to connect to Retro AIM Server.
    <p>
       <img width="662" alt="screenshot of AIM preferences window" src="https://github.com/mk6i/mkdb/assets/2894330/c7cfcaa4-8132-4b57-b5c9-7643c99cbda2">
    </p>
-3. In the `Host` field, enter the value of `OSCAR_HOST` found in `config/settings`. In the `Port` field, enter the
-   value of `AUTH_PORT` found in `config/settings.env`.
+3. Configure the server host and port fields according to the `OSCAR_ADVERTISED_LISTENERS_PLAIN` configuration found in
+   `config/settings.env`. For example, if `OSCAR_ADVERTISED_LISTENERS_PLAIN=LOCAL://127.0.0.1:5190`, set `Host` to
+   `127.0.0.1` and `Port` to `5190`.
    <p>
       <img width="618" alt="screenshot of AIM host dialog" src="https://github.com/mk6i/mkdb/assets/2894330/da17c457-a773-4b82-b4ba-cb81f9a2e085">
    </p>

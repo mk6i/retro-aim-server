@@ -23,8 +23,8 @@ func TestServer_handleTOCRequest_serverShutdown(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		sv := Server{
-			BOSProxy: OSCARProxy{},
-			Logger:   slog.Default(),
+			bosProxy: testOSCARProxy(t),
+			logger:   slog.Default(),
 		}
 
 		serverReader, _ := io.Pipe()
@@ -34,7 +34,7 @@ func TestServer_handleTOCRequest_serverShutdown(t *testing.T) {
 			_ = serverReader.Close()
 		}
 		sess := newTestSession("me")
-		err := sv.handleTOCRequest(ctx, closeConn, sess, nil, fc)
+		err := sv.handleTOCRequest(ctx, closeConn, sess, NewChatRegistry(), fc)
 		assert.True(t, errors.Is(err, errTOCProcessing) || errors.Is(err, errServerWrite))
 	}()
 
@@ -61,10 +61,10 @@ func TestServer_handleTOCRequest_clientReadDisconnect(t *testing.T) {
 		fc := wire.NewFlapClient(0, serverReader, nil)
 
 		sv := Server{
-			BOSProxy: OSCARProxy{},
-			Logger:   slog.Default(),
+			bosProxy: testOSCARProxy(t),
+			logger:   slog.Default(),
 		}
-		err := sv.handleTOCRequest(context.Background(), closeConn, sess, nil, fc)
+		err := sv.handleTOCRequest(context.Background(), closeConn, sess, NewChatRegistry(), fc)
 		assert.ErrorIs(t, err, errClientReq)
 		assert.ErrorIs(t, err, io.ErrClosedPipe)
 	}()
@@ -94,10 +94,10 @@ func TestServer_handleTOCRequest_sessClose(t *testing.T) {
 		}
 
 		sv := Server{
-			BOSProxy: OSCARProxy{},
-			Logger:   slog.Default(),
+			bosProxy: testOSCARProxy(t),
+			logger:   slog.Default(),
 		}
-		err := sv.handleTOCRequest(context.Background(), closeConn, sess, nil, fc)
+		err := sv.handleTOCRequest(context.Background(), closeConn, sess, NewChatRegistry(), fc)
 		assert.ErrorIs(t, err, errTOCProcessing)
 		assert.ErrorIs(t, err, errDisconnect)
 	}()
@@ -126,12 +126,10 @@ func TestServer_handleTOCRequest_replyFailure(t *testing.T) {
 		fc := wire.NewFlapClient(0, serverReader, serverWriter)
 
 		sv := Server{
-			BOSProxy: OSCARProxy{
-				Logger: slog.Default(),
-			},
-			Logger: slog.Default(),
+			bosProxy: testOSCARProxy(t),
+			logger:   slog.Default(),
 		}
-		err := sv.handleTOCRequest(context.Background(), closeConn, sess, nil, fc)
+		err := sv.handleTOCRequest(context.Background(), closeConn, sess, NewChatRegistry(), fc)
 		assert.ErrorIs(t, err, errServerWrite)
 		assert.ErrorIs(t, err, io.ErrClosedPipe)
 	}()
@@ -165,12 +163,10 @@ func TestServer_handleTOCRequest_happyPath(t *testing.T) {
 		}
 		fc := wire.NewFlapClient(0, serverReader, serverWriter)
 		sv := Server{
-			BOSProxy: OSCARProxy{
-				Logger: slog.Default(),
-			},
-			Logger: slog.Default(),
+			bosProxy: testOSCARProxy(t),
+			logger:   slog.Default(),
 		}
-		err := sv.handleTOCRequest(context.Background(), closeConn, newTestSession("me"), nil, fc)
+		err := sv.handleTOCRequest(context.Background(), closeConn, newTestSession("me"), NewChatRegistry(), fc)
 		assert.ErrorIs(t, err, errClientReq)
 		assert.ErrorIs(t, err, io.ErrClosedPipe)
 	}()

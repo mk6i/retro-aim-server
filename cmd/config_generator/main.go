@@ -1,7 +1,7 @@
 // This program generates env config scripts from config.Config struct tags for
 // unix and windows platforms.
-// Usage: go run ./cmd/config_generator [platform] [filename]
-// Example: go run ./cmd/config_generator unix settings.env
+// Usage: go run ./cmd/config_generator [platform] [filename] [value_tag]
+// Example: go run ./cmd/config_generator unix settings.basic.env basic
 package main
 
 import (
@@ -32,18 +32,22 @@ var platformKeywords = map[string]struct {
 
 func main() {
 	args := os.Args[1:]
-	if len(args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run cmd/config_generator [platform] [filename]")
+	if len(args) < 3 {
+		fmt.Fprintln(os.Stderr, "usage: go run cmd/config_generator [platform] [filename] [value_tag]")
 		os.Exit(1)
 	}
 
-	keywords, ok := platformKeywords[args[0]]
+	platform := args[0]
+	filename := args[1]
+	valueTag := args[2] // e.g., "basic", "ssl"
+
+	keywords, ok := platformKeywords[platform]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "unable to find platform `%s`\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "unable to find platform `%s`\n", platform)
 		os.Exit(1)
 	}
-	fmt.Println("writing to", args[1])
-	f, err := os.Create(args[1])
+	fmt.Println("writing to", filename)
+	f, err := os.Create(filename)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error creating file: %s\n", err.Error())
 		os.Exit(1)
@@ -53,6 +57,16 @@ func main() {
 	configType := reflect.TypeOf(config.Config{})
 	for i := 0; i < configType.NumField(); i++ {
 		field := configType.Field(i)
+
+		// Check if field is optional and has empty value
+		required := field.Tag.Get("required")
+		val := field.Tag.Get(valueTag) // Use the specified value tag
+
+		// Skip optional fields with empty values
+		if required == "false" && val == "" {
+			continue
+		}
+
 		comment := field.Tag.Get("description")
 		if err := writeComment(f, comment, 80, keywords.comment); err != nil {
 			fmt.Fprintf(os.Stderr, "error writing to file: %s\n", err.Error())
@@ -60,7 +74,6 @@ func main() {
 		}
 
 		varName := field.Tag.Get("envconfig")
-		val := field.Tag.Get("val")
 		if err := writeAssignment(f, keywords.assignment, varName, val); err != nil {
 			fmt.Fprintf(os.Stderr, "error writing to file: %s\n", err.Error())
 			os.Exit(1)

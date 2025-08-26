@@ -21,7 +21,7 @@ The following features are supported:
 
 **AIM**
 
-- [x] Windows AIM Clients: v1.x, v2.x, v3.x, v4.x, [v5.x](./docs/CLIENT.md), [v6.0-v6.5.3.12](./docs/AIM6.md)
+- [x] Windows AIM Clients: [v1.x-v5.x](./docs/CLIENT.md), [v6.x-v7.x](docs/AIM_6_7.md)
 - [x] Away Messages
 - [x] Buddy Icons (v4.x, v5.x)
 - [x] Buddy List

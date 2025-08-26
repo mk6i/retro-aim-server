@@ -14,18 +14,66 @@ packages:
       OnlineNotifier:
         config:
           filename: "mock_online_notifier_test.go"
-      ResponseWriter:
-        config:
-          inpackage: False
-          filename: "mock_response_writer_test.go"
-          dir: "./server/oscar/handler"
-          outpkg: "handler"
       UserManager:
         config:
           filename: "mock_user_manager_test.go"
       RateLimitUpdater:
         config:
           filename: "mock_rate_limit_updater_test.go"
+      BuddyListRegistry:
+        config:
+          filename: "mock_buddy_list_registry_test.go"
+      DepartureNotifier:
+        config:
+          filename: "mock_departure_notifier_test.go"
+      ChatSessionManager:
+        config:
+          filename: "mock_chat_session_manager_test.go"
+      AdminService:
+        config:
+          filename: "mock_admin_service_test.go"
+      BARTService:
+        config:
+          filename: "mock_bart_service_test.go"
+      BuddyService:
+        config:
+          filename: "mock_buddy_service_test.go"
+      ChatNavService:
+        config:
+          filename: "mock_chat_nav_service_test.go"
+      ChatService:
+        config:
+          filename: "mock_chat_service_test.go"
+      FeedbagService:
+        config:
+          filename: "mock_feedbag_service_test.go"
+      ICBMService:
+        config:
+          filename: "mock_icbm_service_test.go"
+      ICQService:
+        config:
+          filename: "mock_icq_service_test.go"
+      LocateService:
+        config:
+          filename: "mock_locate_service_test.go"
+      ODirService:
+        config:
+          filename: "mock_odir_service_test.go"
+      OServiceService:
+        config:
+          filename: "mock_oservice_service_test.go"
+      PermitDenyService:
+        config:
+          filename: "mock_permit_deny_service_test.go"
+      ResponseWriter:
+        config:
+          filename: "mock_response_writer_test.go"
+      StatsService:
+        config:
+          filename: "mock_stats_service_test.go"
+      UserLookupService:
+        config:
+          filename: "mock_user_lookup_service_test.go"
   github.com/mk6i/retro-aim-server/server/http:
     interfaces:
       AccountManager:
@@ -64,50 +112,6 @@ packages:
       UserManager:
         config:
           filename: "mock_user_manager_test.go"
-  github.com/mk6i/retro-aim-server/server/oscar/handler:
-    interfaces:
-      AdminService:
-        config:
-          filename: "mock_admin_service_test.go"
-      BARTService:
-        config:
-          filename: "mock_bart_service_test.go"
-      BuddyService:
-        config:
-          filename: "mock_buddy_service_test.go"
-      ChatNavService:
-        config:
-          filename: "mock_chat_nav_service_test.go"
-      ChatService:
-        config:
-          filename: "mock_chat_service_test.go"
-      FeedbagService:
-        config:
-          filename: "mock_feedbag_service_test.go"
-      ICBMService:
-        config:
-          filename: "mock_icbm_service_test.go"
-      ICQService:
-        config:
-          filename: "mock_icq_service_test.go"
-      LocateService:
-        config:
-          filename: "mock_locate_service_test.go"
-      ODirService:
-        config:
-          filename: "mock_odir_service_test.go"
-      OServiceService:
-        config:
-          filename: "mock_oservice_service_test.go"
-      PermitDenyService:
-        config:
-          filename: "mock_permit_deny_service_test.go"
-      StatsService:
-        config:
-          filename: "mock_stats_service_test.go"
-      UserLookupService:
-        config:
-          filename: "mock_user_lookup_service_test.go"
   github.com/mk6i/retro-aim-server/foodgroup:
     interfaces:
       AccountManager:
@@ -208,3 +212,8 @@ packages:
       CookieBaker:
         config:
           filename: "mock_cookie_baker_test.go"
+  github.com/mk6i/retro-aim-server/server/kerberos:
+    interfaces:
+      AuthService:
+        config:
+          filename: "mock_auth_test.go"

@@ -9,11 +9,17 @@ This guide explains how to download, configure and run Retro AIM Server on Windo
 
 2. **Configure Server Address**
 
-   Open `settings.env` (right-click, `edit in notepad`) and set `OSCAR_HOST` to a hostname that AIM clients can connect
-   to. The default setting is `127.0.0.1`, which is enough to connect clients on the same PC.
+   Open `settings.env` (right-click, `edit in notepad`) and set the default listener in `OSCAR_ADVERTISED_LISTENERS_PLAIN` to
+   a hostname and port that the AIM clients can connect
+   to. If you are running the AIM client and server on the same machine, you don't need to change the default value.
+
+   The format is `[NAME]://[HOSTNAME]:[PORT]` where:
+    - `LOCAL` is the listener name (can be any name you choose, as long as it matches the `OSCAR_LISTENERS` config)
+    - `127.0.0.1` is the hostname clients connect to
+    - `5190` is the port number clients connect to
 
    In order to connect AIM clients on your LAN (including VMs with bridged networking), you can find the appropriate IP
-   address by running `ipconfig` from the Command Prompt.
+   address by running `ipconfig` from the Command Prompt and use that IP instead of `127.0.0.1`.
 
 3. **Start the Application**
 
@@ -41,8 +47,8 @@ This guide explains how to download, configure and run Retro AIM Server on Windo
 4. **Test**
 
    To do a quick sanity check, start an AIM client, sign in to the server, and send yourself an instant message.
-   Configure the AIM client to connect to the host set in `OSCAR_HOST` in `settings.env`. (If you didn't change the
-   config, the address is `127.0.0.1`.)
+   Configure the AIM client to connect to the host and port from `OSCAR_ADVERTISED_LISTENERS_PLAIN` in `settings.env`. If
+   using the default server setting, set host to `127.0.0.1` and port `5190`.
 
    See the [Client Configuration Guide](./CLIENT.md) for more detail on setting up the AIM client.
 

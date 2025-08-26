@@ -13,6 +13,7 @@ import (
 //
 
 const (
+	BOS         uint16 = 0x0000
 	OService    uint16 = 0x0001
 	Locate      uint16 = 0x0002
 	Buddy       uint16 = 0x0003
@@ -84,15 +85,16 @@ const (
 //
 
 const (
-	LoginTLVTagsScreenName          uint16 = 0x01
-	LoginTLVTagsRoastedPassword     uint16 = 0x02
-	LoginTLVTagsClientIdentity      uint16 = 0x03
-	LoginTLVTagsReconnectHere       uint16 = 0x05
-	LoginTLVTagsAuthorizationCookie uint16 = 0x06
-	LoginTLVTagsErrorSubcode        uint16 = 0x08
-	LoginTLVTagsPasswordHash        uint16 = 0x25
-	LoginTLVTagsRoastedTOCPassword  uint16 = 0x1337
-	LoginTLVTagsPlaintextPassword   uint16 = 0x1338
+	LoginTLVTagsScreenName              uint16 = 0x01
+	LoginTLVTagsRoastedPassword         uint16 = 0x02
+	LoginTLVTagsClientIdentity          uint16 = 0x03
+	LoginTLVTagsReconnectHere           uint16 = 0x05
+	LoginTLVTagsAuthorizationCookie     uint16 = 0x06
+	LoginTLVTagsErrorSubcode            uint16 = 0x08
+	LoginTLVTagsPasswordHash            uint16 = 0x25
+	LoginTLVTagsRoastedKerberosPassword uint16 = 0x1335
+	LoginTLVTagsRoastedTOCPassword      uint16 = 0x1337
+	LoginTLVTagsPlaintextPassword       uint16 = 0x1338
 )
 
 const (
@@ -216,9 +218,15 @@ const (
 	OServiceTLVTagsGroupID       uint16 = 0x0D
 	OServiceTLVTagsSSLCertName   uint16 = 0x8D
 	OServiceTLVTagsSSLState      uint16 = 0x8E
+	OserviceTLVTagsSSLUseSSL     uint16 = 0x8C
 
 	OServiceDiscErrNewLogin   uint8 = 0x01
 	OServiceDiscErrAccDeleted uint8 = 0x02
+
+	OServiceServiceResponseSSLStateNotUsed uint8 = 0x00 // SSL is not supported or not requested for this connection
+	OServiceServiceResponseSSLStateUse     uint8 = 0x01 // SSL is being used
+	OServiceServiceResponseSSLStateResume  uint8 = 0x02 // SSL is being used and SSL resume is supported if desired
+
 )
 
 type SNAC_0x01_0x02_OServiceClientOnline struct {
@@ -2172,6 +2180,9 @@ const (
 	KerberosTLVBOSServerInfo uint16 = 0x0003
 	KerberosTLVHostname      uint16 = 0x0005
 	KerberosTLVCookie        uint16 = 0x0006
+	KerberosTLVConnSettings  uint16 = 0x008E
+
+	KerberosConnUseSSL uint16 = 0x0002
 
 	KerberosErrAuthFailure uint16 = 0x0401
 )
@@ -2309,13 +2320,11 @@ type KerberosLoginRequestTicket struct {
 	// Flags contains unknown flags.
 	Flags uint32
 
-	// PwdLen is the length (in bytes) of the following Password string.
-	// The field is kept explicit even though the struct tag also carries
-	// the length-prefix rule.
-	PwdLen uint16
+	// Unknown is an unknown field.
+	Unknown uint16
 
 	// Password holds the user’s password.
-	Password string `oscar:"len_prefix=uint16"`
+	Password []byte `oscar:"len_prefix=uint16"`
 
 	// PasswordMetadata may hold additional metadata about the password.
 	PasswordMetadata TLVBlock

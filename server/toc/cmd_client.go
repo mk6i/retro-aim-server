@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mk6i/retro-aim-server/config"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
@@ -114,23 +115,22 @@ func (c *ChatRegistry) Sessions() []*state.Session {
 //   - Receives incoming messages from the OSCAR server and translates them into
 //     TOC responses for the client.
 type OSCARProxy struct {
-	AdminService        AdminService
-	AuthService         AuthService
-	BuddyListRegistry   BuddyListRegistry
-	BuddyService        BuddyService
-	ChatNavService      ChatNavService
-	ChatService         ChatService
-	CookieBaker         CookieBaker
-	DirSearchService    DirSearchService
-	ICBMService         ICBMService
-	LocateService       LocateService
-	Logger              *slog.Logger
-	OServiceServiceBOS  OServiceService
-	OServiceServiceChat OServiceService
-	PermitDenyService   PermitDenyService
-	TOCConfigStore      TOCConfigStore
-	SNACRateLimits      wire.SNACRateLimits
-	HTTPIPRateLimiter   *IPRateLimiter
+	AdminService      AdminService
+	AuthService       AuthService
+	BuddyListRegistry BuddyListRegistry
+	BuddyService      BuddyService
+	ChatNavService    ChatNavService
+	ChatService       ChatService
+	CookieBaker       CookieBaker
+	DirSearchService  DirSearchService
+	ICBMService       ICBMService
+	LocateService     LocateService
+	Logger            *slog.Logger
+	OServiceService   OServiceService
+	PermitDenyService PermitDenyService
+	TOCConfigStore    TOCConfigStore
+	SNACRateLimits    wire.SNACRateLimits
+	HTTPIPRateLimiter *IPRateLimiter
 }
 
 // RecvClientCmd processes a client TOC command and returns a server reply.
@@ -473,7 +473,7 @@ func (s OSCARProxy) ChatAccept(
 			},
 		},
 	}
-	svcReqReply, err := s.OServiceServiceBOS.ServiceRequest(ctx, me, wire.SNACFrame{}, svcReqSNAC)
+	svcReqReply, err := s.OServiceService.ServiceRequest(ctx, wire.BOS, me, wire.SNACFrame{}, svcReqSNAC, config.Listener{})
 	if err != nil {
 		return 0, s.runtimeErr(ctx, fmt.Errorf("OServiceServiceBOS.ServiceRequest: %w", err))
 	}
@@ -491,7 +491,10 @@ func (s OSCARProxy) ChatAccept(
 		return 0, s.runtimeErr(ctx, errors.New("missing wire.OServiceTLVTagsLoginCookie"))
 	}
 
-	chatSess, err := s.AuthService.RegisterChatSession(ctx, loginCookie)
+	// todo: naming for cookie: login cookie, server cookie, or auth cookie?
+	serverCookie, err := s.AuthService.CrackCookie(loginCookie)
+
+	chatSess, err := s.AuthService.RegisterChatSession(ctx, serverCookie)
 	if err != nil {
 		return 0, s.runtimeErr(ctx, fmt.Errorf("AuthService.RegisterChatSession: %w", err))
 	}
@@ -500,7 +503,7 @@ func (s OSCARProxy) ChatAccept(
 		return 0, msg
 	}
 
-	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, chatSess); err != nil {
+	if err := s.OServiceService.ClientOnline(ctx, wire.Chat, wire.SNAC_0x01_0x02_OServiceClientOnline{}, chatSess); err != nil {
 		return 0, s.runtimeErr(ctx, fmt.Errorf("OServiceServiceChat.ClientOnline: %w", err))
 	}
 
@@ -653,7 +656,7 @@ func (s OSCARProxy) ChatJoin(
 			},
 		},
 	}
-	svcReqReply, err := s.OServiceServiceBOS.ServiceRequest(ctx, me, wire.SNACFrame{}, svcReqSNAC)
+	svcReqReply, err := s.OServiceService.ServiceRequest(ctx, wire.BOS, me, wire.SNACFrame{}, svcReqSNAC, config.Listener{})
 	if err != nil {
 		return 0, s.runtimeErr(ctx, fmt.Errorf("OServiceServiceBOS.ServiceRequest: %w", err))
 	}
@@ -671,7 +674,10 @@ func (s OSCARProxy) ChatJoin(
 		return 0, s.runtimeErr(ctx, errors.New("svcReqReplyBody.Bytes: missing wire.OServiceTLVTagsLoginCookie"))
 	}
 
-	chatSess, err := s.AuthService.RegisterChatSession(ctx, loginCookie)
+	// todo: naming for cookie: login cookie, server cookie, or auth cookie?
+	serverCookie, err := s.AuthService.CrackCookie(loginCookie)
+
+	chatSess, err := s.AuthService.RegisterChatSession(ctx, serverCookie)
 	if err != nil {
 		return 0, s.runtimeErr(ctx, fmt.Errorf("AuthService.RegisterChatSession: %w", err))
 	}
@@ -680,7 +686,7 @@ func (s OSCARProxy) ChatJoin(
 		return 0, msg
 	}
 
-	if err := s.OServiceServiceChat.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, chatSess); err != nil {
+	if err := s.OServiceService.ClientOnline(ctx, wire.Chat, wire.SNAC_0x01_0x02_OServiceClientOnline{}, chatSess); err != nil {
 		return 0, s.runtimeErr(ctx, fmt.Errorf("OServiceServiceChat.ClientOnline: %w", err))
 	}
 
@@ -1159,7 +1165,7 @@ func (s OSCARProxy) InitDone(ctx context.Context, sess *state.Session) string {
 	if errMsg, isLimited := s.checkRateLimit(ctx, sess, wire.OService, wire.OServiceClientOnline); isLimited {
 		return errMsg
 	}
-	if err := s.OServiceServiceBOS.ClientOnline(ctx, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
+	if err := s.OServiceService.ClientOnline(ctx, wire.BOS, wire.SNAC_0x01_0x02_OServiceClientOnline{}, sess); err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("OServiceServiceBOS.ClientOnliney: %w", err))
 	}
 	return ""
@@ -1590,7 +1596,7 @@ func (s OSCARProxy) SetIdle(ctx context.Context, me *state.Session, args []byte)
 	snac := wire.SNAC_0x01_0x11_OServiceIdleNotification{
 		IdleTime: uint32(time),
 	}
-	if err := s.OServiceServiceBOS.IdleNotification(ctx, me, snac); err != nil {
+	if err := s.OServiceService.IdleNotification(ctx, me, snac); err != nil {
 		return s.runtimeErr(ctx, fmt.Errorf("OServiceServiceBOS.IdleNotification: %w", err))
 	}
 
@@ -1668,7 +1674,7 @@ func (s OSCARProxy) Signon(ctx context.Context, args []byte) (*state.Session, []
 	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsScreenName, userName))
 	signonFrame.Append(wire.NewTLVBE(wire.LoginTLVTagsRoastedTOCPassword, passwordHash))
 
-	block, err := s.AuthService.FLAPLogin(ctx, signonFrame, state.NewStubUser)
+	block, err := s.AuthService.FLAPLogin(ctx, signonFrame, state.NewStubUser, "")
 	if err != nil {
 		return nil, []string{s.runtimeErr(ctx, fmt.Errorf("AuthService.FLAPLogin: %w", err))}
 	}
@@ -1683,7 +1689,10 @@ func (s OSCARProxy) Signon(ctx context.Context, args []byte) (*state.Session, []
 		return nil, []string{s.runtimeErr(ctx, fmt.Errorf("unable to get session id from payload"))}
 	}
 
-	sess, err := s.AuthService.RegisterBOSSession(ctx, authCookie)
+	// todo: naming for cookie: login cookie, server cookie, or auth cookie?
+	serverCookie, err := s.AuthService.CrackCookie(authCookie)
+
+	sess, err := s.AuthService.RegisterBOSSession(ctx, serverCookie)
 	if err != nil {
 		return nil, []string{s.runtimeErr(ctx, fmt.Errorf("AuthService.RegisterBOSSession: %w", err))}
 	}

@@ -31,6 +31,7 @@ services:
       - "5196:5196"
       - "5197:5197"
       - "8080:8080"
+      - "9898:9898"
     env_file:
       - ./config/settings.env
     environment:

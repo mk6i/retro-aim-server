@@ -393,40 +393,44 @@ func (u *User) Age(timeNow func() time.Time) uint16 {
 	}
 }
 
-// ValidateHash checks if md5Hash is identical to one of the password hashes.
+// ValidateHash validates MD5-hashed passwords for BUCP auth. It handles
+// hashes used in early AIM 4.x versions ("weak" hashes) and later AIM 4.x-5.x
+// versions ("strong" hashes).
 func (u *User) ValidateHash(md5Hash []byte) bool {
 	return bytes.Equal(u.StrongMD5Pass, md5Hash) || bytes.Equal(u.WeakMD5Pass, md5Hash)
 }
 
-// ValidateRoastedPass checks if the provided roasted password matches the MD5
-// hash of the user's actual password. A roasted password is a XOR-obfuscated
-// form of the real password, intended to add a simple layer of security.
+// ValidateRoastedPass validates roasted passwords for FLAP auth.
 func (u *User) ValidateRoastedPass(roastedPass []byte) bool {
 	clearPass := wire.RoastOSCARPassword(roastedPass)
-	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey) // todo remove string conversion
+	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey)
 	return bytes.Equal(u.WeakMD5Pass, md5Hash)
 }
 
-// ValidateRoastedJavaPass checks if the provided roasted password matches the MD5
-// hash of the user's actual password. A roasted password is a XOR-obfuscated
-// form of the real password, intended to add a simple layer of security. // todo toc description
+// ValidateRoastedJavaPass validates roasted passwords for the Java AIM client FLAP auth.
 func (u *User) ValidateRoastedJavaPass(roastedPass []byte) bool {
 	clearPass := wire.RoastOSCARJavaPassword(roastedPass)
-	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey) // todo remove string conversion
+	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey)
 	return bytes.Equal(u.WeakMD5Pass, md5Hash)
 }
 
-// ValidateRoastedTOCPass checks if the provided roasted password matches the MD5
-// hash of the user's actual password. A roasted password is a XOR-obfuscated
-// form of the real password, intended to add a simple layer of security. // todo toc description
+// ValidateRoastedTOCPass validates roasted passwords for TOC auth.
 func (u *User) ValidateRoastedTOCPass(roastedPass []byte) bool {
 	clearPass := wire.RoastTOCPassword(roastedPass)
-	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey) // todo remove string conversion
+	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey)
 	return bytes.Equal(u.WeakMD5Pass, md5Hash)
 }
 
+// ValidatePlaintextPass validates plaintext passwords used in Kerberos auth.
 func (u *User) ValidatePlaintextPass(plaintextPass []byte) bool {
-	md5Hash := wire.WeakMD5PasswordHash(string(plaintextPass), u.AuthKey) // todo remove string conversion
+	md5Hash := wire.WeakMD5PasswordHash(string(plaintextPass), u.AuthKey)
+	return bytes.Equal(u.WeakMD5Pass, md5Hash)
+}
+
+// ValidateRoastedKerberosPass validates roasted passwords used in Kerberos auth.
+func (u *User) ValidateRoastedKerberosPass(roastedPass []byte) bool {
+	clearPass := wire.RoastKerberosPassword(roastedPass)
+	md5Hash := wire.WeakMD5PasswordHash(string(clearPass), u.AuthKey)
 	return bytes.Equal(u.WeakMD5Pass, md5Hash)
 }
 

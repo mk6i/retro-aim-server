@@ -38,6 +38,15 @@ func RoastOSCARPassword(roastedPass []byte) []byte {
 	return roastPass(roastedPass, roastTable)
 }
 
+// RoastKerberosPassword roasts a Kerberos client password.
+func RoastKerberosPassword(roastedPass []byte) []byte {
+	var roastTable = []byte{
+		0x76, 0x91, 0xc5, 0xe7, 0xd0, 0xd9, 0x95, 0xdd,
+		0x9e, 0x2F, 0xea, 0xd8, 0x6B, 0x21, 0xc2, 0xbc,
+	}
+	return roastPass(roastedPass, roastTable)
+}
+
 // RoastOSCARJavaPassword roasts a Java OSCAR client password.
 func RoastOSCARJavaPassword(roastedPass []byte) []byte {
 	var roastTable = []byte{

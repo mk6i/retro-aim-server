@@ -14,4 +14,5 @@ docker run --rm -it \
   -v "$PEM_PATH:/etc/stunnel/certs/server.pem:ro" \
   -v "$(pwd)/config/ssl/stunnel.conf:/etc/stunnel/stunnel.conf:ro" \
   -p 443:443 \
-  stunnel:5.75-openssl-1.0.2u stunnel.conf
+  -p 5193:5193 \
+  ras-stunnel:5.75-openssl-1.0.2u stunnel.conf
