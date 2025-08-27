@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/patrickmn/go-cache"
+
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
@@ -32,6 +34,7 @@ func NewICBMService(
 		timeNow:             time.Now,
 		sessionRetriever:    sessionRetriever,
 		snacRateLimits:      snacRateLimits,
+		convoTracker:        newConvoTracker(),
 	}
 }
 
@@ -46,6 +49,7 @@ type ICBMService struct {
 	timeNow             func() time.Time
 	sessionRetriever    SessionRetriever
 	snacRateLimits      wire.SNACRateLimits
+	convoTracker        *convoTracker
 }
 
 // ParameterQuery returns ICBM service parameters.
@@ -159,6 +163,8 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		},
 		Body: clientIM,
 	})
+
+	s.convoTracker.trackConvo(time.Now(), sess.IdentScreenName(), recipSess.IdentScreenName())
 
 	if _, requestedConfirmation := inBody.TLVRestBlock.Bytes(wire.ICBMTLVRequestHostAck); !requestedConfirmation {
 		// don't ack message
@@ -310,12 +316,26 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		}, nil
 	}
 
+	canWarn := s.convoTracker.trackWarn(time.Now(), sess.IdentScreenName(), recipSess.IdentScreenName())
+	if !canWarn {
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.ICBM,
+				SubGroup:  wire.ICBMErr,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNACError{
+				Code: wire.ErrorCodeRequestDenied,
+			},
+		}, nil
+	}
+
 	increase := evilDelta
 	if inBody.SendAs == 1 {
 		increase = evilDeltaAnon
 	}
 	recipSess.IncrementWarning(int16(increase))
-	recipSess.ScaleRateLimit(3, 1000)
+	//recipSess.ScaleRateLimit(3, 1000)
 
 	notif := wire.SNAC_0x01_0x10_OServiceEvilNotification{
 		NewEvil: recipSess.Warning(),
@@ -357,4 +377,104 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 			UpdatedEvilValue: recipSess.Warning(),
 		},
 	}, nil
+}
+
+// convoTracker keeps track of messages initiated from a sender to a recipient.
+// A user (the warner) can only warn another user (the warnee) only if the
+// warner has received a message from the warnee. The warner may only warn 1
+// time per message received from warnee. The warner may only warn the warnee
+// up to 3 times per warn window.
+type convoTracker struct {
+	convos *cache.Cache
+	warns  *cache.Cache
+	window time.Duration
+}
+
+func newConvoTracker() *convoTracker {
+	window := 1 * time.Hour
+	return &convoTracker{
+		convos: cache.New(window, window),
+		warns:  cache.New(window, window),
+		window: window,
+	}
+}
+
+// trackConvo records a conversation from sender to recipient at the given time.
+func (w *convoTracker) trackConvo(now time.Time, sender, recip state.IdentScreenName) {
+	k := w.key(sender, recip)
+
+	buf, found := w.convos.Get(k)
+	if !found {
+		buf = &ringBuffer{}
+		w.convos.Set(k, buf, time.Hour)
+	}
+
+	buf.(*ringBuffer).set(now)
+}
+
+// trackWarn attempts to record a warning from warner to warnee.
+// It returns true if the warning is allowed (warnee has sent more messages
+// than warnings in the current window), or false if the warning limit has been
+// reached or no conversation exists in the current window.
+func (w *convoTracker) trackWarn(now time.Time, warner, warnee state.IdentScreenName) bool {
+	key := w.key(warnee, warner)
+
+	convos, found := w.convos.Get(key)
+	if !found {
+		// no convos tracked, can't warn
+		return false
+	}
+
+	windowStart := now.Add(-w.window)
+
+	// get convo count during window
+	var convoCt int
+	for _, v := range convos.(*ringBuffer).vals {
+		if v.After(windowStart) {
+			convoCt++
+		}
+	}
+
+	warns, found := w.warns.Get(key)
+	if !found {
+		warns = &ringBuffer{}
+		w.warns.Set(key, warns, time.Hour)
+	}
+
+	// get warn count during window
+	var warnCount int
+	for _, v := range warns.(*ringBuffer).vals {
+		if v.After(windowStart) {
+			warnCount++
+		}
+	}
+
+	if convoCt <= warnCount {
+		return false
+	}
+
+	warns.(*ringBuffer).set(now)
+
+	return true
+}
+
+func (w *convoTracker) key(sender state.IdentScreenName, recip state.IdentScreenName) string {
+	return sender.String() + recip.String()
+}
+
+// ringBuffer is a fixed-size circular buffer with 3 slots for storing time values.
+type ringBuffer struct {
+	cur  int          // Current cursor position (0, 1, or 2)
+	vals [3]time.Time // Fixed-size array to store time values
+}
+
+// val returns the time at the current cursor position.
+func (r *ringBuffer) val() time.Time {
+	return r.vals[r.cur]
+}
+
+// set stores the given time at the current cursor position and advances the cursor.
+func (r *ringBuffer) set(v time.Time) {
+	r.vals[r.cur] = v
+	r.cur = (r.cur + 1) % 3
 }
