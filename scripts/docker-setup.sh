@@ -190,7 +190,7 @@ Next Steps:
 ${YELLOW}127.0.0.1 $OSCAR_HOST${NC}
 
 ${GREEN}3. For AIM 6.x client setup instructions, see:
-   https://github.com/mk6i/retro-aim-server/blob/main/docs/AIM6.md#aim-6265312-setup
+   https://github.com/mk6i/retro-aim-server/blob/main/docs/AIM_6_7.md#aim-62-75-setup
 
 Enjoy!
 ${NC}" >&2
