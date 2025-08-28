@@ -939,6 +939,8 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		name string
 		// senderScreenName is the session of the user sending the EvilRequest
 		senderSession *state.Session
+		// msgsReceived is the # of messages received from the warned user
+		msgsReceived int
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC wire.SNACMessage
 		// expectOutput is the SNAC sent from the server to client
@@ -950,6 +952,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		{
 			name:          "transmit anonymous warning from sender to recipient",
 			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -1022,6 +1025,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		{
 			name:          "transmit non-anonymous warning from sender to recipient",
 			senderSession: newTestSession("sender-screen-name", sessOptWarning(110)),
+			msgsReceived:  1,
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -1102,6 +1106,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		{
 			name:          "don't transmit non-anonymous warning from sender to recipient because sender has blocked recipient",
 			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -1142,6 +1147,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		{
 			name:          "don't transmit non-anonymous warning from sender to recipient because recipient has blocked sender",
 			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -1182,6 +1188,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		{
 			name:          "don't let users warn themselves",
 			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -1205,6 +1212,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		{
 			name:          "don't transmit non-anonymous warning from sender to recipient because recipient is offline",
 			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
 			mockParams: mockParams{
 				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
@@ -1253,6 +1261,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		{
 			name:          "don't transmit anonymous warning from sender to recipient because recipient is offline",
 			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
 			mockParams: mockParams{
 				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
@@ -1338,6 +1347,13 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				messageRelayer:      messageRelayer,
 				offlineMessageSaver: offlineMessageManager,
 				sessionRetriever:    sessionRetriever,
+				convoTracker:        newConvoTracker(),
+			}
+
+			for i := 0; i < tc.msgsReceived; i++ {
+				svc.convoTracker.trackConvo(time.Now(),
+					state.NewIdentScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest).ScreenName),
+					tc.senderSession.IdentScreenName())
 			}
 
 			outputSNAC, err := svc.EvilRequest(context.Background(), tc.senderSession, tc.inputSNAC.Frame,

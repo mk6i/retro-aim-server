@@ -1,6 +1,7 @@
 package state
 
 import (
+	"math"
 	"net/netip"
 	"sync"
 	"time"
@@ -49,30 +50,31 @@ const (
 // Session represents a user's current session. Unless stated otherwise, all
 // methods may be safely accessed by multiple goroutines.
 type Session struct {
-	awayMessage         string
-	caps                [][16]byte
-	chatRoomCookie      string
-	closed              bool
-	displayScreenName   DisplayScreenName
-	identScreenName     IdentScreenName
-	idle                bool
-	idleTime            time.Time
-	msgCh               chan wire.SNACMessage
-	mutex               sync.RWMutex
-	nowFn               func() time.Time
-	signonComplete      bool
-	signonTime          time.Time
-	stopCh              chan struct{}
-	uin                 uint32
-	warning             int16
-	userInfoBitmask     uint16
-	userStatusBitmask   uint32
-	clientID            string
-	remoteAddr          *netip.AddrPort
-	lastObservedStates  [5]RateClassState
-	rateByClassID       [5]RateClassState
-	foodGroupVersions   [wire.MDir + 1]uint16
-	typingEventsEnabled bool
+	awayMessage           string
+	caps                  [][16]byte
+	chatRoomCookie        string
+	closed                bool
+	displayScreenName     DisplayScreenName
+	identScreenName       IdentScreenName
+	idle                  bool
+	idleTime              time.Time
+	msgCh                 chan wire.SNACMessage
+	mutex                 sync.RWMutex
+	nowFn                 func() time.Time
+	signonComplete        bool
+	signonTime            time.Time
+	stopCh                chan struct{}
+	uin                   uint32
+	warning               int16
+	userInfoBitmask       uint16
+	userStatusBitmask     uint32
+	clientID              string
+	remoteAddr            *netip.AddrPort
+	lastObservedStates    [5]RateClassState
+	rateByClassID         [5]RateClassState
+	rateByClassIDOriginal [5]RateClassState
+	foodGroupVersions     [wire.MDir + 1]uint16
+	typingEventsEnabled   bool
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
@@ -140,6 +142,7 @@ func (s *Session) SetRateClasses(now time.Time, classes wire.RateLimitClasses) {
 	}
 
 	s.rateByClassID = newStates
+	s.rateByClassIDOriginal = newStates
 }
 
 // SetRemoteAddr sets the user's remote IP address
@@ -479,19 +482,30 @@ func (s *Session) SubscribeRateLimits(classes []wire.RateLimitClassID) {
 	}
 }
 
-func (s *Session) ScaleRateLimit(classID wire.RateLimitClassID, level int32) {
+func (s *Session) ScaleRateLimit(classID wire.RateLimitClassID, pct float32) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	///*
-	//   DisconnectLevel: int32(float64(rc.DisconnectLevel) * f),
-	//   LimitLevel:      int32(float64(rc.LimitLevel) * f),
-	//   AlertLevel:      int32(float64(rc.AlertLevel) * f),
-	//   ClearLevel:      int32(float64(rc.ClearLevel) * f),
-	//*/
-	s.rateByClassID[classID-1].LimitLevel += level
-	s.rateByClassID[classID-1].AlertLevel += level
-	//s.rateByClassID[classID-1].ClearLevel += 1000
+	diff := int32(float32(s.rateByClassIDOriginal[classID-1].MaxLevel-s.rateByClassIDOriginal[classID-1].LimitLevel) * pct)
+	newLimitLevel := s.rateByClassID[classID-1].LimitLevel + diff
+	s.rateByClassID[classID-1].LimitLevel = int32(math.Max(
+		float64(s.rateByClassIDOriginal[classID-1].LimitLevel),
+		math.Min(float64(newLimitLevel), float64(s.rateByClassIDOriginal[classID-1].MaxLevel)),
+	))
+
+	diff = int32(float32(s.rateByClassIDOriginal[classID-1].MaxLevel-s.rateByClassIDOriginal[classID-1].ClearLevel) * pct)
+	newLimitLevel = s.rateByClassID[classID-1].ClearLevel + diff
+	s.rateByClassID[classID-1].ClearLevel = int32(math.Max(
+		float64(s.rateByClassIDOriginal[classID-1].ClearLevel),
+		math.Min(float64(newLimitLevel), float64(s.rateByClassIDOriginal[classID-1].MaxLevel)),
+	))
+
+	diff = int32(float32(s.rateByClassIDOriginal[classID-1].MaxLevel-s.rateByClassIDOriginal[classID-1].AlertLevel) * pct)
+	newLimitLevel = s.rateByClassID[classID-1].AlertLevel + diff
+	s.rateByClassID[classID-1].AlertLevel = int32(math.Max(
+		float64(s.rateByClassIDOriginal[classID-1].AlertLevel),
+		math.Min(float64(newLimitLevel), float64(s.rateByClassIDOriginal[classID-1].MaxLevel)),
+	))
 }
 
 // ObserveRateChanges updates rate limit states for all known classes and returns
