@@ -191,10 +191,14 @@ func (s *Session) SetUserStatusBitmask(bitmask uint32) {
 
 // IncrementWarning increments the user's warning level. To decrease, pass a
 // negative increment value.
-func (s *Session) IncrementWarning(incr int16) {
+func (s *Session) IncrementWarning(incr int16) bool {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	if s.warning+incr > 1000 {
+		return false
+	}
 	s.warning += incr
+	return true
 }
 
 // Invisible returns true if the user is idle.

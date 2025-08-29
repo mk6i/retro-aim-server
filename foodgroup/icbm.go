@@ -334,7 +334,20 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 	if inBody.SendAs == 1 {
 		increase = evilDeltaAnon
 	}
-	recipSess.IncrementWarning(int16(increase))
+
+	if ok := recipSess.IncrementWarning(int16(increase)); !ok {
+		return wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.ICBM,
+				SubGroup:  wire.ICBMErr,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNACError{
+				Code: wire.ErrorCodeRequestDenied,
+			},
+		}, nil
+	}
+
 	recipSess.ScaleRateLimit(3, float32(increase)/1000)
 
 	notif := wire.SNAC_0x01_0x10_OServiceEvilNotification{
