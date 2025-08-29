@@ -88,13 +88,15 @@ func (s *Server) ListenAndServe() error {
 			s.shutdownCancel()
 			return fmt.Errorf("failed to listen on %s: %w", listenCfg.BOSListenAddress, err)
 		}
-		s.logger.Info(
-			"starting server",
-			"listen_address",
-			listenCfg.BOSListenAddress,
-			"advertised_host",
-			listenCfg.BOSAdvertisedHostPlain,
-		)
+
+		args := []any{
+			"listen_address", listenCfg.BOSListenAddress,
+			"advertised_host_plain", listenCfg.BOSAdvertisedHostPlain,
+		}
+		if listenCfg.HasSSL {
+			args = append(args, "advertised_host_ssl", listenCfg.BOSAdvertisedHostSSL)
+		}
+
 		s.listeners = append(s.listeners, ln)
 		s.listenWg.Add(1)
 		go s.acceptLoop(ln, listenCfg)
