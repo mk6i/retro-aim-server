@@ -103,6 +103,7 @@ type ICBMService interface {
 	EvilRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x08_ICBMEvilRequest) (wire.SNACMessage, error)
 	ParameterQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 	ClientErr(ctx context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x04_0x0B_ICBMClientErr) error
+	LowerWarnLevel(ctx context.Context, sess *state.Session)
 }
 
 type ICQService interface {

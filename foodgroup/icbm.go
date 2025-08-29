@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -25,6 +26,7 @@ func NewICBMService(
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 	snacRateLimits wire.SNACRateLimits,
+	logger *slog.Logger,
 ) *ICBMService {
 	return &ICBMService{
 		relationshipFetcher: relationshipFetcher,
@@ -35,6 +37,7 @@ func NewICBMService(
 		sessionRetriever:    sessionRetriever,
 		snacRateLimits:      snacRateLimits,
 		convoTracker:        newConvoTracker(),
+		logger:              logger,
 	}
 }
 
@@ -50,6 +53,7 @@ type ICBMService struct {
 	sessionRetriever    SessionRetriever
 	snacRateLimits      wire.SNACRateLimits
 	convoTracker        *convoTracker
+	logger              *slog.Logger
 }
 
 // ParameterQuery returns ICBM service parameters.
@@ -349,6 +353,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 	}
 
 	recipSess.ScaleRateLimit(3, float32(increase)/1000)
+	recipSess.FlagWarning()
 
 	notif := wire.SNAC_0x01_0x10_OServiceEvilNotification{
 		NewEvil: recipSess.Warning(),
@@ -390,6 +395,65 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 			UpdatedEvilValue: recipSess.Warning(),
 		},
 	}, nil
+}
+
+func (s ICBMService) LowerWarnLevel(ctx context.Context, sess *state.Session) {
+	const interval = 5 * time.Minute
+
+	var (
+		inProgress bool
+		ticker     *time.Ticker
+		tickC      <-chan time.Time // nil when idle, enables/disables the select case
+	)
+
+	stopTicker := func() {
+		if ticker != nil {
+			ticker.Stop()
+			ticker = nil
+		}
+		tickC = nil
+		inProgress = false
+	}
+
+	startTicker := func() {
+		stopTicker() // defensive: ensure any prior ticker is stopped
+		ticker = time.NewTicker(interval)
+		tickC = ticker.C
+		inProgress = true
+		s.logger.DebugContext(ctx, "warning decay started")
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			stopTicker()
+			return
+
+		case <-sess.RecvWarning():
+			if inProgress {
+				s.logger.DebugContext(ctx, "warning already in progress")
+				continue
+			}
+			startTicker()
+
+		case <-tickC:
+			w := sess.Warning()
+			if w <= 0 {
+				s.logger.DebugContext(ctx, "warning complete")
+				stopTicker()
+				continue
+			}
+
+			sess.IncrementWarning(-50)
+			sess.ScaleRateLimit(3, -.05)
+
+			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+				s.logger.ErrorContext(ctx, "BroadcastBuddyArrived failed", "err", err)
+			} else {
+				s.logger.DebugContext(ctx, "warning lowered", "remaining", sess.Warning())
+			}
+		}
+	}
 }
 
 // convoTracker keeps track of messages initiated from a sender to a recipient.

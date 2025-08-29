@@ -27,6 +27,7 @@ func NewServer(
 	buddyListRegistry BuddyListRegistry,
 	chatSessionManager *state.InMemoryChatSessionManager,
 	departureNotifier DepartureNotifier,
+	ICBMService ICBMService,
 	logger *slog.Logger,
 	onlineNotifier OnlineNotifier,
 	SNACHandler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, listener config.Listener) error,
@@ -40,6 +41,7 @@ func NewServer(
 		BuddyListRegistry:  buddyListRegistry,
 		ChatSessionManager: chatSessionManager,
 		DepartureNotifier:  departureNotifier,
+		ICBMService:        ICBMService,
 		Logger:             logger,
 		OnlineNotifier:     onlineNotifier,
 		SNACHandler:        SNACHandler,
@@ -179,6 +181,7 @@ type oscarServer struct {
 	BuddyListRegistry
 	ChatSessionManager
 	DepartureNotifier
+	ICBMService
 	Logger *slog.Logger
 	OnlineNotifier
 	SNACHandler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, listener config.Listener) error
@@ -270,6 +273,7 @@ func (s oscarServer) connectToOSCARService(
 			sess.SetRemoteAddr(&ip)
 		}
 
+		go s.ICBMService.LowerWarnLevel(ctx, sess)
 		go s.receiveSessMessages(ctx, sess, flapc)
 
 	case wire.Chat:
@@ -313,12 +317,6 @@ func (s oscarServer) receiveSessMessages(ctx context.Context, sess *state.Sessio
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Minute * 5):
-			if sess.Warning() > 0 {
-				sess.IncrementWarning(-50)
-				_ = s.BroadcastBuddyArrived(ctx, sess)
-				sess.ScaleRateLimit(3, -.05)
-			}
 		case m := <-sess.ReceiveMessage():
 			// forward a notification sent from another client to this client
 			if err := flapc.SendSNAC(m.Frame, m.Body); err != nil {

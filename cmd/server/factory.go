@@ -256,6 +256,7 @@ func OSCAR(deps Container) *oscar.Server {
 		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
 		deps.snacRateLimits,
+		deps.logger,
 	)
 	icqService := foodgroup.NewICQService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore,
 		logger, deps.inMemorySessionManager, deps.sqLiteUserStore)
@@ -292,6 +293,7 @@ func OSCAR(deps Container) *oscar.Server {
 		deps.sqLiteUserStore,
 		deps.chatSessionManager,
 		buddyService,
+		icbmService,
 		logger,
 		oServiceService,
 		oscar.Handler{
@@ -383,6 +385,7 @@ func TOC(deps Container) *toc.Server {
 				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
 				deps.snacRateLimits,
+				deps.logger,
 			),
 			LocateService: foodgroup.NewLocateService(
 				deps.sqLiteUserStore,
@@ -462,6 +465,7 @@ func WebAPI(deps Container) *webapi.Server {
 			deps.sqLiteUserStore,
 			deps.inMemorySessionManager,
 			deps.snacRateLimits,
+			deps.logger,
 		),
 		LocateService: foodgroup.NewLocateService(
 			deps.sqLiteUserStore,

@@ -66,6 +66,7 @@ type Session struct {
 	stopCh                chan struct{}
 	uin                   uint32
 	warning               int16
+	warningCh             chan struct{}
 	userInfoBitmask       uint16
 	userStatusBitmask     uint32
 	clientID              string
@@ -117,6 +118,7 @@ func NewSession() *Session {
 			vals[wire.MDir] = 1
 			return vals
 		}(),
+		warningCh: make(chan struct{}),
 	}
 }
 
@@ -472,6 +474,14 @@ func (s *Session) ClientID() string {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.clientID
+}
+
+func (s *Session) FlagWarning() {
+	s.warningCh <- struct{}{}
+}
+
+func (s *Session) RecvWarning() chan struct{} {
+	return s.warningCh
 }
 
 // SubscribeRateLimits subscribes the Session to updates for the specified
