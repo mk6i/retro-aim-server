@@ -2,8 +2,10 @@ package foodgroup
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"net/netip"
+	"sync"
 	"testing"
 	"time"
 
@@ -800,6 +802,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 				offlineMessageSaver: offlineMessageManager,
 				sessionRetriever:    sessionRetriever,
 				timeNow:             tc.timeNow,
+				convoTracker:        newConvoTracker(),
 			}
 
 			outputSNAC, err := svc.ChannelMsgToHost(context.Background(), tc.senderSession, tc.inputSNAC.Frame,
@@ -948,6 +951,8 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
+		// waitForWarnMsg indicates whether to wait for session warn signal
+		waitForWarnMsg bool
 	}{
 		{
 			name:          "transmit anonymous warning from sender to recipient",
@@ -1021,6 +1026,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					},
 				},
 			},
+			waitForWarnMsg: true,
 		},
 		{
 			name:          "transmit non-anonymous warning from sender to recipient",
@@ -1102,6 +1108,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					},
 				},
 			},
+			waitForWarnMsg: true,
 		},
 		{
 			name:          "don't transmit non-anonymous warning from sender to recipient because sender has blocked recipient",
@@ -1356,16 +1363,28 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					tc.senderSession.IdentScreenName())
 			}
 
+			var wg sync.WaitGroup
+			if tc.waitForWarnMsg {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					for _, sess := range tc.mockParams.sessionRetrieverParams.retrieveSessionParams {
+						<-sess.result.RecvWarning()
+					}
+				}()
+			}
 			outputSNAC, err := svc.EvilRequest(context.Background(), tc.senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
+
+			wg.Wait()
 		})
 	}
 }
 
 func TestICBMService_ParameterQuery(t *testing.T) {
-	svc := NewICBMService(nil, nil, nil, nil, nil, wire.DefaultSNACRateLimits())
+	svc := NewICBMService(nil, nil, nil, nil, nil, wire.DefaultSNACRateLimits(), slog.Default())
 
 	have := svc.ParameterQuery(nil, wire.SNACFrame{RequestID: 1234})
 	want := wire.SNACMessage{
@@ -1417,7 +1436,7 @@ func TestICBMService_ClientErr(t *testing.T) {
 	messageRelayer.EXPECT().
 		RelayToScreenName(mock.Anything, state.NewIdentScreenName("recipientScreenName"), expect)
 
-	svc := NewICBMService(nil, messageRelayer, nil, nil, nil, wire.DefaultSNACRateLimits())
+	svc := NewICBMService(nil, messageRelayer, nil, nil, nil, wire.DefaultSNACRateLimits(), slog.Default())
 
 	err := svc.ClientErr(context.Background(), sess, wire.SNACFrame{RequestID: 1234}, inBody)
 	assert.NoError(t, err)

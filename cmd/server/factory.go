@@ -293,7 +293,6 @@ func OSCAR(deps Container) *oscar.Server {
 		deps.sqLiteUserStore,
 		deps.chatSessionManager,
 		buddyService,
-		icbmService,
 		logger,
 		oServiceService,
 		oscar.Handler{
@@ -319,6 +318,7 @@ func OSCAR(deps Container) *oscar.Server {
 		deps.snacRateLimits,
 		oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 		deps.Listeners,
+		icbmService.LowerWarnLevel,
 	)
 }
 

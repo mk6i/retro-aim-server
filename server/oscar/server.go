@@ -27,7 +27,6 @@ func NewServer(
 	buddyListRegistry BuddyListRegistry,
 	chatSessionManager *state.InMemoryChatSessionManager,
 	departureNotifier DepartureNotifier,
-	ICBMService ICBMService,
 	logger *slog.Logger,
 	onlineNotifier OnlineNotifier,
 	SNACHandler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, listener config.Listener) error,
@@ -35,19 +34,20 @@ func NewServer(
 	limits wire.SNACRateLimits,
 	limiter *IPRateLimiter,
 	listenerCfg []config.Listener,
+	lowerWarnLevel func(ctx context.Context, sess *state.Session),
 ) *Server {
 	oscarSvc := oscarServer{
 		AuthService:        authService,
 		BuddyListRegistry:  buddyListRegistry,
 		ChatSessionManager: chatSessionManager,
 		DepartureNotifier:  departureNotifier,
-		ICBMService:        ICBMService,
 		Logger:             logger,
 		OnlineNotifier:     onlineNotifier,
 		SNACHandler:        SNACHandler,
 		RateLimitUpdater:   rateLimitUpdater,
 		SNACRateLimits:     limits,
 		IPRateLimiter:      limiter,
+		lowerWarnLevel:     lowerWarnLevel,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -181,13 +181,13 @@ type oscarServer struct {
 	BuddyListRegistry
 	ChatSessionManager
 	DepartureNotifier
-	ICBMService
 	Logger *slog.Logger
 	OnlineNotifier
 	SNACHandler func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, listener config.Listener) error
 	RateLimitUpdater
 	wire.SNACRateLimits
 	*IPRateLimiter
+	lowerWarnLevel func(ctx context.Context, sess *state.Session)
 }
 
 func (s oscarServer) routeConnection(ctx context.Context, conn net.Conn, listener config.Listener) error {
@@ -273,7 +273,7 @@ func (s oscarServer) connectToOSCARService(
 			sess.SetRemoteAddr(&ip)
 		}
 
-		go s.ICBMService.LowerWarnLevel(ctx, sess)
+		go s.lowerWarnLevel(ctx, sess)
 		go s.receiveSessMessages(ctx, sess, flapc)
 
 	case wire.Chat:

@@ -353,7 +353,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 	}
 
 	recipSess.ScaleRateLimit(3, float32(increase)/1000)
-	recipSess.FlagWarning()
+	recipSess.FlagWarning(ctx)
 
 	notif := wire.SNAC_0x01_0x10_OServiceEvilNotification{
 		NewEvil: recipSess.Warning(),

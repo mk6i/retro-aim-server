@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"math"
 	"net/netip"
 	"sync"
@@ -476,8 +477,11 @@ func (s *Session) ClientID() string {
 	return s.clientID
 }
 
-func (s *Session) FlagWarning() {
-	s.warningCh <- struct{}{}
+func (s *Session) FlagWarning(ctx context.Context) {
+	select {
+	case s.warningCh <- struct{}{}:
+	case <-ctx.Done():
+	}
 }
 
 func (s *Session) RecvWarning() chan struct{} {
