@@ -654,7 +654,7 @@ func Test_oscarServer_dispatchIncomingMessages_disconnect_old_client(t *testing.
 	clientConn, serverConn := net.Pipe()
 	ctx := context.Background()
 	sess := state.NewSession()
-	sess.SetMultiConnFlag(wire.MultiConnFlagsRecentClient)
+	sess.SetMultiConnFlag(wire.MultiConnFlagsOldClient)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
