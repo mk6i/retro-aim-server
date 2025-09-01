@@ -645,7 +645,7 @@ func Test_oscarServer_dispatchIncomingMessages_shutdownSignoff(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, wire.FLAPFrameSignoff, frame.FrameType)
 
-	wg.Done()
+	wg.Wait()
 }
 
 // Make sure the client (which doesn't support multi-conn) receives
@@ -674,7 +674,7 @@ func Test_oscarServer_dispatchIncomingMessages_disconnect_old_client(t *testing.
 	assert.NoError(t, wire.UnmarshalBE(&frame, clientConn))
 	assert.Equal(t, wire.FLAPFrameSignoff, frame.FrameType)
 
-	wg.Done()
+	wg.Wait()
 }
 
 // Make sure the client (which supports multi-conn) receives disconnection
@@ -704,7 +704,7 @@ func Test_oscarServer_dispatchIncomingMessages_disconnect_new_client(t *testing.
 	assert.NoError(t, err)
 	assert.Equal(t, wire.FLAPFrameSignoff, frame.FrameType)
 
-	wg.Done()
+	wg.Wait()
 }
 
 func Test_oscarServer_receiveSessMessages_BOS_integration(t *testing.T) {
