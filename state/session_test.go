@@ -608,3 +608,17 @@ func TestSession_SetAndGetTypingEventsEnabled(t *testing.T) {
 	s.SetTypingEventsEnabled(false)
 	assert.False(t, s.TypingEventsEnabled())
 }
+
+func TestSession_SetAndGetMultiConnFlag(t *testing.T) {
+	s := NewSession()
+	assert.Zero(t, s.MultiConnFlag())
+
+	s.SetMultiConnFlag(wire.MultiConnFlagsOldClient)
+	assert.Equal(t, wire.MultiConnFlagsOldClient, s.MultiConnFlag())
+
+	s.SetMultiConnFlag(wire.MultiConnFlagsRecentClient)
+	assert.Equal(t, wire.MultiConnFlagsRecentClient, s.MultiConnFlag())
+
+	s.SetMultiConnFlag(wire.MultiConnFlagsSingleClient)
+	assert.Equal(t, wire.MultiConnFlagsSingleClient, s.MultiConnFlag())
+}

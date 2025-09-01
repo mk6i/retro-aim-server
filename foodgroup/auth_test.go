@@ -52,6 +52,7 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 					TLVList: wire.TLVList{
 						wire.NewTLVBE(wire.LoginTLVTagsScreenName, user.DisplayScreenName),
 						wire.NewTLVBE(wire.LoginTLVTagsPasswordHash, user.StrongMD5Pass),
+						wire.NewTLVBE(wire.LoginTLVTagsMultiConnFlags, wire.MultiConnFlagsRecentClient),
 					},
 				},
 			},
@@ -69,7 +70,8 @@ func TestAuthService_BUCPLoginRequest(t *testing.T) {
 						{
 							dataIn: func() []byte {
 								loginCookie := state.ServerCookie{
-									ScreenName: user.DisplayScreenName,
+									ScreenName:    user.DisplayScreenName,
+									MultiConnFlag: uint8(wire.MultiConnFlagsRecentClient),
 								}
 								buf := &bytes.Buffer{}
 								assert.NoError(t, wire.MarshalBE(loginCookie, buf))

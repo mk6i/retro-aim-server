@@ -92,6 +92,7 @@ const (
 	LoginTLVTagsAuthorizationCookie     uint16 = 0x06
 	LoginTLVTagsErrorSubcode            uint16 = 0x08
 	LoginTLVTagsPasswordHash            uint16 = 0x25
+	LoginTLVTagsMultiConnFlags          uint16 = 0x4A
 	LoginTLVTagsRoastedKerberosPassword uint16 = 0x1335
 	LoginTLVTagsRoastedTOCPassword      uint16 = 0x1337
 	LoginTLVTagsPlaintextPassword       uint16 = 0x1338
@@ -111,6 +112,14 @@ const (
 
 	LoginErrICQUserErr uint16 = 0x0008 // ICQ user doesn't exist
 
+)
+
+type MultiConnFlag uint8
+
+const (
+	MultiConnFlagsOldClient    MultiConnFlag = 0x0 // client doesn't support multi-conn
+	MultiConnFlagsRecentClient MultiConnFlag = 0x1 // client supports multi-conn
+	MultiConnFlagsSingleClient MultiConnFlag = 0x3 // client supports multi-conn but only wants 1 concurrent session
 )
 
 //

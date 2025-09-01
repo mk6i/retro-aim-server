@@ -73,6 +73,7 @@ type Session struct {
 	rateByClassID       [5]RateClassState
 	foodGroupVersions   [wire.MDir + 1]uint16
 	typingEventsEnabled bool
+	multiConnFlag       wire.MultiConnFlag
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
@@ -571,4 +572,18 @@ func (s *Session) SetTypingEventsEnabled(enabled bool) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.typingEventsEnabled = enabled
+}
+
+// SetMultiConnFlag sets the multi-connection flag for this session.
+func (s *Session) SetMultiConnFlag(flag wire.MultiConnFlag) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.multiConnFlag = flag
+}
+
+// MultiConnFlag retrieves the multi-connection flag for this session.
+func (s *Session) MultiConnFlag() wire.MultiConnFlag {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.multiConnFlag
 }

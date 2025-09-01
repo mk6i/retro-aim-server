@@ -125,6 +125,9 @@ func (s AuthService) RegisterBOSSession(ctx context.Context, serverCookie state.
 	// set string containing OSCAR client name and version
 	sess.SetClientID(serverCookie.ClientID)
 
+	// indicate whether the client supports/wants multiple concurrent sessions
+	sess.SetMultiConnFlag(wire.MultiConnFlag(serverCookie.MultiConnFlag))
+
 	if u.DisplayScreenName.IsUIN() {
 		sess.SetUserInfoFlag(wire.OServiceUserFlagICQ)
 
@@ -364,6 +367,7 @@ type loginProperties struct {
 	isKerberosPlaintextAuth bool
 	isKerberosRoastedAuth   bool
 	isTOCAuth               bool
+	multiConnFlag           uint8
 	passwordHash            []byte
 	plaintextPassword       []byte
 	roastedPass             []byte
@@ -413,6 +417,11 @@ func (l *loginProperties) fromTLV(list wire.TLVList) error {
 		l.isKerberosRoastedAuth = true
 	default:
 		l.isFLAPAuth = true
+	}
+
+	// does the client support multiple concurrent sessions?
+	if multiConnFlags, found := list.Uint8(wire.LoginTLVTagsMultiConnFlags); found {
+		l.multiConnFlag = multiConnFlags
 	}
 
 	return nil
@@ -514,9 +523,10 @@ func (s AuthService) createUser(ctx context.Context, props loginProperties, newU
 
 func (s AuthService) loginSuccessResponse(props loginProperties, advertisedHost string) (wire.TLVRestBlock, error) {
 	loginCookie := state.ServerCookie{
-		Service:    wire.BOS,
-		ScreenName: props.screenName,
-		ClientID:   props.clientID,
+		Service:       wire.BOS,
+		ScreenName:    props.screenName,
+		ClientID:      props.clientID,
+		MultiConnFlag: props.multiConnFlag,
 	}
 
 	buf := &bytes.Buffer{}

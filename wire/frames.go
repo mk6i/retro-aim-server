@@ -29,8 +29,9 @@ type FLAPFrame struct {
 
 // FLAPFrameDisconnect is the last FLAP frame sent to a client before
 // disconnection. It differs from FLAPFrame in that there is no payload length
-// prefix at the end, which causes Windows AIM clients to improperly handle
-// server disconnections, as when the regular FLAPFrame type is used.
+// prefix at the end, which causes pre-multi-conn Windows AIM clients to
+// improperly handle server disconnections, as when the regular FLAPFrame type
+// is used.
 type FLAPFrameDisconnect struct {
 	StartMarker uint8
 	FrameType   uint8
@@ -147,11 +148,21 @@ func (f *FlapClient) ReceiveFLAP() (FLAPFrame, error) {
 	return flap, err
 }
 
-// SendSignoffFrame sends a sign-off FLAP frame with attached TLVs as the last
-// request sent in the FLAP auth flow. This is unrelated to the Disconnect()
-// method, which sends a sign-off frame to terminate a BOS connection.
-// todo: combine this method with Disconnect()
-func (f *FlapClient) SendSignoffFrame(tlvs TLVRestBlock) error {
+// OldSignoff sends a signoff FLAP frame to clients that don't support multi-conn.
+func (f *FlapClient) OldSignoff() error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	flap := FLAPFrameDisconnect{
+		StartMarker: 42,
+		FrameType:   FLAPFrameSignoff,
+		Sequence:    uint16(f.sequence),
+	}
+	return MarshalBE(flap, f.w)
+}
+
+// NewSignoff sends a signoff FLAP frame to multi-conn clients with metadata.
+func (f *FlapClient) NewSignoff(tlvs TLVRestBlock) error {
 	tlvBuf := &bytes.Buffer{}
 	if err := MarshalBE(tlvs, tlvBuf); err != nil {
 		return err
@@ -248,17 +259,4 @@ func (f *FlapClient) ReceiveSNAC(frame *SNACFrame, body any) error {
 		return err
 	}
 	return UnmarshalBE(body, buf)
-}
-
-// Disconnect sends a signoff FLAP frame.
-func (f *FlapClient) Disconnect() error {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
-	flap := FLAPFrameDisconnect{
-		StartMarker: 42,
-		FrameType:   FLAPFrameSignoff,
-		Sequence:    uint16(f.sequence),
-	}
-	return MarshalBE(flap, f.w)
 }

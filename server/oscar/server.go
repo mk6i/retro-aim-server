@@ -353,7 +353,7 @@ func (s oscarServer) authenticate(
 				},
 			)
 		} else {
-			return flapc.SendSignoffFrame(tlv)
+			return flapc.NewSignoff(tlv)
 		}
 	}
 
@@ -386,7 +386,7 @@ func (s oscarServer) processFLAPAuth(
 	if err != nil {
 		return err
 	}
-	return flapc.SendSignoffFrame(tlv)
+	return flapc.NewSignoff(tlv)
 }
 
 func (s oscarServer) processBUCPAuth(ctx context.Context, flapc *wire.FlapClient, advertisedHost string) error {
@@ -569,11 +569,17 @@ func (s oscarServer) dispatchIncomingMessages(
 			}
 		case <-sess.Closed():
 			block := wire.TLVRestBlock{}
-			// error code indicating user signed in a different location
-			block.Append(wire.NewTLVBE(0x0009, wire.OServiceDiscErrNewLogin))
-			// "more info" button
-			block.Append(wire.NewTLVBE(0x000b, "https://github.com/mk6i/retro-aim-server"))
-			if err := flapc.SendSignoffFrame(block); err != nil {
+			// add logoff reason to clients that support multi-conn
+			if sess.MultiConnFlag() != wire.MultiConnFlagsOldClient {
+				// error code indicating user signed in a different location
+				block.Append(wire.NewTLVBE(0x0009, wire.OServiceDiscErrNewLogin))
+				// "more info" button
+				block.Append(wire.NewTLVBE(0x000b, "https://github.com/mk6i/retro-aim-server"))
+				if err := flapc.NewSignoff(block); err != nil {
+					return fmt.Errorf("unable to gracefully disconnect user. %w", err)
+				}
+			}
+			if err := flapc.OldSignoff(); err != nil {
 				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
 			}
 			return nil
@@ -581,11 +587,11 @@ func (s oscarServer) dispatchIncomingMessages(
 			block := wire.TLVRestBlock{}
 			// send explicit disconnect notification to client since proxies
 			// between client and server may not properly terminate connections
-			if err := flapc.SendSignoffFrame(block); err != nil {
+			if err := flapc.NewSignoff(block); err != nil {
 				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
 			}
 			// application is shutting down
-			if err := flapc.Disconnect(); err != nil {
+			if err := flapc.OldSignoff(); err != nil {
 				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
 			}
 			return nil

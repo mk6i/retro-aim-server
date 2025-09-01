@@ -78,6 +78,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 								0x02, 'm', 'e',
 								0x0, // no client ID
 								0x0, // no chat cookie
+								0x0, // multi conn flag
 							},
 							cookieOut: []byte("the-cookie"),
 						},
@@ -124,6 +125,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 								0x02, 'm', 'e',
 								0x0, // no client ID
 								0x0, // no chat cookie
+								0x0, // multi conn flag
 							},
 							cookieOut: []byte("the-cookie"),
 						},
@@ -170,6 +172,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 								0x02, 'm', 'e',
 								0x0, // no client ID
 								0x0, // no chat cookie
+								0x0, // multi conn flag
 							},
 							cookieOut: []byte("the-cookie"),
 						},
@@ -216,6 +219,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 								0x02, 'm', 'e',
 								0x0, // no client ID
 								0x0, // no chat cookie
+								0x0, // multi conn flag
 							},
 							cookieOut: []byte("the-cookie"),
 						},
@@ -280,6 +284,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 									0x02, 'm', 'e', // screen name
 									0x00, // no client ID
 									0x11, '4', '-', '0', '-', 't', 'h', 'e', '-', 'c', 'h', 'a', 't', '-', 'r', 'o', 'o', 'm',
+									0x0, // multi conn flag
 								},
 								cookieOut: []byte("the-auth-cookie"),
 							},
@@ -327,6 +332,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 								0x02, 'm', 'e',
 								0x0, // no client ID
 								0x0, // no chat cookie
+								0x0, // multi conn flag
 							},
 							cookieOut: []byte("the-cookie"),
 						},
@@ -458,6 +464,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 								0x02, 'm', 'e',
 								0x0, // no client ID
 								0x0, // no chat cookie
+								0x0, // multi conn flag
 							},
 							cookieOut: []byte("the-cookie"),
 						},
@@ -509,6 +516,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 								0x02, 'm', 'e',
 								0x0, // no client ID
 								0x0, // no chat cookie
+								0x0, // multi conn flag
 							},
 							cookieOut: []byte("the-cookie"),
 						},
@@ -560,6 +568,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 								0x02, 'm', 'e',
 								0x0, // no client ID
 								0x0, // no chat cookie
+								0x0, // multi conn flag
 							},
 							cookieOut: []byte("the-cookie"),
 						},
@@ -611,6 +620,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 								0x02, 'm', 'e',
 								0x0, // no client ID
 								0x0, // no chat cookie
+								0x0, // multi conn flag
 							},
 							cookieOut: []byte("the-cookie"),
 						},
@@ -676,6 +686,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 									0x02, 'm', 'e', // screen name
 									0x00, // no client ID
 									0x11, '4', '-', '0', '-', 't', 'h', 'e', '-', 'c', 'h', 'a', 't', '-', 'r', 'o', 'o', 'm',
+									0x0, // multi conn flag
 								},
 								cookieOut: []byte("the-auth-cookie"),
 							},
@@ -728,6 +739,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 								0x02, 'm', 'e',
 								0x0, // no client ID
 								0x0, // no chat cookie
+								0x0, // multi conn flag
 							},
 							cookieOut: []byte("the-cookie"),
 						},

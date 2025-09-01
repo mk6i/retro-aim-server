@@ -19,10 +19,11 @@ const authCookieLen = 256
 // ServerCookie represents a token containing client metadata passed to the BOS
 // service upon connection.
 type ServerCookie struct {
-	Service    uint16
-	ScreenName DisplayScreenName `oscar:"len_prefix=uint8"`
-	ClientID   string            `oscar:"len_prefix=uint8"`
-	ChatCookie string            `oscar:"len_prefix=uint8"`
+	Service       uint16
+	ScreenName    DisplayScreenName `oscar:"len_prefix=uint8"`
+	ClientID      string            `oscar:"len_prefix=uint8"`
+	ChatCookie    string            `oscar:"len_prefix=uint8"`
+	MultiConnFlag uint8
 }
 
 func NewHMACCookieBaker() (HMACCookieBaker, error) {

@@ -644,14 +644,17 @@ func Test_oscarServer_dispatchIncomingMessages_shutdownSignoff(t *testing.T) {
 	frame, err := flapc.ReceiveFLAP()
 	assert.NoError(t, err)
 	assert.Equal(t, wire.FLAPFrameSignoff, frame.FrameType)
+
+	wg.Done()
 }
 
-// Make sure the client receives disconnection signoff FLAP when the session
-// gets logged off by a new session.
-func Test_oscarServer_dispatchIncomingMessages_disconnect(t *testing.T) {
+// Make sure the client (which doesn't support multi-conn) receives
+// disconnection signoff FLAP when the session gets logged off by a new session.
+func Test_oscarServer_dispatchIncomingMessages_disconnect_old_client(t *testing.T) {
 	clientConn, serverConn := net.Pipe()
 	ctx := context.Background()
 	sess := state.NewSession()
+	sess.SetMultiConnFlag(wire.MultiConnFlagsRecentClient)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -666,10 +669,42 @@ func Test_oscarServer_dispatchIncomingMessages_disconnect(t *testing.T) {
 	}()
 
 	sess.Close()
+
+	frame := wire.FLAPFrameDisconnect{}
+	assert.NoError(t, wire.UnmarshalBE(&frame, clientConn))
+	assert.Equal(t, wire.FLAPFrameSignoff, frame.FrameType)
+
+	wg.Done()
+}
+
+// Make sure the client (which supports multi-conn) receives disconnection
+// signoff FLAP when the session gets logged off by a new session.
+func Test_oscarServer_dispatchIncomingMessages_disconnect_new_client(t *testing.T) {
+	clientConn, serverConn := net.Pipe()
+	ctx := context.Background()
+	sess := state.NewSession()
+	sess.SetMultiConnFlag(wire.MultiConnFlagsRecentClient)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		srv := oscarServer{
+			Logger: slog.Default(),
+		}
+		flapc := wire.NewFlapClient(0, serverConn, serverConn)
+		err := srv.dispatchIncomingMessages(ctx, wire.BOS, sess, flapc, serverConn, config.Listener{})
+		assert.NoError(t, err)
+	}()
+
+	sess.Close()
+
 	flapc := wire.NewFlapClient(0, clientConn, clientConn)
 	frame, err := flapc.ReceiveFLAP()
 	assert.NoError(t, err)
 	assert.Equal(t, wire.FLAPFrameSignoff, frame.FrameType)
+
+	wg.Done()
 }
 
 func Test_oscarServer_receiveSessMessages_BOS_integration(t *testing.T) {
