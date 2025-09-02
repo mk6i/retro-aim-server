@@ -8,14 +8,28 @@ import (
 	"net/http"
 
 	"golang.org/x/sync/errgroup"
+
+	"github.com/mk6i/retro-aim-server/server/webapi/middleware"
 )
 
-func NewServer(listeners []string, logger *slog.Logger, handler Handler) *Server {
+func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyValidator middleware.APIKeyValidator) *Server {
 	servers := make([]*http.Server, 0, len(listeners))
+
+	// Create authentication middleware
+	// TODO: Remove underscore when implementing authenticated endpoints
+	_ = middleware.NewAuthMiddleware(apiKeyValidator, logger)
 
 	for _, l := range listeners {
 		mux := http.NewServeMux()
+		
+		// Public endpoint (no auth required for hello world)
 		mux.HandleFunc("GET /", handler.GetHelloWorldHandler)
+		
+		// TODO: Add authenticated Web AIM API endpoints here
+		// Example:
+		// mux.Handle("GET /aim/startSession", authMiddleware.Authenticate(
+		//     authMiddleware.CORSMiddleware(
+		//         http.HandlerFunc(handler.StartSessionHandler))))
 
 		servers = append(servers, &http.Server{
 			Addr:    l,

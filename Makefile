@@ -72,3 +72,15 @@ docker-nss: ## Create NSS certificate database for AIM 6.x clients
 .PHONY: clean-certs
 clean-certs: ## Remove all generated certificates & NSS DB
 	rm -rf certs/*
+
+################################################################################
+# Web API Tools
+################################################################################
+
+.PHONY: webapi-keygen
+webapi-keygen: ## Build the Web API key generator tool
+	go build -o webapi_keygen ./cmd/webapi_keygen
+
+.PHONY: webapi-keygen-install
+webapi-keygen-install: ## Install the Web API key generator tool system-wide
+	go install ./cmd/webapi_keygen

@@ -337,7 +337,7 @@ func MgmtAPI(deps Container) *http.Server {
 	logger := deps.logger.With("svc", "API")
 	return http.NewManagementAPI(bld, deps.cfg.APIListener, deps.sqLiteUserStore, deps.inMemorySessionManager, deps.sqLiteUserStore,
 		deps.sqLiteUserStore, deps.chatSessionManager, deps.sqLiteUserStore, deps.inMemorySessionManager,
-		deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, logger)
+		deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, logger)
 }
 
 // TOC creates a TOC server.
@@ -496,5 +496,5 @@ func WebAPI(deps Container) *webapi.Server {
 		ChatNavService: foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
 		SNACRateLimits: deps.snacRateLimits,
 	}
-	return webapi.NewServer([]string{"0.0.0.0:8081"}, logger, handler)
+	return webapi.NewServer([]string{"0.0.0.0:8081"}, logger, handler, deps.sqLiteUserStore)
 }
