@@ -568,9 +568,13 @@ func (s oscarServer) dispatchIncomingMessages(
 				}
 			}
 		case <-sess.Closed():
-			block := wire.TLVRestBlock{}
 			// add logoff reason to clients that support multi-conn
-			if sess.MultiConnFlag() != wire.MultiConnFlagsOldClient {
+			if sess.MultiConnFlag() == wire.MultiConnFlagsOldClient {
+				if err := flapc.OldSignoff(); err != nil {
+					return fmt.Errorf("unable to gracefully disconnect user. %w", err)
+				}
+			} else {
+				block := wire.TLVRestBlock{}
 				// error code indicating user signed in a different location
 				block.Append(wire.NewTLVBE(0x0009, wire.OServiceDiscErrNewLogin))
 				// "more info" button
@@ -579,20 +583,16 @@ func (s oscarServer) dispatchIncomingMessages(
 					return fmt.Errorf("unable to gracefully disconnect user. %w", err)
 				}
 			}
-			if err := flapc.OldSignoff(); err != nil {
-				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
-			}
 			return nil
 		case <-ctx.Done():
-			block := wire.TLVRestBlock{}
-			// send explicit disconnect notification to client since proxies
-			// between client and server may not properly terminate connections
-			if err := flapc.NewSignoff(block); err != nil {
-				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
-			}
-			// application is shutting down
-			if err := flapc.OldSignoff(); err != nil {
-				return fmt.Errorf("unable to gracefully disconnect user. %w", err)
+			if sess.MultiConnFlag() == wire.MultiConnFlagsOldClient {
+				if err := flapc.OldSignoff(); err != nil {
+					return fmt.Errorf("unable to gracefully disconnect user. %w", err)
+				}
+			} else {
+				if err := flapc.NewSignoff(wire.TLVRestBlock{}); err != nil {
+					return fmt.Errorf("unable to gracefully disconnect user. %w", err)
+				}
 			}
 			return nil
 		case err := <-errCh:

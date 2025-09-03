@@ -148,7 +148,13 @@ func (f *FlapClient) ReceiveFLAP() (FLAPFrame, error) {
 	return flap, err
 }
 
-// OldSignoff sends a signoff FLAP frame to clients that don't support multi-conn.
+// OldSignoff sends a signoff FLAP frame for legacy clients that do not
+// support multi-connection (Windows AIM 1.x–4.1).
+//
+// When these clients receive this frame, they display a "connection lost"
+// message and close the session. Unlike normal FLAP frames, this variant
+// omits the payload size field. If the size field were present, the client
+// would hang without displaying any message upon server disconnection.
 func (f *FlapClient) OldSignoff() error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
@@ -161,7 +167,12 @@ func (f *FlapClient) OldSignoff() error {
 	return MarshalBE(flap, f.w)
 }
 
-// NewSignoff sends a signoff FLAP frame to multi-conn clients with metadata.
+// NewSignoff sends a signoff FLAP frame for multi-connection clients.
+//
+// The frame includes a TLV block with additional metadata such as error codes.
+// Client behavior depends on the version:
+//   - AIM 4.3–5.x: the client minimizes and enters a "signed off" state.
+//   - AIM 6.x–7.x: the client closes and displays a disconnection error.
 func (f *FlapClient) NewSignoff(tlvs TLVRestBlock) error {
 	tlvBuf := &bytes.Buffer{}
 	if err := MarshalBE(tlvs, tlvBuf); err != nil {

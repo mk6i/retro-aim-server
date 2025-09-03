@@ -634,6 +634,7 @@ func Test_oscarServer_dispatchIncomingMessages_shutdownSignoff(t *testing.T) {
 			Logger: slog.Default(),
 		}
 		sess := state.NewSession()
+		sess.SetMultiConnFlag(wire.MultiConnFlagsRecentClient)
 		flapc := wire.NewFlapClient(0, serverConn, serverConn)
 		err := srv.dispatchIncomingMessages(ctx, wire.BOS, sess, flapc, serverConn, config.Listener{})
 		assert.NoError(t, err)
