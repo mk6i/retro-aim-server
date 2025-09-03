@@ -96,6 +96,7 @@ func (s *Server) ListenAndServe() error {
 		if listenCfg.HasSSL {
 			args = append(args, "advertised_host_ssl", listenCfg.BOSAdvertisedHostSSL)
 		}
+		s.logger.Info("starting server", args...)
 
 		s.listeners = append(s.listeners, ln)
 		s.listenWg.Add(1)
