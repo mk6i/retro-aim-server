@@ -187,6 +187,13 @@ func (s *Session) SetUserStatusBitmask(bitmask uint32) {
 	s.userStatusBitmask = bitmask
 }
 
+// UserStatusBitmask returns the user status bitmask.
+func (s *Session) UserStatusBitmask() uint32 {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.userStatusBitmask
+}
+
 // IncrementWarning increments the user's warning level. To decrease, pass a
 // negative increment value.
 func (s *Session) IncrementWarning(incr uint16) {

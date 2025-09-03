@@ -34,6 +34,7 @@ type Container struct {
 	rateLimitClasses       wire.RateLimitClasses
 	snacRateLimits         wire.SNACRateLimits
 	sqLiteUserStore        *state.SQLiteUserStore
+	webAPISessionManager   *state.WebAPISessionManager
 	Listeners              []config.Listener
 }
 
@@ -72,6 +73,7 @@ func MakeCommonDeps() (Container, error) {
 	c.logger = middleware.NewLogger(c.cfg)
 	c.inMemorySessionManager = state.NewInMemorySessionManager(c.logger)
 	c.chatSessionManager = state.NewInMemoryChatSessionManager(c.logger)
+	c.webAPISessionManager = state.NewWebAPISessionManager()
 	c.rateLimitClasses = wire.DefaultRateLimitClasses()
 	c.snacRateLimits = wire.DefaultSNACRateLimits()
 	return c, nil
@@ -425,6 +427,12 @@ func TOC(deps Container) *toc.Server {
 // WebAPI creates an HTTP server for the webapi protocol.
 func WebAPI(deps Container) *webapi.Server {
 	logger := deps.logger.With("svc", "webapi")
+
+	// Create feedbag adapter for WebAPI
+	feedbagAdapter := &webapi.FeedbagAdapter{
+		Store: deps.sqLiteUserStore,
+	}
+
 	handler := webapi.Handler{
 		AdminService: foodgroup.NewAdminService(
 			deps.sqLiteUserStore,
@@ -495,6 +503,18 @@ func WebAPI(deps Container) *webapi.Server {
 		ChatService:    foodgroup.NewChatService(deps.chatSessionManager),
 		ChatNavService: foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
 		SNACRateLimits: deps.snacRateLimits,
+		// New fields for WebAPI handlers
+		SessionRetriever: deps.inMemorySessionManager,
+		FeedbagRetriever: feedbagAdapter,
+		FeedbagManager:   feedbagAdapter,
+		// Phase 2 additions
+		MessageRelayer:        deps.inMemorySessionManager,
+		OfflineMessageManager: deps.sqLiteUserStore,
+		BuddyBroadcaster:      webapi.NullBuddyBroadcaster{},
+		ProfileManager:        deps.sqLiteUserStore,
+		// Authentication support
+		UserManager: deps.sqLiteUserStore,
+		TokenStore:  state.NewWebAPITokenStore(deps.sqLiteUserStore.DB()),
 	}
-	return webapi.NewServer([]string{"0.0.0.0:8081"}, logger, handler, deps.sqLiteUserStore)
+	return webapi.NewServer([]string{"0.0.0.0:9000"}, logger, handler, deps.sqLiteUserStore, deps.webAPISessionManager)
 }

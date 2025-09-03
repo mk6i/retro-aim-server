@@ -2,6 +2,7 @@ package webapi
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mk6i/retro-aim-server/config"
@@ -103,4 +104,68 @@ type CookieBaker interface {
 
 type AdminService interface {
 	InfoChangeRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x07_0x04_AdminInfoChangeRequest) (wire.SNACMessage, error)
+}
+
+// SessionRetriever provides methods to retrieve OSCAR sessions.
+type SessionRetriever interface {
+	AllSessions() []*state.Session
+	RetrieveSession(screenName state.IdentScreenName) *state.Session
+}
+
+// FeedbagRetriever provides methods to retrieve buddy list data.
+type FeedbagRetriever interface {
+	RetrieveFeedbag(ctx context.Context, screenName state.IdentScreenName) ([]wire.FeedbagItem, error)
+	RelationshipsByUser(ctx context.Context, screenName state.IdentScreenName) ([]state.IdentScreenName, error)
+}
+
+// FeedbagManager provides methods to manage buddy lists.
+type FeedbagManager interface {
+	RetrieveFeedbag(ctx context.Context, screenName state.IdentScreenName) ([]wire.FeedbagItem, error)
+	InsertItem(ctx context.Context, screenName state.IdentScreenName, item wire.FeedbagItem) error
+	UpdateItem(ctx context.Context, screenName state.IdentScreenName, item wire.FeedbagItem) error
+	DeleteItem(ctx context.Context, screenName state.IdentScreenName, item wire.FeedbagItem) error
+}
+
+// Phase 2: Additional interfaces for messaging and presence
+
+// MessageRelayer relays messages between users
+type MessageRelayer interface {
+	RelayToScreenName(ctx context.Context, recipient state.IdentScreenName, msg wire.SNACMessage)
+}
+
+// OfflineMessageManager manages offline message storage and retrieval
+type OfflineMessageManager interface {
+	SaveMessage(ctx context.Context, msg state.OfflineMessage) error
+	RetrieveMessages(ctx context.Context, recipient state.IdentScreenName) ([]state.OfflineMessage, error)
+	DeleteMessages(ctx context.Context, recipient state.IdentScreenName) error
+}
+
+// BuddyBroadcaster broadcasts buddy presence updates
+type BuddyBroadcaster interface {
+	BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error
+	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
+}
+
+// ProfileManager manages user profiles
+type ProfileManager interface {
+	SetProfile(ctx context.Context, screenName state.IdentScreenName, profile string) error
+	Profile(ctx context.Context, screenName state.IdentScreenName) (string, error)
+}
+
+// UserManager defines methods for user authentication.
+type UserManager interface {
+	// AuthenticateUser verifies username and password
+	AuthenticateUser(username, password string) (*state.User, error)
+	// FindUserByScreenName finds a user by their screen name
+	FindUserByScreenName(screenName state.IdentScreenName) (*state.User, error)
+}
+
+// TokenStore manages authentication tokens.
+type TokenStore interface {
+	// StoreToken saves an authentication token for a user
+	StoreToken(token string, screenName state.IdentScreenName, expiresAt time.Time) error
+	// ValidateToken checks if a token is valid and returns the associated screen name
+	ValidateToken(token string) (state.IdentScreenName, error)
+	// DeleteToken removes a token
+	DeleteToken(token string) error
 }

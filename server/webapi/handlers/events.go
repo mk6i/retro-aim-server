@@ -1,0 +1,166 @@
+package handlers
+
+import (
+	"context"
+	"encoding/xml"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/mk6i/retro-aim-server/state"
+)
+
+// EventsHandler handles Web AIM API event fetching endpoints.
+type EventsHandler struct {
+	SessionManager *state.WebAPISessionManager
+	Logger         *slog.Logger
+}
+
+// FetchEventsResponse represents the response for fetchEvents endpoint.
+type FetchEventsResponse struct {
+	Response struct {
+		StatusCode int             `json:"statusCode"`
+		StatusText string          `json:"statusText"`
+		Data       FetchEventsData `json:"data"`
+	} `json:"response"`
+}
+
+// FetchEventsData contains the events and metadata.
+type FetchEventsData struct {
+	Events          []state.WebAPIEvent `json:"events"`
+	LastSeqNum      uint64              `json:"lastSeqNum"`
+	TimeToNextFetch int                 `json:"timeToNextFetch"`
+}
+
+// FetchEventsXMLResponse represents the XML response for fetchEvents endpoint.
+type FetchEventsXMLResponse struct {
+	XMLName    xml.Name `xml:"response"`
+	StatusCode int      `xml:"statusCode"`
+	StatusText string   `xml:"statusText"`
+	Data       struct {
+		Events          []state.WebAPIEvent `xml:"events>event"`
+		LastSeqNum      uint64              `xml:"lastSeqNum"`
+		TimeToNextFetch int                 `xml:"timeToNextFetch"`
+	} `xml:"data"`
+}
+
+// FetchEvents handles GET /aim/fetchEvents requests with long-polling support.
+func (h *EventsHandler) FetchEvents(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get session ID from parameters
+	aimsid := r.URL.Query().Get("aimsid")
+	if aimsid == "" {
+		h.sendError(w, http.StatusBadRequest, "missing aimsid parameter")
+		return
+	}
+
+	// Get session
+	session, err := h.SessionManager.GetSession(aimsid)
+	if err != nil {
+		if err == state.ErrNoWebAPISession {
+			h.sendError(w, http.StatusNotFound, "session not found")
+		} else if err == state.ErrWebAPISessionExpired {
+			h.sendError(w, http.StatusGone, "session expired")
+		} else {
+			h.sendError(w, http.StatusInternalServerError, "internal server error")
+		}
+		return
+	}
+
+	// Touch the session to update last accessed time
+	h.SessionManager.TouchSession(aimsid)
+
+	// Get sequence number parameter
+	var lastSeqNum uint64
+	if seqStr := r.URL.Query().Get("seqNum"); seqStr != "" {
+		if val, err := strconv.ParseUint(seqStr, 10, 64); err == nil {
+			lastSeqNum = val
+		}
+	}
+
+	// Get timeout parameter (in seconds, convert to milliseconds)
+	timeout := time.Duration(session.FetchTimeout) * time.Millisecond
+	if timeoutStr := r.URL.Query().Get("timeout"); timeoutStr != "" {
+		if val, err := strconv.Atoi(timeoutStr); err == nil && val > 0 {
+			timeout = time.Duration(val) * time.Second
+		}
+	}
+
+	// Limit maximum timeout to 60 seconds
+	if timeout > 60*time.Second {
+		timeout = 60 * time.Second
+	}
+
+	// Create a context with timeout for the fetch operation
+	fetchCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	// Fetch events from the queue (will block until events available or timeout)
+	events, err := session.EventQueue.Fetch(fetchCtx, lastSeqNum, timeout)
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			// Timeout is normal - return empty events array
+			events = []state.WebAPIEvent{}
+		} else {
+			h.Logger.ErrorContext(ctx, "failed to fetch events", "err", err.Error())
+			h.sendError(w, http.StatusInternalServerError, "failed to fetch events")
+			return
+		}
+	}
+
+	// Determine the last sequence number
+	var newLastSeqNum uint64 = lastSeqNum
+	if len(events) > 0 {
+		newLastSeqNum = events[len(events)-1].SeqNum
+	}
+
+	// Prepare response
+	resp := FetchEventsResponse{}
+	resp.Response.StatusCode = 200
+	resp.Response.StatusText = "OK"
+	resp.Response.Data.Events = events
+	resp.Response.Data.LastSeqNum = newLastSeqNum
+	resp.Response.Data.TimeToNextFetch = session.TimeToNextFetch
+
+	// Check response format
+	format := r.URL.Query().Get("f")
+	callback := r.URL.Query().Get("callback")
+
+	if format == "xml" {
+		// Send XML response
+		xmlResp := FetchEventsXMLResponse{}
+		xmlResp.StatusCode = 200
+		xmlResp.StatusText = "OK"
+		xmlResp.Data.Events = events
+		xmlResp.Data.LastSeqNum = newLastSeqNum
+		xmlResp.Data.TimeToNextFetch = session.TimeToNextFetch
+
+		w.Header().Set("Content-Type", "text/xml")
+		fmt.Fprint(w, `<?xml version="1.0" encoding="UTF-8"?>`)
+		if err := xml.NewEncoder(w).Encode(xmlResp); err != nil {
+			h.Logger.Error("failed to encode XML response", "error", err)
+		}
+	} else if callback != "" {
+		// Send JSONP response
+		SendJSONP(w, callback, resp, h.Logger)
+	} else {
+		// Send JSON response (default)
+		SendJSON(w, resp, h.Logger)
+	}
+
+	if len(events) > 0 {
+		h.Logger.DebugContext(ctx, "events fetched",
+			"aimsid", aimsid,
+			"count", len(events),
+			"last_seq", newLastSeqNum,
+		)
+	}
+}
+
+// sendError is a convenience method that wraps the common SendError function.
+func (h *EventsHandler) sendError(w http.ResponseWriter, statusCode int, message string) {
+	SendError(w, statusCode, message)
+}

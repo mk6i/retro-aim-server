@@ -43,6 +43,12 @@ type SQLiteUserStore struct {
 	db *sql.DB
 }
 
+// DB returns the underlying database connection.
+// This is needed for creating other stores that share the same database.
+func (s *SQLiteUserStore) DB() *sql.DB {
+	return s.db
+}
+
 // NewSQLiteUserStore creates a new instance of SQLiteUserStore. If the
 // database does not already exist, a new one is created with the required
 // schema.

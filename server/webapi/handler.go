@@ -24,6 +24,18 @@ type Handler struct {
 	PermitDenyService PermitDenyService
 	TOCConfigStore    TOCConfigStore
 	SNACRateLimits    wire.SNACRateLimits
+	// New fields for WebAPI handlers
+	SessionRetriever SessionRetriever
+	FeedbagRetriever FeedbagRetriever
+	FeedbagManager   FeedbagManager
+	// Phase 2 additions
+	MessageRelayer        MessageRelayer
+	OfflineMessageManager OfflineMessageManager
+	BuddyBroadcaster      BuddyBroadcaster
+	ProfileManager        ProfileManager
+	// Authentication support
+	UserManager UserManager
+	TokenStore  TokenStore
 }
 
 func (h Handler) GetHelloWorldHandler(w http.ResponseWriter, r *http.Request) {
