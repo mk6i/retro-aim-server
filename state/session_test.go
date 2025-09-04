@@ -24,8 +24,8 @@ func TestSession_SetAndGetAwayMessage(t *testing.T) {
 func TestSession_IncrementAndGetWarning(t *testing.T) {
 	s := NewSession()
 	assert.Zero(t, s.Warning())
-	s.IncrementWarning(1)
-	s.IncrementWarning(2)
+	s.IncrementWarning(1, 1)
+	s.IncrementWarning(2, 1)
 	assert.Equal(t, uint16(3), s.Warning())
 }
 
@@ -89,7 +89,7 @@ func TestSession_TLVUserInfo(t *testing.T) {
 				s.SetSignonTime(time.Unix(1, 0))
 				s.SetIdentScreenName(NewIdentScreenName("xXAIMUSERXx"))
 				s.SetDisplayScreenName("xXAIMUSERXx")
-				s.IncrementWarning(10)
+				s.IncrementWarning(10, 1)
 				s.SetUserInfoFlag(wire.OServiceUserFlagOSCARFree)
 				return s
 			},
@@ -621,4 +621,176 @@ func TestSession_SetAndGetMultiConnFlag(t *testing.T) {
 
 	s.SetMultiConnFlag(wire.MultiConnFlagsSingleClient)
 	assert.Equal(t, wire.MultiConnFlagsSingleClient, s.MultiConnFlag())
+}
+
+func TestSession_IncrementWarningWithRateLimitScaling(t *testing.T) {
+	t.Run("scale up", func(t *testing.T) {
+		classParams := [5]wire.RateClass{
+			{},
+			{},
+			{
+				ID:              3,
+				WindowSize:      20,
+				ClearLevel:      5100,
+				AlertLevel:      5000,
+				LimitLevel:      4000,
+				DisconnectLevel: 3000,
+				MaxLevel:        6000,
+			},
+			{},
+			{},
+		}
+		rateClasses := wire.NewRateLimitClasses(classParams)
+
+		now := time.Now()
+
+		sess := NewSession()
+		sess.SetRateClasses(now, rateClasses)
+
+		assert.Equal(t, int32(5000), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5100), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(4000), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(100, 3)
+		assert.Equal(t, int32(5100), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5190), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(4200), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(100, 3)
+		assert.Equal(t, int32(5200), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5280), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(4400), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(100, 3)
+		assert.Equal(t, int32(5300), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5370), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(4600), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(100, 3)
+		assert.Equal(t, int32(5400), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5460), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(4800), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(100, 3)
+		assert.Equal(t, int32(5500), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5550), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(5000), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(100, 3)
+		assert.Equal(t, int32(5600), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5640), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(5200), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(100, 3)
+		assert.Equal(t, int32(5700), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5730), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(5400), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(100, 3)
+		assert.Equal(t, int32(5800), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5820), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(5600), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(100, 3)
+		assert.Equal(t, int32(5900), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5910), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(5800), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(100, 3)
+		assert.Equal(t, int32(6000), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(6000), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(6000), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(100, 3)
+		assert.Equal(t, int32(6000), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(6000), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(6000), sess.rateByClassID[2].LimitLevel)
+	})
+
+	t.Run("scale down", func(t *testing.T) {
+		currentClassParams := [5]wire.RateClass{
+			{},
+			{},
+			{
+				ID:              3,
+				WindowSize:      20,
+				ClearLevel:      5100,
+				AlertLevel:      5000,
+				LimitLevel:      4000,
+				DisconnectLevel: 3000,
+				MaxLevel:        6000,
+			},
+			{},
+			{},
+		}
+		rateClasses := wire.NewRateLimitClasses(currentClassParams)
+
+		now := time.Now()
+
+		sess := NewSession()
+		sess.SetRateClasses(now, rateClasses)
+
+		for i := 0; i < 10; i++ {
+			sess.IncrementWarning(100, 3)
+		}
+
+		assert.Equal(t, int32(6000), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(6000), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(6000), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(-100, 3)
+		assert.Equal(t, int32(5900), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5910), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(5800), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(-100, 3)
+		assert.Equal(t, int32(5800), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5820), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(5600), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(-100, 3)
+		assert.Equal(t, int32(5700), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5730), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(5400), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(-100, 3)
+		assert.Equal(t, int32(5600), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5640), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(5200), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(-100, 3)
+		assert.Equal(t, int32(5500), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5550), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(5000), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(-100, 3)
+		assert.Equal(t, int32(5400), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5460), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(4800), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(-100, 3)
+		assert.Equal(t, int32(5300), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5370), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(4600), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(-100, 3)
+		assert.Equal(t, int32(5200), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5280), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(4400), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(-100, 3)
+		assert.Equal(t, int32(5100), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5190), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(4200), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(-100, 3)
+		assert.Equal(t, int32(5000), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5100), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(4000), sess.rateByClassID[2].LimitLevel)
+
+		sess.IncrementWarning(-100, 3)
+		assert.Equal(t, int32(5000), sess.rateByClassID[2].AlertLevel)
+		assert.Equal(t, int32(5100), sess.rateByClassID[2].ClearLevel)
+		assert.Equal(t, int32(4000), sess.rateByClassID[2].LimitLevel)
+	})
 }

@@ -719,9 +719,9 @@ type createChatRoomParams []struct {
 }
 
 // sessOptWarning sets a warning level on the session object
-func sessOptWarning(level uint16) func(session *state.Session) {
+func sessOptWarning(level int16) func(session *state.Session) {
 	return func(session *state.Session) {
-		session.IncrementWarning(level)
+		session.IncrementWarning(level, 1)
 	}
 }
 

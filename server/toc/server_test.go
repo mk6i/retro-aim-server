@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 
 	"github.com/stretchr/testify/assert"
@@ -23,8 +24,9 @@ func TestServer_handleTOCRequest_serverShutdown(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		sv := Server{
-			bosProxy: testOSCARProxy(t),
-			logger:   slog.Default(),
+			bosProxy:       testOSCARProxy(t),
+			logger:         slog.Default(),
+			lowerWarnLevel: func(ctx context.Context, sess *state.Session) {},
 		}
 
 		serverReader, _ := io.Pipe()
@@ -61,8 +63,9 @@ func TestServer_handleTOCRequest_clientReadDisconnect(t *testing.T) {
 		fc := wire.NewFlapClient(0, serverReader, nil)
 
 		sv := Server{
-			bosProxy: testOSCARProxy(t),
-			logger:   slog.Default(),
+			bosProxy:       testOSCARProxy(t),
+			logger:         slog.Default(),
+			lowerWarnLevel: func(ctx context.Context, sess *state.Session) {},
 		}
 		err := sv.handleTOCRequest(context.Background(), closeConn, sess, NewChatRegistry(), fc)
 		assert.ErrorIs(t, err, errClientReq)
@@ -94,8 +97,9 @@ func TestServer_handleTOCRequest_sessClose(t *testing.T) {
 		}
 
 		sv := Server{
-			bosProxy: testOSCARProxy(t),
-			logger:   slog.Default(),
+			bosProxy:       testOSCARProxy(t),
+			logger:         slog.Default(),
+			lowerWarnLevel: func(ctx context.Context, sess *state.Session) {},
 		}
 		err := sv.handleTOCRequest(context.Background(), closeConn, sess, NewChatRegistry(), fc)
 		assert.ErrorIs(t, err, errTOCProcessing)
@@ -126,8 +130,9 @@ func TestServer_handleTOCRequest_replyFailure(t *testing.T) {
 		fc := wire.NewFlapClient(0, serverReader, serverWriter)
 
 		sv := Server{
-			bosProxy: testOSCARProxy(t),
-			logger:   slog.Default(),
+			bosProxy:       testOSCARProxy(t),
+			logger:         slog.Default(),
+			lowerWarnLevel: func(ctx context.Context, sess *state.Session) {},
 		}
 		err := sv.handleTOCRequest(context.Background(), closeConn, sess, NewChatRegistry(), fc)
 		assert.ErrorIs(t, err, errServerWrite)
@@ -163,8 +168,9 @@ func TestServer_handleTOCRequest_happyPath(t *testing.T) {
 		}
 		fc := wire.NewFlapClient(0, serverReader, serverWriter)
 		sv := Server{
-			bosProxy: testOSCARProxy(t),
-			logger:   slog.Default(),
+			bosProxy:       testOSCARProxy(t),
+			logger:         slog.Default(),
+			lowerWarnLevel: func(ctx context.Context, sess *state.Session) {},
 		}
 		err := sv.handleTOCRequest(context.Background(), closeConn, newTestSession("me"), NewChatRegistry(), fc)
 		assert.ErrorIs(t, err, errClientReq)

@@ -2,8 +2,10 @@ package foodgroup
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"net/netip"
+	"sync"
 	"testing"
 	"time"
 
@@ -800,6 +802,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 				offlineMessageSaver: offlineMessageManager,
 				sessionRetriever:    sessionRetriever,
 				timeNow:             tc.timeNow,
+				convoTracker:        newConvoTracker(),
 			}
 
 			outputSNAC, err := svc.ChannelMsgToHost(context.Background(), tc.senderSession, tc.inputSNAC.Frame,
@@ -939,6 +942,8 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		name string
 		// senderScreenName is the session of the user sending the EvilRequest
 		senderSession *state.Session
+		// msgsReceived is the # of messages received from the warned user
+		msgsReceived int
 		// inputSNAC is the SNAC sent by the sender client
 		inputSNAC wire.SNACMessage
 		// expectOutput is the SNAC sent from the server to client
@@ -946,10 +951,13 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
 		mockParams mockParams
+		// waitForWarnMsg indicates whether to wait for session warn signal
+		waitForWarnMsg bool
 	}{
 		{
 			name:          "transmit anonymous warning from sender to recipient",
 			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -1018,10 +1026,12 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					},
 				},
 			},
+			waitForWarnMsg: true,
 		},
 		{
 			name:          "transmit non-anonymous warning from sender to recipient",
 			senderSession: newTestSession("sender-screen-name", sessOptWarning(110)),
+			msgsReceived:  1,
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -1098,10 +1108,12 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					},
 				},
 			},
+			waitForWarnMsg: true,
 		},
 		{
 			name:          "don't transmit non-anonymous warning from sender to recipient because sender has blocked recipient",
 			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -1142,6 +1154,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		{
 			name:          "don't transmit non-anonymous warning from sender to recipient because recipient has blocked sender",
 			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -1182,6 +1195,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		{
 			name:          "don't let users warn themselves",
 			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{
 					RequestID: 1234,
@@ -1205,6 +1219,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		{
 			name:          "don't transmit non-anonymous warning from sender to recipient because recipient is offline",
 			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
 			mockParams: mockParams{
 				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
@@ -1253,6 +1268,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 		{
 			name:          "don't transmit anonymous warning from sender to recipient because recipient is offline",
 			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
 			mockParams: mockParams{
 				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
@@ -1338,18 +1354,38 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				messageRelayer:      messageRelayer,
 				offlineMessageSaver: offlineMessageManager,
 				sessionRetriever:    sessionRetriever,
+				convoTracker:        newConvoTracker(),
+				snacRateLimits:      wire.DefaultSNACRateLimits(),
 			}
 
+			for i := 0; i < tc.msgsReceived; i++ {
+				svc.convoTracker.trackConvo(time.Now(),
+					state.NewIdentScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest).ScreenName),
+					tc.senderSession.IdentScreenName())
+			}
+
+			var wg sync.WaitGroup
+			if tc.waitForWarnMsg {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					for _, sess := range tc.mockParams.sessionRetrieverParams.retrieveSessionParams {
+						<-sess.result.WarningCh()
+					}
+				}()
+			}
 			outputSNAC, err := svc.EvilRequest(context.Background(), tc.senderSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest))
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectOutput, outputSNAC)
+
+			wg.Wait()
 		})
 	}
 }
 
 func TestICBMService_ParameterQuery(t *testing.T) {
-	svc := NewICBMService(nil, nil, nil, nil, nil, wire.DefaultSNACRateLimits())
+	svc := NewICBMService(nil, nil, nil, nil, nil, wire.DefaultSNACRateLimits(), slog.Default())
 
 	have := svc.ParameterQuery(nil, wire.SNACFrame{RequestID: 1234})
 	want := wire.SNACMessage{
@@ -1401,8 +1437,333 @@ func TestICBMService_ClientErr(t *testing.T) {
 	messageRelayer.EXPECT().
 		RelayToScreenName(mock.Anything, state.NewIdentScreenName("recipientScreenName"), expect)
 
-	svc := NewICBMService(nil, messageRelayer, nil, nil, nil, wire.DefaultSNACRateLimits())
+	svc := NewICBMService(nil, messageRelayer, nil, nil, nil, wire.DefaultSNACRateLimits(), slog.Default())
 
 	err := svc.ClientErr(context.Background(), sess, wire.SNACFrame{RequestID: 1234}, inBody)
 	assert.NoError(t, err)
+}
+
+func TestRingBuffer(t *testing.T) {
+	t.Run("new ringBuffer should have zero values", func(t *testing.T) {
+		rb := &ringBuffer{}
+
+		// Test val() on empty ringBuffer - should return zero time
+		result := rb.val()
+		zeroTime := time.Time{}
+		assert.Equal(t, zeroTime, result)
+	})
+
+	t.Run("val() should return current time", func(t *testing.T) {
+		now := time.Now()
+		rb := &ringBuffer{
+			cur: 1,
+			vals: [3]time.Time{
+				now.Add(-2 * time.Hour),
+				now.Add(-1 * time.Hour),
+				now,
+			},
+		}
+
+		result := rb.val()
+		assert.Equal(t, rb.vals[1], result)
+	})
+
+	t.Run("set() should store time and advance cursor", func(t *testing.T) {
+		rb := &ringBuffer{cur: 0}
+		newTime := time.Now()
+
+		// Set the time
+		rb.set(newTime)
+
+		// After set, cursor should advance to position 1
+		// We can verify this by setting another time and checking that it's stored at position 1
+		secondTime := time.Now().Add(time.Hour)
+		rb.set(secondTime)
+
+		// Now cursor should be at position 2, so val() should return the time at position 2
+		// But since we only set 2 times, position 2 should still be the zero time
+		zeroTime := time.Time{}
+		assert.Equal(t, zeroTime, rb.val())
+	})
+
+	t.Run("set() should wrap around after reaching end of array", func(t *testing.T) {
+		rb := &ringBuffer{cur: 2}
+		newTime := time.Now()
+
+		// Set the time at position 2
+		rb.set(newTime)
+
+		// Cursor should wrap around to position 0
+		// We can verify this by setting another time and checking behavior
+		rb.set(time.Now().Add(time.Hour))
+
+		// Now cursor should be at position 1, so val() should return the time at position 1
+		// But since we only set 2 times, position 1 should still be the zero time
+		zeroTime := time.Time{}
+		assert.Equal(t, zeroTime, rb.val())
+	})
+
+	t.Run("set() should handle multiple insertions correctly", func(t *testing.T) {
+		rb := &ringBuffer{}
+
+		// Insert 3 times
+		time1 := time.Now()
+		time2 := time.Now().Add(time.Hour)
+		time3 := time.Now().Add(2 * time.Hour)
+
+		rb.set(time1)
+		rb.set(time2)
+		rb.set(time3)
+
+		// After 3 insertions, cursor should be at position 0
+		// So val() should return the time at position 0
+		// This should be time1 since it was the first time set
+		assert.Equal(t, time1, rb.val())
+	})
+
+	t.Run("set() should overwrite existing values in order", func(t *testing.T) {
+		rb := &ringBuffer{}
+
+		// Set 3 times to fill the buffer
+		rb.set(time.Now())
+		rb.set(time.Now().Add(time.Hour))
+		rb.set(time.Now().Add(2 * time.Hour))
+
+		// After 3 sets, cursor is at position 0, val() returns first time
+		firstTime := rb.val()
+		assert.False(t, firstTime.IsZero())
+
+		// Set a 4th time - should overwrite position 0
+		fourthTime := time.Now().Add(3 * time.Hour)
+		rb.set(fourthTime)
+
+		// Now cursor is at position 1, val() returns second time
+		secondTime := rb.val()
+		assert.False(t, secondTime.IsZero())
+
+		// Set a 5th time - should overwrite position 1
+		fifthTime := time.Now().Add(4 * time.Hour)
+		rb.set(fifthTime)
+
+		// Now cursor is at position 2, val() returns third time
+		thirdTime := rb.val()
+		assert.False(t, thirdTime.IsZero())
+
+		// Set a 6th time - should overwrite position 2
+		sixthTime := time.Now().Add(5 * time.Hour)
+		rb.set(sixthTime)
+
+		// Now cursor wraps around to position 0, val() returns fourth time
+		assert.Equal(t, fourthTime, rb.val())
+	})
+
+	t.Run("val() should return correct time after multiple operations", func(t *testing.T) {
+		rb := &ringBuffer{}
+
+		// Insert times and verify val() returns correct current time
+		time1 := time.Now()
+		time2 := time.Now().Add(time.Hour)
+
+		rb.set(time1)
+		rb.set(time2)
+
+		// After 2 sets, cursor is at position 2
+		// So val() should return the time at position 2
+		// But since we only set 2 times, position 2 should still be the zero time
+		zeroTime := time.Time{}
+		assert.Equal(t, zeroTime, rb.val())
+
+		// Set one more to wrap around
+		time3 := time.Now().Add(2 * time.Hour)
+		rb.set(time3)
+
+		// Now cursor is at position 0, so val() should return the time at position 0
+		// This should be time1
+		assert.Equal(t, time1, rb.val())
+	})
+
+	t.Run("ringBuffer should maintain circular behavior over many operations", func(t *testing.T) {
+		rb := &ringBuffer{}
+
+		// Perform many operations to test circular behavior
+		for i := 0; i < 10; i++ {
+			rb.set(time.Now().Add(time.Duration(i) * time.Hour))
+		}
+
+		// After 10 operations, cursor should be at position 1 (10 % 3 = 1)
+		// So val() should return the time at position 1
+		// This should be the 8th time set (at position 1)
+		// We can't compare exact times since they're set in a loop, so just verify it's not zero
+		assert.False(t, rb.val().IsZero())
+
+		// Set one more to advance cursor to position 2
+		rb.set(time.Now().Add(10 * time.Hour))
+
+		// Now cursor is at position 2, so val() should return the time at position 2
+		// This should be the 9th time set (at position 2)
+		assert.False(t, rb.val().IsZero())
+
+		// Set one more to wrap around to position 0
+		rb.set(time.Now().Add(11 * time.Hour))
+
+		// Now cursor is at position 0, so val() should return the time at position 0
+		// This should be the 10th time set (at position 0)
+		assert.False(t, rb.val().IsZero())
+	})
+
+	t.Run("ringBuffer should cycle through all positions correctly", func(t *testing.T) {
+		rb := &ringBuffer{}
+
+		// Test cycling through all 3 positions
+		times := []time.Time{
+			time.Now(),
+			time.Now().Add(time.Hour),
+			time.Now().Add(2 * time.Hour),
+		}
+
+		// Set all 3 times
+		for _, t := range times {
+			rb.set(t)
+		}
+
+		// After 3 sets, cursor should be at position 0
+		// So val() should return the time at position 0
+		assert.Equal(t, times[0], rb.val())
+
+		// Set one more to advance cursor to position 1
+		nextTime := time.Now().Add(3 * time.Hour)
+		rb.set(nextTime)
+
+		// Now cursor is at position 1, so val() should return the time at position 1
+		// This should be the second time since it was stored at position 1
+		assert.Equal(t, times[1], rb.val())
+	})
+}
+
+func TestConvoTracker(t *testing.T) {
+	ct := newConvoTracker()
+	sender := state.NewIdentScreenName("sender")
+	recip := state.NewIdentScreenName("recipient")
+	now := time.Now()
+
+	// can't warn until a message is sent
+	assert.False(t, ct.trackWarn(now, recip, sender))
+
+	// can warn 1st time
+	ct.trackConvo(now, sender, recip)
+	assert.True(t, ct.trackWarn(now, recip, sender))
+
+	// can't warn 2nd time until 2nd message is sent
+	assert.False(t, ct.trackWarn(now, recip, sender))
+
+	// can warn 2nd time
+	now = now.Add(1 * time.Second)
+	ct.trackConvo(now, sender, recip)
+	assert.True(t, ct.trackWarn(now, recip, sender))
+
+	// can't warn 3rd time until 3rd message is sent
+	assert.False(t, ct.trackWarn(now, recip, sender))
+
+	// can warn 3rd time
+	now = now.Add(1 * time.Second)
+	ct.trackConvo(now, sender, recip)
+	assert.True(t, ct.trackWarn(now, recip, sender))
+
+	// can't warn 4th time
+	now = now.Add(1 * time.Second)
+	ct.trackConvo(now, sender, recip)
+	assert.False(t, ct.trackWarn(now, recip, sender))
+
+	// let an hour pass, we should be able to warn again
+	now = now.Add(1 * time.Hour)
+	ct.trackConvo(now, sender, recip)
+	assert.True(t, ct.trackWarn(now, recip, sender))
+}
+
+func TestICBMService_DecayWarnLevel(t *testing.T) {
+
+	t.Run("happy path", func(t *testing.T) {
+
+		sess := newTestSession("screen-name")
+		warnCh := make(chan uint16)
+
+		mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
+		mockBuddyBroadcaster.EXPECT().
+			BroadcastBuddyArrived(mock.Anything, matchSession(sess.IdentScreenName())).
+			Run(func(ctx context.Context, sess *state.Session) {
+				warnCh <- sess.Warning()
+			}).Return(nil)
+
+		svc := ICBMService{
+			buddyBroadcaster: mockBuddyBroadcaster,
+			logger:           slog.Default(),
+			interval:         1 * time.Millisecond,
+			snacRateLimits:   wire.DefaultSNACRateLimits(),
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			svc.DecayWarnLevel(ctx, sess)
+		}()
+
+		sess.IncrementWarning(100, 3)
+		sess.NotifyWarning(ctx)
+
+		assert.Equal(t, uint16(50), <-warnCh)
+		assert.Equal(t, uint16(0), <-warnCh)
+
+		sess.IncrementWarning(50, 3)
+		sess.NotifyWarning(ctx)
+		sess.IncrementWarning(50, 3)
+		sess.NotifyWarning(ctx)
+
+		assert.Equal(t, uint16(50), <-warnCh)
+		assert.Equal(t, uint16(0), <-warnCh)
+
+		cancel()
+		wg.Wait()
+	})
+
+	t.Run("3% burn down clamps to 0", func(t *testing.T) {
+
+		sess := newTestSession("screen-name")
+		warnCh := make(chan uint16)
+
+		mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
+		mockBuddyBroadcaster.EXPECT().
+			BroadcastBuddyArrived(mock.Anything, matchSession(sess.IdentScreenName())).
+			Run(func(ctx context.Context, sess *state.Session) {
+				warnCh <- sess.Warning()
+			}).Return(nil)
+
+		svc := ICBMService{
+			buddyBroadcaster: mockBuddyBroadcaster,
+			logger:           slog.Default(),
+			interval:         1 * time.Millisecond,
+			snacRateLimits:   wire.DefaultSNACRateLimits(),
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			svc.DecayWarnLevel(ctx, sess)
+		}()
+
+		sess.IncrementWarning(30, 3)
+		sess.NotifyWarning(ctx)
+
+		assert.Equal(t, uint16(0), <-warnCh)
+
+		cancel()
+		wg.Wait()
+	})
 }

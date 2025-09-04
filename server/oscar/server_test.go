@@ -12,12 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mk6i/retro-aim-server/config"
-	"github.com/mk6i/retro-aim-server/state"
-	"github.com/mk6i/retro-aim-server/wire"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/time/rate"
+
+	"github.com/mk6i/retro-aim-server/config"
+	"github.com/mk6i/retro-aim-server/state"
+	"github.com/mk6i/retro-aim-server/wire"
 )
 
 func TestServer_ListenAndServeAndShutdown(t *testing.T) {
@@ -54,6 +55,7 @@ func TestServer_ListenAndServeAndShutdown(t *testing.T) {
 		wire.DefaultSNACRateLimits(),
 		nil,
 		cfg,
+		func(ctx context.Context, sess *state.Session) {},
 	)
 
 	server.handler = func(ctx context.Context, conn net.Conn, listener config.Listener) error {
@@ -403,7 +405,7 @@ func TestOscarServer_RouteConnection_BOS(t *testing.T) {
 	chatSessionManager.EXPECT().
 		RemoveUserFromAllChats(mock.Anything)
 
-	wg.Add(1)
+	wg.Add(2)
 	handler := func(ctx context.Context, serverType uint16, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter, listener config.Listener) error {
 		defer wg.Done()
 		return nil
@@ -417,6 +419,9 @@ func TestOscarServer_RouteConnection_BOS(t *testing.T) {
 		BuddyListRegistry:  buddyListRegistry,
 		ChatSessionManager: chatSessionManager,
 		DepartureNotifier:  departureNotifier,
+		lowerWarnLevel: func(ctx context.Context, sess *state.Session) {
+			defer wg.Done()
+		},
 	}
 	assert.NoError(t, rt.routeConnection(context.Background(), clientFake, config.Listener{}))
 
@@ -755,6 +760,7 @@ func Test_oscarServer_receiveSessMessages_BOS_integration(t *testing.T) {
 		DepartureNotifier:  departureNotifier,
 		OnlineNotifier:     onlineNotifier,
 		Logger:             slog.New(slog.NewTextHandler(io.Discard, nil)),
+		lowerWarnLevel:     func(ctx context.Context, sess *state.Session) {},
 	}
 
 	// Fake client connection with address
