@@ -36,6 +36,12 @@ type Handler struct {
 	// Authentication support
 	UserManager UserManager
 	TokenStore  TokenStore
+	// Phase 3 additions
+	PreferenceManager PreferenceManager
+	PermitDenyManager PermitDenyManager
+	// Phase 4 additions for OSCAR Bridge
+	OSCARBridgeStore OSCARBridgeStore
+	OSCARConfig      OSCARConfig
 }
 
 func (h Handler) GetHelloWorldHandler(w http.ResponseWriter, r *http.Request) {

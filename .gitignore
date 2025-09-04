@@ -6,3 +6,4 @@ dist/
 certs/
 .vscode/
 wapi-docs/
+.cursor/

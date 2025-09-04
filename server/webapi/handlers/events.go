@@ -32,6 +32,7 @@ type FetchEventsData struct {
 	Events          []state.WebAPIEvent `json:"events"`
 	LastSeqNum      uint64              `json:"lastSeqNum"`
 	TimeToNextFetch int                 `json:"timeToNextFetch"`
+	FetchBaseURL    string              `json:"fetchBaseURL"`
 }
 
 // FetchEventsXMLResponse represents the XML response for fetchEvents endpoint.
@@ -43,6 +44,7 @@ type FetchEventsXMLResponse struct {
 		Events          []state.WebAPIEvent `xml:"events>event"`
 		LastSeqNum      uint64              `xml:"lastSeqNum"`
 		TimeToNextFetch int                 `xml:"timeToNextFetch"`
+		FetchBaseURL    string              `xml:"fetchBaseURL"`
 	} `xml:"data"`
 }
 
@@ -124,10 +126,12 @@ func (h *EventsHandler) FetchEvents(w http.ResponseWriter, r *http.Request) {
 	resp.Response.Data.Events = events
 	resp.Response.Data.LastSeqNum = newLastSeqNum
 	resp.Response.Data.TimeToNextFetch = session.TimeToNextFetch
+	// Include fetchBaseURL with updated sequence number for next request
+	resp.Response.Data.FetchBaseURL = fmt.Sprintf("http://%s/aim/fetchEvents?aimsid=%s&seqNum=%d",
+		r.Host, aimsid, newLastSeqNum)
 
 	// Check response format
 	format := r.URL.Query().Get("f")
-	callback := r.URL.Query().Get("callback")
 
 	if format == "xml" {
 		// Send XML response
@@ -137,18 +141,17 @@ func (h *EventsHandler) FetchEvents(w http.ResponseWriter, r *http.Request) {
 		xmlResp.Data.Events = events
 		xmlResp.Data.LastSeqNum = newLastSeqNum
 		xmlResp.Data.TimeToNextFetch = session.TimeToNextFetch
+		xmlResp.Data.FetchBaseURL = fmt.Sprintf("http://%s/aim/fetchEvents?aimsid=%s&seqNum=%d",
+			r.Host, aimsid, newLastSeqNum)
 
 		w.Header().Set("Content-Type", "text/xml")
 		fmt.Fprint(w, `<?xml version="1.0" encoding="UTF-8"?>`)
 		if err := xml.NewEncoder(w).Encode(xmlResp); err != nil {
 			h.Logger.Error("failed to encode XML response", "error", err)
 		}
-	} else if callback != "" {
-		// Send JSONP response
-		SendJSONP(w, callback, resp, h.Logger)
 	} else {
-		// Send JSON response (default)
-		SendJSON(w, resp, h.Logger)
+		// Send response in requested format (JSON, JSONP, or AMF)
+		SendResponse(w, r, resp, h.Logger)
 	}
 
 	if len(events) > 0 {

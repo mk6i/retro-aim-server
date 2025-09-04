@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/xml"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -41,34 +42,53 @@ type ProfileManager interface {
 
 // PresenceGetResponse represents the response for presence/get endpoint.
 type PresenceGetResponse struct {
+	XMLName  xml.Name `xml:"response" json:"-"`
 	Response struct {
-		StatusCode int          `json:"statusCode"`
-		StatusText string       `json:"statusText"`
-		Data       PresenceData `json:"data"`
-	} `json:"response"`
+		StatusCode int          `json:"statusCode" xml:"statusCode"`
+		StatusText string       `json:"statusText" xml:"statusText"`
+		Data       PresenceData `json:"data" xml:"data"`
+	} `json:"response" xml:"-"`
+	// For XML responses, flatten the structure
+	StatusCode int          `json:"-" xml:"statusCode,omitempty"`
+	StatusText string       `json:"-" xml:"statusText,omitempty"`
+	Data       PresenceData `json:"-" xml:"data,omitempty"`
+}
+
+// GenericResponse is a generic response structure for simple API responses.
+type GenericResponse struct {
+	XMLName  xml.Name `xml:"response" json:"-"`
+	Response struct {
+		StatusCode int                    `json:"statusCode" xml:"statusCode"`
+		StatusText string                 `json:"statusText" xml:"statusText"`
+		Data       map[string]interface{} `json:"data,omitempty" xml:"data,omitempty"`
+	} `json:"response" xml:"-"`
+	// For XML responses, flatten the structure
+	StatusCode int                    `json:"-" xml:"statusCode,omitempty"`
+	StatusText string                 `json:"-" xml:"statusText,omitempty"`
+	Data       map[string]interface{} `json:"-" xml:"data,omitempty"`
 }
 
 // PresenceData contains presence information.
 type PresenceData struct {
-	Groups []BuddyGroupInfo    `json:"groups,omitempty"`
-	Users  []BuddyPresenceInfo `json:"users,omitempty"`
+	Groups []BuddyGroupInfo    `json:"groups,omitempty" xml:"groups>group,omitempty"`
+	Users  []BuddyPresenceInfo `json:"users,omitempty" xml:"users>user,omitempty"`
 }
 
 // BuddyGroupInfo represents a buddy group with its members.
 type BuddyGroupInfo struct {
-	Name    string              `json:"name"`
-	Buddies []BuddyPresenceInfo `json:"buddies"`
+	Name    string              `json:"name" xml:"name"`
+	Buddies []BuddyPresenceInfo `json:"buddies" xml:"buddies>buddy"`
 }
 
 // BuddyPresenceInfo represents presence information for a buddy.
 type BuddyPresenceInfo struct {
-	AimID      string `json:"aimId"`
-	State      string `json:"state"` // "online", "offline", "away", "idle"
-	StatusMsg  string `json:"statusMsg,omitempty"`
-	AwayMsg    string `json:"awayMsg,omitempty"`
-	IdleTime   int    `json:"idleTime,omitempty"`
-	OnlineTime int64  `json:"onlineTime,omitempty"`
-	UserType   string `json:"userType"` // "aim", "icq", "admin"
+	AimID      string `json:"aimId" xml:"aimId"`
+	State      string `json:"state" xml:"state"` // "online", "offline", "away", "idle"
+	StatusMsg  string `json:"statusMsg,omitempty" xml:"statusMsg,omitempty"`
+	AwayMsg    string `json:"awayMsg,omitempty" xml:"awayMsg,omitempty"`
+	IdleTime   int    `json:"idleTime,omitempty" xml:"idleTime,omitempty"`
+	OnlineTime int64  `json:"onlineTime,omitempty" xml:"onlineTime,omitempty"`
+	UserType   string `json:"userType" xml:"userType"` // "aim", "icq", "admin"
 }
 
 // GetPresence handles GET /presence/get requests.
@@ -141,11 +161,19 @@ func (h *PresenceHandler) GetPresence(w http.ResponseWriter, r *http.Request) {
 		resp.Response.Data.Groups = []BuddyGroupInfo{}
 	}
 
-	// Check for JSONP callback
-	if callback := r.URL.Query().Get("f"); callback != "" {
-		SendJSONP(w, callback, resp, h.Logger)
+	// Send response in requested format
+	format := strings.ToLower(r.URL.Query().Get("f"))
+
+	if format == "xml" {
+		// For XML, use flattened structure
+		xmlResp := PresenceGetResponse{}
+		xmlResp.StatusCode = 200
+		xmlResp.StatusText = "OK"
+		xmlResp.Data = resp.Response.Data
+		SendXML(w, xmlResp, h.Logger)
 	} else {
-		SendJSON(w, resp, h.Logger)
+		// For JSON/JSONP, use SendResponse which handles callback
+		SendResponse(w, r, resp, h.Logger)
 	}
 
 	h.Logger.DebugContext(ctx, "presence retrieved",
@@ -329,13 +357,19 @@ func (h *PresenceHandler) SetState(w http.ResponseWriter, r *http.Request) {
 		h.Logger.WarnContext(ctx, "no OSCAR session for presence update", "aimsid", aimsid)
 
 		// Still send success response
-		response := map[string]interface{}{
-			"response": map[string]interface{}{
-				"statusCode": 200,
-				"statusText": "OK",
-			},
+		format := strings.ToLower(r.URL.Query().Get("f"))
+
+		if format == "xml" {
+			response := GenericResponse{}
+			response.StatusCode = 200
+			response.StatusText = "OK"
+			SendXML(w, response, h.Logger)
+		} else {
+			response := GenericResponse{}
+			response.Response.StatusCode = 200
+			response.Response.StatusText = "OK"
+			SendResponse(w, r, response, h.Logger)
 		}
-		SendJSON(w, response, h.Logger)
 		return
 	}
 
@@ -385,18 +419,20 @@ func (h *PresenceHandler) SetState(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Send success response
-	response := map[string]interface{}{
-		"response": map[string]interface{}{
-			"statusCode": 200,
-			"statusText": "OK",
-		},
-	}
+	format := strings.ToLower(r.URL.Query().Get("f"))
 
-	// Check for JSONP callback
-	if callback := r.URL.Query().Get("f"); callback != "" {
-		SendJSONP(w, callback, response, h.Logger)
+	if format == "xml" {
+		// For XML, use flattened structure
+		response := GenericResponse{}
+		response.StatusCode = 200
+		response.StatusText = "OK"
+		SendXML(w, response, h.Logger)
 	} else {
-		SendJSON(w, response, h.Logger)
+		// For JSON/JSONP, use nested structure
+		response := GenericResponse{}
+		response.Response.StatusCode = 200
+		response.Response.StatusText = "OK"
+		SendResponse(w, r, response, h.Logger)
 	}
 }
 
@@ -451,18 +487,20 @@ func (h *PresenceHandler) SetStatus(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Send success response
-	response := map[string]interface{}{
-		"response": map[string]interface{}{
-			"statusCode": 200,
-			"statusText": "OK",
-		},
-	}
+	format := strings.ToLower(r.URL.Query().Get("f"))
 
-	// Check for JSONP callback
-	if callback := r.URL.Query().Get("f"); callback != "" {
-		SendJSONP(w, callback, response, h.Logger)
+	if format == "xml" {
+		// For XML, use flattened structure
+		response := GenericResponse{}
+		response.StatusCode = 200
+		response.StatusText = "OK"
+		SendXML(w, response, h.Logger)
 	} else {
-		SendJSON(w, response, h.Logger)
+		// For JSON/JSONP, use nested structure
+		response := GenericResponse{}
+		response.Response.StatusCode = 200
+		response.Response.StatusText = "OK"
+		SendResponse(w, r, response, h.Logger)
 	}
 }
 
@@ -511,18 +549,20 @@ func (h *PresenceHandler) SetProfile(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Send success response
-	response := map[string]interface{}{
-		"response": map[string]interface{}{
-			"statusCode": 200,
-			"statusText": "OK",
-		},
-	}
+	format := strings.ToLower(r.URL.Query().Get("f"))
 
-	// Check for JSONP callback
-	if callback := r.URL.Query().Get("f"); callback != "" {
-		SendJSONP(w, callback, response, h.Logger)
+	if format == "xml" {
+		// For XML, use flattened structure
+		response := GenericResponse{}
+		response.StatusCode = 200
+		response.StatusText = "OK"
+		SendXML(w, response, h.Logger)
 	} else {
-		SendJSON(w, response, h.Logger)
+		// For JSON/JSONP, use nested structure
+		response := GenericResponse{}
+		response.Response.StatusCode = 200
+		response.Response.StatusText = "OK"
+		SendResponse(w, r, response, h.Logger)
 	}
 }
 
@@ -564,23 +604,27 @@ func (h *PresenceHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send response
-	response := map[string]interface{}{
-		"response": map[string]interface{}{
-			"statusCode": 200,
-			"statusText": "OK",
-			"data": map[string]interface{}{
-				"screenName":  targetSN,
-				"profile":     profile,
-				"lastUpdated": time.Now().Unix(),
-			},
-		},
+	format := strings.ToLower(r.URL.Query().Get("f"))
+	responseData := map[string]interface{}{
+		"screenName":  targetSN,
+		"profile":     profile,
+		"lastUpdated": time.Now().Unix(),
 	}
 
-	// Check for JSONP callback
-	if callback := r.URL.Query().Get("f"); callback != "" {
-		SendJSONP(w, callback, response, h.Logger)
+	if format == "xml" {
+		// For XML, use flattened structure
+		response := GenericResponse{}
+		response.StatusCode = 200
+		response.StatusText = "OK"
+		response.Data = responseData
+		SendXML(w, response, h.Logger)
 	} else {
-		SendJSON(w, response, h.Logger)
+		// For JSON/JSONP, use nested structure
+		response := GenericResponse{}
+		response.Response.StatusCode = 200
+		response.Response.StatusText = "OK"
+		response.Response.Data = responseData
+		SendResponse(w, r, response, h.Logger)
 	}
 }
 

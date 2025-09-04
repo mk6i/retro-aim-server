@@ -100,6 +100,10 @@ func (s BuddyService) DelBuddies(ctx context.Context, sess *state.Session, inBod
 	return nil
 }
 
+func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error {
+	return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess)
+}
+
 func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error {
 	return s.buddyBroadcaster.BroadcastBuddyDeparted(ctx, sess)
 }

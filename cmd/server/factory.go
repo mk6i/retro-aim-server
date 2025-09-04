@@ -510,11 +510,23 @@ func WebAPI(deps Container) *webapi.Server {
 		// Phase 2 additions
 		MessageRelayer:        deps.inMemorySessionManager,
 		OfflineMessageManager: deps.sqLiteUserStore,
-		BuddyBroadcaster:      webapi.NullBuddyBroadcaster{},
-		ProfileManager:        deps.sqLiteUserStore,
+		BuddyBroadcaster: foodgroup.NewBuddyService(
+			deps.inMemorySessionManager,
+			deps.sqLiteUserStore,
+			deps.sqLiteUserStore,
+			deps.inMemorySessionManager,
+			deps.sqLiteUserStore,
+		),
+		ProfileManager: deps.sqLiteUserStore,
 		// Authentication support
 		UserManager: deps.sqLiteUserStore,
 		TokenStore:  state.NewWebAPITokenStore(deps.sqLiteUserStore.DB()),
+		// Phase 3 additions
+		PreferenceManager: state.NewWebPreferenceManager(deps.sqLiteUserStore.DB()),
+		PermitDenyManager: state.NewWebPermitDenyManager(deps.sqLiteUserStore.DB()),
+		// Phase 4 additions for OSCAR Bridge
+		OSCARBridgeStore: state.NewOSCARBridgeStore(deps.sqLiteUserStore.DB()),
+		OSCARConfig:      webapi.NewOSCARConfigAdapter(deps.cfg),
 	}
 	return webapi.NewServer([]string{"0.0.0.0:9000"}, logger, handler, deps.sqLiteUserStore, deps.webAPISessionManager)
 }

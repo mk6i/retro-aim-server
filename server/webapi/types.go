@@ -158,6 +158,8 @@ type UserManager interface {
 	AuthenticateUser(username, password string) (*state.User, error)
 	// FindUserByScreenName finds a user by their screen name
 	FindUserByScreenName(screenName state.IdentScreenName) (*state.User, error)
+	// InsertUser creates a new user (for DISABLE_AUTH mode)
+	InsertUser(ctx context.Context, u state.User) error
 }
 
 // TokenStore manages authentication tokens.
@@ -168,4 +170,42 @@ type TokenStore interface {
 	ValidateToken(token string) (state.IdentScreenName, error)
 	// DeleteToken removes a token
 	DeleteToken(token string) error
+}
+
+// Phase 3: Preference interfaces
+
+// PreferenceManager provides methods to manage user preferences.
+type PreferenceManager interface {
+	SetPreferences(ctx context.Context, screenName state.IdentScreenName, prefs map[string]interface{}) error
+	GetPreferences(ctx context.Context, screenName state.IdentScreenName) (map[string]interface{}, error)
+}
+
+// PermitDenyManager provides methods to manage permit/deny lists.
+type PermitDenyManager interface {
+	SetPDMode(ctx context.Context, screenName state.IdentScreenName, mode wire.FeedbagPDMode) error
+	GetPDMode(ctx context.Context, screenName state.IdentScreenName) (wire.FeedbagPDMode, error)
+	GetPermitList(ctx context.Context, screenName state.IdentScreenName) ([]state.IdentScreenName, error)
+	GetDenyList(ctx context.Context, screenName state.IdentScreenName) ([]state.IdentScreenName, error)
+	AddPermitBuddy(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) error
+	RemovePermitBuddy(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) error
+	AddDenyBuddy(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) error
+	RemoveDenyBuddy(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) error
+}
+
+// Phase 4: OSCAR Bridge interfaces
+
+// OSCARBridgeStore manages the persistence of OSCAR bridge sessions.
+type OSCARBridgeStore interface {
+	SaveBridgeSession(ctx context.Context, webSessionID string, oscarCookie []byte, bosHost string, bosPort int) error
+	SaveBridgeSessionWithDetails(ctx context.Context, session *state.OSCARBridgeSession) error
+	GetBridgeSession(ctx context.Context, webSessionID string) (*state.OSCARBridgeSession, error)
+	DeleteBridgeSession(ctx context.Context, webSessionID string) error
+}
+
+// OSCARConfig provides configuration for OSCAR services.
+type OSCARConfig interface {
+	GetBOSAddress() (host string, port int)
+	GetSSLBOSAddress() (host string, port int)
+	IsSSLAvailable() bool
+	IsAuthDisabled() bool
 }

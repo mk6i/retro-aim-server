@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -18,6 +19,7 @@ type AuthHandler struct {
 	UserManager UserManager
 	TokenStore  TokenStore
 	Logger      *slog.Logger
+	DisableAuth bool
 }
 
 // UserManager defines methods for user authentication.
@@ -26,6 +28,8 @@ type UserManager interface {
 	AuthenticateUser(username, password string) (*state.User, error)
 	// FindUserByScreenName finds a user by their screen name
 	FindUserByScreenName(screenName state.IdentScreenName) (*state.User, error)
+	// InsertUser creates a new user (for DISABLE_AUTH mode)
+	InsertUser(ctx context.Context, u state.User) error
 }
 
 // TokenStore manages authentication tokens.
@@ -69,14 +73,13 @@ type ClientLoginXMLResponse struct {
 	StatusCode int      `xml:"statusCode"`
 	StatusText string   `xml:"statusText"`
 	Data       struct {
-		Token struct {
-			A string `xml:"a"`
+		SessionSecret string `xml:"sessionSecret"`
+		LoginID       string `xml:"loginId"`
+		HostTime      int64  `xml:"hostTime"`
+		Token         struct {
+			ExpiresIn int    `xml:"expiresIn"`
+			A         string `xml:"a"`
 		} `xml:"token"`
-		LoginID        string `xml:"loginId"`
-		ScreenName     string `xml:"screenName"`
-		SessionSecret  string `xml:"sessionSecret"`
-		HostTime       int64  `xml:"hostTime"`
-		TokenExpiresIn int    `xml:"tokenExpiresIn"`
 	} `xml:"data"`
 }
 
@@ -140,11 +143,42 @@ func (h *AuthHandler) ClientLogin(w http.ResponseWriter, r *http.Request) {
 	// Authenticate user
 	user, err := h.UserManager.AuthenticateUser(username, password)
 	if err != nil {
-		h.Logger.Warn("authentication failed",
-			"username", username,
-			"error", err)
-		h.sendError(w, http.StatusUnauthorized, "authentication failed")
-		return
+		// If DISABLE_AUTH is enabled and user doesn't exist, create the user
+		if h.DisableAuth && err.Error() == "user not found" {
+			h.Logger.Info("DISABLE_AUTH: Creating new user",
+				"username", username)
+
+			// Create new user with the provided username
+			newUser := state.User{
+				IdentScreenName:   state.NewIdentScreenName(username),
+				DisplayScreenName: state.DisplayScreenName(username),
+			}
+
+			// Insert the new user
+			if err := h.UserManager.InsertUser(r.Context(), newUser); err != nil {
+				h.Logger.Error("failed to create user",
+					"username", username,
+					"error", err)
+				h.sendError(w, http.StatusInternalServerError, "failed to create user")
+				return
+			}
+
+			// Try to authenticate again after creating the user
+			user, err = h.UserManager.AuthenticateUser(username, password)
+			if err != nil {
+				h.Logger.Error("failed to authenticate after creating user",
+					"username", username,
+					"error", err)
+				h.sendError(w, http.StatusInternalServerError, "internal server error")
+				return
+			}
+		} else {
+			h.Logger.Warn("authentication failed",
+				"username", username,
+				"error", err)
+			h.sendError(w, http.StatusUnauthorized, "authentication failed")
+			return
+		}
 	}
 
 	// Generate authentication token
@@ -177,16 +211,15 @@ func (h *AuthHandler) ClientLogin(w http.ResponseWriter, r *http.Request) {
 		resp := ClientLoginXMLResponse{}
 		resp.StatusCode = 200
 		resp.StatusText = "OK"
-		resp.Data.Token.A = token
-		resp.Data.LoginID = string(user.DisplayScreenName)
-		resp.Data.ScreenName = string(user.DisplayScreenName)
 		resp.Data.SessionSecret = sessionSecret
+		resp.Data.LoginID = string(user.DisplayScreenName)
 		resp.Data.HostTime = time.Now().Unix()
-		resp.Data.TokenExpiresIn = 86400 // 24 hours in seconds
+		resp.Data.Token.ExpiresIn = 86400 // 24 hours in seconds
+		resp.Data.Token.A = token
 
-		// Send XML response
+		// Send XML response with proper encoding
 		w.Header().Set("Content-Type", "text/xml")
-		fmt.Fprint(w, `<?xml version="1.0" encoding="UTF-8"?>`)
+		fmt.Fprint(w, `<?xml version="1.0" encoding="utf-8"?>`)
 		if err := xml.NewEncoder(w).Encode(resp); err != nil {
 			h.Logger.Error("failed to encode XML response", "error", err)
 		}

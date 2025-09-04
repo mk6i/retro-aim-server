@@ -5,11 +5,12 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
-	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -33,6 +34,20 @@ type MessagingHandler struct {
 	OfflineMessageManager OfflineMessageManager
 	SessionRetriever      SessionRetriever
 	Logger                *slog.Logger
+}
+
+// MessageResponse is a response structure for messaging API responses.
+type MessageResponse struct {
+	XMLName  xml.Name `xml:"response" json:"-"`
+	Response struct {
+		StatusCode int                    `json:"statusCode" xml:"statusCode"`
+		StatusText string                 `json:"statusText" xml:"statusText"`
+		Data       map[string]interface{} `json:"data,omitempty" xml:"data,omitempty"`
+	} `json:"response" xml:"-"`
+	// For XML responses, flatten the structure
+	StatusCode int                    `json:"-" xml:"statusCode,omitempty"`
+	StatusText string                 `json:"-" xml:"statusText,omitempty"`
+	Data       map[string]interface{} `json:"-" xml:"data,omitempty"`
 }
 
 // SendIM handles the /im/sendIM endpoint for sending instant messages
@@ -195,27 +210,27 @@ func (h *MessagingHandler) SendIM(w http.ResponseWriter, r *http.Request) {
 	smsSegmentCount := (len(message) + 159) / 160
 
 	// Send success response
-	response := map[string]interface{}{
-		"response": map[string]interface{}{
-			"statusCode": 200,
-			"statusText": "OK",
-			"data": map[string]interface{}{
-				"smsSegmentCount": smsSegmentCount,
-				"messageId":       messageID,
-				"timestamp":       time.Now().Unix(),
-			},
-		},
+	format := strings.ToLower(r.URL.Query().Get("f"))
+	responseData := map[string]interface{}{
+		"smsSegmentCount": smsSegmentCount,
+		"messageId":       messageID,
+		"timestamp":       time.Now().Unix(),
 	}
 
-	// Support JSONP callback
-	if callback := r.URL.Query().Get("callback"); callback != "" {
-		w.Header().Set("Content-Type", "application/javascript")
-		fmt.Fprintf(w, "%s(", callback)
-		json.NewEncoder(w).Encode(response)
-		fmt.Fprint(w, ");")
+	if format == "xml" {
+		// For XML, use flattened structure
+		response := MessageResponse{}
+		response.StatusCode = 200
+		response.StatusText = "OK"
+		response.Data = responseData
+		SendXML(w, response, h.Logger)
 	} else {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		// For JSON/JSONP, use nested structure
+		response := MessageResponse{}
+		response.Response.StatusCode = 200
+		response.Response.StatusText = "OK"
+		response.Response.Data = responseData
+		SendResponse(w, r, response, h.Logger)
 	}
 }
 
@@ -241,31 +256,7 @@ func (h *MessagingHandler) encodeIMMessage(text string, autoResponse bool) []byt
 
 // sendErrorResponse sends an error response in Web AIM API format
 func (h *MessagingHandler) sendErrorResponse(w http.ResponseWriter, statusCode int, errorText string) {
-	w.WriteHeader(statusCode)
-	response := map[string]interface{}{
-		"response": map[string]interface{}{
-			"statusCode": statusCode,
-			"statusText": errorText,
-		},
-	}
-
-	// Check for JSONP callback
-	if callback := getQueryParam(w, "callback"); callback != "" {
-		w.Header().Set("Content-Type", "application/javascript")
-		fmt.Fprintf(w, "%s(", callback)
-		json.NewEncoder(w).Encode(response)
-		fmt.Fprint(w, ");")
-	} else {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-	}
-}
-
-// getQueryParam is a helper to extract query parameters from the response writer's request
-func getQueryParam(w http.ResponseWriter, param string) string {
-	// This is a workaround since we can't access the request from the response writer
-	// In a real implementation, we'd pass the request or the callback parameter
-	return ""
+	SendError(w, statusCode, errorText)
 }
 
 // SetTyping handles the /im/setTyping endpoint for typing indicators
@@ -377,25 +368,28 @@ func (h *MessagingHandler) SetTyping(w http.ResponseWriter, r *http.Request) {
 
 // sendSuccessResponse sends a success response in Web AIM API format
 func (h *MessagingHandler) sendSuccessResponse(w http.ResponseWriter, r *http.Request, data interface{}) {
-	response := map[string]interface{}{
-		"response": map[string]interface{}{
-			"statusCode": 200,
-			"statusText": "OK",
-		},
-	}
+	format := strings.ToLower(r.URL.Query().Get("f"))
 
+	var responseData map[string]interface{}
 	if data != nil {
-		response["response"].(map[string]interface{})["data"] = data
+		if mapData, ok := data.(map[string]interface{}); ok {
+			responseData = mapData
+		}
 	}
 
-	// Support JSONP callback
-	if callback := r.URL.Query().Get("callback"); callback != "" {
-		w.Header().Set("Content-Type", "application/javascript")
-		fmt.Fprintf(w, "%s(", callback)
-		json.NewEncoder(w).Encode(response)
-		fmt.Fprint(w, ");")
+	if format == "xml" {
+		// For XML, use flattened structure
+		response := MessageResponse{}
+		response.StatusCode = 200
+		response.StatusText = "OK"
+		response.Data = responseData
+		SendXML(w, response, h.Logger)
 	} else {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		// For JSON/JSONP, use nested structure
+		response := MessageResponse{}
+		response.Response.StatusCode = 200
+		response.Response.StatusText = "OK"
+		response.Response.Data = responseData
+		SendResponse(w, r, response, h.Logger)
 	}
 }

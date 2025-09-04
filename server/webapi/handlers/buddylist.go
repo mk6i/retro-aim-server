@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/xml"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -27,14 +28,22 @@ type FeedbagManager interface {
 
 // AddBuddyResponse represents the response for buddylist/addBuddy endpoint.
 type AddBuddyResponse struct {
+	XMLName  xml.Name `xml:"response" json:"-"`
 	Response struct {
-		StatusCode int    `json:"statusCode"`
-		StatusText string `json:"statusText"`
+		StatusCode int    `json:"statusCode" xml:"statusCode"`
+		StatusText string `json:"statusText" xml:"statusText"`
 		Data       struct {
-			ResultCode string             `json:"resultCode"`
-			BuddyInfo  *BuddyPresenceInfo `json:"buddyInfo,omitempty"`
-		} `json:"data"`
-	} `json:"response"`
+			ResultCode string             `json:"resultCode" xml:"resultCode"`
+			BuddyInfo  *BuddyPresenceInfo `json:"buddyInfo,omitempty" xml:"buddyInfo,omitempty"`
+		} `json:"data" xml:"data"`
+	} `json:"response" xml:"-"`
+	// For XML responses, flatten the structure
+	StatusCode int    `json:"-" xml:"statusCode,omitempty"`
+	StatusText string `json:"-" xml:"statusText,omitempty"`
+	Data       struct {
+		ResultCode string             `json:"-" xml:"resultCode"`
+		BuddyInfo  *BuddyPresenceInfo `json:"-" xml:"buddyInfo,omitempty"`
+	} `json:"-" xml:"data,omitempty"`
 }
 
 // AddBuddy handles GET /buddylist/addBuddy requests.
@@ -81,27 +90,39 @@ func (h *BuddyListHandler) AddBuddy(w http.ResponseWriter, r *http.Request) {
 	resultCode, buddyInfo := h.addBuddyToFeedbag(ctx, session.ScreenName.IdentScreenName(), buddyName, groupName)
 
 	// Prepare response
-	resp := AddBuddyResponse{}
-	resp.Response.StatusCode = 200
-	resp.Response.StatusText = "OK"
-	resp.Response.Data.ResultCode = resultCode
+	format := strings.ToLower(r.URL.Query().Get("f"))
 
-	if resultCode == "success" {
-		resp.Response.Data.BuddyInfo = buddyInfo
-
-		// Push buddy list update event to the session's event queue
-		if session.EventQueue != nil {
-			event := state.BuddyListEvent{
-				Action: "add",
-				Buddy:  buddyInfo,
-				Group:  groupName,
-			}
-			session.EventQueue.Push(state.EventTypeBuddyList, event)
+	if format == "xml" {
+		// For XML, use flattened structure
+		resp := AddBuddyResponse{}
+		resp.StatusCode = 200
+		resp.StatusText = "OK"
+		resp.Data.ResultCode = resultCode
+		if resultCode == "success" {
+			resp.Data.BuddyInfo = buddyInfo
 		}
+		SendXML(w, resp, h.Logger)
+	} else {
+		// For JSON/JSONP, use nested structure
+		resp := AddBuddyResponse{}
+		resp.Response.StatusCode = 200
+		resp.Response.StatusText = "OK"
+		resp.Response.Data.ResultCode = resultCode
+		if resultCode == "success" {
+			resp.Response.Data.BuddyInfo = buddyInfo
+		}
+		SendResponse(w, r, resp, h.Logger)
 	}
 
-	// Send response
-	SendJSON(w, resp, h.Logger)
+	if resultCode == "success" && session.EventQueue != nil {
+		// Push buddy list update event to the session's event queue
+		event := state.BuddyListEvent{
+			Action: "add",
+			Buddy:  buddyInfo,
+			Group:  groupName,
+		}
+		session.EventQueue.Push(state.EventTypeBuddyList, event)
+	}
 
 	h.Logger.InfoContext(ctx, "buddy added",
 		"aimsid", aimsid,

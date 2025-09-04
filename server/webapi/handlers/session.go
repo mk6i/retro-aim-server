@@ -18,11 +18,14 @@ import (
 
 // SessionHandler handles Web AIM API session management endpoints.
 type SessionHandler struct {
-	SessionManager   *state.WebAPISessionManager
-	OSCARAuthService AuthService
-	BuddyListService BuddyListService
-	TokenStore       TokenStore
-	Logger           *slog.Logger
+	SessionManager      *state.WebAPISessionManager
+	OSCARSessionManager SessionManager
+	OSCARAuthService    AuthService
+	BuddyListService    BuddyListService
+	BuddyListRegistry   BuddyListRegistry
+	BuddyBroadcaster    BuddyBroadcaster
+	TokenStore          TokenStore
+	Logger              *slog.Logger
 }
 
 // AuthService defines methods needed for authentication.
@@ -30,6 +33,19 @@ type AuthService interface {
 	BUCPChallenge(ctx context.Context, bodyIn wire.SNAC_0x17_0x06_BUCPChallengeRequest, newUUID func() uuid.UUID) (wire.SNACMessage, error)
 	BUCPLogin(ctx context.Context, bodyIn wire.SNAC_0x17_0x02_BUCPLoginRequest, newUserFn func(screenName state.DisplayScreenName) (state.User, error), advertisedHost string) (wire.SNACMessage, error)
 	RegisterBOSSession(ctx context.Context, authCookie state.ServerCookie) (*state.Session, error)
+}
+
+// SessionManager defines methods for OSCAR session management.
+type SessionManager interface {
+	AddSession(ctx context.Context, screenName state.DisplayScreenName) (*state.Session, error)
+	RemoveSession(sess *state.Session)
+	RelayToScreenName(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage)
+}
+
+// BuddyListRegistry defines methods for buddy list management.
+type BuddyListRegistry interface {
+	RegisterBuddyList(ctx context.Context, screenName state.IdentScreenName) error
+	UnregisterBuddyList(ctx context.Context, screenName state.IdentScreenName) error
 }
 
 // BuddyListService defines methods for buddy list operations.
@@ -61,7 +77,9 @@ type StartSessionResponse struct {
 			AimSID          string                 `json:"aimsid"`
 			FetchTimeout    int                    `json:"fetchTimeout"`
 			TimeToNextFetch int                    `json:"timeToNextFetch"`
+			FetchBaseURL    string                 `json:"fetchBaseURL"` // Gromit expects this directly in data!
 			Events          map[string]interface{} `json:"events,omitempty"`
+			WellKnownUrls   map[string]string      `json:"wellKnownUrls,omitempty"`
 		} `json:"data"`
 	} `json:"response"`
 }
@@ -75,7 +93,12 @@ type StartSessionXMLResponse struct {
 		AimSID          string `xml:"aimsid"`
 		FetchTimeout    int    `xml:"fetchTimeout"`
 		TimeToNextFetch int    `xml:"timeToNextFetch"`
-		MyInfo          *struct {
+		FetchBaseURL    string `xml:"fetchBaseURL"` // Gromit expects this directly!
+		WellKnownUrls   *struct {
+			WebApiBase   string `xml:"webApiBase"`
+			FetchBaseURL string `xml:"fetchBaseURL"`
+		} `xml:"wellKnownUrls,omitempty"`
+		MyInfo *struct {
 			AimID     string `xml:"aimId"`
 			DisplayID string `xml:"displayId"`
 			Buddylist struct {
@@ -191,6 +214,53 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 	session.FetchTimeout = timeout
 	session.RemoteAddr = r.RemoteAddr
 
+	// Create OSCAR session and broadcast presence for authenticated users
+	var oscarSession *state.Session
+	if authToken != "" && h.OSCARSessionManager != nil {
+		// Create OSCAR session
+		oscarSession, err = h.OSCARSessionManager.AddSession(ctx, screenName)
+		if err != nil {
+			h.Logger.ErrorContext(ctx, "failed to create OSCAR session", "err", err.Error())
+			// Continue without OSCAR session - WebAPI can work standalone
+		} else {
+			// Store OSCAR session reference
+			session.OSCARSession = oscarSession
+			oscarSession.SetSignonComplete()
+
+			// Register buddy list
+			if h.BuddyListRegistry != nil {
+				if err := h.BuddyListRegistry.RegisterBuddyList(ctx, screenName.IdentScreenName()); err != nil {
+					h.Logger.ErrorContext(ctx, "failed to register buddy list", "err", err.Error())
+				}
+			}
+
+			// Broadcast buddy arrival
+			if h.BuddyBroadcaster != nil {
+				if err := h.BuddyBroadcaster.BroadcastBuddyArrived(ctx, oscarSession); err != nil {
+					h.Logger.ErrorContext(ctx, "failed to broadcast buddy arrival", "err", err.Error())
+				}
+			}
+
+			// Queue myInfo event
+			for _, event := range events {
+				if event == "myInfo" || event == "presence" {
+					myInfoData := map[string]interface{}{
+						"aimId":        screenName.String(),
+						"displayId":    screenName.String(),
+						"state":        "online",
+						"onlineTime":   time.Now().Unix(),
+						"memberSince":  time.Now().Unix() - 86400*30, // 30 days ago
+						"capabilities": []string{},
+						"bot":          false,
+						"service":      "aim",
+					}
+					session.EventQueue.Push(state.WebAPIEventType("myInfo"), myInfoData)
+					break
+				}
+			}
+		}
+	}
+
 	// Prepare response
 	resp := StartSessionResponse{}
 	resp.Response.StatusCode = 200
@@ -198,6 +268,50 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 	resp.Response.Data.AimSID = session.AimSID
 	resp.Response.Data.FetchTimeout = session.FetchTimeout
 	resp.Response.Data.TimeToNextFetch = session.TimeToNextFetch
+	// CRITICAL: Gromit expects fetchBaseURL directly in data, not in wellKnownUrls!
+	resp.Response.Data.FetchBaseURL = fmt.Sprintf("http://%s/aim/fetchEvents?aimsid=%s&seqNum=0", r.Host, session.AimSID)
+
+	// Add wellKnownUrls for other clients that might use it
+	resp.Response.Data.WellKnownUrls = map[string]string{
+		"webApiBase":   fmt.Sprintf("http://%s/", r.Host),
+		"fetchBaseURL": fmt.Sprintf("http://%s/aim/fetchEvents", r.Host),
+	}
+
+	// Add myInfo data if authenticated
+	if authToken != "" {
+		if resp.Response.Data.Events == nil {
+			resp.Response.Data.Events = make(map[string]interface{})
+		}
+		resp.Response.Data.Events["myInfo"] = map[string]interface{}{
+			"aimId":        screenName.String(),
+			"displayId":    screenName.String(),
+			"state":        "online",
+			"onlineTime":   time.Now().Unix(),
+			"memberSince":  time.Now().Unix() - 86400*30, // 30 days ago
+			"capabilities": []string{},
+			"bot":          false,
+			"service":      "aim",
+			"self": map[string]interface{}{
+				"instNum":        1,
+				"loginTime":      time.Now().Unix(),
+				"sessionTimeout": 30,
+				"events":         events,
+				"assertCaps":     []string{},
+				"rightsInfo": map[string]interface{}{
+					"maxDenies":            500,
+					"maxPermits":           500,
+					"maxWatchers":          3000,
+					"maxBuddies":           500,
+					"maxTempBuddies":       160,
+					"maxIMSize":            3987,
+					"minInterIcbmInterval": 1000,
+					"maxSourceEvil":        900,
+					"maxDstEvil":           999,
+					"maxSigLen":            4096,
+				},
+			},
+		}
+	}
 
 	// If buddy list event is subscribed, include initial buddy list
 	for _, event := range events {
@@ -226,6 +340,17 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 		xmlResp.Data.AimSID = session.AimSID
 		xmlResp.Data.FetchTimeout = timeout
 		xmlResp.Data.TimeToNextFetch = 500
+		// CRITICAL: Gromit expects fetchBaseURL directly in data!
+		xmlResp.Data.FetchBaseURL = fmt.Sprintf("http://%s/aim/fetchEvents?aimsid=%s&seqNum=0", r.Host, session.AimSID)
+
+		// Add wellKnownUrls for other clients
+		xmlResp.Data.WellKnownUrls = &struct {
+			WebApiBase   string `xml:"webApiBase"`
+			FetchBaseURL string `xml:"fetchBaseURL"`
+		}{
+			WebApiBase:   fmt.Sprintf("http://%s/", r.Host),
+			FetchBaseURL: fmt.Sprintf("http://%s/aim/fetchEvents", r.Host),
+		}
 
 		// Add myInfo with user data
 		xmlResp.Data.MyInfo = &struct {
@@ -277,8 +402,8 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", strconv.Itoa(len(xmlOutput)))
 		fmt.Fprint(w, xmlOutput)
 	} else {
-		// Send JSON response
-		SendJSON(w, resp, h.Logger)
+		// Send response in requested format (JSON, JSONP, or AMF)
+		SendResponse(w, r, resp, h.Logger)
 	}
 
 	h.Logger.InfoContext(ctx, "session started",
@@ -314,8 +439,26 @@ func (h *SessionHandler) EndSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Broadcast offline presence to buddies
-	// TODO: Clean up OSCAR session if bridged
+	// Clean up OSCAR session if present
+	if session.OSCARSession != nil && h.OSCARSessionManager != nil {
+		// Broadcast departure
+		if h.BuddyBroadcaster != nil {
+			if err := h.BuddyBroadcaster.BroadcastBuddyDeparted(ctx, session.OSCARSession); err != nil {
+				h.Logger.ErrorContext(ctx, "failed to broadcast buddy departure", "err", err.Error())
+			}
+		}
+
+		// Unregister buddy list
+		if h.BuddyListRegistry != nil {
+			if err := h.BuddyListRegistry.UnregisterBuddyList(ctx, session.ScreenName.IdentScreenName()); err != nil {
+				h.Logger.ErrorContext(ctx, "failed to unregister buddy list", "err", err.Error())
+			}
+		}
+
+		// Remove OSCAR session
+		h.OSCARSessionManager.RemoveSession(session.OSCARSession)
+		session.OSCARSession = nil
+	}
 
 	// Remove session
 	if err := h.SessionManager.RemoveSession(aimsid); err != nil {
@@ -329,7 +472,8 @@ func (h *SessionHandler) EndSession(w http.ResponseWriter, r *http.Request) {
 	resp.Response.StatusCode = 200
 	resp.Response.StatusText = "OK"
 
-	SendJSON(w, resp, h.Logger)
+	// Send response in requested format (JSON, JSONP, or AMF)
+	SendResponse(w, r, resp, h.Logger)
 
 	h.Logger.InfoContext(ctx, "session ended",
 		"aimsid", aimsid,

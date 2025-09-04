@@ -155,18 +155,33 @@ func (m *AuthMiddleware) CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Get API key from context (set by Authenticate middleware)
 		key, ok := r.Context().Value(ContextKeyAPIKey).(*state.WebAPIKey)
-		if !ok {
-			// If no API key in context, this middleware is being used incorrectly
-			m.Logger.Error("CORSMiddleware called without authentication context")
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
+
+		// If no API key in context (e.g., using aimsid auth), allow all origins
+		// This is safe because the actual authentication is handled by the session
+		var allowedOrigins []string
+		if ok && key != nil {
+			allowedOrigins = key.AllowedOrigins
+		} else {
+			// For session-based auth without API key, allow all origins
+			// The session itself provides the security boundary
+			m.Logger.DebugContext(r.Context(), "CORS handling for non-API-key auth (aimsid/token)")
+			allowedOrigins = []string{"*"}
 		}
 
 		origin := r.Header.Get("Origin")
-		
+
 		// Check if origin is allowed
-		if m.isOriginAllowed(origin, key.AllowedOrigins) {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
+		if m.isOriginAllowed(origin, allowedOrigins) {
+			if len(allowedOrigins) == 1 && allowedOrigins[0] == "*" {
+				// For wildcard, set the actual origin to allow credentials
+				if origin != "" {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+				} else {
+					w.Header().Set("Access-Control-Allow-Origin", "*")
+				}
+			} else {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -235,12 +250,12 @@ func (m *AuthMiddleware) isOriginAllowed(origin string, allowedOrigins []string)
 	origin = strings.ToLower(origin)
 	for _, allowed := range allowedOrigins {
 		allowed = strings.ToLower(allowed)
-		
+
 		// Exact match
 		if origin == allowed {
 			return true
 		}
-		
+
 		// Wildcard support (e.g., "*.example.com")
 		if strings.HasPrefix(allowed, "*.") {
 			domain := allowed[2:]
@@ -248,7 +263,7 @@ func (m *AuthMiddleware) isOriginAllowed(origin string, allowedOrigins []string)
 				return true
 			}
 		}
-		
+
 		// Allow all origins (development only)
 		if allowed == "*" {
 			m.Logger.Warn("wildcard origin (*) used - should not be used in production")
@@ -263,12 +278,12 @@ func (m *AuthMiddleware) isOriginAllowed(origin string, allowedOrigins []string)
 func (m *AuthMiddleware) sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	
+
 	response := map[string]interface{}{
 		"error": message,
 		"code":  statusCode,
 	}
-	
+
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		m.Logger.Error("failed to encode error response", "err", err.Error())
 	}
@@ -294,3 +309,104 @@ func min(a, b int) int {
 	return b
 }
 
+// AuthenticateFlexible is an HTTP middleware that supports multiple authentication methods:
+// 1. aimsid (session ID) - no k required
+// 2. a (AOL token) - no k required
+// 3. ts + sig_sha256 (signed request) - no k required
+// 4. k (API key) - fallback if no other auth provided
+// This follows the Web AIM API specification where k is not required when aimsid is present.
+func (m *AuthMiddleware) AuthenticateFlexible(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		// Priority 1: Check for session-based auth (aimsid)
+		// According to the spec, when aimsid is provided, k is not required
+		if aimsid := r.URL.Query().Get("aimsid"); aimsid != "" {
+			// The handler itself will validate the aimsid
+			// We just need to pass the request through without requiring k
+			m.Logger.DebugContext(ctx, "using aimsid authentication", "aimsid", aimsid[:min(16, len(aimsid))]+"...")
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Priority 2: Check for AOL token auth
+		if token := r.URL.Query().Get("a"); token != "" {
+			// Token auth is present, but we still need to validate the API key
+			// The token provides user authentication while the API key identifies the app
+			m.Logger.DebugContext(ctx, "token authentication detected, will validate API key as well")
+			// Don't return here - continue to API key validation below
+		}
+
+		// Priority 3: Check for signed request auth
+		if ts := r.URL.Query().Get("ts"); ts != "" {
+			if sig := r.URL.Query().Get("sig_sha256"); sig != "" {
+				// For now, signed requests still require 'k' parameter for API key validation
+				// The signature provides additional security on top of the API key
+				// When full signature validation is implemented, this can be made optional
+				m.Logger.DebugContext(ctx, "signed request detected, falling through to API key validation")
+				// Don't return here - continue to API key validation below
+			}
+		}
+
+		// Priority 4: Fall back to API key requirement
+		apiKey := r.URL.Query().Get("k")
+		if apiKey == "" {
+			// Try form value for POST requests
+			apiKey = r.FormValue("k")
+		}
+
+		if apiKey == "" {
+			m.sendErrorResponse(w, http.StatusBadRequest, "authentication required: provide aimsid or k parameter")
+			return
+		}
+
+		// Validate API key as before
+		key, err := m.Validator.GetAPIKeyByDevKey(ctx, apiKey)
+		if err != nil {
+			if err == state.ErrNoAPIKey {
+				m.Logger.DebugContext(ctx, "invalid API key attempted", "key", apiKey[:min(8, len(apiKey))]+"...")
+				m.sendErrorResponse(w, http.StatusForbidden, "invalid API key")
+				return
+			}
+			m.Logger.ErrorContext(ctx, "error validating API key", "err", err.Error())
+			m.sendErrorResponse(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+
+		// Check if key is active
+		if !key.IsActive {
+			m.Logger.DebugContext(ctx, "inactive API key used", "dev_id", key.DevID)
+			m.sendErrorResponse(w, http.StatusForbidden, "API key is inactive")
+			return
+		}
+
+		// Check rate limit
+		if !m.RateLimiter.Allow(key.DevID, key.RateLimit) {
+			m.Logger.WarnContext(ctx, "rate limit exceeded", "dev_id", key.DevID, "limit", key.RateLimit)
+			m.sendErrorResponse(w, http.StatusTooManyRequests, "rate limit exceeded")
+			return
+		}
+
+		// Update last used timestamp asynchronously
+		go func() {
+			if err := m.Validator.UpdateLastUsed(context.Background(), apiKey); err != nil {
+				m.Logger.Error("failed to update last_used timestamp", "err", err.Error())
+			}
+		}()
+
+		// Add API key info to context for use in handlers
+		ctx = context.WithValue(ctx, ContextKeyAPIKey, key)
+		ctx = context.WithValue(ctx, ContextKeyDevID, key.DevID)
+
+		// Log the API request
+		m.Logger.InfoContext(ctx, "API request authenticated via key",
+			"dev_id", key.DevID,
+			"app_name", key.AppName,
+			"method", r.Method,
+			"path", r.URL.Path,
+		)
+
+		// Pass to next handler with enriched context
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}

@@ -25,13 +25,18 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 		UserManager: handler.UserManager,
 		TokenStore:  handler.TokenStore,
 		Logger:      logger,
+		DisableAuth: handler.OSCARConfig.IsAuthDisabled(),
 	}
 
 	sessionHandler := &handlers.SessionHandler{
-		SessionManager:   sessionManager,
-		OSCARAuthService: handler.AuthService,
-		TokenStore:       handler.TokenStore,
-		Logger:           logger,
+		SessionManager:      sessionManager,
+		OSCARSessionManager: handler.SessionRetriever.(handlers.SessionManager),
+		OSCARAuthService:    handler.AuthService,
+		BuddyListService:    nil, // TODO: Implement if needed
+		BuddyListRegistry:   handler.BuddyListRegistry,
+		BuddyBroadcaster:    handler.BuddyBroadcaster,
+		TokenStore:          handler.TokenStore,
+		Logger:              logger,
 	}
 
 	eventsHandler := &handlers.EventsHandler{
@@ -63,6 +68,24 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 		Logger:                logger,
 	}
 
+	// Phase 3: Preference handler
+	preferenceHandler := &handlers.PreferenceHandler{
+		SessionManager:    sessionManager,
+		PreferenceManager: handler.PreferenceManager,
+		PermitDenyManager: handler.PermitDenyManager,
+		Logger:            logger,
+	}
+
+	// Phase 4: OSCAR Bridge handler
+	oscarBridgeHandler := &handlers.OSCARBridgeHandler{
+		SessionManager:   sessionManager,
+		OSCARAuthService: handler.AuthService,
+		CookieBaker:      handler.CookieBaker,
+		BridgeStore:      handler.OSCARBridgeStore,
+		Config:           handler.OSCARConfig,
+		Logger:           logger,
+	}
+
 	for _, l := range listeners {
 		mux := http.NewServeMux()
 
@@ -89,17 +112,18 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 		})
 
 		// Authenticated Web AIM API endpoints
-		// Session management
-		mux.Handle("GET /aim/startSession", authMiddleware.Authenticate(
+		// Session management - supports multiple auth methods (k, a, ts+sig_sha256)
+		mux.Handle("GET /aim/startSession", authMiddleware.AuthenticateFlexible(
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(sessionHandler.StartSession))))
 
-		mux.Handle("GET /aim/endSession", authMiddleware.Authenticate(
+		// End session - uses aimsid for auth, no k required
+		mux.Handle("GET /aim/endSession", authMiddleware.AuthenticateFlexible(
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(sessionHandler.EndSession))))
 
-		// Event fetching
-		mux.Handle("GET /aim/fetchEvents", authMiddleware.Authenticate(
+		// Event fetching - uses aimsid for auth, no k required
+		mux.Handle("GET /aim/fetchEvents", authMiddleware.AuthenticateFlexible(
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(eventsHandler.FetchEvents))))
 
@@ -113,7 +137,8 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 				http.HandlerFunc(buddyListHandler.AddBuddy))))
 
 		// Phase 2: Messaging endpoints
-		mux.Handle("GET /im/sendIM", authMiddleware.Authenticate(
+		// sendIM supports aimsid-based auth, so we use flexible auth
+		mux.Handle("GET /im/sendIM", authMiddleware.AuthenticateFlexible(
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(messagingHandler.SendIM))))
 
@@ -126,20 +151,51 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(presenceHandler.SetState))))
 
-		mux.Handle("GET /presence/setStatus", authMiddleware.Authenticate(
+		// These presence endpoints support aimsid-based auth where k is not required
+		mux.Handle("GET /presence/setStatus", authMiddleware.AuthenticateFlexible(
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(presenceHandler.SetStatus))))
 
-		mux.Handle("GET /presence/setProfile", authMiddleware.Authenticate(
+		mux.Handle("GET /presence/setProfile", authMiddleware.AuthenticateFlexible(
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(presenceHandler.SetProfile))))
 
-		mux.Handle("GET /presence/getProfile", authMiddleware.Authenticate(
+		mux.Handle("GET /presence/getProfile", authMiddleware.AuthenticateFlexible(
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(presenceHandler.GetProfile))))
 
 		// Phase 2: Presence icon endpoint (no auth required)
 		mux.HandleFunc("GET /presence/icon", presenceHandler.Icon)
+
+		// Phase 3: Preference management endpoints
+		// These endpoints support aimsid-based auth, so we use a flexible auth approach
+		mux.Handle("GET /preference/set", authMiddleware.AuthenticateFlexible(
+			authMiddleware.CORSMiddleware(
+				http.HandlerFunc(preferenceHandler.SetPreferences))))
+
+		mux.Handle("GET /preference/get", authMiddleware.AuthenticateFlexible(
+			authMiddleware.CORSMiddleware(
+				http.HandlerFunc(preferenceHandler.GetPreferences))))
+
+		mux.Handle("GET /preference/setPermitDeny", authMiddleware.AuthenticateFlexible(
+			authMiddleware.CORSMiddleware(
+				http.HandlerFunc(preferenceHandler.SetPermitDeny))))
+
+		mux.Handle("GET /preference/getPermitDeny", authMiddleware.AuthenticateFlexible(
+			authMiddleware.CORSMiddleware(
+				http.HandlerFunc(preferenceHandler.GetPermitDeny))))
+
+			// Phase 4: Advanced Features
+	// OSCAR Bridge endpoint
+	mux.Handle("GET /aim/startOSCARSession", authMiddleware.Authenticate(
+		authMiddleware.CORSMiddleware(
+			http.HandlerFunc(oscarBridgeHandler.StartOSCARSession))))
+
+	// Expressions endpoint (for buddy icons, etc.)
+	expressionsHandler := handlers.NewExpressionsHandler(logger)
+	mux.Handle("GET /expressions/get", authMiddleware.AuthenticateFlexible(
+		authMiddleware.CORSMiddleware(
+			http.HandlerFunc(expressionsHandler.Get))))
 
 		servers = append(servers, &http.Server{
 			Addr:    l,

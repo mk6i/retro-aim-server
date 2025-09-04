@@ -253,4 +253,3 @@ func deleteWebAPIKeyHandler(w http.ResponseWriter, r *http.Request, keyManager W
 
 	w.WriteHeader(http.StatusNoContent)
 }
-

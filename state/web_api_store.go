@@ -18,15 +18,15 @@ var (
 
 // WebAPIKey represents a Web API authentication key.
 type WebAPIKey struct {
-	DevID          string    `json:"dev_id"`
-	DevKey         string    `json:"dev_key"`
-	AppName        string    `json:"app_name"`
-	CreatedAt      time.Time `json:"created_at"`
+	DevID          string     `json:"dev_id"`
+	DevKey         string     `json:"dev_key"`
+	AppName        string     `json:"app_name"`
+	CreatedAt      time.Time  `json:"created_at"`
 	LastUsed       *time.Time `json:"last_used,omitempty"`
-	IsActive       bool      `json:"is_active"`
-	RateLimit      int       `json:"rate_limit"`
-	AllowedOrigins []string  `json:"allowed_origins"`
-	Capabilities   []string  `json:"capabilities"`
+	IsActive       bool       `json:"is_active"`
+	RateLimit      int        `json:"rate_limit"`
+	AllowedOrigins []string   `json:"allowed_origins"`
+	Capabilities   []string   `json:"capabilities"`
 }
 
 // WebAPIKeyUpdate represents fields that can be updated for an API key.
@@ -44,7 +44,7 @@ func (f SQLiteUserStore) CreateAPIKey(ctx context.Context, key WebAPIKey) error 
 	if err != nil {
 		return fmt.Errorf("failed to marshal allowed origins: %w", err)
 	}
-	
+
 	capabilitiesJSON, err := json.Marshal(key.Capabilities)
 	if err != nil {
 		return fmt.Errorf("failed to marshal capabilities: %w", err)
@@ -55,7 +55,7 @@ func (f SQLiteUserStore) CreateAPIKey(ctx context.Context, key WebAPIKey) error 
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (dev_id) DO NOTHING
 	`
-	
+
 	result, err := f.db.ExecContext(ctx,
 		q,
 		key.DevID,
@@ -89,11 +89,11 @@ func (f SQLiteUserStore) GetAPIKeyByDevKey(ctx context.Context, devKey string) (
 		FROM web_api_keys
 		WHERE dev_key = ? AND is_active = 1
 	`
-	
+
 	var key WebAPIKey
 	var createdAt, lastUsed sql.NullInt64
 	var originsJSON, capabilitiesJSON string
-	
+
 	err := f.db.QueryRowContext(ctx, q, devKey).Scan(
 		&key.DevID,
 		&key.DevKey,
@@ -105,28 +105,28 @@ func (f SQLiteUserStore) GetAPIKeyByDevKey(ctx context.Context, devKey string) (
 		&originsJSON,
 		&capabilitiesJSON,
 	)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, ErrNoAPIKey
 	}
 	if err != nil {
 		return nil, err
 	}
-	
+
 	key.CreatedAt = time.Unix(createdAt.Int64, 0)
 	if lastUsed.Valid {
 		t := time.Unix(lastUsed.Int64, 0)
 		key.LastUsed = &t
 	}
-	
+
 	if err := json.Unmarshal([]byte(originsJSON), &key.AllowedOrigins); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal allowed origins: %w", err)
 	}
-	
+
 	if err := json.Unmarshal([]byte(capabilitiesJSON), &key.Capabilities); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal capabilities: %w", err)
 	}
-	
+
 	return &key, nil
 }
 
@@ -137,11 +137,11 @@ func (f SQLiteUserStore) GetAPIKeyByDevID(ctx context.Context, devID string) (*W
 		FROM web_api_keys
 		WHERE dev_id = ?
 	`
-	
+
 	var key WebAPIKey
 	var createdAt, lastUsed sql.NullInt64
 	var originsJSON, capabilitiesJSON string
-	
+
 	err := f.db.QueryRowContext(ctx, q, devID).Scan(
 		&key.DevID,
 		&key.DevKey,
@@ -153,28 +153,28 @@ func (f SQLiteUserStore) GetAPIKeyByDevID(ctx context.Context, devID string) (*W
 		&originsJSON,
 		&capabilitiesJSON,
 	)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, ErrNoAPIKey
 	}
 	if err != nil {
 		return nil, err
 	}
-	
+
 	key.CreatedAt = time.Unix(createdAt.Int64, 0)
 	if lastUsed.Valid {
 		t := time.Unix(lastUsed.Int64, 0)
 		key.LastUsed = &t
 	}
-	
+
 	if err := json.Unmarshal([]byte(originsJSON), &key.AllowedOrigins); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal allowed origins: %w", err)
 	}
-	
+
 	if err := json.Unmarshal([]byte(capabilitiesJSON), &key.Capabilities); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal capabilities: %w", err)
 	}
-	
+
 	return &key, nil
 }
 
@@ -185,19 +185,19 @@ func (f SQLiteUserStore) ListAPIKeys(ctx context.Context) ([]WebAPIKey, error) {
 		FROM web_api_keys
 		ORDER BY created_at DESC
 	`
-	
+
 	rows, err := f.db.QueryContext(ctx, q)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var keys []WebAPIKey
 	for rows.Next() {
 		var key WebAPIKey
 		var createdAt, lastUsed sql.NullInt64
 		var originsJSON, capabilitiesJSON string
-		
+
 		err := rows.Scan(
 			&key.DevID,
 			&key.DevKey,
@@ -212,28 +212,28 @@ func (f SQLiteUserStore) ListAPIKeys(ctx context.Context) ([]WebAPIKey, error) {
 		if err != nil {
 			return nil, err
 		}
-		
+
 		key.CreatedAt = time.Unix(createdAt.Int64, 0)
 		if lastUsed.Valid {
 			t := time.Unix(lastUsed.Int64, 0)
 			key.LastUsed = &t
 		}
-		
+
 		if err := json.Unmarshal([]byte(originsJSON), &key.AllowedOrigins); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal allowed origins: %w", err)
 		}
-		
+
 		if err := json.Unmarshal([]byte(capabilitiesJSON), &key.Capabilities); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal capabilities: %w", err)
 		}
-		
+
 		keys = append(keys, key)
 	}
-	
+
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
-	
+
 	return keys, nil
 }
 
@@ -242,22 +242,22 @@ func (f SQLiteUserStore) UpdateAPIKey(ctx context.Context, devID string, updates
 	// Build dynamic UPDATE query based on provided fields
 	var setClauses []string
 	var args []interface{}
-	
+
 	if updates.AppName != nil {
 		setClauses = append(setClauses, "app_name = ?")
 		args = append(args, *updates.AppName)
 	}
-	
+
 	if updates.IsActive != nil {
 		setClauses = append(setClauses, "is_active = ?")
 		args = append(args, *updates.IsActive)
 	}
-	
+
 	if updates.RateLimit != nil {
 		setClauses = append(setClauses, "rate_limit = ?")
 		args = append(args, *updates.RateLimit)
 	}
-	
+
 	if updates.AllowedOrigins != nil {
 		originsJSON, err := json.Marshal(*updates.AllowedOrigins)
 		if err != nil {
@@ -266,7 +266,7 @@ func (f SQLiteUserStore) UpdateAPIKey(ctx context.Context, devID string, updates
 		setClauses = append(setClauses, "allowed_origins = ?")
 		args = append(args, string(originsJSON))
 	}
-	
+
 	if updates.Capabilities != nil {
 		capabilitiesJSON, err := json.Marshal(*updates.Capabilities)
 		if err != nil {
@@ -275,25 +275,25 @@ func (f SQLiteUserStore) UpdateAPIKey(ctx context.Context, devID string, updates
 		setClauses = append(setClauses, "capabilities = ?")
 		args = append(args, string(capabilitiesJSON))
 	}
-	
+
 	if len(setClauses) == 0 {
 		return nil // No updates to perform
 	}
-	
+
 	// Add WHERE clause argument
 	args = append(args, devID)
-	
+
 	q := fmt.Sprintf(`
 		UPDATE web_api_keys
 		SET %s
 		WHERE dev_id = ?
 	`, joinStrings(setClauses, ", "))
-	
+
 	result, err := f.db.ExecContext(ctx, q, args...)
 	if err != nil {
 		return err
 	}
-	
+
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return err
@@ -301,7 +301,7 @@ func (f SQLiteUserStore) UpdateAPIKey(ctx context.Context, devID string, updates
 	if rowsAffected == 0 {
 		return ErrNoAPIKey
 	}
-	
+
 	return nil
 }
 
@@ -314,7 +314,7 @@ func (f SQLiteUserStore) DeleteAPIKey(ctx context.Context, devID string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return err
@@ -322,7 +322,7 @@ func (f SQLiteUserStore) DeleteAPIKey(ctx context.Context, devID string) error {
 	if rowsAffected == 0 {
 		return ErrNoAPIKey
 	}
-	
+
 	return nil
 }
 
@@ -333,7 +333,7 @@ func (f SQLiteUserStore) UpdateLastUsed(ctx context.Context, devKey string) erro
 		SET last_used = ?
 		WHERE dev_key = ?
 	`
-	
+
 	_, err := f.db.ExecContext(ctx, q, time.Now().Unix(), devKey)
 	return err
 }
@@ -349,4 +349,3 @@ func joinStrings(strs []string, sep string) string {
 	}
 	return result
 }
-
