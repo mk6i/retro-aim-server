@@ -1922,7 +1922,13 @@ func TestAuthService_Signout(t *testing.T) {
 			for _, params := range tt.mockParams.removeSessionParams {
 				sessionManager.EXPECT().RemoveSession(matchSession(params.screenName))
 			}
-			svc := NewAuthService(config.Config{}, sessionManager, nil, nil, nil, nil, nil, nil, wire.DefaultRateLimitClasses())
+
+			userManager := newMockUserManager(t)
+			userManager.EXPECT().
+				SetWarnLevel(matchContext(), tt.userSession.IdentScreenName(), mock.Anything, tt.userSession.Warning()).
+				Return(nil)
+
+			svc := NewAuthService(config.Config{}, sessionManager, nil, nil, userManager, nil, nil, nil, wire.DefaultRateLimitClasses())
 
 			svc.Signout(context.Background(), tt.userSession)
 		})

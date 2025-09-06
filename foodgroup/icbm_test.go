@@ -1683,6 +1683,7 @@ func TestConvoTracker(t *testing.T) {
 func TestICBMService_DecayWarnLevel(t *testing.T) {
 
 	t.Run("happy path", func(t *testing.T) {
+		now := time.Now()
 
 		sess := newTestSession("screen-name")
 		warnCh := make(chan uint16)
@@ -1699,6 +1700,7 @@ func TestICBMService_DecayWarnLevel(t *testing.T) {
 			logger:           slog.Default(),
 			interval:         1 * time.Millisecond,
 			snacRateLimits:   wire.DefaultSNACRateLimits(),
+			timeNow:          func() time.Time { return now },
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -1730,6 +1732,7 @@ func TestICBMService_DecayWarnLevel(t *testing.T) {
 	})
 
 	t.Run("3% burn down clamps to 0", func(t *testing.T) {
+		now := time.Now()
 
 		sess := newTestSession("screen-name")
 		warnCh := make(chan uint16)
@@ -1746,6 +1749,7 @@ func TestICBMService_DecayWarnLevel(t *testing.T) {
 			logger:           slog.Default(),
 			interval:         1 * time.Millisecond,
 			snacRateLimits:   wire.DefaultSNACRateLimits(),
+			timeNow:          func() time.Time { return now },
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -1765,5 +1769,191 @@ func TestICBMService_DecayWarnLevel(t *testing.T) {
 
 		cancel()
 		wg.Wait()
+	})
+
+	t.Run("last modified between intervals, active warn level", func(t *testing.T) {
+		now := time.Now()
+
+		sess := newTestSession("screen-name")
+		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond).Add(-1 * time.Millisecond))
+		sess.SetWarning(250)
+
+		warnCh := make(chan uint16)
+
+		mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
+		mockBuddyBroadcaster.EXPECT().
+			BroadcastBuddyArrived(mock.Anything, matchSession(sess.IdentScreenName())).
+			Run(func(ctx context.Context, sess *state.Session) {
+				warnCh <- sess.Warning()
+			}).Return(nil)
+
+		svc := ICBMService{
+			buddyBroadcaster: mockBuddyBroadcaster,
+			logger:           slog.Default(),
+			interval:         5 * time.Millisecond,
+			snacRateLimits:   wire.DefaultSNACRateLimits(),
+			timeNow:          func() time.Time { return now },
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			svc.DecayWarnLevel(ctx, sess)
+		}()
+
+		assert.Equal(t, uint16(50), <-warnCh)
+		assert.Equal(t, uint16(0), <-warnCh)
+
+		cancel()
+		wg.Wait()
+	})
+
+	t.Run("last modified on interval, unresolved warn level", func(t *testing.T) {
+		now := time.Now()
+
+		sess := newTestSession("screen-name")
+		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond))
+		sess.SetWarning(250)
+
+		warnCh := make(chan uint16)
+
+		mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
+		mockBuddyBroadcaster.EXPECT().
+			BroadcastBuddyArrived(mock.Anything, matchSession(sess.IdentScreenName())).
+			Run(func(ctx context.Context, sess *state.Session) {
+				warnCh <- sess.Warning()
+			}).Return(nil)
+
+		svc := ICBMService{
+			buddyBroadcaster: mockBuddyBroadcaster,
+			logger:           slog.Default(),
+			interval:         5 * time.Millisecond,
+			snacRateLimits:   wire.DefaultSNACRateLimits(),
+			timeNow:          func() time.Time { return now },
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			svc.DecayWarnLevel(ctx, sess)
+		}()
+
+		assert.Equal(t, uint16(50), <-warnCh)
+		assert.Equal(t, uint16(0), <-warnCh)
+
+		cancel()
+		wg.Wait()
+	})
+
+	t.Run("last modified on interval, resolved warn level", func(t *testing.T) {
+		now := time.Now()
+
+		sess := newTestSession("screen-name")
+		sess.SetLastWarnUpdate(now.Add(-25 * time.Millisecond))
+		sess.SetWarning(250)
+
+		mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
+
+		svc := ICBMService{
+			buddyBroadcaster: mockBuddyBroadcaster,
+			logger:           slog.Default(),
+			interval:         5 * time.Millisecond,
+			snacRateLimits:   wire.DefaultSNACRateLimits(),
+			timeNow:          func() time.Time { return now },
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			svc.DecayWarnLevel(ctx, sess)
+		}()
+
+		cancel()
+		wg.Wait()
+	})
+}
+
+func Test_calcRetroactiveDecay(t *testing.T) {
+
+	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+
+		sess := newTestSession("test-user")
+		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond).Add(-1 * time.Millisecond))
+		sess.SetWarning(250)
+
+		warnDelta, newInterval := calcRetroactiveDecay(sess, now, interval)
+
+		assert.Equal(t, int16(-150), warnDelta)
+		assert.Equal(t, 1*time.Millisecond, newInterval)
+	})
+
+	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+
+		sess := newTestSession("test-user")
+		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond).Add(1 * time.Millisecond))
+		sess.SetWarning(250)
+
+		warnDelta, newInterval := calcRetroactiveDecay(sess, now, interval)
+
+		assert.Equal(t, int16(-100), warnDelta)
+		assert.Equal(t, 4*time.Millisecond, newInterval)
+	})
+
+	t.Run("active warn level, last modified exactly on interval", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+
+		sess := newTestSession("test-user")
+		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond))
+		sess.SetWarning(250)
+
+		warnDelta, newInterval := calcRetroactiveDecay(sess, now, interval)
+
+		assert.Equal(t, int16(-150), warnDelta)
+		assert.Equal(t, 0*time.Millisecond, newInterval)
+	})
+
+	t.Run("resolved warn level", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+
+		sess := newTestSession("test-user")
+		sess.SetLastWarnUpdate(now.Add(-25 * time.Millisecond))
+		sess.SetWarning(250)
+
+		warnDelta, newInterval := calcRetroactiveDecay(sess, now, interval)
+
+		assert.Equal(t, int16(0), warnDelta)
+		assert.Equal(t, interval, newInterval)
+	})
+
+	t.Run("resolved warn level - time past exceeds maximum window", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+
+		sess := newTestSession("test-user")
+		sess.SetLastWarnUpdate(now.Add(-200 * time.Millisecond))
+		sess.SetWarning(250)
+
+		warnDelta, newInterval := calcRetroactiveDecay(sess, now, interval)
+
+		assert.Equal(t, int16(0), warnDelta)
+		assert.Equal(t, interval, newInterval)
 	})
 }

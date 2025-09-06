@@ -77,6 +77,7 @@ type Session struct {
 	userStatusBitmask     uint32
 	warning               uint16
 	warningCh             chan struct{}
+	lastWarnUpdate        time.Time
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
@@ -241,6 +242,13 @@ func (s *Session) IncrementWarning(incr int16, classID wire.RateLimitClassID) bo
 	return true
 }
 
+// SetWarning sets the user's last warning level.
+func (s *Session) SetWarning(warning uint16) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.warning = warning
+}
+
 // Warning returns the user's current warning level as a percentage.
 // The warning level is stored as an integer representation of a percentage
 // where 30 = 3.0%, 100 = 10.0%, 1000 = 100.0%, etc.
@@ -263,6 +271,20 @@ func (s *Session) NotifyWarning(ctx context.Context) {
 // Listeners can receive from this channel to be notified when warnings occur.
 func (s *Session) WarningCh() chan struct{} {
 	return s.warningCh
+}
+
+// SetLastWarnUpdate sets the user's last warn update time.
+func (s *Session) SetLastWarnUpdate(t time.Time) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.lastWarnUpdate = t
+}
+
+// LastWarnUpdate returns the user's last warn update time.
+func (s *Session) LastWarnUpdate() time.Time {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.lastWarnUpdate
 }
 
 // Invisible returns true if the user is idle.
