@@ -365,4 +365,7 @@ type UserManager interface {
 
 	// User returns the user record associated with the given screen name.
 	User(ctx context.Context, screenName state.IdentScreenName) (*state.User, error)
+
+	// SetWarnLevel updates the last warn update time and warning level for a user.
+	SetWarnLevel(ctx context.Context, user state.IdentScreenName, lastWarnUpdate time.Time, lastWarnLevel uint16) error
 }

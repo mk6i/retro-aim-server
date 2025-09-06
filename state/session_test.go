@@ -623,6 +623,24 @@ func TestSession_SetAndGetMultiConnFlag(t *testing.T) {
 	assert.Equal(t, wire.MultiConnFlagsSingleClient, s.MultiConnFlag())
 }
 
+func TestSession_SetAndGetLastWarnUpdate(t *testing.T) {
+	s := NewSession()
+	assert.Zero(t, s.LastWarnUpdate())
+
+	testTime := time.Unix(1234567890, 0)
+	s.SetLastWarnUpdate(testTime)
+	assert.Equal(t, testTime, s.LastWarnUpdate())
+}
+
+func TestSession_SetAndGetLastWarnLevel(t *testing.T) {
+	s := NewSession()
+	assert.Zero(t, s.Warning())
+
+	level := uint16(500)
+	s.SetWarning(level)
+	assert.Equal(t, level, s.Warning())
+}
+
 func TestSession_IncrementWarningWithRateLimitScaling(t *testing.T) {
 	t.Run("scale up", func(t *testing.T) {
 		classParams := [5]wire.RateClass{

@@ -39,7 +39,7 @@ func NewICBMService(
 		snacRateLimits:      snacRateLimits,
 		convoTracker:        newConvoTracker(),
 		logger:              logger,
-		interval:            5 * time.Minute,
+		interval:            30 * time.Second,
 	}
 }
 
@@ -423,8 +423,8 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 		inProgress = false
 	}
 
-	startTicker := func() {
-		ticker = time.NewTicker(s.interval)
+	startTicker := func(interval time.Duration) {
+		ticker = time.NewTicker(interval)
 		tickC = ticker.C
 		inProgress = true
 		s.logger.DebugContext(ctx, "warning decay started")
@@ -434,6 +434,30 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 	classID, ok := s.snacRateLimits.RateClassLookup(wire.ICBM, wire.ICBMChannelMsgToHost)
 	if !ok {
 		panic("failed to retrieve rate class for ICBMChannelMsgToHost")
+	}
+
+	// restore warning level from previous session
+	if sess.Warning() > 0 {
+
+		warnDelta, newInterval := calcRetroactiveDecay(sess, s.timeNow(), s.interval)
+
+		if warnDelta < 0 {
+			sess.IncrementWarning(warnDelta, classID)
+			interval := s.interval
+			if newInterval > 0 {
+				interval = newInterval
+			}
+			startTicker(interval)
+			s.logger.DebugContext(ctx, "restoring warn level from prior session",
+				"previous_level", sess.Warning()-uint16(warnDelta),
+				"new_level", sess.Warning(),
+			)
+		} else {
+			s.logger.DebugContext(ctx, "warn level has returned to 0 since last signoff",
+				"previous_level", sess.Warning()-uint16(warnDelta),
+				"new_level", sess.Warning(),
+			)
+		}
 	}
 
 	for {
@@ -447,7 +471,7 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 				s.logger.DebugContext(ctx, "warning decay already in progress")
 				continue
 			}
-			startTicker()
+			startTicker(s.interval)
 
 		case <-tickC:
 			sess.IncrementWarning(warningDecayPct, classID)
@@ -464,6 +488,26 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 			}
 		}
 	}
+}
+
+func calcRetroactiveDecay(sess *state.Session, now time.Time, interval time.Duration) (int16, time.Duration) {
+	// time passed since last signoff
+	since := now.Sub(sess.LastWarnUpdate())
+
+	// how many times warning decayed since last signoff
+	decayPeriods := int(since / interval)
+	// total amount warning decreased since last signoff
+	warnDelta := decayPeriods * warningDecayPct
+	// the updated warn level
+	newWarnLevel := int(sess.Warning()) + warnDelta
+
+	if newWarnLevel <= 0 {
+		// warning fully decayed
+		return 0, interval
+	}
+
+	// warning partially decayed - return the delta, not the new level
+	return int16(warnDelta), since % interval
 }
 
 // convoTracker keeps track of messages initiated from a sender to a recipient.

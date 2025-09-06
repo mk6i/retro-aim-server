@@ -319,6 +319,7 @@ func TestGetUser(t *testing.T) {
 		AuthKey:           "theauthkey",
 		StrongMD5Pass:     []byte("thepasshash"),
 		RegStatus:         3,
+		LastWarnUpdate:    time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), // Database default value
 	}
 	err = f.InsertUser(context.Background(), *insertedUser)
 	assert.NoError(t, err)
