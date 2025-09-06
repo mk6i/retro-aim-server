@@ -84,7 +84,7 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 	if awayMsg, hasAwayMsg := inBody.String(wire.LocateTLVTagsInfoUnavailableData); hasAwayMsg {
 		sess.SetAwayMessage(awayMsg)
 		if sess.SignonComplete() {
-			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), sess.TLVUserInfo()); err != nil {
 				return err
 			}
 		}
@@ -106,7 +106,7 @@ func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody 
 		}
 		sess.SetCaps(caps)
 		if sess.SignonComplete() {
-			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), sess.TLVUserInfo()); err != nil {
 				return err
 			}
 		}

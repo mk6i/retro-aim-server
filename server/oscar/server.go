@@ -34,6 +34,7 @@ func NewServer(
 	limits wire.SNACRateLimits,
 	limiter *IPRateLimiter,
 	listenerCfg []config.Listener,
+	recalcWarning func(ctx context.Context, sess *state.Session) error,
 	lowerWarnLevel func(ctx context.Context, sess *state.Session),
 ) *Server {
 	oscarSvc := oscarServer{
@@ -47,6 +48,7 @@ func NewServer(
 		RateLimitUpdater:   rateLimitUpdater,
 		SNACRateLimits:     limits,
 		IPRateLimiter:      limiter,
+		recalcWarning:      recalcWarning,
 		lowerWarnLevel:     lowerWarnLevel,
 	}
 
@@ -190,6 +192,7 @@ type oscarServer struct {
 	RateLimitUpdater
 	wire.SNACRateLimits
 	*IPRateLimiter
+	recalcWarning  func(ctx context.Context, sess *state.Session) error
 	lowerWarnLevel func(ctx context.Context, sess *state.Session)
 }
 
@@ -276,6 +279,9 @@ func (s oscarServer) connectToOSCARService(
 			sess.SetRemoteAddr(&ip)
 		}
 
+		if err := s.recalcWarning(ctx, sess); err != nil {
+			return fmt.Errorf("failed to recalculate warning level: %w", err)
+		}
 		go s.lowerWarnLevel(ctx, sess)
 		go s.receiveSessMessages(ctx, sess, flapc)
 

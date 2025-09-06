@@ -2,6 +2,7 @@ package foodgroup
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net"
 	"net/netip"
@@ -979,13 +980,6 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				buddyBroadcasterParams: buddyBroadcasterParams{
-					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
-						{
-							screenName: state.NewIdentScreenName("recipient-screen-name"),
-						},
-					},
-				},
 				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
@@ -1053,13 +1047,6 @@ func TestICBMService_EvilRequest(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				buddyBroadcasterParams: buddyBroadcasterParams{
-					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
-						{
-							screenName: state.NewIdentScreenName("recipient-screen-name"),
-						},
-					},
-				},
 				relationshipFetcherParams: relationshipFetcherParams{
 					relationshipParams: relationshipParams{
 						{
@@ -1318,12 +1305,6 @@ func TestICBMService_EvilRequest(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
-			for _, item := range tc.mockParams.broadcastBuddyArrivedParams {
-				mockBuddyBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, matchSession(item.screenName)).
-					Return(item.err)
-			}
 			relationshipFetcher := newMockRelationshipFetcher(t)
 			for _, item := range tc.mockParams.relationshipFetcherParams.relationshipParams {
 				relationshipFetcher.EXPECT().
@@ -1349,7 +1330,6 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			}
 
 			svc := ICBMService{
-				buddyBroadcaster:    mockBuddyBroadcaster,
 				relationshipFetcher: relationshipFetcher,
 				messageRelayer:      messageRelayer,
 				offlineMessageSaver: offlineMessageManager,
@@ -1385,7 +1365,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 }
 
 func TestICBMService_ParameterQuery(t *testing.T) {
-	svc := NewICBMService(nil, nil, nil, nil, nil, wire.DefaultSNACRateLimits(), slog.Default())
+	svc := NewICBMService(nil, nil, nil, nil, nil, nil, wire.DefaultSNACRateLimits(), slog.Default())
 
 	have := svc.ParameterQuery(nil, wire.SNACFrame{RequestID: 1234})
 	want := wire.SNACMessage{
@@ -1437,7 +1417,7 @@ func TestICBMService_ClientErr(t *testing.T) {
 	messageRelayer.EXPECT().
 		RelayToScreenName(mock.Anything, state.NewIdentScreenName("recipientScreenName"), expect)
 
-	svc := NewICBMService(nil, messageRelayer, nil, nil, nil, wire.DefaultSNACRateLimits(), slog.Default())
+	svc := NewICBMService(nil, messageRelayer, nil, nil, nil, nil, wire.DefaultSNACRateLimits(), slog.Default())
 
 	err := svc.ClientErr(context.Background(), sess, wire.SNACFrame{RequestID: 1234}, inBody)
 	assert.NoError(t, err)
@@ -1680,25 +1660,48 @@ func TestConvoTracker(t *testing.T) {
 	assert.True(t, ct.trackWarn(now, recip, sender))
 }
 
-func TestICBMService_DecayWarnLevel(t *testing.T) {
+func TestICBMService_UpdateWarnLevel(t *testing.T) {
 
 	t.Run("happy path", func(t *testing.T) {
+		now := time.Now()
 
 		sess := newTestSession("screen-name")
 		warnCh := make(chan uint16)
 
 		mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
 		mockBuddyBroadcaster.EXPECT().
-			BroadcastBuddyArrived(mock.Anything, matchSession(sess.IdentScreenName())).
-			Run(func(ctx context.Context, sess *state.Session) {
-				warnCh <- sess.Warning()
+			BroadcastBuddyArrived(mock.Anything, sess.IdentScreenName(), mock.MatchedBy(func(userInfo wire.TLVUserInfo) bool {
+				return userInfo.ScreenName == sess.IdentScreenName().String()
+			})).
+			Run(func(ctx context.Context, screenName state.IdentScreenName, userInfo wire.TLVUserInfo) {
+				warnCh <- userInfo.WarningLevel
 			}).Return(nil)
+
+		u := &state.User{}
+		userManager := newMockUserManager(t)
+		userManager.EXPECT().
+			User(matchContext(), sess.IdentScreenName()).
+			Return(u, nil)
+		userManager.EXPECT().
+			SetWarnLevel(matchContext(), sess.IdentScreenName(), now, uint16(100)).
+			Return(nil)
+		userManager.EXPECT().
+			SetWarnLevel(matchContext(), sess.IdentScreenName(), now, uint16(50)).
+			Return(nil)
+		userManager.EXPECT().
+			SetWarnLevel(matchContext(), sess.IdentScreenName(), now, uint16(30)).
+			Return(nil)
+		userManager.EXPECT().
+			SetWarnLevel(matchContext(), sess.IdentScreenName(), now, uint16(0)).
+			Return(nil)
 
 		svc := ICBMService{
 			buddyBroadcaster: mockBuddyBroadcaster,
-			logger:           slog.Default(),
 			interval:         1 * time.Millisecond,
+			logger:           slog.Default(),
 			snacRateLimits:   wire.DefaultSNACRateLimits(),
+			timeNow:          func() time.Time { return now },
+			userManager:      userManager,
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -1708,62 +1711,255 @@ func TestICBMService_DecayWarnLevel(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			svc.DecayWarnLevel(ctx, sess)
+			svc.UpdateWarnLevel(ctx, sess) // do a sync test here?
 		}()
 
-		sess.IncrementWarning(100, 3)
-		sess.NotifyWarning(ctx)
-
+		ok, _ := sess.IncrementWarning(100, 3)
+		assert.True(t, ok)
+		assert.Equal(t, uint16(100), <-warnCh)
 		assert.Equal(t, uint16(50), <-warnCh)
 		assert.Equal(t, uint16(0), <-warnCh)
 
-		sess.IncrementWarning(50, 3)
-		sess.NotifyWarning(ctx)
-		sess.IncrementWarning(50, 3)
-		sess.NotifyWarning(ctx)
-
+		ok, _ = sess.IncrementWarning(100, 3)
+		assert.True(t, ok)
+		assert.Equal(t, uint16(100), <-warnCh)
 		assert.Equal(t, uint16(50), <-warnCh)
+		assert.Equal(t, uint16(0), <-warnCh)
+
+		sess.IncrementWarning(30, 3)
+		assert.Equal(t, uint16(30), <-warnCh)
 		assert.Equal(t, uint16(0), <-warnCh)
 
 		cancel()
 		wg.Wait()
 	})
+}
 
-	t.Run("3% burn down clamps to 0", func(t *testing.T) {
+func TestICBMService_RestoreWarningLevel(t *testing.T) {
+	tests := []struct {
+		name           string
+		lastWarnUpdate time.Duration
+		lastWarnLevel  uint16
+		expectedWarn   uint16
+	}{
+		{
+			name:           "decays warning when last update is before interval boundary",
+			lastWarnUpdate: -15*time.Millisecond - 1*time.Millisecond,
+			lastWarnLevel:  250,
+			expectedWarn:   100,
+		},
+		{
+			name:           "decays warning when last update is after interval boundary",
+			lastWarnUpdate: -15*time.Millisecond + 1*time.Millisecond,
+			lastWarnLevel:  250,
+			expectedWarn:   150,
+		},
+		{
+			name:           "decays warning when last update is exactly on interval boundary",
+			lastWarnUpdate: -15 * time.Millisecond,
+			lastWarnLevel:  250,
+			expectedWarn:   100,
+		},
+		{
+			name:           "resets warning to zero when time is exactly at decay period",
+			lastWarnUpdate: -25 * time.Millisecond,
+			lastWarnLevel:  250,
+			expectedWarn:   0,
+		},
+		{
+			name:           "resets warning to zero when time far decay period",
+			lastWarnUpdate: -1 * time.Second,
+			lastWarnLevel:  250,
+			expectedWarn:   0,
+		},
+	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			now := time.Now()
+
+			sess := newTestSession("screen-name")
+
+			u := &state.User{
+				LastWarnUpdate: now.Add(tt.lastWarnUpdate),
+				LastWarnLevel:  tt.lastWarnLevel,
+			}
+			userManager := newMockUserManager(t)
+			userManager.EXPECT().
+				User(matchContext(), sess.IdentScreenName()).
+				Return(u, nil)
+
+			svc := ICBMService{
+				logger:         slog.Default(),
+				interval:       5 * time.Millisecond,
+				snacRateLimits: wire.DefaultSNACRateLimits(),
+				timeNow:        func() time.Time { return now },
+				userManager:    userManager,
+			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			err := svc.RestoreWarningLevel(ctx, sess)
+			assert.NoError(t, err)
+
+			assert.Equal(t, tt.expectedWarn, sess.Warning())
+		})
+	}
+}
+
+func TestICBMService_RestoreWarningLevel_ErrorCases(t *testing.T) {
+	t.Run("user does not exist", func(t *testing.T) {
 		sess := newTestSession("screen-name")
-		warnCh := make(chan uint16)
 
-		mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
-		mockBuddyBroadcaster.EXPECT().
-			BroadcastBuddyArrived(mock.Anything, matchSession(sess.IdentScreenName())).
-			Run(func(ctx context.Context, sess *state.Session) {
-				warnCh <- sess.Warning()
-			}).Return(nil)
+		userManager := newMockUserManager(t)
+		userManager.EXPECT().
+			User(matchContext(), sess.IdentScreenName()).
+			Return(nil, nil)
 
 		svc := ICBMService{
-			buddyBroadcaster: mockBuddyBroadcaster,
-			logger:           slog.Default(),
-			interval:         1 * time.Millisecond,
-			snacRateLimits:   wire.DefaultSNACRateLimits(),
+			logger:         slog.Default(),
+			interval:       5 * time.Millisecond,
+			snacRateLimits: wire.DefaultSNACRateLimits(),
+			timeNow:        time.Now,
+			userManager:    userManager,
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		err := svc.RestoreWarningLevel(context.Background(), sess)
+		assert.ErrorIs(t, err, state.ErrNoUser)
+	})
 
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			svc.DecayWarnLevel(ctx, sess)
-		}()
+	t.Run("user manager returns error", func(t *testing.T) {
+		sess := newTestSession("screen-name")
+		expectedErr := errors.New("database connection failed")
 
-		sess.IncrementWarning(30, 3)
-		sess.NotifyWarning(ctx)
+		userManager := newMockUserManager(t)
+		userManager.EXPECT().
+			User(matchContext(), sess.IdentScreenName()).
+			Return(nil, expectedErr)
 
-		assert.Equal(t, uint16(0), <-warnCh)
+		svc := ICBMService{
+			logger:         slog.Default(),
+			interval:       5 * time.Millisecond,
+			snacRateLimits: wire.DefaultSNACRateLimits(),
+			timeNow:        time.Now,
+			userManager:    userManager,
+		}
 
-		cancel()
-		wg.Wait()
+		err := svc.RestoreWarningLevel(context.Background(), sess)
+		assert.Error(t, err)
+		// When user is nil, it returns ErrNoUser regardless of the error
+		assert.ErrorIs(t, err, expectedErr)
+	})
+
+	t.Run("user exists with zero warning level", func(t *testing.T) {
+		sess := newTestSession("screen-name")
+
+		u := &state.User{
+			LastWarnUpdate: time.Now().Add(-10 * time.Millisecond),
+			LastWarnLevel:  0, // No warning level
+		}
+		userManager := newMockUserManager(t)
+		userManager.EXPECT().
+			User(matchContext(), sess.IdentScreenName()).
+			Return(u, nil)
+
+		svc := ICBMService{
+			logger:         slog.Default(),
+			interval:       5 * time.Millisecond,
+			snacRateLimits: wire.DefaultSNACRateLimits(),
+			timeNow:        time.Now,
+			userManager:    userManager,
+		}
+
+		err := svc.RestoreWarningLevel(context.Background(), sess)
+		assert.NoError(t, err)
+		assert.Equal(t, uint16(0), sess.Warning())
+	})
+}
+
+func Test_calcWarningLevelChange(t *testing.T) {
+
+	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-15 * time.Millisecond).Add(-1 * time.Millisecond)
+		warnDelta := calcElapsedWarningLevel(lastWarn, now, interval)
+		assert.Equal(t, int16(-150), warnDelta)
+	})
+
+	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-15 * time.Millisecond).Add(1 * time.Millisecond)
+		warnDelta := calcElapsedWarningLevel(lastWarn, now, interval)
+		assert.Equal(t, int16(-100), warnDelta)
+	})
+
+	t.Run("active warn level, last modified exactly on interval", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-15 * time.Millisecond)
+		warnDelta := calcElapsedWarningLevel(lastWarn, now, interval)
+		assert.Equal(t, int16(-150), warnDelta)
+	})
+
+	t.Run("resolved warn level", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-25 * time.Millisecond)
+		warnDelta := calcElapsedWarningLevel(lastWarn, now, interval)
+		assert.Equal(t, int16(-250), warnDelta)
+	})
+
+	t.Run("resolved warn level - time past exceeds maximum window", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-200 * time.Millisecond)
+		warnDelta := calcElapsedWarningLevel(lastWarn, now, interval)
+		assert.Equal(t, int16(-2000), warnDelta)
+	})
+}
+
+func Test_calcRefreshInterval(t *testing.T) {
+
+	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-15 * time.Millisecond).Add(-1 * time.Millisecond)
+		newInterval := timeTillNextInterval(lastWarn, now, interval)
+		assert.Equal(t, 4*time.Millisecond, newInterval)
+	})
+
+	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-15 * time.Millisecond).Add(1 * time.Millisecond)
+		newInterval := timeTillNextInterval(lastWarn, now, interval)
+		assert.Equal(t, 1*time.Millisecond, newInterval)
+	})
+
+	t.Run("active warn level, last modified exactly on interval", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-15 * time.Millisecond)
+		newInterval := timeTillNextInterval(lastWarn, now, interval)
+		assert.Equal(t, 5*time.Millisecond, newInterval)
+	})
+
+	t.Run("resolved warn level", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-25 * time.Millisecond)
+		newInterval := timeTillNextInterval(lastWarn, now, interval)
+		assert.Equal(t, interval, newInterval)
+	})
+
+	t.Run("resolved warn level - time past exceeds maximum window", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-200 * time.Millisecond)
+		newInterval := timeTillNextInterval(lastWarn, now, interval)
+		assert.Equal(t, interval, newInterval)
 	})
 }

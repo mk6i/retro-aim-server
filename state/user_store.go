@@ -410,7 +410,9 @@ func (f SQLiteUserStore) queryUsers(ctx context.Context, whereClause string, que
 			aim_nickName,
 			aim_zipCode,
 			aim_address,
-			tocConfig
+			tocConfig,
+			lastWarnUpdate,
+			lastWarnLevel
 		FROM users
 		WHERE %s
 	`
@@ -504,6 +506,8 @@ func (f SQLiteUserStore) queryUsers(ctx context.Context, whereClause string, que
 			&u.AIMDirectoryInfo.ZIPCode,
 			&u.AIMDirectoryInfo.Address,
 			&u.TOCConfig,
+			&u.LastWarnUpdate,
+			&u.LastWarnLevel,
 		)
 		if err != nil {
 			return nil, err
@@ -1945,6 +1949,32 @@ func (f SQLiteUserStore) SetTOCConfig(ctx context.Context, user IdentScreenName,
 	res, err := f.db.ExecContext(ctx,
 		q,
 		config,
+		user.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+	c, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if c == 0 {
+		return ErrNoUser
+	}
+	return nil
+}
+
+// SetWarnLevel updates the last warn update time and warning level for a user.
+func (f SQLiteUserStore) SetWarnLevel(ctx context.Context, user IdentScreenName, lastWarnUpdate time.Time, lastWarnLevel uint16) error {
+	q := `
+		UPDATE users
+		SET lastWarnUpdate = ?, lastWarnLevel = ?
+		WHERE identScreenName = ?
+	`
+	res, err := f.db.ExecContext(ctx,
+		q,
+		lastWarnUpdate,
+		lastWarnLevel,
 		user.String(),
 	)
 	if err != nil {

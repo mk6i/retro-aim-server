@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -26,6 +27,7 @@ func NewICBMService(
 	offlineMessageSaver OfflineMessageManager,
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
+	userManager UserManager,
 	snacRateLimits wire.SNACRateLimits,
 	logger *slog.Logger,
 ) *ICBMService {
@@ -34,6 +36,7 @@ func NewICBMService(
 		buddyBroadcaster:    newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		messageRelayer:      messageRelayer,
 		offlineMessageSaver: offlineMessageSaver,
+		userManager:         userManager,
 		timeNow:             time.Now,
 		sessionRetriever:    sessionRetriever,
 		snacRateLimits:      snacRateLimits,
@@ -51,6 +54,7 @@ type ICBMService struct {
 	buddyBroadcaster    buddyBroadcaster
 	messageRelayer      MessageRelayer
 	offlineMessageSaver OfflineMessageManager
+	userManager         UserManager
 	timeNow             func() time.Time
 	sessionRetriever    SessionRetriever
 	snacRateLimits      wire.SNACRateLimits
@@ -348,7 +352,8 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		panic("failed to retrieve rate class for ICBMChannelMsgToHost")
 	}
 
-	if ok := recipSess.IncrementWarning(int16(increase), classID); !ok {
+	ok, newLevel := recipSess.IncrementWarning(int16(increase), classID)
+	if !ok {
 		return wire.SNACMessage{
 			Frame: wire.SNACFrame{
 				FoodGroup: wire.ICBM,
@@ -360,10 +365,9 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 			},
 		}, nil
 	}
-	recipSess.NotifyWarning(ctx)
 
 	notif := wire.SNAC_0x01_0x10_OServiceEvilNotification{
-		NewEvil: recipSess.Warning(),
+		NewEvil: newLevel,
 	}
 
 	// append info about user who sent the warning
@@ -386,11 +390,6 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		Body: notif,
 	})
 
-	// inform the warned user's buddies that their warning level has increased
-	if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, recipSess); err != nil {
-		return wire.SNACMessage{}, err
-	}
-
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.ICBM,
@@ -399,20 +398,66 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		},
 		Body: wire.SNAC_0x04_0x09_ICBMEvilReply{
 			EvilDeltaApplied: increase,
-			UpdatedEvilValue: recipSess.Warning(),
+			UpdatedEvilValue: newLevel,
 		},
 	}, nil
 }
 
-// DecayWarnLevel gradually reduces a user's warning level over time.
-// It listens for warning notifications and starts a periodic decay process
-// that reduces the warning level by a fixed percentage at regular intervals
-// until the warning level reaches zero. Warning updates are broadcast to
-// users who have this user on their buddy list.
-func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
+// RestoreWarningLevel restores the warning level from the last stored value at login time,
+// accounting for time passed between logins.
+func (s ICBMService) RestoreWarningLevel(ctx context.Context, sess *state.Session) error {
+	u, err := s.userManager.User(ctx, sess.IdentScreenName())
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+	if u == nil {
+		return state.ErrNoUser
+	}
+
+	if u.LastWarnLevel == 0 {
+		// user had no warning at the end of last session
+		return nil
+	}
+
+	sess.SetWarning(u.LastWarnLevel)
+
+	warnDelta := calcElapsedWarningLevel(u.LastWarnUpdate, s.timeNow(), s.interval)
+
+	// get the rate class for sending IMs, which gets limited when the user gets warned
+	classID, ok := s.snacRateLimits.RateClassLookup(wire.ICBM, wire.ICBMChannelMsgToHost)
+	if !ok {
+		panic("failed to retrieve rate class for ICBMChannelMsgToHost")
+	}
+
+	// increment warning level by the amount of time that has passed since last
+	// login, proportionally increasing the warning level
+	sess.IncrementWarning(warnDelta, classID)
+
+	if sess.Warning() > 0 {
+		s.logger.DebugContext(ctx, "restored warning level with time decay applied since last login",
+			"stored_level", u.LastWarnLevel,
+			"time_since_update", s.timeNow().Sub(u.LastWarnUpdate),
+			"decay_delta", warnDelta,
+			"final_level", sess.Warning(),
+		)
+	} else {
+		s.logger.DebugContext(ctx, "warning level decayed to zero since last login",
+			"stored_level", u.LastWarnLevel,
+			"time_since_update", s.timeNow().Sub(u.LastWarnUpdate),
+			"decay_delta", warnDelta,
+		)
+	}
+
+	return nil
+}
+
+// UpdateWarnLevel periodically updates the warning level relative to time
+// elapsed between warnings.
+func (s ICBMService) UpdateWarnLevel(ctx context.Context, sess *state.Session) {
 	var inProgress bool
 	var ticker *time.Ticker
 	var tickC <-chan time.Time // nil when idle, enables/disables the select case
+	var doReset bool
 
 	stopTicker := func() {
 		if ticker != nil {
@@ -421,13 +466,35 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 		}
 		tickC = nil
 		inProgress = false
+		s.logger.DebugContext(ctx, "warning decay stopped")
 	}
 
-	startTicker := func() {
-		ticker = time.NewTicker(s.interval)
+	startTicker := func(interval time.Duration) {
+		ticker = time.NewTicker(interval)
 		tickC = ticker.C
 		inProgress = true
 		s.logger.DebugContext(ctx, "warning decay started")
+	}
+
+	if sess.Warning() > 0 {
+		u, err := s.userManager.User(ctx, sess.IdentScreenName())
+		if err != nil {
+			s.logger.ErrorContext(ctx, "failed to get user", "err", err)
+			return
+		}
+		newInterval := timeTillNextInterval(u.LastWarnUpdate, s.timeNow(), s.interval)
+		interval := s.interval
+		if newInterval > 0 {
+			interval = newInterval
+		}
+		s.logger.DebugContext(ctx, "starting warning level update with interval adjusted to next boundary",
+			"user", sess.IdentScreenName(),
+			"adjusted_interval", interval,
+			"default_interval", s.interval,
+			"time_since_last_update", s.timeNow().Sub(u.LastWarnUpdate),
+		)
+		startTicker(interval)
+		doReset = true
 	}
 
 	// get the rate class for sending IMs, which gets limited when the user gets warned
@@ -436,34 +503,94 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 		panic("failed to retrieve rate class for ICBMChannelMsgToHost")
 	}
 
+	warnCh := make(chan struct{}, 1)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer close(warnCh)
+		for {
+			select {
+			case <-sess.Closed():
+				return
+			case <-ctx.Done():
+				return
+			case warning := <-sess.WarningCh():
+				if warning > 0 {
+					warnCh <- struct{}{}
+				}
+				if err := s.userManager.SetWarnLevel(ctx, sess.IdentScreenName(), s.timeNow(), warning); err != nil {
+					s.logger.ErrorContext(ctx, "failed to set warn level", "err", err)
+				}
+
+				info := sess.TLVUserInfo()
+				// lock in the current warning level to avoid race conditions
+				// where the warning level might change during this broadcast
+				// operation
+				info.WarningLevel = warning
+				if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), info); err != nil {
+					s.logger.ErrorContext(ctx, "BroadcastBuddyArrived failed", "err", err)
+				} else {
+					s.logger.DebugContext(ctx, "warning lowered", "remaining", warning)
+				}
+			}
+		}
+	}()
+
+	defer wg.Wait()
+
 	for {
 		select {
+		case <-sess.Closed():
+			stopTicker()
+			return
 		case <-ctx.Done():
 			stopTicker()
 			return
 
-		case <-sess.WarningCh():
+		case <-warnCh:
 			if inProgress {
 				s.logger.DebugContext(ctx, "warning decay already in progress")
 				continue
 			}
-			startTicker()
+			startTicker(s.interval)
 
 		case <-tickC:
-			sess.IncrementWarning(warningDecayPct, classID)
-
-			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
-				s.logger.ErrorContext(ctx, "BroadcastBuddyArrived failed", "err", err)
-			} else {
-				s.logger.DebugContext(ctx, "warning lowered", "remaining", sess.Warning())
+			if doReset {
+				ticker.Reset(s.interval)
+				doReset = false
 			}
 
-			if sess.Warning() <= 0 {
+			ok, warning := sess.IncrementWarning(warningDecayPct, classID)
+			if !ok {
+				s.logger.ErrorContext(ctx, "warning increment out of rage", "level", warning)
+				stopTicker()
+				return
+			}
+
+			if warning == 0 {
 				s.logger.DebugContext(ctx, "warning decay complete")
 				stopTicker()
 			}
 		}
 	}
+}
+
+func calcElapsedWarningLevel(lastWarnUpdate time.Time, now time.Time, interval time.Duration) int16 {
+	// time passed since last signoff
+	since := now.Sub(lastWarnUpdate)
+
+	// how many times warning decayed since last signoff
+	decayPeriods := int(since / interval)
+	// total amount warning decreased since last signoff
+	warnDelta := decayPeriods * warningDecayPct
+
+	return int16(warnDelta)
+}
+
+func timeTillNextInterval(lastWarned time.Time, now time.Time, interval time.Duration) time.Duration {
+	return interval - (now.Sub(lastWarned) % interval)
 }
 
 // convoTracker keeps track of messages initiated from a sender to a recipient.
@@ -563,5 +690,5 @@ func (r *ringBuffer) val() time.Time {
 // set stores the given time at the current cursor position and advances the cursor.
 func (r *ringBuffer) set(v time.Time) {
 	r.vals[r.cur] = v
-	r.cur = (r.cur + 1) % 3
+	r.cur = (r.cur + 1) % len(r.vals)
 }

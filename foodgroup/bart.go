@@ -51,7 +51,7 @@ func (s BARTService) UpsertItem(ctx context.Context, sess *state.Session, inFram
 
 	s.logger.DebugContext(ctx, "successfully uploaded buddy icon", "hash", fmt.Sprintf("%x", hash))
 
-	if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+	if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), sess.TLVUserInfo()); err != nil {
 		return wire.SNACMessage{}, err
 	}
 

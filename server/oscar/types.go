@@ -30,7 +30,7 @@ type BuddyListRegistry interface {
 // DepartureNotifier is the interface for sending buddy departure notifications
 // when a client disconnects.
 type DepartureNotifier interface {
-	BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error
+	BroadcastBuddyArrived(ctx context.Context, screenName state.IdentScreenName, userInfo wire.TLVUserInfo) error
 	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
 }
 
@@ -103,7 +103,8 @@ type ICBMService interface {
 	EvilRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x08_ICBMEvilRequest) (wire.SNACMessage, error)
 	ParameterQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 	ClientErr(ctx context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x04_0x0B_ICBMClientErr) error
-	DecayWarnLevel(ctx context.Context, sess *state.Session)
+	RestoreWarningLevel(ctx context.Context, sess *state.Session) error
+	UpdateWarnLevel(ctx context.Context, sess *state.Session)
 }
 
 type ICQService interface {

@@ -202,6 +202,10 @@ type User struct {
 	TOCConfig string
 	// IsBot indicates whether the user is a bot.
 	IsBot bool
+	// LastWarnUpdate is the timestamp when the user's warning level was last updated.
+	LastWarnUpdate time.Time
+	// LastWarnLevel is the warning level when the user last signed off.
+	LastWarnLevel uint16
 }
 
 // AIMNameAndAddr holds name and address AIM directory information.

@@ -87,7 +87,7 @@ type AccountManager interface {
 // or changes visibility status.
 type buddyBroadcaster interface {
 	// BroadcastBuddyArrived notifies all relevant users that the given user has come online.
-	BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error
+	BroadcastBuddyArrived(ctx context.Context, screenName state.IdentScreenName, userInfo wire.TLVUserInfo) error
 
 	// BroadcastBuddyDeparted notifies all relevant users that the given user has gone offline.
 	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
@@ -365,4 +365,7 @@ type UserManager interface {
 
 	// User returns the user record associated with the given screen name.
 	User(ctx context.Context, screenName state.IdentScreenName) (*state.User, error)
+
+	// SetWarnLevel updates the last warn update time and warning level for a user.
+	SetWarnLevel(ctx context.Context, user state.IdentScreenName, lastWarnUpdate time.Time, lastWarnLevel uint16) error
 }

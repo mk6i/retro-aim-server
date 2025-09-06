@@ -319,6 +319,7 @@ func TestGetUser(t *testing.T) {
 		AuthKey:           "theauthkey",
 		StrongMD5Pass:     []byte("thepasshash"),
 		RegStatus:         3,
+		LastWarnUpdate:    time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), // Database default value
 	}
 	err = f.InsertUser(context.Background(), *insertedUser)
 	assert.NoError(t, err)
@@ -3278,4 +3279,51 @@ func TestSQLiteUserStore_SetBotStatus(t *testing.T) {
 	user, err = f.User(context.Background(), screenName)
 	assert.NoError(t, err)
 	assert.False(t, user.IsBot)
+}
+
+func TestSQLiteUserStore_SetWarnLevel(t *testing.T) {
+	t.Run("Happy Path - Update Warning Level for Existing User", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		screenName := NewIdentScreenName("testuser")
+		user := User{
+			IdentScreenName: screenName,
+		}
+		err = f.InsertUser(context.Background(), user)
+		assert.NoError(t, err)
+
+		// Set initial warning level
+		lastWarnUpdate := time.Date(2023, 12, 1, 10, 30, 0, 0, time.UTC)
+		lastWarnLevel := uint16(5)
+
+		err = f.SetWarnLevel(context.Background(), screenName, lastWarnUpdate, lastWarnLevel)
+		assert.NoError(t, err)
+
+		// Verify the warning level was updated
+		updatedUser, err := f.User(context.Background(), screenName)
+		assert.NoError(t, err)
+		assert.Equal(t, lastWarnUpdate, updatedUser.LastWarnUpdate)
+		assert.Equal(t, lastWarnLevel, updatedUser.LastWarnLevel)
+	})
+
+	t.Run("User Does Not Exist", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		f, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		nonExistentScreenName := NewIdentScreenName("nonexistentuser")
+		lastWarnUpdate := time.Date(2023, 12, 1, 10, 30, 0, 0, time.UTC)
+		lastWarnLevel := uint16(5)
+
+		err = f.SetWarnLevel(context.Background(), nonExistentScreenName, lastWarnUpdate, lastWarnLevel)
+		assert.ErrorIs(t, err, ErrNoUser)
+	})
 }

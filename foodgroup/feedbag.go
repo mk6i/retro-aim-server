@@ -251,7 +251,7 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 		s.logger.DebugContext(ctx, "user is clearing icon",
 			"hash", fmt.Sprintf("%x", btlv.Hash))
 		// tell buddies about the icon update
-		return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess)
+		return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), sess.TLVUserInfo())
 	}
 
 	bid := wire.BARTID{
@@ -272,7 +272,7 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 		s.logger.DebugContext(ctx, "icon already exists in BART store, don't upload the icon file",
 			"hash", fmt.Sprintf("%x", btlv.Hash))
 		// tell buddies about the icon update
-		if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+		if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), sess.TLVUserInfo()); err != nil {
 			return err
 		}
 	}

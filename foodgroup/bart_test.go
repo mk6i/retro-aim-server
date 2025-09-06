@@ -50,7 +50,7 @@ func TestBARTService_UpsertItem(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: state.NewIdentScreenName("user_screen_name"),
+							screenName: state.DisplayScreenName("user_screen_name"),
 						},
 					},
 				},
@@ -86,7 +86,9 @@ func TestBARTService_UpsertItem(t *testing.T) {
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, matchSession(params.screenName)).
+					BroadcastBuddyArrived(mock.Anything, state.NewIdentScreenName(params.screenName.String()), mock.MatchedBy(func(userInfo wire.TLVUserInfo) bool {
+						return userInfo.ScreenName == params.screenName.String()
+					})).
 					Return(params.err)
 			}
 			svc := NewBARTService(slog.Default(), buddyIconManager, nil, nil, nil)

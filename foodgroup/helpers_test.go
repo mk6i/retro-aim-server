@@ -675,7 +675,7 @@ type broadcastVisibilityParams []struct {
 // broadcastBuddyArrivedParams is the list of parameters passed at the mock
 // buddyBroadcaster.BroadcastBuddyArrived call site
 type broadcastBuddyArrivedParams []struct {
-	screenName state.IdentScreenName
+	screenName state.DisplayScreenName
 	err        error
 }
 
@@ -721,7 +721,7 @@ type createChatRoomParams []struct {
 // sessOptWarning sets a warning level on the session object
 func sessOptWarning(level int16) func(session *state.Session) {
 	return func(session *state.Session) {
-		session.IncrementWarning(level, 1)
+		session.SetWarning(uint16(level))
 	}
 }
 

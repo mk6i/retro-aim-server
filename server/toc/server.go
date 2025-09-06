@@ -127,6 +127,7 @@ func NewServer(
 	logger *slog.Logger,
 	BOSProxy OSCARProxy,
 	ipRateLimiter *IPRateLimiter,
+	recalcWarning func(ctx context.Context, sess *state.Session) error,
 	lowerWarnLevel func(ctx context.Context, sess *state.Session),
 ) *Server {
 
@@ -138,6 +139,7 @@ func NewServer(
 		listenerCfg:        listenerCfg,
 		logger:             logger,
 		loginIPRateLimiter: ipRateLimiter,
+		recalcWarning:      recalcWarning,
 		lowerWarnLevel:     lowerWarnLevel,
 		servers:            make([]*http.Server, 0, len(listenerCfg)),
 		shutdownCancel:     cancel,
@@ -163,6 +165,7 @@ type Server struct {
 	bosProxy           OSCARProxy
 	logger             *slog.Logger
 	loginIPRateLimiter *IPRateLimiter
+	recalcWarning      func(ctx context.Context, sess *state.Session) error
 	lowerWarnLevel     func(ctx context.Context, sess *state.Session)
 
 	listenerCfg []string
@@ -203,7 +206,6 @@ func (s *Server) ListenAndServe() error {
 				ctx: s.shutdownCtx,
 			}
 			if err := s.servers[i].Serve(cl); !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, io.EOF) {
-				fmt.Println("HAHA")
 				s.shutdownCancel()
 				return err
 			}
@@ -396,6 +398,10 @@ func (s *Server) handleTOCRequest(
 	chatRegistry *ChatRegistry,
 	clientFlap *wire.FlapClient,
 ) error {
+	if err := s.recalcWarning(ctx, sessBOS); err != nil {
+		return fmt.Errorf("failed to recalculate warning level: %w", err)
+	}
+
 	// TOC response queue
 	msgCh := make(chan []byte, 1)
 
