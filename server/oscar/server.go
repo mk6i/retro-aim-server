@@ -318,6 +318,8 @@ func (s oscarServer) connectToOSCARService(
 func (s oscarServer) receiveSessMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient) {
 	for {
 		select {
+		case <-sess.Closed():
+			return
 		case <-ctx.Done():
 			return
 		case m := <-sess.ReceiveMessage():
