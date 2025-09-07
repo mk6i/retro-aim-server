@@ -127,6 +127,7 @@ func NewServer(
 	logger *slog.Logger,
 	BOSProxy OSCARProxy,
 	ipRateLimiter *IPRateLimiter,
+	recalcWarning func(ctx context.Context, sess *state.Session),
 	lowerWarnLevel func(ctx context.Context, sess *state.Session),
 ) *Server {
 
@@ -138,6 +139,7 @@ func NewServer(
 		listenerCfg:        listenerCfg,
 		logger:             logger,
 		loginIPRateLimiter: ipRateLimiter,
+		recalcWarning:      recalcWarning,
 		lowerWarnLevel:     lowerWarnLevel,
 		servers:            make([]*http.Server, 0, len(listenerCfg)),
 		shutdownCancel:     cancel,
@@ -163,6 +165,7 @@ type Server struct {
 	bosProxy           OSCARProxy
 	logger             *slog.Logger
 	loginIPRateLimiter *IPRateLimiter
+	recalcWarning      func(ctx context.Context, sess *state.Session)
 	lowerWarnLevel     func(ctx context.Context, sess *state.Session)
 
 	listenerCfg []string
@@ -422,6 +425,7 @@ func (s *Server) handleTOCRequest(
 	})
 
 	// process warning limits
+	s.recalcWarning(ctx, sessBOS)
 	g.Go(func() error {
 		s.lowerWarnLevel(ctx, sessBOS)
 		return nil

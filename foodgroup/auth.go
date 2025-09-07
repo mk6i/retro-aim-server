@@ -139,8 +139,11 @@ func (s AuthService) RegisterBOSSession(ctx context.Context, serverCookie state.
 	}
 
 	if u.LastWarnLevel > 0 {
+		fmt.Printf("<--- Starting up. Last warn update: %s warn level: %d\n\n", u.LastWarnUpdate, u.LastWarnLevel)
 		sess.SetLastWarnUpdate(u.LastWarnUpdate)
 		sess.SetWarning(u.LastWarnLevel)
+	} else {
+		fmt.Printf("<--- Starting up. No warning set.\n\n")
 	}
 
 	return sess, nil
@@ -163,10 +166,6 @@ func (s AuthService) RetrieveBOSSession(ctx context.Context, serverCookie state.
 // their buddy list about this user's departure. It's guaranteed that the
 // session is removed from the session pool.
 func (s AuthService) Signout(ctx context.Context, sess *state.Session) {
-	if err := s.userManager.SetWarnLevel(ctx, sess.IdentScreenName(), s.timeNow(), sess.Warning()); err != nil {
-		//s.ErrorContext(ctx, "failed to save warning level on signout", "error", err, "user", sess.IdentScreenName())
-		fmt.Println("error saving")
-	}
 	s.sessionManager.RemoveSession(sess)
 }
 

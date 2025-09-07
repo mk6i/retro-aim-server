@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"net/netip"
+	"runtime"
 	"sync"
 	"time"
 
@@ -34,6 +35,7 @@ func NewServer(
 	limits wire.SNACRateLimits,
 	limiter *IPRateLimiter,
 	listenerCfg []config.Listener,
+	recalcWarning func(ctx context.Context, sess *state.Session),
 	lowerWarnLevel func(ctx context.Context, sess *state.Session),
 ) *Server {
 	oscarSvc := oscarServer{
@@ -47,6 +49,7 @@ func NewServer(
 		RateLimitUpdater:   rateLimitUpdater,
 		SNACRateLimits:     limits,
 		IPRateLimiter:      limiter,
+		recalcWarning:      recalcWarning,
 		lowerWarnLevel:     lowerWarnLevel,
 	}
 
@@ -190,6 +193,7 @@ type oscarServer struct {
 	RateLimitUpdater
 	wire.SNACRateLimits
 	*IPRateLimiter
+	recalcWarning  func(ctx context.Context, sess *state.Session)
 	lowerWarnLevel func(ctx context.Context, sess *state.Session)
 }
 
@@ -276,6 +280,9 @@ func (s oscarServer) connectToOSCARService(
 			sess.SetRemoteAddr(&ip)
 		}
 
+		if sess.Warning() > 0 {
+			s.recalcWarning(ctx, sess)
+		}
 		go s.lowerWarnLevel(ctx, sess)
 		go s.receiveSessMessages(ctx, sess, flapc)
 
@@ -316,6 +323,7 @@ func (s oscarServer) connectToOSCARService(
 }
 
 func (s oscarServer) receiveSessMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient) {
+	fmt.Printf("# of goroutines: %d\n", runtime.NumGoroutine())
 	for {
 		select {
 		case <-sess.Closed():

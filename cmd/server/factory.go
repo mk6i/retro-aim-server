@@ -84,6 +84,7 @@ func MakeCommonDeps() (Container, error) {
 		c.sqLiteUserStore,
 		c.sqLiteUserStore,
 		c.inMemorySessionManager,
+		c.sqLiteUserStore,
 		c.snacRateLimits,
 		c.logger,
 	)
@@ -323,6 +324,7 @@ func OSCAR(deps Container) *oscar.Server {
 		deps.snacRateLimits,
 		oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 		deps.Listeners,
+		deps.icbmSvc.RecalculateWarning,
 		deps.icbmSvc.DecayWarnLevel,
 	)
 }
@@ -420,6 +422,7 @@ func TOC(deps Container) *toc.Server {
 			HTTPIPRateLimiter: toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 		},
 		toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
+		deps.icbmSvc.RecalculateWarning,
 		deps.icbmSvc.DecayWarnLevel,
 	)
 }

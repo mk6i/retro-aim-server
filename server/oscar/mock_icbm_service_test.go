@@ -323,6 +323,40 @@ func (_c *mockICBMService_ParameterQuery_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
+// RecalculateWarning provides a mock function with given fields: ctx, sess
+func (_m *mockICBMService) RecalculateWarning(ctx context.Context, sess *state.Session) {
+	_m.Called(ctx, sess)
+}
+
+// mockICBMService_RecalculateWarning_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RecalculateWarning'
+type mockICBMService_RecalculateWarning_Call struct {
+	*mock.Call
+}
+
+// RecalculateWarning is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sess *state.Session
+func (_e *mockICBMService_Expecter) RecalculateWarning(ctx interface{}, sess interface{}) *mockICBMService_RecalculateWarning_Call {
+	return &mockICBMService_RecalculateWarning_Call{Call: _e.mock.On("RecalculateWarning", ctx, sess)}
+}
+
+func (_c *mockICBMService_RecalculateWarning_Call) Run(run func(ctx context.Context, sess *state.Session)) *mockICBMService_RecalculateWarning_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*state.Session))
+	})
+	return _c
+}
+
+func (_c *mockICBMService_RecalculateWarning_Call) Return() *mockICBMService_RecalculateWarning_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *mockICBMService_RecalculateWarning_Call) RunAndReturn(run func(context.Context, *state.Session)) *mockICBMService_RecalculateWarning_Call {
+	_c.Run(run)
+	return _c
+}
+
 // newMockICBMService creates a new instance of mockICBMService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func newMockICBMService(t interface {
