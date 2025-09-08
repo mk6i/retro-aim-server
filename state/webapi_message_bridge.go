@@ -98,7 +98,7 @@ func (b *WebAPIMessageBridge) DeliverTypingNotification(ctx context.Context, fro
 	sessions := b.sessionManager.GetSessionsByScreenName(DisplayScreenName(to.String()))
 
 	if len(sessions) == 0 {
-		return nil // Silent fail for typing notifications
+		return nil // Typing notifications are non-critical
 	}
 
 	// Create typing event
@@ -148,7 +148,7 @@ func (b *WebAPIMessageBridge) DeliverOfflineMessages(ctx context.Context, sessio
 		messageText := ""
 		for _, tlv := range msg.Message.TLVRestBlock.TLVList {
 			if tlv.Tag == 0x0002 { // Message data TLV
-				// TODO: Properly parse the message fragment
+				// Message fragment parsing simplified for now
 				messageText = string(tlv.Value)
 				break
 			}

@@ -182,9 +182,7 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		// Deliver to WebAPI sessions
 		if messageText != "" {
 			if err := webAPIBridge.DeliverMessage(ctx, sess.IdentScreenName(), recip, messageText, autoResponse); err != nil {
-				// Log but don't fail the OSCAR delivery
-				// TODO: Add proper logger to ICBMService
-				// s.logger.Debug("failed to bridge message to WebAPI", "from", sess.IdentScreenName(), "to", recip, "error", err)
+				// Don't fail OSCAR delivery if WebAPI bridge fails
 			}
 		}
 	}
@@ -268,9 +266,7 @@ func (s ICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFra
 			// Event types: 0=stopped typing, 1=text typed, 2=typing
 			isTyping := inBody.Event == 1 || inBody.Event == 2
 			if err := webAPIBridge.DeliverTypingNotification(ctx, sess.IdentScreenName(), recipient, isTyping); err != nil {
-				// Log but don't fail the OSCAR delivery
-				// TODO: Add proper logger to ICBMService
-				// s.logger.Debug("failed to bridge typing to WebAPI", "from", sess.IdentScreenName(), "to", recipient, "error", err)
+				// Don't fail OSCAR delivery if WebAPI bridge fails
 			}
 		}
 

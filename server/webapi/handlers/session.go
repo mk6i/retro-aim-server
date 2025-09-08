@@ -217,11 +217,9 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Debug: Log what events the session is subscribed to
-	h.Logger.InfoContext(ctx, "session created with event subscriptions",
+	h.Logger.DebugContext(ctx, "session created with event subscriptions",
 		"aimsid", session.AimSID,
 		"events", events,
-		"sessionEvents", session.Events,
 	)
 
 	// Store client info
@@ -291,7 +289,7 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 	resp.Response.Data.AimSID = session.AimSID
 	resp.Response.Data.FetchTimeout = session.FetchTimeout
 	resp.Response.Data.TimeToNextFetch = session.TimeToNextFetch
-	// CRITICAL: Gromit expects fetchBaseURL directly in data, not in wellKnownUrls!
+	// Gromit expects fetchBaseURL directly in data, not in wellKnownUrls
 	resp.Response.Data.FetchBaseURL = fmt.Sprintf("http://%s/aim/fetchEvents?aimsid=%s&seqNum=0", r.Host, session.AimSID)
 
 	// Add wellKnownUrls for other clients that might use it
@@ -390,7 +388,7 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 		xmlResp.Data.AimSID = session.AimSID
 		xmlResp.Data.FetchTimeout = timeout
 		xmlResp.Data.TimeToNextFetch = 500
-		// CRITICAL: Gromit expects fetchBaseURL directly in data!
+		// Gromit expects fetchBaseURL directly in data
 		xmlResp.Data.FetchBaseURL = fmt.Sprintf("http://%s/aim/fetchEvents?aimsid=%s&seqNum=0", r.Host, session.AimSID)
 
 		// Add wellKnownUrls for other clients
@@ -487,7 +485,7 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 		SendResponse(w, r, resp, h.Logger)
 	}
 
-	h.Logger.InfoContext(ctx, "session started",
+	h.Logger.DebugContext(ctx, "session started",
 		"aimsid", session.AimSID,
 		"screen_name", screenName,
 		"dev_id", apiKey.DevID,
@@ -563,7 +561,7 @@ func (h *SessionHandler) EndSession(w http.ResponseWriter, r *http.Request) {
 	// Send response in requested format (JSON, JSONP, or AMF)
 	SendResponse(w, r, resp, h.Logger)
 
-	h.Logger.InfoContext(ctx, "session ended",
+	h.Logger.DebugContext(ctx, "session ended",
 		"aimsid", aimsid,
 		"screen_name", session.ScreenName,
 	)

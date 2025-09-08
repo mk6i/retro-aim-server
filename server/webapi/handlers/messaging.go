@@ -181,7 +181,7 @@ func (h *MessagingHandler) SendIM(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			h.Logger.InfoContext(ctx, "saved offline message",
+			h.Logger.DebugContext(ctx, "saved offline message",
 				"from", sess.ScreenName.String(),
 				"to", recipient)
 		} else {
@@ -245,16 +245,13 @@ func (h *MessagingHandler) SendIM(w http.ResponseWriter, r *http.Request) {
 		}
 		sess.EventQueue.Push(state.EventTypeSentIM, senderEventData)
 
-		h.Logger.InfoContext(ctx, "queued sentIM event for sender",
+		h.Logger.DebugContext(ctx, "queued sentIM event for sender",
 			"from", sess.ScreenName.String(),
 			"to", recipient,
 			"eventType", state.EventTypeSentIM,
-			"queueSize", sess.EventQueue.Size(),
-			"subscribedEvents", sess.Events,
-			"isSubscribedToSentIM", sess.IsSubscribedTo("sentIM"),
 		)
 
-		h.Logger.InfoContext(ctx, "delivered instant message",
+		h.Logger.DebugContext(ctx, "delivered instant message",
 			"from", sess.ScreenName.String(),
 			"to", recipient)
 	}

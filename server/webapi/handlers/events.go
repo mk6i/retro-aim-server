@@ -156,18 +156,6 @@ func (h *EventsHandler) FetchEvents(w http.ResponseWriter, r *http.Request) {
 		// Convert events to ensure timestamps are float64 for AMF3
 		convertedEvents := state.ConvertEventsForAMF3(events)
 
-		// Debug converted events
-		for i, evt := range convertedEvents {
-			if evtMap, ok := evt.(map[string]interface{}); ok {
-				if evtType, ok := evtMap["type"].(string); ok && evtType == "sentIM" {
-					h.Logger.InfoContext(ctx, "converted sentIM event",
-						"index", i,
-						"event", fmt.Sprintf("%+v", evtMap),
-					)
-				}
-			}
-		}
-
 		amfResp := map[string]interface{}{
 			"response": map[string]interface{}{
 				// Data comes FIRST (Gromit processes this large object)
@@ -198,21 +186,6 @@ func (h *EventsHandler) FetchEvents(w http.ResponseWriter, r *http.Request) {
 			"count", len(events),
 			"last_seq", newLastSeqNum,
 		)
-		// Log each event type for debugging
-		for i, evt := range events {
-			h.Logger.DebugContext(ctx, "event details",
-				"index", i,
-				"type", evt.Type,
-				"seqNum", evt.SeqNum,
-				"dataType", fmt.Sprintf("%T", evt.Data),
-			)
-			// Extra debugging for sentIM events
-			if evt.Type == state.EventTypeSentIM {
-				h.Logger.InfoContext(ctx, "sentIM event being fetched",
-					"data", fmt.Sprintf("%+v", evt.Data),
-				)
-			}
-		}
 	}
 }
 

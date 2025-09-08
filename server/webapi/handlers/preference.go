@@ -141,7 +141,7 @@ func (h *PreferenceHandler) SetPreferences(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	h.Logger.InfoContext(ctx, "preferences updated",
+	h.Logger.DebugContext(ctx, "preferences updated",
 		"screenName", session.ScreenName.String(),
 		"prefCount", len(prefs),
 	)
@@ -271,16 +271,13 @@ func (h *PreferenceHandler) GetPreferences(w http.ResponseWriter, r *http.Reques
 		}
 		prefs = convertedPrefs
 
-		// Debug logging
-		h.Logger.InfoContext(ctx, "AMF preference response",
+		h.Logger.DebugContext(ctx, "AMF preference response",
 			"prefs", prefs,
 			"prefCount", len(prefs),
 			"format", format,
-			"requestedCount", len(requestedPrefs),
-			"queryParams", r.URL.Query(),
 		)
 
-		// CRITICAL FIX: Ensure prefs is never nil or empty for Gromit
+		// Ensure prefs is never nil or empty for Gromit
 		if prefs == nil || len(prefs) == 0 {
 			// If no preferences found, at least return the requested ones with defaults
 			if len(requestedPrefs) > 0 {
@@ -288,7 +285,7 @@ func (h *PreferenceHandler) GetPreferences(w http.ResponseWriter, r *http.Reques
 			} else {
 				// Return playIMSound as default if nothing else
 				prefs = map[string]interface{}{
-					"playIMSound": 1, // Use numeric value
+					"playIMSound": 1,
 				}
 			}
 		}
@@ -422,7 +419,7 @@ func (h *PreferenceHandler) SetPermitDeny(w http.ResponseWriter, r *http.Request
 		denyUsers[i] = u.String()
 	}
 
-	h.Logger.InfoContext(ctx, "permit/deny settings updated",
+	h.Logger.DebugContext(ctx, "permit/deny settings updated",
 		"screenName", session.ScreenName.String(),
 		"pdMode", pdMode,
 		"permitCount", len(permitUsers),

@@ -48,7 +48,7 @@ func (e *AMFEncoder) EncodeAMF(data interface{}, version AMFVersion) ([]byte, er
 		// For AMF3, use goAMF3 which properly supports it
 		// Convert to a regular map structure (no ECMAArray needed)
 		amfData := e.toAMF3Compatible(data)
-		// CRITICAL: goAMF3 panics on nil values, ensure we sanitize
+		// goAMF3 panics on nil values, ensure we sanitize
 		sanitized := e.sanitizeForAMF3(amfData)
 		encoded := goAMF3.EncodeAMF3(sanitized)
 		return encoded, nil
@@ -61,11 +61,6 @@ func (e *AMFEncoder) EncodeAMF(data interface{}, version AMFVersion) ([]byte, er
 func (e *AMFEncoder) toAMF3Compatible(data interface{}) interface{} {
 	if data == nil {
 		return map[string]interface{}{}
-	}
-
-	// Log for debugging
-	if e.logger != nil {
-		e.logger.Debug("toAMF3Compatible", "dataType", fmt.Sprintf("%T", data))
 	}
 
 	// goAMF3 handles regular Go types well, just need to ensure maps are used
@@ -82,12 +77,6 @@ func (e *AMFEncoder) toAMF3Compatible(data interface{}) interface{} {
 		dataValue := d.Response.Data
 		if dataValue == nil {
 			dataValue = map[string]interface{}{}
-		}
-
-		if e.logger != nil {
-			e.logger.Debug("PreferenceResponse data",
-				"dataType", fmt.Sprintf("%T", dataValue),
-				"dataValue", dataValue)
 		}
 
 		return map[string]interface{}{
@@ -108,7 +97,7 @@ func (e *AMFEncoder) toAMF3Compatible(data interface{}) interface{} {
 					"aimsid":          d.Response.Data.AimSID,
 					"fetchTimeout":    d.Response.Data.FetchTimeout,
 					"timeToNextFetch": d.Response.Data.TimeToNextFetch,
-					"fetchBaseURL":    d.Response.Data.FetchBaseURL, // CRITICAL for Gromit!
+					"fetchBaseURL":    d.Response.Data.FetchBaseURL, // Required for Gromit
 					"events":          d.Response.Data.Events,
 					"wellKnownUrls":   d.Response.Data.WellKnownUrls,
 				},
@@ -116,7 +105,7 @@ func (e *AMFEncoder) toAMF3Compatible(data interface{}) interface{} {
 		}
 	case FetchEventsResponse:
 		// Special handling for FetchEventsResponse
-		// CRITICAL: goAMF3 can't handle uint64, must convert to int
+		// goAMF3 can't handle uint64, must convert to int
 		return map[string]interface{}{
 			"response": map[string]interface{}{
 				"statusCode": d.Response.StatusCode,
@@ -168,7 +157,7 @@ func (e *AMFEncoder) sanitizeForAMF3(data interface{}) interface{} {
 		result := make(map[string]interface{})
 		for key, val := range v {
 			if val == nil {
-				// For critical fields like 'data', replace with empty map
+				// For fields like 'data', replace with empty map
 				// For other fields, skip them
 				if key == "data" {
 					result[key] = map[string]interface{}{}

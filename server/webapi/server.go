@@ -32,7 +32,7 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 		SessionManager:      sessionManager,
 		OSCARSessionManager: handler.SessionRetriever.(handlers.SessionManager),
 		OSCARAuthService:    handler.AuthService,
-		BuddyListService:    nil, // TODO: Implement if needed
+		BuddyListService:    nil,
 		BuddyListRegistry:   handler.BuddyListRegistry,
 		BuddyBroadcaster:    handler.BuddyBroadcaster,
 		BuddyListManager:    handler.BuddyListManager,

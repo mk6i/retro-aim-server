@@ -193,18 +193,3 @@ func PresenceUpdateToWebAPIEvent(screenName string, online bool, awayMsg string,
 		},
 	}
 }
-
-// NullBuddyBroadcaster is a no-op implementation of BuddyBroadcaster for WebAPI-only sessions
-type NullBuddyBroadcaster struct{}
-
-// BroadcastBuddyArrived is a no-op for web-only sessions
-func (n NullBuddyBroadcaster) BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error {
-	// Web-only sessions don't have OSCAR sessions, so this is a no-op
-	return nil
-}
-
-// BroadcastBuddyDeparted is a no-op for web-only sessions
-func (n NullBuddyBroadcaster) BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error {
-	// Web-only sessions don't have OSCAR sessions, so this is a no-op
-	return nil
-}

@@ -198,17 +198,11 @@ func (m *WebAPIBuddyListManager) getBuddyInfo(buddyName string) WebAPIBuddyInfo 
 			}
 		}
 
-		// Get status message - not currently supported in Session
-		// TODO: Add status message support if needed
-		// if session.StatusMessage() != "" {
-		// 	info.StatusMsg = session.StatusMessage()
-		// }
+		// Status messages not currently supported in Session
 
 		// Set capabilities
-		// TODO: Parse actual capability UUIDs from session.Caps()
+		// Capabilities parsing not implemented
 		info.Capabilities = []string{}
-		// Capabilities are stored as [16]byte UUIDs, would need to check against known capability UUIDs
-		// For now, just return empty capabilities array
 	}
 
 	return info
