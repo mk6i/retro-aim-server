@@ -280,9 +280,7 @@ func (s oscarServer) connectToOSCARService(
 			sess.SetRemoteAddr(&ip)
 		}
 
-		if sess.Warning() > 0 {
-			s.recalcWarning(ctx, sess)
-		}
+		s.recalcWarning(ctx, sess)
 		go s.lowerWarnLevel(ctx, sess)
 		go s.receiveSessMessages(ctx, sess, flapc)
 

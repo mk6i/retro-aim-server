@@ -273,20 +273,6 @@ func (s *Session) WarningCh() chan struct{} {
 	return s.warningCh
 }
 
-// SetLastWarnUpdate sets the user's last warn update time.
-func (s *Session) SetLastWarnUpdate(t time.Time) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	s.lastWarnUpdate = t
-}
-
-// LastWarnUpdate returns the user's last warn update time.
-func (s *Session) LastWarnUpdate() time.Time {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	return s.lastWarnUpdate
-}
-
 // Invisible returns true if the user is idle.
 func (s *Session) Invisible() bool {
 	s.mutex.RLock()

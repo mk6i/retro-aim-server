@@ -367,7 +367,6 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 	if err := s.userManager.SetWarnLevel(ctx, recipSess.IdentScreenName(), s.timeNow(), recipSess.Warning()); err != nil {
 		s.logger.ErrorContext(ctx, "failed to set warn level", "err", err)
 	}
-	recipSess.SetLastWarnUpdate(s.timeNow())
 
 	notif := wire.SNAC_0x01_0x10_OServiceEvilNotification{
 		NewEvil: recipSess.Warning(),
@@ -430,11 +429,10 @@ func (s ICBMService) RecalculateWarning(ctx context.Context, sess *state.Session
 	}
 
 	sess.SetWarning(u.LastWarnLevel)
-	sess.SetLastWarnUpdate(u.LastWarnUpdate)
 
 	// restore warning level from previous session
 	if sess.Warning() > 0 {
-		warnDelta := calcElapsedWarningLevel(sess, s.timeNow(), s.interval)
+		warnDelta := calcElapsedWarningLevel(u.LastWarnLevel, u.LastWarnUpdate, s.timeNow(), s.interval)
 
 		if warnDelta < 0 {
 			prev := sess.Warning()
@@ -474,21 +472,26 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 		s.logger.DebugContext(ctx, "warning decay started")
 	}
 
-	// get the rate class for sending IMs, which gets limited when the user gets warned
-	classID, ok := s.snacRateLimits.RateClassLookup(wire.ICBM, wire.ICBMChannelMsgToHost)
-	if !ok {
-		panic("failed to retrieve rate class for ICBMChannelMsgToHost")
-	}
-
 	// start ticker if warning level is still > 0 after recalculation
 	if sess.Warning() > 0 {
-		newInterval := calcRefreshInterval(sess, s.timeNow(), s.interval)
+		u, err := s.userManager.User(ctx, sess.IdentScreenName())
+		if err != nil {
+			s.logger.ErrorContext(ctx, "failed to get user", "err", err)
+			return
+		}
+		newInterval := timeTillNextInterval(u.LastWarnUpdate, s.timeNow(), s.interval)
 		interval := s.interval
 		if newInterval > 0 {
 			interval = newInterval
 		}
 		fmt.Printf("<---- New interval is: %f \n", interval.Seconds())
 		startTicker(interval)
+	}
+
+	// get the rate class for sending IMs, which gets limited when the user gets warned
+	classID, ok := s.snacRateLimits.RateClassLookup(wire.ICBM, wire.ICBMChannelMsgToHost)
+	if !ok {
+		panic("failed to retrieve rate class for ICBMChannelMsgToHost")
 	}
 
 	for {
@@ -517,7 +520,6 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 			if err != nil {
 				s.logger.ErrorContext(ctx, "failed to set warn level", "err", err)
 			}
-			sess.SetLastWarnUpdate(s.timeNow())
 
 			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
 				s.logger.ErrorContext(ctx, "BroadcastBuddyArrived failed", "err", err)
@@ -533,16 +535,16 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 	}
 }
 
-func calcElapsedWarningLevel(sess *state.Session, now time.Time, interval time.Duration) int16 {
+func calcElapsedWarningLevel(lastWarnLevel uint16, lastWarnUpdate time.Time, now time.Time, interval time.Duration) int16 {
 	// time passed since last signoff
-	since := now.Sub(sess.LastWarnUpdate())
+	since := now.Sub(lastWarnUpdate)
 
 	// how many times warning decayed since last signoff
 	decayPeriods := int(since / interval)
 	// total amount warning decreased since last signoff
 	warnDelta := decayPeriods * warningDecayPct
 	// the updated warn level
-	newWarnLevel := int(sess.Warning()) + warnDelta
+	newWarnLevel := int(lastWarnLevel) + warnDelta
 
 	if newWarnLevel <= 0 {
 		// warning fully decayed
@@ -553,15 +555,8 @@ func calcElapsedWarningLevel(sess *state.Session, now time.Time, interval time.D
 	return int16(warnDelta)
 }
 
-func calcRefreshInterval(sess *state.Session, now time.Time, interval time.Duration) time.Duration {
-	if sess.Warning() == 0 {
-		return interval
-	}
-	// time passed since last signoff
-	since := now.Sub(sess.LastWarnUpdate())
-
-	// warning partially decayed - return remaining time until next decay
-	return since % interval
+func timeTillNextInterval(lastWarned time.Time, now time.Time, interval time.Duration) time.Duration {
+	return interval - (now.Sub(lastWarned) % interval)
 }
 
 // convoTracker keeps track of messages initiated from a sender to a recipient.
@@ -650,7 +645,7 @@ func (w *convoTracker) key(sender state.IdentScreenName, recip state.IdentScreen
 // ringBuffer is a fixed-size circular buffer with 3 slots for storing time values.
 type ringBuffer struct {
 	cur  int          // Current cursor position (0, 1, or 2)
-	vals [3]time.Time // Fixed-size array to store time values
+	vals [5]time.Time // Fixed-size array to store time values
 }
 
 // val returns the time at the current cursor position.
@@ -661,5 +656,5 @@ func (r *ringBuffer) val() time.Time {
 // set stores the given time at the current cursor position and advances the cursor.
 func (r *ringBuffer) set(v time.Time) {
 	r.vals[r.cur] = v
-	r.cur = (r.cur + 1) % 3
+	r.cur = (r.cur + 1) % len(r.vals)
 }

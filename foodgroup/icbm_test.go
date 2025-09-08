@@ -1900,7 +1900,7 @@ func Test_calcWarningLevelChange(t *testing.T) {
 		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond).Add(-1 * time.Millisecond))
 		sess.SetWarning(250)
 
-		warnDelta := calcElapsedWarningLevel(sess, now, interval)
+		warnDelta := calcElapsedWarningLevel(0, sess, now, interval)
 
 		assert.Equal(t, int16(-150), warnDelta)
 	})
@@ -1913,7 +1913,7 @@ func Test_calcWarningLevelChange(t *testing.T) {
 		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond).Add(1 * time.Millisecond))
 		sess.SetWarning(250)
 
-		warnDelta := calcElapsedWarningLevel(sess, now, interval)
+		warnDelta := calcElapsedWarningLevel(0, sess, now, interval)
 
 		assert.Equal(t, int16(-100), warnDelta)
 	})
@@ -1926,7 +1926,7 @@ func Test_calcWarningLevelChange(t *testing.T) {
 		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond))
 		sess.SetWarning(250)
 
-		warnDelta := calcElapsedWarningLevel(sess, now, interval)
+		warnDelta := calcElapsedWarningLevel(0, sess, now, interval)
 
 		assert.Equal(t, int16(-150), warnDelta)
 	})
@@ -1939,7 +1939,7 @@ func Test_calcWarningLevelChange(t *testing.T) {
 		sess.SetLastWarnUpdate(now.Add(-25 * time.Millisecond))
 		sess.SetWarning(250)
 
-		warnDelta := calcElapsedWarningLevel(sess, now, interval)
+		warnDelta := calcElapsedWarningLevel(0, sess, now, interval)
 
 		assert.Equal(t, int16(0), warnDelta)
 	})
@@ -1952,7 +1952,7 @@ func Test_calcWarningLevelChange(t *testing.T) {
 		sess.SetLastWarnUpdate(now.Add(-200 * time.Millisecond))
 		sess.SetWarning(250)
 
-		warnDelta := calcElapsedWarningLevel(sess, now, interval)
+		warnDelta := calcElapsedWarningLevel(0, sess, now, interval)
 
 		assert.Equal(t, int16(0), warnDelta)
 	})
@@ -1968,7 +1968,7 @@ func Test_calcRefreshInterval(t *testing.T) {
 		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond).Add(-1 * time.Millisecond))
 		sess.SetWarning(250)
 
-		newInterval := calcRefreshInterval(sess, now, interval)
+		newInterval := timeTillNextInterval(sess, now, interval)
 
 		assert.Equal(t, 1*time.Millisecond, newInterval)
 	})
@@ -1981,7 +1981,7 @@ func Test_calcRefreshInterval(t *testing.T) {
 		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond).Add(1 * time.Millisecond))
 		sess.SetWarning(250)
 
-		newInterval := calcRefreshInterval(sess, now, interval)
+		newInterval := timeTillNextInterval(sess, now, interval)
 
 		assert.Equal(t, 4*time.Millisecond, newInterval)
 	})
@@ -1994,7 +1994,7 @@ func Test_calcRefreshInterval(t *testing.T) {
 		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond))
 		sess.SetWarning(250)
 
-		newInterval := calcRefreshInterval(sess, now, interval)
+		newInterval := timeTillNextInterval(sess, now, interval)
 
 		assert.Equal(t, 0*time.Millisecond, newInterval)
 	})
@@ -2007,7 +2007,7 @@ func Test_calcRefreshInterval(t *testing.T) {
 	//	sess.SetLastWarnUpdate(now.Add(-25 * time.Millisecond))
 	//	sess.SetWarning(250)
 	//
-	//	newInterval := calcRefreshInterval(sess, now, interval)
+	//	newInterval := timeTillNextInterval(sess, now, interval)
 	//
 	//	assert.Equal(t, interval, newInterval)
 	//})
@@ -2020,7 +2020,7 @@ func Test_calcRefreshInterval(t *testing.T) {
 	//	sess.SetLastWarnUpdate(now.Add(-200 * time.Millisecond))
 	//	sess.SetWarning(250)
 	//
-	//	newInterval := calcRefreshInterval(sess, now, interval)
+	//	newInterval := timeTillNextInterval(sess, now, interval)
 	//
 	//	assert.Equal(t, interval, newInterval)
 	//})

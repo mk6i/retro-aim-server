@@ -137,15 +137,7 @@ func (s AuthService) RegisterBOSSession(ctx context.Context, serverCookie state.
 		}
 		sess.SetUIN(uint32(uin))
 	}
-
-	if u.LastWarnLevel > 0 {
-		fmt.Printf("<--- Starting up. Last warn update: %s warn level: %d\n\n", u.LastWarnUpdate, u.LastWarnLevel)
-		sess.SetLastWarnUpdate(u.LastWarnUpdate)
-		sess.SetWarning(u.LastWarnLevel)
-	} else {
-		fmt.Printf("<--- Starting up. No warning set.\n\n")
-	}
-
+	
 	return sess, nil
 }
 
