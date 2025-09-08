@@ -5,12 +5,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
-	"encoding/xml"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -27,47 +25,19 @@ type OfflineMessageManager interface {
 	SaveMessage(ctx context.Context, msg state.OfflineMessage) error
 }
 
+// RelationshipFetcher defines methods for fetching user relationships
+type RelationshipFetcher interface {
+	Relationship(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) (state.Relationship, error)
+}
+
 // MessagingHandler handles Web AIM API messaging endpoints
 type MessagingHandler struct {
 	SessionManager        *state.WebAPISessionManager
 	MessageRelayer        MessageRelayer
 	OfflineMessageManager OfflineMessageManager
 	SessionRetriever      SessionRetriever
+	RelationshipFetcher   RelationshipFetcher
 	Logger                *slog.Logger
-}
-
-// MessageResponse is a response structure for messaging API responses.
-type MessageResponse struct {
-	XMLName  xml.Name `xml:"response" json:"-"`
-	Response struct {
-		StatusCode int                    `json:"statusCode" xml:"statusCode"`
-		StatusText string                 `json:"statusText" xml:"statusText"`
-		Data       map[string]interface{} `json:"data,omitempty" xml:"data,omitempty"`
-	} `json:"response" xml:"-"`
-	// For XML responses, flatten the structure
-	StatusCode int                    `json:"-" xml:"statusCode,omitempty"`
-	StatusText string                 `json:"-" xml:"statusText,omitempty"`
-	Data       map[string]interface{} `json:"-" xml:"data,omitempty"`
-}
-
-// SendIMResponseData represents the data portion of a sendIM response.
-type SendIMResponseData struct {
-	SMSSegmentCount int    `xml:"smsSegmentCount" json:"smsSegmentCount"`
-	MessageID       string `xml:"messageId" json:"messageId"`
-	Timestamp       int64  `xml:"timestamp" json:"timestamp"`
-}
-
-// SendIMXMLResponse is the XML-specific response structure for sendIM.
-type SendIMXMLResponse struct {
-	XMLName    xml.Name `xml:"response"`
-	XMLNS      string   `xml:"xmlns,attr,omitempty"`
-	StatusCode int      `xml:"statusCode"`
-	StatusText string   `xml:"statusText"`
-	RequestID  string   `xml:"requestId,omitempty"`
-	Data       struct {
-		MsgID string `xml:"msgId"`
-		State string `xml:"state"`
-	} `xml:"data,omitempty"`
 }
 
 // SendIM handles the /im/sendIM endpoint for sending instant messages
@@ -115,6 +85,26 @@ func (h *MessagingHandler) SendIM(w http.ResponseWriter, r *http.Request) {
 
 	// Create recipient identifier
 	recipientIdent := state.NewIdentScreenName(recipient)
+
+	// Check blocking relationship
+	rel, err := h.RelationshipFetcher.Relationship(ctx, sess.ScreenName.IdentScreenName(), recipientIdent)
+	if err != nil {
+		h.Logger.ErrorContext(ctx, "failed to fetch relationship", "error", err)
+		h.sendErrorResponse(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	// Check if sender blocks recipient or recipient blocks sender
+	if rel.BlocksYou {
+		// Recipient blocks sender - pretend recipient is offline
+		h.sendErrorResponse(w, http.StatusNotFound, "recipient is not online")
+		return
+	}
+	if rel.YouBlock {
+		// Sender has blocked recipient - cannot send message
+		h.sendErrorResponse(w, http.StatusForbidden, "cannot send message to blocked user")
+		return
+	}
 
 	// Check if recipient is online
 	recipientSession := h.SessionRetriever.RetrieveSession(recipientIdent)
@@ -257,31 +247,15 @@ func (h *MessagingHandler) SendIM(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send success response
-	format := strings.ToLower(r.URL.Query().Get("f"))
-
-	if format == "xml" {
-		// For XML, use properly typed structure matching working implementation
-		response := SendIMXMLResponse{
-			XMLNS:      "http://developer.aim.com/xsd/im.xsd",
-			StatusCode: 200,
-			StatusText: "OK",
-			RequestID:  r.URL.Query().Get("r"),
-		}
-		response.Data.MsgID = messageID
-		response.Data.State = "delivered"
-		SendXML(w, response, h.Logger)
-	} else {
-		// For JSON/JSONP/AMF, match working implementation response
-		responseData := map[string]interface{}{
-			"msgId": messageID,
-			"state": "delivered",
-		}
-		response := MessageResponse{}
-		response.Response.StatusCode = 200
-		response.Response.StatusText = "OK"
-		response.Response.Data = responseData
-		SendResponse(w, r, response, h.Logger)
+	responseData := map[string]interface{}{
+		"msgId": messageID,
+		"state": "delivered",
 	}
+	response := BaseResponse{}
+	response.Response.StatusCode = 200
+	response.Response.StatusText = "OK"
+	response.Response.Data = responseData
+	SendResponse(w, r, response, h.Logger)
 }
 
 // encodeIMMessage encodes a text message into the OSCAR IM format
@@ -356,6 +330,21 @@ func (h *MessagingHandler) SetTyping(w http.ResponseWriter, r *http.Request) {
 	// Create recipient identifier
 	recipientIdent := state.NewIdentScreenName(recipient)
 
+	// Check blocking relationship
+	rel, err := h.RelationshipFetcher.Relationship(ctx, sess.ScreenName.IdentScreenName(), recipientIdent)
+	if err != nil {
+		h.Logger.ErrorContext(ctx, "failed to fetch relationship", "error", err)
+		h.sendErrorResponse(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	// Check if sender blocks recipient or recipient blocks sender
+	if rel.BlocksYou || rel.YouBlock {
+		// Either party blocks the other - silently succeed without sending notification
+		h.sendSuccessResponse(w, r, nil)
+		return
+	}
+
 	// Check if recipient is online
 	recipientSession := h.SessionRetriever.RetrieveSession(recipientIdent)
 	if recipientSession == nil {
@@ -418,28 +407,9 @@ func (h *MessagingHandler) SetTyping(w http.ResponseWriter, r *http.Request) {
 
 // sendSuccessResponse sends a success response in Web AIM API format
 func (h *MessagingHandler) sendSuccessResponse(w http.ResponseWriter, r *http.Request, data interface{}) {
-	format := strings.ToLower(r.URL.Query().Get("f"))
-
-	var responseData map[string]interface{}
-	if data != nil {
-		if mapData, ok := data.(map[string]interface{}); ok {
-			responseData = mapData
-		}
-	}
-
-	if format == "xml" {
-		// For XML, use flattened structure
-		response := MessageResponse{}
-		response.StatusCode = 200
-		response.StatusText = "OK"
-		response.Data = responseData
-		SendXML(w, response, h.Logger)
-	} else {
-		// For JSON/JSONP, use nested structure
-		response := MessageResponse{}
-		response.Response.StatusCode = 200
-		response.Response.StatusText = "OK"
-		response.Response.Data = responseData
-		SendResponse(w, r, response, h.Logger)
-	}
+	response := BaseResponse{}
+	response.Response.StatusCode = 200
+	response.Response.StatusText = "OK"
+	response.Response.Data = data
+	SendResponse(w, r, response, h.Logger)
 }

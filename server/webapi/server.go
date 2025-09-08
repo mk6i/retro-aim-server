@@ -47,12 +47,13 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 	}
 
 	presenceHandler := &handlers.PresenceHandler{
-		SessionManager:   sessionManager,
-		SessionRetriever: handler.SessionRetriever,
-		FeedbagRetriever: handler.FeedbagRetriever,
-		BuddyBroadcaster: handler.BuddyBroadcaster,
-		ProfileManager:   handler.ProfileManager,
-		Logger:           logger,
+		SessionManager:      sessionManager,
+		SessionRetriever:    handler.SessionRetriever,
+		FeedbagRetriever:    handler.FeedbagRetriever,
+		BuddyBroadcaster:    handler.BuddyBroadcaster,
+		ProfileManager:      handler.ProfileManager,
+		RelationshipFetcher: handler.RelationshipFetcher,
+		Logger:              logger,
 	}
 
 	buddyListHandler := &handlers.BuddyListHandler{
@@ -67,6 +68,7 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 		MessageRelayer:        handler.MessageRelayer,
 		OfflineMessageManager: handler.OfflineMessageManager,
 		SessionRetriever:      handler.SessionRetriever,
+		RelationshipFetcher:   handler.RelationshipFetcher,
 		Logger:                logger,
 	}
 

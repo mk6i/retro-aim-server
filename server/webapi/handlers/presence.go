@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/xml"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -14,12 +13,13 @@ import (
 
 // PresenceHandler handles Web AIM API presence-related endpoints.
 type PresenceHandler struct {
-	SessionManager   *state.WebAPISessionManager
-	SessionRetriever SessionRetriever
-	FeedbagRetriever FeedbagRetriever
-	BuddyBroadcaster BuddyBroadcaster
-	ProfileManager   ProfileManager
-	Logger           *slog.Logger
+	SessionManager      *state.WebAPISessionManager
+	SessionRetriever    SessionRetriever
+	FeedbagRetriever    FeedbagRetriever
+	BuddyBroadcaster    BuddyBroadcaster
+	ProfileManager      ProfileManager
+	RelationshipFetcher RelationshipFetcher
+	Logger              *slog.Logger
 }
 
 // FeedbagRetriever provides methods to retrieve buddy list data.
@@ -38,34 +38,6 @@ type BuddyBroadcaster interface {
 type ProfileManager interface {
 	SetProfile(ctx context.Context, screenName state.IdentScreenName, profile string) error
 	Profile(ctx context.Context, screenName state.IdentScreenName) (string, error)
-}
-
-// PresenceGetResponse represents the response for presence/get endpoint.
-type PresenceGetResponse struct {
-	XMLName  xml.Name `xml:"response" json:"-"`
-	Response struct {
-		StatusCode int          `json:"statusCode" xml:"statusCode"`
-		StatusText string       `json:"statusText" xml:"statusText"`
-		Data       PresenceData `json:"data" xml:"data"`
-	} `json:"response" xml:"-"`
-	// For XML responses, flatten the structure
-	StatusCode int          `json:"-" xml:"statusCode,omitempty"`
-	StatusText string       `json:"-" xml:"statusText,omitempty"`
-	Data       PresenceData `json:"-" xml:"data,omitempty"`
-}
-
-// GenericResponse is a generic response structure for simple API responses.
-type GenericResponse struct {
-	XMLName  xml.Name `xml:"response" json:"-"`
-	Response struct {
-		StatusCode int                    `json:"statusCode" xml:"statusCode"`
-		StatusText string                 `json:"statusText" xml:"statusText"`
-		Data       map[string]interface{} `json:"data,omitempty" xml:"data,omitempty"`
-	} `json:"response" xml:"-"`
-	// For XML responses, flatten the structure
-	StatusCode int                    `json:"-" xml:"statusCode,omitempty"`
-	StatusText string                 `json:"-" xml:"statusText,omitempty"`
-	Data       map[string]interface{} `json:"-" xml:"data,omitempty"`
 }
 
 // PresenceData contains presence information.
@@ -127,9 +99,12 @@ func (h *PresenceHandler) GetPresence(w http.ResponseWriter, r *http.Request) {
 	targetUsers := r.URL.Query().Get("t")
 
 	// Prepare response
-	resp := PresenceGetResponse{}
+	resp := BaseResponse{}
 	resp.Response.StatusCode = 200
 	resp.Response.StatusText = "OK"
+
+	// Create PresenceData struct to hold the response data
+	presenceData := PresenceData{}
 
 	if getBuddyList {
 		// Retrieve buddy list from feedbag
@@ -139,7 +114,7 @@ func (h *PresenceHandler) GetPresence(w http.ResponseWriter, r *http.Request) {
 			// Return empty buddy list on error instead of failing
 			groups = []BuddyGroupInfo{}
 		}
-		resp.Response.Data.Groups = groups
+		presenceData.Groups = groups
 	} else if targetUsers != "" {
 		// Get presence for specific users
 		users := strings.Split(targetUsers, ",")
@@ -151,30 +126,47 @@ func (h *PresenceHandler) GetPresence(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			presence := h.getUserPresence(state.NewIdentScreenName(user))
-			presenceList = append(presenceList, presence)
+			userScreenName := state.NewIdentScreenName(user)
+
+			// Check blocking relationship (OSCAR compliant)
+			rel, err := h.RelationshipFetcher.Relationship(ctx, session.ScreenName.IdentScreenName(), userScreenName)
+			if err != nil {
+				h.Logger.WarnContext(ctx, "failed to get relationship", "error", err)
+				// On error, show as offline
+				presence := BuddyPresenceInfo{
+					AimID:    user,
+					State:    "offline",
+					UserType: "aim",
+				}
+				presenceList = append(presenceList, presence)
+				continue
+			}
+
+			// OSCAR compliance: mutual invisibility when blocking
+			if rel.YouBlock || rel.BlocksYou {
+				presence := BuddyPresenceInfo{
+					AimID:    user,
+					State:    "offline",
+					UserType: "aim",
+				}
+				presenceList = append(presenceList, presence)
+			} else {
+				presence := h.getUserPresence(userScreenName)
+				presenceList = append(presenceList, presence)
+			}
 		}
 
-		resp.Response.Data.Users = presenceList
+		presenceData.Users = presenceList
 	} else {
 		// No specific request, return empty data
-		resp.Response.Data.Groups = []BuddyGroupInfo{}
+		presenceData.Groups = []BuddyGroupInfo{}
 	}
+
+	// Set the data to the response
+	resp.Response.Data = presenceData
 
 	// Send response in requested format
-	format := strings.ToLower(r.URL.Query().Get("f"))
-
-	if format == "xml" {
-		// For XML, use flattened structure
-		xmlResp := PresenceGetResponse{}
-		xmlResp.StatusCode = 200
-		xmlResp.StatusText = "OK"
-		xmlResp.Data = resp.Response.Data
-		SendXML(w, xmlResp, h.Logger)
-	} else {
-		// For JSON/JSONP, use SendResponse which handles callback
-		SendResponse(w, r, resp, h.Logger)
-	}
+	SendResponse(w, r, resp, h.Logger)
 
 	h.Logger.DebugContext(ctx, "presence retrieved",
 		"aimsid", aimsid,
@@ -245,9 +237,36 @@ func (h *PresenceHandler) getBuddyListGroups(ctx context.Context, screenName sta
 			}
 		}
 
-		// Get presence information for buddy
-		presence := h.getUserPresence(state.NewIdentScreenName(buddyName))
-		group.Buddies = append(group.Buddies, presence)
+		buddyScreenName := state.NewIdentScreenName(buddyName)
+
+		// Check blocking relationship (OSCAR compliant)
+		rel, err := h.RelationshipFetcher.Relationship(ctx, screenName, buddyScreenName)
+		if err != nil {
+			h.Logger.WarnContext(ctx, "failed to get relationship", "error", err)
+			// On error, include the buddy but they'll appear offline
+			presence := BuddyPresenceInfo{
+				AimID:    buddyName,
+				State:    "offline",
+				UserType: "aim",
+			}
+			group.Buddies = append(group.Buddies, presence)
+			continue
+		}
+
+		// OSCAR compliance: mutual invisibility when blocking
+		if rel.YouBlock || rel.BlocksYou {
+			// Add them as offline to maintain buddy list structure
+			presence := BuddyPresenceInfo{
+				AimID:    buddyName,
+				State:    "offline",
+				UserType: "aim",
+			}
+			group.Buddies = append(group.Buddies, presence)
+		} else {
+			// Normal presence lookup
+			presence := h.getUserPresence(buddyScreenName)
+			group.Buddies = append(group.Buddies, presence)
+		}
 	}
 
 	// Convert map to slice
@@ -357,19 +376,10 @@ func (h *PresenceHandler) SetState(w http.ResponseWriter, r *http.Request) {
 		h.Logger.WarnContext(ctx, "no OSCAR session for presence update", "aimsid", aimsid)
 
 		// Still send success response
-		format := strings.ToLower(r.URL.Query().Get("f"))
-
-		if format == "xml" {
-			response := GenericResponse{}
-			response.StatusCode = 200
-			response.StatusText = "OK"
-			SendXML(w, response, h.Logger)
-		} else {
-			response := GenericResponse{}
-			response.Response.StatusCode = 200
-			response.Response.StatusText = "OK"
-			SendResponse(w, r, response, h.Logger)
-		}
+		response := BaseResponse{}
+		response.Response.StatusCode = 200
+		response.Response.StatusText = "OK"
+		SendResponse(w, r, response, h.Logger)
 		return
 	}
 
@@ -419,21 +429,10 @@ func (h *PresenceHandler) SetState(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Send success response
-	format := strings.ToLower(r.URL.Query().Get("f"))
-
-	if format == "xml" {
-		// For XML, use flattened structure
-		response := GenericResponse{}
-		response.StatusCode = 200
-		response.StatusText = "OK"
-		SendXML(w, response, h.Logger)
-	} else {
-		// For JSON/JSONP, use nested structure
-		response := GenericResponse{}
-		response.Response.StatusCode = 200
-		response.Response.StatusText = "OK"
-		SendResponse(w, r, response, h.Logger)
-	}
+	response := BaseResponse{}
+	response.Response.StatusCode = 200
+	response.Response.StatusText = "OK"
+	SendResponse(w, r, response, h.Logger)
 }
 
 // SetStatus handles GET /presence/setStatus requests to update user's status message.
@@ -487,21 +486,10 @@ func (h *PresenceHandler) SetStatus(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Send success response
-	format := strings.ToLower(r.URL.Query().Get("f"))
-
-	if format == "xml" {
-		// For XML, use flattened structure
-		response := GenericResponse{}
-		response.StatusCode = 200
-		response.StatusText = "OK"
-		SendXML(w, response, h.Logger)
-	} else {
-		// For JSON/JSONP, use nested structure
-		response := GenericResponse{}
-		response.Response.StatusCode = 200
-		response.Response.StatusText = "OK"
-		SendResponse(w, r, response, h.Logger)
-	}
+	response := BaseResponse{}
+	response.Response.StatusCode = 200
+	response.Response.StatusText = "OK"
+	SendResponse(w, r, response, h.Logger)
 }
 
 // SetProfile handles GET /presence/setProfile requests to update user's profile.
@@ -549,21 +537,10 @@ func (h *PresenceHandler) SetProfile(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Send success response
-	format := strings.ToLower(r.URL.Query().Get("f"))
-
-	if format == "xml" {
-		// For XML, use flattened structure
-		response := GenericResponse{}
-		response.StatusCode = 200
-		response.StatusText = "OK"
-		SendXML(w, response, h.Logger)
-	} else {
-		// For JSON/JSONP, use nested structure
-		response := GenericResponse{}
-		response.Response.StatusCode = 200
-		response.Response.StatusText = "OK"
-		SendResponse(w, r, response, h.Logger)
-	}
+	response := BaseResponse{}
+	response.Response.StatusCode = 200
+	response.Response.StatusText = "OK"
+	SendResponse(w, r, response, h.Logger)
 }
 
 // GetProfile handles GET /presence/getProfile requests to retrieve user's profile.
@@ -604,28 +581,17 @@ func (h *PresenceHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send response
-	format := strings.ToLower(r.URL.Query().Get("f"))
 	responseData := map[string]interface{}{
 		"screenName":  targetSN,
 		"profile":     profile,
 		"lastUpdated": time.Now().Unix(),
 	}
 
-	if format == "xml" {
-		// For XML, use flattened structure
-		response := GenericResponse{}
-		response.StatusCode = 200
-		response.StatusText = "OK"
-		response.Data = responseData
-		SendXML(w, response, h.Logger)
-	} else {
-		// For JSON/JSONP, use nested structure
-		response := GenericResponse{}
-		response.Response.StatusCode = 200
-		response.Response.StatusText = "OK"
-		response.Response.Data = responseData
-		SendResponse(w, r, response, h.Logger)
-	}
+	response := BaseResponse{}
+	response.Response.StatusCode = 200
+	response.Response.StatusText = "OK"
+	response.Response.Data = responseData
+	SendResponse(w, r, response, h.Logger)
 }
 
 // Icon handles GET /presence/icon requests for presence icons.

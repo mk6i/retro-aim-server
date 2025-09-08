@@ -457,6 +457,7 @@ func WebAPI(deps *Container) *webapi.Server {
 		deps.webAPISessionManager,
 		buddyListManager,
 		feedbagAdapter,
+		deps.sqLiteUserStore,
 		logger,
 	)
 
@@ -565,6 +566,7 @@ func WebAPI(deps *Container) *webapi.Server {
 		OfflineMessageManager: deps.sqLiteUserStore,
 		BuddyBroadcaster:      oscarBuddyBroadcaster,
 		ProfileManager:        deps.sqLiteUserStore,
+		RelationshipFetcher:   deps.sqLiteUserStore,
 		// Authentication support
 		UserManager: deps.sqLiteUserStore,
 		TokenStore:  state.NewWebAPITokenStore(deps.sqLiteUserStore.DB()),

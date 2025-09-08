@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/xml"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -24,26 +23,6 @@ type FeedbagManager interface {
 	InsertItem(ctx context.Context, screenName state.IdentScreenName, item wire.FeedbagItem) error
 	UpdateItem(ctx context.Context, screenName state.IdentScreenName, item wire.FeedbagItem) error
 	DeleteItem(ctx context.Context, screenName state.IdentScreenName, item wire.FeedbagItem) error
-}
-
-// AddBuddyResponse represents the response for buddylist/addBuddy endpoint.
-type AddBuddyResponse struct {
-	XMLName  xml.Name `xml:"response" json:"-"`
-	Response struct {
-		StatusCode int    `json:"statusCode" xml:"statusCode"`
-		StatusText string `json:"statusText" xml:"statusText"`
-		Data       struct {
-			ResultCode string             `json:"resultCode" xml:"resultCode"`
-			BuddyInfo  *BuddyPresenceInfo `json:"buddyInfo,omitempty" xml:"buddyInfo,omitempty"`
-		} `json:"data" xml:"data"`
-	} `json:"response" xml:"-"`
-	// For XML responses, flatten the structure
-	StatusCode int    `json:"-" xml:"statusCode,omitempty"`
-	StatusText string `json:"-" xml:"statusText,omitempty"`
-	Data       struct {
-		ResultCode string             `json:"-" xml:"resultCode"`
-		BuddyInfo  *BuddyPresenceInfo `json:"-" xml:"buddyInfo,omitempty"`
-	} `json:"-" xml:"data,omitempty"`
 }
 
 // AddBuddy handles GET /buddylist/addBuddy requests.
@@ -90,29 +69,18 @@ func (h *BuddyListHandler) AddBuddy(w http.ResponseWriter, r *http.Request) {
 	resultCode, buddyInfo := h.addBuddyToFeedbag(ctx, session.ScreenName.IdentScreenName(), buddyName, groupName)
 
 	// Prepare response
-	format := strings.ToLower(r.URL.Query().Get("f"))
-
-	if format == "xml" {
-		// For XML, use flattened structure
-		resp := AddBuddyResponse{}
-		resp.StatusCode = 200
-		resp.StatusText = "OK"
-		resp.Data.ResultCode = resultCode
-		if resultCode == "success" {
-			resp.Data.BuddyInfo = buddyInfo
-		}
-		SendXML(w, resp, h.Logger)
-	} else {
-		// For JSON/JSONP, use nested structure
-		resp := AddBuddyResponse{}
-		resp.Response.StatusCode = 200
-		resp.Response.StatusText = "OK"
-		resp.Response.Data.ResultCode = resultCode
-		if resultCode == "success" {
-			resp.Response.Data.BuddyInfo = buddyInfo
-		}
-		SendResponse(w, r, resp, h.Logger)
+	responseData := map[string]interface{}{
+		"resultCode": resultCode,
 	}
+	if resultCode == "success" {
+		responseData["buddyInfo"] = buddyInfo
+	}
+
+	resp := BaseResponse{}
+	resp.Response.StatusCode = 200
+	resp.Response.StatusText = "OK"
+	resp.Response.Data = responseData
+	SendResponse(w, r, resp, h.Logger)
 
 	if resultCode == "success" && session.EventQueue != nil {
 		// Push buddy list update event to the session's event queue

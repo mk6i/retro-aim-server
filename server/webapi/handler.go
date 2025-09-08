@@ -1,6 +1,7 @@
 package webapi
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -34,6 +35,9 @@ type Handler struct {
 	OfflineMessageManager OfflineMessageManager
 	BuddyBroadcaster      BuddyBroadcaster
 	ProfileManager        ProfileManager
+	RelationshipFetcher   interface {
+		Relationship(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) (state.Relationship, error)
+	}
 	// Authentication support
 	UserManager UserManager
 	TokenStore  TokenStore

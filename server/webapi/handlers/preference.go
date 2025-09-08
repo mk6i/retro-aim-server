@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/xml"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -36,35 +35,6 @@ type PermitDenyManager interface {
 	RemovePermitBuddy(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) error
 	AddDenyBuddy(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) error
 	RemoveDenyBuddy(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) error
-}
-
-// PreferenceResponse represents the response for preference endpoints.
-type PreferenceResponse struct {
-	XMLName  xml.Name `xml:"response" json:"-"`
-	Response struct {
-		StatusCode       int                    `json:"statusCode" xml:"statusCode"`
-		StatusText       string                 `json:"statusText" xml:"statusText"`
-		StatusDetailCode int                    `json:"statusDetailCode,omitempty" xml:"statusDetailCode,omitempty"`
-		Data             map[string]interface{} `json:"data,omitempty" xml:"data,omitempty"`
-	} `json:"response" xml:"-"`
-	// For XML responses, flatten the structure
-	StatusCode int                    `json:"-" xml:"statusCode,omitempty"`
-	StatusText string                 `json:"-" xml:"statusText,omitempty"`
-	Data       map[string]interface{} `json:"-" xml:"data,omitempty"`
-}
-
-// PermitDenyResponse represents the response for permit/deny endpoints.
-type PermitDenyResponse struct {
-	XMLName  xml.Name `xml:"response" json:"-"`
-	Response struct {
-		StatusCode int            `json:"statusCode" xml:"statusCode"`
-		StatusText string         `json:"statusText" xml:"statusText"`
-		Data       PermitDenyData `json:"data,omitempty" xml:"data,omitempty"`
-	} `json:"response" xml:"-"`
-	// For XML responses, flatten the structure
-	StatusCode int            `json:"-" xml:"statusCode,omitempty"`
-	StatusText string         `json:"-" xml:"statusText,omitempty"`
-	Data       PermitDenyData `json:"-" xml:"data,omitempty"`
 }
 
 // PermitDenyData contains permit/deny list information.
@@ -147,22 +117,11 @@ func (h *PreferenceHandler) SetPreferences(w http.ResponseWriter, r *http.Reques
 	)
 
 	// Send success response
-	format := strings.ToLower(r.URL.Query().Get("f"))
-	if format == "xml" {
-		// For XML, use flattened structure
-		response := PreferenceResponse{}
-		response.StatusCode = 200
-		response.StatusText = "OK"
-		response.Data = prefs
-		SendXML(w, response, h.Logger)
-	} else {
-		// For JSON/JSONP, use nested structure
-		response := PreferenceResponse{}
-		response.Response.StatusCode = 200
-		response.Response.StatusText = "OK"
-		response.Response.Data = prefs
-		SendResponse(w, r, response, h.Logger)
-	}
+	response := BaseResponse{}
+	response.Response.StatusCode = 200
+	response.Response.StatusText = "OK"
+	response.Response.Data = prefs
+	SendResponse(w, r, response, h.Logger)
 }
 
 // GetPreferences handles GET /preference/get requests to retrieve user preferences.
@@ -236,22 +195,9 @@ func (h *PreferenceHandler) GetPreferences(w http.ResponseWriter, r *http.Reques
 		"requested", len(requestedPrefs) > 0,
 	)
 
-	// Send response
+	// Check for AMF format to handle special Gromit compatibility requirements
 	format := strings.ToLower(r.URL.Query().Get("f"))
-	if format == "xml" {
-		// For XML, use flattened structure
-		response := PreferenceResponse{}
-		response.StatusCode = 200
-		response.StatusText = "OK"
-		response.Data = prefs
-		SendXML(w, response, h.Logger)
-	} else if format == "amf" || format == "amf0" || format == "amf3" {
-		// For AMF3, return preferences directly when only one is requested
-		response := PreferenceResponse{}
-		response.Response.StatusCode = 200
-		response.Response.StatusText = "Ok"
-		response.Response.StatusDetailCode = 0
-
+	if format == "amf" || format == "amf0" || format == "amf3" {
 		// Convert string "1"/"0" to numeric values for Gromit compatibility
 		// Gromit expects numeric values for boolean preferences
 		convertedPrefs := make(map[string]interface{})
@@ -278,7 +224,7 @@ func (h *PreferenceHandler) GetPreferences(w http.ResponseWriter, r *http.Reques
 		)
 
 		// Ensure prefs is never nil or empty for Gromit
-		if prefs == nil || len(prefs) == 0 {
+		if len(prefs) == 0 {
 			// If no preferences found, at least return the requested ones with defaults
 			if len(requestedPrefs) > 0 {
 				prefs = requestedPrefs
@@ -293,21 +239,20 @@ func (h *PreferenceHandler) GetPreferences(w http.ResponseWriter, r *http.Reques
 		// For single preference requests, return directly for Gromit compatibility
 		// For multiple preferences, wrap in jsonData
 		if len(prefs) == 1 {
-			response.Response.Data = prefs
+			prefs = prefs
 		} else {
-			response.Response.Data = map[string]interface{}{
+			prefs = map[string]interface{}{
 				"jsonData": prefs,
 			}
 		}
-		SendResponse(w, r, response, h.Logger)
-	} else {
-		// For JSON/JSONP, use nested structure
-		response := PreferenceResponse{}
-		response.Response.StatusCode = 200
-		response.Response.StatusText = "OK"
-		response.Response.Data = prefs
-		SendResponse(w, r, response, h.Logger)
 	}
+
+	// Send response in requested format
+	response := BaseResponse{}
+	response.Response.StatusCode = 200
+	response.Response.StatusText = "OK"
+	response.Response.Data = prefs
+	SendResponse(w, r, response, h.Logger)
 }
 
 // SetPermitDeny handles GET /preference/setPermitDeny requests to update permit/deny settings.
@@ -378,6 +323,7 @@ func (h *PreferenceHandler) SetPermitDeny(w http.ResponseWriter, r *http.Request
 	}
 
 	// Handle deny list updates
+	var denyAddedUsers []state.IdentScreenName
 	if denyAdd := r.URL.Query().Get("denyAdd"); denyAdd != "" {
 		users := strings.Split(denyAdd, ",")
 		for _, user := range users {
@@ -386,11 +332,14 @@ func (h *PreferenceHandler) SetPermitDeny(w http.ResponseWriter, r *http.Request
 				targetSN := state.NewIdentScreenName(user)
 				if err := h.PermitDenyManager.AddDenyBuddy(ctx, session.ScreenName.IdentScreenName(), targetSN); err != nil {
 					h.Logger.ErrorContext(ctx, "failed to add to deny list", "user", user, "err", err.Error())
+				} else {
+					denyAddedUsers = append(denyAddedUsers, targetSN)
 				}
 			}
 		}
 	}
 
+	var denyRemovedUsers []state.IdentScreenName
 	if denyRemove := r.URL.Query().Get("denyRemove"); denyRemove != "" {
 		users := strings.Split(denyRemove, ",")
 		for _, user := range users {
@@ -399,6 +348,8 @@ func (h *PreferenceHandler) SetPermitDeny(w http.ResponseWriter, r *http.Request
 				targetSN := state.NewIdentScreenName(user)
 				if err := h.PermitDenyManager.RemoveDenyBuddy(ctx, session.ScreenName.IdentScreenName(), targetSN); err != nil {
 					h.Logger.ErrorContext(ctx, "failed to remove from deny list", "user", user, "err", err.Error())
+				} else {
+					denyRemovedUsers = append(denyRemovedUsers, targetSN)
 				}
 			}
 		}
@@ -426,29 +377,43 @@ func (h *PreferenceHandler) SetPermitDeny(w http.ResponseWriter, r *http.Request
 		"denyCount", len(denyUsers),
 	)
 
+	// Broadcast presence changes for blocking/unblocking
+	if len(denyAddedUsers) > 0 || len(denyRemovedUsers) > 0 {
+		// Get the WebAPI presence bridge to send events
+		if bridge := state.GetGlobalWebAPIPresenceBridge(); bridge != nil {
+			// When users are blocked, they should see each other go offline
+			for _, blockedUser := range denyAddedUsers {
+				if err := bridge.BroadcastBlockingChange(ctx, session.ScreenName.IdentScreenName(), blockedUser, true); err != nil {
+					h.Logger.ErrorContext(ctx, "failed to broadcast blocking change",
+						"blocker", session.ScreenName.String(),
+						"blocked", blockedUser.String(),
+						"err", err.Error())
+				}
+			}
+			// When users are unblocked, they should see each other come online (if online)
+			for _, unblockedUser := range denyRemovedUsers {
+				if err := bridge.BroadcastBlockingChange(ctx, session.ScreenName.IdentScreenName(), unblockedUser, false); err != nil {
+					h.Logger.ErrorContext(ctx, "failed to broadcast unblocking change",
+						"unblocker", session.ScreenName.String(),
+						"unblocked", unblockedUser.String(),
+						"err", err.Error())
+				}
+			}
+		}
+	}
+
 	// Send response
-	format := strings.ToLower(r.URL.Query().Get("f"))
 	permitDenyData := PermitDenyData{
 		PDMode:     int(pdMode),
 		PermitList: permitUsers,
 		DenyList:   denyUsers,
 	}
 
-	if format == "xml" {
-		// For XML, use flattened structure
-		response := PermitDenyResponse{}
-		response.StatusCode = 200
-		response.StatusText = "OK"
-		response.Data = permitDenyData
-		SendXML(w, response, h.Logger)
-	} else {
-		// For JSON/JSONP, use nested structure
-		response := PermitDenyResponse{}
-		response.Response.StatusCode = 200
-		response.Response.StatusText = "OK"
-		response.Response.Data = permitDenyData
-		SendResponse(w, r, response, h.Logger)
-	}
+	response := BaseResponse{}
+	response.Response.StatusCode = 200
+	response.Response.StatusText = "OK"
+	response.Response.Data = permitDenyData
+	SendResponse(w, r, response, h.Logger)
 }
 
 // GetPermitDeny handles GET /preference/getPermitDeny requests to retrieve permit/deny settings.
@@ -497,28 +462,17 @@ func (h *PreferenceHandler) GetPermitDeny(w http.ResponseWriter, r *http.Request
 	)
 
 	// Send response
-	format := strings.ToLower(r.URL.Query().Get("f"))
 	permitDenyData := PermitDenyData{
 		PDMode:     int(pdMode),
 		PermitList: permitUsers,
 		DenyList:   denyUsers,
 	}
 
-	if format == "xml" {
-		// For XML, use flattened structure
-		response := PermitDenyResponse{}
-		response.StatusCode = 200
-		response.StatusText = "OK"
-		response.Data = permitDenyData
-		SendXML(w, response, h.Logger)
-	} else {
-		// For JSON/JSONP, use nested structure
-		response := PermitDenyResponse{}
-		response.Response.StatusCode = 200
-		response.Response.StatusText = "OK"
-		response.Response.Data = permitDenyData
-		SendResponse(w, r, response, h.Logger)
-	}
+	response := BaseResponse{}
+	response.Response.StatusCode = 200
+	response.Response.StatusText = "OK"
+	response.Response.Data = permitDenyData
+	SendResponse(w, r, response, h.Logger)
 }
 
 // sendError sends an error response in Web AIM API format.

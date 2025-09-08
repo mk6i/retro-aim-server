@@ -8,13 +8,20 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
+// RelationshipFetcher defines methods for fetching user relationships.
+type RelationshipFetcher interface {
+	Relationship(ctx context.Context, me IdentScreenName, them IdentScreenName) (Relationship, error)
+	AllRelationships(ctx context.Context, me IdentScreenName, filter []IdentScreenName) ([]Relationship, error)
+}
+
 // WebAPIPresenceBridge bridges OSCAR presence events to WebAPI sessions.
 // It listens for buddy arrival/departure events and pushes them to WebAPI event queues.
 type WebAPIPresenceBridge struct {
-	sessionManager   *WebAPISessionManager
-	buddyListManager *WebAPIBuddyListManager
-	feedbagRetriever FeedbagRetriever
-	logger           *slog.Logger
+	sessionManager      *WebAPISessionManager
+	buddyListManager    *WebAPIBuddyListManager
+	feedbagRetriever    FeedbagRetriever
+	relationshipFetcher RelationshipFetcher
+	logger              *slog.Logger
 }
 
 // NewWebAPIPresenceBridge creates a new presence bridge.
@@ -22,13 +29,15 @@ func NewWebAPIPresenceBridge(
 	sessionManager *WebAPISessionManager,
 	buddyListManager *WebAPIBuddyListManager,
 	feedbagRetriever FeedbagRetriever,
+	relationshipFetcher RelationshipFetcher,
 	logger *slog.Logger,
 ) *WebAPIPresenceBridge {
 	return &WebAPIPresenceBridge{
-		sessionManager:   sessionManager,
-		buddyListManager: buddyListManager,
-		feedbagRetriever: feedbagRetriever,
-		logger:           logger,
+		sessionManager:      sessionManager,
+		buddyListManager:    buddyListManager,
+		feedbagRetriever:    feedbagRetriever,
+		relationshipFetcher: relationshipFetcher,
+		logger:              logger,
 	}
 }
 
@@ -160,6 +169,22 @@ func (b *WebAPIPresenceBridge) findSessionsWithBuddy(ctx context.Context, buddyS
 
 // hasBuddy checks if a user has another user as a buddy in their feedbag.
 func (b *WebAPIPresenceBridge) hasBuddy(ctx context.Context, userScreenName, buddyScreenName IdentScreenName) bool {
+	// First check blocking relationship (OSCAR compliant)
+	if b.relationshipFetcher != nil {
+		rel, err := b.relationshipFetcher.Relationship(ctx, userScreenName, buddyScreenName)
+		if err != nil {
+			b.logger.Error("failed to get relationship",
+				"user", userScreenName,
+				"buddy", buddyScreenName,
+				"error", err)
+		} else {
+			// OSCAR compliance: if either blocks the other, they don't see presence
+			if rel.YouBlock || rel.BlocksYou {
+				return false
+			}
+		}
+	}
+
 	// Retrieve user's feedbag
 	items, err := b.feedbagRetriever.RetrieveFeedbag(ctx, userScreenName)
 	if err != nil {
@@ -264,6 +289,106 @@ func (b *WebAPIPresenceBridge) PushBuddyAddedEvent(ctx context.Context, userScre
 			session.EventQueue.Push(EventTypeBuddyList, event)
 		}
 	}
+}
+
+// BroadcastBlockingChange handles presence updates when blocking/unblocking occurs.
+// When blocking=true, both users see each other go offline.
+// When blocking=false, both users see each other come online (if they are online).
+func (b *WebAPIPresenceBridge) BroadcastBlockingChange(ctx context.Context, blocker IdentScreenName, blocked IdentScreenName, isBlocking bool) error {
+	b.logger.Debug("broadcasting blocking change",
+		"blocker", blocker.String(),
+		"blocked", blocked.String(),
+		"isBlocking", isBlocking)
+
+	// Find WebAPI sessions for both users
+	blockerSessions := b.sessionManager.GetSessionsByScreenName(DisplayScreenName(blocker.String()))
+	blockedSessions := b.sessionManager.GetSessionsByScreenName(DisplayScreenName(blocked.String()))
+
+	if isBlocking {
+		// When blocking, both users should see each other go offline
+		// Send offline event to blocker about blocked user
+		for _, session := range blockerSessions {
+			if session.EventQueue != nil && session.IsSubscribedTo("presence") {
+				presenceEvent := PresenceEvent{
+					AimID:    blocked.String(),
+					State:    "offline",
+					UserType: "aim",
+				}
+				session.EventQueue.Push(EventTypePresence, presenceEvent)
+				b.logger.Debug("sent offline event to blocker",
+					"session", session.AimSID,
+					"blockedUser", blocked.String())
+			}
+		}
+
+		// Send offline event to blocked user about blocker
+		for _, session := range blockedSessions {
+			if session.EventQueue != nil && session.IsSubscribedTo("presence") {
+				presenceEvent := PresenceEvent{
+					AimID:    blocker.String(),
+					State:    "offline",
+					UserType: "aim",
+				}
+				session.EventQueue.Push(EventTypePresence, presenceEvent)
+				b.logger.Debug("sent offline event to blocked user",
+					"session", session.AimSID,
+					"blockingUser", blocker.String())
+			}
+		}
+	} else {
+		// When unblocking, check if users are online and send online events if they are
+		// Check if blocked user is online
+		if blockedInfo := b.buddyListManager.GetPresenceForBuddy(blocked.String()); blockedInfo.State != "offline" {
+			// Send online event to unblocker about unblocked user
+			for _, session := range blockerSessions {
+				if session.EventQueue != nil && session.IsSubscribedTo("presence") {
+					// Check if unblocker has unblocked user as buddy
+					if b.hasBuddy(ctx, blocker, blocked) {
+						presenceEvent := PresenceEvent{
+							AimID:      blockedInfo.AimID,
+							State:      blockedInfo.State,
+							StatusMsg:  blockedInfo.StatusMsg,
+							AwayMsg:    blockedInfo.AwayMsg,
+							IdleTime:   blockedInfo.IdleTime,
+							OnlineTime: blockedInfo.OnlineTime,
+							UserType:   blockedInfo.UserType,
+						}
+						session.EventQueue.Push(EventTypePresence, presenceEvent)
+						b.logger.Debug("sent online event to unblocker",
+							"session", session.AimSID,
+							"unblockedUser", blocked.String())
+					}
+				}
+			}
+		}
+
+		// Check if blocker is online
+		if blockerInfo := b.buddyListManager.GetPresenceForBuddy(blocker.String()); blockerInfo.State != "offline" {
+			// Send online event to unblocked user about unblocker
+			for _, session := range blockedSessions {
+				if session.EventQueue != nil && session.IsSubscribedTo("presence") {
+					// Check if unblocked user has unblocker as buddy
+					if b.hasBuddy(ctx, blocked, blocker) {
+						presenceEvent := PresenceEvent{
+							AimID:      blockerInfo.AimID,
+							State:      blockerInfo.State,
+							StatusMsg:  blockerInfo.StatusMsg,
+							AwayMsg:    blockerInfo.AwayMsg,
+							IdleTime:   blockerInfo.IdleTime,
+							OnlineTime: blockerInfo.OnlineTime,
+							UserType:   blockerInfo.UserType,
+						}
+						session.EventQueue.Push(EventTypePresence, presenceEvent)
+						b.logger.Debug("sent online event to unblocked user",
+							"session", session.AimSID,
+							"unblockingUser", blocker.String())
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // PushBuddyRemovedEvent pushes an event when a buddy is removed from the list.

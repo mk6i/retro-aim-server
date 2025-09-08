@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/mk6i/retro-aim-server/server/webapi/middleware"
@@ -341,37 +340,12 @@ func (h *OSCARBridgeHandler) buildResponse(host string, port int, cookie []byte,
 
 // sendResponse sends the response in the requested format.
 func (h *OSCARBridgeHandler) sendResponse(w http.ResponseWriter, r *http.Request, resp *StartOSCARSessionResponse) {
-	format := r.URL.Query().Get("f")
-	if format == "" {
-		format = "json"
-	}
-
-	if format == "xml" {
-		// Send XML response
-		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
-
-		xmlData, err := xml.Marshal(resp)
-		if err != nil {
-			h.Logger.Error("failed to marshal XML response", "error", err)
-			h.sendError(w, r, http.StatusInternalServerError, "internal server error")
-			return
-		}
-
-		xmlOutput := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>%s`, xmlData)
-		w.Header().Set("Content-Length", strconv.Itoa(len(xmlOutput)))
-		fmt.Fprint(w, xmlOutput)
-	} else {
-		// Send JSON response
-		SendJSON(w, resp, h.Logger)
-	}
+	// Use the centralized SendResponse function which handles all formats
+	SendResponse(w, r, resp, h.Logger)
 }
 
 // sendError sends an error response in the appropriate format.
 func (h *OSCARBridgeHandler) sendError(w http.ResponseWriter, r *http.Request, statusCode int, message string) {
-	format := r.URL.Query().Get("f")
-	if format == "xml" {
-		SendXMLError(w, statusCode, message)
-	} else {
-		SendError(w, statusCode, message)
-	}
+	// SendError already detects format from Content-Type header
+	SendError(w, statusCode, message)
 }
