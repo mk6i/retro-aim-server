@@ -160,6 +160,35 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		Body: clientIM,
 	})
 
+	// Bridge message to WebAPI sessions if the bridge is available
+	if webAPIBridge := state.GetGlobalWebAPIMessageBridge(); webAPIBridge != nil {
+		// Extract message text from the original body
+		var messageText string
+		var autoResponse bool
+
+		// Look for message data TLV (0x0002)
+		if msgData, hasMsg := inBody.TLVRestBlock.Bytes(wire.ICBMTLVAOLIMData); hasMsg {
+			// Use the wire package's proper ICBM text extraction
+			if text, err := wire.UnmarshalICBMMessageText(msgData); err == nil {
+				messageText = text
+			}
+		}
+
+		// Check if it's an auto-response (channel 2)
+		if inBody.ChannelID == 0x0002 {
+			autoResponse = true
+		}
+
+		// Deliver to WebAPI sessions
+		if messageText != "" {
+			if err := webAPIBridge.DeliverMessage(ctx, sess.IdentScreenName(), recip, messageText, autoResponse); err != nil {
+				// Log but don't fail the OSCAR delivery
+				// TODO: Add proper logger to ICBMService
+				// s.logger.Debug("failed to bridge message to WebAPI", "from", sess.IdentScreenName(), "to", recip, "error", err)
+			}
+		}
+	}
+
 	if _, requestedConfirmation := inBody.TLVRestBlock.Bytes(wire.ICBMTLVRequestHostAck); !requestedConfirmation {
 		// don't ack message
 		return nil, nil
@@ -219,7 +248,8 @@ func (s ICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFra
 	case blocked.BlocksYou || blocked.YouBlock:
 		return nil
 	default:
-		s.messageRelayer.RelayToScreenName(ctx, state.NewIdentScreenName(inBody.ScreenName), wire.SNACMessage{
+		recipient := state.NewIdentScreenName(inBody.ScreenName)
+		s.messageRelayer.RelayToScreenName(ctx, recipient, wire.SNACMessage{
 			Frame: wire.SNACFrame{
 				FoodGroup: wire.ICBM,
 				SubGroup:  wire.ICBMClientEvent,
@@ -232,6 +262,18 @@ func (s ICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFra
 				Event:      inBody.Event,
 			},
 		})
+
+		// Bridge typing notification to WebAPI sessions if bridge is available
+		if webAPIBridge := state.GetGlobalWebAPIMessageBridge(); webAPIBridge != nil {
+			// Event types: 0=stopped typing, 1=text typed, 2=typing
+			isTyping := inBody.Event == 1 || inBody.Event == 2
+			if err := webAPIBridge.DeliverTypingNotification(ctx, sess.IdentScreenName(), recipient, isTyping); err != nil {
+				// Log but don't fail the OSCAR delivery
+				// TODO: Add proper logger to ICBMService
+				// s.logger.Debug("failed to bridge typing to WebAPI", "from", sess.IdentScreenName(), "to", recipient, "error", err)
+			}
+		}
+
 		return nil
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mk6i/retro-aim-server/state"
@@ -131,7 +132,7 @@ func (h *EventsHandler) FetchEvents(w http.ResponseWriter, r *http.Request) {
 		r.Host, aimsid, newLastSeqNum)
 
 	// Check response format
-	format := r.URL.Query().Get("f")
+	format := strings.ToLower(r.URL.Query().Get("f"))
 
 	if format == "xml" {
 		// Send XML response
@@ -149,8 +150,45 @@ func (h *EventsHandler) FetchEvents(w http.ResponseWriter, r *http.Request) {
 		if err := xml.NewEncoder(w).Encode(xmlResp); err != nil {
 			h.Logger.Error("failed to encode XML response", "error", err)
 		}
+	} else if format == "amf" || format == "amf0" || format == "amf3" {
+		// For AMF3, build the response with fields in the correct order
+		// The working implementation has: response { data {...}, statusCode, statusText, statusDetailCode }
+		// Convert events to ensure timestamps are float64 for AMF3
+		convertedEvents := state.ConvertEventsForAMF3(events)
+
+		// Debug converted events
+		for i, evt := range convertedEvents {
+			if evtMap, ok := evt.(map[string]interface{}); ok {
+				if evtType, ok := evtMap["type"].(string); ok && evtType == "sentIM" {
+					h.Logger.InfoContext(ctx, "converted sentIM event",
+						"index", i,
+						"event", fmt.Sprintf("%+v", evtMap),
+					)
+				}
+			}
+		}
+
+		amfResp := map[string]interface{}{
+			"response": map[string]interface{}{
+				// Data comes FIRST (Gromit processes this large object)
+				"data": map[string]interface{}{
+					"events":          convertedEvents,
+					"lastSeqNum":      newLastSeqNum,
+					"timeToNextFetch": session.TimeToNextFetch,
+					"fetchBaseURL": fmt.Sprintf("http://%s/aim/fetchEvents?aimsid=%s&seqNum=%d",
+						r.Host, aimsid, newLastSeqNum),
+				},
+				// Status fields come AFTER data
+				"statusCode":       200,
+				"statusText":       "OK",
+				"statusDetailCode": 0,
+			},
+		}
+
+		// Use SendResponse which will detect AMF format and encode properly
+		SendResponse(w, r, amfResp, h.Logger)
 	} else {
-		// Send response in requested format (JSON, JSONP, or AMF)
+		// Send JSON/JSONP response with standard structure
 		SendResponse(w, r, resp, h.Logger)
 	}
 
@@ -160,6 +198,21 @@ func (h *EventsHandler) FetchEvents(w http.ResponseWriter, r *http.Request) {
 			"count", len(events),
 			"last_seq", newLastSeqNum,
 		)
+		// Log each event type for debugging
+		for i, evt := range events {
+			h.Logger.DebugContext(ctx, "event details",
+				"index", i,
+				"type", evt.Type,
+				"seqNum", evt.SeqNum,
+				"dataType", fmt.Sprintf("%T", evt.Data),
+			)
+			// Extra debugging for sentIM events
+			if evt.Type == state.EventTypeSentIM {
+				h.Logger.InfoContext(ctx, "sentIM event being fetched",
+					"data", fmt.Sprintf("%+v", evt.Data),
+				)
+			}
+		}
 	}
 }
 

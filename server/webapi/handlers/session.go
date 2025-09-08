@@ -24,6 +24,8 @@ type SessionHandler struct {
 	BuddyListService    BuddyListService
 	BuddyListRegistry   BuddyListRegistry
 	BuddyBroadcaster    BuddyBroadcaster
+	BuddyListManager    *state.WebAPIBuddyListManager
+	PresenceBridge      *state.WebAPIPresenceBridge
 	TokenStore          TokenStore
 	Logger              *slog.Logger
 }
@@ -153,13 +155,20 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 	var events []string
 	if eventsParam != "" {
 		events = strings.Split(eventsParam, ",")
+		h.Logger.DebugContext(ctx, "parsing events from request",
+			"eventsParam", eventsParam,
+			"parsedEvents", events,
+		)
 	} else {
 		// Default events if none specified
-		events = []string{"buddylist", "presence", "im"}
+		events = []string{"buddylist", "presence", "im", "sentIM"}
+		h.Logger.DebugContext(ctx, "using default events",
+			"events", events,
+		)
 	}
 
 	// Get timeout settings
-	timeout := 30000 // Default 30 seconds
+	timeout := 60000 // Default 60 seconds for better stability with Gromit
 	if t := params.Get("timeout"); t != "" {
 		if val, err := strconv.Atoi(t); err == nil && val > 0 {
 			timeout = val * 1000 // Convert to milliseconds
@@ -208,6 +217,13 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Debug: Log what events the session is subscribed to
+	h.Logger.InfoContext(ctx, "session created with event subscriptions",
+		"aimsid", session.AimSID,
+		"events", events,
+		"sessionEvents", session.Events,
+	)
+
 	// Store client info
 	session.ClientName = clientName
 	session.ClientVersion = clientVersion
@@ -234,10 +250,17 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// Broadcast buddy arrival
+			// Broadcast buddy arrival to OSCAR clients
 			if h.BuddyBroadcaster != nil {
 				if err := h.BuddyBroadcaster.BroadcastBuddyArrived(ctx, oscarSession); err != nil {
 					h.Logger.ErrorContext(ctx, "failed to broadcast buddy arrival", "err", err.Error())
+				}
+			}
+
+			// Also broadcast to WebAPI clients
+			if h.PresenceBridge != nil {
+				if err := h.PresenceBridge.BroadcastBuddyArrived(ctx, oscarSession); err != nil {
+					h.Logger.ErrorContext(ctx, "failed to broadcast buddy arrival to WebAPI", "err", err.Error())
 				}
 			}
 
@@ -316,10 +339,37 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 	// If buddy list event is subscribed, include initial buddy list
 	for _, event := range events {
 		if event == "buddylist" {
-			// TODO: Fetch actual buddy list from service
-			resp.Response.Data.Events = make(map[string]interface{})
-			resp.Response.Data.Events["buddylist"] = map[string]interface{}{
-				"groups": []BuddyGroup{},
+			if authToken != "" && h.BuddyListManager != nil {
+				// Fetch actual buddy list from service
+				buddyGroups, err := h.BuddyListManager.GetBuddyListForUser(ctx, session.ScreenName.IdentScreenName())
+				if err != nil {
+					h.Logger.ErrorContext(ctx, "failed to get buddy list", "err", err.Error())
+					// Continue with empty buddy list
+					buddyGroups = []state.WebAPIBuddyGroup{}
+				}
+
+				// Convert to handler format and include in response
+				if resp.Response.Data.Events == nil {
+					resp.Response.Data.Events = make(map[string]interface{})
+				}
+				resp.Response.Data.Events["buddylist"] = map[string]interface{}{
+					"groups": buddyGroups,
+				}
+
+				// Also push to event queue for later updates
+				if h.PresenceBridge != nil {
+					if err := h.PresenceBridge.PushInitialBuddyList(ctx, session); err != nil {
+						h.Logger.ErrorContext(ctx, "failed to push initial buddy list", "err", err.Error())
+					}
+				}
+			} else {
+				// No auth token, return empty buddy list
+				if resp.Response.Data.Events == nil {
+					resp.Response.Data.Events = make(map[string]interface{})
+				}
+				resp.Response.Data.Events["buddylist"] = map[string]interface{}{
+					"groups": []state.WebAPIBuddyGroup{},
+				}
 			}
 			break
 		}
@@ -367,9 +417,40 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 		// Add buddy list if requested in myInfo or events
 		for _, event := range events {
 			if event == "buddylist" || event == "myInfo" {
+				var buddyGroups []BuddyGroup
+
+				if authToken != "" && h.BuddyListManager != nil {
+					// Fetch actual buddy list from service
+					webAPIGroups, err := h.BuddyListManager.GetBuddyListForUser(ctx, session.ScreenName.IdentScreenName())
+					if err != nil {
+						h.Logger.ErrorContext(ctx, "failed to get buddy list for XML response", "err", err.Error())
+						buddyGroups = []BuddyGroup{}
+					} else {
+						// Convert state.WebAPIBuddyGroup to handler.BuddyGroup
+						for _, webGroup := range webAPIGroups {
+							group := BuddyGroup{
+								Name:    webGroup.Name,
+								Buddies: []Buddy{},
+							}
+							for _, webBuddy := range webGroup.Buddies {
+								buddy := Buddy{
+									AimID:     webBuddy.AimID,
+									State:     webBuddy.State,
+									StatusMsg: webBuddy.StatusMsg,
+									AwayMsg:   webBuddy.AwayMsg,
+									UserType:  webBuddy.UserType,
+								}
+								group.Buddies = append(group.Buddies, buddy)
+							}
+							buddyGroups = append(buddyGroups, group)
+						}
+					}
+				} else {
+					buddyGroups = []BuddyGroup{}
+				}
+
 				// Add to myInfo buddylist
-				emptyGroups := []BuddyGroup{}
-				xmlResp.Data.MyInfo.Buddylist.Groups = &emptyGroups
+				xmlResp.Data.MyInfo.Buddylist.Groups = &buddyGroups
 
 				// Also add to events if specifically requested
 				if event == "buddylist" {
@@ -380,7 +461,7 @@ func (h *SessionHandler) StartSession(w http.ResponseWriter, r *http.Request) {
 							} `xml:"buddylist"`
 						}{}
 					}
-					xmlResp.Data.Events.BuddyList.Groups = &emptyGroups
+					xmlResp.Data.Events.BuddyList.Groups = &buddyGroups
 				}
 				break
 			}
@@ -441,10 +522,17 @@ func (h *SessionHandler) EndSession(w http.ResponseWriter, r *http.Request) {
 
 	// Clean up OSCAR session if present
 	if session.OSCARSession != nil && h.OSCARSessionManager != nil {
-		// Broadcast departure
+		// Broadcast departure to OSCAR clients
 		if h.BuddyBroadcaster != nil {
 			if err := h.BuddyBroadcaster.BroadcastBuddyDeparted(ctx, session.OSCARSession); err != nil {
 				h.Logger.ErrorContext(ctx, "failed to broadcast buddy departure", "err", err.Error())
+			}
+		}
+
+		// Also broadcast to WebAPI clients
+		if h.PresenceBridge != nil {
+			if err := h.PresenceBridge.BroadcastBuddyDeparted(ctx, session.OSCARSession); err != nil {
+				h.Logger.ErrorContext(ctx, "failed to broadcast buddy departure to WebAPI", "err", err.Error())
 			}
 		}
 

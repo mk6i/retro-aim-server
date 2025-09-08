@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
@@ -42,6 +43,10 @@ type Handler struct {
 	// Phase 4 additions for OSCAR Bridge
 	OSCARBridgeStore OSCARBridgeStore
 	OSCARConfig      OSCARConfig
+	// Phase 5 additions for buddy list and messaging
+	BuddyListManager *state.WebAPIBuddyListManager
+	PresenceBridge   *state.WebAPIPresenceBridge
+	MessageBridge    *state.WebAPIMessageBridge
 }
 
 func (h Handler) GetHelloWorldHandler(w http.ResponseWriter, r *http.Request) {

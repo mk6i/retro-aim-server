@@ -60,23 +60,24 @@ func main() {
 
 	g, ctx := errgroup.WithContext(ctx)
 
-	oscar := OSCAR(deps)
-	g.Go(oscar.ListenAndServe)
-
-	kerb := KerberosAPI(deps)
-	g.Go(kerb.ListenAndServe)
-
-	api := MgmtAPI(deps)
-	g.Go(api.ListenAndServe)
-
-	toc := TOC(deps)
-	g.Go(toc.ListenAndServe)
-
+	// Initialize WebAPI first if enabled so bridges are available to OSCAR
 	var webAPI *webapi.Server
 	if os.Getenv("ENABLE_WEBAPI") == "1" {
-		webAPI = WebAPI(deps)
+		webAPI = WebAPI(&deps)
 		g.Go(webAPI.ListenAndServe)
 	}
+
+	oscar := OSCAR(&deps)
+	g.Go(oscar.ListenAndServe)
+
+	kerb := KerberosAPI(&deps)
+	g.Go(kerb.ListenAndServe)
+
+	api := MgmtAPI(&deps)
+	g.Go(api.ListenAndServe)
+
+	toc := TOC(&deps)
+	g.Go(toc.ListenAndServe)
 
 	<-ctx.Done()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

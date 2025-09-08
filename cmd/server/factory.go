@@ -36,6 +36,10 @@ type Container struct {
 	sqLiteUserStore        *state.SQLiteUserStore
 	webAPISessionManager   *state.WebAPISessionManager
 	Listeners              []config.Listener
+	// WebAPI bridges shared between OSCAR and WebAPI services
+	webAPIBuddyListManager *state.WebAPIBuddyListManager
+	webAPIPresenceBridge   *state.WebAPIPresenceBridge
+	webAPIMessageBridge    *state.WebAPIMessageBridge
 }
 
 // MakeCommonDeps creates common dependencies used by the food group services.
@@ -76,6 +80,13 @@ func MakeCommonDeps() (Container, error) {
 	c.webAPISessionManager = state.NewWebAPISessionManager()
 	c.rateLimitClasses = wire.DefaultRateLimitClasses()
 	c.snacRateLimits = wire.DefaultSNACRateLimits()
+
+	// Initialize WebAPI bridges (they will be fully configured later)
+	// These are created here so they can be shared between OSCAR and WebAPI services
+	c.webAPIBuddyListManager = nil // Will be set in WebAPI factory
+	c.webAPIPresenceBridge = nil   // Will be set in WebAPI factory
+	c.webAPIMessageBridge = nil    // Will be set in WebAPI factory
+
 	return c, nil
 }
 
@@ -198,7 +209,7 @@ func getEnvOrDefault(key, defaultValue string) string {
 }
 
 // OSCAR creates an OSCAR server for the OSCAR food group.
-func OSCAR(deps Container) *oscar.Server {
+func OSCAR(deps *Container) *oscar.Server {
 	logger := deps.logger.With("svc", "OSCAR")
 
 	adminService := foodgroup.NewAdminService(
@@ -323,14 +334,14 @@ func OSCAR(deps Container) *oscar.Server {
 }
 
 // KerberosAPI creates an HTTP server for the Kerberos server.
-func KerberosAPI(deps Container) *kerberos.Server {
+func KerberosAPI(deps *Container) *kerberos.Server {
 	logger := deps.logger.With("svc", "Kerberos")
 	authService := foodgroup.NewAuthService(deps.cfg, deps.inMemorySessionManager, deps.inMemorySessionManager, deps.chatSessionManager, deps.sqLiteUserStore, deps.hmacCookieBaker, deps.chatSessionManager, deps.sqLiteUserStore, deps.rateLimitClasses)
 	return kerberos.NewKerberosServer(deps.Listeners, logger, authService)
 }
 
 // MgmtAPI creates an HTTP server for the management API.
-func MgmtAPI(deps Container) *http.Server {
+func MgmtAPI(deps *Container) *http.Server {
 	bld := config.Build{
 		Version: version,
 		Commit:  commit,
@@ -343,7 +354,7 @@ func MgmtAPI(deps Container) *http.Server {
 }
 
 // TOC creates a TOC server.
-func TOC(deps Container) *toc.Server {
+func TOC(deps *Container) *toc.Server {
 	logger := deps.logger.With("svc", "TOC")
 	return toc.NewServer(
 		deps.cfg.TOCListeners,
@@ -425,13 +436,55 @@ func TOC(deps Container) *toc.Server {
 }
 
 // WebAPI creates an HTTP server for the webapi protocol.
-func WebAPI(deps Container) *webapi.Server {
+func WebAPI(deps *Container) *webapi.Server {
 	logger := deps.logger.With("svc", "webapi")
 
 	// Create feedbag adapter for WebAPI
 	feedbagAdapter := &webapi.FeedbagAdapter{
 		Store: deps.sqLiteUserStore,
 	}
+
+	// Create WebAPI buddy list manager
+	buddyListManager := state.NewWebAPIBuddyListManager(
+		deps.sqLiteUserStore.DB(),
+		feedbagAdapter,
+		deps.inMemorySessionManager,
+		logger,
+	)
+
+	// Create WebAPI presence bridge
+	presenceBridge := state.NewWebAPIPresenceBridge(
+		deps.webAPISessionManager,
+		buddyListManager,
+		feedbagAdapter,
+		logger,
+	)
+
+	// Create WebAPI message bridge
+	messageBridge := state.NewWebAPIMessageBridge(
+		deps.webAPISessionManager,
+		deps.inMemorySessionManager,
+		feedbagAdapter,
+		deps.sqLiteUserStore,
+		logger,
+	)
+
+	// Store bridges in container for OSCAR services to use
+	deps.webAPIBuddyListManager = buddyListManager
+	deps.webAPIPresenceBridge = presenceBridge
+	deps.webAPIMessageBridge = messageBridge
+
+	// Set global bridges so OSCAR services can access them
+	state.SetGlobalWebAPIBridges(messageBridge, presenceBridge)
+
+	// Create the OSCAR buddy broadcaster for WebAPI to use
+	oscarBuddyBroadcaster := foodgroup.NewBuddyService(
+		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
+		deps.sqLiteUserStore,
+		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
+	)
 
 	handler := webapi.Handler{
 		AdminService: foodgroup.NewAdminService(
@@ -510,14 +563,8 @@ func WebAPI(deps Container) *webapi.Server {
 		// Phase 2 additions
 		MessageRelayer:        deps.inMemorySessionManager,
 		OfflineMessageManager: deps.sqLiteUserStore,
-		BuddyBroadcaster: foodgroup.NewBuddyService(
-			deps.inMemorySessionManager,
-			deps.sqLiteUserStore,
-			deps.sqLiteUserStore,
-			deps.inMemorySessionManager,
-			deps.sqLiteUserStore,
-		),
-		ProfileManager: deps.sqLiteUserStore,
+		BuddyBroadcaster:      oscarBuddyBroadcaster,
+		ProfileManager:        deps.sqLiteUserStore,
 		// Authentication support
 		UserManager: deps.sqLiteUserStore,
 		TokenStore:  state.NewWebAPITokenStore(deps.sqLiteUserStore.DB()),
@@ -527,6 +574,10 @@ func WebAPI(deps Container) *webapi.Server {
 		// Phase 4 additions for OSCAR Bridge
 		OSCARBridgeStore: state.NewOSCARBridgeStore(deps.sqLiteUserStore.DB()),
 		OSCARConfig:      webapi.NewOSCARConfigAdapter(deps.cfg),
+		// Phase 5 additions for buddy list and messaging
+		BuddyListManager: buddyListManager,
+		PresenceBridge:   presenceBridge,
+		MessageBridge:    messageBridge,
 	}
 	return webapi.NewServer([]string{"0.0.0.0:9000"}, logger, handler, deps.sqLiteUserStore, deps.webAPISessionManager)
 }

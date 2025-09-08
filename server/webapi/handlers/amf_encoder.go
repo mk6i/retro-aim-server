@@ -129,6 +129,15 @@ func (e *AMFEncoder) toAMF3Compatible(data interface{}) interface{} {
 				},
 			},
 		}
+	case EndSessionResponse:
+		// Special handling for EndSessionResponse - Gromit expects flat structure
+		// Based on Gromit's MockServer, it expects:
+		// { "data": {}, "statusCode": 200, "statusText": "OK" }
+		return map[string]interface{}{
+			"data":       map[string]interface{}{}, // Empty data object
+			"statusCode": d.Response.StatusCode,
+			"statusText": d.Response.StatusText,
+		}
 	default:
 		// For other types, convert structs to maps
 		return e.convertToMap(data)
@@ -179,20 +188,37 @@ func (e *AMFEncoder) sanitizeForAMF3(data interface{}) interface{} {
 		// Handle WebAPIEvent arrays specially
 		result := make([]interface{}, len(v))
 		for i, event := range v {
+			// AMF3 has a 29-bit limit for integers
+			// Keep seqNum small by using modulo
+			seqNum := int(event.SeqNum % (1 << 29))
+			// Convert timestamp to seconds ago to keep it small
+			timestampSec := int(time.Now().Unix() - event.Timestamp)
+			if timestampSec < 0 {
+				timestampSec = 0
+			}
+
 			result[i] = map[string]interface{}{
 				"type":      event.Type,
-				"seqNum":    int(event.SeqNum), // Convert uint64 to int
-				"timestamp": event.Timestamp,
+				"seqNum":    seqNum,
+				"timestamp": timestampSec,
 				"data":      e.sanitizeForAMF3(event.Data),
 			}
 		}
 		return result
 	case state.WebAPIEvent:
 		// Handle single WebAPIEvent
+		// AMF3 has a 29-bit limit for integers
+		seqNum := int(v.SeqNum % (1 << 29))
+		// Convert timestamp to seconds ago to keep it small
+		timestampSec := int(time.Now().Unix() - v.Timestamp)
+		if timestampSec < 0 {
+			timestampSec = 0
+		}
+
 		return map[string]interface{}{
 			"type":      v.Type,
-			"seqNum":    int(v.SeqNum), // Convert uint64 to int
-			"timestamp": v.Timestamp,
+			"seqNum":    seqNum,
+			"timestamp": timestampSec,
 			"data":      e.sanitizeForAMF3(v.Data),
 		}
 	default:

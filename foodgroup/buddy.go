@@ -165,6 +165,14 @@ func (s buddyNotifier) BroadcastBuddyArrived(ctx context.Context, sess *state.Se
 		},
 	})
 
+	// Bridge to WebAPI sessions if the bridge is available
+	if webAPIBridge := state.GetGlobalWebAPIPresenceBridge(); webAPIBridge != nil {
+		if err := webAPIBridge.BroadcastBuddyArrived(ctx, sess); err != nil {
+			// Log but don't fail the OSCAR broadcast
+			// Note: Actual error is logged within the bridge itself
+		}
+	}
+
 	return nil
 }
 
@@ -204,6 +212,14 @@ func (s buddyNotifier) BroadcastBuddyDeparted(ctx context.Context, sess *state.S
 			},
 		},
 	})
+
+	// Bridge to WebAPI sessions if the bridge is available
+	if webAPIBridge := state.GetGlobalWebAPIPresenceBridge(); webAPIBridge != nil {
+		if err := webAPIBridge.BroadcastBuddyDeparted(ctx, sess); err != nil {
+			// Log but don't fail the OSCAR broadcast
+			// Note: Actual error is logged within the bridge itself
+		}
+	}
 
 	return nil
 }

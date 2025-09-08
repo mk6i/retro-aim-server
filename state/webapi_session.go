@@ -41,11 +41,21 @@ func (s *WebAPISession) IsExpired() bool {
 // Touch updates the last accessed time and extends expiration if needed.
 func (s *WebAPISession) Touch() {
 	s.LastAccessed = time.Now()
-	// Extend expiration by 30 minutes from last access
-	newExpiry := s.LastAccessed.Add(30 * time.Minute)
+	// Extend expiration by 60 minutes from last access
+	newExpiry := s.LastAccessed.Add(60 * time.Minute)
 	if newExpiry.After(s.ExpiresAt) {
 		s.ExpiresAt = newExpiry
 	}
+}
+
+// IsSubscribedTo checks if the session is subscribed to a specific event type.
+func (s *WebAPISession) IsSubscribedTo(eventType string) bool {
+	for _, event := range s.Events {
+		if event == eventType {
+			return true
+		}
+	}
+	return false
 }
 
 // WebAPISessionManager manages Web API sessions with thread-safe operations.
@@ -99,8 +109,8 @@ func (m *WebAPISessionManager) CreateSession(screenName DisplayScreenName, devID
 		DevID:           devID,
 		CreatedAt:       now,
 		LastAccessed:    now,
-		ExpiresAt:       now.Add(30 * time.Minute), // 30 minute initial expiry
-		FetchTimeout:    30000,                     // 30 seconds default
+		ExpiresAt:       now.Add(60 * time.Minute), // 60 minute initial expiry
+		FetchTimeout:    60000,                     // 60 seconds default for better stability
 		TimeToNextFetch: 500,                       // 500ms suggested delay
 	}
 
@@ -190,6 +200,25 @@ func (m *WebAPISessionManager) GetAllSessions() []*WebAPISession {
 			sessions = append(sessions, session)
 		}
 	}
+	return sessions
+}
+
+// GetSessionsByScreenName returns all sessions for a given screen name.
+func (m *WebAPISessionManager) GetSessionsByScreenName(screenName DisplayScreenName) []*WebAPISession {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var sessions []*WebAPISession
+	identScreenName := screenName.IdentScreenName()
+
+	// Check both the byUser map and iterate through all sessions
+	// since a user might have multiple sessions
+	for _, session := range m.sessions {
+		if session.ScreenName.IdentScreenName() == identScreenName {
+			sessions = append(sessions, session)
+		}
+	}
+
 	return sessions
 }
 

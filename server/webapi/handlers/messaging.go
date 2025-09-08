@@ -50,6 +50,26 @@ type MessageResponse struct {
 	Data       map[string]interface{} `json:"-" xml:"data,omitempty"`
 }
 
+// SendIMResponseData represents the data portion of a sendIM response.
+type SendIMResponseData struct {
+	SMSSegmentCount int    `xml:"smsSegmentCount" json:"smsSegmentCount"`
+	MessageID       string `xml:"messageId" json:"messageId"`
+	Timestamp       int64  `xml:"timestamp" json:"timestamp"`
+}
+
+// SendIMXMLResponse is the XML-specific response structure for sendIM.
+type SendIMXMLResponse struct {
+	XMLName    xml.Name `xml:"response"`
+	XMLNS      string   `xml:"xmlns,attr,omitempty"`
+	StatusCode int      `xml:"statusCode"`
+	StatusText string   `xml:"statusText"`
+	RequestID  string   `xml:"requestId,omitempty"`
+	Data       struct {
+		MsgID string `xml:"msgId"`
+		State string `xml:"state"`
+	} `xml:"data,omitempty"`
+}
+
 // SendIM handles the /im/sendIM endpoint for sending instant messages
 func (h *MessagingHandler) SendIM(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -122,8 +142,14 @@ func (h *MessagingHandler) SendIM(w http.ResponseWriter, r *http.Request) {
 		senderInfo.Append(wire.NewTLVBE(wire.OServiceUserInfoStatus, uint32(0x0000))) // online status
 	}
 
-	// Create message ID for response
-	messageID := fmt.Sprintf("msg-%d-%x", time.Now().Unix(), cookie[:4])
+	// Create message ID for response (UUID format like working implementation)
+	// Using the cookie bytes to generate a UUID-like string
+	messageID := fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		binary.BigEndian.Uint32(cookie[:4]),
+		binary.BigEndian.Uint16(cookie[4:6]),
+		binary.BigEndian.Uint16(cookie[6:8]),
+		binary.BigEndian.Uint16([]byte{0x80, 0x00}), // Version bits
+		time.Now().UnixNano()&0xffffffffffff)
 
 	if recipientSession == nil {
 		// Recipient is offline
@@ -195,37 +221,64 @@ func (h *MessagingHandler) SendIM(w http.ResponseWriter, r *http.Request) {
 			eventData := state.IMEvent{
 				From:      sess.ScreenName.String(),
 				Message:   message,
-				Timestamp: time.Now().Unix(),
+				Timestamp: float64(time.Now().Unix()),
 				AutoResp:  autoResponse,
 			}
 			recipientWebSession.EventQueue.Push(state.EventTypeIM, eventData)
 		}
+
+		// Also queue sentIM event for the sender's WebAPI session to show in their UI
+		senderEventData := state.SentIMEvent{
+			Sender: state.UserInfo{
+				AimID:     sess.ScreenName.String(),
+				DisplayID: sess.ScreenName.String(),
+				UserType:  "aim",
+			},
+			Dest: state.UserInfo{
+				AimID:     recipient,
+				DisplayID: recipient,
+				UserType:  "aim",
+			},
+			Message:   message,
+			Timestamp: float64(time.Now().Unix()),
+			AutoResp:  autoResponse,
+		}
+		sess.EventQueue.Push(state.EventTypeSentIM, senderEventData)
+
+		h.Logger.InfoContext(ctx, "queued sentIM event for sender",
+			"from", sess.ScreenName.String(),
+			"to", recipient,
+			"eventType", state.EventTypeSentIM,
+			"queueSize", sess.EventQueue.Size(),
+			"subscribedEvents", sess.Events,
+			"isSubscribedToSentIM", sess.IsSubscribedTo("sentIM"),
+		)
 
 		h.Logger.InfoContext(ctx, "delivered instant message",
 			"from", sess.ScreenName.String(),
 			"to", recipient)
 	}
 
-	// Calculate SMS segments (basic calculation - 160 chars per segment)
-	smsSegmentCount := (len(message) + 159) / 160
-
 	// Send success response
 	format := strings.ToLower(r.URL.Query().Get("f"))
-	responseData := map[string]interface{}{
-		"smsSegmentCount": smsSegmentCount,
-		"messageId":       messageID,
-		"timestamp":       time.Now().Unix(),
-	}
 
 	if format == "xml" {
-		// For XML, use flattened structure
-		response := MessageResponse{}
-		response.StatusCode = 200
-		response.StatusText = "OK"
-		response.Data = responseData
+		// For XML, use properly typed structure matching working implementation
+		response := SendIMXMLResponse{
+			XMLNS:      "http://developer.aim.com/xsd/im.xsd",
+			StatusCode: 200,
+			StatusText: "OK",
+			RequestID:  r.URL.Query().Get("r"),
+		}
+		response.Data.MsgID = messageID
+		response.Data.State = "delivered"
 		SendXML(w, response, h.Logger)
 	} else {
-		// For JSON/JSONP, use nested structure
+		// For JSON/JSONP/AMF, match working implementation response
+		responseData := map[string]interface{}{
+			"msgId": messageID,
+			"state": "delivered",
+		}
 		response := MessageResponse{}
 		response.Response.StatusCode = 200
 		response.Response.StatusText = "OK"

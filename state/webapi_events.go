@@ -16,6 +16,7 @@ const (
 	EventTypeBuddyList    WebAPIEventType = "buddylist"
 	EventTypePresence     WebAPIEventType = "presence"
 	EventTypeIM           WebAPIEventType = "im"
+	EventTypeSentIM       WebAPIEventType = "sentIM"
 	EventTypeTyping       WebAPIEventType = "typing"
 	EventTypeStatus       WebAPIEventType = "status"
 	EventTypeOfflineIM    WebAPIEventType = "offlineIM"
@@ -44,10 +45,28 @@ type PresenceEvent struct {
 
 // IMEvent represents an instant message event.
 type IMEvent struct {
-	From      string `json:"from"`
-	Message   string `json:"message"`
-	Timestamp int64  `json:"timestamp"`
-	AutoResp  bool   `json:"autoResponse,omitempty"`
+	From      string  `json:"from"`
+	Message   string  `json:"message"`
+	Timestamp float64 `json:"timestamp"` // float64 for AMF3 encoding
+	AutoResp  bool    `json:"autoResponse,omitempty"`
+}
+
+// SentIMEvent represents a sent instant message event.
+type SentIMEvent struct {
+	Sender    UserInfo `json:"sender"` // Sender user info
+	Dest      UserInfo `json:"dest"`   // Destination user info
+	Message   string   `json:"message"`
+	Timestamp float64  `json:"timestamp"` // float64 for AMF3 encoding
+	AutoResp  bool     `json:"autoResponse,omitempty"`
+}
+
+// UserInfo represents basic user information in events.
+type UserInfo struct {
+	AimID      string  `json:"aimId"`
+	DisplayID  string  `json:"displayId,omitempty"`
+	UserType   string  `json:"userType,omitempty"`
+	State      string  `json:"state,omitempty"`
+	OnlineTime float64 `json:"onlineTime,omitempty"` // float64 for AMF3 encoding
 }
 
 // TypingEvent represents a typing notification event.

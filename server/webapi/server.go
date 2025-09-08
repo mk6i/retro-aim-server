@@ -35,6 +35,8 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 		BuddyListService:    nil, // TODO: Implement if needed
 		BuddyListRegistry:   handler.BuddyListRegistry,
 		BuddyBroadcaster:    handler.BuddyBroadcaster,
+		BuddyListManager:    handler.BuddyListManager,
+		PresenceBridge:      handler.PresenceBridge,
 		TokenStore:          handler.TokenStore,
 		Logger:              logger,
 	}
@@ -185,17 +187,17 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(preferenceHandler.GetPermitDeny))))
 
-			// Phase 4: Advanced Features
-	// OSCAR Bridge endpoint
-	mux.Handle("GET /aim/startOSCARSession", authMiddleware.Authenticate(
-		authMiddleware.CORSMiddleware(
-			http.HandlerFunc(oscarBridgeHandler.StartOSCARSession))))
+		// Phase 4: Advanced Features
+		// OSCAR Bridge endpoint
+		mux.Handle("GET /aim/startOSCARSession", authMiddleware.Authenticate(
+			authMiddleware.CORSMiddleware(
+				http.HandlerFunc(oscarBridgeHandler.StartOSCARSession))))
 
-	// Expressions endpoint (for buddy icons, etc.)
-	expressionsHandler := handlers.NewExpressionsHandler(logger)
-	mux.Handle("GET /expressions/get", authMiddleware.AuthenticateFlexible(
-		authMiddleware.CORSMiddleware(
-			http.HandlerFunc(expressionsHandler.Get))))
+		// Expressions endpoint (for buddy icons, etc.)
+		expressionsHandler := handlers.NewExpressionsHandler(logger)
+		mux.Handle("GET /expressions/get", authMiddleware.AuthenticateFlexible(
+			authMiddleware.CORSMiddleware(
+				http.HandlerFunc(expressionsHandler.Get))))
 
 		servers = append(servers, &http.Server{
 			Addr:    l,

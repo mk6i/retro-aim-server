@@ -141,7 +141,7 @@ func ICBMToWebAPIEvent(icbm wire.SNAC_0x04_0x07_ICBMChannelMsgToClient) (state.W
 		Data: state.IMEvent{
 			From:      senderScreenName,
 			Message:   messageText,
-			Timestamp: time.Now().Unix(),
+			Timestamp: float64(time.Now().Unix()),
 			AutoResp:  autoResponse,
 		},
 	}

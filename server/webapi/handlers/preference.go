@@ -252,6 +252,25 @@ func (h *PreferenceHandler) GetPreferences(w http.ResponseWriter, r *http.Reques
 		response.Response.StatusText = "Ok"
 		response.Response.StatusDetailCode = 0
 
+		// Convert string "1"/"0" to numeric values for Gromit compatibility
+		// Gromit expects numeric values for boolean preferences
+		convertedPrefs := make(map[string]interface{})
+		for key, val := range prefs {
+			if strVal, ok := val.(string); ok {
+				if strVal == "1" {
+					convertedPrefs[key] = 1
+				} else if strVal == "0" {
+					convertedPrefs[key] = 0
+				} else {
+					// Keep non-boolean values as strings
+					convertedPrefs[key] = val
+				}
+			} else {
+				convertedPrefs[key] = val
+			}
+		}
+		prefs = convertedPrefs
+
 		// Debug logging
 		h.Logger.InfoContext(ctx, "AMF preference response",
 			"prefs", prefs,
@@ -269,7 +288,7 @@ func (h *PreferenceHandler) GetPreferences(w http.ResponseWriter, r *http.Reques
 			} else {
 				// Return playIMSound as default if nothing else
 				prefs = map[string]interface{}{
-					"playIMSound": "1",
+					"playIMSound": 1, // Use numeric value
 				}
 			}
 		}
