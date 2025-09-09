@@ -324,8 +324,8 @@ func OSCAR(deps Container) *oscar.Server {
 		deps.snacRateLimits,
 		oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 		deps.Listeners,
-		deps.icbmSvc.RecalculateWarning,
-		deps.icbmSvc.DecayWarnLevel,
+		deps.icbmSvc.RestoreWarningLevel,
+		deps.icbmSvc.UpdateWarnLevel,
 	)
 }
 
@@ -422,8 +422,8 @@ func TOC(deps Container) *toc.Server {
 			HTTPIPRateLimiter: toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 		},
 		toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
-		deps.icbmSvc.RecalculateWarning,
-		deps.icbmSvc.DecayWarnLevel,
+		deps.icbmSvc.RestoreWarningLevel,
+		deps.icbmSvc.UpdateWarnLevel,
 	)
 }
 

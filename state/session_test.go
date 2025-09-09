@@ -623,15 +623,6 @@ func TestSession_SetAndGetMultiConnFlag(t *testing.T) {
 	assert.Equal(t, wire.MultiConnFlagsSingleClient, s.MultiConnFlag())
 }
 
-func TestSession_SetAndGetLastWarnUpdate(t *testing.T) {
-	s := NewSession()
-	assert.Zero(t, s.LastWarnUpdate())
-
-	testTime := time.Unix(1234567890, 0)
-	s.SetLastWarnUpdate(testTime)
-	assert.Equal(t, testTime, s.LastWarnUpdate())
-}
-
 func TestSession_SetAndGetLastWarnLevel(t *testing.T) {
 	s := NewSession()
 	assert.Zero(t, s.Warning())

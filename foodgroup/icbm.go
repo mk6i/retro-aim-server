@@ -410,50 +410,61 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 	}, nil
 }
 
-// DecayWarnLevel gradually reduces a user's warning level over time.
-// It listens for warning notifications and starts a periodic decay process
-// that reduces the warning level by a fixed percentage at regular intervals
-// until the warning level reaches zero. Warning updates are broadcast to
-// users who have this user on their buddy list.
-func (s ICBMService) RecalculateWarning(ctx context.Context, sess *state.Session) {
+// RestoreWarningLevel restores the warning level from the last stored value at login time,
+// accounting for time passed between logins.
+func (s ICBMService) RestoreWarningLevel(ctx context.Context, sess *state.Session) {
+	u, err := s.userManager.User(ctx, sess.IdentScreenName())
+	if u == nil {
+		s.logger.ErrorContext(ctx, "user does not exist")
+		return
+	}
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to get user", "err", err)
+		return
+	}
+
+	if u.LastWarnLevel == 0 {
+		// user had no warning at the end of last session
+		return
+	}
+
+	sess.SetWarning(u.LastWarnLevel)
+
+	warnDelta := calcElapsedWarningLevel(u.LastWarnUpdate, s.timeNow(), s.interval)
+
 	// get the rate class for sending IMs, which gets limited when the user gets warned
 	classID, ok := s.snacRateLimits.RateClassLookup(wire.ICBM, wire.ICBMChannelMsgToHost)
 	if !ok {
 		panic("failed to retrieve rate class for ICBMChannelMsgToHost")
 	}
 
-	u, err := s.userManager.User(ctx, sess.IdentScreenName())
-	if err != nil {
-		s.logger.ErrorContext(ctx, "failed to get user", "err", err)
-		return
-	}
+	// increment warning level by the amount of time that has passed since last
+	// login, proportionally increasing the warning level
+	sess.IncrementWarning(warnDelta, classID)
 
-	sess.SetWarning(u.LastWarnLevel)
-
-	// restore warning level from previous session
 	if sess.Warning() > 0 {
-		warnDelta := calcElapsedWarningLevel(u.LastWarnLevel, u.LastWarnUpdate, s.timeNow(), s.interval)
-
-		if warnDelta < 0 {
-			prev := sess.Warning()
-			sess.IncrementWarning(warnDelta, classID)
-			s.logger.DebugContext(ctx, "restoring warn level from prior session",
-				"previous_level", prev,
-				"new_level", sess.Warning(),
-			)
-		} else {
-			s.logger.DebugContext(ctx, "warn level has not changed since last signoff",
-				"previous_level", sess.Warning()-uint16(warnDelta),
-				"new_level", sess.Warning(),
-			)
-		}
+		s.logger.DebugContext(ctx, "restored warning level with time decay applied since last login",
+			"stored_level", u.LastWarnLevel,
+			"time_since_update", s.timeNow().Sub(u.LastWarnUpdate),
+			"decay_delta", warnDelta,
+			"final_level", sess.Warning(),
+		)
+	} else {
+		s.logger.DebugContext(ctx, "warning level decayed to zero since last login",
+			"stored_level", u.LastWarnLevel,
+			"time_since_update", s.timeNow().Sub(u.LastWarnUpdate),
+			"decay_delta", warnDelta,
+		)
 	}
 }
 
-func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
+// UpdateWarnLevel periodically updates the warning level relative to time
+// elapsed between warnings.
+func (s ICBMService) UpdateWarnLevel(ctx context.Context, sess *state.Session) {
 	var inProgress bool
 	var ticker *time.Ticker
 	var tickC <-chan time.Time // nil when idle, enables/disables the select case
+	var doReset bool
 
 	stopTicker := func() {
 		if ticker != nil {
@@ -472,7 +483,6 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 		s.logger.DebugContext(ctx, "warning decay started")
 	}
 
-	// start ticker if warning level is still > 0 after recalculation
 	if sess.Warning() > 0 {
 		u, err := s.userManager.User(ctx, sess.IdentScreenName())
 		if err != nil {
@@ -484,8 +494,14 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 		if newInterval > 0 {
 			interval = newInterval
 		}
-		fmt.Printf("<---- New interval is: %f \n", interval.Seconds())
+		s.logger.DebugContext(ctx, "starting warning level update with interval adjusted to next boundary",
+			"user", sess.IdentScreenName(),
+			"adjusted_interval", interval,
+			"default_interval", s.interval,
+			"time_since_last_update", s.timeNow().Sub(u.LastWarnUpdate),
+		)
 		startTicker(interval)
+		doReset = true
 	}
 
 	// get the rate class for sending IMs, which gets limited when the user gets warned
@@ -512,7 +528,10 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 			startTicker(s.interval)
 
 		case <-tickC:
-			ticker.Reset(s.interval)
+			if doReset {
+				ticker.Reset(s.interval)
+				doReset = false
+			}
 
 			sess.IncrementWarning(warningDecayPct, classID)
 
@@ -527,7 +546,7 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 				s.logger.DebugContext(ctx, "warning lowered", "remaining", sess.Warning())
 			}
 
-			if sess.Warning() <= 0 {
+			if sess.Warning() == 0 {
 				s.logger.DebugContext(ctx, "warning decay complete")
 				stopTicker()
 			}
@@ -535,7 +554,7 @@ func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
 	}
 }
 
-func calcElapsedWarningLevel(lastWarnLevel uint16, lastWarnUpdate time.Time, now time.Time, interval time.Duration) int16 {
+func calcElapsedWarningLevel(lastWarnUpdate time.Time, now time.Time, interval time.Duration) int16 {
 	// time passed since last signoff
 	since := now.Sub(lastWarnUpdate)
 
@@ -543,15 +562,7 @@ func calcElapsedWarningLevel(lastWarnLevel uint16, lastWarnUpdate time.Time, now
 	decayPeriods := int(since / interval)
 	// total amount warning decreased since last signoff
 	warnDelta := decayPeriods * warningDecayPct
-	// the updated warn level
-	newWarnLevel := int(lastWarnLevel) + warnDelta
 
-	if newWarnLevel <= 0 {
-		// warning fully decayed
-		return 0
-	}
-
-	// warning partially decayed - return the delta, not the new level
 	return int16(warnDelta)
 }
 
@@ -645,7 +656,7 @@ func (w *convoTracker) key(sender state.IdentScreenName, recip state.IdentScreen
 // ringBuffer is a fixed-size circular buffer with 3 slots for storing time values.
 type ringBuffer struct {
 	cur  int          // Current cursor position (0, 1, or 2)
-	vals [5]time.Time // Fixed-size array to store time values
+	vals [3]time.Time // Fixed-size array to store time values
 }
 
 // val returns the time at the current cursor position.
