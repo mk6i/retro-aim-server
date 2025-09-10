@@ -85,7 +85,7 @@ func (s ChatService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 			Body:  bodyOut,
 		})
 	} else {
-		// forward  message all participants, except sender
+		// forward message all participants, except sender
 		s.chatMessageRelayer.RelayToAllExcept(ctx, sess.ChatRoomCookie(), sess.IdentScreenName(), wire.SNACMessage{
 			Frame: frameOut,
 			Body:  bodyOut,
@@ -116,7 +116,14 @@ func (s ChatService) transformChatMessage(inBody wire.SNAC_0x0E_0x05_ChatChannel
 	if !hasMessage {
 		return wire.TLVRestBlock{}, errors.New("SNAC(0x0E,0x05) does not contain a message TLV")
 	}
-	messageText, err := textFromChatMsgBlob(messageBlob)
+	msgBlock := wire.TLVRestBlock{}
+	if err := wire.UnmarshalBE(&msgBlock, bytes.NewBuffer(messageBlob)); err != nil {
+		return wire.TLVRestBlock{}, err
+	}
+
+	msgBlock = removeUnsupportedTLVs(msgBlock)
+
+	messageText, err := textFromChatMsgBlob(msgBlock)
 	if err != nil {
 		return wire.TLVRestBlock{}, err
 	}
@@ -141,7 +148,18 @@ func (s ChatService) transformChatMessage(inBody wire.SNAC_0x0E_0x05_ChatChannel
 	}
 
 	// return the incoming payload without modification
-	return newMessageBlock(sender, messageBlob), nil
+	return newMessageBlock(sender, msgBlock), nil
+}
+
+// remove TLVs that break the macos 2.x chat
+func removeUnsupportedTLVs(block wire.TLVRestBlock) wire.TLVRestBlock {
+	newBlock := wire.TLVRestBlock{}
+	for _, tlv := range block.TLVList {
+		if tlv.Tag < 4 {
+			newBlock.TLVList = append(newBlock.TLVList, tlv)
+		}
+	}
+	return newBlock
 }
 
 // rollDice generates a chat response for the results of a die roll.
@@ -163,13 +181,9 @@ func (s ChatService) rollDice(sess *state.Session, dice int, sides int) wire.TLV
 
 // textFromChatMsgBlob extracts plaintext message text from HTML located in
 // chat message info TLV(0x05).
-func textFromChatMsgBlob(msg []byte) ([]byte, error) {
-	block := wire.TLVRestBlock{}
-	if err := wire.UnmarshalBE(&block, bytes.NewBuffer(msg)); err != nil {
-		return nil, err
-	}
+func textFromChatMsgBlob(msg wire.TLVRestBlock) ([]byte, error) {
 
-	b, hasMsg := block.Bytes(wire.ChatTLVMessageInfoText)
+	b, hasMsg := msg.Bytes(wire.ChatTLVMessageInfoText)
 	if !hasMsg {
 		return nil, errors.New("SNAC(0x0E,0x05) has no chat msg text TLV")
 	}
