@@ -183,40 +183,6 @@ func (_c *mockICBMService_ClientEvent_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// DecayWarnLevel provides a mock function with given fields: ctx, sess
-func (_m *mockICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
-	_m.Called(ctx, sess)
-}
-
-// mockICBMService_DecayWarnLevel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DecayWarnLevel'
-type mockICBMService_DecayWarnLevel_Call struct {
-	*mock.Call
-}
-
-// DecayWarnLevel is a helper method to define mock.On call
-//   - ctx context.Context
-//   - sess *state.Session
-func (_e *mockICBMService_Expecter) DecayWarnLevel(ctx interface{}, sess interface{}) *mockICBMService_DecayWarnLevel_Call {
-	return &mockICBMService_DecayWarnLevel_Call{Call: _e.mock.On("DecayWarnLevel", ctx, sess)}
-}
-
-func (_c *mockICBMService_DecayWarnLevel_Call) Run(run func(ctx context.Context, sess *state.Session)) *mockICBMService_DecayWarnLevel_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session))
-	})
-	return _c
-}
-
-func (_c *mockICBMService_DecayWarnLevel_Call) Return() *mockICBMService_DecayWarnLevel_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *mockICBMService_DecayWarnLevel_Call) RunAndReturn(run func(context.Context, *state.Session)) *mockICBMService_DecayWarnLevel_Call {
-	_c.Run(run)
-	return _c
-}
-
 // EvilRequest provides a mock function with given fields: ctx, sess, inFrame, inBody
 func (_m *mockICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x08_ICBMEvilRequest) (wire.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, inFrame, inBody)

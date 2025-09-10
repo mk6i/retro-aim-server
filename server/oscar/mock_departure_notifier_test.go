@@ -22,53 +22,6 @@ func (_m *mockDepartureNotifier) EXPECT() *mockDepartureNotifier_Expecter {
 	return &mockDepartureNotifier_Expecter{mock: &_m.Mock}
 }
 
-// BroadcastBuddyArrived provides a mock function with given fields: ctx, sess
-func (_m *mockDepartureNotifier) BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error {
-	ret := _m.Called(ctx, sess)
-
-	if len(ret) == 0 {
-		panic("no return value specified for BroadcastBuddyArrived")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *state.Session) error); ok {
-		r0 = rf(ctx, sess)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// mockDepartureNotifier_BroadcastBuddyArrived_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BroadcastBuddyArrived'
-type mockDepartureNotifier_BroadcastBuddyArrived_Call struct {
-	*mock.Call
-}
-
-// BroadcastBuddyArrived is a helper method to define mock.On call
-//   - ctx context.Context
-//   - sess *state.Session
-func (_e *mockDepartureNotifier_Expecter) BroadcastBuddyArrived(ctx interface{}, sess interface{}) *mockDepartureNotifier_BroadcastBuddyArrived_Call {
-	return &mockDepartureNotifier_BroadcastBuddyArrived_Call{Call: _e.mock.On("BroadcastBuddyArrived", ctx, sess)}
-}
-
-func (_c *mockDepartureNotifier_BroadcastBuddyArrived_Call) Run(run func(ctx context.Context, sess *state.Session)) *mockDepartureNotifier_BroadcastBuddyArrived_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session))
-	})
-	return _c
-}
-
-func (_c *mockDepartureNotifier_BroadcastBuddyArrived_Call) Return(_a0 error) *mockDepartureNotifier_BroadcastBuddyArrived_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockDepartureNotifier_BroadcastBuddyArrived_Call) RunAndReturn(run func(context.Context, *state.Session) error) *mockDepartureNotifier_BroadcastBuddyArrived_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // BroadcastBuddyDeparted provides a mock function with given fields: ctx, sess
 func (_m *mockDepartureNotifier) BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error {
 	ret := _m.Called(ctx, sess)

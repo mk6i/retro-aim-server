@@ -34,7 +34,6 @@ func NewServer(
 	limits wire.SNACRateLimits,
 	limiter *IPRateLimiter,
 	listenerCfg []config.Listener,
-	lowerWarnLevel func(ctx context.Context, sess *state.Session),
 ) *Server {
 	oscarSvc := oscarServer{
 		AuthService:        authService,
@@ -47,7 +46,6 @@ func NewServer(
 		RateLimitUpdater:   rateLimitUpdater,
 		SNACRateLimits:     limits,
 		IPRateLimiter:      limiter,
-		lowerWarnLevel:     lowerWarnLevel,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -190,7 +188,6 @@ type oscarServer struct {
 	RateLimitUpdater
 	wire.SNACRateLimits
 	*IPRateLimiter
-	lowerWarnLevel func(ctx context.Context, sess *state.Session)
 }
 
 func (s oscarServer) routeConnection(ctx context.Context, conn net.Conn, listener config.Listener) error {
@@ -276,7 +273,6 @@ func (s oscarServer) connectToOSCARService(
 			sess.SetRemoteAddr(&ip)
 		}
 
-		go s.lowerWarnLevel(ctx, sess)
 		go s.receiveSessMessages(ctx, sess, flapc)
 
 	case wire.Chat:

@@ -29,7 +29,6 @@ type Container struct {
 	cfg                    config.Config
 	chatSessionManager     *state.InMemoryChatSessionManager
 	hmacCookieBaker        state.HMACCookieBaker
-	icbmSvc                *foodgroup.ICBMService
 	inMemorySessionManager *state.InMemorySessionManager
 	logger                 *slog.Logger
 	rateLimitClasses       wire.RateLimitClasses
@@ -75,19 +74,6 @@ func MakeCommonDeps() (Container, error) {
 	c.chatSessionManager = state.NewInMemoryChatSessionManager(c.logger)
 	c.rateLimitClasses = wire.DefaultRateLimitClasses()
 	c.snacRateLimits = wire.DefaultSNACRateLimits()
-
-	// ICBM svc is a common dep because OSCAR and TOC need to share convo
-	// history state.
-	c.icbmSvc = foodgroup.NewICBMService(
-		c.sqLiteUserStore,
-		c.inMemorySessionManager,
-		c.sqLiteUserStore,
-		c.sqLiteUserStore,
-		c.inMemorySessionManager,
-		c.snacRateLimits,
-		c.logger,
-	)
-
 	return c, nil
 }
 
@@ -263,6 +249,14 @@ func OSCAR(deps Container) *oscar.Server {
 		deps.inMemorySessionManager,
 		deps.inMemorySessionManager,
 	)
+	icbmService := foodgroup.NewICBMService(
+		deps.sqLiteUserStore,
+		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
+		deps.sqLiteUserStore,
+		deps.inMemorySessionManager,
+		deps.snacRateLimits,
+	)
 	icqService := foodgroup.NewICQService(deps.inMemorySessionManager, deps.sqLiteUserStore, deps.sqLiteUserStore,
 		logger, deps.inMemorySessionManager, deps.sqLiteUserStore)
 	locateService := foodgroup.NewLocateService(
@@ -307,7 +301,7 @@ func OSCAR(deps Container) *oscar.Server {
 			ChatNavService:    chatNavService,
 			ChatService:       chatService,
 			FeedbagService:    feedbagService,
-			ICBMService:       deps.icbmSvc,
+			ICBMService:       icbmService,
 			ICQService:        icqService,
 			LocateService:     locateService,
 			ODirService:       oDirService,
@@ -323,7 +317,6 @@ func OSCAR(deps Container) *oscar.Server {
 		deps.snacRateLimits,
 		oscar.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 		deps.Listeners,
-		deps.icbmSvc.DecayWarnLevel,
 	)
 }
 
@@ -350,7 +343,6 @@ func MgmtAPI(deps Container) *http.Server {
 // TOC creates a TOC server.
 func TOC(deps Container) *toc.Server {
 	logger := deps.logger.With("svc", "TOC")
-
 	return toc.NewServer(
 		deps.cfg.TOCListeners,
 		logger,
@@ -384,7 +376,14 @@ func TOC(deps Container) *toc.Server {
 			),
 			CookieBaker:      deps.hmacCookieBaker,
 			DirSearchService: foodgroup.NewODirService(logger, deps.sqLiteUserStore),
-			ICBMService:      deps.icbmSvc,
+			ICBMService: foodgroup.NewICBMService(
+				deps.sqLiteUserStore,
+				deps.inMemorySessionManager,
+				deps.sqLiteUserStore,
+				deps.sqLiteUserStore,
+				deps.inMemorySessionManager,
+				deps.snacRateLimits,
+			),
 			LocateService: foodgroup.NewLocateService(
 				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
@@ -420,7 +419,6 @@ func TOC(deps Container) *toc.Server {
 			HTTPIPRateLimiter: toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
 		},
 		toc.NewIPRateLimiter(rate.Every(1*time.Minute), 10, 1*time.Minute),
-		deps.icbmSvc.DecayWarnLevel,
 	)
 }
 
@@ -457,7 +455,14 @@ func WebAPI(deps Container) *webapi.Server {
 		),
 		CookieBaker:      deps.hmacCookieBaker,
 		DirSearchService: foodgroup.NewODirService(logger, deps.sqLiteUserStore),
-		ICBMService:      deps.icbmSvc,
+		ICBMService: foodgroup.NewICBMService(
+			deps.sqLiteUserStore,
+			deps.inMemorySessionManager,
+			deps.sqLiteUserStore,
+			deps.sqLiteUserStore,
+			deps.inMemorySessionManager,
+			deps.snacRateLimits,
+		),
 		LocateService: foodgroup.NewLocateService(
 			deps.sqLiteUserStore,
 			deps.inMemorySessionManager,

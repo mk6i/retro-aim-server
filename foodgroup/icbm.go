@@ -4,19 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
-
-	"github.com/patrickmn/go-cache"
 
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
 const (
-	evilDelta       = uint16(100)
-	evilDeltaAnon   = uint16(30)
-	warningDecayPct = -50
+	evilDelta     = uint16(100)
+	evilDeltaAnon = uint16(30)
 )
 
 // NewICBMService returns a new instance of ICBMService.
@@ -27,7 +23,6 @@ func NewICBMService(
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 	snacRateLimits wire.SNACRateLimits,
-	logger *slog.Logger,
 ) *ICBMService {
 	return &ICBMService{
 		relationshipFetcher: relationshipFetcher,
@@ -37,9 +32,6 @@ func NewICBMService(
 		timeNow:             time.Now,
 		sessionRetriever:    sessionRetriever,
 		snacRateLimits:      snacRateLimits,
-		convoTracker:        newConvoTracker(),
-		logger:              logger,
-		interval:            5 * time.Minute,
 	}
 }
 
@@ -54,9 +46,6 @@ type ICBMService struct {
 	timeNow             func() time.Time
 	sessionRetriever    SessionRetriever
 	snacRateLimits      wire.SNACRateLimits
-	convoTracker        *convoTracker
-	logger              *slog.Logger
-	interval            time.Duration
 }
 
 // ParameterQuery returns ICBM service parameters.
@@ -170,8 +159,6 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		},
 		Body: clientIM,
 	})
-
-	s.convoTracker.trackConvo(time.Now(), sess.IdentScreenName(), recipSess.IdentScreenName())
 
 	if _, requestedConfirmation := inBody.TLVRestBlock.Bytes(wire.ICBMTLVRequestHostAck); !requestedConfirmation {
 		// don't ack message
@@ -323,44 +310,11 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		}, nil
 	}
 
-	canWarn := s.convoTracker.trackWarn(time.Now(), sess.IdentScreenName(), recipSess.IdentScreenName())
-	if !canWarn {
-		return wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.ICBM,
-				SubGroup:  wire.ICBMErr,
-				RequestID: inFrame.RequestID,
-			},
-			Body: wire.SNACError{
-				Code: wire.ErrorCodeRequestDenied,
-			},
-		}, nil
-	}
-
 	increase := evilDelta
 	if inBody.SendAs == 1 {
 		increase = evilDeltaAnon
 	}
-
-	// get the rate class for sending IMs, which gets limited when the user gets warned
-	classID, ok := s.snacRateLimits.RateClassLookup(wire.ICBM, wire.ICBMChannelMsgToHost)
-	if !ok {
-		panic("failed to retrieve rate class for ICBMChannelMsgToHost")
-	}
-
-	if ok := recipSess.IncrementWarning(int16(increase), classID); !ok {
-		return wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.ICBM,
-				SubGroup:  wire.ICBMErr,
-				RequestID: inFrame.RequestID,
-			},
-			Body: wire.SNACError{
-				Code: wire.ErrorCodeRequestDenied,
-			},
-		}, nil
-	}
-	recipSess.NotifyWarning(ctx)
+	recipSess.IncrementWarning(increase)
 
 	notif := wire.SNAC_0x01_0x10_OServiceEvilNotification{
 		NewEvil: recipSess.Warning(),
@@ -402,166 +356,4 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 			UpdatedEvilValue: recipSess.Warning(),
 		},
 	}, nil
-}
-
-// DecayWarnLevel gradually reduces a user's warning level over time.
-// It listens for warning notifications and starts a periodic decay process
-// that reduces the warning level by a fixed percentage at regular intervals
-// until the warning level reaches zero. Warning updates are broadcast to
-// users who have this user on their buddy list.
-func (s ICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
-	var inProgress bool
-	var ticker *time.Ticker
-	var tickC <-chan time.Time // nil when idle, enables/disables the select case
-
-	stopTicker := func() {
-		if ticker != nil {
-			ticker.Stop()
-			ticker = nil
-		}
-		tickC = nil
-		inProgress = false
-	}
-
-	startTicker := func() {
-		ticker = time.NewTicker(s.interval)
-		tickC = ticker.C
-		inProgress = true
-		s.logger.DebugContext(ctx, "warning decay started")
-	}
-
-	// get the rate class for sending IMs, which gets limited when the user gets warned
-	classID, ok := s.snacRateLimits.RateClassLookup(wire.ICBM, wire.ICBMChannelMsgToHost)
-	if !ok {
-		panic("failed to retrieve rate class for ICBMChannelMsgToHost")
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			stopTicker()
-			return
-
-		case <-sess.WarningCh():
-			if inProgress {
-				s.logger.DebugContext(ctx, "warning decay already in progress")
-				continue
-			}
-			startTicker()
-
-		case <-tickC:
-			sess.IncrementWarning(warningDecayPct, classID)
-
-			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
-				s.logger.ErrorContext(ctx, "BroadcastBuddyArrived failed", "err", err)
-			} else {
-				s.logger.DebugContext(ctx, "warning lowered", "remaining", sess.Warning())
-			}
-
-			if sess.Warning() <= 0 {
-				s.logger.DebugContext(ctx, "warning decay complete")
-				stopTicker()
-			}
-		}
-	}
-}
-
-// convoTracker keeps track of messages initiated from a sender to a recipient.
-// A user (the warner) can only warn another user (the warnee) only if the
-// warner has received a message from the warnee. The warner may only warn 1
-// time per message received from warnee. The warner may only warn the warnee
-// up to 3 times per warn window.
-type convoTracker struct {
-	convos *cache.Cache
-	warns  *cache.Cache
-	window time.Duration
-}
-
-func newConvoTracker() *convoTracker {
-	window := 1 * time.Hour
-	return &convoTracker{
-		convos: cache.New(window, window),
-		warns:  cache.New(window, window),
-		window: window,
-	}
-}
-
-// trackConvo records a conversation from sender to recipient at the given time.
-func (w *convoTracker) trackConvo(now time.Time, sender, recip state.IdentScreenName) {
-	k := w.key(sender, recip)
-
-	buf, found := w.convos.Get(k)
-	if !found {
-		buf = &ringBuffer{}
-		w.convos.Set(k, buf, time.Hour)
-	}
-
-	buf.(*ringBuffer).set(now)
-}
-
-// trackWarn attempts to record a warning from warner to warnee.
-// It returns true if the warning is allowed (warnee has sent more messages
-// than warnings in the current window), or false if the warning limit has been
-// reached or no conversation exists in the current window.
-func (w *convoTracker) trackWarn(now time.Time, warner, warnee state.IdentScreenName) bool {
-	key := w.key(warnee, warner)
-
-	convos, found := w.convos.Get(key)
-	if !found {
-		// no convos tracked, can't warn
-		return false
-	}
-
-	windowStart := now.Add(-w.window)
-
-	// get convo count during window
-	var convoCt int
-	for _, v := range convos.(*ringBuffer).vals {
-		if v.After(windowStart) {
-			convoCt++
-		}
-	}
-
-	warns, found := w.warns.Get(key)
-	if !found {
-		warns = &ringBuffer{}
-		w.warns.Set(key, warns, time.Hour)
-	}
-
-	// get warn count during window
-	var warnCount int
-	for _, v := range warns.(*ringBuffer).vals {
-		if v.After(windowStart) {
-			warnCount++
-		}
-	}
-
-	if convoCt <= warnCount {
-		return false
-	}
-
-	warns.(*ringBuffer).set(now)
-
-	return true
-}
-
-func (w *convoTracker) key(sender state.IdentScreenName, recip state.IdentScreenName) string {
-	return sender.String() + recip.String()
-}
-
-// ringBuffer is a fixed-size circular buffer with 3 slots for storing time values.
-type ringBuffer struct {
-	cur  int          // Current cursor position (0, 1, or 2)
-	vals [3]time.Time // Fixed-size array to store time values
-}
-
-// val returns the time at the current cursor position.
-func (r *ringBuffer) val() time.Time {
-	return r.vals[r.cur]
-}
-
-// set stores the given time at the current cursor position and advances the cursor.
-func (r *ringBuffer) set(v time.Time) {
-	r.vals[r.cur] = v
-	r.cur = (r.cur + 1) % 3
 }

@@ -1,7 +1,6 @@
 package state
 
 import (
-	"context"
 	"net/netip"
 	"sync"
 	"time"
@@ -50,33 +49,31 @@ const (
 // Session represents a user's current session. Unless stated otherwise, all
 // methods may be safely accessed by multiple goroutines.
 type Session struct {
-	awayMessage           string
-	caps                  [][16]byte
-	chatRoomCookie        string
-	clientID              string
-	closed                bool
-	displayScreenName     DisplayScreenName
-	foodGroupVersions     [wire.MDir + 1]uint16
-	identScreenName       IdentScreenName
-	idle                  bool
-	idleTime              time.Time
-	lastObservedStates    [5]RateClassState
-	msgCh                 chan wire.SNACMessage
-	multiConnFlag         wire.MultiConnFlag
-	mutex                 sync.RWMutex
-	nowFn                 func() time.Time
-	rateByClassID         [5]RateClassState
-	rateByClassIDOriginal [5]RateClassState
-	remoteAddr            *netip.AddrPort
-	signonComplete        bool
-	signonTime            time.Time
-	stopCh                chan struct{}
-	typingEventsEnabled   bool
-	uin                   uint32
-	userInfoBitmask       uint16
-	userStatusBitmask     uint32
-	warning               uint16
-	warningCh             chan struct{}
+	awayMessage         string
+	caps                [][16]byte
+	chatRoomCookie      string
+	closed              bool
+	displayScreenName   DisplayScreenName
+	identScreenName     IdentScreenName
+	idle                bool
+	idleTime            time.Time
+	msgCh               chan wire.SNACMessage
+	mutex               sync.RWMutex
+	nowFn               func() time.Time
+	signonComplete      bool
+	signonTime          time.Time
+	stopCh              chan struct{}
+	uin                 uint32
+	warning             uint16
+	userInfoBitmask     uint16
+	userStatusBitmask   uint32
+	clientID            string
+	remoteAddr          *netip.AddrPort
+	lastObservedStates  [5]RateClassState
+	rateByClassID       [5]RateClassState
+	foodGroupVersions   [wire.MDir + 1]uint16
+	typingEventsEnabled bool
+	multiConnFlag       wire.MultiConnFlag
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
@@ -119,7 +116,6 @@ func NewSession() *Session {
 			vals[wire.MDir] = 1
 			return vals
 		}(),
-		warningCh: make(chan struct{}),
 	}
 }
 
@@ -145,7 +141,6 @@ func (s *Session) SetRateClasses(now time.Time, classes wire.RateLimitClasses) {
 	}
 
 	s.rateByClassID = newStates
-	s.rateByClassIDOriginal = newStates
 }
 
 // SetRemoteAddr sets the user's remote IP address
@@ -192,77 +187,12 @@ func (s *Session) SetUserStatusBitmask(bitmask uint32) {
 	s.userStatusBitmask = bitmask
 }
 
-// IncrementWarning increments the user's warning level and scales rate limits accordingly.
-// The incr parameter is the warning increment (negative to decrease), and classID specifies
-// which rate limit class to scale. The incr param is a percentage represented as an integer
-// where 30 = 3.0%, 100 = 10.0%, etc.
-func (s *Session) IncrementWarning(incr int16, classID wire.RateLimitClassID) bool {
+// IncrementWarning increments the user's warning level. To decrease, pass a
+// negative increment value.
+func (s *Session) IncrementWarning(incr uint16) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
-	// Handle warning level increment
-	newWarning := int32(s.warning) + int32(incr)
-	if newWarning > 1000 {
-		return false
-	}
-	if newWarning < 0 {
-		s.warning = 0 // clamp min at 0
-	} else {
-		s.warning = uint16(newWarning)
-	}
-
-	pct := float32(incr) / 1000.0
-
-	// create reference variables for better readability
-	rateClass := &s.rateByClassID[classID-1]
-	originalRateClass := &s.rateByClassIDOriginal[classID-1]
-
-	// clamp function to constrain values between min and max
-	clamp := func(value, min, max int32) int32 {
-		if value < min {
-			return min
-		}
-		if value > max {
-			return max
-		}
-		return value
-	}
-
-	// scale the rate limit parameters
-	newLimitLevel := rateClass.LimitLevel + int32(float32(originalRateClass.MaxLevel-originalRateClass.LimitLevel)*pct)
-	rateClass.LimitLevel = clamp(newLimitLevel, originalRateClass.LimitLevel, originalRateClass.MaxLevel)
-
-	newLimitLevel = rateClass.ClearLevel + int32(float32(originalRateClass.MaxLevel-originalRateClass.ClearLevel)*pct)
-	rateClass.ClearLevel = clamp(newLimitLevel, originalRateClass.ClearLevel, originalRateClass.MaxLevel)
-
-	newLimitLevel = rateClass.AlertLevel + int32(float32(originalRateClass.MaxLevel-originalRateClass.AlertLevel)*pct)
-	rateClass.AlertLevel = clamp(newLimitLevel, originalRateClass.AlertLevel, originalRateClass.MaxLevel)
-
-	return true
-}
-
-// Warning returns the user's current warning level as a percentage.
-// The warning level is stored as an integer representation of a percentage
-// where 30 = 3.0%, 100 = 10.0%, 1000 = 100.0%, etc.
-// This is how the OSCAR protocol represents warning percentages.
-func (s *Session) Warning() uint16 {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	return s.warning
-}
-
-// NotifyWarning sends a warning notification signal to any listeners.
-func (s *Session) NotifyWarning(ctx context.Context) {
-	select {
-	case s.warningCh <- struct{}{}:
-	case <-ctx.Done():
-	}
-}
-
-// WarningCh returns the warning notification channel.
-// Listeners can receive from this channel to be notified when warnings occur.
-func (s *Session) WarningCh() chan struct{} {
-	return s.warningCh
+	s.warning += incr
 }
 
 // Invisible returns true if the user is idle.
@@ -407,7 +337,7 @@ func (s *Session) TLVUserInfo() wire.TLVUserInfo {
 	defer s.mutex.RUnlock()
 	return wire.TLVUserInfo{
 		ScreenName:   string(s.displayScreenName),
-		WarningLevel: uint16(s.warning),
+		WarningLevel: s.warning,
 		TLVBlock: wire.TLVBlock{
 			TLVList: s.userInfo(),
 		},
@@ -464,6 +394,14 @@ func (s *Session) Caps() [][16]byte {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.caps
+}
+
+func (s *Session) Warning() uint16 {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	var w uint16
+	w = s.warning
+	return w
 }
 
 // ReceiveMessage returns a channel of messages relayed via this session. It

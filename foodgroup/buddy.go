@@ -104,10 +104,6 @@ func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Se
 	return s.buddyBroadcaster.BroadcastBuddyDeparted(ctx, sess)
 }
 
-func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error {
-	return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess)
-}
-
 func newBuddyNotifier(
 	buddyIconManager BuddyIconManager,
 	relationshipFetcher RelationshipFetcher,

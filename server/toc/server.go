@@ -122,14 +122,7 @@ func (l *IPRateLimiter) Allow(ip string) (allowed bool) {
 	return limiter.(*rate.Limiter).Allow()
 }
 
-func NewServer(
-	listenerCfg []string,
-	logger *slog.Logger,
-	BOSProxy OSCARProxy,
-	ipRateLimiter *IPRateLimiter,
-	lowerWarnLevel func(ctx context.Context, sess *state.Session),
-) *Server {
-
+func NewServer(listenerCfg []string, logger *slog.Logger, BOSProxy OSCARProxy, ipRateLimiter *IPRateLimiter) *Server {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	s := &Server{
@@ -138,7 +131,6 @@ func NewServer(
 		listenerCfg:        listenerCfg,
 		logger:             logger,
 		loginIPRateLimiter: ipRateLimiter,
-		lowerWarnLevel:     lowerWarnLevel,
 		servers:            make([]*http.Server, 0, len(listenerCfg)),
 		shutdownCancel:     cancel,
 		shutdownCtx:        ctx,
@@ -163,7 +155,6 @@ type Server struct {
 	bosProxy           OSCARProxy
 	logger             *slog.Logger
 	loginIPRateLimiter *IPRateLimiter
-	lowerWarnLevel     func(ctx context.Context, sess *state.Session)
 
 	listenerCfg []string
 	listeners   []net.Listener
@@ -419,12 +410,6 @@ func (s *Server) handleTOCRequest(
 		err := s.sendToClient(ctx, msgCh, clientFlap)
 		closeConn() // unblock runClientCommands
 		return errors.Join(err, errServerWrite)
-	})
-
-	// process warning limits
-	g.Go(func() error {
-		s.lowerWarnLevel(ctx, sessBOS)
-		return nil
 	})
 
 	return g.Wait()
