@@ -51,6 +51,12 @@ type ChatRoomRetriever interface {
 	AllChatRooms(ctx context.Context, exchange uint16) ([]state.ChatRoom, error)
 }
 
+// ChatRoomDeleter defines a method for deleting chat rooms.
+type ChatRoomDeleter interface {
+	// DeleteChatRooms deletes chat rooms by their names under a specific exchange.
+	DeleteChatRooms(ctx context.Context, exchange uint16, names []string) error
+}
+
 // ChatSessionRetriever defines a method for retrieving all sessions
 // associated with a specific chat room.
 type ChatSessionRetriever interface {
@@ -182,6 +188,10 @@ type sessionHandle struct {
 
 type chatRoomCreate struct {
 	Name string `json:"name"`
+}
+
+type chatRoomDelete struct {
+	Names []string `json:"names"`
 }
 
 type chatRoom struct {
