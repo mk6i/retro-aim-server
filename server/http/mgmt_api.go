@@ -220,11 +220,13 @@ func getSessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever 
 	}
 
 	ou := onlineUsers{
-		Count:    len(allUsers),
-		Sessions: make([]sessionHandle, len(allUsers)),
+		Sessions: make([]sessionHandle, 0, len(allUsers)),
 	}
 
-	for i, s := range allUsers {
+	for _, s := range allUsers {
+		if !s.SignonComplete() {
+			continue
+		}
 		// report 0 if the user is not idle
 		idleSeconds := funcTimeSince(s.IdleTime()).Seconds()
 		if !s.Idle() {
@@ -232,7 +234,7 @@ func getSessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever 
 		}
 		onlineSeconds := funcTimeSince(s.SignonTime()).Seconds()
 
-		ou.Sessions[i] = sessionHandle{
+		handle := sessionHandle{
 			ID:            s.IdentScreenName().String(),
 			ScreenName:    s.DisplayScreenName().String(),
 			OnlineSeconds: onlineSeconds,
@@ -240,13 +242,17 @@ func getSessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever 
 			IdleSeconds:   idleSeconds,
 			IsICQ:         s.UIN() > 0,
 		}
+
 		ra := s.RemoteAddr()
 		if ra != nil {
-			ou.Sessions[i].RemoteAddr = ra.Addr().String()
-			ou.Sessions[i].RemotePort = ra.Port()
+			handle.RemoteAddr = ra.Addr().String()
+			handle.RemotePort = ra.Port()
 		}
 
+		ou.Sessions = append(ou.Sessions, handle)
 	}
+
+	ou.Count = len(ou.Sessions)
 
 	if err := json.NewEncoder(w).Encode(ou); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

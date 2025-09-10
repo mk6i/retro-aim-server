@@ -23,11 +23,14 @@ import (
 )
 
 func TestSessionHandler_GET(t *testing.T) {
-	fnNewSess := func(screenName string, uin uint32) *state.Session {
+	fnNewSess := func(screenName string, uin uint32, signonComplete bool) *state.Session {
 		sess := state.NewSession()
 		sess.SetIdentScreenName(state.NewIdentScreenName(screenName))
 		sess.SetDisplayScreenName(state.DisplayScreenName(screenName))
 		sess.SetUIN(uin)
+		if signonComplete {
+			sess.SetSignonComplete()
+		}
 		ip, _ := netip.ParseAddrPort("1.2.3.4:1234")
 		sess.SetRemoteAddr(&ip)
 		return sess
@@ -63,9 +66,10 @@ func TestSessionHandler_GET(t *testing.T) {
 					sessionRetrieverAllSessionsParams: sessionRetrieverAllSessionsParams{
 						{
 							result: []*state.Session{
-								fnNewSess("userA", 0),
-								fnNewSess("userB", 0),
-								fnNewSess("100003", 100003),
+								fnNewSess("userA", 0, true),
+								fnNewSess("userB", 0, true),
+								fnNewSess("100003", 100003, true),
+								fnNewSess("userC", 0, false),
 							},
 						},
 					},
@@ -100,11 +104,14 @@ func TestSessionHandler_GET(t *testing.T) {
 }
 
 func TestSessionHandlerScreenname_GET(t *testing.T) {
-	fnNewSess := func(screenName string, uin uint32) *state.Session {
+	fnNewSess := func(screenName string, uin uint32, signonComplete bool) *state.Session {
 		sess := state.NewSession()
 		sess.SetIdentScreenName(state.NewIdentScreenName(screenName))
 		sess.SetDisplayScreenName(state.DisplayScreenName(screenName))
 		sess.SetUIN(uin)
+		if signonComplete {
+			sess.SetSignonComplete()
+		}
 		ip, _ := netip.ParseAddrPort("1.2.3.4:1234")
 		sess.SetRemoteAddr(&ip)
 		return sess
@@ -146,7 +153,7 @@ func TestSessionHandlerScreenname_GET(t *testing.T) {
 					retrieveSessionByNameParams: retrieveSessionByNameParams{
 						{
 							screenName: state.NewIdentScreenName("userA"),
-							result:     fnNewSess("userA", 0),
+							result:     fnNewSess("userA", 0, true),
 						},
 					},
 				},
