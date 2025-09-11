@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -351,7 +352,8 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		panic("failed to retrieve rate class for ICBMChannelMsgToHost")
 	}
 
-	if ok := recipSess.IncrementWarning(int16(increase), classID); !ok {
+	ok, newLevel := recipSess.IncrementWarning(int16(increase), classID)
+	if !ok {
 		return wire.SNACMessage{
 			Frame: wire.SNACFrame{
 				FoodGroup: wire.ICBM,
@@ -363,13 +365,9 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 			},
 		}, nil
 	}
-	recipSess.NotifyWarning(ctx)
-	if err := s.userManager.SetWarnLevel(ctx, recipSess.IdentScreenName(), s.timeNow(), recipSess.Warning()); err != nil {
-		s.logger.ErrorContext(ctx, "failed to set warn level", "err", err)
-	}
 
 	notif := wire.SNAC_0x01_0x10_OServiceEvilNotification{
-		NewEvil: recipSess.Warning(),
+		NewEvil: newLevel,
 	}
 
 	// append info about user who sent the warning
@@ -392,11 +390,6 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		Body: notif,
 	})
 
-	// inform the warned user's buddies that their warning level has increased
-	if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, recipSess); err != nil {
-		return wire.SNACMessage{}, err
-	}
-
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.ICBM,
@@ -405,7 +398,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		},
 		Body: wire.SNAC_0x04_0x09_ICBMEvilReply{
 			EvilDeltaApplied: increase,
-			UpdatedEvilValue: recipSess.Warning(),
+			UpdatedEvilValue: newLevel,
 		},
 	}, nil
 }
@@ -510,17 +503,47 @@ func (s ICBMService) UpdateWarnLevel(ctx context.Context, sess *state.Session) {
 		panic("failed to retrieve rate class for ICBMChannelMsgToHost")
 	}
 
+	warnCh := make(chan struct{}, 1)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer close(warnCh)
+		for {
+			select {
+			case <-sess.Closed():
+				return
+			case <-ctx.Done():
+				return
+			case warning := <-sess.WarningCh():
+				if warning > 0 {
+					warnCh <- struct{}{}
+				}
+				if err := s.userManager.SetWarnLevel(ctx, sess.IdentScreenName(), s.timeNow(), warning); err != nil {
+					s.logger.ErrorContext(ctx, "failed to set warn level", "err", err)
+				}
+				if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+					s.logger.ErrorContext(ctx, "BroadcastBuddyArrived failed", "err", err)
+				} else {
+					s.logger.DebugContext(ctx, "warning lowered", "remaining", warning)
+				}
+			}
+		}
+	}()
+
+	defer wg.Wait()
+
 	for {
 		select {
 		case <-sess.Closed():
 			stopTicker()
 			return
-
 		case <-ctx.Done():
 			stopTicker()
 			return
 
-		case <-sess.WarningCh():
+		case <-warnCh:
 			if inProgress {
 				s.logger.DebugContext(ctx, "warning decay already in progress")
 				continue
@@ -533,20 +556,14 @@ func (s ICBMService) UpdateWarnLevel(ctx context.Context, sess *state.Session) {
 				doReset = false
 			}
 
-			sess.IncrementWarning(warningDecayPct, classID)
-
-			err := s.userManager.SetWarnLevel(ctx, sess.IdentScreenName(), s.timeNow(), sess.Warning())
-			if err != nil {
-				s.logger.ErrorContext(ctx, "failed to set warn level", "err", err)
+			ok, warning := sess.IncrementWarning(warningDecayPct, classID)
+			if !ok {
+				s.logger.ErrorContext(ctx, "warning increment out of rage", "level", warning)
+				stopTicker()
+				return
 			}
 
-			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
-				s.logger.ErrorContext(ctx, "BroadcastBuddyArrived failed", "err", err)
-			} else {
-				s.logger.DebugContext(ctx, "warning lowered", "remaining", sess.Warning())
-			}
-
-			if sess.Warning() == 0 {
+			if warning == 0 {
 				s.logger.DebugContext(ctx, "warning decay complete")
 				stopTicker()
 			}

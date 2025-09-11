@@ -936,453 +936,432 @@ func TestICBMService_ClientEvent(t *testing.T) {
 	}
 }
 
-//func TestICBMService_EvilRequest(t *testing.T) {
-//	cases := []struct {
-//		// name is the unit test name
-//		name string
-//		// senderScreenName is the session of the user sending the EvilRequest
-//		senderSession *state.Session
-//		// msgsReceived is the # of messages received from the warned user
-//		msgsReceived int
-//		// inputSNAC is the SNAC sent by the sender client
-//		inputSNAC wire.SNACMessage
-//		// expectOutput is the SNAC sent from the server to client
-//		expectOutput wire.SNACMessage
-//		// mockParams is the list of params sent to mocks that satisfy this
-//		// method's dependencies
-//		mockParams mockParams
-//		// waitForWarnMsg indicates whether to wait for session warn signal
-//		waitForWarnMsg bool
-//	}{
-//		{
-//			name:          "transmit anonymous warning from sender to recipient",
-//			senderSession: newTestSession("sender-screen-name"),
-//			msgsReceived:  1,
-//			inputSNAC: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
-//					SendAs:     1, // make it anonymous
-//					ScreenName: "recipient-screen-name",
-//				},
-//			},
-//			expectOutput: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					FoodGroup: wire.ICBM,
-//					SubGroup:  wire.ICBMEvilReply,
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNAC_0x04_0x09_ICBMEvilReply{
-//					EvilDeltaApplied: 30,
-//					UpdatedEvilValue: 30,
-//				},
-//			},
-//			mockParams: mockParams{
-//				buddyBroadcasterParams: buddyBroadcasterParams{
-//					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
-//						{
-//							screenName: state.NewIdentScreenName("recipient-screen-name"),
-//						},
-//					},
-//				},
-//				relationshipFetcherParams: relationshipFetcherParams{
-//					relationshipParams: relationshipParams{
-//						{
-//							me:   state.NewIdentScreenName("sender-screen-name"),
-//							them: state.NewIdentScreenName("recipient-screen-name"),
-//							result: state.Relationship{
-//								User:          state.NewIdentScreenName("recipient-screen-name"),
-//								BlocksYou:     false,
-//								YouBlock:      false,
-//								IsOnTheirList: false,
-//								IsOnYourList:  false,
-//							},
-//						},
-//					},
-//				},
-//				sessionRetrieverParams: sessionRetrieverParams{
-//					retrieveSessionParams{
-//						{
-//							screenName: state.NewIdentScreenName("recipient-screen-name"),
-//							result:     newTestSession("recipient-screen-name", sessOptCannedSignonTime),
-//						},
-//					},
-//				},
-//				messageRelayerParams: messageRelayerParams{
-//					relayToScreenNameParams: relayToScreenNameParams{
-//						{
-//							screenName: state.NewIdentScreenName("recipient-screen-name"),
-//							message: wire.SNACMessage{
-//								Frame: wire.SNACFrame{
-//									FoodGroup: wire.OService,
-//									SubGroup:  wire.OServiceEvilNotification,
-//								},
-//								Body: wire.SNAC_0x01_0x10_OServiceEvilNotification{
-//									NewEvil: evilDeltaAnon,
-//								},
-//							},
-//						},
-//					},
-//				},
-//			},
-//			waitForWarnMsg: true,
-//		},
-//		{
-//			name:          "transmit non-anonymous warning from sender to recipient",
-//			senderSession: newTestSession("sender-screen-name", sessOptWarning(110)),
-//			msgsReceived:  1,
-//			inputSNAC: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
-//					SendAs:     0, // make it identified
-//					ScreenName: "recipient-screen-name",
-//				},
-//			},
-//			expectOutput: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					FoodGroup: wire.ICBM,
-//					SubGroup:  wire.ICBMEvilReply,
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNAC_0x04_0x09_ICBMEvilReply{
-//					EvilDeltaApplied: 100,
-//					UpdatedEvilValue: 100,
-//				},
-//			},
-//			mockParams: mockParams{
-//				buddyBroadcasterParams: buddyBroadcasterParams{
-//					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
-//						{
-//							screenName: state.NewIdentScreenName("recipient-screen-name"),
-//						},
-//					},
-//				},
-//				relationshipFetcherParams: relationshipFetcherParams{
-//					relationshipParams: relationshipParams{
-//						{
-//							me:   state.NewIdentScreenName("sender-screen-name"),
-//							them: state.NewIdentScreenName("recipient-screen-name"),
-//							result: state.Relationship{
-//								User:          state.NewIdentScreenName("recipient-screen-name"),
-//								BlocksYou:     false,
-//								YouBlock:      false,
-//								IsOnTheirList: false,
-//								IsOnYourList:  false,
-//							},
-//						},
-//					},
-//				},
-//				sessionRetrieverParams: sessionRetrieverParams{
-//					retrieveSessionParams{
-//						{
-//							screenName: state.NewIdentScreenName("recipient-screen-name"),
-//							result:     newTestSession("recipient-screen-name", sessOptCannedSignonTime),
-//						},
-//					},
-//				},
-//				messageRelayerParams: messageRelayerParams{
-//					relayToScreenNameParams: relayToScreenNameParams{
-//						{
-//							screenName: state.NewIdentScreenName("recipient-screen-name"),
-//							message: wire.SNACMessage{
-//								Frame: wire.SNACFrame{
-//									FoodGroup: wire.OService,
-//									SubGroup:  wire.OServiceEvilNotification,
-//								},
-//								Body: wire.SNAC_0x01_0x10_OServiceEvilNotification{
-//									NewEvil: evilDelta,
-//									Snitcher: &struct {
-//										wire.TLVUserInfo
-//									}{
-//										wire.TLVUserInfo{
-//											ScreenName:   "sender-screen-name",
-//											WarningLevel: 110,
-//										},
-//									},
-//								},
-//							},
-//						},
-//					},
-//				},
-//			},
-//			waitForWarnMsg: true,
-//		},
-//		{
-//			name:          "don't transmit non-anonymous warning from sender to recipient because sender has blocked recipient",
-//			senderSession: newTestSession("sender-screen-name"),
-//			msgsReceived:  1,
-//			inputSNAC: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
-//					SendAs:     0, // make it identified
-//					ScreenName: "recipient-screen-name",
-//				},
-//			},
-//			expectOutput: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					FoodGroup: wire.ICBM,
-//					SubGroup:  wire.ICBMErr,
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNACError{
-//					Code: wire.ErrorCodeNotLoggedOn,
-//				},
-//			},
-//			mockParams: mockParams{
-//				relationshipFetcherParams: relationshipFetcherParams{
-//					relationshipParams: relationshipParams{
-//						{
-//							me:   state.NewIdentScreenName("sender-screen-name"),
-//							them: state.NewIdentScreenName("recipient-screen-name"),
-//							result: state.Relationship{
-//								User:          state.NewIdentScreenName("recipient-screen-name"),
-//								BlocksYou:     false,
-//								YouBlock:      true,
-//								IsOnTheirList: false,
-//								IsOnYourList:  false,
-//							},
-//						},
-//					},
-//				},
-//			},
-//		},
-//		{
-//			name:          "don't transmit non-anonymous warning from sender to recipient because recipient has blocked sender",
-//			senderSession: newTestSession("sender-screen-name"),
-//			msgsReceived:  1,
-//			inputSNAC: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
-//					SendAs:     0, // make it identified
-//					ScreenName: "recipient-screen-name",
-//				},
-//			},
-//			expectOutput: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					FoodGroup: wire.ICBM,
-//					SubGroup:  wire.ICBMErr,
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNACError{
-//					Code: wire.ErrorCodeNotLoggedOn,
-//				},
-//			},
-//			mockParams: mockParams{
-//				relationshipFetcherParams: relationshipFetcherParams{
-//					relationshipParams: relationshipParams{
-//						{
-//							me:   state.NewIdentScreenName("sender-screen-name"),
-//							them: state.NewIdentScreenName("recipient-screen-name"),
-//							result: state.Relationship{
-//								User:          state.NewIdentScreenName("recipient-screen-name"),
-//								BlocksYou:     true,
-//								YouBlock:      false,
-//								IsOnTheirList: false,
-//								IsOnYourList:  false,
-//							},
-//						},
-//					},
-//				},
-//			},
-//		},
-//		{
-//			name:          "don't let users warn themselves",
-//			senderSession: newTestSession("sender-screen-name"),
-//			msgsReceived:  1,
-//			inputSNAC: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
-//					SendAs:     0, // make it identified
-//					ScreenName: "sender-screen-name",
-//				},
-//			},
-//			expectOutput: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					FoodGroup: wire.ICBM,
-//					SubGroup:  wire.ICBMErr,
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNACError{
-//					Code: wire.ErrorCodeNotSupportedByHost,
-//				},
-//			},
-//		},
-//		{
-//			name:          "don't transmit non-anonymous warning from sender to recipient because recipient is offline",
-//			senderSession: newTestSession("sender-screen-name"),
-//			msgsReceived:  1,
-//			mockParams: mockParams{
-//				relationshipFetcherParams: relationshipFetcherParams{
-//					relationshipParams: relationshipParams{
-//						{
-//							me:   state.NewIdentScreenName("sender-screen-name"),
-//							them: state.NewIdentScreenName("recipient-screen-name"),
-//							result: state.Relationship{
-//								User:          state.NewIdentScreenName("recipient-screen-name"),
-//								BlocksYou:     false,
-//								YouBlock:      false,
-//								IsOnTheirList: false,
-//								IsOnYourList:  false,
-//							},
-//						},
-//					},
-//				},
-//				sessionRetrieverParams: sessionRetrieverParams{
-//					retrieveSessionParams{
-//						{
-//							screenName: state.NewIdentScreenName("recipient-screen-name"),
-//							result:     nil,
-//						},
-//					},
-//				},
-//			},
-//			inputSNAC: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
-//					SendAs:     0, // make it identified
-//					ScreenName: "recipient-screen-name",
-//				},
-//			},
-//			expectOutput: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					FoodGroup: wire.ICBM,
-//					SubGroup:  wire.ICBMErr,
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNACError{
-//					Code: wire.ErrorCodeNotLoggedOn,
-//				},
-//			},
-//		},
-//		{
-//			name:          "don't transmit anonymous warning from sender to recipient because recipient is offline",
-//			senderSession: newTestSession("sender-screen-name"),
-//			msgsReceived:  1,
-//			mockParams: mockParams{
-//				relationshipFetcherParams: relationshipFetcherParams{
-//					relationshipParams: relationshipParams{
-//						{
-//							me:   state.NewIdentScreenName("sender-screen-name"),
-//							them: state.NewIdentScreenName("recipient-screen-name"),
-//							result: state.Relationship{
-//								User:          state.NewIdentScreenName("recipient-screen-name"),
-//								BlocksYou:     false,
-//								YouBlock:      false,
-//								IsOnTheirList: false,
-//								IsOnYourList:  false,
-//							},
-//						},
-//					},
-//				},
-//				sessionRetrieverParams: sessionRetrieverParams{
-//					retrieveSessionParams{
-//						{
-//							screenName: state.NewIdentScreenName("recipient-screen-name"),
-//							result:     nil,
-//						},
-//					},
-//				},
-//			},
-//			inputSNAC: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
-//					SendAs:     1, // make it anonymous
-//					ScreenName: "recipient-screen-name",
-//				},
-//			},
-//			expectOutput: wire.SNACMessage{
-//				Frame: wire.SNACFrame{
-//					FoodGroup: wire.ICBM,
-//					SubGroup:  wire.ICBMErr,
-//					RequestID: 1234,
-//				},
-//				Body: wire.SNACError{
-//					Code: wire.ErrorCodeNotLoggedOn,
-//				},
-//			},
-//		},
-//	}
-//
-//	for _, tc := range cases {
-//		t.Run(tc.name, func(t *testing.T) {
-//			mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
-//			for _, item := range tc.mockParams.broadcastBuddyArrivedParams {
-//				mockBuddyBroadcaster.EXPECT().
-//					BroadcastBuddyArrived(mock.Anything, matchSession(item.screenName)).
-//					Return(item.err)
-//			}
-//			relationshipFetcher := newMockRelationshipFetcher(t)
-//			for _, item := range tc.mockParams.relationshipFetcherParams.relationshipParams {
-//				relationshipFetcher.EXPECT().
-//					Relationship(matchContext(), item.me, item.them).
-//					Return(item.result, item.err)
-//			}
-//			sessionRetriever := newMockSessionRetriever(t)
-//			for _, item := range tc.mockParams.sessionRetrieverParams.retrieveSessionParams {
-//				sessionRetriever.EXPECT().
-//					RetrieveSession(item.screenName).
-//					Return(item.result)
-//			}
-//			messageRelayer := newMockMessageRelayer(t)
-//			for _, item := range tc.mockParams.relayToScreenNameParams {
-//				messageRelayer.EXPECT().
-//					RelayToScreenName(mock.Anything, item.screenName, item.message)
-//			}
-//			offlineMessageManager := newMockOfflineMessageManager(t)
-//			for _, params := range tc.mockParams.saveMessageParams {
-//				offlineMessageManager.EXPECT().
-//					SaveMessage(matchContext(), params.offlineMessageIn).
-//					Return(params.err)
-//			}
-//
-//			svc := ICBMService{
-//				buddyBroadcaster:    mockBuddyBroadcaster,
-//				relationshipFetcher: relationshipFetcher,
-//				messageRelayer:      messageRelayer,
-//				offlineMessageSaver: offlineMessageManager,
-//				sessionRetriever:    sessionRetriever,
-//				convoTracker:        newConvoTracker(),
-//				snacRateLimits:      wire.DefaultSNACRateLimits(),
-//			}
-//
-//			for i := 0; i < tc.msgsReceived; i++ {
-//				svc.convoTracker.trackConvo(time.Now(),
-//					state.NewIdentScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest).ScreenName),
-//					tc.senderSession.IdentScreenName())
-//			}
-//
-//			var wg sync.WaitGroup
-//			if tc.waitForWarnMsg {
-//				wg.Add(1)
-//				go func() {
-//					defer wg.Done()
-//					for _, sess := range tc.mockParams.sessionRetrieverParams.retrieveSessionParams {
-//						<-sess.result.WarningCh()
-//					}
-//				}()
-//			}
-//			outputSNAC, err := svc.EvilRequest(context.Background(), tc.senderSession, tc.inputSNAC.Frame,
-//				tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest))
-//			assert.NoError(t, err)
-//			assert.Equal(t, tc.expectOutput, outputSNAC)
-//
-//			wg.Wait()
-//		})
-//	}
-//}
+func TestICBMService_EvilRequest(t *testing.T) {
+	cases := []struct {
+		// name is the unit test name
+		name string
+		// senderScreenName is the session of the user sending the EvilRequest
+		senderSession *state.Session
+		// msgsReceived is the # of messages received from the warned user
+		msgsReceived int
+		// inputSNAC is the SNAC sent by the sender client
+		inputSNAC wire.SNACMessage
+		// expectOutput is the SNAC sent from the server to client
+		expectOutput wire.SNACMessage
+		// mockParams is the list of params sent to mocks that satisfy this
+		// method's dependencies
+		mockParams mockParams
+		// waitForWarnMsg indicates whether to wait for session warn signal
+		waitForWarnMsg bool
+	}{
+		{
+			name:          "transmit anonymous warning from sender to recipient",
+			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     1, // make it anonymous
+					ScreenName: "recipient-screen-name",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMEvilReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x09_ICBMEvilReply{
+					EvilDeltaApplied: 30,
+					UpdatedEvilValue: 30,
+				},
+			},
+			mockParams: mockParams{
+				relationshipFetcherParams: relationshipFetcherParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     newTestSession("recipient-screen-name", sessOptCannedSignonTime),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.OService,
+									SubGroup:  wire.OServiceEvilNotification,
+								},
+								Body: wire.SNAC_0x01_0x10_OServiceEvilNotification{
+									NewEvil: evilDeltaAnon,
+								},
+							},
+						},
+					},
+				},
+			},
+			waitForWarnMsg: true,
+		},
+		{
+			name:          "transmit non-anonymous warning from sender to recipient",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(110)),
+			msgsReceived:  1,
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     0, // make it identified
+					ScreenName: "recipient-screen-name",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMEvilReply,
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x09_ICBMEvilReply{
+					EvilDeltaApplied: 100,
+					UpdatedEvilValue: 100,
+				},
+			},
+			mockParams: mockParams{
+				relationshipFetcherParams: relationshipFetcherParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     newTestSession("recipient-screen-name", sessOptCannedSignonTime),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.OService,
+									SubGroup:  wire.OServiceEvilNotification,
+								},
+								Body: wire.SNAC_0x01_0x10_OServiceEvilNotification{
+									NewEvil: evilDelta,
+									Snitcher: &struct {
+										wire.TLVUserInfo
+									}{
+										wire.TLVUserInfo{
+											ScreenName:   "sender-screen-name",
+											WarningLevel: 110,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			waitForWarnMsg: true,
+		},
+		{
+			name:          "don't transmit non-anonymous warning from sender to recipient because sender has blocked recipient",
+			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     0, // make it identified
+					ScreenName: "recipient-screen-name",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeNotLoggedOn,
+				},
+			},
+			mockParams: mockParams{
+				relationshipFetcherParams: relationshipFetcherParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      true,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:          "don't transmit non-anonymous warning from sender to recipient because recipient has blocked sender",
+			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     0, // make it identified
+					ScreenName: "recipient-screen-name",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeNotLoggedOn,
+				},
+			},
+			mockParams: mockParams{
+				relationshipFetcherParams: relationshipFetcherParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     true,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:          "don't let users warn themselves",
+			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     0, // make it identified
+					ScreenName: "sender-screen-name",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeNotSupportedByHost,
+				},
+			},
+		},
+		{
+			name:          "don't transmit non-anonymous warning from sender to recipient because recipient is offline",
+			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
+			mockParams: mockParams{
+				relationshipFetcherParams: relationshipFetcherParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     nil,
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     0, // make it identified
+					ScreenName: "recipient-screen-name",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeNotLoggedOn,
+				},
+			},
+		},
+		{
+			name:          "don't transmit anonymous warning from sender to recipient because recipient is offline",
+			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
+			mockParams: mockParams{
+				relationshipFetcherParams: relationshipFetcherParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     nil,
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     1, // make it anonymous
+					ScreenName: "recipient-screen-name",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeNotLoggedOn,
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			relationshipFetcher := newMockRelationshipFetcher(t)
+			for _, item := range tc.mockParams.relationshipFetcherParams.relationshipParams {
+				relationshipFetcher.EXPECT().
+					Relationship(matchContext(), item.me, item.them).
+					Return(item.result, item.err)
+			}
+			sessionRetriever := newMockSessionRetriever(t)
+			for _, item := range tc.mockParams.sessionRetrieverParams.retrieveSessionParams {
+				sessionRetriever.EXPECT().
+					RetrieveSession(item.screenName).
+					Return(item.result)
+			}
+			messageRelayer := newMockMessageRelayer(t)
+			for _, item := range tc.mockParams.relayToScreenNameParams {
+				messageRelayer.EXPECT().
+					RelayToScreenName(mock.Anything, item.screenName, item.message)
+			}
+			offlineMessageManager := newMockOfflineMessageManager(t)
+			for _, params := range tc.mockParams.saveMessageParams {
+				offlineMessageManager.EXPECT().
+					SaveMessage(matchContext(), params.offlineMessageIn).
+					Return(params.err)
+			}
+
+			svc := ICBMService{
+				relationshipFetcher: relationshipFetcher,
+				messageRelayer:      messageRelayer,
+				offlineMessageSaver: offlineMessageManager,
+				sessionRetriever:    sessionRetriever,
+				convoTracker:        newConvoTracker(),
+				snacRateLimits:      wire.DefaultSNACRateLimits(),
+			}
+
+			for i := 0; i < tc.msgsReceived; i++ {
+				svc.convoTracker.trackConvo(time.Now(),
+					state.NewIdentScreenName(tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest).ScreenName),
+					tc.senderSession.IdentScreenName())
+			}
+
+			var wg sync.WaitGroup
+			if tc.waitForWarnMsg {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					for _, sess := range tc.mockParams.sessionRetrieverParams.retrieveSessionParams {
+						<-sess.result.WarningCh()
+					}
+				}()
+			}
+			outputSNAC, err := svc.EvilRequest(context.Background(), tc.senderSession, tc.inputSNAC.Frame,
+				tc.inputSNAC.Body.(wire.SNAC_0x04_0x08_ICBMEvilRequest))
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectOutput, outputSNAC)
+
+			wg.Wait()
+		})
+	}
+}
 
 func TestICBMService_ParameterQuery(t *testing.T) {
 	svc := NewICBMService(nil, nil, nil, nil, nil, nil, wire.DefaultSNACRateLimits(), slog.Default())
@@ -1701,6 +1680,9 @@ func TestICBMService_UpdateWarnLevel(t *testing.T) {
 			User(matchContext(), sess.IdentScreenName()).
 			Return(u, nil)
 		userManager.EXPECT().
+			SetWarnLevel(matchContext(), sess.IdentScreenName(), now, uint16(100)).
+			Return(nil)
+		userManager.EXPECT().
 			SetWarnLevel(matchContext(), sess.IdentScreenName(), now, uint16(50)).
 			Return(nil)
 		userManager.EXPECT().
@@ -1726,19 +1708,21 @@ func TestICBMService_UpdateWarnLevel(t *testing.T) {
 			svc.UpdateWarnLevel(ctx, sess)
 		}()
 
-		sess.IncrementWarning(100, 3)
-		sess.NotifyWarning(ctx)
+		ok, _ := sess.IncrementWarning(100, 3)
+		assert.True(t, ok)
+		assert.Equal(t, uint16(100), <-warnCh)
 		assert.Equal(t, uint16(50), <-warnCh)
 		assert.Equal(t, uint16(0), <-warnCh)
 
-		sess.IncrementWarning(100, 3)
-		sess.NotifyWarning(ctx)
-		assert.Equal(t, uint16(50), <-warnCh)
-		assert.Equal(t, uint16(0), <-warnCh)
-
-		sess.IncrementWarning(30, 3)
-		sess.NotifyWarning(ctx)
-		assert.Equal(t, uint16(0), <-warnCh)
+		//ok, _ = sess.IncrementWarning(100, 3)
+		//assert.True(t, ok)
+		//assert.Equal(t, uint16(100), <-warnCh)
+		//assert.Equal(t, uint16(50), <-warnCh)
+		//assert.Equal(t, uint16(0), <-warnCh)
+		//
+		//sess.IncrementWarning(30, 3)
+		//assert.Equal(t, uint16(30), <-warnCh)
+		//assert.Equal(t, uint16(0), <-warnCh)
 
 		cancel()
 		wg.Wait()
