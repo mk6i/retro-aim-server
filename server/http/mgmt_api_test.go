@@ -1563,6 +1563,102 @@ func TestPublicChatHandler_GET(t *testing.T) {
 	}
 }
 
+func TestDeletePublicChatHandler(t *testing.T) {
+	tt := []struct {
+		name       string
+		body       string
+		want       string
+		statusCode int
+		mockParams mockParams
+	}{
+		{
+			name:       "successful deletion of single chat room",
+			body:       `{"names":["TestRoom"]}`,
+			want:       `Chat rooms deleted successfully.`,
+			statusCode: http.StatusNoContent,
+			mockParams: mockParams{
+				chatRoomDeleterParams: chatRoomDeleterParams{
+					deleteChatRoomsParams: deleteChatRoomsParams{
+						{
+							exchange: state.PublicExchange,
+							names:    []string{"TestRoom"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "successful deletion of multiple chat rooms",
+			body:       `{"names":["Room1", "Room2", "Room3"]}`,
+			want:       `Chat rooms deleted successfully.`,
+			statusCode: http.StatusNoContent,
+			mockParams: mockParams{
+				chatRoomDeleterParams: chatRoomDeleterParams{
+					deleteChatRoomsParams: deleteChatRoomsParams{
+						{
+							exchange: state.PublicExchange,
+							names:    []string{"Room1", "Room2", "Room3"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "empty names array",
+			body:       `{"names":[]}`,
+			want:       `no chat room names provided`,
+			statusCode: http.StatusBadRequest,
+		},
+		{
+			name:       "malformed JSON",
+			body:       `{"names":["Room1"`, // missing closing brackets
+			want:       `malformed input`,
+			statusCode: http.StatusBadRequest,
+		},
+		{
+			name:       "deletion error",
+			body:       `{"names":["TestRoom"]}`,
+			want:       `internal server error`,
+			statusCode: http.StatusInternalServerError,
+			mockParams: mockParams{
+				chatRoomDeleterParams: chatRoomDeleterParams{
+					deleteChatRoomsParams: deleteChatRoomsParams{
+						{
+							exchange: state.PublicExchange,
+							names:    []string{"TestRoom"},
+							err:      errors.New("database error"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodDelete, "/chat/room/public", strings.NewReader(tc.body))
+			responseRecorder := httptest.NewRecorder()
+
+			chatRoomDeleter := newMockChatRoomDeleter(t)
+			for _, params := range tc.mockParams.chatRoomDeleterParams.deleteChatRoomsParams {
+				chatRoomDeleter.EXPECT().
+					DeleteChatRooms(matchContext(), params.exchange, params.names).
+					Return(params.err)
+			}
+
+			deletePublicChatHandler(responseRecorder, request, chatRoomDeleter, slog.Default())
+
+			if responseRecorder.Code != tc.statusCode {
+				t.Errorf("want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
+			}
+
+			if strings.TrimSpace(responseRecorder.Body.String()) != tc.want {
+				t.Errorf("want '%s', got '%s'", tc.want, responseRecorder.Body)
+			}
+		})
+	}
+}
+
 func TestPrivateChatHandler_GET(t *testing.T) {
 	fnNewSess := func(screenName string) *state.Session {
 		sess := state.NewSession()

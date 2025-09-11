@@ -20,7 +20,7 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-func NewManagementAPI(bld config.Build, listener string, userManager UserManager, sessionRetriever SessionRetriever, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatSessionRetriever ChatSessionRetriever, directoryManager DirectoryManager, messageRelayer MessageRelayer, bartRetriever BuddyIconRetriever, feedbagRetriever FeedBagRetriever, accountManager AccountManager, profileRetriever ProfileRetriever, logger *slog.Logger) *Server {
+func NewManagementAPI(bld config.Build, listener string, userManager UserManager, sessionRetriever SessionRetriever, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatRoomDeleter ChatRoomDeleter, chatSessionRetriever ChatSessionRetriever, directoryManager DirectoryManager, messageRelayer MessageRelayer, bartRetriever BuddyIconRetriever, feedbagRetriever FeedBagRetriever, accountManager AccountManager, profileRetriever ProfileRetriever, logger *slog.Logger) *Server {
 	mux := http.NewServeMux()
 
 	// Handlers for '/user' route
@@ -76,6 +76,9 @@ func NewManagementAPI(bld config.Build, listener string, userManager UserManager
 	})
 	mux.HandleFunc("POST /chat/room/public", func(w http.ResponseWriter, r *http.Request) {
 		postPublicChatHandler(w, r, chatRoomCreator, logger)
+	})
+	mux.HandleFunc("DELETE /chat/room/public", func(w http.ResponseWriter, r *http.Request) {
+		deletePublicChatHandler(w, r, chatRoomDeleter, logger)
 	})
 
 	// Handlers for '/chat/room/private' route
@@ -507,6 +510,30 @@ func getPrivateChatHandler(w http.ResponseWriter, r *http.Request, chatRoomRetri
 	}
 
 	writeUnescapeChatURL(w, out)
+}
+
+// deletePublicChatHandler handles the DELETE /chat/room/public endpoint.
+func deletePublicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomDeleter ChatRoomDeleter, logger *slog.Logger) {
+	input := chatRoomDelete{}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, "malformed input", http.StatusBadRequest)
+		return
+	}
+
+	if len(input.Names) == 0 {
+		http.Error(w, "no chat room names provided", http.StatusBadRequest)
+		return
+	}
+
+	err := chatRoomDeleter.DeleteChatRooms(r.Context(), state.PublicExchange, input.Names)
+	if err != nil {
+		logger.Error("error deleting public chat rooms DELETE /chat/room/public", "err", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+	_, _ = fmt.Fprintln(w, "Chat rooms deleted successfully.")
 }
 
 // writeUnescapeChatURL writes a JSON-encoded list of chat rooms with unescaped

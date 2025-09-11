@@ -393,6 +393,31 @@ paths:
         '409':
           description: Chat room already exists.
 
+    delete:
+      summary: Delete public chat rooms
+      description: Delete one or more public chat rooms in exchange 5.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - names
+              properties:
+                names:
+                  type: array
+                  description: List of chat room names to delete.
+                  items:
+                    type: string
+      responses:
+        '204':
+          description: Chat rooms deleted successfully.
+        '400':
+          description: Bad request. Invalid input data.
+        '500':
+          description: Internal server error.
+
   /chat/room/private:
     get:
       summary: List all private AIM chat rooms
