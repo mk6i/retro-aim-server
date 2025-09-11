@@ -82,4 +82,3 @@ func newMockChatRoomDeleter(t interface {
 
 	return mock
 }
-
