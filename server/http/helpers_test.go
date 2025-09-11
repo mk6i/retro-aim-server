@@ -13,6 +13,7 @@ import (
 type mockParams struct {
 	accountManagerParams
 	bartRetrieverParams
+	chatRoomDeleterParams
 	chatRoomRetrieverParams
 	chatSessionRetrieverParams
 	directoryManagerParams
@@ -100,8 +101,22 @@ type allChatRoomsParams []struct {
 	err      error
 }
 
-// chatRoomRetrieverParams is a helper struct that contains mock parameters for
-// ChatRoomRetriever methods
+// chatRoomDeleterParams is a helper struct that contains mock parameters for
+// ChatRoomDeleter methods
+type chatRoomDeleterParams struct {
+	deleteChatRoomsParams
+}
+
+// deleteChatRoomsParams is the list of parameters passed at the mock
+// ChatRoomDeleter.DeleteChatRooms call site
+type deleteChatRoomsParams []struct {
+	exchange uint16
+	names    []string
+	err      error
+}
+
+// chatSessionRetrieverParams is a helper struct that contains mock parameters for
+// ChatSessionRetriever methods
 type chatSessionRetrieverParams struct {
 	chatSessionRetrieverAllSessionsParams
 }

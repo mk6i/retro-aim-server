@@ -455,31 +455,6 @@ paths:
                             type: string
                             description: User's AIM screen name.
 
-    delete:
-      summary: Delete private chat rooms
-      description: Delete one or more private chat rooms in exchange 4.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - names
-              properties:
-                names:
-                  type: array
-                  description: List of chat room names to delete.
-                  items:
-                    type: string
-      responses:
-        '204':
-          description: Chat rooms deleted successfully.
-        '400':
-          description: Bad request. Invalid input data.
-        '500':
-          description: Internal server error.
-
   /instant-message:
     post:
       summary: Send an instant message

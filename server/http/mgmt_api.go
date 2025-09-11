@@ -85,9 +85,6 @@ func NewManagementAPI(bld config.Build, listener string, userManager UserManager
 	mux.HandleFunc("GET /chat/room/private", func(w http.ResponseWriter, r *http.Request) {
 		getPrivateChatHandler(w, r, chatRoomRetriever, chatSessionRetriever, logger)
 	})
-	mux.HandleFunc("DELETE /chat/room/private", func(w http.ResponseWriter, r *http.Request) {
-		deletePrivateChatHandler(w, r, chatRoomDeleter, logger)
-	})
 
 	// Handlers for '/instant-message' route
 	mux.HandleFunc("POST /instant-message", func(w http.ResponseWriter, r *http.Request) {
@@ -531,30 +528,6 @@ func deletePublicChatHandler(w http.ResponseWriter, r *http.Request, chatRoomDel
 	err := chatRoomDeleter.DeleteChatRooms(r.Context(), state.PublicExchange, input.Names)
 	if err != nil {
 		logger.Error("error deleting public chat rooms DELETE /chat/room/public", "err", err.Error())
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
-	_, _ = fmt.Fprintln(w, "Chat rooms deleted successfully.")
-}
-
-// deletePrivateChatHandler handles the DELETE /chat/room/private endpoint.
-func deletePrivateChatHandler(w http.ResponseWriter, r *http.Request, chatRoomDeleter ChatRoomDeleter, logger *slog.Logger) {
-	input := chatRoomDelete{}
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "malformed input", http.StatusBadRequest)
-		return
-	}
-
-	if len(input.Names) == 0 {
-		http.Error(w, "no chat room names provided", http.StatusBadRequest)
-		return
-	}
-
-	err := chatRoomDeleter.DeleteChatRooms(r.Context(), state.PrivateExchange, input.Names)
-	if err != nil {
-		logger.Error("error deleting private chat rooms DELETE /chat/room/private", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
