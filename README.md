@@ -7,7 +7,7 @@
 
 </div>
 
-**Retro AIM Server** is an open-source instant messaging server that makes classic AIM and ICQ clients work again.
+**Retro AIM Server** is an open-source instant messaging server compatible with classic AIM and ICQ clients.
 
 | Disclaimer                                                                                                                                                                                                                           |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
