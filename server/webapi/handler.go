@@ -51,6 +51,8 @@ type Handler struct {
 	BuddyListManager *state.WebAPIBuddyListManager
 	PresenceBridge   *state.WebAPIPresenceBridge
 	MessageBridge    *state.WebAPIMessageBridge
+	// Phase 5 additions for chat rooms
+	ChatManager      *state.WebAPIChatManager
 }
 
 func (h Handler) GetHelloWorldHandler(w http.ResponseWriter, r *http.Request) {

@@ -72,21 +72,6 @@ func (e *AMFEncoder) toAMF3Compatible(data interface{}) interface{} {
 		return e.responseBodyToMapWithVersion(d, AMF3)
 	case ErrorResponse:
 		return e.errorResponseToMapWithVersion(d, AMF3)
-	case PreferenceResponse:
-		// Special handling for PreferenceResponse which embeds Response struct
-		dataValue := d.Response.Data
-		if dataValue == nil {
-			dataValue = map[string]interface{}{}
-		}
-
-		return map[string]interface{}{
-			"response": map[string]interface{}{
-				"statusCode":       d.Response.StatusCode,
-				"statusText":       d.Response.StatusText,
-				"statusDetailCode": d.Response.StatusDetailCode,
-				"data":             dataValue,
-			},
-		}
 	case StartSessionResponse:
 		// Special handling for StartSessionResponse
 		return map[string]interface{}{

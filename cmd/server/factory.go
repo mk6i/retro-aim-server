@@ -580,6 +580,8 @@ func WebAPI(deps *Container) *webapi.Server {
 		BuddyListManager: buddyListManager,
 		PresenceBridge:   presenceBridge,
 		MessageBridge:    messageBridge,
+		// Phase 5 additions for chat rooms
+		ChatManager: state.NewWebAPIChatManager(deps.sqLiteUserStore.DB(), logger, deps.webAPISessionManager),
 	}
 	return webapi.NewServer([]string{"0.0.0.0:9000"}, logger, handler, deps.sqLiteUserStore, deps.webAPISessionManager)
 }

@@ -238,9 +238,7 @@ func (h *PreferenceHandler) GetPreferences(w http.ResponseWriter, r *http.Reques
 
 		// For single preference requests, return directly for Gromit compatibility
 		// For multiple preferences, wrap in jsonData
-		if len(prefs) == 1 {
-			prefs = prefs
-		} else {
+		if len(prefs) != 1 {
 			prefs = map[string]interface{}{
 				"jsonData": prefs,
 			}
@@ -323,7 +321,6 @@ func (h *PreferenceHandler) SetPermitDeny(w http.ResponseWriter, r *http.Request
 	}
 
 	// Handle deny list updates
-	var denyAddedUsers []state.IdentScreenName
 	if denyAdd := r.URL.Query().Get("denyAdd"); denyAdd != "" {
 		users := strings.Split(denyAdd, ",")
 		for _, user := range users {
@@ -332,14 +329,11 @@ func (h *PreferenceHandler) SetPermitDeny(w http.ResponseWriter, r *http.Request
 				targetSN := state.NewIdentScreenName(user)
 				if err := h.PermitDenyManager.AddDenyBuddy(ctx, session.ScreenName.IdentScreenName(), targetSN); err != nil {
 					h.Logger.ErrorContext(ctx, "failed to add to deny list", "user", user, "err", err.Error())
-				} else {
-					denyAddedUsers = append(denyAddedUsers, targetSN)
 				}
 			}
 		}
 	}
 
-	var denyRemovedUsers []state.IdentScreenName
 	if denyRemove := r.URL.Query().Get("denyRemove"); denyRemove != "" {
 		users := strings.Split(denyRemove, ",")
 		for _, user := range users {
@@ -348,8 +342,6 @@ func (h *PreferenceHandler) SetPermitDeny(w http.ResponseWriter, r *http.Request
 				targetSN := state.NewIdentScreenName(user)
 				if err := h.PermitDenyManager.RemoveDenyBuddy(ctx, session.ScreenName.IdentScreenName(), targetSN); err != nil {
 					h.Logger.ErrorContext(ctx, "failed to remove from deny list", "user", user, "err", err.Error())
-				} else {
-					denyRemovedUsers = append(denyRemovedUsers, targetSN)
 				}
 			}
 		}
@@ -377,30 +369,10 @@ func (h *PreferenceHandler) SetPermitDeny(w http.ResponseWriter, r *http.Request
 		"denyCount", len(denyUsers),
 	)
 
-	// Broadcast presence changes for blocking/unblocking
-	if len(denyAddedUsers) > 0 || len(denyRemovedUsers) > 0 {
-		// Get the WebAPI presence bridge to send events
-		if bridge := state.GetGlobalWebAPIPresenceBridge(); bridge != nil {
-			// When users are blocked, they should see each other go offline
-			for _, blockedUser := range denyAddedUsers {
-				if err := bridge.BroadcastBlockingChange(ctx, session.ScreenName.IdentScreenName(), blockedUser, true); err != nil {
-					h.Logger.ErrorContext(ctx, "failed to broadcast blocking change",
-						"blocker", session.ScreenName.String(),
-						"blocked", blockedUser.String(),
-						"err", err.Error())
-				}
-			}
-			// When users are unblocked, they should see each other come online (if online)
-			for _, unblockedUser := range denyRemovedUsers {
-				if err := bridge.BroadcastBlockingChange(ctx, session.ScreenName.IdentScreenName(), unblockedUser, false); err != nil {
-					h.Logger.ErrorContext(ctx, "failed to broadcast unblocking change",
-						"unblocker", session.ScreenName.String(),
-						"unblocked", unblockedUser.String(),
-						"err", err.Error())
-				}
-			}
-		}
-	}
+	// Note: We don't broadcast immediate presence changes here.
+	// The blocking relationship is now in the database and will be respected
+	// by all future presence checks and message routing.
+	// The blocked users will appear offline to each other on the next presence update.
 
 	// Send response
 	permitDenyData := PermitDenyData{

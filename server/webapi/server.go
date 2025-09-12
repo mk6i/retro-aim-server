@@ -90,6 +90,13 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 		Logger:           logger,
 	}
 
+	// Phase 5: Chat handler
+	chatHandler := &handlers.ChatHandler{
+		SessionManager: sessionManager,
+		ChatManager:    handler.ChatManager,
+		Logger:         logger,
+	}
+
 	for _, l := range listeners {
 		mux := http.NewServeMux()
 
@@ -200,6 +207,24 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 		mux.Handle("GET /expressions/get", authMiddleware.AuthenticateFlexible(
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(expressionsHandler.Get))))
+
+		// Phase 5: Chat room endpoints
+		// All chat endpoints use aimsid for authentication
+		mux.Handle("GET /chat/createAndJoinChat", authMiddleware.AuthenticateFlexible(
+			authMiddleware.CORSMiddleware(
+				http.HandlerFunc(chatHandler.CreateAndJoinChat))))
+
+		mux.Handle("GET /chat/sendMessage", authMiddleware.AuthenticateFlexible(
+			authMiddleware.CORSMiddleware(
+				http.HandlerFunc(chatHandler.SendMessage))))
+
+		mux.Handle("GET /chat/setTyping", authMiddleware.AuthenticateFlexible(
+			authMiddleware.CORSMiddleware(
+				http.HandlerFunc(chatHandler.SetTyping))))
+
+		mux.Handle("GET /chat/leaveChat", authMiddleware.AuthenticateFlexible(
+			authMiddleware.CORSMiddleware(
+				http.HandlerFunc(chatHandler.LeaveChat))))
 
 		servers = append(servers, &http.Server{
 			Addr:    l,

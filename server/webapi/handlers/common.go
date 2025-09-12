@@ -51,12 +51,56 @@ type ErrorResponse struct {
 	StatusText string `json:"-" xml:"statusText"`
 }
 
+// XMLMapResponse is a helper struct for converting map-based responses to XML
+type XMLMapResponse struct {
+	XMLName    xml.Name `xml:"response"`
+	StatusCode int      `xml:"statusCode"`
+	StatusText string   `xml:"statusText"`
+	Data       XMLData  `xml:"data,omitempty"`
+}
+
+// XMLData wraps the data for XML responses
+type XMLData struct {
+	// Auth response fields
+	Token          *XMLToken `xml:"token,omitempty"`
+	LoginID        string    `xml:"loginId,omitempty"`
+	ScreenName     string    `xml:"screenName,omitempty"`
+	SessionSecret  string    `xml:"sessionSecret,omitempty"`
+	HostTime       int64     `xml:"hostTime,omitempty"`
+	TokenExpiresIn int       `xml:"tokenExpiresIn,omitempty"`
+
+	// Generic fields for other responses
+	AimSID   string `xml:"aimsid,omitempty"`
+	FetchURL string `xml:"fetchUrl,omitempty"`
+	MsgID    string `xml:"msgId,omitempty"`
+	State    string `xml:"state,omitempty"`
+
+	// For any other data, we'll encode as string
+	Raw string `xml:",chardata"`
+}
+
+// XMLToken represents the token structure in XML
+type XMLToken struct {
+	A         string `xml:"a"`
+	ExpiresIn int    `xml:"expiresIn"`
+}
+
 // SendResponse sends a response in the requested format (JSON, JSONP, XML, or AMF).
 // This is the centralized function that all handlers should use for responses.
 func SendResponse(w http.ResponseWriter, r *http.Request, data interface{}, logger *slog.Logger) {
 	// Check for format parameter (f for format or callback for JSONP)
+	// First check URL query parameters
 	format := strings.ToLower(r.URL.Query().Get("f"))
 	callback := r.URL.Query().Get("callback")
+
+	// If format not in URL query, check form values (for POST requests)
+	if format == "" && r.Method == "POST" {
+		r.ParseForm()
+		format = strings.ToLower(r.FormValue("f"))
+		if callback == "" {
+			callback = r.FormValue("callback")
+		}
+	}
 
 	// Check for AMF format first
 	if format == "amf" || format == "amf0" || format == "amf3" {
@@ -147,6 +191,11 @@ func SendJSON(w http.ResponseWriter, data interface{}, logger *slog.Logger) {
 // SendXML sends an XML response.
 func SendXML(w http.ResponseWriter, data interface{}, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "text/xml; charset=utf-8")
+
+	// Convert BaseResponse with map data to a format XML can handle
+	if baseResp, ok := data.(BaseResponse); ok {
+		data = convertBaseResponseForXML(baseResp)
+	}
 
 	// Marshal the data
 	xmlData, err := xml.Marshal(data)
@@ -254,6 +303,66 @@ func SendAMF(w http.ResponseWriter, r *http.Request, data interface{}, logger *s
 				"err", err.Error())
 		}
 	}
+}
+
+// convertBaseResponseForXML converts a BaseResponse with map data to XMLMapResponse
+func convertBaseResponseForXML(resp BaseResponse) XMLMapResponse {
+	xmlResp := XMLMapResponse{
+		StatusCode: resp.Response.StatusCode,
+		StatusText: resp.Response.StatusText,
+	}
+
+	// Convert map data to XMLData struct
+	if dataMap, ok := resp.Response.Data.(map[string]interface{}); ok {
+		xmlData := XMLData{}
+
+		// Handle auth response fields
+		if tokenData, ok := dataMap["token"].(map[string]interface{}); ok {
+			xmlData.Token = &XMLToken{}
+			if a, ok := tokenData["a"].(string); ok {
+				xmlData.Token.A = a
+			}
+			if expiresIn, ok := tokenData["expiresIn"].(int); ok {
+				xmlData.Token.ExpiresIn = expiresIn
+			}
+		}
+
+		if loginId, ok := dataMap["loginId"].(string); ok {
+			xmlData.LoginID = loginId
+		}
+		if screenName, ok := dataMap["screenName"].(string); ok {
+			xmlData.ScreenName = screenName
+		}
+		if sessionSecret, ok := dataMap["sessionSecret"].(string); ok {
+			xmlData.SessionSecret = sessionSecret
+		}
+		if hostTime, ok := dataMap["hostTime"].(int64); ok {
+			xmlData.HostTime = hostTime
+		}
+		if tokenExpiresIn, ok := dataMap["tokenExpiresIn"].(int); ok {
+			xmlData.TokenExpiresIn = tokenExpiresIn
+		}
+
+		// Handle session response fields
+		if aimsid, ok := dataMap["aimsid"].(string); ok {
+			xmlData.AimSID = aimsid
+		}
+		if fetchUrl, ok := dataMap["fetchUrl"].(string); ok {
+			xmlData.FetchURL = fetchUrl
+		}
+
+		// Handle message response fields
+		if msgId, ok := dataMap["msgId"].(string); ok {
+			xmlData.MsgID = msgId
+		}
+		if state, ok := dataMap["state"].(string); ok {
+			xmlData.State = state
+		}
+
+		xmlResp.Data = xmlData
+	}
+
+	return xmlResp
 }
 
 // SendAMFError sends an AMF error response

@@ -34,10 +34,27 @@ type APIKeyValidator interface {
 	UpdateLastUsed(ctx context.Context, devKey string) error
 }
 
+// RateLimitInfo contains rate limit metadata for a request.
+type RateLimitInfo struct {
+	Limit     int   // Total requests allowed per window
+	Remaining int   // Requests remaining in current window
+	Reset     int64 // Unix timestamp when the window resets
+	Allowed   bool  // Whether the request is allowed
+}
+
+// rateLimiterEntry tracks rate limiting data for a single devID.
+type rateLimiterEntry struct {
+	limiter    *rate.Limiter
+	limit      int
+	windowSize time.Duration
+	lastReset  time.Time
+}
+
 // RateLimiter manages per-devID rate limiting for the Web API.
 type RateLimiter struct {
-	limiters *cache.Cache
-	mu       sync.RWMutex
+	limiters   *cache.Cache
+	mu         sync.RWMutex
+	windowSize time.Duration // Rate limit window size (default: 1 minute)
 }
 
 // NewRateLimiter creates a new rate limiter with automatic cleanup.
@@ -45,26 +62,64 @@ func NewRateLimiter() *RateLimiter {
 	// Create cache with 5 minute expiration and 10 minute cleanup interval
 	c := cache.New(5*time.Minute, 10*time.Minute)
 	return &RateLimiter{
-		limiters: c,
+		limiters:   c,
+		windowSize: time.Minute, // Default 1 minute window
+	}
+}
+
+// CheckRateLimit checks if a request from the given devID is allowed and returns rate limit info.
+func (r *RateLimiter) CheckRateLimit(devID string, limit int) RateLimitInfo {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	now := time.Now()
+
+	// Get or create limiter entry for this devID
+	var entry *rateLimiterEntry
+	if val, found := r.limiters.Get(devID); found {
+		entry = val.(*rateLimiterEntry)
+		// Check if limit has changed
+		if entry.limit != limit {
+			// Recreate limiter with new limit
+			entry.limiter = rate.NewLimiter(rate.Every(r.windowSize/time.Duration(limit)), limit)
+			entry.limit = limit
+		}
+	} else {
+		// Create new limiter with burst equal to limit (allows initial burst)
+		entry = &rateLimiterEntry{
+			limiter:    rate.NewLimiter(rate.Every(r.windowSize/time.Duration(limit)), limit),
+			limit:      limit,
+			windowSize: r.windowSize,
+			lastReset:  now,
+		}
+		r.limiters.Set(devID, entry, cache.DefaultExpiration)
+	}
+
+	// Check if request is allowed
+	allowed := entry.limiter.Allow()
+
+	// Calculate remaining requests (approximate based on tokens available)
+	tokens := entry.limiter.Tokens()
+	remaining := int(tokens)
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	// Calculate reset time (next window start)
+	resetTime := now.Add(r.windowSize).Unix()
+
+	return RateLimitInfo{
+		Limit:     limit,
+		Remaining: remaining,
+		Reset:     resetTime,
+		Allowed:   allowed,
 	}
 }
 
 // Allow checks if a request from the given devID is allowed based on rate limits.
 func (r *RateLimiter) Allow(devID string, limit int) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	// Get or create limiter for this devID
-	var limiter *rate.Limiter
-	if val, found := r.limiters.Get(devID); found {
-		limiter = val.(*rate.Limiter)
-	} else {
-		// Create new limiter with burst equal to limit (allows initial burst)
-		limiter = rate.NewLimiter(rate.Every(time.Minute/time.Duration(limit)), limit)
-		r.limiters.Set(devID, limiter, cache.DefaultExpiration)
-	}
-
-	return limiter.Allow()
+	info := r.CheckRateLimit(devID, limit)
+	return info.Allowed
 }
 
 // AuthMiddleware provides authentication and rate limiting for Web API endpoints.
@@ -120,8 +175,21 @@ func (m *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 		}
 
 		// Check rate limit
-		if !m.RateLimiter.Allow(key.DevID, key.RateLimit) {
+		rateLimitInfo := m.RateLimiter.CheckRateLimit(key.DevID, key.RateLimit)
+
+		// Always add rate limit headers
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", rateLimitInfo.Limit))
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", rateLimitInfo.Remaining))
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", rateLimitInfo.Reset))
+
+		if !rateLimitInfo.Allowed {
 			m.Logger.WarnContext(ctx, "rate limit exceeded", "dev_id", key.DevID, "limit", key.RateLimit)
+			// Add Retry-After header
+			retryAfter := rateLimitInfo.Reset - time.Now().Unix()
+			if retryAfter < 1 {
+				retryAfter = 1
+			}
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfter))
 			m.sendErrorResponse(w, http.StatusTooManyRequests, "rate limit exceeded")
 			return
 		}
@@ -381,8 +449,21 @@ func (m *AuthMiddleware) AuthenticateFlexible(next http.Handler) http.Handler {
 		}
 
 		// Check rate limit
-		if !m.RateLimiter.Allow(key.DevID, key.RateLimit) {
+		rateLimitInfo := m.RateLimiter.CheckRateLimit(key.DevID, key.RateLimit)
+
+		// Always add rate limit headers
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", rateLimitInfo.Limit))
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", rateLimitInfo.Remaining))
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", rateLimitInfo.Reset))
+
+		if !rateLimitInfo.Allowed {
 			m.Logger.WarnContext(ctx, "rate limit exceeded", "dev_id", key.DevID, "limit", key.RateLimit)
+			// Add Retry-After header
+			retryAfter := rateLimitInfo.Reset - time.Now().Unix()
+			if retryAfter < 1 {
+				retryAfter = 1
+			}
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfter))
 			m.sendErrorResponse(w, http.StatusTooManyRequests, "rate limit exceeded")
 			return
 		}
