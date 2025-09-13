@@ -104,8 +104,8 @@ func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Se
 	return s.buddyBroadcaster.BroadcastBuddyDeparted(ctx, sess)
 }
 
-func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, userInfo wire.TLVUserInfo) error {
-	return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, userInfo)
+func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, screenName state.IdentScreenName, userInfo wire.TLVUserInfo) error {
+	return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, screenName, userInfo)
 }
 
 func newBuddyNotifier(
@@ -135,8 +135,7 @@ type buddyNotifier struct {
 // While updates are sent via the wire.BuddyArrived SNAC, the message is not
 // only used to indicate the user coming online. It can also notify changes to
 // buddy icons, warning levels, invisibility status, etc.
-func (s buddyNotifier) BroadcastBuddyArrived(ctx context.Context, userInfo wire.TLVUserInfo) error {
-	screenName := state.NewIdentScreenName(userInfo.ScreenName)
+func (s buddyNotifier) BroadcastBuddyArrived(ctx context.Context, screenName state.IdentScreenName, userInfo wire.TLVUserInfo) error {
 	users, err := s.relationshipFetcher.AllRelationships(ctx, screenName, nil)
 	if err != nil {
 		return err

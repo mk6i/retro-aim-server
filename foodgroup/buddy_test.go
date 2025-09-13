@@ -353,7 +353,7 @@ func TestBuddyNotifier_BroadcastBuddyArrived(t *testing.T) {
 				messageRelayer:      messageRelayer,
 			}
 
-			err := svc.BroadcastBuddyArrived(context.Background(), tc.userSession.TLVUserInfo())
+			err := svc.BroadcastBuddyArrived(context.Background(), tc.userSession.IdentScreenName(), tc.userSession.TLVUserInfo())
 			assert.NoError(t, err)
 		})
 	}

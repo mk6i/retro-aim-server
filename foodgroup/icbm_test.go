@@ -1669,10 +1669,10 @@ func TestICBMService_UpdateWarnLevel(t *testing.T) {
 
 		mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
 		mockBuddyBroadcaster.EXPECT().
-			BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(userInfo wire.TLVUserInfo) bool {
+			BroadcastBuddyArrived(mock.Anything, sess.IdentScreenName(), mock.MatchedBy(func(userInfo wire.TLVUserInfo) bool {
 				return userInfo.ScreenName == sess.IdentScreenName().String()
 			})).
-			Run(func(ctx context.Context, userInfo wire.TLVUserInfo) {
+			Run(func(ctx context.Context, screenName state.IdentScreenName, userInfo wire.TLVUserInfo) {
 				warnCh <- userInfo.WarningLevel
 			}).Return(nil)
 

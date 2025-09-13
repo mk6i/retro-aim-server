@@ -525,10 +525,11 @@ func (s ICBMService) UpdateWarnLevel(ctx context.Context, sess *state.Session) {
 				}
 
 				info := sess.TLVUserInfo()
-				// ensure that the warning level doesn't change due to a race condition
-				// which can occur if the warning level changes while this iteration runs.
+				// lock in the current warning level to avoid race conditions
+				// where the warning level might change during this broadcast
+				// operation
 				info.WarningLevel = warning
-				if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, info); err != nil {
+				if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), info); err != nil {
 					s.logger.ErrorContext(ctx, "BroadcastBuddyArrived failed", "err", err)
 				} else {
 					s.logger.DebugContext(ctx, "warning lowered", "remaining", warning)

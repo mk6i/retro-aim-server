@@ -989,7 +989,7 @@ func TestOServiceService_SetUserInfoFields(t *testing.T) {
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(userInfo wire.TLVUserInfo) bool {
+					BroadcastBuddyArrived(mock.Anything, state.NewIdentScreenName(params.screenName.String()), mock.MatchedBy(func(userInfo wire.TLVUserInfo) bool {
 						return userInfo.ScreenName == params.screenName.String()
 					})).
 					Return(params.err)
@@ -1835,7 +1835,7 @@ func TestOServiceService_IdleNotification(t *testing.T) {
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tt.mockParams.broadcastBuddyArrivedParams {
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(userInfo wire.TLVUserInfo) bool {
+					BroadcastBuddyArrived(mock.Anything, state.NewIdentScreenName(params.screenName.String()), mock.MatchedBy(func(userInfo wire.TLVUserInfo) bool {
 						return userInfo.ScreenName == params.screenName.String()
 					})).
 					Return(params.err)

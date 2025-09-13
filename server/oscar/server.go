@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net"
 	"net/netip"
-	"runtime"
 	"sync"
 	"time"
 
@@ -321,7 +320,6 @@ func (s oscarServer) connectToOSCARService(
 }
 
 func (s oscarServer) receiveSessMessages(ctx context.Context, sess *state.Session, flapc *wire.FlapClient) {
-	fmt.Printf("# of goroutines: %d\n", runtime.NumGoroutine())
 	for {
 		select {
 		case <-sess.Closed():

@@ -137,7 +137,7 @@ func (s AuthService) RegisterBOSSession(ctx context.Context, serverCookie state.
 		}
 		sess.SetUIN(uint32(uin))
 	}
-	
+
 	return sess, nil
 }
 
