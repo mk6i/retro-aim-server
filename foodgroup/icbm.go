@@ -42,7 +42,7 @@ func NewICBMService(
 		snacRateLimits:      snacRateLimits,
 		convoTracker:        newConvoTracker(),
 		logger:              logger,
-		interval:            30 * time.Second,
+		interval:            5 * time.Minute,
 	}
 }
 

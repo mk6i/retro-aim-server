@@ -1688,6 +1688,9 @@ func TestICBMService_UpdateWarnLevel(t *testing.T) {
 			SetWarnLevel(matchContext(), sess.IdentScreenName(), now, uint16(50)).
 			Return(nil)
 		userManager.EXPECT().
+			SetWarnLevel(matchContext(), sess.IdentScreenName(), now, uint16(30)).
+			Return(nil)
+		userManager.EXPECT().
 			SetWarnLevel(matchContext(), sess.IdentScreenName(), now, uint16(0)).
 			Return(nil)
 
@@ -1716,15 +1719,15 @@ func TestICBMService_UpdateWarnLevel(t *testing.T) {
 		assert.Equal(t, uint16(50), <-warnCh)
 		assert.Equal(t, uint16(0), <-warnCh)
 
-		//ok, _ = sess.IncrementWarning(100, 3)
-		//assert.True(t, ok)
-		//assert.Equal(t, uint16(100), <-warnCh)
-		//assert.Equal(t, uint16(50), <-warnCh)
-		//assert.Equal(t, uint16(0), <-warnCh)
-		//
-		//sess.IncrementWarning(30, 3)
-		//assert.Equal(t, uint16(30), <-warnCh)
-		//assert.Equal(t, uint16(0), <-warnCh)
+		ok, _ = sess.IncrementWarning(100, 3)
+		assert.True(t, ok)
+		assert.Equal(t, uint16(100), <-warnCh)
+		assert.Equal(t, uint16(50), <-warnCh)
+		assert.Equal(t, uint16(0), <-warnCh)
+
+		sess.IncrementWarning(30, 3)
+		assert.Equal(t, uint16(30), <-warnCh)
+		assert.Equal(t, uint16(0), <-warnCh)
 
 		cancel()
 		wg.Wait()
@@ -1803,138 +1806,88 @@ func TestICBMService_RestoreWarningLevel(t *testing.T) {
 	}
 }
 
-//func Test_calcWarningLevelChange(t *testing.T) {
-//
-//	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
-//		now := time.Now()
-//		interval := 5 * time.Millisecond
-//
-//		sess := newTestSession("test-user")
-//		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond).Add(-1 * time.Millisecond))
-//		sess.SetWarning(250)
-//
-//		warnDelta := calcElapsedWarningLevel(0, sess, now, interval)
-//
-//		assert.Equal(t, int16(-150), warnDelta)
-//	})
-//
-//	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
-//		now := time.Now()
-//		interval := 5 * time.Millisecond
-//
-//		sess := newTestSession("test-user")
-//		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond).Add(1 * time.Millisecond))
-//		sess.SetWarning(250)
-//
-//		warnDelta := calcElapsedWarningLevel(0, sess, now, interval)
-//
-//		assert.Equal(t, int16(-100), warnDelta)
-//	})
-//
-//	t.Run("active warn level, last modified exactly on interval", func(t *testing.T) {
-//		now := time.Now()
-//		interval := 5 * time.Millisecond
-//
-//		sess := newTestSession("test-user")
-//		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond))
-//		sess.SetWarning(250)
-//
-//		warnDelta := calcElapsedWarningLevel(0, sess, now, interval)
-//
-//		assert.Equal(t, int16(-150), warnDelta)
-//	})
-//
-//	t.Run("resolved warn level", func(t *testing.T) {
-//		now := time.Now()
-//		interval := 5 * time.Millisecond
-//
-//		sess := newTestSession("test-user")
-//		sess.SetLastWarnUpdate(now.Add(-25 * time.Millisecond))
-//		sess.SetWarning(250)
-//
-//		warnDelta := calcElapsedWarningLevel(0, sess, now, interval)
-//
-//		assert.Equal(t, int16(0), warnDelta)
-//	})
-//
-//	t.Run("resolved warn level - time past exceeds maximum window", func(t *testing.T) {
-//		now := time.Now()
-//		interval := 5 * time.Millisecond
-//
-//		sess := newTestSession("test-user")
-//		sess.SetLastWarnUpdate(now.Add(-200 * time.Millisecond))
-//		sess.SetWarning(250)
-//
-//		warnDelta := calcElapsedWarningLevel(0, sess, now, interval)
-//
-//		assert.Equal(t, int16(0), warnDelta)
-//	})
-//}
-//
-//func Test_calcRefreshInterval(t *testing.T) {
-//
-//	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
-//		now := time.Now()
-//		interval := 5 * time.Millisecond
-//
-//		sess := newTestSession("test-user")
-//		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond).Add(-1 * time.Millisecond))
-//		sess.SetWarning(250)
-//
-//		newInterval := timeTillNextInterval(sess, now, interval)
-//
-//		assert.Equal(t, 1*time.Millisecond, newInterval)
-//	})
-//
-//	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
-//		now := time.Now()
-//		interval := 5 * time.Millisecond
-//
-//		sess := newTestSession("test-user")
-//		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond).Add(1 * time.Millisecond))
-//		sess.SetWarning(250)
-//
-//		newInterval := timeTillNextInterval(sess, now, interval)
-//
-//		assert.Equal(t, 4*time.Millisecond, newInterval)
-//	})
-//
-//	t.Run("active warn level, last modified exactly on interval", func(t *testing.T) {
-//		now := time.Now()
-//		interval := 5 * time.Millisecond
-//
-//		sess := newTestSession("test-user")
-//		sess.SetLastWarnUpdate(now.Add(-15 * time.Millisecond))
-//		sess.SetWarning(250)
-//
-//		newInterval := timeTillNextInterval(sess, now, interval)
-//
-//		assert.Equal(t, 0*time.Millisecond, newInterval)
-//	})
-//
-//	//t.Run("resolved warn level", func(t *testing.T) {
-//	//	now := time.Now()
-//	//	interval := 5 * time.Millisecond
-//	//
-//	//	sess := newTestSession("test-user")
-//	//	sess.SetLastWarnUpdate(now.Add(-25 * time.Millisecond))
-//	//	sess.SetWarning(250)
-//	//
-//	//	newInterval := timeTillNextInterval(sess, now, interval)
-//	//
-//	//	assert.Equal(t, interval, newInterval)
-//	//})
-//	//
-//	//t.Run("resolved warn level - time past exceeds maximum window", func(t *testing.T) {
-//	//	now := time.Now()
-//	//	interval := 5 * time.Millisecond
-//	//
-//	//	sess := newTestSession("test-user")
-//	//	sess.SetLastWarnUpdate(now.Add(-200 * time.Millisecond))
-//	//	sess.SetWarning(250)
-//	//
-//	//	newInterval := timeTillNextInterval(sess, now, interval)
-//	//
-//	//	assert.Equal(t, interval, newInterval)
-//	//})
-//}
+func Test_calcWarningLevelChange(t *testing.T) {
+
+	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-15 * time.Millisecond).Add(-1 * time.Millisecond)
+		warnDelta := calcElapsedWarningLevel(lastWarn, now, interval)
+		assert.Equal(t, int16(-150), warnDelta)
+	})
+
+	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-15 * time.Millisecond).Add(1 * time.Millisecond)
+		warnDelta := calcElapsedWarningLevel(lastWarn, now, interval)
+		assert.Equal(t, int16(-100), warnDelta)
+	})
+
+	t.Run("active warn level, last modified exactly on interval", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-15 * time.Millisecond)
+		warnDelta := calcElapsedWarningLevel(lastWarn, now, interval)
+		assert.Equal(t, int16(-150), warnDelta)
+	})
+
+	t.Run("resolved warn level", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-25 * time.Millisecond)
+		warnDelta := calcElapsedWarningLevel(lastWarn, now, interval)
+		assert.Equal(t, int16(-250), warnDelta)
+	})
+
+	t.Run("resolved warn level - time past exceeds maximum window", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-200 * time.Millisecond)
+		warnDelta := calcElapsedWarningLevel(lastWarn, now, interval)
+		assert.Equal(t, int16(-2000), warnDelta)
+	})
+}
+
+func Test_calcRefreshInterval(t *testing.T) {
+
+	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-15 * time.Millisecond).Add(-1 * time.Millisecond)
+		newInterval := timeTillNextInterval(lastWarn, now, interval)
+		assert.Equal(t, 4*time.Millisecond, newInterval)
+	})
+
+	t.Run("active warn level, last modified between intervals", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-15 * time.Millisecond).Add(1 * time.Millisecond)
+		newInterval := timeTillNextInterval(lastWarn, now, interval)
+		assert.Equal(t, 1*time.Millisecond, newInterval)
+	})
+
+	t.Run("active warn level, last modified exactly on interval", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-15 * time.Millisecond)
+		newInterval := timeTillNextInterval(lastWarn, now, interval)
+		assert.Equal(t, 5*time.Millisecond, newInterval)
+	})
+
+	t.Run("resolved warn level", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-25 * time.Millisecond)
+		newInterval := timeTillNextInterval(lastWarn, now, interval)
+		assert.Equal(t, interval, newInterval)
+	})
+
+	t.Run("resolved warn level - time past exceeds maximum window", func(t *testing.T) {
+		now := time.Now()
+		interval := 5 * time.Millisecond
+		lastWarn := now.Add(-200 * time.Millisecond)
+		newInterval := timeTillNextInterval(lastWarn, now, interval)
+		assert.Equal(t, interval, newInterval)
+	})
+}
