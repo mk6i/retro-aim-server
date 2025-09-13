@@ -675,7 +675,7 @@ type broadcastVisibilityParams []struct {
 // broadcastBuddyArrivedParams is the list of parameters passed at the mock
 // buddyBroadcaster.BroadcastBuddyArrived call site
 type broadcastBuddyArrivedParams []struct {
-	screenName state.IdentScreenName
+	screenName state.DisplayScreenName
 	err        error
 }
 

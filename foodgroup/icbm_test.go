@@ -1669,9 +1669,11 @@ func TestICBMService_UpdateWarnLevel(t *testing.T) {
 
 		mockBuddyBroadcaster := newMockbuddyBroadcaster(t)
 		mockBuddyBroadcaster.EXPECT().
-			BroadcastBuddyArrived(mock.Anything, matchSession(sess.IdentScreenName())).
-			Run(func(ctx context.Context, sess *state.Session) {
-				warnCh <- sess.Warning()
+			BroadcastBuddyArrived(mock.Anything, mock.MatchedBy(func(userInfo wire.TLVUserInfo) bool {
+				return userInfo.ScreenName == sess.IdentScreenName().String()
+			})).
+			Run(func(ctx context.Context, userInfo wire.TLVUserInfo) {
+				warnCh <- userInfo.WarningLevel
 			}).Return(nil)
 
 		u := &state.User{}
@@ -1705,7 +1707,7 @@ func TestICBMService_UpdateWarnLevel(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			svc.UpdateWarnLevel(ctx, sess)
+			svc.UpdateWarnLevel(ctx, sess) // do a sync test here?
 		}()
 
 		ok, _ := sess.IncrementWarning(100, 3)

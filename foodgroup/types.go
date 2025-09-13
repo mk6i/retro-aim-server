@@ -87,7 +87,7 @@ type AccountManager interface {
 // or changes visibility status.
 type buddyBroadcaster interface {
 	// BroadcastBuddyArrived notifies all relevant users that the given user has come online.
-	BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error
+	BroadcastBuddyArrived(ctx context.Context, userInfo wire.TLVUserInfo) error
 
 	// BroadcastBuddyDeparted notifies all relevant users that the given user has gone offline.
 	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error

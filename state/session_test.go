@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"math"
 	"net/netip"
 	"sync"
@@ -23,10 +24,21 @@ func TestSession_SetAndGetAwayMessage(t *testing.T) {
 
 func TestSession_IncrementAndGetWarning(t *testing.T) {
 	s := NewSession()
-	assert.Zero(t, s.Warning())
-	s.IncrementWarning(1, 1)
-	s.IncrementWarning(2, 1)
-	assert.Equal(t, uint16(3), s.Warning())
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		s.IncrementWarning(1, 1)
+		s.IncrementWarning(2, 1)
+		s.IncrementWarning(3, 1)
+	}()
+
+	assert.Equal(t, uint16(1), <-s.WarningCh())
+	assert.Equal(t, uint16(3), <-s.WarningCh())
+	assert.Equal(t, uint16(6), <-s.WarningCh())
+
+	wg.Wait()
 }
 
 func TestSession_SetAndGetInvisible(t *testing.T) {
@@ -656,6 +668,21 @@ func TestSession_IncrementWarningWithRateLimitScaling(t *testing.T) {
 		sess := NewSession()
 		sess.SetRateClasses(now, rateClasses)
 
+		var wg sync.WaitGroup
+		wg.Add(1)
+
+		ctx, cancel := context.WithCancel(t.Context())
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-sess.WarningCh():
+				}
+			}
+		}()
+
 		assert.Equal(t, int32(5000), sess.rateByClassID[2].AlertLevel)
 		assert.Equal(t, int32(5100), sess.rateByClassID[2].ClearLevel)
 		assert.Equal(t, int32(4000), sess.rateByClassID[2].LimitLevel)
@@ -714,6 +741,9 @@ func TestSession_IncrementWarningWithRateLimitScaling(t *testing.T) {
 		assert.Equal(t, int32(6000), sess.rateByClassID[2].AlertLevel)
 		assert.Equal(t, int32(6000), sess.rateByClassID[2].ClearLevel)
 		assert.Equal(t, int32(6000), sess.rateByClassID[2].LimitLevel)
+
+		cancel()
+		wg.Wait()
 	})
 
 	t.Run("scale down", func(t *testing.T) {
@@ -738,6 +768,21 @@ func TestSession_IncrementWarningWithRateLimitScaling(t *testing.T) {
 
 		sess := NewSession()
 		sess.SetRateClasses(now, rateClasses)
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+
+		ctx, cancel := context.WithCancel(t.Context())
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-sess.WarningCh():
+				}
+			}
+		}()
 
 		for i := 0; i < 10; i++ {
 			sess.IncrementWarning(100, 3)
@@ -801,5 +846,8 @@ func TestSession_IncrementWarningWithRateLimitScaling(t *testing.T) {
 		assert.Equal(t, int32(5000), sess.rateByClassID[2].AlertLevel)
 		assert.Equal(t, int32(5100), sess.rateByClassID[2].ClearLevel)
 		assert.Equal(t, int32(4000), sess.rateByClassID[2].LimitLevel)
+
+		cancel()
+		wg.Wait()
 	})
 }

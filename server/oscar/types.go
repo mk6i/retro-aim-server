@@ -30,7 +30,7 @@ type BuddyListRegistry interface {
 // DepartureNotifier is the interface for sending buddy departure notifications
 // when a client disconnects.
 type DepartureNotifier interface {
-	BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error
+	BroadcastBuddyArrived(ctx context.Context, userInfo wire.TLVUserInfo) error
 	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
 }
 
