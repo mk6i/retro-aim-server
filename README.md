@@ -187,7 +187,7 @@ curl http://localhost:8080/chat/room/public
 ## 🔗 Acknowledgements
 
 - [aim-oscar-server](https://github.com/ox/aim-oscar-server) is another cool open source AIM server project.
-- [NINA Wiki](https://wiki.nina.chat/wiki/Main_Page) is an indispensable source for figuring out the OSCAR API.
+- [NINA Wiki](https://web.archive.org/web/20250910233011/https://wiki.nina.chat/wiki/Main_Page) is an indispensable source for figuring out the OSCAR API.
 - [libpurple](https://developer.pidgin.im/wiki/WhatIsLibpurple) is also an invaluable OSCAR reference (especially
   version [2.10.6-1](https://github.com/Tasssadar/libpurple)).
 
