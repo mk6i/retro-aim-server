@@ -1180,6 +1180,55 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			},
 		},
 		{
+			name:          "can't warn bots",
+			senderSession: newTestSession("sender-screen-name"),
+			msgsReceived:  1,
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x08_ICBMEvilRequest{
+					SendAs:     0, // make it identified
+					ScreenName: "recipient-screen-name",
+				},
+			},
+			expectOutput: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.ICBM,
+					SubGroup:  wire.ICBMErr,
+					RequestID: 1234,
+				},
+				Body: wire.SNACError{
+					Code: wire.ErrorCodeRequestDenied,
+				},
+			},
+			mockParams: mockParams{
+				relationshipFetcherParams: relationshipFetcherParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							result:     newTestSession("recipient-screen-name", sessOptBot),
+						},
+					},
+				},
+			},
+		},
+		{
 			name:          "don't let users warn themselves",
 			senderSession: newTestSession("sender-screen-name"),
 			msgsReceived:  1,

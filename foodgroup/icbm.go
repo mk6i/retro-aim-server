@@ -284,16 +284,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 	// don't let users warn themselves, it causes the AIM client to go into a
 	// weird state.
 	if identScreenName == sess.IdentScreenName() {
-		return wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.ICBM,
-				SubGroup:  wire.ICBMErr,
-				RequestID: inFrame.RequestID,
-			},
-			Body: wire.SNACError{
-				Code: wire.ErrorCodeNotSupportedByHost,
-			},
-		}, nil
+		return *newICBMErr(inFrame.RequestID, wire.ErrorCodeNotSupportedByHost), nil
 	}
 
 	blocked, err := s.relationshipFetcher.Relationship(ctx, sess.IdentScreenName(), identScreenName)
@@ -301,44 +292,26 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		return wire.SNACMessage{}, err
 	}
 	if blocked.BlocksYou || blocked.YouBlock {
-		return wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.ICBM,
-				SubGroup:  wire.ICBMErr,
-				RequestID: inFrame.RequestID,
-			},
-			Body: wire.SNACError{
-				Code: wire.ErrorCodeNotLoggedOn,
-			},
-		}, nil
+		// user or target is blocked
+		return *newICBMErr(inFrame.RequestID, wire.ErrorCodeNotLoggedOn), nil
 	}
 
 	recipSess := s.sessionRetriever.RetrieveSession(identScreenName)
 	if recipSess == nil {
-		return wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.ICBM,
-				SubGroup:  wire.ICBMErr,
-				RequestID: inFrame.RequestID,
-			},
-			Body: wire.SNACError{
-				Code: wire.ErrorCodeNotLoggedOn,
-			},
-		}, nil
+		// target user is offline
+		return *newICBMErr(inFrame.RequestID, wire.ErrorCodeNotLoggedOn), nil
+	}
+
+	if recipSess.UserInfoBitmask()&wire.OServiceUserFlagBot == wire.OServiceUserFlagBot {
+		// target user is a bot, bots can't be warned
+		return *newICBMErr(inFrame.RequestID, wire.ErrorCodeRequestDenied), nil
 	}
 
 	canWarn := s.convoTracker.trackWarn(time.Now(), sess.IdentScreenName(), recipSess.IdentScreenName())
 	if !canWarn {
-		return wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.ICBM,
-				SubGroup:  wire.ICBMErr,
-				RequestID: inFrame.RequestID,
-			},
-			Body: wire.SNACError{
-				Code: wire.ErrorCodeRequestDenied,
-			},
-		}, nil
+		// user has warned target too many times or not enough messages have
+		// been received from target
+		return *newICBMErr(inFrame.RequestID, wire.ErrorCodeRequestDenied), nil
 	}
 
 	increase := evilDelta
@@ -354,16 +327,8 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 
 	ok, newLevel := recipSess.IncrementWarning(int16(increase), classID)
 	if !ok {
-		return wire.SNACMessage{
-			Frame: wire.SNACFrame{
-				FoodGroup: wire.ICBM,
-				SubGroup:  wire.ICBMErr,
-				RequestID: inFrame.RequestID,
-			},
-			Body: wire.SNACError{
-				Code: wire.ErrorCodeRequestDenied,
-			},
-		}, nil
+		// target's warning is at 100%
+		return *newICBMErr(inFrame.RequestID, wire.ErrorCodeRequestDenied), nil
 	}
 
 	notif := wire.SNAC_0x01_0x10_OServiceEvilNotification{

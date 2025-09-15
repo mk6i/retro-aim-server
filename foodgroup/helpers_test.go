@@ -744,6 +744,12 @@ func sessOptChatRoomCookie(cookie string) func(session *state.Session) {
 	}
 }
 
+// sessOptBot sets the bot flag to true on the session
+// object
+func sessOptBot(session *state.Session) {
+	session.SetUserInfoFlag(wire.OServiceUserFlagBot)
+}
+
 // sessOptInvisible sets the invisible flag to true on the session
 // object
 func sessOptInvisible(session *state.Session) {
