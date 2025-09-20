@@ -91,15 +91,15 @@ type bartRetrieveParams []struct {
 // bartAssetManagerParams is a helper struct that contains mock parameters for
 // BARTAssetManager methods
 type bartAssetManagerParams struct {
-	buddyIconParams
+	bartItemParams
 	insertBARTItemParams
 	listBARTItemsParams
 	deleteBARTItemParams
 }
 
-// buddyIconParams is the list of parameters passed at the mock
-// BARTAssetManager.BuddyIcon call site
-type buddyIconParams []struct {
+// bartItemParams is the list of parameters passed at the mock
+// BARTAssetManager.BARTItem call site
+type bartItemParams []struct {
 	itemHash []byte
 	result   []byte
 	err      error
@@ -108,9 +108,9 @@ type buddyIconParams []struct {
 // insertBARTItemParams is the list of parameters passed at the mock
 // BARTAssetManager.InsertBARTItem call site
 type insertBARTItemParams []struct {
-	md5      []byte
-	image    []byte
-	bartType uint16
+	hash     []byte
+	blob     []byte
+	itemType uint16
 	err      error
 }
 

@@ -963,7 +963,7 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 			bartRetriever := newMockBARTAssetManager(t)
 			for _, params := range tc.mockParams.bartRetrieverParams.bartRetrieveParams {
 				bartRetriever.EXPECT().
-					BuddyIcon(matchContext(), params.itemHash).
+					BARTItem(matchContext(), params.itemHash).
 					Return(params.result, params.err)
 			}
 
@@ -2649,7 +2649,7 @@ func TestBARTHandler_GET(t *testing.T) {
 			wantHeaders:    map[string]string{"Content-Type": "application/octet-stream"},
 			mockParams: mockParams{
 				bartAssetManagerParams: bartAssetManagerParams{
-					buddyIconParams: buddyIconParams{
+					bartItemParams: bartItemParams{
 						{
 							itemHash: []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
 							result:   []byte("binary data"),
@@ -2678,7 +2678,7 @@ func TestBARTHandler_GET(t *testing.T) {
 			wantResponse:   `{"message":"BART asset not found"}`,
 			mockParams: mockParams{
 				bartAssetManagerParams: bartAssetManagerParams{
-					buddyIconParams: buddyIconParams{
+					bartItemParams: bartItemParams{
 						{
 							itemHash: []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
 							result:   []byte{},
@@ -2695,7 +2695,7 @@ func TestBARTHandler_GET(t *testing.T) {
 			wantResponse:   `{"message":"internal server error"}`,
 			mockParams: mockParams{
 				bartAssetManagerParams: bartAssetManagerParams{
-					buddyIconParams: buddyIconParams{
+					bartItemParams: bartItemParams{
 						{
 							itemHash: []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
 							result:   nil,
@@ -2717,9 +2717,9 @@ func TestBARTHandler_GET(t *testing.T) {
 			responseRecorder := httptest.NewRecorder()
 
 			mockBARTManager := newMockBARTAssetManager(t)
-			for _, params := range tc.mockParams.bartAssetManagerParams.buddyIconParams {
+			for _, params := range tc.mockParams.bartAssetManagerParams.bartItemParams {
 				mockBARTManager.EXPECT().
-					BuddyIcon(matchContext(), params.itemHash).
+					BARTItem(matchContext(), params.itemHash).
 					Return(params.result, params.err)
 			}
 
@@ -2763,9 +2763,9 @@ func TestBARTHandler_POST(t *testing.T) {
 				bartAssetManagerParams: bartAssetManagerParams{
 					insertBARTItemParams: insertBARTItemParams{
 						{
-							md5:      []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
-							image:    []byte("binary data"),
-							bartType: 1,
+							hash:     []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
+							blob:     []byte("binary data"),
+							itemType: 1,
 							err:      nil,
 						},
 					},
@@ -2823,9 +2823,9 @@ func TestBARTHandler_POST(t *testing.T) {
 				bartAssetManagerParams: bartAssetManagerParams{
 					insertBARTItemParams: insertBARTItemParams{
 						{
-							md5:      []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
-							image:    []byte("binary data"),
-							bartType: 1,
+							hash:     []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
+							blob:     []byte("binary data"),
+							itemType: 1,
 							err:      state.ErrBARTItemExists,
 						},
 					},
@@ -2843,9 +2843,9 @@ func TestBARTHandler_POST(t *testing.T) {
 				bartAssetManagerParams: bartAssetManagerParams{
 					insertBARTItemParams: insertBARTItemParams{
 						{
-							md5:      []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
-							image:    []byte("binary data"),
-							bartType: 1,
+							hash:     []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
+							blob:     []byte("binary data"),
+							itemType: 1,
 							err:      errors.New("database error"),
 						},
 					},
@@ -2873,7 +2873,7 @@ func TestBARTHandler_POST(t *testing.T) {
 			mockBARTManager := newMockBARTAssetManager(t)
 			for _, params := range tc.mockParams.bartAssetManagerParams.insertBARTItemParams {
 				mockBARTManager.EXPECT().
-					InsertBARTItem(matchContext(), params.md5, params.image, params.bartType).
+					InsertBARTItem(matchContext(), params.hash, params.blob, params.itemType).
 					Return(params.err)
 			}
 

@@ -1015,12 +1015,12 @@ func (f SQLiteUserStore) SetDirectoryInfo(ctx context.Context, screenName IdentS
 	return nil
 }
 
-func (f SQLiteUserStore) InsertBARTItem(ctx context.Context, md5 []byte, image []byte, bartType uint16) error {
+func (f SQLiteUserStore) InsertBARTItem(ctx context.Context, hash []byte, blob []byte, itemType uint16) error {
 	q := `
 		INSERT INTO bartItem (hash, body, type)
 		VALUES (?, ?, ?)
 	`
-	_, err := f.db.ExecContext(ctx, q, md5, image, bartType)
+	_, err := f.db.ExecContext(ctx, q, hash, blob, itemType)
 	if err != nil {
 		if liteErr, ok := err.(*sqlite.Error); ok {
 			code := liteErr.Code()
@@ -1033,14 +1033,14 @@ func (f SQLiteUserStore) InsertBARTItem(ctx context.Context, md5 []byte, image [
 	return nil
 }
 
-func (f SQLiteUserStore) BuddyIcon(ctx context.Context, md5 []byte) ([]byte, error) {
+func (f SQLiteUserStore) BARTItem(ctx context.Context, hash []byte) ([]byte, error) {
 	q := `
 		SELECT body
 		FROM bartItem
 		WHERE hash = ?
 	`
 	var body []byte
-	err := f.db.QueryRowContext(ctx, q, md5).Scan(&body)
+	err := f.db.QueryRowContext(ctx, q, hash).Scan(&body)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
 	}

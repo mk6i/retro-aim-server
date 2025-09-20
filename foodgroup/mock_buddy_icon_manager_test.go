@@ -24,21 +24,21 @@ func (_m *mockBuddyIconManager) EXPECT() *mockBuddyIconManager_Expecter {
 	return &mockBuddyIconManager_Expecter{mock: &_m.Mock}
 }
 
-// BuddyIcon provides a mock function with given fields: ctx, md5
-func (_m *mockBuddyIconManager) BuddyIcon(ctx context.Context, md5 []byte) ([]byte, error) {
-	ret := _m.Called(ctx, md5)
+// BARTItem provides a mock function with given fields: ctx, hash
+func (_m *mockBuddyIconManager) BARTItem(ctx context.Context, hash []byte) ([]byte, error) {
+	ret := _m.Called(ctx, hash)
 
 	if len(ret) == 0 {
-		panic("no return value specified for BuddyIcon")
+		panic("no return value specified for BARTItem")
 	}
 
 	var r0 []byte
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, []byte) ([]byte, error)); ok {
-		return rf(ctx, md5)
+		return rf(ctx, hash)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, []byte) []byte); ok {
-		r0 = rf(ctx, md5)
+		r0 = rf(ctx, hash)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]byte)
@@ -46,7 +46,7 @@ func (_m *mockBuddyIconManager) BuddyIcon(ctx context.Context, md5 []byte) ([]by
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, []byte) error); ok {
-		r1 = rf(ctx, md5)
+		r1 = rf(ctx, hash)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -54,31 +54,31 @@ func (_m *mockBuddyIconManager) BuddyIcon(ctx context.Context, md5 []byte) ([]by
 	return r0, r1
 }
 
-// mockBuddyIconManager_BuddyIcon_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BuddyIcon'
-type mockBuddyIconManager_BuddyIcon_Call struct {
+// mockBuddyIconManager_BARTItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BARTItem'
+type mockBuddyIconManager_BARTItem_Call struct {
 	*mock.Call
 }
 
-// BuddyIcon is a helper method to define mock.On call
+// BARTItem is a helper method to define mock.On call
 //   - ctx context.Context
-//   - md5 []byte
-func (_e *mockBuddyIconManager_Expecter) BuddyIcon(ctx interface{}, md5 interface{}) *mockBuddyIconManager_BuddyIcon_Call {
-	return &mockBuddyIconManager_BuddyIcon_Call{Call: _e.mock.On("BuddyIcon", ctx, md5)}
+//   - hash []byte
+func (_e *mockBuddyIconManager_Expecter) BARTItem(ctx interface{}, hash interface{}) *mockBuddyIconManager_BARTItem_Call {
+	return &mockBuddyIconManager_BARTItem_Call{Call: _e.mock.On("BARTItem", ctx, hash)}
 }
 
-func (_c *mockBuddyIconManager_BuddyIcon_Call) Run(run func(ctx context.Context, md5 []byte)) *mockBuddyIconManager_BuddyIcon_Call {
+func (_c *mockBuddyIconManager_BARTItem_Call) Run(run func(ctx context.Context, hash []byte)) *mockBuddyIconManager_BARTItem_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].([]byte))
 	})
 	return _c
 }
 
-func (_c *mockBuddyIconManager_BuddyIcon_Call) Return(_a0 []byte, _a1 error) *mockBuddyIconManager_BuddyIcon_Call {
+func (_c *mockBuddyIconManager_BARTItem_Call) Return(_a0 []byte, _a1 error) *mockBuddyIconManager_BARTItem_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *mockBuddyIconManager_BuddyIcon_Call) RunAndReturn(run func(context.Context, []byte) ([]byte, error)) *mockBuddyIconManager_BuddyIcon_Call {
+func (_c *mockBuddyIconManager_BARTItem_Call) RunAndReturn(run func(context.Context, []byte) ([]byte, error)) *mockBuddyIconManager_BARTItem_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -189,9 +189,9 @@ func (_c *mockBuddyIconManager_DeleteBARTItem_Call) RunAndReturn(run func(contex
 	return _c
 }
 
-// InsertBARTItem provides a mock function with given fields: ctx, md5, image, bartType
-func (_m *mockBuddyIconManager) InsertBARTItem(ctx context.Context, md5 []byte, image []byte, bartType uint16) error {
-	ret := _m.Called(ctx, md5, image, bartType)
+// InsertBARTItem provides a mock function with given fields: ctx, hash, blob, itemType
+func (_m *mockBuddyIconManager) InsertBARTItem(ctx context.Context, hash []byte, blob []byte, itemType uint16) error {
+	ret := _m.Called(ctx, hash, blob, itemType)
 
 	if len(ret) == 0 {
 		panic("no return value specified for InsertBARTItem")
@@ -199,7 +199,7 @@ func (_m *mockBuddyIconManager) InsertBARTItem(ctx context.Context, md5 []byte, 
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, []byte, []byte, uint16) error); ok {
-		r0 = rf(ctx, md5, image, bartType)
+		r0 = rf(ctx, hash, blob, itemType)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -214,14 +214,14 @@ type mockBuddyIconManager_InsertBARTItem_Call struct {
 
 // InsertBARTItem is a helper method to define mock.On call
 //   - ctx context.Context
-//   - md5 []byte
-//   - image []byte
-//   - bartType uint16
-func (_e *mockBuddyIconManager_Expecter) InsertBARTItem(ctx interface{}, md5 interface{}, image interface{}, bartType interface{}) *mockBuddyIconManager_InsertBARTItem_Call {
-	return &mockBuddyIconManager_InsertBARTItem_Call{Call: _e.mock.On("InsertBARTItem", ctx, md5, image, bartType)}
+//   - hash []byte
+//   - blob []byte
+//   - itemType uint16
+func (_e *mockBuddyIconManager_Expecter) InsertBARTItem(ctx interface{}, hash interface{}, blob interface{}, itemType interface{}) *mockBuddyIconManager_InsertBARTItem_Call {
+	return &mockBuddyIconManager_InsertBARTItem_Call{Call: _e.mock.On("InsertBARTItem", ctx, hash, blob, itemType)}
 }
 
-func (_c *mockBuddyIconManager_InsertBARTItem_Call) Run(run func(ctx context.Context, md5 []byte, image []byte, bartType uint16)) *mockBuddyIconManager_InsertBARTItem_Call {
+func (_c *mockBuddyIconManager_InsertBARTItem_Call) Run(run func(ctx context.Context, hash []byte, blob []byte, itemType uint16)) *mockBuddyIconManager_InsertBARTItem_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].([]byte), args[2].([]byte), args[3].(uint16))
 	})

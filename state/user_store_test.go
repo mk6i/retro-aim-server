@@ -500,14 +500,14 @@ func TestSQLiteUserStore_SetBuddyIconAndRetrieve(t *testing.T) {
 		feedbagStore, err := NewSQLiteUserStore(testFile)
 		assert.NoError(t, err)
 
-		b, err := feedbagStore.BuddyIcon(context.Background(), hash)
+		b, err := feedbagStore.BARTItem(context.Background(), hash)
 		assert.NoError(t, err)
 		assert.Empty(t, b)
 
 		err = feedbagStore.InsertBARTItem(context.Background(), hash, item, 1)
 		assert.NoError(t, err)
 
-		b, err = feedbagStore.BuddyIcon(context.Background(), hash)
+		b, err = feedbagStore.BARTItem(context.Background(), hash)
 		assert.NoError(t, err)
 		assert.Equal(t, item, b)
 	})

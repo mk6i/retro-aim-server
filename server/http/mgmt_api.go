@@ -637,7 +637,7 @@ func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManag
 		http.Error(w, "icon not found", http.StatusNotFound)
 		return
 	}
-	icon, err := b.BuddyIcon(r.Context(), iconRef.Hash)
+	icon, err := b.BARTItem(r.Context(), iconRef.Hash)
 	if err != nil {
 		logger.Error("error retrieving buddy icon bart item", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -1064,7 +1064,7 @@ func getBARTHandler(w http.ResponseWriter, r *http.Request, bartAssetManager BAR
 		return
 	}
 
-	body, err := bartAssetManager.BuddyIcon(r.Context(), hashBytes)
+	body, err := bartAssetManager.BARTItem(r.Context(), hashBytes)
 	if err != nil {
 		logger.Error("error retrieving BART asset", "err", err.Error())
 		errorMsg(w, "internal server error", http.StatusInternalServerError)

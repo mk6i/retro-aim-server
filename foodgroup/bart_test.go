@@ -213,7 +213,7 @@ func TestBARTService_RetrieveItem(t *testing.T) {
 			buddyIconManager := newMockBuddyIconManager(t)
 			for _, params := range tc.mockParams.buddyIconManagerParams.buddyIconManagerRetrieveParams {
 				buddyIconManager.EXPECT().
-					BuddyIcon(matchContext(), params.itemHash).
+					BARTItem(matchContext(), params.itemHash).
 					Return(params.result, nil)
 			}
 

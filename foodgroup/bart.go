@@ -83,7 +83,7 @@ func (s BARTService) RetrieveItem(ctx context.Context, sess *state.Session, inFr
 		icon = blankGIF
 	} else {
 		var err error
-		if icon, err = s.buddyIconManager.BuddyIcon(ctx, inBody.Hash); err != nil {
+		if icon, err = s.buddyIconManager.BARTItem(ctx, inBody.Hash); err != nil {
 			return wire.SNACMessage{}, err
 		}
 	}
@@ -113,7 +113,7 @@ func (s BARTService) RetrieveItemV2(ctx context.Context, sess *state.Session, in
 			icon = blankGIF
 		} else {
 			var err error
-			if icon, err = s.buddyIconManager.BuddyIcon(ctx, id.Hash); err != nil {
+			if icon, err = s.buddyIconManager.BARTItem(ctx, id.Hash); err != nil {
 				return nil, err
 			}
 		}
