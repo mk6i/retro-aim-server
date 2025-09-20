@@ -753,3 +753,223 @@ paths:
                 properties:
                   message:
                     type: string
+
+  /bart:
+    get:
+      summary: Get BART entries by type
+      description: Retrieve a list of BART (Buddy ART) entries for a specific type.
+      parameters:
+        - name: type
+          in: query
+          description: The BART type ID (integer).
+          required: true
+          schema:
+            $ref: '#/components/schemas/BARTType'
+      responses:
+        '200':
+          description: Successful response containing BART entries for the specified type.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    hash:
+                      type: string
+                      description: A hex value representing the BART asset hash.
+                    type:
+                      $ref: '#/components/schemas/BARTType'
+                      description: The BART type ID.
+                  required:
+                    - hash
+                    - type
+        '400':
+          description: Bad request. Missing or invalid type parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /bart/{hash}:
+    get:
+      summary: Get BART asset data
+      description: Retrieve the raw binary data for a specific BART asset.
+      parameters:
+        - name: hash
+          in: path
+          description: The hex hash value for the BART asset.
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]+$'
+      responses:
+        '200':
+          description: Successful response containing the raw BART asset data.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Bad request. Missing or invalid hash parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: BART asset not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+    post:
+      summary: Upload a BART asset
+      description: Upload a Buddy ART asset with the specified hash and type.
+      parameters:
+        - name: hash
+          in: path
+          description: The hex hash value for the BART asset.
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]+$'
+        - name: type
+          in: query
+          description: The BART type ID (integer).
+          required: true
+          schema:
+            $ref: '#/components/schemas/BARTType'
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: Raw bytes of the BART asset
+      responses:
+        '201':
+          description: BART asset uploaded successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hash:
+                    type: string
+                    description: A hex value representing the BART asset hash.
+                  type:
+                    $ref: '#/components/schemas/BARTType'
+                    description: The BART type ID.
+                required:
+                  - hash
+                  - type
+        '400':
+          description: Bad request. Invalid type format, hash format, or failed to read request body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '409':
+          description: Conflict. BART asset already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '413':
+          description: Payload too large. Asset exceeds size limits for the specified type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+    delete:
+      summary: Delete a BART asset
+      description: Delete a BART asset with the specified hash.
+      parameters:
+        - name: hash
+          in: path
+          description: The hex hash value for the BART asset.
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]+$'
+      responses:
+        '200':
+          description: BART asset deleted successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Bad request. Missing or invalid hash parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: BART asset not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+
+components:
+  schemas:
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Response message describing the result or error.
+      required:
+        - message
+    BARTType:
+      type: integer
+      enum: [0, 1, 2, 3, 4, 5, 6, 12, 13, 15, 96, 129, 131, 136, 137, 1024, 1026, 1027, 1028]
+      description: |
+        BART (Buddy ART) type identifier. Valid type IDs and their corresponding names:
+        - 0: buddy_icon_small (GIF/JPG/BMP, <= 32 pixels and 2k)
+        - 1: buddy_icon (GIF/JPG/BMP, <= 64 pixels and 7k)
+        - 2: status_str (StringTLV format; DATA flag is always set)
+        - 3: arrive_sound (WAV/MP3/MID, <= 10K)
+        - 4: rich_text (byte array of rich text codes; DATA flag is always set)
+        - 5: superbuddy_icon (XML)
+        - 6: radio_station (Opaque struct; DATA flag is always set)
+        - 12: buddy_icon_big (SWF)
+        - 13: status_str_tod (Time when the status string is set)
+        - 15: current_av_track (XML file; Data flag should not be set)
+        - 96: depart_sound (WAV/MP3/MID, <= 10K)
+        - 129: im_chrome (GIF/JPG/BMP wallpaper)
+        - 131: im_sound (WAV/MP3, <= 10K)
+        - 136: im_chrome_xml (XML)
+        - 137: im_chrome_immers (Immersive Expressions)
+        - 1024: emoticon_set (Set of default Emoticons)
+        - 1026: encr_cert_chain (Cert chain for encryption certs)
+        - 1027: sign_cert_chain (Cert chain for signing certs)
+        - 1028: gateway_cert (Cert for enterprise gateway)

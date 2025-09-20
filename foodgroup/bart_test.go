@@ -44,6 +44,7 @@ func TestBARTService_UpsertItem(t *testing.T) {
 						{
 							itemHash: []byte{0x4e, 0xd9, 0xc1, 0x96, 0x45, 0xdb, 0x5a, 0xec, 0xdb, 0xf5, 0xc7, 0xa2, 0x4e, 0x8e, 0xa0, 0xed},
 							payload:  []byte{'i', 't', 'e', 'm', 'd', 'a', 't', 'a'},
+							bartType: 1,
 						},
 					},
 				},
@@ -80,7 +81,7 @@ func TestBARTService_UpsertItem(t *testing.T) {
 			buddyIconManager := newMockBuddyIconManager(t)
 			for _, params := range tc.mockParams.buddyIconManagerUpsertParams {
 				buddyIconManager.EXPECT().
-					SetBuddyIcon(matchContext(), params.itemHash, params.payload).
+					InsertBARTItem(matchContext(), params.itemHash, params.payload, params.bartType).
 					Return(nil)
 			}
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)

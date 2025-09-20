@@ -142,17 +142,17 @@ func (_c *mockBuddyIconManager_BuddyIconMetadata_Call) RunAndReturn(run func(con
 	return _c
 }
 
-// SetBuddyIcon provides a mock function with given fields: ctx, md5, image
-func (_m *mockBuddyIconManager) SetBuddyIcon(ctx context.Context, md5 []byte, image []byte) error {
-	ret := _m.Called(ctx, md5, image)
+// DeleteBARTItem provides a mock function with given fields: ctx, hash
+func (_m *mockBuddyIconManager) DeleteBARTItem(ctx context.Context, hash []byte) error {
+	ret := _m.Called(ctx, hash)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SetBuddyIcon")
+		panic("no return value specified for DeleteBARTItem")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []byte, []byte) error); ok {
-		r0 = rf(ctx, md5, image)
+	if rf, ok := ret.Get(0).(func(context.Context, []byte) error); ok {
+		r0 = rf(ctx, hash)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -160,32 +160,139 @@ func (_m *mockBuddyIconManager) SetBuddyIcon(ctx context.Context, md5 []byte, im
 	return r0
 }
 
-// mockBuddyIconManager_SetBuddyIcon_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetBuddyIcon'
-type mockBuddyIconManager_SetBuddyIcon_Call struct {
+// mockBuddyIconManager_DeleteBARTItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteBARTItem'
+type mockBuddyIconManager_DeleteBARTItem_Call struct {
 	*mock.Call
 }
 
-// SetBuddyIcon is a helper method to define mock.On call
+// DeleteBARTItem is a helper method to define mock.On call
 //   - ctx context.Context
-//   - md5 []byte
-//   - image []byte
-func (_e *mockBuddyIconManager_Expecter) SetBuddyIcon(ctx interface{}, md5 interface{}, image interface{}) *mockBuddyIconManager_SetBuddyIcon_Call {
-	return &mockBuddyIconManager_SetBuddyIcon_Call{Call: _e.mock.On("SetBuddyIcon", ctx, md5, image)}
+//   - hash []byte
+func (_e *mockBuddyIconManager_Expecter) DeleteBARTItem(ctx interface{}, hash interface{}) *mockBuddyIconManager_DeleteBARTItem_Call {
+	return &mockBuddyIconManager_DeleteBARTItem_Call{Call: _e.mock.On("DeleteBARTItem", ctx, hash)}
 }
 
-func (_c *mockBuddyIconManager_SetBuddyIcon_Call) Run(run func(ctx context.Context, md5 []byte, image []byte)) *mockBuddyIconManager_SetBuddyIcon_Call {
+func (_c *mockBuddyIconManager_DeleteBARTItem_Call) Run(run func(ctx context.Context, hash []byte)) *mockBuddyIconManager_DeleteBARTItem_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]byte), args[2].([]byte))
+		run(args[0].(context.Context), args[1].([]byte))
 	})
 	return _c
 }
 
-func (_c *mockBuddyIconManager_SetBuddyIcon_Call) Return(_a0 error) *mockBuddyIconManager_SetBuddyIcon_Call {
+func (_c *mockBuddyIconManager_DeleteBARTItem_Call) Return(_a0 error) *mockBuddyIconManager_DeleteBARTItem_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockBuddyIconManager_SetBuddyIcon_Call) RunAndReturn(run func(context.Context, []byte, []byte) error) *mockBuddyIconManager_SetBuddyIcon_Call {
+func (_c *mockBuddyIconManager_DeleteBARTItem_Call) RunAndReturn(run func(context.Context, []byte) error) *mockBuddyIconManager_DeleteBARTItem_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// InsertBARTItem provides a mock function with given fields: ctx, md5, image, bartType
+func (_m *mockBuddyIconManager) InsertBARTItem(ctx context.Context, md5 []byte, image []byte, bartType uint16) error {
+	ret := _m.Called(ctx, md5, image, bartType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InsertBARTItem")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []byte, []byte, uint16) error); ok {
+		r0 = rf(ctx, md5, image, bartType)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockBuddyIconManager_InsertBARTItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertBARTItem'
+type mockBuddyIconManager_InsertBARTItem_Call struct {
+	*mock.Call
+}
+
+// InsertBARTItem is a helper method to define mock.On call
+//   - ctx context.Context
+//   - md5 []byte
+//   - image []byte
+//   - bartType uint16
+func (_e *mockBuddyIconManager_Expecter) InsertBARTItem(ctx interface{}, md5 interface{}, image interface{}, bartType interface{}) *mockBuddyIconManager_InsertBARTItem_Call {
+	return &mockBuddyIconManager_InsertBARTItem_Call{Call: _e.mock.On("InsertBARTItem", ctx, md5, image, bartType)}
+}
+
+func (_c *mockBuddyIconManager_InsertBARTItem_Call) Run(run func(ctx context.Context, md5 []byte, image []byte, bartType uint16)) *mockBuddyIconManager_InsertBARTItem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]byte), args[2].([]byte), args[3].(uint16))
+	})
+	return _c
+}
+
+func (_c *mockBuddyIconManager_InsertBARTItem_Call) Return(_a0 error) *mockBuddyIconManager_InsertBARTItem_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockBuddyIconManager_InsertBARTItem_Call) RunAndReturn(run func(context.Context, []byte, []byte, uint16) error) *mockBuddyIconManager_InsertBARTItem_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListBARTItems provides a mock function with given fields: ctx, itemType
+func (_m *mockBuddyIconManager) ListBARTItems(ctx context.Context, itemType uint16) ([]state.BARTItem, error) {
+	ret := _m.Called(ctx, itemType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListBARTItems")
+	}
+
+	var r0 []state.BARTItem
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint16) ([]state.BARTItem, error)); ok {
+		return rf(ctx, itemType)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uint16) []state.BARTItem); ok {
+		r0 = rf(ctx, itemType)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]state.BARTItem)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uint16) error); ok {
+		r1 = rf(ctx, itemType)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// mockBuddyIconManager_ListBARTItems_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListBARTItems'
+type mockBuddyIconManager_ListBARTItems_Call struct {
+	*mock.Call
+}
+
+// ListBARTItems is a helper method to define mock.On call
+//   - ctx context.Context
+//   - itemType uint16
+func (_e *mockBuddyIconManager_Expecter) ListBARTItems(ctx interface{}, itemType interface{}) *mockBuddyIconManager_ListBARTItems_Call {
+	return &mockBuddyIconManager_ListBARTItems_Call{Call: _e.mock.On("ListBARTItems", ctx, itemType)}
+}
+
+func (_c *mockBuddyIconManager_ListBARTItems_Call) Run(run func(ctx context.Context, itemType uint16)) *mockBuddyIconManager_ListBARTItems_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uint16))
+	})
+	return _c
+}
+
+func (_c *mockBuddyIconManager_ListBARTItems_Call) Return(_a0 []state.BARTItem, _a1 error) *mockBuddyIconManager_ListBARTItems_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *mockBuddyIconManager_ListBARTItems_Call) RunAndReturn(run func(context.Context, uint16) ([]state.BARTItem, error)) *mockBuddyIconManager_ListBARTItems_Call {
 	_c.Call.Return(run)
 	return _c
 }

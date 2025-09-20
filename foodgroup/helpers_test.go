@@ -234,6 +234,7 @@ type buddyIconManagerRetrieveParams []struct {
 type buddyIconManagerUpsertParams []struct {
 	itemHash []byte
 	payload  []byte
+	bartType uint16
 }
 
 // buddyIconMetadataParams is the list of parameters passed at the mock
