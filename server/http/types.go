@@ -32,10 +32,19 @@ type AccountManager interface {
 	SetBotStatus(ctx context.Context, isBot bool, screenName state.IdentScreenName) error
 }
 
-// BuddyIconRetriever defines a method for retrieving a buddy icon image by its hash.
-type BuddyIconRetriever interface {
-	// BuddyIcon retrieves a buddy icon image by its md5 hash.
-	BuddyIcon(ctx context.Context, itemHash []byte) ([]byte, error)
+// BARTAssetManager defines methods for managing BART (Buddy ART) assets.
+type BARTAssetManager interface {
+	// BARTItem retrieves a BART asset by its hash.
+	BARTItem(ctx context.Context, hash []byte) ([]byte, error)
+
+	// InsertBARTItem inserts a BART asset.
+	InsertBARTItem(ctx context.Context, hash []byte, blob []byte, itemType uint16) error
+
+	// ListBARTItems returns BART assets filtered by type.
+	ListBARTItems(ctx context.Context, itemType uint16) ([]state.BARTItem, error)
+
+	// DeleteBARTItem deletes a BART asset by hash.
+	DeleteBARTItem(ctx context.Context, hash []byte) error
 }
 
 // ChatRoomCreator defines a method for creating a new chat room.

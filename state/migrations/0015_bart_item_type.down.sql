@@ -1,0 +1,1 @@
+ALTER TABLE bartItem DROP COLUMN type;

@@ -6,7 +6,7 @@
 set -e
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-ENV_FILE="$SCRIPT_DIR/../config/settings.env"
+ENV_FILE="$SCRIPT_DIR/../config/ssl/settings.env"
 REPO_ROOT="$SCRIPT_DIR/.."
 
 # Run Retro AIM Server from repo root.

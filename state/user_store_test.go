@@ -13,6 +13,7 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const testFile string = "aim_test.db"
@@ -488,26 +489,92 @@ func pdInfoItem(itemID uint16, pdMode wire.FeedbagPDMode) wire.FeedbagItem {
 }
 
 func TestSQLiteUserStore_SetBuddyIconAndRetrieve(t *testing.T) {
-	defer func() {
-		assert.NoError(t, os.Remove(testFile))
-	}()
-
-	feedbagStore, err := NewSQLiteUserStore(testFile)
-	assert.NoError(t, err)
-
 	hash := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	item := []byte{'a', 'b', 'c', 'd'}
 
-	b, err := feedbagStore.BuddyIcon(context.Background(), hash)
-	assert.NoError(t, err)
-	assert.Empty(t, b)
+	t.Run("insert_and_retrieve", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
 
-	err = feedbagStore.SetBuddyIcon(context.Background(), hash, item)
-	assert.NoError(t, err)
+		feedbagStore, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
 
-	b, err = feedbagStore.BuddyIcon(context.Background(), hash)
-	assert.NoError(t, err)
-	assert.Equal(t, item, b)
+		b, err := feedbagStore.BARTItem(context.Background(), hash)
+		assert.NoError(t, err)
+		assert.Empty(t, b)
+
+		err = feedbagStore.InsertBARTItem(context.Background(), hash, item, 1)
+		assert.NoError(t, err)
+
+		b, err = feedbagStore.BARTItem(context.Background(), hash)
+		assert.NoError(t, err)
+		assert.Equal(t, item, b)
+	})
+
+	t.Run("duplicate_insert_returns_error", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		feedbagStore, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// First insert the item
+		err = feedbagStore.InsertBARTItem(context.Background(), hash, item, 1)
+		assert.NoError(t, err)
+
+		// Try to insert the same hash again
+		err = feedbagStore.InsertBARTItem(context.Background(), hash, item, 1)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrBARTItemExists)
+	})
+}
+
+func TestSQLiteUserStore_ListBARTItems(t *testing.T) {
+	t.Run("empty_list", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		feedbagStore, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		items, err := feedbagStore.ListBARTItems(context.Background(), 1)
+		assert.NoError(t, err)
+		assert.Empty(t, items)
+	})
+
+	t.Run("list_with_items", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		feedbagStore, err := NewSQLiteUserStore(testFile)
+		assert.NoError(t, err)
+
+		// Insert some test items of type 1
+		hash1 := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+		item1 := []byte{'a', 'b', 'c', 'd'}
+		err = feedbagStore.InsertBARTItem(context.Background(), hash1, item1, 1)
+		assert.NoError(t, err)
+
+		hash2 := []byte{15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
+		item2 := []byte{'e', 'f', 'g', 'h'}
+		err = feedbagStore.InsertBARTItem(context.Background(), hash2, item2, 1)
+		assert.NoError(t, err)
+
+		// List items of type 1
+		items, err := feedbagStore.ListBARTItems(context.Background(), 1)
+		assert.NoError(t, err)
+		assert.Len(t, items, 2)
+
+		// Check that items are sorted by hash
+		assert.Equal(t, "000102030405060708090a0b0c0d0e0f", items[0].Hash)
+		assert.Equal(t, uint16(1), items[0].Type)
+		assert.Equal(t, "0f0e0d0c0b0a09080706050403020100", items[1].Hash)
+		assert.Equal(t, uint16(1), items[1].Type)
+	})
 }
 
 func TestSQLiteUserStore_SetUserPassword_UserExists(t *testing.T) {
@@ -3325,5 +3392,55 @@ func TestSQLiteUserStore_SetWarnLevel(t *testing.T) {
 
 		err = f.SetWarnLevel(context.Background(), nonExistentScreenName, lastWarnUpdate, lastWarnLevel)
 		assert.ErrorIs(t, err, ErrNoUser)
+	})
+}
+
+func TestSQLiteUserStore_DeleteBARTItem(t *testing.T) {
+	t.Run("delete_existing_item", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		f, err := NewSQLiteUserStore(testFile)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+
+		// Insert a BART item first
+		hash := []byte("testhash123456")
+		image := []byte("test image data")
+		bartType := uint16(1)
+
+		err = f.InsertBARTItem(ctx, hash, image, bartType)
+		require.NoError(t, err)
+
+		// Verify it exists
+		items, err := f.ListBARTItems(ctx, 1)
+		require.NoError(t, err)
+		require.Len(t, items, 1)
+
+		// Delete the item
+		err = f.DeleteBARTItem(ctx, hash)
+		assert.NoError(t, err)
+
+		// Verify it's gone
+		items, err = f.ListBARTItems(ctx, 1)
+		require.NoError(t, err)
+		assert.Len(t, items, 0)
+	})
+
+	t.Run("delete_nonexistent_item", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, os.Remove(testFile))
+		}()
+
+		f, err := NewSQLiteUserStore(testFile)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		hash := []byte("nonexistent")
+
+		err = f.DeleteBARTItem(ctx, hash)
+		assert.ErrorIs(t, err, ErrBARTItemNotFound)
 	})
 }

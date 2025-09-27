@@ -97,17 +97,23 @@ type buddyBroadcaster interface {
 	BroadcastVisibility(ctx context.Context, you *state.Session, filter []state.IdentScreenName, sendDepartures bool) error
 }
 
-// BuddyIconManager is the interface for managing AIM buddy icons.
-type BuddyIconManager interface {
-	// BuddyIcon retrieves a buddy icon image by its md5 hash.
-	BuddyIcon(ctx context.Context, md5 []byte) ([]byte, error)
+// BARTItemManager is the interface for managing BART (Buddy Art) assets.
+type BARTItemManager interface {
+	// BARTItem retrieves a BART asset by its hash.
+	BARTItem(ctx context.Context, hash []byte) ([]byte, error)
 
 	// BuddyIconMetadata retrieves a user's buddy icon metadata. It returns nil
 	// if the user does not have a buddy icon.
 	BuddyIconMetadata(ctx context.Context, screenName state.IdentScreenName) (*wire.BARTID, error)
 
-	// SetBuddyIcon creates or updates a buddy icon image and image hash.
-	SetBuddyIcon(ctx context.Context, md5 []byte, image []byte) error
+	// InsertBARTItem creates or updates a BART asset and blob hash.
+	InsertBARTItem(ctx context.Context, hash []byte, blob []byte, itemType uint16) error
+
+	// ListBARTItems returns BART assets filtered by type.
+	ListBARTItems(ctx context.Context, itemType uint16) ([]state.BARTItem, error)
+
+	// DeleteBARTItem deletes a BART asset by hash.
+	DeleteBARTItem(ctx context.Context, hash []byte) error
 }
 
 // RelationshipFetcher is the interface for retrieving relationships between users.

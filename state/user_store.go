@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -27,6 +28,8 @@ import (
 var (
 	ErrKeywordCategoryExists   = errors.New("keyword category already exists")
 	ErrKeywordCategoryNotFound = errors.New("keyword category not found")
+	ErrBARTItemExists          = errors.New("BART asset already exists")
+	ErrBARTItemNotFound        = errors.New("BART asset not found")
 	ErrKeywordExists           = errors.New("keyword already exists")
 	ErrKeywordInUse            = errors.New("can't delete keyword that is associated with a user")
 	ErrKeywordNotFound         = errors.New("keyword not found")
@@ -1012,28 +1015,95 @@ func (f SQLiteUserStore) SetDirectoryInfo(ctx context.Context, screenName IdentS
 	return nil
 }
 
-func (f SQLiteUserStore) SetBuddyIcon(ctx context.Context, md5 []byte, image []byte) error {
+func (f SQLiteUserStore) InsertBARTItem(ctx context.Context, hash []byte, blob []byte, itemType uint16) error {
 	q := `
-		INSERT INTO bartItem (hash, body)
-		VALUES (?, ?)
-		ON CONFLICT DO NOTHING
+		INSERT INTO bartItem (hash, body, type)
+		VALUES (?, ?, ?)
 	`
-	_, err := f.db.ExecContext(ctx, q, md5, image)
-	return err
+	_, err := f.db.ExecContext(ctx, q, hash, blob, itemType)
+	if err != nil {
+		if liteErr, ok := err.(*sqlite.Error); ok {
+			code := liteErr.Code()
+			if code == lib.SQLITE_CONSTRAINT_PRIMARYKEY {
+				return ErrBARTItemExists
+			}
+		}
+		return err
+	}
+	return nil
 }
 
-func (f SQLiteUserStore) BuddyIcon(ctx context.Context, md5 []byte) ([]byte, error) {
+func (f SQLiteUserStore) BARTItem(ctx context.Context, hash []byte) ([]byte, error) {
 	q := `
 		SELECT body
 		FROM bartItem
 		WHERE hash = ?
 	`
 	var body []byte
-	err := f.db.QueryRowContext(ctx, q, md5).Scan(&body)
+	err := f.db.QueryRowContext(ctx, q, hash).Scan(&body)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
 	}
 	return body, err
+}
+
+// BARTItem represents a BART asset with its hash and type.
+type BARTItem struct {
+	Hash string
+	Type uint16
+}
+
+func (f SQLiteUserStore) ListBARTItems(ctx context.Context, itemType uint16) ([]BARTItem, error) {
+	q := `
+		SELECT hash, type
+		FROM bartItem
+		WHERE type = ?
+	`
+
+	rows, err := f.db.QueryContext(ctx, q, itemType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []BARTItem
+	for rows.Next() {
+		var item BARTItem
+		var hashBytes []byte
+		err := rows.Scan(&hashBytes, &item.Type)
+		if err != nil {
+			return nil, err
+		}
+		item.Hash = hex.EncodeToString(hashBytes)
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
+func (f SQLiteUserStore) DeleteBARTItem(ctx context.Context, hash []byte) error {
+	q := `
+		DELETE FROM bartItem
+		WHERE hash = ?
+	`
+	result, err := f.db.ExecContext(ctx, q, hash)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrBARTItemNotFound
+	}
+
+	return nil
 }
 
 func (f SQLiteUserStore) ChatRoomByCookie(ctx context.Context, chatCookie string) (ChatRoom, error) {

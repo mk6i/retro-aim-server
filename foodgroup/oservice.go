@@ -38,7 +38,7 @@ func NewOServiceService(
 	chatRoomManager ChatRoomRegistry,
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 	rateLimitClasses wire.RateLimitClasses,
 	snacRateLimits wire.SNACRateLimits,
 	chatMessageRelayer ChatMessageRelayer,
@@ -46,7 +46,7 @@ func NewOServiceService(
 	return &OServiceService{
 		cookieIssuer:       cookieIssuer,
 		messageRelayer:     messageRelayer,
-		buddyBroadcaster:   newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		buddyBroadcaster:   newBuddyNotifier(bartItemManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		cfg:                cfg,
 		logger:             logger,
 		rateLimitClasses:   rateLimitClasses,

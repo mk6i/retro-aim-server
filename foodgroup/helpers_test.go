@@ -16,7 +16,7 @@ import (
 // in one place for a table test
 type mockParams struct {
 	accountManagerParams
-	buddyIconManagerParams
+	bartItemManagerParams
 	buddyBroadcasterParams
 	relationshipFetcherParams
 	chatMessageRelayerParams
@@ -214,30 +214,32 @@ type setMoreInfoParams []struct {
 	err  error
 }
 
-// buddyIconManagerParams is a helper struct that contains mock parameters for
-// BuddyIconManager methods
-type buddyIconManagerParams struct {
-	buddyIconManagerRetrieveParams
-	buddyIconManagerUpsertParams
+// bartItemManagerParams is a helper struct that contains mock parameters for
+// BARTItemManager methods
+type bartItemManagerParams struct {
+	bartItemManagerRetrieveParams
+	bartItemManagerUpsertParams
 	buddyIconMetadataParams
 }
 
-// buddyIconManagerRetrieveParams is the list of parameters passed at the mock
-// BuddyIconManager.BuddyIcon call site
-type buddyIconManagerRetrieveParams []struct {
+// bartItemManagerRetrieveParams is the list of parameters passed at the mock
+// BARTItemManager.BuddyIcon call site
+type bartItemManagerRetrieveParams []struct {
 	itemHash []byte
 	result   []byte
+	err      error
 }
 
-// buddyIconManagerUpsertParams is the list of parameters passed at the mock
-// BuddyIconManager.SetBuddyIcon call site
-type buddyIconManagerUpsertParams []struct {
+// bartItemManagerUpsertParams is the list of parameters passed at the mock
+// BARTItemManager.SetBuddyIcon call site
+type bartItemManagerUpsertParams []struct {
 	itemHash []byte
 	payload  []byte
+	bartType uint16
 }
 
 // buddyIconMetadataParams is the list of parameters passed at the mock
-// BuddyIconManager.BuddyIconMetadata call site
+// BARTItemManager.BuddyIconMetadata call site
 type buddyIconMetadataParams []struct {
 	screenName state.IdentScreenName
 	result     *wire.BARTID

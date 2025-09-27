@@ -13,7 +13,7 @@ import (
 // NewAdminService creates an instance of AdminService.
 func NewAdminService(
 	accountManager AccountManager,
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 	relationshipFetcher RelationshipFetcher,
 	messageRelayer MessageRelayer,
 	sessionRetriever SessionRetriever,
@@ -21,7 +21,7 @@ func NewAdminService(
 ) *AdminService {
 	return &AdminService{
 		accountManager:   accountManager,
-		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		buddyBroadcaster: newBuddyNotifier(bartItemManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		messageRelayer:   messageRelayer,
 		logger:           logger,
 	}

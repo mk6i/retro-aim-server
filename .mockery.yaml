@@ -82,9 +82,9 @@ packages:
       AccountRetriever:
         config:
           filename: "mock_account_retriever_test.go"
-      BuddyIconRetriever:
+      BARTAssetManager:
         config:
-          filename: "mock_buddy_icon_retriever_test.go"
+          filename: "mock_bart_asset_manager_test.go"
       ChatRoomCreator:
         config:
           filename: "mock_chat_room_creator_test.go"
@@ -117,9 +117,9 @@ packages:
       AccountManager:
         config:
           filename: "mock_account_manager_test.go"
-      BuddyIconManager:
+      BARTItemManager:
         config:
-          filename: "mock_buddy_icon_manager_test.go"
+          filename: "mock_bart_item_manager_test.go"
       buddyBroadcaster:
         config:
           filename: "mock_buddy_broadcaster_test.go"

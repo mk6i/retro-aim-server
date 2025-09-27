@@ -112,12 +112,30 @@ func (rt Handler) BARTDownloadQuery(ctx context.Context, sess *state.Session, in
 	if err := wire.UnmarshalBE(&inBody, r); err != nil {
 		return err
 	}
-	outSNAC, err := rt.BARTService.RetrieveItem(ctx, sess, inFrame, inBody)
+	outSNAC, err := rt.BARTService.RetrieveItem(ctx, inFrame, inBody)
 	if err != nil {
 		return err
 	}
 	rt.LogRequestAndResponse(ctx, inFrame, outSNAC, outSNAC.Frame, outSNAC.Body)
 	return rw.SendSNAC(outSNAC.Frame, outSNAC.Body)
+}
+
+func (rt Handler) BARTDownload2Query(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter) error {
+	inBody := wire.SNAC_0x10_0x06_BARTDownload2Query{}
+	if err := wire.UnmarshalBE(&inBody, r); err != nil {
+		return err
+	}
+	outSNACS, err := rt.BARTService.RetrieveItemV2(ctx, inFrame, inBody)
+	if err != nil {
+		return err
+	}
+	for _, snac := range outSNACS {
+		rt.LogRequestAndResponse(ctx, inFrame, snac, snac.Frame, snac.Body)
+		if err := rw.SendSNAC(snac.Frame, snac.Body); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (rt Handler) BuddyRightsQuery(ctx context.Context, _ *state.Session, inFrame wire.SNACFrame, r io.Reader, rw ResponseWriter) error {
@@ -934,6 +952,8 @@ func (rt Handler) Handle(ctx context.Context, server uint16, sess *state.Session
 		switch inFrame.SubGroup {
 		case wire.BARTDownloadQuery:
 			return rt.BARTDownloadQuery(ctx, sess, inFrame, r, rw)
+		case wire.BARTDownload2Query:
+			return rt.BARTDownload2Query(ctx, sess, inFrame, r, rw)
 		case wire.BARTUploadQuery:
 			return rt.BARTUploadQuery(ctx, sess, inFrame, r, rw)
 		}

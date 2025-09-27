@@ -22,14 +22,14 @@ var omitCaps = map[[16]byte]bool{
 
 // NewLocateService creates a new instance of LocateService.
 func NewLocateService(
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 	messageRelayer MessageRelayer,
 	profileManager ProfileManager,
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 ) LocateService {
 	return LocateService{
-		buddyBroadcaster:    newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		buddyBroadcaster:    newBuddyNotifier(bartItemManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		relationshipFetcher: relationshipFetcher,
 		profileManager:      profileManager,
 		sessionRetriever:    sessionRetriever,

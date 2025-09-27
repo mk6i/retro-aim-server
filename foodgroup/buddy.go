@@ -14,10 +14,10 @@ func NewBuddyService(
 	clientSideBuddyListManager ClientSideBuddyListManager,
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 ) *BuddyService {
 	return &BuddyService{
-		buddyBroadcaster:           newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		buddyBroadcaster:           newBuddyNotifier(bartItemManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		clientSideBuddyListManager: clientSideBuddyListManager,
 	}
 }
@@ -109,13 +109,13 @@ func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, screenName stat
 }
 
 func newBuddyNotifier(
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 	relationshipFetcher RelationshipFetcher,
 	messageRelayer MessageRelayer,
 	sessionRetriever SessionRetriever,
 ) buddyNotifier {
 	return buddyNotifier{
-		buddyIconManager:    buddyIconManager,
+		bartItemManager:     bartItemManager,
 		relationshipFetcher: relationshipFetcher,
 		messageRelayer:      messageRelayer,
 		sessionRetriever:    sessionRetriever,
@@ -125,7 +125,7 @@ func newBuddyNotifier(
 // buddyNotifier centralizes logic for sending buddy arrival and departure
 // notifications.
 type buddyNotifier struct {
-	buddyIconManager    BuddyIconManager
+	bartItemManager     BARTItemManager
 	relationshipFetcher RelationshipFetcher
 	messageRelayer      MessageRelayer
 	sessionRetriever    SessionRetriever
@@ -285,7 +285,7 @@ func (s buddyNotifier) BroadcastVisibility(
 
 // setBuddyIcon adds buddy icon metadata to TLV user info
 func (s buddyNotifier) setBuddyIcon(ctx context.Context, you state.IdentScreenName, myInfo *wire.TLVUserInfo) error {
-	icon, err := s.buddyIconManager.BuddyIconMetadata(ctx, you)
+	icon, err := s.bartItemManager.BuddyIconMetadata(ctx, you)
 	if err != nil {
 		return fmt.Errorf("retrieve buddy icon ref: %v", err)
 	}

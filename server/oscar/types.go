@@ -66,7 +66,8 @@ type AdminService interface {
 
 type BARTService interface {
 	UpsertItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x10_0x02_BARTUploadQuery) (wire.SNACMessage, error)
-	RetrieveItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x10_0x04_BARTDownloadQuery) (wire.SNACMessage, error)
+	RetrieveItem(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x10_0x04_BARTDownloadQuery) (wire.SNACMessage, error)
+	RetrieveItemV2(ctx context.Context, frame wire.SNACFrame, body wire.SNAC_0x10_0x06_BARTDownload2Query) ([]wire.SNACMessage, error)
 }
 
 type BuddyService interface {

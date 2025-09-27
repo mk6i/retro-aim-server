@@ -9,14 +9,14 @@ import (
 
 // NewPermitDenyService creates an instance of PermitDenyService.
 func NewPermitDenyService(
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 	relationshipFetcher RelationshipFetcher,
 	clientSideBuddyListManager ClientSideBuddyListManager,
 	messageRelayer MessageRelayer,
 	sessionRetriever SessionRetriever,
 ) PermitDenyService {
 	return PermitDenyService{
-		buddyBroadcaster:           newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		buddyBroadcaster:           newBuddyNotifier(bartItemManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		clientSideBuddyListManager: clientSideBuddyListManager,
 	}
 }

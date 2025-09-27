@@ -3,6 +3,7 @@ package foodgroup
 import (
 	"context"
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -20,20 +21,20 @@ var blankGIF = []byte{
 
 func NewBARTService(
 	logger *slog.Logger,
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 	messageRelayer MessageRelayer,
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 ) BARTService {
 	return BARTService{
-		buddyIconManager:       buddyIconManager,
-		buddyUpdateBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		bartItemManager:        bartItemManager,
+		buddyUpdateBroadcaster: newBuddyNotifier(bartItemManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		logger:                 logger,
 	}
 }
 
 type BARTService struct {
-	buddyIconManager       BuddyIconManager
+	bartItemManager        BARTItemManager
 	buddyUpdateBroadcaster buddyBroadcaster
 	logger                 *slog.Logger
 }
@@ -45,11 +46,13 @@ func (s BARTService) UpsertItem(ctx context.Context, sess *state.Session, inFram
 	}
 	hash := h.Sum(nil)
 
-	if err := s.buddyIconManager.SetBuddyIcon(ctx, hash, inBody.Data); err != nil {
-		return wire.SNACMessage{}, err
+	if err := s.bartItemManager.InsertBARTItem(ctx, hash, inBody.Data, inBody.Type); err != nil {
+		if !errors.Is(err, state.ErrBARTItemExists) {
+			return wire.SNACMessage{}, err
+		}
 	}
 
-	s.logger.DebugContext(ctx, "successfully uploaded buddy icon", "hash", fmt.Sprintf("%x", hash))
+	s.logger.DebugContext(ctx, "successfully uploaded BART item", "hash", fmt.Sprintf("%x", hash))
 
 	if err := s.buddyUpdateBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), sess.TLVUserInfo()); err != nil {
 		return wire.SNACMessage{}, err
@@ -77,18 +80,18 @@ func (s BARTService) UpsertItem(ctx context.Context, sess *state.Session, inFram
 // RetrieveItem fetches a BART item from the data store. The item is selected
 // based on inBody.Hash. It's unclear what effect inBody.Flags is supposed to
 // have on the request.
-func (s BARTService) RetrieveItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x10_0x04_BARTDownloadQuery) (wire.SNACMessage, error) {
-	var icon []byte
+func (s BARTService) RetrieveItem(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x10_0x04_BARTDownloadQuery) (wire.SNACMessage, error) {
+	var item []byte
 	if inBody.HasClearIconHash() {
-		icon = blankGIF
+		item = blankGIF
 	} else {
 		var err error
-		if icon, err = s.buddyIconManager.BuddyIcon(ctx, inBody.Hash); err != nil {
+		if item, err = s.bartItemManager.BARTItem(ctx, inBody.Hash); err != nil {
 			return wire.SNACMessage{}, err
 		}
 	}
 
-	// todo... how to reply if requested icon doesn't exist
+	// todo... how to reply if requested item doesn't exist
 	return wire.SNACMessage{
 		Frame: wire.SNACFrame{
 			FoodGroup: wire.BART,
@@ -98,7 +101,47 @@ func (s BARTService) RetrieveItem(ctx context.Context, sess *state.Session, inFr
 		Body: wire.SNAC_0x10_0x05_BARTDownloadReply{
 			ScreenName: inBody.ScreenName,
 			BARTID:     inBody.BARTID,
-			Data:       icon,
+			Data:       item,
 		},
 	}, nil
+}
+
+// RetrieveItemV2 implements the SNAC handler for SNAC(0x10,0x06) BARTDownload2Query.
+func (s BARTService) RetrieveItemV2(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x10_0x06_BARTDownload2Query) ([]wire.SNACMessage, error) {
+	var result []wire.SNACMessage
+
+	for _, id := range inBody.IDs {
+		var item []byte
+
+		if id.Type == wire.BARTTypesBuddyIcon && id.HasClearIconHash() {
+			item = blankGIF
+		} else {
+			var err error
+			if item, err = s.bartItemManager.BARTItem(ctx, id.Hash); err != nil {
+				return nil, err
+			}
+		}
+
+		result = append(result, wire.SNACMessage{
+			Frame: wire.SNACFrame{
+				FoodGroup: wire.BART,
+				SubGroup:  wire.BARTDownload2Reply,
+				RequestID: inFrame.RequestID,
+			},
+			Body: wire.SNAC_0x10_0x07_BARTDownload2Reply{
+				ScreenName: inBody.ScreenName,
+				ReplyID: wire.BartQueryReplyID{
+					QueryID: id,
+					Code:    0x00, // found
+					ReplyID: wire.BARTID{
+						Type:     id.Type,
+						BARTInfo: id.BARTInfo,
+					},
+				},
+				Data: item,
+			},
+		})
+	}
+
+	return result, nil
 }

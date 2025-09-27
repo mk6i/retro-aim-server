@@ -244,7 +244,7 @@ func TestBuddyNotifier_BroadcastBuddyArrived(t *testing.T) {
 			name:        "happy path",
 			userSession: newTestSession("me"),
 			mockParams: mockParams{
-				buddyIconManagerParams: buddyIconManagerParams{
+				bartItemManagerParams: bartItemManagerParams{
 					buddyIconMetadataParams: buddyIconMetadataParams{
 						{
 							screenName: state.NewIdentScreenName("me"),
@@ -335,9 +335,9 @@ func TestBuddyNotifier_BroadcastBuddyArrived(t *testing.T) {
 					AllRelationships(matchContext(), params.screenName, params.filter).
 					Return(params.result, params.err)
 			}
-			buddyIconManager := newMockBuddyIconManager(t)
+			bartItemManager := newMockBARTItemManager(t)
 			for _, params := range tc.mockParams.buddyIconMetadataParams {
-				buddyIconManager.EXPECT().
+				bartItemManager.EXPECT().
 					BuddyIconMetadata(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
@@ -348,7 +348,7 @@ func TestBuddyNotifier_BroadcastBuddyArrived(t *testing.T) {
 			}
 
 			svc := buddyNotifier{
-				buddyIconManager:    buddyIconManager,
+				bartItemManager:     bartItemManager,
 				relationshipFetcher: relationshipFetcher,
 				messageRelayer:      messageRelayer,
 			}
@@ -458,9 +458,9 @@ func TestBuddyService_BroadcastDeparture(t *testing.T) {
 					AllRelationships(matchContext(), params.screenName, params.filter).
 					Return(params.result, params.err)
 			}
-			buddyIconManager := newMockBuddyIconManager(t)
+			bartItemManager := newMockBARTItemManager(t)
 			for _, params := range tc.mockParams.buddyIconMetadataParams {
-				buddyIconManager.EXPECT().
+				bartItemManager.EXPECT().
 					BuddyIconMetadata(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
@@ -500,7 +500,7 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 			name:        "happy path",
 			userSession: newTestSession("me"),
 			mockParams: mockParams{
-				buddyIconManagerParams: buddyIconManagerParams{
+				bartItemManagerParams: bartItemManagerParams{
 					buddyIconMetadataParams: buddyIconMetadataParams{
 						{
 							screenName: state.NewIdentScreenName("me"),
@@ -657,7 +657,7 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 			name:        "don't send departure notifications",
 			userSession: newTestSession("me"),
 			mockParams: mockParams{
-				buddyIconManagerParams: buddyIconManagerParams{
+				bartItemManagerParams: bartItemManagerParams{
 					buddyIconMetadataParams: buddyIconMetadataParams{
 						{
 							screenName: state.NewIdentScreenName("me"),
@@ -758,7 +758,7 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 			name:        "users have buddy icons",
 			userSession: newTestSession("me"),
 			mockParams: mockParams{
-				buddyIconManagerParams: buddyIconManagerParams{
+				bartItemManagerParams: bartItemManagerParams{
 					buddyIconMetadataParams: buddyIconMetadataParams{
 						{
 							screenName: state.NewIdentScreenName("me"),
@@ -850,9 +850,9 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 					AllRelationships(matchContext(), params.screenName, params.filter).
 					Return(params.result, params.err)
 			}
-			buddyIconManager := newMockBuddyIconManager(t)
+			bartItemManager := newMockBARTItemManager(t)
 			for _, params := range tc.mockParams.buddyIconMetadataParams {
-				buddyIconManager.EXPECT().
+				bartItemManager.EXPECT().
 					BuddyIconMetadata(matchContext(), params.screenName).
 					Return(params.result, params.err)
 			}
@@ -869,7 +869,7 @@ func Test_buddyNotifier_BroadcastVisibility(t *testing.T) {
 			}
 
 			svc := buddyNotifier{
-				buddyIconManager:    buddyIconManager,
+				bartItemManager:     bartItemManager,
 				relationshipFetcher: relationshipFetcher,
 				messageRelayer:      messageRelayer,
 				sessionRetriever:    sessionRetriever,

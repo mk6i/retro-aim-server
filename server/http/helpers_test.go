@@ -12,7 +12,7 @@ import (
 
 type mockParams struct {
 	accountManagerParams
-	bartRetrieverParams
+	bartAssetManagerParams
 	chatRoomDeleterParams
 	chatRoomRetrieverParams
 	chatSessionRetrieverParams
@@ -73,18 +73,45 @@ type setBotStatusParams []struct {
 	err        error
 }
 
-// bartRetrieverParams is a helper struct that contains mock parameters for
-// BuddyIconRetriever methods
-type bartRetrieverParams struct {
-	bartRetrieveParams
+// bartAssetManagerParams is a helper struct that contains mock parameters for
+// BARTAssetManager methods
+type bartAssetManagerParams struct {
+	bartItemParams
+	insertBARTItemParams
+	listBARTItemsParams
+	deleteBARTItemParams
 }
 
-// bartRetrieveParams is the list of parameters passed at the mock
-// BuddyIconRetriever.BuddyIconParams call site
-type bartRetrieveParams []struct {
-	itemHash []byte
-	result   []byte
+// bartItemParams is the list of parameters passed at the mock
+// BARTAssetManager.BARTItem call site
+type bartItemParams []struct {
+	hash   []byte
+	result []byte
+	err    error
+}
+
+// insertBARTItemParams is the list of parameters passed at the mock
+// BARTAssetManager.InsertBARTItem call site
+type insertBARTItemParams []struct {
+	hash     []byte
+	blob     []byte
+	itemType uint16
 	err      error
+}
+
+// listBARTItemsParams is the list of parameters passed at the mock
+// BARTAssetManager.ListBARTItems call site
+type listBARTItemsParams []struct {
+	itemType uint16
+	result   []state.BARTItem
+	err      error
+}
+
+// deleteBARTItemParams is the list of parameters passed at the mock
+// BARTAssetManager.DeleteBARTItem call site
+type deleteBARTItemParams []struct {
+	hash []byte
+	err  error
 }
 
 // chatRoomRetrieverParams is a helper struct that contains mock parameters for

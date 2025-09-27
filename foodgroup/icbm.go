@@ -22,7 +22,7 @@ const (
 
 // NewICBMService returns a new instance of ICBMService.
 func NewICBMService(
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 	messageRelayer MessageRelayer,
 	offlineMessageSaver OfflineMessageManager,
 	relationshipFetcher RelationshipFetcher,
@@ -33,7 +33,7 @@ func NewICBMService(
 ) *ICBMService {
 	return &ICBMService{
 		relationshipFetcher: relationshipFetcher,
-		buddyBroadcaster:    newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		buddyBroadcaster:    newBuddyNotifier(bartItemManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		messageRelayer:      messageRelayer,
 		offlineMessageSaver: offlineMessageSaver,
 		userManager:         userManager,
