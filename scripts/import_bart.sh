@@ -11,6 +11,8 @@ set -e
 API_BASE_URL="http://localhost:8080"
 VERBOSE=false
 DRY_RUN=false
+BART_TYPE=""
+TARGET_DIRS=()
 
 # Colors for output
 RED='\033[0;31m'
@@ -20,24 +22,32 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 usage() {
-    echo "Usage: $0 [OPTIONS] <directory_path>"
+    echo "Usage: $0 [OPTIONS] -t <type> <directory_path> [directory_path...]"
     echo ""
-    echo "Import BART assets from a bartcache directory into Retro AIM Server"
+    echo "Import BART assets from bartcache directories into Retro AIM Server"
     echo ""
     echo "Arguments:"
     echo "  directory_path    Path to bartcache directory containing BART assets"
     echo "                   Directory should contain subdirectories named by BART type (0, 1, 2, etc.)"
     echo "                   Each type directory should contain files named by their hash"
+    echo "                   Multiple directories can be specified for bulk import"
     echo ""
     echo "Options:"
+    echo "  -t, --type TYPE   BART type to import (required)"
+    echo "                   Valid types: buddy_icon_small, buddy_icon, status_str, arrive_sound,"
+    echo "                   rich_text, superbuddy_icon, radio_station, buddy_icon_big,"
+    echo "                   status_str_tod, current_av_track, depart_sound, im_chrome,"
+    echo "                   im_sound, im_chrome_xml, im_chrome_immers, emoticon_set,"
+    echo "                   encr_cert_chain, sign_cert_chain, gateway_cert"
     echo "  -u, --url URL     API base URL (default: http://localhost:8080)"
     echo "  -v, --verbose     Enable verbose output"
     echo "  -d, --dry-run     Show what would be uploaded without actually uploading"
     echo "  -h, --help        Show this help message"
     echo ""
-    echo "Example:"
-    echo "  $0 /Users/mike/Downloads/aim\\ barts/eigdbvye/bartcache"
-    echo "  $0 --verbose --dry-run /path/to/bartcache"
+    echo "Examples:"
+    echo "  $0 -t buddy_icon /Users/mike/Downloads/aim\\ barts/eigdbvye/bartcache"
+    echo "  $0 --type status_str --verbose --dry-run /path/to/bartcache"
+    echo "  $0 -t arrive_sound /path/to/bartcache/*"
 }
 
 log_info() {
@@ -64,6 +74,56 @@ log_verbose() {
 
 command_exists() {
     command -v "$1" >/dev/null 2>&1
+}
+
+get_bart_type_number() {
+    case "$1" in
+        "buddy_icon_small") echo "0" ;;
+        "buddy_icon") echo "1" ;;
+        "status_str") echo "2" ;;
+        "arrive_sound") echo "3" ;;
+        "rich_text") echo "4" ;;
+        "superbuddy_icon") echo "5" ;;
+        "radio_station") echo "6" ;;
+        "buddy_icon_big") echo "12" ;;
+        "status_str_tod") echo "13" ;;
+        "current_av_track") echo "15" ;;
+        "depart_sound") echo "96" ;;
+        "im_chrome") echo "129" ;;
+        "im_sound") echo "131" ;;
+        "im_chrome_xml") echo "136" ;;
+        "im_chrome_immers") echo "137" ;;
+        "emoticon_set") echo "1024" ;;
+        "encr_cert_chain") echo "1026" ;;
+        "sign_cert_chain") echo "1027" ;;
+        "gateway_cert") echo "1028" ;;
+        *) echo "" ;;
+    esac
+}
+
+get_bart_type_name() {
+    case "$1" in
+        "0") echo "buddy_icon_small" ;;
+        "1") echo "buddy_icon" ;;
+        "2") echo "status_str" ;;
+        "3") echo "arrive_sound" ;;
+        "4") echo "rich_text" ;;
+        "5") echo "superbuddy_icon" ;;
+        "6") echo "radio_station" ;;
+        "12") echo "buddy_icon_big" ;;
+        "13") echo "status_str_tod" ;;
+        "15") echo "current_av_track" ;;
+        "96") echo "depart_sound" ;;
+        "129") echo "im_chrome" ;;
+        "131") echo "im_sound" ;;
+        "136") echo "im_chrome_xml" ;;
+        "137") echo "im_chrome_immers" ;;
+        "1024") echo "emoticon_set" ;;
+        "1026") echo "encr_cert_chain" ;;
+        "1027") echo "sign_cert_chain" ;;
+        "1028") echo "gateway_cert" ;;
+        *) echo "unknown_type_$1" ;;
+    esac
 }
 
 check_prerequisites() {
@@ -123,14 +183,14 @@ upload_bart_asset() {
 
         case "$http_code" in
             201)
-                log_success "Uploaded $hash (type: $bart_type)"
+                log_success "Uploaded $hash"
                 if [ "$VERBOSE" = true ] && command_exists jq; then
                     echo "$response_body" | jq .
                 fi
                 return 0
                 ;;
             409)
-                log_warning "Asset $hash already exists (type: $bart_type)"
+                log_warning "Asset $hash already exists"
                 return 0
                 ;;
             400)
@@ -202,85 +262,72 @@ process_bart_type_directory() {
 process_directory() {
     local base_dir="$1"
 
-    log_info "Processing BART assets from bartcache directory: $base_dir"
-
-    if [ ! -d "$base_dir" ]; then
-        log_error "Directory $base_dir does not exist"
-        exit 1
+    if [ ! -d "$base_dir" ] && [ ! -f "$base_dir" ]; then
+        log_error "Path $base_dir does not exist"
+        return 1
     fi
 
-    # BART type definitions (from the API spec)
-    # Using a function to get type name for better shell compatibility
-    get_bart_type_name() {
-        case "$1" in
-            "0") echo "buddy_icon_small" ;;
-            "1") echo "buddy_icon" ;;
-            "2") echo "status_str" ;;
-            "3") echo "arrive_sound" ;;
-            "4") echo "rich_text" ;;
-            "5") echo "superbuddy_icon" ;;
-            "6") echo "radio_station" ;;
-            "12") echo "buddy_icon_big" ;;
-            "13") echo "status_str_tod" ;;
-            "15") echo "current_av_track" ;;
-            "96") echo "depart_sound" ;;
-            "129") echo "im_chrome" ;;
-            "131") echo "im_sound" ;;
-            "136") echo "im_chrome_xml" ;;
-            "137") echo "im_chrome_immers" ;;
-            "1024") echo "emoticon_set" ;;
-            "1026") echo "encr_cert_chain" ;;
-            "1027") echo "sign_cert_chain" ;;
-            "1028") echo "gateway_cert" ;;
-            *) echo "unknown_type_$1" ;;
-        esac
-    }
-
-    local total_errors=0
-    local total_files=0
-    local total_success=0
-
-    # Process each BART type directory
-    # Check for common BART type directories
-    local bart_types=("0" "1" "2" "3" "4" "5" "6" "12" "13" "15" "96" "129" "131" "136" "137" "1024" "1026" "1027" "1028")
-
-    for bart_type in "${bart_types[@]}"; do
-        local type_dir="$base_dir/$bart_type"
-        local type_name=$(get_bart_type_name "$bart_type")
-
-        if [ -d "$type_dir" ]; then
-            log_verbose "Found type directory: $type_dir"
-
-            local before_files=$total_files
-            local before_success=$total_success
-            local before_errors=$total_errors
-
-            if process_bart_type_directory "$type_dir" "$bart_type" "$type_name"; then
-                # Count files in this directory
-                local type_file_count=$(find "$type_dir" -maxdepth 1 -type f | wc -l)
-                total_files=$((total_files + type_file_count))
-            else
-                total_errors=$((total_errors + 1))
-            fi
+    # Check if this is a single file
+    if [ -f "$base_dir" ]; then
+        log_info "Processing file: $base_dir"
+        local filename=$(basename "$base_dir")
+        if upload_bart_asset "$base_dir" "$BART_TYPE_NUMBER" "$filename"; then
+            log_success "Successfully processed file: $base_dir"
+            return 0
         else
-            log_verbose "Type directory $type_dir not found, skipping"
+            log_error "Failed to process file: $base_dir"
+            return 1
         fi
-    done
-
-    # Summary
-    log_info "Import completed!"
-    log_info "Total files processed: $total_files"
-    log_info "Total errors: $total_errors"
-
-    if [ "$DRY_RUN" = true ]; then
-        log_info "This was a dry run - no files were actually uploaded"
     fi
 
-    return $total_errors
+    # For directories, show the BART type info
+    log_info "Processing BART assets from directory: $base_dir"
+    log_info "BART type: $BART_TYPE (type number: $BART_TYPE_NUMBER)"
+
+    # Look for the specific type directory first (nested structure)
+    local type_dir="$base_dir/$BART_TYPE_NUMBER"
+
+    if [ -d "$type_dir" ]; then
+        log_info "Found type directory: $type_dir"
+        # Process the single type directory
+        if process_bart_type_directory "$type_dir" "$BART_TYPE_NUMBER" "$BART_TYPE"; then
+            local file_count=$(find "$type_dir" -maxdepth 1 -type f | wc -l)
+            log_success "Successfully processed $file_count files for type $BART_TYPE"
+            return 0
+        else
+            log_error "Failed to process files for type $BART_TYPE"
+            return 1
+        fi
+    fi
+
+    # If no type directory found, check if this is a flat structure (files directly in directory)
+    local file_count=$(find "$base_dir" -maxdepth 1 -type f | wc -l)
+    if [ $file_count -gt 0 ]; then
+        log_info "Found flat file structure with $file_count files"
+        # Process files directly in the directory
+        if process_bart_type_directory "$base_dir" "$BART_TYPE_NUMBER" "$BART_TYPE"; then
+            log_success "Successfully processed $file_count files for type $BART_TYPE"
+            return 0
+        else
+            log_error "Failed to process files for type $BART_TYPE"
+            return 1
+        fi
+    fi
+
+    # No files or directories found
+    log_error "No files found in $base_dir"
+    log_error "Expected either:"
+    log_error "  - Nested structure: $base_dir/$BART_TYPE_NUMBER/"
+    log_error "  - Flat structure: files directly in $base_dir/"
+    return 1
 }
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -t|--type)
+            BART_TYPE="$2"
+            shift 2
+            ;;
         -u|--url)
             API_BASE_URL="$2"
             shift 2
@@ -303,27 +350,37 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
         *)
-            if [ -z "$TARGET_DIR" ]; then
-                TARGET_DIR="$1"
-            else
-                log_error "Multiple directory arguments provided"
-                usage
-                exit 1
-            fi
+            TARGET_DIRS+=("$1")
             shift
             ;;
     esac
 done
 
-if [ -z "$TARGET_DIR" ]; then
+if [ -z "$BART_TYPE" ]; then
+    log_error "BART type is required"
+    usage
+    exit 1
+fi
+
+if [ ${#TARGET_DIRS[@]} -eq 0 ]; then
     log_error "No directory path provided"
     usage
+    exit 1
+fi
+
+# Validate BART type
+BART_TYPE_NUMBER=$(get_bart_type_number "$BART_TYPE")
+if [ -z "$BART_TYPE_NUMBER" ]; then
+    log_error "Invalid BART type: $BART_TYPE"
+    log_error "Valid types: buddy_icon_small, buddy_icon, status_str, arrive_sound, rich_text, superbuddy_icon, radio_station, buddy_icon_big, status_str_tod, current_av_track, depart_sound, im_chrome, im_sound, im_chrome_xml, im_chrome_immers, emoticon_set, encr_cert_chain, sign_cert_chain, gateway_cert"
     exit 1
 fi
 
 main() {
     log_info "BART Import Script for Retro AIM Server"
     log_info "========================================"
+    log_info "Target paths: ${TARGET_DIRS[*]}"
+    log_info "BART type: $BART_TYPE (type number: $BART_TYPE_NUMBER)"
 
     if [ "$DRY_RUN" = true ]; then
         log_warning "DRY RUN MODE - No files will be uploaded"
@@ -335,16 +392,33 @@ main() {
         test_api
     fi
 
-    process_directory "$TARGET_DIR"
+    local total_errors=0
+    local total_dirs=0
 
-    local exit_code=$?
-    if [ $exit_code -eq 0 ]; then
+    # Process each file/directory
+    for target_path in "${TARGET_DIRS[@]}"; do
+        total_dirs=$((total_dirs + 1))
+
+        if process_directory "$target_path"; then
+            # Success is logged by process_directory
+            :
+        else
+            total_errors=$((total_errors + 1))
+        fi
+    done
+
+    # Summary
+    log_info "Import completed!"
+    log_info "Total files processed: $total_dirs"
+    log_info "Total errors: $total_errors"
+
+    if [ $total_errors -eq 0 ]; then
         log_success "All operations completed successfully"
+        exit 0
     else
         log_error "Some operations failed"
+        exit 1
     fi
-
-    exit $exit_code
 }
 
 main
