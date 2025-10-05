@@ -3,7 +3,7 @@
 This guide covers some optional configuration steps to get the best experience from Retro AIM Server.
 
 - [Configure User Directory Keywords](#configure-user-directory-keywords)
-- [Configure SSL for Connecting AIM 6.2+](#configure-ssl-for-connecting-aim-62)
+- [Import AIM Smiley Packs](#import-aim-smiley-packs)
 
 ## Configure User Directory Keywords
 
@@ -129,3 +129,57 @@ keywords and keyword categories via the management API.
 
    After creating or modifying keyword categories and keywords, users currently connected to the server must sign out
    and back in again in order to see the updated keyword list.
+
+## Import AIM Smiley Packs
+
+AIM emoticons (also called smileys) are the graphics that appear when users send messages with specific codes like `:)`
+or `:D`. Retro AIM Server includes a BART import utility that allows you to import smiley pack collections.
+
+This guide shows you how to install a smiley pack available
+from [The Internet Archive](https://archive.org/details/aol_instant_messenger_smiley_packs).
+
+1. **Download Smiley Pack**
+
+   First download the smiley pack archive.
+
+   ```bash
+   curl -L -o aim_bart_emoticons.zip "https://archive.org/download/aol_instant_messenger_smiley_packs/aim_bart_emoticons.zip"
+   ```
+
+   Then extract the archive:
+
+   ```bash
+   unzip aim_bart_emoticons.zip
+   ```
+
+   This creates an `aim_bart_emoticons/` directory containing 86 files (1 per pack) with hash names like `0201D213A4`,
+   `0201D205C8`, etc.
+
+2. **Import Emoticons**
+
+   From the root of the Retro AIM Server repository, run the BART import script to upload the smiley pack:
+
+    ```bash
+    ./scripts/import_bart.sh -t emoticon_set -u http://localhost:8080 /path/to/aim_bart_emoticons
+    ```
+
+   Replace `/path/to/aim_bart_emoticons` with the actual path to your extracted directory.
+
+3. **Verify Import Success**
+
+   Check that all emoticons were imported successfully:
+
+   ```bash
+   curl "http://localhost:8080/bart?type=1024"
+   ```
+
+4. **Send an Emoticon**
+
+   After importing, you can test the emoticons in AIM clients by sending messages with emoticon codes. For example, the
+   classic smiley emoticon can be tested with:
+
+   ```
+   <font sml="KwAAAeQ=">:)</font>
+   ```
+
+   This code references the smiley pack with hash `2B000001E4` that should now be available in your server.
