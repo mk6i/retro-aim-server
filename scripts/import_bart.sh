@@ -4,8 +4,16 @@
 # This script imports BART (Buddy ART) assets from an AIM client's bartcache
 # directory (usually found under %APPDATA%\acccore\caches\bart) into Retro AIM
 # Server via the management API.
+# 
+# Compatible with macOS and Linux terminals
 
 set -e
+
+# Ensure we're using bash and have proper error handling
+if [ -z "$BASH_VERSION" ]; then
+    echo "Error: This script requires bash" >&2
+    exit 1
+fi
 
 # Default values
 API_BASE_URL="http://localhost:8080"
@@ -76,6 +84,23 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+is_hex_string() {
+    local string="$1"
+    # Check if string contains only hexadecimal characters (0-9, a-f, A-F)
+    if [[ "$string" =~ ^[0-9a-fA-F]+$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Normalize path for cross-platform compatibility
+normalize_path() {
+    local path="$1"
+    # Remove trailing slashes and normalize the path
+    echo "$path" | sed 's|/*$||'
+}
+
 get_bart_type_number() {
     case "$1" in
         "buddy_icon_small") echo "0" ;;
@@ -141,8 +166,10 @@ test_api() {
     log_info "Testing API connectivity..."
 
     local response
+    local http_code
     if response=$(curl -s -w "%{http_code}" "$API_BASE_URL/bart?type=0" 2>/dev/null); then
-        local http_code="${response: -3}"
+        # Extract HTTP code from response (last 3 characters)
+        http_code=$(echo "$response" | tail -c 4)
         if [ "$http_code" = "200" ]; then
             log_success "API is accessible"
             return 0
@@ -178,8 +205,13 @@ upload_bart_asset() {
         --data-binary "@$file_path" \
         "$API_BASE_URL/bart/$hash?type=$bart_type" 2>/dev/null); then
 
-        http_code="${response: -3}"
-        response_body="${response%???}"
+        # Extract HTTP code from response (last 3 characters)
+        http_code=$(echo "$response" | tail -c 4)
+        # Extract response body (all except last 3 characters)
+        # Use a more portable approach that works on both macOS and Linux
+        response_length=$(echo "$response" | wc -c)
+        response_body_length=$((response_length - 4))
+        response_body=$(echo "$response" | head -c "$response_body_length")
 
         case "$http_code" in
             201)
@@ -239,12 +271,24 @@ process_bart_type_directory() {
     local error_count=0
 
     # Find all files in the type directory (excluding directories)
-    while IFS= read -r -d '' file_path; do
+    # Use a more portable approach that works on both macOS and Linux
+    # Store results in a temporary file to avoid subshell variable scoping issues
+    local temp_file=$(mktemp)
+    find "$type_dir" -maxdepth 1 -type f 2>/dev/null > "$temp_file"
+    
+    while read -r file_path; do
         if [ -f "$file_path" ]; then
             local filename=$(basename "$file_path")
             file_count=$((file_count + 1))
 
             log_verbose "Found file: $filename"
+
+            # Validate that filename is a hexadecimal string
+            if ! is_hex_string "$filename"; then
+                log_warning "Skipping file '$filename' - filename is not a valid hexadecimal string"
+                error_count=$((error_count + 1))
+                continue
+            fi
 
             if upload_bart_asset "$file_path" "$bart_type" "$filename"; then
                 success_count=$((success_count + 1))
@@ -252,7 +296,10 @@ process_bart_type_directory() {
                 error_count=$((error_count + 1))
             fi
         fi
-    done < <(find "$type_dir" -maxdepth 1 -type f -print0 2>/dev/null)
+    done < "$temp_file"
+    
+    # Clean up temporary file
+    rm -f "$temp_file"
 
     log_info "Type $bart_type ($type_name): $file_count files, $success_count successful, $error_count errors"
 
@@ -261,6 +308,7 @@ process_bart_type_directory() {
 
 process_directory() {
     local base_dir="$1"
+    base_dir=$(normalize_path "$base_dir")
 
     if [ ! -d "$base_dir" ] && [ ! -f "$base_dir" ]; then
         log_error "Path $base_dir does not exist"
@@ -271,6 +319,13 @@ process_directory() {
     if [ -f "$base_dir" ]; then
         log_info "Processing file: $base_dir"
         local filename=$(basename "$base_dir")
+        
+        # Validate that filename is a hexadecimal string
+        if ! is_hex_string "$filename"; then
+            log_error "Cannot process file '$filename' - filename is not a valid hexadecimal string"
+            return 1
+        fi
+        
         if upload_bart_asset "$base_dir" "$BART_TYPE_NUMBER" "$filename"; then
             log_success "Successfully processed file: $base_dir"
             return 0
@@ -396,16 +451,19 @@ main() {
     local total_dirs=0
 
     # Process each file/directory
-    for target_path in "${TARGET_DIRS[@]}"; do
-        total_dirs=$((total_dirs + 1))
+    # Ensure array is properly expanded for cross-platform compatibility
+    if [ ${#TARGET_DIRS[@]} -gt 0 ]; then
+        for target_path in "${TARGET_DIRS[@]}"; do
+            total_dirs=$((total_dirs + 1))
 
-        if process_directory "$target_path"; then
-            # Success is logged by process_directory
-            :
-        else
-            total_errors=$((total_errors + 1))
-        fi
-    done
+            if process_directory "$target_path"; then
+                # Success is logged by process_directory
+                :
+            else
+                total_errors=$((total_errors + 1))
+            fi
+        done
+    fi
 
     # Summary
     log_info "Import completed!"
