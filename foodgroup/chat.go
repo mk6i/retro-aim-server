@@ -85,7 +85,7 @@ func (s ChatService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 			Body:  bodyOut,
 		})
 	} else {
-		// forward  message all participants, except sender
+		// forward message all participants, except sender
 		s.chatMessageRelayer.RelayToAllExcept(ctx, sess.ChatRoomCookie(), sess.IdentScreenName(), wire.SNACMessage{
 			Frame: frameOut,
 			Body:  bodyOut,
@@ -116,32 +116,53 @@ func (s ChatService) transformChatMessage(inBody wire.SNAC_0x0E_0x05_ChatChannel
 	if !hasMessage {
 		return wire.TLVRestBlock{}, errors.New("SNAC(0x0E,0x05) does not contain a message TLV")
 	}
-	messageText, err := textFromChatMsgBlob(messageBlob)
+
+	restBlock := wire.TLVRestBlock{}
+	if err := wire.UnmarshalBE(&restBlock, bytes.NewBuffer(messageBlob)); err != nil {
+		return wire.TLVRestBlock{}, err
+	}
+
+	txt, err := extractChatMessage(restBlock)
 	if err != nil {
 		return wire.TLVRestBlock{}, err
 	}
 
-	newMessageBlock := func(sess *state.Session, msg any) wire.TLVRestBlock {
-		block := wire.TLVRestBlock{}
-		// the order of these TLVs matters for AIM 2.x. if out of order, screen
-		// names do not appear with each chat message.
-		block.Append(wire.NewTLVBE(wire.ChatTLVSenderInformation, sess.TLVUserInfo()))
-		if inBody.HasTag(wire.ChatTLVPublicWhisperFlag) {
-			// send message to all chat room participants
-			block.Append(wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}))
-		}
-		block.Append(wire.NewTLVBE(wire.ChatTLVMessageInfo, msg))
-		return block
-	}
-
-	if doRoll, dice, sides := parseDiceCommand(messageText); doRoll {
+	if doRoll, dice, sides := parseDiceCommand(txt); doRoll {
 		payload := s.rollDice(sender, dice, sides)
 		// send die roll results from OnlineHost user
-		return newMessageBlock(sessOnlineHost, payload), nil
+		return newChatTLVBlock(inBody, sessOnlineHost, payload), nil
 	}
 
-	// return the incoming payload without modification
-	return newMessageBlock(sender, messageBlob), nil
+	newRestBlock := wire.TLVRestBlock{}
+
+	// Strip down to the essential TLVs for cross-client compatibility.
+	// Some newer clients include extra metadata that cause older clients
+	// to crash when they encounter unfamiliar TLVs. For example, chat messages
+	// sent by Windows AIM 5.9 will cause macOS AIM 2.x to crash. Rather than
+	// implement complex per-client filtering, we simply preserve only the three
+	// TLVs that every client expects.
+	for _, tlv := range restBlock.TLVList {
+		if tlv.Tag == wire.ChatTLVMessageInfoText ||
+			tlv.Tag == wire.ChatTLVMessageInfoEncoding ||
+			tlv.Tag == wire.ChatTLVMessageInfoLang {
+			newRestBlock.TLVList = append(newRestBlock.TLVList, tlv)
+		}
+	}
+
+	return newChatTLVBlock(inBody, sender, newRestBlock), nil
+}
+
+func newChatTLVBlock(body wire.SNAC_0x0E_0x05_ChatChannelMsgToHost, sess *state.Session, msg any) wire.TLVRestBlock {
+	block := wire.TLVRestBlock{}
+	// the order of these TLVs matters for AIM 2.x. if out of order, screen
+	// names do not appear with each chat message.
+	block.Append(wire.NewTLVBE(wire.ChatTLVSenderInformation, sess.TLVUserInfo()))
+	if body.HasTag(wire.ChatTLVPublicWhisperFlag) {
+		// send message to all chat room participants
+		block.Append(wire.NewTLVBE(wire.ChatTLVPublicWhisperFlag, []byte{}))
+	}
+	block.Append(wire.NewTLVBE(wire.ChatTLVMessageInfo, msg))
+	return block
 }
 
 // rollDice generates a chat response for the results of a die roll.
@@ -161,15 +182,11 @@ func (s ChatService) rollDice(sess *state.Session, dice int, sides int) wire.TLV
 	return block
 }
 
-// textFromChatMsgBlob extracts plaintext message text from HTML located in
+// extractChatMessage extracts plaintext message text from HTML located in
 // chat message info TLV(0x05).
-func textFromChatMsgBlob(msg []byte) ([]byte, error) {
-	block := wire.TLVRestBlock{}
-	if err := wire.UnmarshalBE(&block, bytes.NewBuffer(msg)); err != nil {
-		return nil, err
-	}
+func extractChatMessage(msg wire.TLVRestBlock) ([]byte, error) {
 
-	b, hasMsg := block.Bytes(wire.ChatTLVMessageInfoText)
+	b, hasMsg := msg.Bytes(wire.ChatTLVMessageInfoText)
 	if !hasMsg {
 		return nil, errors.New("SNAC(0x0E,0x05) has no chat msg text TLV")
 	}
