@@ -2,6 +2,7 @@ package webapi
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mk6i/retro-aim-server/config"
@@ -103,4 +104,108 @@ type CookieBaker interface {
 
 type AdminService interface {
 	InfoChangeRequest(ctx context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x07_0x04_AdminInfoChangeRequest) (wire.SNACMessage, error)
+}
+
+// SessionRetriever provides methods to retrieve OSCAR sessions.
+type SessionRetriever interface {
+	AllSessions() []*state.Session
+	RetrieveSession(screenName state.IdentScreenName) *state.Session
+}
+
+// FeedbagRetriever provides methods to retrieve buddy list data.
+type FeedbagRetriever interface {
+	RetrieveFeedbag(ctx context.Context, screenName state.IdentScreenName) ([]wire.FeedbagItem, error)
+	RelationshipsByUser(ctx context.Context, screenName state.IdentScreenName) ([]state.IdentScreenName, error)
+}
+
+// FeedbagManager provides methods to manage buddy lists.
+type FeedbagManager interface {
+	RetrieveFeedbag(ctx context.Context, screenName state.IdentScreenName) ([]wire.FeedbagItem, error)
+	InsertItem(ctx context.Context, screenName state.IdentScreenName, item wire.FeedbagItem) error
+	UpdateItem(ctx context.Context, screenName state.IdentScreenName, item wire.FeedbagItem) error
+	DeleteItem(ctx context.Context, screenName state.IdentScreenName, item wire.FeedbagItem) error
+}
+
+// Phase 2: Additional interfaces for messaging and presence
+
+// MessageRelayer relays messages between users
+type MessageRelayer interface {
+	RelayToScreenName(ctx context.Context, recipient state.IdentScreenName, msg wire.SNACMessage)
+}
+
+// OfflineMessageManager manages offline message storage and retrieval
+type OfflineMessageManager interface {
+	SaveMessage(ctx context.Context, msg state.OfflineMessage) error
+	RetrieveMessages(ctx context.Context, recipient state.IdentScreenName) ([]state.OfflineMessage, error)
+	DeleteMessages(ctx context.Context, recipient state.IdentScreenName) error
+}
+
+// BuddyBroadcaster broadcasts buddy presence updates
+type BuddyBroadcaster interface {
+	BroadcastBuddyArrived(ctx context.Context, screenName state.IdentScreenName, userInfo wire.TLVUserInfo) error
+	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
+}
+
+// ProfileManager manages user profiles
+type ProfileManager interface {
+	SetProfile(ctx context.Context, screenName state.IdentScreenName, profile string) error
+	Profile(ctx context.Context, screenName state.IdentScreenName) (string, error)
+}
+
+// UserManager defines methods for user authentication.
+type UserManager interface {
+	// AuthenticateUser verifies username and password
+	AuthenticateUser(ctx context.Context, username, password string) (*state.User, error)
+	// FindUserByScreenName finds a user by their screen name
+	FindUserByScreenName(ctx context.Context, screenName state.IdentScreenName) (*state.User, error)
+	// InsertUser creates a new user (for DISABLE_AUTH mode)
+	InsertUser(ctx context.Context, u state.User) error
+}
+
+// TokenStore manages authentication tokens.
+type TokenStore interface {
+	// StoreToken saves an authentication token for a user
+	StoreToken(ctx context.Context, token string, screenName state.IdentScreenName, expiresAt time.Time) error
+	// ValidateToken checks if a token is valid and returns the associated screen name
+	ValidateToken(ctx context.Context, token string) (state.IdentScreenName, error)
+	// DeleteToken removes a token
+	DeleteToken(ctx context.Context, token string) error
+}
+
+// Phase 3: Preference interfaces
+
+// PreferenceManager provides methods to manage user preferences.
+type PreferenceManager interface {
+	SetPreferences(ctx context.Context, screenName state.IdentScreenName, prefs map[string]interface{}) error
+	GetPreferences(ctx context.Context, screenName state.IdentScreenName) (map[string]interface{}, error)
+}
+
+// PermitDenyManager provides methods to manage permit/deny lists.
+type PermitDenyManager interface {
+	SetPDMode(ctx context.Context, screenName state.IdentScreenName, mode wire.FeedbagPDMode) error
+	GetPDMode(ctx context.Context, screenName state.IdentScreenName) (wire.FeedbagPDMode, error)
+	GetPermitList(ctx context.Context, screenName state.IdentScreenName) ([]state.IdentScreenName, error)
+	GetDenyList(ctx context.Context, screenName state.IdentScreenName) ([]state.IdentScreenName, error)
+	AddPermitBuddy(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) error
+	RemovePermitBuddy(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) error
+	AddDenyBuddy(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) error
+	RemoveDenyBuddy(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) error
+}
+
+// Phase 4: OSCAR Bridge interfaces
+
+// OSCARBridgeStore manages the persistence of OSCAR bridge sessions.
+type OSCARBridgeStore interface {
+	SaveBridgeSession(ctx context.Context, webSessionID string, oscarCookie []byte, bosHost string, bosPort int) error
+	SaveBridgeSessionWithDetails(ctx context.Context, session *state.OSCARBridgeSession) error
+	GetBridgeSession(ctx context.Context, webSessionID string) (*state.OSCARBridgeSession, error)
+	DeleteBridgeSession(ctx context.Context, webSessionID string) error
+}
+
+// OSCARConfig provides configuration for OSCAR services.
+type OSCARConfig interface {
+	GetBOSAddress() (host string, port int)
+	GetSSLBOSAddress() (host string, port int)
+	IsSSLAvailable() bool
+	IsAuthDisabled() bool
 }

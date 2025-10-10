@@ -3,6 +3,7 @@ module github.com/mk6i/retro-aim-server
 go 1.24.2
 
 require (
+	github.com/breign/goAMF3 v1.0.1-0.20250916173039-e43798221950
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1

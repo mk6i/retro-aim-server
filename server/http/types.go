@@ -239,3 +239,32 @@ type directoryKeywordCreate struct {
 type messageBody struct {
 	Message string `json:"message"`
 }
+
+// Web API key management types
+
+type createWebAPIKeyRequest struct {
+	AppName        string   `json:"app_name"`
+	AllowedOrigins []string `json:"allowed_origins,omitempty"`
+	RateLimit      int      `json:"rate_limit,omitempty"`
+	Capabilities   []string `json:"capabilities,omitempty"`
+}
+
+type webAPIKeyResponse struct {
+	DevID          string     `json:"dev_id"`
+	DevKey         string     `json:"dev_key,omitempty"` // Only shown on creation
+	AppName        string     `json:"app_name"`
+	CreatedAt      time.Time  `json:"created_at"`
+	LastUsed       *time.Time `json:"last_used,omitempty"`
+	IsActive       bool       `json:"is_active"`
+	RateLimit      int        `json:"rate_limit"`
+	AllowedOrigins []string   `json:"allowed_origins,omitempty"`
+	Capabilities   []string   `json:"capabilities,omitempty"`
+}
+
+type updateWebAPIKeyRequest struct {
+	AppName        *string   `json:"app_name,omitempty"`
+	IsActive       *bool     `json:"is_active,omitempty"`
+	RateLimit      *int      `json:"rate_limit,omitempty"`
+	AllowedOrigins *[]string `json:"allowed_origins,omitempty"`
+	Capabilities   *[]string `json:"capabilities,omitempty"`
+}

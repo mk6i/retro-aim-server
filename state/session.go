@@ -192,6 +192,13 @@ func (s *Session) SetUserStatusBitmask(bitmask uint32) {
 	s.userStatusBitmask = bitmask
 }
 
+// UserStatusBitmask returns the user status bitmask.
+func (s *Session) UserStatusBitmask() uint32 {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.userStatusBitmask
+}
+
 // IncrementWarning increments the user's warning level and scales rate limits accordingly.
 // The incr parameter is the warning increment (negative to decrease), and classID specifies
 // which rate limit class to scale. The incr param is a percentage represented as an integer

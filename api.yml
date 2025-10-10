@@ -135,15 +135,6 @@ paths:
             type: string
           description: User's AIM screen name or ICQ UIN.
           required: true
-      responses:
-        '204':
-          description: Successfully updated user account
-        '304':
-          description: Did not modify user account
-        '400':
-          description: Bad request when modifying user account
-        '404':
-          description: User not found
       requestBody:
         required: true
         content:
@@ -154,14 +145,24 @@ paths:
                 suspended_status:
                   type: string
                   nullable: true
-                  enum: [ deleted, expired, suspended, suspended_age ]
+                  enum: [deleted, expired, suspended, suspended_age]
                   description: The suspended status of the account
                 is_bot:
                   type: boolean
                   nullable: true
                   description: >
-                    Indicates whether the account is for a bot. Bots are exempt from rate limiting... make sure you 
+                    Indicates whether the account is for a bot. Bots are exempt from rate limiting... make sure you
                     trust the bot and bot owner before enabling this flag.
+      responses:
+        '204':
+          description: Successfully updated user account
+        '304':
+          description: Did not modify user account
+        '400':
+          description: Bad request when modifying user account
+        '404':
+          description: User not found
+
   /user/{screenname}/icon:
     get:
       summary: Get AIM buddy icon for a screen name
@@ -548,7 +549,7 @@ paths:
                 properties:
                   id:
                     type: integer
-                    description: The ID keyword category.
+                    description: The keyword category ID.
                   name:
                     type: string
                     description: The name of the keyword category.
@@ -754,6 +755,213 @@ paths:
                   message:
                     type: string
 
+  /admin/webapi/keys:
+    get:
+      summary: List all Web API keys
+      description: Retrieve a list of all Web API keys for the Web AIM API.
+      tags: [Web API Management]
+      responses:
+        '200':
+          description: Successful response containing a list of API keys.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WebAPIKey'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+    post:
+      summary: Create a new Web API key
+      description: Create a new API key for Web AIM API authentication.
+      tags: [Web API Management]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - app_name
+              properties:
+                app_name:
+                  type: string
+                  description: Name of the application using this API key.
+                  example: "My Web AIM Client"
+                allowed_origins:
+                  type: array
+                  items:
+                    type: string
+                  description: List of allowed CORS origins. Empty list allows all origins (useful for mobile apps).
+                  example: ["https://example.com", "https://app.example.com"]
+                rate_limit:
+                  type: integer
+                  description: Maximum requests per minute allowed for this key.
+                  default: 60
+                  example: 120
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+                  description: List of capabilities/features enabled for this key. Empty list allows all capabilities.
+                  example: ["aim.session", "presence.get", "im.send"]
+      responses:
+        '201':
+          description: API key created successfully.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/WebAPIKey'
+                  - type: object
+                    properties:
+                      dev_key:
+                        type: string
+                        description: The actual API key value. This is only shown once at creation time.
+                        example: "a1b2c3d4e5f6789012345678901234567890123456789012345678901234"
+        '400':
+          description: Bad request. Invalid input data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '409':
+          description: Conflict. An API key with this ID already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /admin/webapi/keys/{id}:
+    get:
+      summary: Get a specific Web API key
+      description: Retrieve details of a specific Web API key by its developer ID.
+      tags: [Web API Management]
+      parameters:
+        - name: id
+          in: path
+          description: The developer ID of the API key.
+          required: true
+          schema:
+            type: string
+            example: "dev_550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Successful response containing the API key details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebAPIKey'
+        '404':
+          description: API key not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+    put:
+      summary: Update a Web API key
+      description: Update settings for an existing Web API key.
+      tags: [Web API Management]
+      parameters:
+        - name: id
+          in: path
+          description: The developer ID of the API key.
+          required: true
+          schema:
+            type: string
+            example: "dev_550e8400-e29b-41d4-a716-446655440000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app_name:
+                  type: string
+                  description: New application name.
+                is_active:
+                  type: boolean
+                  description: Enable or disable the API key.
+                rate_limit:
+                  type: integer
+                  description: New rate limit (requests per minute).
+                allowed_origins:
+                  type: array
+                  items:
+                    type: string
+                  description: New list of allowed CORS origins.
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+                  description: New list of enabled capabilities.
+      responses:
+        '200':
+          description: API key updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebAPIKey'
+        '404':
+          description: API key not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+    delete:
+      summary: Delete a Web API key
+      description: Permanently delete a Web API key.
+      tags: [Web API Management]
+      parameters:
+        - name: id
+          in: path
+          description: The developer ID of the API key.
+          required: true
+          schema:
+            type: string
+            example: "dev_550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '204':
+          description: API key deleted successfully.
+        '404':
+          description: API key not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
   /bart:
     get:
       summary: Get BART entries by type
@@ -949,6 +1157,7 @@ components:
           description: Response message describing the result or error.
       required:
         - message
+
     BARTType:
       type: integer
       enum: [0, 1, 2, 3, 4, 5, 6, 12, 13, 15, 96, 129, 131, 136, 137, 1024, 1026, 1027, 1028]
@@ -973,3 +1182,44 @@ components:
         - 1026: encr_cert_chain (Cert chain for encryption certs)
         - 1027: sign_cert_chain (Cert chain for signing certs)
         - 1028: gateway_cert (Cert for enterprise gateway)
+
+    WebAPIKey:
+      type: object
+      properties:
+        dev_id:
+          type: string
+          description: Unique developer/application identifier.
+          example: "dev_550e8400-e29b-41d4-a716-446655440000"
+        app_name:
+          type: string
+          description: Name of the application using this API key.
+          example: "My Web AIM Client"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the key was created.
+        last_used:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the key was last used.
+        is_active:
+          type: boolean
+          description: Whether the API key is currently active.
+          default: true
+        rate_limit:
+          type: integer
+          description: Maximum requests per minute allowed.
+          example: 60
+        allowed_origins:
+          type: array
+          items:
+            type: string
+          description: List of allowed CORS origins. Empty list allows all origins.
+          example: ["https://example.com"]
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: List of enabled features/endpoints. Empty list allows all capabilities.
+          example: ["aim.session", "presence.get"]

@@ -17,9 +17,10 @@ import (
 	"github.com/mk6i/retro-aim-server/server/http"
 	"github.com/mk6i/retro-aim-server/server/kerberos"
 	"github.com/mk6i/retro-aim-server/server/oscar"
-	"github.com/mk6i/retro-aim-server/server/oscar/middleware"
+	oscarmiddleware "github.com/mk6i/retro-aim-server/server/oscar/middleware"
 	"github.com/mk6i/retro-aim-server/server/toc"
 	"github.com/mk6i/retro-aim-server/server/webapi"
+	"github.com/mk6i/retro-aim-server/server/webapi/handlers"
 	"github.com/mk6i/retro-aim-server/state"
 	"github.com/mk6i/retro-aim-server/wire"
 )
@@ -35,6 +36,7 @@ type Container struct {
 	rateLimitClasses       wire.RateLimitClasses
 	snacRateLimits         wire.SNACRateLimits
 	sqLiteUserStore        *state.SQLiteUserStore
+	webAPISessionManager   *state.WebAPISessionManager
 	Listeners              []config.Listener
 }
 
@@ -70,14 +72,14 @@ func MakeCommonDeps() (Container, error) {
 		return c, fmt.Errorf("unable to create HMAC cookie baker: %s", err.Error())
 	}
 
-	c.logger = middleware.NewLogger(c.cfg)
+	c.logger = oscarmiddleware.NewLogger(c.cfg)
 	c.inMemorySessionManager = state.NewInMemorySessionManager(c.logger)
 	c.chatSessionManager = state.NewInMemoryChatSessionManager(c.logger)
+	c.webAPISessionManager = state.NewWebAPISessionManager()
 	c.rateLimitClasses = wire.DefaultRateLimitClasses()
 	c.snacRateLimits = wire.DefaultSNACRateLimits()
 
-	// ICBM svc is a common dep because OSCAR and TOC need to share convo
-	// history state.
+	// ICBM svc is a common dep because OSCAR and TOC need to share convo history state.
 	c.icbmSvc = foodgroup.NewICBMService(
 		c.sqLiteUserStore,
 		c.inMemorySessionManager,
@@ -316,7 +318,7 @@ func OSCAR(deps Container) *oscar.Server {
 			PermitDenyService: permitDenyService,
 			StatsService:      statsService,
 			UserLookupService: userLookupService,
-			RouteLogger: middleware.RouteLogger{
+			RouteLogger: oscarmiddleware.RouteLogger{
 				Logger: logger,
 			},
 		}.Handle,
@@ -344,9 +346,24 @@ func MgmtAPI(deps Container) *http.Server {
 		Date:    date,
 	}
 	logger := deps.logger.With("svc", "API")
-	return http.NewManagementAPI(bld, deps.cfg.APIListener, deps.sqLiteUserStore, deps.inMemorySessionManager, deps.sqLiteUserStore,
-		deps.sqLiteUserStore, deps.sqLiteUserStore, deps.chatSessionManager, deps.sqLiteUserStore, deps.inMemorySessionManager,
-		deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, deps.sqLiteUserStore, logger)
+	return http.NewManagementAPI(
+		bld,
+		deps.cfg.APIListener,
+		deps.sqLiteUserStore,        // userManager
+		deps.inMemorySessionManager, // sessionRetriever
+		deps.sqLiteUserStore,        // chatRoomRetriever
+		deps.sqLiteUserStore,        // chatRoomCreator
+		deps.sqLiteUserStore,        // chatRoomDeleter
+		deps.chatSessionManager,     // chatSessionRetriever
+		deps.sqLiteUserStore,        // directoryManager
+		deps.inMemorySessionManager, // messageRelayer
+		deps.sqLiteUserStore,        // bartAssetManager
+		deps.sqLiteUserStore,        // feedbagRetriever
+		deps.sqLiteUserStore,        // accountManager
+		deps.sqLiteUserStore,        // profileRetriever
+		deps.sqLiteUserStore,        // webAPIKeyManager
+		logger,
+	)
 }
 
 // TOC creates a TOC server.
@@ -430,6 +447,28 @@ func TOC(deps Container) *toc.Server {
 // WebAPI creates an HTTP server for the webapi protocol.
 func WebAPI(deps Container) *webapi.Server {
 	logger := deps.logger.With("svc", "webapi")
+
+	// Create feedbag adapter for WebAPI
+	feedbagAdapter := &webapi.FeedbagAdapter{
+		Store: deps.sqLiteUserStore,
+	}
+
+	// Create WebAPI buddy list manager (local to WebAPI)
+	buddyListManager := handlers.NewBuddyListManager(
+		feedbagAdapter,
+		deps.inMemorySessionManager,
+		logger,
+	)
+
+	// Create the OSCAR buddy broadcaster for WebAPI to use
+	oscarBuddyBroadcaster := foodgroup.NewBuddyService(
+		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
+		deps.sqLiteUserStore,
+		deps.inMemorySessionManager,
+		deps.sqLiteUserStore,
+	)
+
 	handler := webapi.Handler{
 		AdminService: foodgroup.NewAdminService(
 			deps.sqLiteUserStore,
@@ -493,6 +532,30 @@ func WebAPI(deps Container) *webapi.Server {
 		ChatService:    foodgroup.NewChatService(deps.chatSessionManager),
 		ChatNavService: foodgroup.NewChatNavService(logger, deps.sqLiteUserStore),
 		SNACRateLimits: deps.snacRateLimits,
+		// New fields for WebAPI handlers
+		SessionRetriever: deps.inMemorySessionManager,
+		FeedbagRetriever: feedbagAdapter,
+		FeedbagManager:   feedbagAdapter,
+		// Phase 2 additions
+		MessageRelayer:        deps.inMemorySessionManager,
+		OfflineMessageManager: deps.sqLiteUserStore,
+		BuddyBroadcaster:      oscarBuddyBroadcaster,
+		ProfileManager:        deps.sqLiteUserStore,
+		RelationshipFetcher:   deps.sqLiteUserStore,
+		// Authentication support
+		UserManager: deps.sqLiteUserStore,
+		TokenStore:  deps.sqLiteUserStore.NewWebAPITokenStore(),
+		// Phase 3 additions
+		PreferenceManager: deps.sqLiteUserStore.NewWebPreferenceManager(),
+		PermitDenyManager: deps.sqLiteUserStore.NewWebPermitDenyManager(),
+		// Phase 4 additions for OSCAR Bridge
+		OSCARBridgeStore: deps.sqLiteUserStore.NewOSCARBridgeStore(),
+		OSCARConfig:      webapi.NewOSCARConfigAdapter(deps.cfg),
+		// Phase 5 additions for buddy list and messaging
+		BuddyListManager: buddyListManager,
+		// Phase 5 additions for chat rooms
+		ChatManager: deps.sqLiteUserStore.NewWebAPIChatManager(logger, deps.webAPISessionManager),
 	}
-	return webapi.NewServer([]string{"0.0.0.0:8081"}, logger, handler)
+	// Pass SQLiteUserStore as the API key validator (it implements middleware.APIKeyValidator)
+	return webapi.NewServer([]string{"0.0.0.0:9000"}, logger, handler, deps.sqLiteUserStore, deps.webAPISessionManager)
 }

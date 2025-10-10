@@ -236,7 +236,8 @@ func (s ICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFra
 	case blocked.BlocksYou || blocked.YouBlock:
 		return nil
 	default:
-		s.messageRelayer.RelayToScreenName(ctx, state.NewIdentScreenName(inBody.ScreenName), wire.SNACMessage{
+		recipient := state.NewIdentScreenName(inBody.ScreenName)
+		s.messageRelayer.RelayToScreenName(ctx, recipient, wire.SNACMessage{
 			Frame: wire.SNACFrame{
 				FoodGroup: wire.ICBM,
 				SubGroup:  wire.ICBMClientEvent,
@@ -249,6 +250,7 @@ func (s ICBMService) ClientEvent(ctx context.Context, sess *state.Session, inFra
 				Event:      inBody.Event,
 			},
 		})
+
 		return nil
 	}
 }

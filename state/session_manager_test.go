@@ -483,6 +483,7 @@ func TestInMemoryChatSessionManager_RemoveSession_DoubleLogin(t *testing.T) {
 		// room for the new session
 		chatSess2, err := sm.AddSession(context.Background(), "chat-room-1", "user-screen-name-1")
 		assert.NoError(t, err)
+		assert.NotNil(t, chatSess2)
 		chatSess2.SetSignonComplete()
 		assert.Equal(t, chatSess1.DisplayScreenName(), chatSess2.DisplayScreenName())
 		wg.Done()

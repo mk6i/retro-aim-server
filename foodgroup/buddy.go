@@ -100,12 +100,13 @@ func (s BuddyService) DelBuddies(ctx context.Context, sess *state.Session, inBod
 	return nil
 }
 
-func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error {
-	return s.buddyBroadcaster.BroadcastBuddyDeparted(ctx, sess)
-}
-
+// BroadcastBuddyArrived broadcasts buddy arrival with custom user info (implements DepartureNotifier)
 func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, screenName state.IdentScreenName, userInfo wire.TLVUserInfo) error {
 	return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, screenName, userInfo)
+}
+
+func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error {
+	return s.buddyBroadcaster.BroadcastBuddyDeparted(ctx, sess)
 }
 
 func newBuddyNotifier(
