@@ -17,13 +17,13 @@ func NewFeedbagService(
 	logger *slog.Logger,
 	messageRelayer MessageRelayer,
 	feedbagManager FeedbagManager,
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 ) FeedbagService {
 	return FeedbagService{
-		buddyIconManager: buddyIconManager,
-		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		bartItemManager:  bartItemManager,
+		buddyBroadcaster: newBuddyNotifier(bartItemManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		feedbagManager:   feedbagManager,
 		logger:           logger,
 		messageRelayer:   messageRelayer,
@@ -33,7 +33,7 @@ func NewFeedbagService(
 // FeedbagService provides functionality for the Feedbag food group, which
 // handles buddy list management.
 type FeedbagService struct {
-	buddyIconManager BuddyIconManager
+	bartItemManager  BARTItemManager
 	buddyBroadcaster buddyBroadcaster
 	feedbagManager   FeedbagManager
 	logger           *slog.Logger
@@ -251,7 +251,7 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 		s.logger.DebugContext(ctx, "user is clearing icon",
 			"hash", fmt.Sprintf("%x", btlv.Hash))
 		// tell buddies about the icon update
-		return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess)
+		return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), sess.TLVUserInfo())
 	}
 
 	bid := wire.BARTID{
@@ -261,7 +261,7 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 			Hash:  btlv.Hash,
 		},
 	}
-	if b, err := s.buddyIconManager.BuddyIcon(ctx, btlv.Hash); err != nil {
+	if b, err := s.bartItemManager.BARTItem(ctx, btlv.Hash); err != nil {
 		return err
 	} else if len(b) == 0 {
 		// icon doesn't exist, tell the client to upload buddy icon
@@ -272,7 +272,7 @@ func (s FeedbagService) broadcastIconUpdate(ctx context.Context, sess *state.Ses
 		s.logger.DebugContext(ctx, "icon already exists in BART store, don't upload the icon file",
 			"hash", fmt.Sprintf("%x", btlv.Hash))
 		// tell buddies about the icon update
-		if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+		if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), sess.TLVUserInfo()); err != nil {
 			return err
 		}
 	}

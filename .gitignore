@@ -5,3 +5,5 @@ dist/
 *.DS_Store
 certs/
 .vscode/
+wapi-docs/
+.cursor/

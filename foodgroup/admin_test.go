@@ -84,7 +84,7 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: state.NewIdentScreenName("Chatting Chuck"),
+							screenName: state.DisplayScreenName("Chatting Chuck"),
 						},
 					},
 				},
@@ -192,7 +192,7 @@ func TestAdminService_ConfirmRequest(t *testing.T) {
 			}
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
 				buddyBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, tc.userSession).
+					BroadcastBuddyArrived(mock.Anything, tc.userSession.IdentScreenName(), tc.userSession.TLVUserInfo()).
 					Return(params.err)
 			}
 			svc := AdminService{
@@ -485,7 +485,7 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: state.NewIdentScreenName("Chatting Chuck"),
+							screenName: state.DisplayScreenName("Chatting Chuck"),
 						},
 					},
 				},
@@ -552,7 +552,7 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: state.NewIdentScreenName("Chatting Chuck"),
+							screenName: state.DisplayScreenName("Chatting Chuck"),
 						},
 					},
 				},
@@ -716,7 +716,9 @@ func TestAdminService_InfoChangeRequest_ScreenName(t *testing.T) {
 
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
 				mockBuddyBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, matchSession(params.screenName)).
+					BroadcastBuddyArrived(mock.Anything, state.NewIdentScreenName(params.screenName.String()), mock.MatchedBy(func(userInfo wire.TLVUserInfo) bool {
+						return userInfo.ScreenName == params.screenName.String()
+					})).
 					Return(params.err)
 			}
 

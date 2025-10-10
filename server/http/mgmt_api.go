@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -20,7 +22,7 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-func NewManagementAPI(bld config.Build, listener string, userManager UserManager, sessionRetriever SessionRetriever, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatRoomDeleter ChatRoomDeleter, chatSessionRetriever ChatSessionRetriever, directoryManager DirectoryManager, messageRelayer MessageRelayer, bartRetriever BuddyIconRetriever, feedbagRetriever FeedBagRetriever, accountManager AccountManager, profileRetriever ProfileRetriever, logger *slog.Logger) *Server {
+func NewManagementAPI(bld config.Build, listener string, userManager UserManager, sessionRetriever SessionRetriever, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatRoomDeleter ChatRoomDeleter, chatSessionRetriever ChatSessionRetriever, directoryManager DirectoryManager, messageRelayer MessageRelayer, bartAssetManager BARTAssetManager, feedbagRetriever FeedBagRetriever, accountManager AccountManager, profileRetriever ProfileRetriever, webAPIKeyManager WebAPIKeyManager, logger *slog.Logger) *Server {
 	mux := http.NewServeMux()
 
 	// Handlers for '/user' route
@@ -54,7 +56,7 @@ func NewManagementAPI(bld config.Build, listener string, userManager UserManager
 
 	// Handlers for '/user/{screenname}/icon' route
 	mux.HandleFunc("GET /user/{screenname}/icon", func(w http.ResponseWriter, r *http.Request) {
-		getUserBuddyIconHandler(w, r, userManager, feedbagRetriever, bartRetriever, logger)
+		getUserBuddyIconHandler(w, r, userManager, feedbagRetriever, bartAssetManager, logger)
 	})
 
 	// Handlers for '/session' route
@@ -96,6 +98,23 @@ func NewManagementAPI(bld config.Build, listener string, userManager UserManager
 		getVersionHandler(w, bld)
 	})
 
+	// Handlers for '/admin/webapi/keys' route - Web API key management
+	mux.HandleFunc("POST /admin/webapi/keys", func(w http.ResponseWriter, r *http.Request) {
+		postWebAPIKeyHandler(w, r, webAPIKeyManager, uuid.New, logger)
+	})
+	mux.HandleFunc("GET /admin/webapi/keys", func(w http.ResponseWriter, r *http.Request) {
+		getWebAPIKeysHandler(w, r, webAPIKeyManager, logger)
+	})
+	mux.HandleFunc("GET /admin/webapi/keys/{id}", func(w http.ResponseWriter, r *http.Request) {
+		getWebAPIKeyHandler(w, r, webAPIKeyManager, logger)
+	})
+	mux.HandleFunc("PUT /admin/webapi/keys/{id}", func(w http.ResponseWriter, r *http.Request) {
+		putWebAPIKeyHandler(w, r, webAPIKeyManager, logger)
+	})
+	mux.HandleFunc("DELETE /admin/webapi/keys/{id}", func(w http.ResponseWriter, r *http.Request) {
+		deleteWebAPIKeyHandler(w, r, webAPIKeyManager, logger)
+	})
+
 	// Handlers for '/directory/category' route
 	mux.HandleFunc("GET /directory/category", func(w http.ResponseWriter, r *http.Request) {
 		getDirectoryCategoryHandler(w, r, directoryManager, logger)
@@ -122,6 +141,22 @@ func NewManagementAPI(bld config.Build, listener string, userManager UserManager
 	// Handlers for '/directory/keyword/{id}' route
 	mux.HandleFunc("DELETE /directory/keyword/{id}", func(w http.ResponseWriter, r *http.Request) {
 		deleteDirectoryKeywordHandler(w, r, directoryManager, logger)
+	})
+
+	// Handlers for '/bart' route
+	mux.HandleFunc("GET /bart", func(w http.ResponseWriter, r *http.Request) {
+		getBARTByTypeHandler(w, r, bartAssetManager, logger)
+	})
+
+	// Handlers for '/bart/{hash}' route
+	mux.HandleFunc("GET /bart/{hash}", func(w http.ResponseWriter, r *http.Request) {
+		getBARTHandler(w, r, bartAssetManager, logger)
+	})
+	mux.HandleFunc("POST /bart/{hash}", func(w http.ResponseWriter, r *http.Request) {
+		postBARTHandler(w, r, bartAssetManager, logger)
+	})
+	mux.HandleFunc("DELETE /bart/{hash}", func(w http.ResponseWriter, r *http.Request) {
+		deleteBARTHandler(w, r, bartAssetManager, logger)
 	})
 
 	return &Server{
@@ -597,7 +632,7 @@ func postInstantMessageHandler(w http.ResponseWriter, r *http.Request, messageRe
 }
 
 // getUserBuddyIconHandler handles the GET /user/{screenname}/icon endpoint.
-func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManager, f FeedBagRetriever, b BuddyIconRetriever, logger *slog.Logger) {
+func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManager, f FeedBagRetriever, b BARTAssetManager, logger *slog.Logger) {
 	screenName := state.NewIdentScreenName(r.PathValue("screenname"))
 	user, err := u.User(r.Context(), screenName)
 	if err != nil {
@@ -619,7 +654,7 @@ func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManag
 		http.Error(w, "icon not found", http.StatusNotFound)
 		return
 	}
-	icon, err := b.BuddyIcon(r.Context(), iconRef.Hash)
+	icon, err := b.BARTItem(r.Context(), iconRef.Hash)
 	if err != nil {
 		logger.Error("error retrieving buddy icon bart item", "err", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -985,4 +1020,163 @@ func errorMsg(w http.ResponseWriter, error string, code int) {
 	if err := json.NewEncoder(w).Encode(msg); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// BARTAsset represents a BART asset entry.
+type BARTAsset struct {
+	Hash string `json:"hash"`
+	Type uint16 `json:"type"`
+}
+
+// getBARTByTypeHandler handles the GET /bart endpoint.
+func getBARTByTypeHandler(w http.ResponseWriter, r *http.Request, bartAssetManager BARTAssetManager, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Get type from query parameter (required)
+	typeStr := r.URL.Query().Get("type")
+	if typeStr == "" {
+		errorMsg(w, "type query parameter is required", http.StatusBadRequest)
+		return
+	}
+	typeVal, err := strconv.ParseUint(typeStr, 10, 16)
+	if err != nil {
+		errorMsg(w, "invalid type ID", http.StatusBadRequest)
+		return
+	}
+	itemType := uint16(typeVal)
+
+	// Get BART items, filtered by type
+	items, err := bartAssetManager.ListBARTItems(r.Context(), itemType)
+	if err != nil {
+		logger.Error("error listing BART items", "err", err.Error())
+		errorMsg(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Convert to BARTAsset format
+	assets := make([]BARTAsset, 0, len(items))
+	for _, item := range items {
+		assets = append(assets, BARTAsset{
+			Hash: item.Hash,
+			Type: item.Type,
+		})
+	}
+
+	if err := json.NewEncoder(w).Encode(assets); err != nil {
+		logger.Error("error encoding response", "err", err.Error())
+	}
+}
+
+// getBARTHandler handles the GET /bart/{hash} endpoint.
+func getBARTHandler(w http.ResponseWriter, r *http.Request, bartAssetManager BARTAssetManager, logger *slog.Logger) {
+	hashStr := r.PathValue("hash")
+	if hashStr == "" {
+		errorMsg(w, "hash is required", http.StatusBadRequest)
+		return
+	}
+
+	hashBytes, err := hex.DecodeString(hashStr)
+	if err != nil {
+		errorMsg(w, "invalid hash format", http.StatusBadRequest)
+		return
+	}
+
+	body, err := bartAssetManager.BARTItem(r.Context(), hashBytes)
+	if err != nil {
+		logger.Error("error retrieving BART asset", "err", err.Error())
+		errorMsg(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if len(body) == 0 {
+		errorMsg(w, "BART asset not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Write(body)
+}
+
+// postBARTHandler handles the POST /bart endpoint.
+func postBARTHandler(w http.ResponseWriter, r *http.Request, bartAssetManager BARTAssetManager, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Extract hash from URL path
+	hashStr := r.PathValue("hash")
+	if hashStr == "" {
+		errorMsg(w, "hash path parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	hashBytes, err := hex.DecodeString(hashStr)
+	if err != nil {
+		errorMsg(w, "invalid hash format", http.StatusBadRequest)
+		return
+	}
+
+	typeStr := r.URL.Query().Get("type")
+	if typeStr == "" {
+		errorMsg(w, "type query parameter is required", http.StatusBadRequest)
+		return
+	}
+	typeVal, err := strconv.ParseUint(typeStr, 10, 16)
+	if err != nil {
+		errorMsg(w, "invalid type ID", http.StatusBadRequest)
+		return
+	}
+	bartType := uint16(typeVal)
+
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		errorMsg(w, "failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := bartAssetManager.InsertBARTItem(r.Context(), hashBytes, data, bartType); err != nil {
+		if errors.Is(err, state.ErrBARTItemExists) {
+			errorMsg(w, "BART asset already exists", http.StatusConflict)
+			return
+		}
+		logger.Error("error in POST /bart", "err", err.Error())
+		errorMsg(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	response := BARTAsset{
+		Hash: hex.EncodeToString(hashBytes),
+		Type: bartType,
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+// deleteBARTHandler handles the DELETE /bart/{hash} endpoint.
+func deleteBARTHandler(w http.ResponseWriter, r *http.Request, bartAssetManager BARTAssetManager, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Extract hash from URL path
+	hashStr := r.PathValue("hash")
+	if hashStr == "" {
+		errorMsg(w, "hash path parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	hashBytes, err := hex.DecodeString(hashStr)
+	if err != nil {
+		errorMsg(w, "invalid hash format", http.StatusBadRequest)
+		return
+	}
+
+	if err := bartAssetManager.DeleteBARTItem(r.Context(), hashBytes); err != nil {
+		if errors.Is(err, state.ErrBARTItemNotFound) {
+			errorMsg(w, "BART asset not found", http.StatusNotFound)
+			return
+		}
+		logger.Error("error in DELETE /bart", "err", err.Error())
+		errorMsg(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	msg := messageBody{Message: "BART asset deleted successfully."}
+	json.NewEncoder(w).Encode(msg)
 }

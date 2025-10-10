@@ -38,7 +38,7 @@ func NewOServiceService(
 	chatRoomManager ChatRoomRegistry,
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 	rateLimitClasses wire.RateLimitClasses,
 	snacRateLimits wire.SNACRateLimits,
 	chatMessageRelayer ChatMessageRelayer,
@@ -46,7 +46,7 @@ func NewOServiceService(
 	return &OServiceService{
 		cookieIssuer:       cookieIssuer,
 		messageRelayer:     messageRelayer,
-		buddyBroadcaster:   newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		buddyBroadcaster:   newBuddyNotifier(bartItemManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		cfg:                cfg,
 		logger:             logger,
 		rateLimitClasses:   rateLimitClasses,
@@ -237,7 +237,7 @@ func (s OServiceService) SetUserInfoFields(ctx context.Context, sess *state.Sess
 				return wire.SNACMessage{}, err
 			}
 		} else {
-			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+			if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), sess.TLVUserInfo()); err != nil {
 				return wire.SNACMessage{}, err
 			}
 
@@ -262,7 +262,7 @@ func (s OServiceService) IdleNotification(ctx context.Context, sess *state.Sessi
 	} else {
 		sess.SetIdle(time.Duration(bodyIn.IdleTime) * time.Second)
 	}
-	return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess)
+	return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), sess.TLVUserInfo())
 }
 
 // SetPrivacyFlags sets client privacy settings. Currently, there's no action

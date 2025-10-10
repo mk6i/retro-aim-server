@@ -40,6 +40,9 @@ func (s *InMemorySessionManager) RelayToAll(ctx context.Context, msg wire.SNACMe
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	for _, rec := range s.store {
+		if !rec.sess.SignonComplete() {
+			continue
+		}
 		s.maybeRelayMessage(ctx, msg, rec.sess)
 	}
 }
@@ -137,6 +140,9 @@ func (s *InMemorySessionManager) RetrieveSession(screenName IdentScreenName) *Se
 	s.mapMutex.RLock()
 	defer s.mapMutex.RUnlock()
 	if rec, ok := s.store[screenName]; ok {
+		if !rec.sess.SignonComplete() {
+			return nil
+		}
 		return rec.sess
 	}
 	return nil
@@ -148,6 +154,9 @@ func (s *InMemorySessionManager) retrieveByScreenNames(screenNames []IdentScreen
 	var ret []*Session
 	for _, sn := range screenNames {
 		for _, rec := range s.store {
+			if !rec.sess.SignonComplete() {
+				continue
+			}
 			if sn == rec.sess.IdentScreenName() {
 				ret = append(ret, rec.sess)
 			}
@@ -169,6 +178,9 @@ func (s *InMemorySessionManager) AllSessions() []*Session {
 	defer s.mapMutex.RUnlock()
 	var sessions []*Session
 	for _, rec := range s.store {
+		if !rec.sess.SignonComplete() {
+			continue
+		}
 		sessions = append(sessions, rec.sess)
 	}
 	return sessions

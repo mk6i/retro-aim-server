@@ -768,8 +768,8 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				buddyIconManagerParams: buddyIconManagerParams{
-					buddyIconManagerRetrieveParams: buddyIconManagerRetrieveParams{
+				bartItemManagerParams: bartItemManagerParams{
+					bartItemManagerRetrieveParams: bartItemManagerRetrieveParams{
 						{
 							itemHash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
 							result:   []byte{}, // icon doesn't exist
@@ -852,11 +852,12 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				},
 			},
 			mockParams: mockParams{
-				buddyIconManagerParams: buddyIconManagerParams{
-					buddyIconManagerRetrieveParams: buddyIconManagerRetrieveParams{
+				bartItemManagerParams: bartItemManagerParams{
+					bartItemManagerRetrieveParams: bartItemManagerRetrieveParams{
 						{
 							itemHash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
 							result:   []byte{'i', 'c', 'o', 'n', 'd', 'a', 't', 'a'},
+							err:      nil,
 						},
 					},
 				},
@@ -906,7 +907,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: state.NewIdentScreenName("me"),
+							screenName: state.DisplayScreenName("me"),
 						},
 					},
 				},
@@ -967,7 +968,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				buddyBroadcasterParams: buddyBroadcasterParams{
 					broadcastBuddyArrivedParams: broadcastBuddyArrivedParams{
 						{
-							screenName: state.NewIdentScreenName("me"),
+							screenName: state.DisplayScreenName("me"),
 						},
 					},
 				},
@@ -998,16 +999,18 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 				messageRelayer.EXPECT().
 					RelayToScreenName(mock.Anything, params.screenName, params.message)
 			}
-			buddyIconManager := newMockBuddyIconManager(t)
-			for _, params := range tc.mockParams.buddyIconManagerParams.buddyIconManagerRetrieveParams {
-				buddyIconManager.EXPECT().
-					BuddyIcon(matchContext(), params.itemHash).
+			bartItemManager := newMockBARTItemManager(t)
+			for _, params := range tc.mockParams.bartItemManagerParams.bartItemManagerRetrieveParams {
+				bartItemManager.EXPECT().
+					BARTItem(matchContext(), params.itemHash).
 					Return(params.result, nil)
 			}
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tc.mockParams.broadcastBuddyArrivedParams {
 				buddyUpdateBroadcaster.EXPECT().
-					BroadcastBuddyArrived(mock.Anything, matchSession(params.screenName)).
+					BroadcastBuddyArrived(mock.Anything, state.NewIdentScreenName(params.screenName.String()), mock.MatchedBy(func(userInfo wire.TLVUserInfo) bool {
+						return userInfo.ScreenName == params.screenName.String()
+					})).
 					Return(params.err)
 			}
 			for _, params := range tc.mockParams.broadcastVisibilityParams {
@@ -1015,7 +1018,7 @@ func TestFeedbagService_UpsertItem(t *testing.T) {
 					BroadcastVisibility(mock.Anything, matchSession(params.from), params.filter, true).
 					Return(params.err)
 			}
-			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, buddyIconManager, nil, nil)
+			svc := NewFeedbagService(slog.Default(), messageRelayer, feedbagManager, bartItemManager, nil, nil)
 			svc.buddyBroadcaster = buddyUpdateBroadcaster
 			output, err := svc.UpsertItem(context.Background(), tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x13_0x08_FeedbagInsertItem).Items)

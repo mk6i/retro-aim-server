@@ -30,7 +30,7 @@ type BuddyListRegistry interface {
 // DepartureNotifier is the interface for sending buddy departure notifications
 // when a client disconnects.
 type DepartureNotifier interface {
-	BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error
+	BroadcastBuddyArrived(ctx context.Context, screenName state.IdentScreenName, userInfo wire.TLVUserInfo) error
 	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
 }
 
@@ -66,7 +66,8 @@ type AdminService interface {
 
 type BARTService interface {
 	UpsertItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x10_0x02_BARTUploadQuery) (wire.SNACMessage, error)
-	RetrieveItem(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x10_0x04_BARTDownloadQuery) (wire.SNACMessage, error)
+	RetrieveItem(ctx context.Context, inFrame wire.SNACFrame, inBody wire.SNAC_0x10_0x04_BARTDownloadQuery) (wire.SNACMessage, error)
+	RetrieveItemV2(ctx context.Context, frame wire.SNACFrame, body wire.SNAC_0x10_0x06_BARTDownload2Query) ([]wire.SNACMessage, error)
 }
 
 type BuddyService interface {
@@ -103,7 +104,8 @@ type ICBMService interface {
 	EvilRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x08_ICBMEvilRequest) (wire.SNACMessage, error)
 	ParameterQuery(ctx context.Context, inFrame wire.SNACFrame) wire.SNACMessage
 	ClientErr(ctx context.Context, sess *state.Session, frame wire.SNACFrame, body wire.SNAC_0x04_0x0B_ICBMClientErr) error
-	DecayWarnLevel(ctx context.Context, sess *state.Session)
+	RestoreWarningLevel(ctx context.Context, sess *state.Session) error
+	UpdateWarnLevel(ctx context.Context, sess *state.Session)
 }
 
 type ICQService interface {

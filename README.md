@@ -7,11 +7,7 @@
 
 </div>
 
-**Retro AIM Server** is an open-source instant messaging server that makes classic AIM and ICQ clients work again.
-
-<p align="center">
-  <img width="616" alt="screenshot of retro aim server running next to AIM" src="https://github.com/mk6i/retro-aim-server/assets/2894330/81ff419f-50fa-4961-bd2f-ac7dcac903b5">
-</p>
+**Retro AIM Server** is an open-source instant messaging server compatible with classic AIM and ICQ clients.
 
 | Disclaimer                                                                                                                                                                                                                           |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -191,7 +187,7 @@ curl http://localhost:8080/chat/room/public
 ## 🔗 Acknowledgements
 
 - [aim-oscar-server](https://github.com/ox/aim-oscar-server) is another cool open source AIM server project.
-- [NINA Wiki](https://wiki.nina.chat/wiki/Main_Page) is an indispensable source for figuring out the OSCAR API.
+- [NINA Wiki](https://web.archive.org/web/20250910233011/https://wiki.nina.chat/wiki/Main_Page) is an indispensable source for figuring out the OSCAR API.
 - [libpurple](https://developer.pidgin.im/wiki/WhatIsLibpurple) is also an invaluable OSCAR reference (especially
   version [2.10.6-1](https://github.com/Tasssadar/libpurple)).
 

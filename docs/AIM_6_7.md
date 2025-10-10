@@ -16,7 +16,7 @@ Installation guides are available for the following versions:
 ### Installation
 
 1. Download AIM 6.x (recommended **AIM 6.1.46.1**) from
-   the [NINA wiki](https://wiki.nina.chat/wiki/Clients/AOL_Instant_Messenger#Windows).
+   the [NINA wiki](https://web.archive.org/web/20250910233232/https://wiki.nina.chat/wiki/Clients/AOL_Instant_Messenger#Windows).
 2. Run the installer and complete the installation.
 3. Close the AIM application.
 4. Open **Task Manager** and end the **AIM (32 bit)** process if it's still running.
@@ -74,7 +74,7 @@ To point the client to your Retro AIM Server:
 ### Installation
 
 1. Download an AIM 6.x or 7.x client (recommended **6.9.17.2** or **7.5.8.2**) from the  
-   [NINA wiki](https://wiki.nina.chat/wiki/Clients/AOL_Instant_Messenger#Windows).
+   [NINA wiki](https://web.archive.org/web/20250910233232/https://wiki.nina.chat/wiki/Clients/AOL_Instant_Messenger#Windows).
 2. Run the installer and complete the installation.
 3. Close the AIM application.
 4. Open **Task Manager** and end the **AIM (32 bit)** process if it's still running.

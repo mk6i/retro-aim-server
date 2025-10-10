@@ -26,6 +26,7 @@ func TestServer_handleTOCRequest_serverShutdown(t *testing.T) {
 		sv := Server{
 			bosProxy:       testOSCARProxy(t),
 			logger:         slog.Default(),
+			recalcWarning:  func(ctx context.Context, sess *state.Session) error { return nil },
 			lowerWarnLevel: func(ctx context.Context, sess *state.Session) {},
 		}
 
@@ -65,6 +66,7 @@ func TestServer_handleTOCRequest_clientReadDisconnect(t *testing.T) {
 		sv := Server{
 			bosProxy:       testOSCARProxy(t),
 			logger:         slog.Default(),
+			recalcWarning:  func(ctx context.Context, sess *state.Session) error { return nil },
 			lowerWarnLevel: func(ctx context.Context, sess *state.Session) {},
 		}
 		err := sv.handleTOCRequest(context.Background(), closeConn, sess, NewChatRegistry(), fc)
@@ -99,6 +101,7 @@ func TestServer_handleTOCRequest_sessClose(t *testing.T) {
 		sv := Server{
 			bosProxy:       testOSCARProxy(t),
 			logger:         slog.Default(),
+			recalcWarning:  func(ctx context.Context, sess *state.Session) error { return nil },
 			lowerWarnLevel: func(ctx context.Context, sess *state.Session) {},
 		}
 		err := sv.handleTOCRequest(context.Background(), closeConn, sess, NewChatRegistry(), fc)
@@ -132,6 +135,7 @@ func TestServer_handleTOCRequest_replyFailure(t *testing.T) {
 		sv := Server{
 			bosProxy:       testOSCARProxy(t),
 			logger:         slog.Default(),
+			recalcWarning:  func(ctx context.Context, sess *state.Session) error { return nil },
 			lowerWarnLevel: func(ctx context.Context, sess *state.Session) {},
 		}
 		err := sv.handleTOCRequest(context.Background(), closeConn, sess, NewChatRegistry(), fc)
@@ -170,6 +174,7 @@ func TestServer_handleTOCRequest_happyPath(t *testing.T) {
 		sv := Server{
 			bosProxy:       testOSCARProxy(t),
 			logger:         slog.Default(),
+			recalcWarning:  func(ctx context.Context, sess *state.Session) error { return nil },
 			lowerWarnLevel: func(ctx context.Context, sess *state.Session) {},
 		}
 		err := sv.handleTOCRequest(context.Background(), closeConn, newTestSession("me"), NewChatRegistry(), fc)

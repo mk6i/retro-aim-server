@@ -14,10 +14,10 @@ func NewBuddyService(
 	clientSideBuddyListManager ClientSideBuddyListManager,
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 ) *BuddyService {
 	return &BuddyService{
-		buddyBroadcaster:           newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		buddyBroadcaster:           newBuddyNotifier(bartItemManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		clientSideBuddyListManager: clientSideBuddyListManager,
 	}
 }
@@ -100,22 +100,23 @@ func (s BuddyService) DelBuddies(ctx context.Context, sess *state.Session, inBod
 	return nil
 }
 
+// BroadcastBuddyArrived broadcasts buddy arrival with custom user info (implements DepartureNotifier)
+func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, screenName state.IdentScreenName, userInfo wire.TLVUserInfo) error {
+	return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, screenName, userInfo)
+}
+
 func (s BuddyService) BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error {
 	return s.buddyBroadcaster.BroadcastBuddyDeparted(ctx, sess)
 }
 
-func (s BuddyService) BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error {
-	return s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess)
-}
-
 func newBuddyNotifier(
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 	relationshipFetcher RelationshipFetcher,
 	messageRelayer MessageRelayer,
 	sessionRetriever SessionRetriever,
 ) buddyNotifier {
 	return buddyNotifier{
-		buddyIconManager:    buddyIconManager,
+		bartItemManager:     bartItemManager,
 		relationshipFetcher: relationshipFetcher,
 		messageRelayer:      messageRelayer,
 		sessionRetriever:    sessionRetriever,
@@ -125,7 +126,7 @@ func newBuddyNotifier(
 // buddyNotifier centralizes logic for sending buddy arrival and departure
 // notifications.
 type buddyNotifier struct {
-	buddyIconManager    BuddyIconManager
+	bartItemManager     BARTItemManager
 	relationshipFetcher RelationshipFetcher
 	messageRelayer      MessageRelayer
 	sessionRetriever    SessionRetriever
@@ -135,8 +136,8 @@ type buddyNotifier struct {
 // While updates are sent via the wire.BuddyArrived SNAC, the message is not
 // only used to indicate the user coming online. It can also notify changes to
 // buddy icons, warning levels, invisibility status, etc.
-func (s buddyNotifier) BroadcastBuddyArrived(ctx context.Context, sess *state.Session) error {
-	users, err := s.relationshipFetcher.AllRelationships(ctx, sess.IdentScreenName(), nil)
+func (s buddyNotifier) BroadcastBuddyArrived(ctx context.Context, screenName state.IdentScreenName, userInfo wire.TLVUserInfo) error {
+	users, err := s.relationshipFetcher.AllRelationships(ctx, screenName, nil)
 	if err != nil {
 		return err
 	}
@@ -149,9 +150,8 @@ func (s buddyNotifier) BroadcastBuddyArrived(ctx context.Context, sess *state.Se
 		recipients = append(recipients, user.User)
 	}
 
-	userInfo := sess.TLVUserInfo()
-	if err := s.setBuddyIcon(ctx, sess.IdentScreenName(), &userInfo); err != nil {
-		return fmt.Errorf("failed to set buddy icon for %s: %w", sess.IdentScreenName().String(), err)
+	if err := s.setBuddyIcon(ctx, screenName, &userInfo); err != nil {
+		return fmt.Errorf("failed to set buddy icon for %s: %w", screenName.String(), err)
 	}
 
 	s.messageRelayer.RelayToScreenNames(ctx, recipients, wire.SNACMessage{
@@ -286,7 +286,7 @@ func (s buddyNotifier) BroadcastVisibility(
 
 // setBuddyIcon adds buddy icon metadata to TLV user info
 func (s buddyNotifier) setBuddyIcon(ctx context.Context, you state.IdentScreenName, myInfo *wire.TLVUserInfo) error {
-	icon, err := s.buddyIconManager.BuddyIconMetadata(ctx, you)
+	icon, err := s.bartItemManager.BuddyIconMetadata(ctx, you)
 	if err != nil {
 		return fmt.Errorf("retrieve buddy icon ref: %v", err)
 	}

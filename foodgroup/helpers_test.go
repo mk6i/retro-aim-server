@@ -16,7 +16,7 @@ import (
 // in one place for a table test
 type mockParams struct {
 	accountManagerParams
-	buddyIconManagerParams
+	bartItemManagerParams
 	buddyBroadcasterParams
 	relationshipFetcherParams
 	chatMessageRelayerParams
@@ -214,30 +214,32 @@ type setMoreInfoParams []struct {
 	err  error
 }
 
-// buddyIconManagerParams is a helper struct that contains mock parameters for
-// BuddyIconManager methods
-type buddyIconManagerParams struct {
-	buddyIconManagerRetrieveParams
-	buddyIconManagerUpsertParams
+// bartItemManagerParams is a helper struct that contains mock parameters for
+// BARTItemManager methods
+type bartItemManagerParams struct {
+	bartItemManagerRetrieveParams
+	bartItemManagerUpsertParams
 	buddyIconMetadataParams
 }
 
-// buddyIconManagerRetrieveParams is the list of parameters passed at the mock
-// BuddyIconManager.BuddyIcon call site
-type buddyIconManagerRetrieveParams []struct {
+// bartItemManagerRetrieveParams is the list of parameters passed at the mock
+// BARTItemManager.BuddyIcon call site
+type bartItemManagerRetrieveParams []struct {
 	itemHash []byte
 	result   []byte
+	err      error
 }
 
-// buddyIconManagerUpsertParams is the list of parameters passed at the mock
-// BuddyIconManager.SetBuddyIcon call site
-type buddyIconManagerUpsertParams []struct {
+// bartItemManagerUpsertParams is the list of parameters passed at the mock
+// BARTItemManager.SetBuddyIcon call site
+type bartItemManagerUpsertParams []struct {
 	itemHash []byte
 	payload  []byte
+	bartType uint16
 }
 
 // buddyIconMetadataParams is the list of parameters passed at the mock
-// BuddyIconManager.BuddyIconMetadata call site
+// BARTItemManager.BuddyIconMetadata call site
 type buddyIconMetadataParams []struct {
 	screenName state.IdentScreenName
 	result     *wire.BARTID
@@ -675,7 +677,7 @@ type broadcastVisibilityParams []struct {
 // broadcastBuddyArrivedParams is the list of parameters passed at the mock
 // buddyBroadcaster.BroadcastBuddyArrived call site
 type broadcastBuddyArrivedParams []struct {
-	screenName state.IdentScreenName
+	screenName state.DisplayScreenName
 	err        error
 }
 
@@ -721,7 +723,7 @@ type createChatRoomParams []struct {
 // sessOptWarning sets a warning level on the session object
 func sessOptWarning(level int16) func(session *state.Session) {
 	return func(session *state.Session) {
-		session.IncrementWarning(level, 1)
+		session.SetWarning(uint16(level))
 	}
 }
 
@@ -742,6 +744,12 @@ func sessOptChatRoomCookie(cookie string) func(session *state.Session) {
 	return func(session *state.Session) {
 		session.SetChatRoomCookie(cookie)
 	}
+}
+
+// sessOptBot sets the bot flag to true on the session
+// object
+func sessOptBot(session *state.Session) {
+	session.SetUserInfoFlag(wire.OServiceUserFlagBot)
 }
 
 // sessOptInvisible sets the invisible flag to true on the session

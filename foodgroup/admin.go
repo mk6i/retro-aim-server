@@ -13,7 +13,7 @@ import (
 // NewAdminService creates an instance of AdminService.
 func NewAdminService(
 	accountManager AccountManager,
-	buddyIconManager BuddyIconManager,
+	bartItemManager BARTItemManager,
 	relationshipFetcher RelationshipFetcher,
 	messageRelayer MessageRelayer,
 	sessionRetriever SessionRetriever,
@@ -21,7 +21,7 @@ func NewAdminService(
 ) *AdminService {
 	return &AdminService{
 		accountManager:   accountManager,
-		buddyBroadcaster: newBuddyNotifier(buddyIconManager, relationshipFetcher, messageRelayer, sessionRetriever),
+		buddyBroadcaster: newBuddyNotifier(bartItemManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		messageRelayer:   messageRelayer,
 		logger:           logger,
 	}
@@ -71,7 +71,7 @@ func (s AdminService) ConfirmRequest(ctx context.Context, sess *state.Session, f
 		return wire.SNACMessage{}, err
 	}
 	sess.ClearUserInfoFlag(wire.OServiceUserFlagUnconfirmed)
-	if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+	if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), sess.TLVUserInfo()); err != nil {
 		return wire.SNACMessage{}, err
 	}
 	return getAdminConfirmReply(wire.AdminAcctConfirmStatusEmailSent), nil
@@ -210,7 +210,7 @@ func (s AdminService) InfoChangeRequest(ctx context.Context, sess *state.Session
 			return wire.SNACMessage{}, err
 		}
 		sess.SetDisplayScreenName(proposedName)
-		if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess); err != nil {
+		if err := s.buddyBroadcaster.BroadcastBuddyArrived(ctx, sess.IdentScreenName(), sess.TLVUserInfo()); err != nil {
 			return wire.SNACMessage{}, err
 		}
 		s.messageRelayer.RelayToScreenName(ctx, sess.IdentScreenName(), wire.SNACMessage{

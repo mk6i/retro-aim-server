@@ -55,6 +55,7 @@ func TestServer_ListenAndServeAndShutdown(t *testing.T) {
 		wire.DefaultSNACRateLimits(),
 		nil,
 		cfg,
+		func(ctx context.Context, sess *state.Session) error { return nil },
 		func(ctx context.Context, sess *state.Session) {},
 	)
 
@@ -419,6 +420,9 @@ func TestOscarServer_RouteConnection_BOS(t *testing.T) {
 		BuddyListRegistry:  buddyListRegistry,
 		ChatSessionManager: chatSessionManager,
 		DepartureNotifier:  departureNotifier,
+		recalcWarning: func(ctx context.Context, sess *state.Session) error {
+			return nil
+		},
 		lowerWarnLevel: func(ctx context.Context, sess *state.Session) {
 			defer wg.Done()
 		},
@@ -760,6 +764,7 @@ func Test_oscarServer_receiveSessMessages_BOS_integration(t *testing.T) {
 		DepartureNotifier:  departureNotifier,
 		OnlineNotifier:     onlineNotifier,
 		Logger:             slog.New(slog.NewTextHandler(io.Discard, nil)),
+		recalcWarning:      func(ctx context.Context, sess *state.Session) error { return nil },
 		lowerWarnLevel:     func(ctx context.Context, sess *state.Session) {},
 	}
 

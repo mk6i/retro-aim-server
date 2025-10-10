@@ -430,7 +430,7 @@ func TestHandler_BARTDownloadQuery(t *testing.T) {
 
 			svc := newMockBARTService(t)
 			svc.EXPECT().
-				RetrieveItem(mock.Anything, mock.Anything, input.Frame, input.Body).
+				RetrieveItem(mock.Anything, input.Frame, input.Body).
 				Return(output, tt.serviceError)
 
 			h := Handler{
@@ -445,6 +445,87 @@ func TestHandler_BARTDownloadQuery(t *testing.T) {
 				responseWriter.EXPECT().
 					SendSNAC(output.Frame, output.Body).
 					Return(tt.responseError)
+			}
+
+			buf := &bytes.Buffer{}
+			assert.NoError(t, wire.MarshalBE(input.Body, buf))
+
+			err := h.Handle(context.TODO(), wire.BOS, nil, input.Frame, buf, responseWriter, config.Listener{})
+			if tt.expectedError != nil {
+				assert.ErrorIs(t, err, tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestHandler_BARTDownload2Query(t *testing.T) {
+	tests := []struct {
+		name          string
+		inputBody     wire.SNAC_0x10_0x06_BARTDownload2Query
+		serviceError  error
+		responseError error
+		expectedError error
+	}{
+		{
+			name:      "success",
+			inputBody: wire.SNAC_0x10_0x06_BARTDownload2Query{},
+		},
+		{
+			name:          "service error",
+			inputBody:     wire.SNAC_0x10_0x06_BARTDownload2Query{},
+			serviceError:  assert.AnError,
+			expectedError: assert.AnError,
+		},
+		{
+			name:          "response writer error",
+			inputBody:     wire.SNAC_0x10_0x06_BARTDownload2Query{},
+			responseError: assert.AnError,
+			expectedError: assert.AnError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					FoodGroup: wire.BART,
+					SubGroup:  wire.BARTDownload2Query,
+				},
+				Body: tt.inputBody,
+			}
+			output := []wire.SNACMessage{
+				{
+					Frame: wire.SNACFrame{
+						FoodGroup: wire.BART,
+						SubGroup:  wire.BARTDownload2Reply,
+					},
+					Body: wire.SNAC_0x10_0x07_BARTDownload2Reply{
+						ScreenName: "the-screen-name",
+					},
+				},
+			}
+
+			svc := newMockBARTService(t)
+			svc.EXPECT().
+				RetrieveItemV2(mock.Anything, input.Frame, input.Body).
+				Return(output, tt.serviceError)
+
+			h := Handler{
+				BARTService: svc,
+				RouteLogger: middleware.RouteLogger{
+					Logger: slog.Default(),
+				},
+			}
+
+			responseWriter := newMockResponseWriter(t)
+			if tt.serviceError == nil {
+				for _, msg := range output {
+					responseWriter.EXPECT().
+						SendSNAC(msg.Frame, msg.Body).
+						Return(tt.responseError)
+				}
 			}
 
 			buf := &bytes.Buffer{}

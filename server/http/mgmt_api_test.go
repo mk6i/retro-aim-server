@@ -782,11 +782,11 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 						},
 					},
 				},
-				bartRetrieverParams: bartRetrieverParams{
-					bartRetrieveParams: bartRetrieveParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					bartItemParams: bartItemParams{
 						{
-							itemHash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
-							result:   sampleGIF,
+							hash:   []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
+							result: sampleGIF,
 						},
 					},
 				},
@@ -824,11 +824,11 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 						},
 					},
 				},
-				bartRetrieverParams: bartRetrieverParams{
-					bartRetrieveParams: bartRetrieveParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					bartItemParams: bartItemParams{
 						{
-							itemHash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
-							result:   sampleJPG,
+							hash:   []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
+							result: sampleJPG,
 						},
 					},
 				},
@@ -866,11 +866,11 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 						},
 					},
 				},
-				bartRetrieverParams: bartRetrieverParams{
-					bartRetrieveParams: bartRetrieveParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					bartItemParams: bartItemParams{
 						{
-							itemHash: []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
-							result:   []byte{0x13, 0x37, 0x13, 0x37, 0x13, 0x37},
+							hash:   []byte{'t', 'h', 'e', 'h', 'a', 's', 'h'},
+							result: []byte{0x13, 0x37, 0x13, 0x37, 0x13, 0x37},
 						},
 					},
 				},
@@ -960,10 +960,10 @@ func TestUserBuddyIconHandler_GET(t *testing.T) {
 					Return(params.result, params.err)
 			}
 
-			bartRetriever := newMockBuddyIconRetriever(t)
-			for _, params := range tc.mockParams.bartRetrieverParams.bartRetrieveParams {
+			bartRetriever := newMockBARTAssetManager(t)
+			for _, params := range tc.mockParams.bartAssetManagerParams.bartItemParams {
 				bartRetriever.EXPECT().
-					BuddyIcon(matchContext(), params.itemHash).
+					BARTItem(matchContext(), params.hash).
 					Return(params.result, params.err)
 			}
 
@@ -2534,4 +2534,454 @@ func TestDirectoryKeywordHandler_DELETE(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBARTByTypeHandler_GET(t *testing.T) {
+	tt := []struct {
+		name           string
+		queryParams    string
+		wantStatusCode int
+		wantResponse   string
+		mockParams     mockParams
+	}{
+		{
+			name:           "success with items",
+			queryParams:    "?type=1",
+			wantStatusCode: http.StatusOK,
+			wantResponse:   `[{"hash":"2B000001E4","type":1},{"hash":"2B000001B7","type":1}]`,
+			mockParams: mockParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					listBARTItemsParams: listBARTItemsParams{
+						{
+							itemType: 1,
+							result: []state.BARTItem{
+								{Hash: "2B000001E4", Type: 1},
+								{Hash: "2B000001B7", Type: 1},
+							},
+							err: nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "success with empty list",
+			queryParams:    "?type=2",
+			wantStatusCode: http.StatusOK,
+			wantResponse:   `[]`,
+			mockParams: mockParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					listBARTItemsParams: listBARTItemsParams{
+						{
+							itemType: 2,
+							result:   []state.BARTItem{},
+							err:      nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "missing type parameter",
+			queryParams:    "",
+			wantStatusCode: http.StatusBadRequest,
+			wantResponse:   `{"message":"type query parameter is required"}`,
+		},
+		{
+			name:           "invalid type parameter",
+			queryParams:    "?type=invalid",
+			wantStatusCode: http.StatusBadRequest,
+			wantResponse:   `{"message":"invalid type ID"}`,
+		},
+		{
+			name:           "internal server error",
+			queryParams:    "?type=1",
+			wantStatusCode: http.StatusInternalServerError,
+			wantResponse:   `{"message":"internal server error"}`,
+			mockParams: mockParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					listBARTItemsParams: listBARTItemsParams{
+						{
+							itemType: 1,
+							result:   nil,
+							err:      errors.New("database error"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/bart"+tc.queryParams, nil)
+			responseRecorder := httptest.NewRecorder()
+
+			mockBARTManager := newMockBARTAssetManager(t)
+			for _, params := range tc.mockParams.bartAssetManagerParams.listBARTItemsParams {
+				mockBARTManager.EXPECT().
+					ListBARTItems(matchContext(), params.itemType).
+					Return(params.result, params.err)
+			}
+
+			getBARTByTypeHandler(responseRecorder, request, mockBARTManager, slog.Default())
+
+			assert.Equal(t, tc.wantStatusCode, responseRecorder.Code)
+			assert.JSONEq(t, tc.wantResponse, responseRecorder.Body.String())
+		})
+	}
+}
+
+func TestBARTHandler_GET(t *testing.T) {
+	tt := []struct {
+		name           string
+		hash           string
+		wantStatusCode int
+		wantResponse   string
+		wantHeaders    map[string]string
+		mockParams     mockParams
+	}{
+		{
+			name:           "success with valid hash",
+			hash:           "2B000001E4",
+			wantStatusCode: http.StatusOK,
+			wantResponse:   "binary data",
+			wantHeaders:    map[string]string{"Content-Type": "application/octet-stream"},
+			mockParams: mockParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					bartItemParams: bartItemParams{
+						{
+							hash:   []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
+							result: []byte("binary data"),
+							err:    nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "missing hash parameter",
+			hash:           "",
+			wantStatusCode: http.StatusBadRequest,
+			wantResponse:   `{"message":"hash is required"}`,
+		},
+		{
+			name:           "invalid hash format",
+			hash:           "invalid-hex",
+			wantStatusCode: http.StatusBadRequest,
+			wantResponse:   `{"message":"invalid hash format"}`,
+		},
+		{
+			name:           "asset not found",
+			hash:           "2B000001E4",
+			wantStatusCode: http.StatusNotFound,
+			wantResponse:   `{"message":"BART asset not found"}`,
+			mockParams: mockParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					bartItemParams: bartItemParams{
+						{
+							hash:   []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
+							result: []byte{},
+							err:    nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "internal server error",
+			hash:           "2B000001E4",
+			wantStatusCode: http.StatusInternalServerError,
+			wantResponse:   `{"message":"internal server error"}`,
+			mockParams: mockParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					bartItemParams: bartItemParams{
+						{
+							hash:   []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
+							result: nil,
+							err:    errors.New("database error"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/bart/"+tc.hash, nil)
+			// Set the path value manually for testing
+			if tc.hash != "" {
+				request.SetPathValue("hash", tc.hash)
+			}
+			responseRecorder := httptest.NewRecorder()
+
+			mockBARTManager := newMockBARTAssetManager(t)
+			for _, params := range tc.mockParams.bartAssetManagerParams.bartItemParams {
+				mockBARTManager.EXPECT().
+					BARTItem(matchContext(), params.hash).
+					Return(params.result, params.err)
+			}
+
+			getBARTHandler(responseRecorder, request, mockBARTManager, slog.Default())
+
+			assert.Equal(t, tc.wantStatusCode, responseRecorder.Code)
+
+			if tc.wantHeaders != nil {
+				for key, value := range tc.wantHeaders {
+					assert.Equal(t, value, responseRecorder.Header().Get(key))
+				}
+			}
+
+			if tc.wantStatusCode == http.StatusOK {
+				assert.Equal(t, tc.wantResponse, responseRecorder.Body.String())
+			} else {
+				assert.JSONEq(t, tc.wantResponse, responseRecorder.Body.String())
+			}
+		})
+	}
+}
+
+func TestBARTHandler_POST(t *testing.T) {
+	tt := []struct {
+		name           string
+		hash           string
+		queryParams    string
+		requestBody    string
+		wantStatusCode int
+		wantResponse   string
+		mockParams     mockParams
+	}{
+		{
+			name:           "success with valid data",
+			hash:           "2B000001E4",
+			queryParams:    "?type=1",
+			requestBody:    "binary data",
+			wantStatusCode: http.StatusCreated,
+			wantResponse:   `{"hash":"2b000001e4","type":1}`,
+			mockParams: mockParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					insertBARTItemParams: insertBARTItemParams{
+						{
+							hash:     []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
+							blob:     []byte("binary data"),
+							itemType: 1,
+							err:      nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "missing hash parameter",
+			hash:           "",
+			queryParams:    "?type=1",
+			requestBody:    "binary data",
+			wantStatusCode: http.StatusBadRequest,
+			wantResponse:   `{"message":"hash path parameter is required"}`,
+		},
+		{
+			name:           "invalid hash format",
+			hash:           "invalid-hex",
+			queryParams:    "?type=1",
+			requestBody:    "binary data",
+			wantStatusCode: http.StatusBadRequest,
+			wantResponse:   `{"message":"invalid hash format"}`,
+		},
+		{
+			name:           "missing type parameter",
+			hash:           "2B000001E4",
+			queryParams:    "",
+			requestBody:    "binary data",
+			wantStatusCode: http.StatusBadRequest,
+			wantResponse:   `{"message":"type query parameter is required"}`,
+		},
+		{
+			name:           "invalid type parameter",
+			hash:           "2B000001E4",
+			queryParams:    "?type=invalid",
+			requestBody:    "binary data",
+			wantStatusCode: http.StatusBadRequest,
+			wantResponse:   `{"message":"invalid type ID"}`,
+		},
+		{
+			name:           "failed to read request body",
+			hash:           "2B000001E4",
+			queryParams:    "?type=1",
+			requestBody:    "", // This will cause an error when reading
+			wantStatusCode: http.StatusBadRequest,
+			wantResponse:   `{"message":"failed to read request body"}`,
+		},
+		{
+			name:           "asset already exists",
+			hash:           "2B000001E4",
+			queryParams:    "?type=1",
+			requestBody:    "binary data",
+			wantStatusCode: http.StatusConflict,
+			wantResponse:   `{"message":"BART asset already exists"}`,
+			mockParams: mockParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					insertBARTItemParams: insertBARTItemParams{
+						{
+							hash:     []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
+							blob:     []byte("binary data"),
+							itemType: 1,
+							err:      state.ErrBARTItemExists,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "internal server error",
+			hash:           "2B000001E4",
+			queryParams:    "?type=1",
+			requestBody:    "binary data",
+			wantStatusCode: http.StatusInternalServerError,
+			wantResponse:   `{"message":"internal server error"}`,
+			mockParams: mockParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					insertBARTItemParams: insertBARTItemParams{
+						{
+							hash:     []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
+							blob:     []byte("binary data"),
+							itemType: 1,
+							err:      errors.New("database error"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			var requestBody io.Reader
+			if tc.requestBody != "" {
+				requestBody = strings.NewReader(tc.requestBody)
+			} else {
+				requestBody = &errorReader{}
+			}
+
+			request := httptest.NewRequest(http.MethodPost, "/bart/"+tc.hash+tc.queryParams, requestBody)
+			// Set the path value manually for testing
+			if tc.hash != "" {
+				request.SetPathValue("hash", tc.hash)
+			}
+			responseRecorder := httptest.NewRecorder()
+
+			mockBARTManager := newMockBARTAssetManager(t)
+			for _, params := range tc.mockParams.bartAssetManagerParams.insertBARTItemParams {
+				mockBARTManager.EXPECT().
+					InsertBARTItem(matchContext(), params.hash, params.blob, params.itemType).
+					Return(params.err)
+			}
+
+			postBARTHandler(responseRecorder, request, mockBARTManager, slog.Default())
+
+			assert.Equal(t, tc.wantStatusCode, responseRecorder.Code)
+			assert.JSONEq(t, tc.wantResponse, responseRecorder.Body.String())
+		})
+	}
+}
+
+func TestBARTHandler_DELETE(t *testing.T) {
+	tt := []struct {
+		name           string
+		hash           string
+		wantStatusCode int
+		wantResponse   string
+		mockParams     mockParams
+	}{
+		{
+			name:           "success with valid hash",
+			hash:           "2B000001E4",
+			wantStatusCode: http.StatusOK,
+			wantResponse:   `{"message":"BART asset deleted successfully."}`,
+			mockParams: mockParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					deleteBARTItemParams: deleteBARTItemParams{
+						{
+							hash: []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
+							err:  nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "missing hash parameter",
+			hash:           "",
+			wantStatusCode: http.StatusBadRequest,
+			wantResponse:   `{"message":"hash path parameter is required"}`,
+		},
+		{
+			name:           "invalid hash format",
+			hash:           "invalid-hex",
+			wantStatusCode: http.StatusBadRequest,
+			wantResponse:   `{"message":"invalid hash format"}`,
+		},
+		{
+			name:           "asset not found",
+			hash:           "2B000001E4",
+			wantStatusCode: http.StatusNotFound,
+			wantResponse:   `{"message":"BART asset not found"}`,
+			mockParams: mockParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					deleteBARTItemParams: deleteBARTItemParams{
+						{
+							hash: []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
+							err:  state.ErrBARTItemNotFound,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "internal server error",
+			hash:           "2B000001E4",
+			wantStatusCode: http.StatusInternalServerError,
+			wantResponse:   `{"message":"internal server error"}`,
+			mockParams: mockParams{
+				bartAssetManagerParams: bartAssetManagerParams{
+					deleteBARTItemParams: deleteBARTItemParams{
+						{
+							hash: []byte{0x2B, 0x00, 0x00, 0x01, 0xE4},
+							err:  errors.New("database error"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodDelete, "/bart/"+tc.hash, nil)
+			// Set the path value manually for testing
+			if tc.hash != "" {
+				request.SetPathValue("hash", tc.hash)
+			}
+			responseRecorder := httptest.NewRecorder()
+
+			mockBARTManager := newMockBARTAssetManager(t)
+			for _, params := range tc.mockParams.bartAssetManagerParams.deleteBARTItemParams {
+				mockBARTManager.EXPECT().
+					DeleteBARTItem(matchContext(), params.hash).
+					Return(params.err)
+			}
+
+			deleteBARTHandler(responseRecorder, request, mockBARTManager, slog.Default())
+
+			assert.Equal(t, tc.wantStatusCode, responseRecorder.Code)
+			assert.JSONEq(t, tc.wantResponse, responseRecorder.Body.String())
+		})
+	}
+}
+
+// errorReader is a helper type that always returns an error when reading
+type errorReader struct{}
+
+func (er *errorReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New("read error")
 }

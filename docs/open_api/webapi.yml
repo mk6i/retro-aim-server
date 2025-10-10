@@ -2093,7 +2093,6 @@ components:
         - json
         - xml
         - php
-        - amf0
         - amf3
     PresenceState:
       type: string

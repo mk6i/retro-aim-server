@@ -1,7 +1,6 @@
 package state
 
 import (
-	"context"
 	"net/netip"
 	"sync"
 	"time"
@@ -76,7 +75,8 @@ type Session struct {
 	userInfoBitmask       uint16
 	userStatusBitmask     uint32
 	warning               uint16
-	warningCh             chan struct{}
+	warningCh             chan uint16
+	lastWarnUpdate        time.Time
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
@@ -119,7 +119,7 @@ func NewSession() *Session {
 			vals[wire.MDir] = 1
 			return vals
 		}(),
-		warningCh: make(chan struct{}),
+		warningCh: make(chan uint16, 1),
 	}
 }
 
@@ -192,18 +192,25 @@ func (s *Session) SetUserStatusBitmask(bitmask uint32) {
 	s.userStatusBitmask = bitmask
 }
 
+// UserStatusBitmask returns the user status bitmask.
+func (s *Session) UserStatusBitmask() uint32 {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.userStatusBitmask
+}
+
 // IncrementWarning increments the user's warning level and scales rate limits accordingly.
 // The incr parameter is the warning increment (negative to decrease), and classID specifies
 // which rate limit class to scale. The incr param is a percentage represented as an integer
 // where 30 = 3.0%, 100 = 10.0%, etc.
-func (s *Session) IncrementWarning(incr int16, classID wire.RateLimitClassID) bool {
+func (s *Session) IncrementWarning(incr int16, classID wire.RateLimitClassID) (bool, uint16) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	// Handle warning level increment
 	newWarning := int32(s.warning) + int32(incr)
 	if newWarning > 1000 {
-		return false
+		return false, 0
 	}
 	if newWarning < 0 {
 		s.warning = 0 // clamp min at 0
@@ -238,7 +245,16 @@ func (s *Session) IncrementWarning(incr int16, classID wire.RateLimitClassID) bo
 	newLimitLevel = rateClass.AlertLevel + int32(float32(originalRateClass.MaxLevel-originalRateClass.AlertLevel)*pct)
 	rateClass.AlertLevel = clamp(newLimitLevel, originalRateClass.AlertLevel, originalRateClass.MaxLevel)
 
-	return true
+	s.warningCh <- s.warning
+
+	return true, s.warning
+}
+
+// SetWarning sets the user's last warning level.
+func (s *Session) SetWarning(warning uint16) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.warning = warning
 }
 
 // Warning returns the user's current warning level as a percentage.
@@ -251,17 +267,9 @@ func (s *Session) Warning() uint16 {
 	return s.warning
 }
 
-// NotifyWarning sends a warning notification signal to any listeners.
-func (s *Session) NotifyWarning(ctx context.Context) {
-	select {
-	case s.warningCh <- struct{}{}:
-	case <-ctx.Done():
-	}
-}
-
 // WarningCh returns the warning notification channel.
 // Listeners can receive from this channel to be notified when warnings occur.
-func (s *Session) WarningCh() chan struct{} {
+func (s *Session) WarningCh() chan uint16 {
 	return s.warningCh
 }
 

@@ -183,40 +183,6 @@ func (_c *mockICBMService_ClientEvent_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// DecayWarnLevel provides a mock function with given fields: ctx, sess
-func (_m *mockICBMService) DecayWarnLevel(ctx context.Context, sess *state.Session) {
-	_m.Called(ctx, sess)
-}
-
-// mockICBMService_DecayWarnLevel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DecayWarnLevel'
-type mockICBMService_DecayWarnLevel_Call struct {
-	*mock.Call
-}
-
-// DecayWarnLevel is a helper method to define mock.On call
-//   - ctx context.Context
-//   - sess *state.Session
-func (_e *mockICBMService_Expecter) DecayWarnLevel(ctx interface{}, sess interface{}) *mockICBMService_DecayWarnLevel_Call {
-	return &mockICBMService_DecayWarnLevel_Call{Call: _e.mock.On("DecayWarnLevel", ctx, sess)}
-}
-
-func (_c *mockICBMService_DecayWarnLevel_Call) Run(run func(ctx context.Context, sess *state.Session)) *mockICBMService_DecayWarnLevel_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*state.Session))
-	})
-	return _c
-}
-
-func (_c *mockICBMService_DecayWarnLevel_Call) Return() *mockICBMService_DecayWarnLevel_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *mockICBMService_DecayWarnLevel_Call) RunAndReturn(run func(context.Context, *state.Session)) *mockICBMService_DecayWarnLevel_Call {
-	_c.Run(run)
-	return _c
-}
-
 // EvilRequest provides a mock function with given fields: ctx, sess, inFrame, inBody
 func (_m *mockICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFrame wire.SNACFrame, inBody wire.SNAC_0x04_0x08_ICBMEvilRequest) (wire.SNACMessage, error) {
 	ret := _m.Called(ctx, sess, inFrame, inBody)
@@ -320,6 +286,87 @@ func (_c *mockICBMService_ParameterQuery_Call) Return(_a0 wire.SNACMessage) *moc
 
 func (_c *mockICBMService_ParameterQuery_Call) RunAndReturn(run func(context.Context, wire.SNACFrame) wire.SNACMessage) *mockICBMService_ParameterQuery_Call {
 	_c.Call.Return(run)
+	return _c
+}
+
+// RestoreWarningLevel provides a mock function with given fields: ctx, sess
+func (_m *mockICBMService) RestoreWarningLevel(ctx context.Context, sess *state.Session) error {
+	ret := _m.Called(ctx, sess)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RestoreWarningLevel")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *state.Session) error); ok {
+		r0 = rf(ctx, sess)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// mockICBMService_RestoreWarningLevel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RestoreWarningLevel'
+type mockICBMService_RestoreWarningLevel_Call struct {
+	*mock.Call
+}
+
+// RestoreWarningLevel is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sess *state.Session
+func (_e *mockICBMService_Expecter) RestoreWarningLevel(ctx interface{}, sess interface{}) *mockICBMService_RestoreWarningLevel_Call {
+	return &mockICBMService_RestoreWarningLevel_Call{Call: _e.mock.On("RestoreWarningLevel", ctx, sess)}
+}
+
+func (_c *mockICBMService_RestoreWarningLevel_Call) Run(run func(ctx context.Context, sess *state.Session)) *mockICBMService_RestoreWarningLevel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*state.Session))
+	})
+	return _c
+}
+
+func (_c *mockICBMService_RestoreWarningLevel_Call) Return(_a0 error) *mockICBMService_RestoreWarningLevel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *mockICBMService_RestoreWarningLevel_Call) RunAndReturn(run func(context.Context, *state.Session) error) *mockICBMService_RestoreWarningLevel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateWarnLevel provides a mock function with given fields: ctx, sess
+func (_m *mockICBMService) UpdateWarnLevel(ctx context.Context, sess *state.Session) {
+	_m.Called(ctx, sess)
+}
+
+// mockICBMService_UpdateWarnLevel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateWarnLevel'
+type mockICBMService_UpdateWarnLevel_Call struct {
+	*mock.Call
+}
+
+// UpdateWarnLevel is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sess *state.Session
+func (_e *mockICBMService_Expecter) UpdateWarnLevel(ctx interface{}, sess interface{}) *mockICBMService_UpdateWarnLevel_Call {
+	return &mockICBMService_UpdateWarnLevel_Call{Call: _e.mock.On("UpdateWarnLevel", ctx, sess)}
+}
+
+func (_c *mockICBMService_UpdateWarnLevel_Call) Run(run func(ctx context.Context, sess *state.Session)) *mockICBMService_UpdateWarnLevel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*state.Session))
+	})
+	return _c
+}
+
+func (_c *mockICBMService_UpdateWarnLevel_Call) Return() *mockICBMService_UpdateWarnLevel_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *mockICBMService_UpdateWarnLevel_Call) RunAndReturn(run func(context.Context, *state.Session)) *mockICBMService_UpdateWarnLevel_Call {
+	_c.Run(run)
 	return _c
 }
 
