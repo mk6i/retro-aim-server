@@ -49,34 +49,34 @@ const (
 // Session represents a user's current session. Unless stated otherwise, all
 // methods may be safely accessed by multiple goroutines.
 type Session struct {
-	awayMessage           string
-	caps                  [][16]byte
-	chatRoomCookie        string
-	clientID              string
-	closed                bool
-	displayScreenName     DisplayScreenName
-	foodGroupVersions     [wire.MDir + 1]uint16
-	identScreenName       IdentScreenName
-	idle                  bool
-	idleTime              time.Time
-	lastObservedStates    [5]RateClassState
-	msgCh                 chan wire.SNACMessage
-	multiConnFlag         wire.MultiConnFlag
-	mutex                 sync.RWMutex
-	nowFn                 func() time.Time
-	rateByClassID         [5]RateClassState
-	rateByClassIDOriginal [5]RateClassState
-	remoteAddr            *netip.AddrPort
-	signonComplete        bool
-	signonTime            time.Time
-	stopCh                chan struct{}
-	typingEventsEnabled   bool
-	uin                   uint32
-	userInfoBitmask       uint16
-	userStatusBitmask     uint32
-	warning               uint16
-	warningCh             chan uint16
-	lastWarnUpdate        time.Time
+	awayMessage             string
+	caps                    [][16]byte
+	chatRoomCookie          string
+	clientID                string
+	closed                  bool
+	displayScreenName       DisplayScreenName
+	foodGroupVersions       [wire.MDir + 1]uint16
+	identScreenName         IdentScreenName
+	idle                    bool
+	idleTime                time.Time
+	lastObservedStates      [5]RateClassState
+	msgCh                   chan wire.SNACMessage
+	multiConnFlag           wire.MultiConnFlag
+	mutex                   sync.RWMutex
+	nowFn                   func() time.Time
+	rateLimitStates         [5]RateClassState
+	rateLimitStatesOriginal [5]RateClassState
+	remoteAddr              *netip.AddrPort
+	signonComplete          bool
+	signonTime              time.Time
+	stopCh                  chan struct{}
+	typingEventsEnabled     bool
+	uin                     uint32
+	userInfoBitmask         uint16
+	userStatusBitmask       uint32
+	warning                 uint16
+	warningCh               chan uint16
+	lastWarnUpdate          time.Time
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
@@ -141,11 +141,11 @@ func (s *Session) SetRateClasses(now time.Time, classes wire.RateLimitClasses) {
 	if s.lastObservedStates[0].ID == 0 {
 		s.lastObservedStates = newStates
 	} else {
-		s.lastObservedStates = s.rateByClassID
+		s.lastObservedStates = s.rateLimitStates
 	}
 
-	s.rateByClassID = newStates
-	s.rateByClassIDOriginal = newStates
+	s.rateLimitStates = newStates
+	s.rateLimitStatesOriginal = newStates
 }
 
 // SetRemoteAddr sets the user's remote IP address
@@ -185,6 +185,11 @@ func (s *Session) UserInfoBitmask() (flags uint16) {
 	return s.userInfoBitmask
 }
 
+// RateLimitStates returns the current session rate limits
+func (s *Session) RateLimitStates() [5]RateClassState {
+	return s.rateLimitStates
+}
+
 // SetUserStatusBitmask sets the user status bitmask from the client.
 func (s *Session) SetUserStatusBitmask(bitmask uint32) {
 	s.mutex.Lock()
@@ -199,11 +204,11 @@ func (s *Session) UserStatusBitmask() uint32 {
 	return s.userStatusBitmask
 }
 
-// IncrementWarning increments the user's warning level and scales rate limits accordingly.
+// ScaleWarningAndRateLimit increments the user's warning level and scales a rate limit accordingly.
 // The incr parameter is the warning increment (negative to decrease), and classID specifies
 // which rate limit class to scale. The incr param is a percentage represented as an integer
 // where 30 = 3.0%, 100 = 10.0%, etc.
-func (s *Session) IncrementWarning(incr int16, classID wire.RateLimitClassID) (bool, uint16) {
+func (s *Session) ScaleWarningAndRateLimit(incr int16, classID wire.RateLimitClassID) (bool, uint16) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -221,8 +226,8 @@ func (s *Session) IncrementWarning(incr int16, classID wire.RateLimitClassID) (b
 	pct := float32(incr) / 1000.0
 
 	// create reference variables for better readability
-	rateClass := &s.rateByClassID[classID-1]
-	originalRateClass := &s.rateByClassIDOriginal[classID-1]
+	rateClass := &s.rateLimitStates[classID-1]
+	originalRateClass := &s.rateLimitStatesOriginal[classID-1]
 
 	// clamp function to constrain values between min and max
 	clamp := func(value, min, max int32) int32 {
@@ -546,7 +551,7 @@ func (s *Session) SubscribeRateLimits(classes []wire.RateLimitClassID) {
 	defer s.mutex.Unlock()
 
 	for _, classID := range classes {
-		s.rateByClassID[classID-1].Subscribed = true
+		s.rateLimitStates[classID-1].Subscribed = true
 	}
 }
 
@@ -556,32 +561,32 @@ func (s *Session) ObserveRateChanges(now time.Time) (classDelta []RateClassState
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	for i, params := range s.rateByClassID {
+	for i, params := range s.rateLimitStates {
 		if !params.Subscribed {
 			continue
 		}
 
 		state, level := wire.CheckRateLimit(params.LastTime, now, params.RateClass, params.CurrentLevel, params.LimitedNow)
-		s.rateByClassID[i].CurrentStatus = state
+		s.rateLimitStates[i].CurrentStatus = state
 
 		// clear limited now flag if passing from limited state to clear state
-		if s.rateByClassID[i].LimitedNow && state == wire.RateLimitStatusClear {
-			s.rateByClassID[i].LimitedNow = false
-			s.rateByClassID[i].CurrentLevel = level
+		if s.rateLimitStates[i].LimitedNow && state == wire.RateLimitStatusClear {
+			s.rateLimitStates[i].LimitedNow = false
+			s.rateLimitStates[i].CurrentLevel = level
 		}
 
 		// did rate class change?
 		if params.RateClass != s.lastObservedStates[i].RateClass {
-			classDelta = append(classDelta, s.rateByClassID[i])
+			classDelta = append(classDelta, s.rateLimitStates[i])
 		}
 
 		// did rate limit status change?
-		if s.lastObservedStates[i].CurrentStatus != s.rateByClassID[i].CurrentStatus {
-			stateDelta = append(stateDelta, s.rateByClassID[i])
+		if s.lastObservedStates[i].CurrentStatus != s.rateLimitStates[i].CurrentStatus {
+			stateDelta = append(stateDelta, s.rateLimitStates[i])
 		}
 
 		// save it for next time
-		s.lastObservedStates[i] = s.rateByClassID[i]
+		s.lastObservedStates[i] = s.rateLimitStates[i]
 	}
 
 	return classDelta, stateDelta
@@ -599,7 +604,7 @@ func (s *Session) EvaluateRateLimit(now time.Time, rateClassID wire.RateLimitCla
 		return wire.RateLimitStatusClear // don't rate limit bots
 	}
 
-	rateClass := &s.rateByClassID[rateClassID-1]
+	rateClass := &s.rateLimitStates[rateClassID-1]
 
 	status, newLevel := wire.CheckRateLimit(rateClass.LastTime, now, rateClass.RateClass, rateClass.CurrentLevel, rateClass.LimitedNow)
 	rateClass.CurrentLevel = newLevel

@@ -1763,19 +1763,19 @@ func TestICBMService_UpdateWarnLevel(t *testing.T) {
 			svc.UpdateWarnLevel(ctx, sess) // do a sync test here?
 		}()
 
-		ok, _ := sess.IncrementWarning(100, 3)
+		ok, _ := sess.ScaleWarningAndRateLimit(100, 3)
 		assert.True(t, ok)
 		assert.Equal(t, uint16(100), <-warnCh)
 		assert.Equal(t, uint16(50), <-warnCh)
 		assert.Equal(t, uint16(0), <-warnCh)
 
-		ok, _ = sess.IncrementWarning(100, 3)
+		ok, _ = sess.ScaleWarningAndRateLimit(100, 3)
 		assert.True(t, ok)
 		assert.Equal(t, uint16(100), <-warnCh)
 		assert.Equal(t, uint16(50), <-warnCh)
 		assert.Equal(t, uint16(0), <-warnCh)
 
-		sess.IncrementWarning(30, 3)
+		sess.ScaleWarningAndRateLimit(30, 3)
 		assert.Equal(t, uint16(30), <-warnCh)
 		assert.Equal(t, uint16(0), <-warnCh)
 
@@ -1849,10 +1849,22 @@ func TestICBMService_RestoreWarningLevel(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
+			statesBefore := sess.RateLimitStates()
+
 			err := svc.RestoreWarningLevel(ctx, sess)
 			assert.NoError(t, err)
 
 			assert.Equal(t, tt.expectedWarn, sess.Warning())
+
+			statesAfter := sess.RateLimitStates()
+
+			if tt.expectedWarn > 0 {
+				// make sure the rate limits changed
+				assert.NotEqual(t, statesBefore, statesAfter)
+			} else {
+				// make sure the rate limits have been restored
+				assert.Equal(t, statesBefore, statesAfter)
+			}
 		})
 	}
 }

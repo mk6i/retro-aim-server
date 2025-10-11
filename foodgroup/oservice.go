@@ -19,7 +19,6 @@ type OServiceService struct {
 	buddyBroadcaster buddyBroadcaster
 	cfg              config.Config // todo remove
 	logger           *slog.Logger
-	rateLimitClasses wire.RateLimitClasses
 	snacRateLimits   wire.SNACRateLimits
 	timeNow          func() time.Time
 
@@ -39,7 +38,6 @@ func NewOServiceService(
 	relationshipFetcher RelationshipFetcher,
 	sessionRetriever SessionRetriever,
 	bartItemManager BARTItemManager,
-	rateLimitClasses wire.RateLimitClasses,
 	snacRateLimits wire.SNACRateLimits,
 	chatMessageRelayer ChatMessageRelayer,
 ) *OServiceService {
@@ -49,7 +47,6 @@ func NewOServiceService(
 		buddyBroadcaster:   newBuddyNotifier(bartItemManager, relationshipFetcher, messageRelayer, sessionRetriever),
 		cfg:                cfg,
 		logger:             logger,
-		rateLimitClasses:   rateLimitClasses,
 		snacRateLimits:     snacRateLimits,
 		timeNow:            time.Now,
 		chatRoomManager:    chatRoomManager,
@@ -170,7 +167,7 @@ func (s OServiceService) RateParamsQuery(ctx context.Context, sess *state.Sessio
 		},
 	}
 
-	for _, class := range s.rateLimitClasses.All() {
+	for _, class := range sess.RateLimitStates() {
 		str := wire.RateParamsSNAC{
 			ID:              uint16(class.ID),
 			WindowSize:      uint32(class.WindowSize),
@@ -178,7 +175,7 @@ func (s OServiceService) RateParamsQuery(ctx context.Context, sess *state.Sessio
 			AlertLevel:      uint32(class.AlertLevel),
 			LimitLevel:      uint32(class.LimitLevel),
 			DisconnectLevel: uint32(class.DisconnectLevel),
-			CurrentLevel:    uint32(class.MaxLevel),
+			CurrentLevel:    uint32(class.CurrentLevel),
 			MaxLevel:        uint32(class.MaxLevel),
 		}
 		if sess.FoodGroupVersions()[wire.OService] > 1 {

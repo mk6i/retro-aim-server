@@ -284,7 +284,6 @@ func OSCAR(deps Container) *oscar.Server {
 		deps.sqLiteUserStore,
 		deps.inMemorySessionManager,
 		deps.sqLiteUserStore,
-		deps.rateLimitClasses,
 		deps.snacRateLimits,
 		deps.chatSessionManager,
 	)
@@ -421,7 +420,6 @@ func TOC(deps Container) *toc.Server {
 				deps.sqLiteUserStore,
 				deps.inMemorySessionManager,
 				deps.sqLiteUserStore,
-				deps.rateLimitClasses,
 				deps.snacRateLimits,
 				deps.chatSessionManager,
 			),
@@ -517,7 +515,6 @@ func WebAPI(deps Container) *webapi.Server {
 			deps.sqLiteUserStore,
 			deps.inMemorySessionManager,
 			deps.sqLiteUserStore,
-			deps.rateLimitClasses,
 			deps.snacRateLimits,
 			deps.chatSessionManager,
 		),

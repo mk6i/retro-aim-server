@@ -782,11 +782,19 @@ func sessOptWantTypingEvents(session *state.Session) {
 	session.SetTypingEventsEnabled(true)
 }
 
+// sessOptSetFoodGroupVersion sets food group versions
 func sessOptSetFoodGroupVersion(foodGroup uint16, version uint16) func(session *state.Session) {
 	return func(session *state.Session) {
 		var versions [wire.MDir + 1]uint16
 		versions[foodGroup] = version
 		session.SetFoodGroupVersions(versions)
+	}
+}
+
+// sessOptSetRateClasses sets rate limit classes
+func sessOptSetRateClasses(classes wire.RateLimitClasses) func(session *state.Session) {
+	return func(session *state.Session) {
+		session.SetRateClasses(time.Now(), classes)
 	}
 }
 
@@ -810,6 +818,7 @@ func newTestSession(screenName state.DisplayScreenName, options ...func(session 
 	s := state.NewSession()
 	s.SetIdentScreenName(screenName.IdentScreenName())
 	s.SetDisplayScreenName(screenName)
+	s.SetRateClasses(time.Now(), wire.DefaultRateLimitClasses())
 	for _, op := range options {
 		op(s)
 	}

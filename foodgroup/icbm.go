@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	evilDelta       = uint16(100)
-	evilDeltaAnon   = uint16(30)
-	warningDecayPct = -50
+	evilDelta         = uint16(100)
+	evilDeltaAnon     = uint16(30)
+	warningDecayPct   = -50
+	rateDecayInterval = 5 * time.Minute
 )
 
 // NewICBMService returns a new instance of ICBMService.
@@ -42,7 +43,7 @@ func NewICBMService(
 		snacRateLimits:      snacRateLimits,
 		convoTracker:        newConvoTracker(),
 		logger:              logger,
-		interval:            5 * time.Minute,
+		interval:            rateDecayInterval,
 	}
 }
 
@@ -327,7 +328,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		panic("failed to retrieve rate class for ICBMChannelMsgToHost")
 	}
 
-	ok, newLevel := recipSess.IncrementWarning(int16(increase), classID)
+	ok, newLevel := recipSess.ScaleWarningAndRateLimit(int16(increase), classID)
 	if !ok {
 		// target's warning is at 100%
 		return *newICBMErr(inFrame.RequestID, wire.ErrorCodeRequestDenied), nil
@@ -386,10 +387,6 @@ func (s ICBMService) RestoreWarningLevel(ctx context.Context, sess *state.Sessio
 		return nil
 	}
 
-	sess.SetWarning(u.LastWarnLevel)
-
-	warnDelta := calcElapsedWarningLevel(u.LastWarnUpdate, s.timeNow(), s.interval)
-
 	// get the rate class for sending IMs, which gets limited when the user gets warned
 	classID, ok := s.snacRateLimits.RateClassLookup(wire.ICBM, wire.ICBMChannelMsgToHost)
 	if !ok {
@@ -398,7 +395,10 @@ func (s ICBMService) RestoreWarningLevel(ctx context.Context, sess *state.Sessio
 
 	// increment warning level by the amount of time that has passed since last
 	// login, proportionally increasing the warning level
-	sess.IncrementWarning(warnDelta, classID)
+	warnDelta := calcElapsedWarningLevel(u.LastWarnUpdate, s.timeNow(), s.interval)
+	newWarning := int16(u.LastWarnLevel) + warnDelta
+	sess.SetWarning(0)
+	sess.ScaleWarningAndRateLimit(newWarning, classID)
 
 	if sess.Warning() > 0 {
 		s.logger.DebugContext(ctx, "restored warning level with time decay applied since last login",
@@ -529,7 +529,7 @@ func (s ICBMService) UpdateWarnLevel(ctx context.Context, sess *state.Session) {
 				doReset = false
 			}
 
-			ok, warning := sess.IncrementWarning(warningDecayPct, classID)
+			ok, warning := sess.ScaleWarningAndRateLimit(warningDecayPct, classID)
 			if !ok {
 				s.logger.ErrorContext(ctx, "warning increment out of rage", "level", warning)
 				stopTicker()

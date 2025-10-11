@@ -801,7 +801,7 @@ func TestOServiceService_ServiceRequest(t *testing.T) {
 			//
 			// send input SNAC
 			//
-			svc := NewOServiceService(config.Config{}, nil, slog.Default(), cookieIssuer, chatRoomManager, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits(), chatMessageRelayer)
+			svc := NewOServiceService(config.Config{}, nil, slog.Default(), cookieIssuer, chatRoomManager, nil, nil, nil, wire.DefaultSNACRateLimits(), chatMessageRelayer)
 
 			outputSNAC, err := svc.ServiceRequest(context.Background(), tc.service, tc.userSession, tc.inputSNAC.Frame,
 				tc.inputSNAC.Body.(wire.SNAC_0x01_0x04_OServiceServiceRequest), tc.listener)
@@ -1016,6 +1016,54 @@ func TestOServiceService_SetUserInfoFields(t *testing.T) {
 }
 
 func TestOServiceService_RateParamsQuery(t *testing.T) {
+	rateClasses := wire.NewRateLimitClasses([5]wire.RateClass{
+		{
+			ID:              1,
+			WindowSize:      80,
+			ClearLevel:      2500,
+			AlertLevel:      2000,
+			LimitLevel:      1500,
+			DisconnectLevel: 800,
+			MaxLevel:        6000,
+		},
+		{
+			ID:              2,
+			WindowSize:      80,
+			ClearLevel:      3000,
+			AlertLevel:      2000,
+			LimitLevel:      1500,
+			DisconnectLevel: 1000,
+			MaxLevel:        6000,
+		},
+		{
+			ID:              3,
+			WindowSize:      20,
+			ClearLevel:      5100,
+			AlertLevel:      5000,
+			LimitLevel:      4000,
+			DisconnectLevel: 3000,
+			MaxLevel:        6000,
+		},
+		{
+			ID:              4,
+			WindowSize:      20,
+			ClearLevel:      5500,
+			AlertLevel:      5300,
+			LimitLevel:      4200,
+			DisconnectLevel: 3000,
+			MaxLevel:        8000,
+		},
+		{
+			ID:              5,
+			WindowSize:      10,
+			ClearLevel:      5500,
+			AlertLevel:      5300,
+			LimitLevel:      4200,
+			DisconnectLevel: 3000,
+			MaxLevel:        8000,
+		},
+	})
+
 	expectRateGroups := []struct {
 		ID    uint16
 		Pairs []struct {
@@ -1302,7 +1350,7 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 	}{
 		{
 			name:        "get rate limits for AIM > 1.x clients",
-			userSession: newTestSession("me", sessOptSetFoodGroupVersion(wire.OService, 3)),
+			userSession: newTestSession("me", sessOptSetFoodGroupVersion(wire.OService, 3), sessOptSetRateClasses(rateClasses)),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{RequestID: 1234},
 			},
@@ -1409,7 +1457,7 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 		},
 		{
 			name:        "get rate limits for AIM 1.x client",
-			userSession: newTestSession("me", sessClientID("AOL Instant Messenger (TM), version 1.")),
+			userSession: newTestSession("me", sessClientID("AOL Instant Messenger (TM), version 1."), sessOptSetRateClasses(rateClasses)),
 			inputSNAC: wire.SNACMessage{
 				Frame: wire.SNACFrame{RequestID: 1234},
 			},
@@ -1476,55 +1524,8 @@ func TestOServiceService_RateParamsQuery(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := OServiceService{
-				cfg:    config.Config{},
-				logger: slog.Default(),
-				rateLimitClasses: wire.NewRateLimitClasses([5]wire.RateClass{
-					{
-						ID:              1,
-						WindowSize:      80,
-						ClearLevel:      2500,
-						AlertLevel:      2000,
-						LimitLevel:      1500,
-						DisconnectLevel: 800,
-						MaxLevel:        6000,
-					},
-					{
-						ID:              2,
-						WindowSize:      80,
-						ClearLevel:      3000,
-						AlertLevel:      2000,
-						LimitLevel:      1500,
-						DisconnectLevel: 1000,
-						MaxLevel:        6000,
-					},
-					{
-						ID:              3,
-						WindowSize:      20,
-						ClearLevel:      5100,
-						AlertLevel:      5000,
-						LimitLevel:      4000,
-						DisconnectLevel: 3000,
-						MaxLevel:        6000,
-					},
-					{
-						ID:              4,
-						WindowSize:      20,
-						ClearLevel:      5500,
-						AlertLevel:      5300,
-						LimitLevel:      4200,
-						DisconnectLevel: 3000,
-						MaxLevel:        8000,
-					},
-					{
-						ID:              5,
-						WindowSize:      10,
-						ClearLevel:      5500,
-						AlertLevel:      5300,
-						LimitLevel:      4200,
-						DisconnectLevel: 3000,
-						MaxLevel:        8000,
-					},
-				}),
+				cfg:            config.Config{},
+				logger:         slog.Default(),
 				snacRateLimits: wire.DefaultSNACRateLimits(),
 				timeNow:        tc.timeNow,
 			}
@@ -1697,7 +1698,7 @@ func TestOServiceService_HostOnline(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := NewOServiceService(config.Config{}, nil, slog.Default(), nil, nil, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits(), nil)
+			svc := NewOServiceService(config.Config{}, nil, slog.Default(), nil, nil, nil, nil, nil, wire.DefaultSNACRateLimits(), nil)
 			have := svc.HostOnline(tc.service)
 			assert.Equal(t, tc.expectOutput, have)
 		})
@@ -2026,7 +2027,7 @@ func TestOServiceService_ClientOnline(t *testing.T) {
 					RelayToScreenName(mock.Anything, params.cookie, params.screenName, params.message)
 			}
 
-			svc := NewOServiceService(config.Config{}, messageRelayer, slog.Default(), nil, chatRoomManager, nil, nil, nil, wire.DefaultRateLimitClasses(), wire.DefaultSNACRateLimits(), chatMessageRelayer)
+			svc := NewOServiceService(config.Config{}, messageRelayer, slog.Default(), nil, chatRoomManager, nil, nil, nil, wire.DefaultSNACRateLimits(), chatMessageRelayer)
 			svc.buddyBroadcaster = buddyUpdateBroadcaster
 			haveErr := svc.ClientOnline(context.Background(), tt.service, tt.bodyIn, tt.sess)
 			assert.ErrorIs(t, tt.wantErr, haveErr)
