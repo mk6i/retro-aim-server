@@ -430,6 +430,7 @@ func (f SQLiteUserStore) queryUsers(ctx context.Context, whereClause string, que
 	for rows.Next() {
 		var u User
 		var sn string
+		var lastWarnUpdateUnix int64
 		err := rows.Scan(
 			&sn,
 			&u.DisplayScreenName,
@@ -509,13 +510,14 @@ func (f SQLiteUserStore) queryUsers(ctx context.Context, whereClause string, que
 			&u.AIMDirectoryInfo.ZIPCode,
 			&u.AIMDirectoryInfo.Address,
 			&u.TOCConfig,
-			&u.LastWarnUpdate,
+			&lastWarnUpdateUnix,
 			&u.LastWarnLevel,
 		)
 		if err != nil {
 			return nil, err
 		}
 		u.IdentScreenName = NewIdentScreenName(sn)
+		u.LastWarnUpdate = time.Unix(lastWarnUpdateUnix, 0).UTC()
 		users = append(users, u)
 	}
 	if err = rows.Err(); err != nil {
@@ -2043,7 +2045,7 @@ func (f SQLiteUserStore) SetWarnLevel(ctx context.Context, user IdentScreenName,
 	`
 	res, err := f.db.ExecContext(ctx,
 		q,
-		lastWarnUpdate,
+		lastWarnUpdate.Unix(),
 		lastWarnLevel,
 		user.String(),
 	)
