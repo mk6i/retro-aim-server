@@ -240,14 +240,19 @@ func (s *Session) ScaleWarningAndRateLimit(incr int16, classID wire.RateLimitCla
 		return value
 	}
 
+	// Apply a buffer to limit/clear/alert levels so that they never approach
+	// too close to the maximum level. Otherwise, AIM 4.8 exhibits instability
+	// (client crashes, IM window glitches) when the warning level reaches 90-100%.
+	maxLevel := originalRateClass.MaxLevel - 150
+
 	// scale the rate limit parameters
-	newLimitLevel := rateClass.LimitLevel + int32(float32(originalRateClass.MaxLevel-originalRateClass.LimitLevel)*pct)
+	newLimitLevel := rateClass.LimitLevel + int32(float32(maxLevel-originalRateClass.LimitLevel)*pct)
 	rateClass.LimitLevel = clamp(newLimitLevel, originalRateClass.LimitLevel, originalRateClass.MaxLevel)
 
-	newLimitLevel = rateClass.ClearLevel + int32(float32(originalRateClass.MaxLevel-originalRateClass.ClearLevel)*pct)
+	newLimitLevel = rateClass.ClearLevel + int32(float32(maxLevel-originalRateClass.ClearLevel)*pct)
 	rateClass.ClearLevel = clamp(newLimitLevel, originalRateClass.ClearLevel, originalRateClass.MaxLevel)
 
-	newLimitLevel = rateClass.AlertLevel + int32(float32(originalRateClass.MaxLevel-originalRateClass.AlertLevel)*pct)
+	newLimitLevel = rateClass.AlertLevel + int32(float32(maxLevel-originalRateClass.AlertLevel)*pct)
 	rateClass.AlertLevel = clamp(newLimitLevel, originalRateClass.AlertLevel, originalRateClass.MaxLevel)
 
 	s.warningCh <- s.warning
