@@ -1,9 +1,8 @@
 #!/bin/bash
 
 # BART Import Script for Retro AIM Server
-# This script imports BART (Buddy ART) assets from an AIM client's bartcache
-# directory (usually found under %APPDATA%\acccore\caches\bart) into Retro AIM
-# Server via the management API.
+# This script imports BART (Buddy ART) asset files into Retro AIM Server
+# via the management API.
 # 
 # Compatible with macOS and Linux terminals
 
@@ -20,7 +19,7 @@ API_BASE_URL="http://localhost:8080"
 VERBOSE=false
 DRY_RUN=false
 BART_TYPE=""
-TARGET_DIRS=()
+TARGET_FILES=()
 
 # Colors for output
 RED='\033[0;31m'
@@ -30,15 +29,14 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 usage() {
-    echo "Usage: $0 [OPTIONS] -t <type> <directory_path> [directory_path...]"
+    echo "Usage: $0 [OPTIONS] -t <type> <file_path> [file_path...]"
     echo ""
-    echo "Import BART assets from bartcache directories into Retro AIM Server"
+    echo "Import BART assets into Retro AIM Server"
     echo ""
     echo "Arguments:"
-    echo "  directory_path    Path to bartcache directory containing BART assets"
-    echo "                   Directory should contain subdirectories named by BART type (0, 1, 2, etc.)"
-    echo "                   Each type directory should contain files named by their hash"
-    echo "                   Multiple directories can be specified for bulk import"
+    echo "  file_path         Path to BART asset file(s) to import"
+    echo "                   Files should be named by their hash (hexadecimal)"
+    echo "                   Multiple files can be specified for bulk import"
     echo ""
     echo "Options:"
     echo "  -t, --type TYPE   BART type to import (required)"
@@ -53,9 +51,9 @@ usage() {
     echo "  -h, --help        Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 -t buddy_icon /Users/mike/Downloads/aim\\ barts/eigdbvye/bartcache"
-    echo "  $0 --type status_str --verbose --dry-run /path/to/bartcache"
-    echo "  $0 -t arrive_sound /path/to/bartcache/*"
+    echo "  $0 -t buddy_icon /path/to/bart/abc123def456"
+    echo "  $0 --type status_str --verbose --dry-run /path/to/file1 /path/to/file2"
+    echo "  $0 -t arrive_sound /path/to/files/*"
 }
 
 log_info() {
@@ -156,10 +154,6 @@ check_prerequisites() {
         log_error "curl is required but not installed"
         exit 1
     fi
-
-    if ! command_exists jq; then
-        log_warning "jq is not installed. JSON responses will not be formatted"
-    fi
 }
 
 test_api() {
@@ -216,8 +210,8 @@ upload_bart_asset() {
         case "$http_code" in
             201)
                 log_success "Uploaded $hash"
-                if [ "$VERBOSE" = true ] && command_exists jq; then
-                    echo "$response_body" | jq .
+                if [ "$VERBOSE" = true ]; then
+                    echo "$response_body"
                 fi
                 return 0
                 ;;
@@ -227,11 +221,7 @@ upload_bart_asset() {
                 ;;
             400)
                 log_error "Bad request for $hash (type: $bart_type)"
-                if command_exists jq; then
-                    echo "$response_body" | jq .
-                else
-                    echo "$response_body"
-                fi
+                echo "$response_body"
                 return 1
                 ;;
             413)
@@ -240,11 +230,7 @@ upload_bart_asset() {
                 ;;
             *)
                 log_error "Upload failed for $hash (type: $bart_type) - HTTP $http_code"
-                if command_exists jq; then
-                    echo "$response_body" | jq .
-                else
-                    echo "$response_body"
-                fi
+                echo "$response_body"
                 return 1
                 ;;
         esac
@@ -254,127 +240,31 @@ upload_bart_asset() {
     fi
 }
 
-process_bart_type_directory() {
-    local type_dir="$1"
-    local bart_type="$2"
-    local type_name="$3"
+process_file() {
+    local file_path="$1"
+    file_path=$(normalize_path "$file_path")
 
-    log_info "Processing BART type $bart_type ($type_name)..."
-
-    if [ ! -d "$type_dir" ]; then
-        log_warning "Type directory $type_dir does not exist, skipping"
-        return 0
-    fi
-
-    local file_count=0
-    local success_count=0
-    local error_count=0
-
-    # Find all files in the type directory (excluding directories)
-    # Use a more portable approach that works on both macOS and Linux
-    # Store results in a temporary file to avoid subshell variable scoping issues
-    local temp_file=$(mktemp)
-    find "$type_dir" -maxdepth 1 -type f 2>/dev/null > "$temp_file"
-    
-    while read -r file_path; do
-        if [ -f "$file_path" ]; then
-            local filename=$(basename "$file_path")
-            file_count=$((file_count + 1))
-
-            log_verbose "Found file: $filename"
-
-            # Validate that filename is a hexadecimal string
-            if ! is_hex_string "$filename"; then
-                log_warning "Skipping file '$filename' - filename is not a valid hexadecimal string"
-                error_count=$((error_count + 1))
-                continue
-            fi
-
-            if upload_bart_asset "$file_path" "$bart_type" "$filename"; then
-                success_count=$((success_count + 1))
-            else
-                error_count=$((error_count + 1))
-            fi
-        fi
-    done < "$temp_file"
-    
-    # Clean up temporary file
-    rm -f "$temp_file"
-
-    log_info "Type $bart_type ($type_name): $file_count files, $success_count successful, $error_count errors"
-
-    return $error_count
-}
-
-process_directory() {
-    local base_dir="$1"
-    base_dir=$(normalize_path "$base_dir")
-
-    if [ ! -d "$base_dir" ] && [ ! -f "$base_dir" ]; then
-        log_error "Path $base_dir does not exist"
+    if [ ! -f "$file_path" ]; then
+        log_error "File $file_path does not exist"
         return 1
     fi
 
-    # Check if this is a single file
-    if [ -f "$base_dir" ]; then
-        log_info "Processing file: $base_dir"
-        local filename=$(basename "$base_dir")
-        
-        # Validate that filename is a hexadecimal string
-        if ! is_hex_string "$filename"; then
-            log_error "Cannot process file '$filename' - filename is not a valid hexadecimal string"
-            return 1
-        fi
-        
-        if upload_bart_asset "$base_dir" "$BART_TYPE_NUMBER" "$filename"; then
-            log_success "Successfully processed file: $base_dir"
-            return 0
-        else
-            log_error "Failed to process file: $base_dir"
-            return 1
-        fi
+    log_info "Processing file: $file_path"
+    local filename=$(basename "$file_path")
+    
+    # Validate that filename is a hexadecimal string
+    if ! is_hex_string "$filename"; then
+        log_error "Cannot process file '$filename' - filename is not a valid hexadecimal string"
+        return 1
     fi
-
-    # For directories, show the BART type info
-    log_info "Processing BART assets from directory: $base_dir"
-    log_info "BART type: $BART_TYPE (type number: $BART_TYPE_NUMBER)"
-
-    # Look for the specific type directory first (nested structure)
-    local type_dir="$base_dir/$BART_TYPE_NUMBER"
-
-    if [ -d "$type_dir" ]; then
-        log_info "Found type directory: $type_dir"
-        # Process the single type directory
-        if process_bart_type_directory "$type_dir" "$BART_TYPE_NUMBER" "$BART_TYPE"; then
-            local file_count=$(find "$type_dir" -maxdepth 1 -type f | wc -l)
-            log_success "Successfully processed $file_count files for type $BART_TYPE"
-            return 0
-        else
-            log_error "Failed to process files for type $BART_TYPE"
-            return 1
-        fi
+    
+    if upload_bart_asset "$file_path" "$BART_TYPE_NUMBER" "$filename"; then
+        log_success "Successfully processed file: $file_path"
+        return 0
+    else
+        log_error "Failed to process file: $file_path"
+        return 1
     fi
-
-    # If no type directory found, check if this is a flat structure (files directly in directory)
-    local file_count=$(find "$base_dir" -maxdepth 1 -type f | wc -l)
-    if [ $file_count -gt 0 ]; then
-        log_info "Found flat file structure with $file_count files"
-        # Process files directly in the directory
-        if process_bart_type_directory "$base_dir" "$BART_TYPE_NUMBER" "$BART_TYPE"; then
-            log_success "Successfully processed $file_count files for type $BART_TYPE"
-            return 0
-        else
-            log_error "Failed to process files for type $BART_TYPE"
-            return 1
-        fi
-    fi
-
-    # No files or directories found
-    log_error "No files found in $base_dir"
-    log_error "Expected either:"
-    log_error "  - Nested structure: $base_dir/$BART_TYPE_NUMBER/"
-    log_error "  - Flat structure: files directly in $base_dir/"
-    return 1
 }
 
 while [[ $# -gt 0 ]]; do
@@ -405,7 +295,7 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
         *)
-            TARGET_DIRS+=("$1")
+            TARGET_FILES+=("$1")
             shift
             ;;
     esac
@@ -417,8 +307,8 @@ if [ -z "$BART_TYPE" ]; then
     exit 1
 fi
 
-if [ ${#TARGET_DIRS[@]} -eq 0 ]; then
-    log_error "No directory path provided"
+if [ ${#TARGET_FILES[@]} -eq 0 ]; then
+    log_error "No file path provided"
     usage
     exit 1
 fi
@@ -434,7 +324,7 @@ fi
 main() {
     log_info "BART Import Script for Retro AIM Server"
     log_info "========================================"
-    log_info "Target paths: ${TARGET_DIRS[*]}"
+    log_info "Target files: ${TARGET_FILES[*]}"
     log_info "BART type: $BART_TYPE (type number: $BART_TYPE_NUMBER)"
 
     if [ "$DRY_RUN" = true ]; then
@@ -448,16 +338,13 @@ main() {
     fi
 
     local total_errors=0
-    local total_dirs=0
 
-    # Process each file/directory
+    # Process each file
     # Ensure array is properly expanded for cross-platform compatibility
-    if [ ${#TARGET_DIRS[@]} -gt 0 ]; then
-        for target_path in "${TARGET_DIRS[@]}"; do
-            total_dirs=$((total_dirs + 1))
-
-            if process_directory "$target_path"; then
-                # Success is logged by process_directory
+    if [ ${#TARGET_FILES[@]} -gt 0 ]; then
+        for target_path in "${TARGET_FILES[@]}"; do
+            if process_file "$target_path"; then
+                # Success is logged by process_file
                 :
             else
                 total_errors=$((total_errors + 1))
@@ -467,7 +354,6 @@ main() {
 
     # Summary
     log_info "Import completed!"
-    log_info "Total files processed: $total_dirs"
     log_info "Total errors: $total_errors"
 
     if [ $total_errors -eq 0 ]; then
