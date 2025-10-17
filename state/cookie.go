@@ -24,6 +24,7 @@ type ServerCookie struct {
 	ClientID      string            `oscar:"len_prefix=uint8"`
 	ChatCookie    string            `oscar:"len_prefix=uint8"`
 	MultiConnFlag uint8
+	SessionNum    uint8
 }
 
 func NewHMACCookieBaker() (HMACCookieBaker, error) {
