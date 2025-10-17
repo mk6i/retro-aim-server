@@ -143,7 +143,7 @@ func (s LocateService) UserInfoQuery(ctx context.Context, sess *state.Session, i
 		return newLocateErr(inFrame.RequestID, wire.ErrorCodeNotLoggedOn), nil
 	}
 
-	buddySess := s.sessionRetriever.RetrieveSession(identScreenName)
+	buddySess := s.sessionRetriever.RetrieveSession(identScreenName, 0)
 	if buddySess == nil {
 		// user is offline
 		return newLocateErr(inFrame.RequestID, wire.ErrorCodeNotLoggedOn), nil

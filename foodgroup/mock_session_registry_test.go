@@ -22,9 +22,9 @@ func (_m *mockSessionRegistry) EXPECT() *mockSessionRegistry_Expecter {
 	return &mockSessionRegistry_Expecter{mock: &_m.Mock}
 }
 
-// AddSession provides a mock function with given fields: ctx, screenName
-func (_m *mockSessionRegistry) AddSession(ctx context.Context, screenName state.DisplayScreenName) (*state.Session, error) {
-	ret := _m.Called(ctx, screenName)
+// AddSession provides a mock function with given fields: ctx, screenName, doMultiSess
+func (_m *mockSessionRegistry) AddSession(ctx context.Context, screenName state.DisplayScreenName, doMultiSess bool) (*state.Session, error) {
+	ret := _m.Called(ctx, screenName, doMultiSess)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddSession")
@@ -32,19 +32,19 @@ func (_m *mockSessionRegistry) AddSession(ctx context.Context, screenName state.
 
 	var r0 *state.Session
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, state.DisplayScreenName) (*state.Session, error)); ok {
-		return rf(ctx, screenName)
+	if rf, ok := ret.Get(0).(func(context.Context, state.DisplayScreenName, bool) (*state.Session, error)); ok {
+		return rf(ctx, screenName, doMultiSess)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, state.DisplayScreenName) *state.Session); ok {
-		r0 = rf(ctx, screenName)
+	if rf, ok := ret.Get(0).(func(context.Context, state.DisplayScreenName, bool) *state.Session); ok {
+		r0 = rf(ctx, screenName, doMultiSess)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*state.Session)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, state.DisplayScreenName) error); ok {
-		r1 = rf(ctx, screenName)
+	if rf, ok := ret.Get(1).(func(context.Context, state.DisplayScreenName, bool) error); ok {
+		r1 = rf(ctx, screenName, doMultiSess)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -60,13 +60,14 @@ type mockSessionRegistry_AddSession_Call struct {
 // AddSession is a helper method to define mock.On call
 //   - ctx context.Context
 //   - screenName state.DisplayScreenName
-func (_e *mockSessionRegistry_Expecter) AddSession(ctx interface{}, screenName interface{}) *mockSessionRegistry_AddSession_Call {
-	return &mockSessionRegistry_AddSession_Call{Call: _e.mock.On("AddSession", ctx, screenName)}
+//   - doMultiSess bool
+func (_e *mockSessionRegistry_Expecter) AddSession(ctx interface{}, screenName interface{}, doMultiSess interface{}) *mockSessionRegistry_AddSession_Call {
+	return &mockSessionRegistry_AddSession_Call{Call: _e.mock.On("AddSession", ctx, screenName, doMultiSess)}
 }
 
-func (_c *mockSessionRegistry_AddSession_Call) Run(run func(ctx context.Context, screenName state.DisplayScreenName)) *mockSessionRegistry_AddSession_Call {
+func (_c *mockSessionRegistry_AddSession_Call) Run(run func(ctx context.Context, screenName state.DisplayScreenName, doMultiSess bool)) *mockSessionRegistry_AddSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(state.DisplayScreenName))
+		run(args[0].(context.Context), args[1].(state.DisplayScreenName), args[2].(bool))
 	})
 	return _c
 }
@@ -76,7 +77,7 @@ func (_c *mockSessionRegistry_AddSession_Call) Return(_a0 *state.Session, _a1 er
 	return _c
 }
 
-func (_c *mockSessionRegistry_AddSession_Call) RunAndReturn(run func(context.Context, state.DisplayScreenName) (*state.Session, error)) *mockSessionRegistry_AddSession_Call {
+func (_c *mockSessionRegistry_AddSession_Call) RunAndReturn(run func(context.Context, state.DisplayScreenName, bool) (*state.Session, error)) *mockSessionRegistry_AddSession_Call {
 	_c.Call.Return(run)
 	return _c
 }

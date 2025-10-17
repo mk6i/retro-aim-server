@@ -67,17 +67,17 @@ func (_c *mockSessionRetriever_AllSessions_Call) RunAndReturn(run func() []*stat
 	return _c
 }
 
-// RetrieveSession provides a mock function with given fields: screenName
-func (_m *mockSessionRetriever) RetrieveSession(screenName state.IdentScreenName) *state.Session {
-	ret := _m.Called(screenName)
+// RetrieveSession provides a mock function with given fields: screenName, sessionNum
+func (_m *mockSessionRetriever) RetrieveSession(screenName state.IdentScreenName, sessionNum uint8) *state.Session {
+	ret := _m.Called(screenName, sessionNum)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RetrieveSession")
 	}
 
 	var r0 *state.Session
-	if rf, ok := ret.Get(0).(func(state.IdentScreenName) *state.Session); ok {
-		r0 = rf(screenName)
+	if rf, ok := ret.Get(0).(func(state.IdentScreenName, uint8) *state.Session); ok {
+		r0 = rf(screenName, sessionNum)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*state.Session)
@@ -94,13 +94,14 @@ type mockSessionRetriever_RetrieveSession_Call struct {
 
 // RetrieveSession is a helper method to define mock.On call
 //   - screenName state.IdentScreenName
-func (_e *mockSessionRetriever_Expecter) RetrieveSession(screenName interface{}) *mockSessionRetriever_RetrieveSession_Call {
-	return &mockSessionRetriever_RetrieveSession_Call{Call: _e.mock.On("RetrieveSession", screenName)}
+//   - sessionNum uint8
+func (_e *mockSessionRetriever_Expecter) RetrieveSession(screenName interface{}, sessionNum interface{}) *mockSessionRetriever_RetrieveSession_Call {
+	return &mockSessionRetriever_RetrieveSession_Call{Call: _e.mock.On("RetrieveSession", screenName, sessionNum)}
 }
 
-func (_c *mockSessionRetriever_RetrieveSession_Call) Run(run func(screenName state.IdentScreenName)) *mockSessionRetriever_RetrieveSession_Call {
+func (_c *mockSessionRetriever_RetrieveSession_Call) Run(run func(screenName state.IdentScreenName, sessionNum uint8)) *mockSessionRetriever_RetrieveSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(state.IdentScreenName))
+		run(args[0].(state.IdentScreenName), args[1].(uint8))
 	})
 	return _c
 }
@@ -110,7 +111,7 @@ func (_c *mockSessionRetriever_RetrieveSession_Call) Return(_a0 *state.Session) 
 	return _c
 }
 
-func (_c *mockSessionRetriever_RetrieveSession_Call) RunAndReturn(run func(state.IdentScreenName) *state.Session) *mockSessionRetriever_RetrieveSession_Call {
+func (_c *mockSessionRetriever_RetrieveSession_Call) RunAndReturn(run func(state.IdentScreenName, uint8) *state.Session) *mockSessionRetriever_RetrieveSession_Call {
 	_c.Call.Return(run)
 	return _c
 }

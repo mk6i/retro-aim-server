@@ -115,7 +115,7 @@ func (s ICBMService) ChannelMsgToHost(ctx context.Context, sess *state.Session, 
 		return newICBMErr(inFrame.RequestID, wire.ErrorCodeInLocalPermitDeny), nil
 	}
 
-	recipSess := s.sessionRetriever.RetrieveSession(recip)
+	recipSess := s.sessionRetriever.RetrieveSession(recip, 0)
 	if recipSess == nil {
 		// todo: verify user exists, otherwise this could save a bunch of garbage records
 		if _, saveOffline := inBody.Bytes(wire.ICBMTLVStore); saveOffline {
@@ -299,7 +299,7 @@ func (s ICBMService) EvilRequest(ctx context.Context, sess *state.Session, inFra
 		return *newICBMErr(inFrame.RequestID, wire.ErrorCodeNotLoggedOn), nil
 	}
 
-	recipSess := s.sessionRetriever.RetrieveSession(identScreenName)
+	recipSess := s.sessionRetriever.RetrieveSession(identScreenName, 0)
 	if recipSess == nil {
 		// target user is offline
 		return *newICBMErr(inFrame.RequestID, wire.ErrorCodeNotLoggedOn), nil
