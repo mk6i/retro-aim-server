@@ -355,6 +355,7 @@ type feedbagDeleteParams []struct {
 type messageRelayerParams struct {
 	relayToScreenNamesParams
 	relayToScreenNameParams
+	relayToOtherSessionsParams
 }
 
 // relayToScreenNamesParams is the list of parameters passed at the mock
@@ -369,6 +370,13 @@ type relayToScreenNamesParams []struct {
 type relayToScreenNameParams []struct {
 	screenName state.IdentScreenName
 	message    wire.SNACMessage
+}
+
+// relayToOtherSessionsParams is the list of parameters passed at the mock
+// MessageRelayer.RelayToOtherSessions call site
+type relayToOtherSessionsParams []struct {
+	sess    *state.Session
+	message wire.SNACMessage
 }
 
 // profileManagerParams is a helper struct that contains mock parameters for

@@ -24,6 +24,41 @@ func (_m *mockMessageRelayer) EXPECT() *mockMessageRelayer_Expecter {
 	return &mockMessageRelayer_Expecter{mock: &_m.Mock}
 }
 
+// RelayToOtherSessions provides a mock function with given fields: ctx, sess, msg
+func (_m *mockMessageRelayer) RelayToOtherSessions(ctx context.Context, sess *state.Session, msg wire.SNACMessage) {
+	_m.Called(ctx, sess, msg)
+}
+
+// mockMessageRelayer_RelayToOtherSessions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RelayToOtherSessions'
+type mockMessageRelayer_RelayToOtherSessions_Call struct {
+	*mock.Call
+}
+
+// RelayToOtherSessions is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sess *state.Session
+//   - msg wire.SNACMessage
+func (_e *mockMessageRelayer_Expecter) RelayToOtherSessions(ctx interface{}, sess interface{}, msg interface{}) *mockMessageRelayer_RelayToOtherSessions_Call {
+	return &mockMessageRelayer_RelayToOtherSessions_Call{Call: _e.mock.On("RelayToOtherSessions", ctx, sess, msg)}
+}
+
+func (_c *mockMessageRelayer_RelayToOtherSessions_Call) Run(run func(ctx context.Context, sess *state.Session, msg wire.SNACMessage)) *mockMessageRelayer_RelayToOtherSessions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*state.Session), args[2].(wire.SNACMessage))
+	})
+	return _c
+}
+
+func (_c *mockMessageRelayer_RelayToOtherSessions_Call) Return() *mockMessageRelayer_RelayToOtherSessions_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *mockMessageRelayer_RelayToOtherSessions_Call) RunAndReturn(run func(context.Context, *state.Session, wire.SNACMessage)) *mockMessageRelayer_RelayToOtherSessions_Call {
+	_c.Run(run)
+	return _c
+}
+
 // RelayToScreenName provides a mock function with given fields: ctx, screenName, msg
 func (_m *mockMessageRelayer) RelayToScreenName(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage) {
 	_m.Called(ctx, screenName, msg)
