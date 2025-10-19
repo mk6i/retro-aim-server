@@ -374,7 +374,7 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 			sessionRetriever := newMockSessionRetriever(t)
 			for _, val := range tc.mockParams.retrieveSessionParams {
 				sessionRetriever.EXPECT().
-					RetrieveSession(val.screenName).
+					RetrieveSession(val.screenName, val.sessionNum).
 					Return(val.result)
 			}
 			profileManager := newMockProfileManager(t)

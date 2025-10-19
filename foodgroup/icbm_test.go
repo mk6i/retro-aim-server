@@ -57,12 +57,13 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
 							result:     newTestSession("recipient-screen-name", sessOptWarning(20)),
 						},
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
 							message: wire.SNACMessage{
@@ -148,12 +149,13 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
 							result:     newTestSession("recipient-screen-name", sessOptWarning(20)),
 						},
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
 							message: wire.SNACMessage{
@@ -225,12 +227,13 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
 							result:     newTestSession("recipient-screen-name", sessOptWarning(20)),
 						},
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
 							message: wire.SNACMessage{
@@ -298,7 +301,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					retrieveSessionParams{},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{},
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{},
 				},
 			},
 			inputSNAC: wire.SNACMessage{
@@ -352,7 +355,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					retrieveSessionParams{},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{},
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{},
 				},
 			},
 			inputSNAC: wire.SNACMessage{
@@ -406,12 +409,13 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
 							result:     nil,
 						},
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{},
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{},
 				},
 			},
 			inputSNAC: wire.SNACMessage{
@@ -498,7 +502,7 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{},
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{},
 				},
 				offlineMessageManagerParams: offlineMessageManagerParams{
 					saveMessageParams: saveMessageParams{
@@ -547,12 +551,13 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
 							result:     newTestSession("recipient-screen-name", sessOptWarning(20)),
 						},
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
 							message: wire.SNACMessage{
@@ -634,12 +639,13 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
 							result:     newTestSession("recipient-screen-name", sessOptWarning(20)),
 						},
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
 							message: wire.SNACMessage{
@@ -707,12 +713,13 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 					retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
 							result:     newTestSession("recipient-screen-name", sessOptWarning(20)),
 						},
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
 							message: wire.SNACMessage{
@@ -769,6 +776,302 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			},
 			expectOutput: nil,
 		},
+		{
+			name:          "transmit message to recipient with all sessions inactive - use RelayToScreenName",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
+			mockParams: mockParams{
+				relationshipFetcherParams: relationshipFetcherParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
+							result:     newTestSession("recipient-screen-name", sessOptWarning(20), sessOptAllInactive),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICBM,
+									SubGroup:  wire.ICBMChannelMsgToClient,
+									RequestID: wire.ReqIDFromServer,
+								},
+								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									ChannelID:   wire.ICBMChannelIM,
+									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											{
+												Tag:   wire.ICBMTLVData,
+												Value: []byte{1, 2, 3, 4},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelIM,
+					ScreenName: "recipient-screen-name",
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							{
+								Tag:   wire.ICBMTLVData,
+								Value: []byte{1, 2, 3, 4},
+							},
+						},
+					},
+				},
+			},
+			expectOutput: nil,
+		},
+		{
+			name:          "transmit message to recipient with some active sessions - use RelayToScreenNameActiveOnly",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
+			mockParams: mockParams{
+				relationshipFetcherParams: relationshipFetcherParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
+							result:     newTestSession("recipient-screen-name", sessOptWarning(20), sessOptSomeActive),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICBM,
+									SubGroup:  wire.ICBMChannelMsgToClient,
+									RequestID: wire.ReqIDFromServer,
+								},
+								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									ChannelID:   wire.ICBMChannelIM,
+									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											{
+												Tag:   wire.ICBMTLVData,
+												Value: []byte{1, 2, 3, 4},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelIM,
+					ScreenName: "recipient-screen-name",
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							{
+								Tag:   wire.ICBMTLVData,
+								Value: []byte{1, 2, 3, 4},
+							},
+						},
+					},
+				},
+			},
+			expectOutput: nil,
+		},
+		{
+			name:          "transmit message to recipient with closed session - use RelayToScreenName",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
+			mockParams: mockParams{
+				relationshipFetcherParams: relationshipFetcherParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
+							result:     newTestSession("recipient-screen-name", sessOptWarning(20), sessOptClosed),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameParams: relayToScreenNameParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICBM,
+									SubGroup:  wire.ICBMChannelMsgToClient,
+									RequestID: wire.ReqIDFromServer,
+								},
+								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									ChannelID:   wire.ICBMChannelIM,
+									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											{
+												Tag:   wire.ICBMTLVData,
+												Value: []byte{1, 2, 3, 4},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelIM,
+					ScreenName: "recipient-screen-name",
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							{
+								Tag:   wire.ICBMTLVData,
+								Value: []byte{1, 2, 3, 4},
+							},
+						},
+					},
+				},
+			},
+			expectOutput: nil,
+		},
+		{
+			name:          "transmit message to recipient with mixed session states - use RelayToScreenNameActiveOnly",
+			senderSession: newTestSession("sender-screen-name", sessOptWarning(10)),
+			mockParams: mockParams{
+				relationshipFetcherParams: relationshipFetcherParams{
+					relationshipParams: relationshipParams{
+						{
+							me:   state.NewIdentScreenName("sender-screen-name"),
+							them: state.NewIdentScreenName("recipient-screen-name"),
+							result: state.Relationship{
+								User:          state.NewIdentScreenName("recipient-screen-name"),
+								BlocksYou:     false,
+								YouBlock:      false,
+								IsOnTheirList: false,
+								IsOnYourList:  false,
+							},
+						},
+					},
+				},
+				sessionRetrieverParams: sessionRetrieverParams{
+					retrieveSessionParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
+							result:     newTestSession("recipient-screen-name", sessOptWarning(20), sessOptMixedStates),
+						},
+					},
+				},
+				messageRelayerParams: messageRelayerParams{
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{
+						{
+							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							message: wire.SNACMessage{
+								Frame: wire.SNACFrame{
+									FoodGroup: wire.ICBM,
+									SubGroup:  wire.ICBMChannelMsgToClient,
+									RequestID: wire.ReqIDFromServer,
+								},
+								Body: wire.SNAC_0x04_0x07_ICBMChannelMsgToClient{
+									ChannelID:   wire.ICBMChannelIM,
+									TLVUserInfo: newTestSession("sender-screen-name", sessOptWarning(10)).TLVUserInfo(),
+									TLVRestBlock: wire.TLVRestBlock{
+										TLVList: wire.TLVList{
+											{
+												Tag:   wire.ICBMTLVData,
+												Value: []byte{1, 2, 3, 4},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputSNAC: wire.SNACMessage{
+				Frame: wire.SNACFrame{
+					RequestID: 1234,
+				},
+				Body: wire.SNAC_0x04_0x06_ICBMChannelMsgToHost{
+					ChannelID:  wire.ICBMChannelIM,
+					ScreenName: "recipient-screen-name",
+					TLVRestBlock: wire.TLVRestBlock{
+						TLVList: wire.TLVList{
+							{
+								Tag:   wire.ICBMTLVData,
+								Value: []byte{1, 2, 3, 4},
+							},
+						},
+					},
+				},
+			},
+			expectOutput: nil,
+		},
 	}
 
 	for _, tc := range cases {
@@ -782,13 +1085,17 @@ func TestICBMService_ChannelMsgToHost(t *testing.T) {
 			sessionRetriever := newMockSessionRetriever(t)
 			for _, item := range tc.mockParams.sessionRetrieverParams.retrieveSessionParams {
 				sessionRetriever.EXPECT().
-					RetrieveSession(item.screenName).
+					RetrieveSession(item.screenName, item.sessionNum).
 					Return(item.result)
 			}
 			messageRelayer := newMockMessageRelayer(t)
 			for _, item := range tc.mockParams.relayToScreenNameParams {
 				messageRelayer.EXPECT().
 					RelayToScreenName(mock.Anything, item.screenName, item.message)
+			}
+			for _, item := range tc.mockParams.relayToScreenNameActiveOnlyParams {
+				messageRelayer.EXPECT().
+					RelayToScreenNameActiveOnly(mock.Anything, item.screenName, item.message)
 			}
 			offlineMessageManager := newMockOfflineMessageManager(t)
 			for _, params := range tc.mockParams.saveMessageParams {
@@ -846,7 +1153,7 @@ func TestICBMService_ClientEvent(t *testing.T) {
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
 							message: wire.SNACMessage{
@@ -898,7 +1205,7 @@ func TestICBMService_ClientEvent(t *testing.T) {
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{},
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{},
 				},
 			},
 			inputSNAC: wire.SNACMessage{
@@ -1004,7 +1311,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
 							message: wire.SNACMessage{
@@ -1071,7 +1378,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					},
 				},
 				messageRelayerParams: messageRelayerParams{
-					relayToScreenNameParams: relayToScreenNameParams{
+					relayToScreenNameActiveOnlyParams: relayToScreenNameActiveOnlyParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
 							message: wire.SNACMessage{
@@ -1276,6 +1583,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
 							result:     nil,
 						},
 					},
@@ -1325,6 +1633,7 @@ func TestICBMService_EvilRequest(t *testing.T) {
 					retrieveSessionParams{
 						{
 							screenName: state.NewIdentScreenName("recipient-screen-name"),
+							sessionNum: 0,
 							result:     nil,
 						},
 					},
@@ -1363,13 +1672,17 @@ func TestICBMService_EvilRequest(t *testing.T) {
 			sessionRetriever := newMockSessionRetriever(t)
 			for _, item := range tc.mockParams.sessionRetrieverParams.retrieveSessionParams {
 				sessionRetriever.EXPECT().
-					RetrieveSession(item.screenName).
+					RetrieveSession(item.screenName, item.sessionNum).
 					Return(item.result)
 			}
 			messageRelayer := newMockMessageRelayer(t)
 			for _, item := range tc.mockParams.relayToScreenNameParams {
 				messageRelayer.EXPECT().
 					RelayToScreenName(mock.Anything, item.screenName, item.message)
+			}
+			for _, item := range tc.mockParams.relayToScreenNameActiveOnlyParams {
+				messageRelayer.EXPECT().
+					RelayToScreenNameActiveOnly(mock.Anything, item.screenName, item.message)
 			}
 			offlineMessageManager := newMockOfflineMessageManager(t)
 			for _, params := range tc.mockParams.saveMessageParams {

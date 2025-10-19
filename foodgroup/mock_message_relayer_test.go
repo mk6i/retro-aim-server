@@ -94,6 +94,41 @@ func (_c *mockMessageRelayer_RelayToScreenName_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// RelayToScreenNameActiveOnly provides a mock function with given fields: ctx, screenName, msg
+func (_m *mockMessageRelayer) RelayToScreenNameActiveOnly(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage) {
+	_m.Called(ctx, screenName, msg)
+}
+
+// mockMessageRelayer_RelayToScreenNameActiveOnly_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RelayToScreenNameActiveOnly'
+type mockMessageRelayer_RelayToScreenNameActiveOnly_Call struct {
+	*mock.Call
+}
+
+// RelayToScreenNameActiveOnly is a helper method to define mock.On call
+//   - ctx context.Context
+//   - screenName state.IdentScreenName
+//   - msg wire.SNACMessage
+func (_e *mockMessageRelayer_Expecter) RelayToScreenNameActiveOnly(ctx interface{}, screenName interface{}, msg interface{}) *mockMessageRelayer_RelayToScreenNameActiveOnly_Call {
+	return &mockMessageRelayer_RelayToScreenNameActiveOnly_Call{Call: _e.mock.On("RelayToScreenNameActiveOnly", ctx, screenName, msg)}
+}
+
+func (_c *mockMessageRelayer_RelayToScreenNameActiveOnly_Call) Run(run func(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage)) *mockMessageRelayer_RelayToScreenNameActiveOnly_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(state.IdentScreenName), args[2].(wire.SNACMessage))
+	})
+	return _c
+}
+
+func (_c *mockMessageRelayer_RelayToScreenNameActiveOnly_Call) Return() *mockMessageRelayer_RelayToScreenNameActiveOnly_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *mockMessageRelayer_RelayToScreenNameActiveOnly_Call) RunAndReturn(run func(context.Context, state.IdentScreenName, wire.SNACMessage)) *mockMessageRelayer_RelayToScreenNameActiveOnly_Call {
+	_c.Run(run)
+	return _c
+}
+
 // RelayToScreenNames provides a mock function with given fields: ctx, screenNames, msg
 func (_m *mockMessageRelayer) RelayToScreenNames(ctx context.Context, screenNames []state.IdentScreenName, msg wire.SNACMessage) {
 	_m.Called(ctx, screenNames, msg)
