@@ -54,6 +54,6 @@ type Handler struct {
 }
 
 func (h Handler) GetHelloWorldHandler(w http.ResponseWriter, r *http.Request) {
-	h.Logger.Info("got a Hello World request!")
-	_, _ = fmt.Fprintln(w, "Hello ukozi!")
+	h.Logger.Info("got a request to the root endpoint", "method", r.Method, "path", r.URL.Path)
+	_, _ = fmt.Fprintf(w, "WebAPI Server Running\n")
 }
