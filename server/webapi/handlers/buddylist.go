@@ -11,9 +11,15 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
+// WebAPISessionManager provides methods to manage WebAPI sessions.
+type WebAPISessionManager interface {
+	GetSession(ctx context.Context, aimsid string) (*state.WebAPISession, error)
+	TouchSession(ctx context.Context, aimsid string) error
+}
+
 // BuddyListHandler handles Web AIM API buddy list management endpoints.
 type BuddyListHandler struct {
-	SessionManager *state.WebAPISessionManager
+	SessionManager WebAPISessionManager
 	FeedbagManager FeedbagManager
 	Logger         *slog.Logger
 }
@@ -187,6 +193,96 @@ func (h *BuddyListHandler) addBuddyToFeedbag(ctx context.Context, screenName sta
 	// TODO: Check actual presence status and update buddyInfo accordingly
 
 	return "success", buddyInfo
+}
+
+// AddTempBuddy handles GET /aim/addTempBuddy requests.
+// This adds temporary buddies to the session without persisting them to the feedbag.
+// The temporary buddies are only visible for the duration of the session.
+func (h *BuddyListHandler) AddTempBuddy(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get session ID from parameters
+	aimsid := r.URL.Query().Get("aimsid")
+	if aimsid == "" {
+		h.sendError(w, http.StatusBadRequest, "missing aimsid parameter")
+		return
+	}
+
+	// Get session
+	session, err := h.SessionManager.GetSession(r.Context(), aimsid)
+	if err != nil {
+		if err == state.ErrNoWebAPISession {
+			h.sendError(w, http.StatusNotFound, "session not found")
+		} else if err == state.ErrWebAPISessionExpired {
+			h.sendError(w, http.StatusGone, "session expired")
+		} else {
+			h.sendError(w, http.StatusInternalServerError, "internal server error")
+		}
+		return
+	}
+
+	// Touch the session
+	h.SessionManager.TouchSession(r.Context(), aimsid)
+
+	// Get buddy names from parameters
+	// The WebAPI accepts multiple buddy names via &t= parameters
+	buddyNames := r.URL.Query()["t"]
+	if len(buddyNames) == 0 {
+		h.sendError(w, http.StatusBadRequest, "missing buddy names (t parameter)")
+		return
+	}
+
+	// Store temporary buddies in the session
+	// Note: These are not persisted to the feedbag database
+	if session.TempBuddies == nil {
+		session.TempBuddies = make(map[string]bool)
+	}
+
+	for _, buddyName := range buddyNames {
+		buddyName = strings.TrimSpace(buddyName)
+		if buddyName != "" {
+			session.TempBuddies[buddyName] = true
+		}
+	}
+
+	// Prepare response
+	responseData := map[string]interface{}{
+		"resultCode": "success",
+		"buddyNames": buddyNames,
+	}
+
+	resp := BaseResponse{}
+	resp.Response.StatusCode = 200
+	resp.Response.StatusText = "OK"
+	resp.Response.Data = responseData
+	SendResponse(w, r, resp, h.Logger)
+
+	// Push temp buddy event to the session's event queue
+	if session.EventQueue != nil {
+		for _, buddyName := range buddyNames {
+			buddyName = strings.TrimSpace(buddyName)
+			if buddyName != "" {
+				// Create minimal buddy info for temp buddy
+				buddyInfo := &BuddyPresenceInfo{
+					AimID:    buddyName,
+					State:    "offline", // Default state
+					UserType: "aim",
+				}
+
+				event := types.BuddyListEvent{
+					Action: "addTemp",
+					Buddy:  buddyInfo,
+				}
+				session.EventQueue.Push(types.EventTypeBuddyList, event)
+			}
+		}
+	}
+
+	h.Logger.InfoContext(ctx, "temporary buddies added",
+		"aimsid", aimsid,
+		"buddies", buddyNames,
+		"count", len(buddyNames),
+	)
 }
 
 // sendError is a convenience method that wraps the common SendError function.
