@@ -137,8 +137,14 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(eventsHandler.FetchEvents))))
 
+		// Add temp buddy - uses aimsid for auth
+		mux.Handle("GET /aim/addTempBuddy", authMiddleware.AuthenticateFlexible(
+			authMiddleware.CORSMiddleware(
+				http.HandlerFunc(buddyListHandler.AddTempBuddy))))
+
 		// Presence and buddy list
-		mux.Handle("GET /presence/get", authMiddleware.Authenticate(
+		// GetPresence supports aimsid-based auth, so we use flexible auth
+		mux.Handle("GET /presence/get", authMiddleware.AuthenticateFlexible(
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(presenceHandler.GetPresence))))
 
@@ -157,7 +163,8 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 				http.HandlerFunc(messagingHandler.SetTyping))))
 
 		// Phase 2: Presence management endpoints
-		mux.Handle("GET /presence/setState", authMiddleware.Authenticate(
+		// SetState only requires aimsid, no k parameter needed
+		mux.Handle("GET /presence/setState", authMiddleware.AuthenticateFlexible(
 			authMiddleware.CORSMiddleware(
 				http.HandlerFunc(presenceHandler.SetState))))
 

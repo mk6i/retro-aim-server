@@ -36,6 +36,7 @@ type WebAPISession struct {
 	FetchTimeout    int               // Long-polling timeout in milliseconds
 	TimeToNextFetch int               // Suggested delay before next fetch
 	RemoteAddr      string            // Client IP address
+	TempBuddies     map[string]bool   // Temporary buddies for this session only
 	logger          *slog.Logger      // Logger for debugging
 }
 
