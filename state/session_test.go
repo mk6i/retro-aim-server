@@ -22,6 +22,15 @@ func TestSession_SetAndGetAwayMessage(t *testing.T) {
 	assert.Equal(t, msg, s.AwayMessage())
 }
 
+func TestSession_SetAndGetProfile(t *testing.T) {
+	s := NewSession()
+	assert.Empty(t, s.Profile())
+
+	profile := "here's my profile"
+	s.SetProfile(profile)
+	assert.Equal(t, profile, s.Profile())
+}
+
 func TestSession_IncrementAndGetWarning(t *testing.T) {
 	s := NewSession()
 

@@ -359,7 +359,6 @@ func MgmtAPI(deps Container) *http.Server {
 		deps.sqLiteUserStore,        // bartAssetManager
 		deps.sqLiteUserStore,        // feedbagRetriever
 		deps.sqLiteUserStore,        // accountManager
-		deps.sqLiteUserStore,        // profileRetriever
 		deps.sqLiteUserStore,        // webAPIKeyManager
 		logger,
 	)
@@ -537,7 +536,6 @@ func WebAPI(deps Container) *webapi.Server {
 		MessageRelayer:        deps.inMemorySessionManager,
 		OfflineMessageManager: deps.sqLiteUserStore,
 		BuddyBroadcaster:      oscarBuddyBroadcaster,
-		ProfileManager:        deps.sqLiteUserStore,
 		RelationshipFetcher:   deps.sqLiteUserStore,
 		// Authentication support
 		UserManager: deps.sqLiteUserStore,

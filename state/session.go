@@ -77,6 +77,7 @@ type Session struct {
 	warning                 uint16
 	warningCh               chan uint16
 	lastWarnUpdate          time.Time
+	profile                 string
 }
 
 // NewSession returns a new instance of Session. By default, the user may have
@@ -374,6 +375,20 @@ func (s *Session) AwayMessage() string {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.awayMessage
+}
+
+// SetProfile sets the user's profile.
+func (s *Session) SetProfile(profile string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.profile = profile
+}
+
+// Profile returns the user's profile.
+func (s *Session) Profile() string {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.profile
 }
 
 // SetChatRoomCookie sets the chatRoomCookie for the chat room the user is currently in.

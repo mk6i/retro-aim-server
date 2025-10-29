@@ -146,12 +146,6 @@ type BuddyBroadcaster interface {
 	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
 }
 
-// ProfileManager manages user profiles
-type ProfileManager interface {
-	SetProfile(ctx context.Context, screenName state.IdentScreenName, profile string) error
-	Profile(ctx context.Context, screenName state.IdentScreenName) (string, error)
-}
-
 // UserManager defines methods for user authentication.
 type UserManager interface {
 	// AuthenticateUser verifies username and password

@@ -22,7 +22,7 @@ import (
 	"github.com/mk6i/retro-aim-server/wire"
 )
 
-func NewManagementAPI(bld config.Build, listener string, userManager UserManager, sessionRetriever SessionRetriever, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatRoomDeleter ChatRoomDeleter, chatSessionRetriever ChatSessionRetriever, directoryManager DirectoryManager, messageRelayer MessageRelayer, bartAssetManager BARTAssetManager, feedbagRetriever FeedBagRetriever, accountManager AccountManager, profileRetriever ProfileRetriever, webAPIKeyManager WebAPIKeyManager, logger *slog.Logger) *Server {
+func NewManagementAPI(bld config.Build, listener string, userManager UserManager, sessionRetriever SessionRetriever, chatRoomRetriever ChatRoomRetriever, chatRoomCreator ChatRoomCreator, chatRoomDeleter ChatRoomDeleter, chatSessionRetriever ChatSessionRetriever, directoryManager DirectoryManager, messageRelayer MessageRelayer, bartAssetManager BARTAssetManager, feedbagRetriever FeedBagRetriever, accountManager AccountManager, webAPIKeyManager WebAPIKeyManager, logger *slog.Logger) *Server {
 	mux := http.NewServeMux()
 
 	// Handlers for '/user' route
@@ -48,7 +48,7 @@ func NewManagementAPI(bld config.Build, listener string, userManager UserManager
 
 	// Handlers for '/user/{screenname}/account' route
 	mux.HandleFunc("GET /user/{screenname}/account", func(w http.ResponseWriter, r *http.Request) {
-		getUserAccountHandler(w, r, userManager, accountManager, profileRetriever, logger)
+		getUserAccountHandler(w, r, userManager, accountManager, logger)
 	})
 	mux.HandleFunc("PATCH /user/{screenname}/account", func(w http.ResponseWriter, r *http.Request) {
 		patchUserAccountHandler(w, r, userManager, accountManager, logger)
@@ -273,6 +273,7 @@ func getSessionHandler(w http.ResponseWriter, r *http.Request, sessionRetriever 
 		ou.Sessions[i] = sessionHandle{
 			ID:            s.IdentScreenName().String(),
 			ScreenName:    s.DisplayScreenName().String(),
+			Profile:       s.Profile(),
 			OnlineSeconds: onlineSeconds,
 			AwayMessage:   s.AwayMessage(),
 			IdleSeconds:   idleSeconds,
@@ -665,7 +666,7 @@ func getUserBuddyIconHandler(w http.ResponseWriter, r *http.Request, u UserManag
 }
 
 // getUserAccountHandler handles the GET /user/{screenname}/account endpoint.
-func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, a AccountManager, p ProfileRetriever, logger *slog.Logger) {
+func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager UserManager, a AccountManager, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "application/json")
 
 	screenName := r.PathValue("screenname")
@@ -699,12 +700,6 @@ func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager U
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	profile, err := p.Profile(r.Context(), user.IdentScreenName)
-	if err != nil {
-		logger.Error("error in GET /user/*/account Profile", "err", err.Error())
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
 
 	suspendedStatusText, err := getSuspendedStatusErrCodeToText(user.SuspendedStatus)
 	if err != nil {
@@ -717,7 +712,6 @@ func getUserAccountHandler(w http.ResponseWriter, r *http.Request, userManager U
 		EmailAddress:    emailAddress,
 		RegStatus:       regStatus,
 		Confirmed:       confirmStatus,
-		Profile:         profile,
 		IsICQ:           user.IsICQ,
 		SuspendedStatus: suspendedStatusText,
 		IsBot:           user.IsBot,

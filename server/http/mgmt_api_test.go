@@ -23,13 +23,16 @@ import (
 )
 
 func TestSessionHandler_GET(t *testing.T) {
-	fnNewSess := func(screenName string, uin uint32) *state.Session {
+	fnNewSess := func(screenName string, uin uint32, profile ...string) *state.Session {
 		sess := state.NewSession()
 		sess.SetIdentScreenName(state.NewIdentScreenName(screenName))
 		sess.SetDisplayScreenName(state.DisplayScreenName(screenName))
 		sess.SetUIN(uin)
 		ip, _ := netip.ParseAddrPort("1.2.3.4:1234")
 		sess.SetRemoteAddr(&ip)
+		if len(profile) > 0 {
+			sess.SetProfile(profile[0])
+		}
 		return sess
 	}
 	tt := []struct {
@@ -55,7 +58,7 @@ func TestSessionHandler_GET(t *testing.T) {
 		},
 		{
 			name:          "with sessions",
-			want:          `{"count":3,"sessions":[{"id":"usera","screen_name":"userA","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":false,"remote_addr":"1.2.3.4","remote_port":1234},{"id":"userb","screen_name":"userB","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":false,"remote_addr":"1.2.3.4","remote_port":1234},{"id":"100003","screen_name":"100003","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":true,"remote_addr":"1.2.3.4","remote_port":1234}]}`,
+			want:          `{"count":3,"sessions":[{"id":"usera","screen_name":"userA","profile":"\u003cHTML\u003e\u003cBODY\u003e\u003cFONT COLOR=\"#000000\" SIZE=\"3\" FACE=\"Arial\"\u003eCheck out my awesome profile!\u003c/FONT\u003e\u003c/BODY\u003e\u003c/HTML\u003e","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":false,"remote_addr":"1.2.3.4","remote_port":1234},{"id":"userb","screen_name":"userB","profile":"","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":false,"remote_addr":"1.2.3.4","remote_port":1234},{"id":"100003","screen_name":"100003","profile":"","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":true,"remote_addr":"1.2.3.4","remote_port":1234}]}`,
 			statusCode:    http.StatusOK,
 			timeSinceFunc: func(t time.Time) time.Duration { t0 := time.Now(); return t0.Sub(t0) },
 			mockParams: mockParams{
@@ -63,7 +66,7 @@ func TestSessionHandler_GET(t *testing.T) {
 					sessionRetrieverAllSessionsParams: sessionRetrieverAllSessionsParams{
 						{
 							result: []*state.Session{
-								fnNewSess("userA", 0),
+								fnNewSess("userA", 0, `<HTML><BODY><FONT COLOR="#000000" SIZE="3" FACE="Arial">Check out my awesome profile!</FONT></BODY></HTML>`),
 								fnNewSess("userB", 0),
 								fnNewSess("100003", 100003),
 							},
@@ -138,7 +141,7 @@ func TestSessionHandlerScreenname_GET(t *testing.T) {
 		{
 			name:              "active session found for screenname",
 			requestScreenName: state.NewIdentScreenName("userA"),
-			want:              `{"count":1,"sessions":[{"id":"usera","screen_name":"userA","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":false,"remote_addr":"1.2.3.4","remote_port":1234}]}`,
+			want:              `{"count":1,"sessions":[{"id":"usera","screen_name":"userA","profile":"","online_seconds":0,"away_message":"","idle_seconds":0,"is_icq":false,"remote_addr":"1.2.3.4","remote_port":1234}]}`,
 			statusCode:        http.StatusOK,
 			timeSinceFunc:     func(t time.Time) time.Duration { t0 := time.Now(); return t0.Sub(t0) },
 			mockParams: mockParams{
@@ -276,7 +279,7 @@ func TestUserAccountHandler_GET(t *testing.T) {
 		{
 			name:              "valid aim account",
 			requestScreenName: state.NewIdentScreenName("userA"),
-			want:              `{"id":"usera","screen_name":"userA","profile":"My Profile Text","email_address":"\u003cuserA@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":"","is_bot":false}`,
+			want:              `{"id":"usera","screen_name":"userA","email_address":"\u003cuserA@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":"","is_bot":false}`,
 			statusCode:        http.StatusOK,
 			mockParams: mockParams{
 				userManagerParams: userManagerParams{
@@ -313,20 +316,12 @@ func TestUserAccountHandler_GET(t *testing.T) {
 						},
 					},
 				},
-				profileRetrieverParams: profileRetrieverParams{
-					retrieveProfileParams: retrieveProfileParams{
-						{
-							screenName: state.NewIdentScreenName("userA"),
-							result:     "My Profile Text",
-						},
-					},
-				},
 			},
 		},
 		{
 			name:              "valid aim bot account",
 			requestScreenName: state.NewIdentScreenName("userA"),
-			want:              `{"id":"usera","screen_name":"userA","profile":"My Profile Text","email_address":"\u003cuserA@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":"","is_bot":true}`,
+			want:              `{"id":"usera","screen_name":"userA","email_address":"\u003cuserA@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":"","is_bot":true}`,
 			statusCode:        http.StatusOK,
 			mockParams: mockParams{
 				userManagerParams: userManagerParams{
@@ -364,20 +359,12 @@ func TestUserAccountHandler_GET(t *testing.T) {
 						},
 					},
 				},
-				profileRetrieverParams: profileRetrieverParams{
-					retrieveProfileParams: retrieveProfileParams{
-						{
-							screenName: state.NewIdentScreenName("userA"),
-							result:     "My Profile Text",
-						},
-					},
-				},
 			},
 		},
 		{
 			name:              "suspended aim account",
 			requestScreenName: state.NewIdentScreenName("userB"),
-			want:              `{"id":"userb","screen_name":"userB","profile":"My Profile Text","email_address":"\u003cuserB@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":"suspended","is_bot":false}`,
+			want:              `{"id":"userb","screen_name":"userB","email_address":"\u003cuserB@aol.com\u003e","reg_status":2,"confirmed":true,"is_icq":false,"suspended_status":"suspended","is_bot":false}`,
 			statusCode:        http.StatusOK,
 			mockParams: mockParams{
 				userManagerParams: userManagerParams{
@@ -411,14 +398,6 @@ func TestUserAccountHandler_GET(t *testing.T) {
 						{
 							screenName: state.NewIdentScreenName("userB"),
 							result:     true,
-						},
-					},
-				},
-				profileRetrieverParams: profileRetrieverParams{
-					retrieveProfileParams: retrieveProfileParams{
-						{
-							screenName: state.NewIdentScreenName("userB"),
-							result:     "My Profile Text",
 						},
 					},
 				},
@@ -456,14 +435,7 @@ func TestUserAccountHandler_GET(t *testing.T) {
 					Return(params.result, params.err)
 			}
 
-			profileRetriever := newMockProfileRetriever(t)
-			for _, params := range tc.mockParams.profileRetrieverParams.retrieveProfileParams {
-				profileRetriever.EXPECT().
-					Profile(matchContext(), params.screenName).
-					Return(params.result, params.err)
-			}
-
-			getUserAccountHandler(responseRecorder, request, userManager, accountManager, profileRetriever, slog.Default())
+			getUserAccountHandler(responseRecorder, request, userManager, accountManager, slog.Default())
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)

@@ -104,9 +104,6 @@ paths:
                   screen_name:
                     type: string
                     description: User's AIM screen name or ICQ UIN.
-                  profile:
-                    type: string
-                    description: User's AIM profile HTML.
                   email_address:
                     type: string
                     description: User's email address
@@ -223,6 +220,9 @@ paths:
                         screen_name:
                           type: string
                           description: User's AIM screen name or ICQ UIN.
+                        profile:
+                          type: string
+                          description: User's profile HTML.
                         online_seconds:
                           type: number
                           description: Number of seconds this user session has been online.
@@ -275,6 +275,9 @@ paths:
                         screen_name:
                           type: string
                           description: User's AIM screen name or ICQ UIN.
+                        profile:
+                          type: string
+                          description: User's profile HTML.
                         online_seconds:
                           type: number
                           description: Number of seconds this user session has been online.

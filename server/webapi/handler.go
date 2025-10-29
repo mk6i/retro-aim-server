@@ -34,7 +34,6 @@ type Handler struct {
 	MessageRelayer        MessageRelayer
 	OfflineMessageManager OfflineMessageManager
 	BuddyBroadcaster      BuddyBroadcaster
-	ProfileManager        ProfileManager
 	RelationshipFetcher   interface {
 		Relationship(ctx context.Context, me state.IdentScreenName, them state.IdentScreenName) (state.Relationship, error)
 	}

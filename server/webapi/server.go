@@ -50,7 +50,6 @@ func NewServer(listeners []string, logger *slog.Logger, handler Handler, apiKeyV
 		SessionRetriever:    handler.SessionRetriever,
 		FeedbagRetriever:    handler.FeedbagRetriever,
 		BuddyBroadcaster:    handler.BuddyBroadcaster,
-		ProfileManager:      handler.ProfileManager,
 		RelationshipFetcher: handler.RelationshipFetcher,
 		Logger:              logger,
 	}

@@ -75,9 +75,7 @@ func (s LocateService) RightsQuery(_ context.Context, inFrame wire.SNACFrame) wi
 func (s LocateService) SetInfo(ctx context.Context, sess *state.Session, inBody wire.SNAC_0x02_0x04_LocateSetInfo) error {
 	// update profile
 	if profile, hasProfile := inBody.String(wire.LocateTLVTagsInfoSigData); hasProfile {
-		if err := s.profileManager.SetProfile(ctx, sess.IdentScreenName(), profile); err != nil {
-			return err
-		}
+		sess.SetProfile(profile)
 	}
 
 	// broadcast away message change to buddies
@@ -152,13 +150,9 @@ func (s LocateService) UserInfoQuery(ctx context.Context, sess *state.Session, i
 	var list wire.TLVList
 
 	if inBody.RequestProfile() {
-		profile, err := s.profileManager.Profile(ctx, identScreenName)
-		if err != nil {
-			return wire.SNACMessage{}, err
-		}
 		list.AppendList([]wire.TLV{
 			wire.NewTLVBE(wire.LocateTLVTagsInfoSigMime, `text/aolrtf; charset="us-ascii"`),
-			wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, profile),
+			wire.NewTLVBE(wire.LocateTLVTagsInfoSigData, buddySess.Profile()),
 		})
 	}
 

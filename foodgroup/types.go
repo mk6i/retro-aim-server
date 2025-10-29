@@ -307,7 +307,7 @@ type OfflineMessageManager interface {
 }
 
 // ProfileManager defines methods for managing and querying AIM user profiles,
-// including directory information, interest keywords, and free-form profile content.
+// including directory information and interest keywords.
 type ProfileManager interface {
 	// FindByAIMEmail returns the user with the given AIM-associated email address.
 	FindByAIMEmail(ctx context.Context, email string) (state.User, error)
@@ -323,17 +323,11 @@ type ProfileManager interface {
 	// that users can associate with their profiles.
 	InterestList(ctx context.Context) ([]wire.ODirKeywordListItem, error)
 
-	// Profile returns the free-form profile body for the given screen name.
-	Profile(ctx context.Context, screenName state.IdentScreenName) (string, error)
-
 	// SetDirectoryInfo updates the user's directory listing with name, city, state, zip, and country info.
 	SetDirectoryInfo(ctx context.Context, screenName state.IdentScreenName, info state.AIMNameAndAddr) error
 
 	// SetKeywords sets up to five interest keywords for the user's profile.
 	SetKeywords(ctx context.Context, screenName state.IdentScreenName, keywords [5]string) error
-
-	// SetProfile sets the free-form profile body content for the user.
-	SetProfile(ctx context.Context, screenName state.IdentScreenName, body string) error
 
 	// User returns the full user record associated with the given screen name.
 	User(ctx context.Context, screenName state.IdentScreenName) (*state.User, error)

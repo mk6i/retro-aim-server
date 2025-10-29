@@ -103,15 +103,8 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 							screenName: state.NewIdentScreenName("requested-user"),
 							result: newTestSession("requested-user",
 								sessOptCannedSignonTime,
-								sessOptCannedAwayMessage),
-						},
-					},
-				},
-				profileManagerParams: profileManagerParams{
-					retrieveProfileParams: retrieveProfileParams{
-						{
-							screenName: state.NewIdentScreenName("requested-user"),
-							result:     "this is my profile!",
+								sessOptCannedAwayMessage,
+								sessOptProfile("this is my profile!")),
 						},
 					},
 				},
@@ -171,15 +164,8 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 							screenName: state.NewIdentScreenName("requested-user"),
 							result: newTestSession("requested-user",
 								sessOptCannedSignonTime,
-								sessOptCannedAwayMessage),
-						},
-					},
-				},
-				profileManagerParams: profileManagerParams{
-					retrieveProfileParams: retrieveProfileParams{
-						{
-							screenName: state.NewIdentScreenName("requested-user"),
-							result:     "this is my profile!",
+								sessOptCannedAwayMessage,
+								sessOptProfile("this is my profile!")),
 						},
 					},
 				},
@@ -378,11 +364,6 @@ func TestLocateService_UserInfoQuery(t *testing.T) {
 					Return(val.result)
 			}
 			profileManager := newMockProfileManager(t)
-			for _, val := range tc.mockParams.retrieveProfileParams {
-				profileManager.EXPECT().
-					Profile(matchContext(), val.screenName).
-					Return(val.result, val.err)
-			}
 			svc := LocateService{
 				relationshipFetcher: relationshipFetcher,
 				sessionRetriever:    sessionRetriever,
@@ -671,8 +652,9 @@ func TestLocateService_SetInfo(t *testing.T) {
 		inBody wire.SNAC_0x02_0x04_LocateSetInfo
 		// mockParams is the list of params sent to mocks that satisfy this
 		// method's dependencies
-		mockParams mockParams
-		wantErr    error
+		mockParams  mockParams
+		wantErr     error
+		wantProfile string
 	}{
 		{
 			name:        "set profile",
@@ -684,16 +666,8 @@ func TestLocateService_SetInfo(t *testing.T) {
 					},
 				},
 			},
-			mockParams: mockParams{
-				profileManagerParams: profileManagerParams{
-					setProfileParams: setProfileParams{
-						{
-							screenName: state.NewIdentScreenName("test-user"),
-							body:       "profile-result",
-						},
-					},
-				},
-			},
+			mockParams:  mockParams{},
+			wantProfile: "profile-result",
 		},
 		{
 			name:        "set away message during sign on flow",
@@ -735,11 +709,6 @@ func TestLocateService_SetInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			profileManager := newMockProfileManager(t)
-			for _, params := range tt.mockParams.setProfileParams {
-				profileManager.EXPECT().
-					SetProfile(matchContext(), params.screenName, params.body).
-					Return(nil)
-			}
 			buddyUpdateBroadcaster := newMockbuddyBroadcaster(t)
 			for _, params := range tt.mockParams.broadcastBuddyArrivedParams {
 				buddyUpdateBroadcaster.EXPECT().
@@ -750,7 +719,9 @@ func TestLocateService_SetInfo(t *testing.T) {
 			}
 			svc := NewLocateService(nil, nil, profileManager, nil, nil)
 			svc.buddyBroadcaster = buddyUpdateBroadcaster
-			assert.Equal(t, tt.wantErr, svc.SetInfo(context.Background(), tt.userSession, tt.inBody))
+			err := svc.SetInfo(context.Background(), tt.userSession, tt.inBody)
+			assert.Equal(t, tt.wantErr, err)
+			assert.Equal(t, tt.wantProfile, tt.userSession.Profile())
 		})
 	}
 }

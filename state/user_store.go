@@ -948,31 +948,6 @@ func (f SQLiteUserStore) RemovePermitBuddy(ctx context.Context, me IdentScreenNa
 	return err
 }
 
-func (f SQLiteUserStore) Profile(ctx context.Context, screenName IdentScreenName) (string, error) {
-	q := `
-		SELECT IFNULL(body, '')
-		FROM profile
-		WHERE screenName = ?
-	`
-	var profile string
-	err := f.db.QueryRowContext(ctx, q, screenName.String()).Scan(&profile)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return "", err
-	}
-	return profile, nil
-}
-
-func (f SQLiteUserStore) SetProfile(ctx context.Context, screenName IdentScreenName, body string) error {
-	q := `
-		INSERT INTO profile (screenName, body)
-		VALUES (?, ?)
-		ON CONFLICT (screenName)
-			DO UPDATE SET body = excluded.body
-	`
-	_, err := f.db.ExecContext(ctx, q, screenName.String(), body)
-	return err
-}
-
 func (f SQLiteUserStore) SetDirectoryInfo(ctx context.Context, screenName IdentScreenName, info AIMNameAndAddr) error {
 	q := `
 		UPDATE users SET 

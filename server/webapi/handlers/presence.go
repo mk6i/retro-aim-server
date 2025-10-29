@@ -18,7 +18,6 @@ type PresenceHandler struct {
 	SessionRetriever    SessionRetriever
 	FeedbagRetriever    FeedbagRetriever
 	BuddyBroadcaster    BuddyBroadcaster
-	ProfileManager      ProfileManager
 	RelationshipFetcher RelationshipFetcher
 	Logger              *slog.Logger
 }
@@ -27,12 +26,6 @@ type PresenceHandler struct {
 type BuddyBroadcaster interface {
 	BroadcastBuddyArrived(ctx context.Context, screenName state.IdentScreenName, userInfo wire.TLVUserInfo) error
 	BroadcastBuddyDeparted(ctx context.Context, sess *state.Session) error
-}
-
-// ProfileManager manages user profiles
-type ProfileManager interface {
-	SetProfile(ctx context.Context, screenName state.IdentScreenName, profile string) error
-	Profile(ctx context.Context, screenName state.IdentScreenName) (string, error)
 }
 
 // PresenceData contains presence information.
@@ -519,12 +512,8 @@ func (h *PresenceHandler) SetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Save profile using ProfileManager
-	if err := h.ProfileManager.SetProfile(ctx, session.ScreenName.IdentScreenName(), profile); err != nil {
-		h.Logger.ErrorContext(ctx, "failed to set profile", "err", err.Error())
-		h.sendError(w, http.StatusInternalServerError, "failed to save profile")
-		return
-	}
+	// Save profile on the session
+	session.OSCARSession.SetProfile(profile)
 
 	h.Logger.InfoContext(ctx, "profile updated",
 		"screenName", session.ScreenName.String(),
@@ -567,12 +556,17 @@ func (h *PresenceHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		targetSN = session.ScreenName.String()
 	}
 
-	// Retrieve profile using ProfileManager
-	profile, err := h.ProfileManager.Profile(ctx, state.NewIdentScreenName(targetSN))
-	if err != nil {
-		h.Logger.WarnContext(ctx, "failed to get profile", "err", err.Error())
-		// Return empty profile on error
-		profile = ""
+	// Retrieve profile from the OSCAR session
+	var profile string
+	if targetSN == session.ScreenName.String() {
+		// Requesting own profile - use the OSCAR session already available in WebAPISession
+		profile = session.OSCARSession.Profile()
+	} else {
+		// Requesting another user's profile - retrieve their session
+		targetOscarSession := h.SessionRetriever.RetrieveSession(state.NewIdentScreenName(targetSN))
+		if targetOscarSession != nil {
+			profile = targetOscarSession.Profile()
+		}
 	}
 
 	// Send response

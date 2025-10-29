@@ -108,12 +108,6 @@ type MessageRelayer interface {
 	RelayToScreenName(ctx context.Context, screenName state.IdentScreenName, msg wire.SNACMessage)
 }
 
-// ProfileRetriever defines a method for retrieving a user's free-form profile.
-type ProfileRetriever interface {
-	// Profile returns the free-form profile body for the given screen name.
-	Profile(ctx context.Context, screenName state.IdentScreenName) (string, error)
-}
-
 // SessionRetriever defines methods for retrieving active sessions,
 // either all of them or by screen name.
 type SessionRetriever interface {
@@ -170,7 +164,6 @@ type aimChatUserHandle struct {
 type userAccountHandle struct {
 	ID              string `json:"id"`
 	ScreenName      string `json:"screen_name"`
-	Profile         string `json:"profile"`
 	EmailAddress    string `json:"email_address"`
 	RegStatus       uint16 `json:"reg_status"`
 	Confirmed       bool   `json:"confirmed"`
@@ -187,6 +180,7 @@ type userAccountPatch struct {
 type sessionHandle struct {
 	ID            string  `json:"id"`
 	ScreenName    string  `json:"screen_name"`
+	Profile       string  `json:"profile"`
 	OnlineSeconds float64 `json:"online_seconds"`
 	AwayMessage   string  `json:"away_message"`
 	IdleSeconds   float64 `json:"idle_seconds"`

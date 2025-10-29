@@ -379,10 +379,8 @@ type profileManagerParams struct {
 	findByAIMNameAndAddrParams
 	getUserParams
 	interestListParams
-	retrieveProfileParams
 	setDirectoryInfoParams
 	setKeywordsParams
-	setProfileParams
 }
 
 // findByAIMEmailParams is the list of parameters passed at the mock
@@ -422,21 +420,6 @@ type setDirectoryInfoParams []struct {
 	screenName state.IdentScreenName
 	info       state.AIMNameAndAddr
 	err        error
-}
-
-// retrieveProfileParams is the list of parameters passed at the mock
-// ProfileManager.Profile call site
-type retrieveProfileParams []struct {
-	screenName state.IdentScreenName
-	result     string
-	err        error
-}
-
-// setProfileParams is the list of parameters passed at the mock
-// ProfileManager.SetProfile call site
-type setProfileParams []struct {
-	screenName state.IdentScreenName
-	body       any
 }
 
 // setKeywordsParams is the list of parameters passed at the mock
@@ -731,6 +714,13 @@ func sessOptWarning(level int16) func(session *state.Session) {
 // message!") on the session object
 func sessOptCannedAwayMessage(session *state.Session) {
 	session.SetAwayMessage("this is my away message!")
+}
+
+// sessOptProfile sets a profile on the session object
+func sessOptProfile(profile string) func(session *state.Session) {
+	return func(session *state.Session) {
+		session.SetProfile(profile)
+	}
 }
 
 // sessOptCannedSignonTime sets a canned sign-on time (1696790127565) on the
