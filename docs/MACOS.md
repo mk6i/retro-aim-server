@@ -1,18 +1,18 @@
-# Retro AIM Server Quickstart for macOS (Intel and Apple Silicon)
+# Open OSCAR Server Quickstart for macOS (Intel and Apple Silicon)
 
-This guide explains how to download, configure and run Retro AIM Server on macOS (Intel and Apple Silicon).
+This guide explains how to download, configure and run Open OSCAR Server on macOS (Intel and Apple Silicon).
 
-1. **Download Retro AIM Server**
+1. **Download Open OSCAR Server**
 
-   Grab the latest macOS release from the [Releases page](https://github.com/mk6i/retro-aim-server/releases) for your
+   Grab the latest macOS release from the [Releases page](https://github.com/mk6i/open-oscar-server/releases) for your
    platform (Intel or Apple Silicon).
 
-   Because the Retro AIM Server binary has not been blessed by Apple, browsers such as Chrome may think it's a
+   Because the Open OSCAR Server binary has not been blessed by Apple, browsers such as Chrome may think it's a
    "suspicious" file and block the download, in which case you need to explicitly opt in to downloading the untrusted
    file.
 
     <p align="center">
-      <img alt="screenshot of a chrome prompt showing a blocked download" src="https://github.com/mk6i/retro-aim-server/assets/2894330/90af40bd-262d-4e0f-a769-06943c7acd18">
+      <img alt="screenshot of a chrome prompt showing a blocked download" src="https://github.com/mk6i/open-oscar-server/assets/2894330/90af40bd-262d-4e0f-a769-06943c7acd18">
     </p>
 
    > While the binaries are 100% safe, you can avoid the security concern by [building the application yourself](./BUILD.md).
@@ -30,7 +30,7 @@ This guide explains how to download, configure and run Retro AIM Server on macOS
 
 3. **Remove Quarantine**
 
-   macOS will quarantine the Retro AIM Server binary because it has not been blessed by Apple. To remove the quarantine
+   macOS will quarantine the Open OSCAR Server binary because it has not been blessed by Apple. To remove the quarantine
    flag from the binary, run following command in the same terminal,
 
    ```shell
@@ -60,13 +60,13 @@ This guide explains how to download, configure and run Retro AIM Server on macOS
 
 5. **Start the Application**
 
-   Run the following command to launch Retro AIM Server:
+   Run the following command to launch Open OSCAR Server:
 
    ```shell
    ./retro_aim_server
    ```
 
-   Retro AIM Server will run in the terminal, ready to accept AIM client connections.
+   Open OSCAR Server will run in the terminal, ready to accept AIM client connections.
 
 6. **Test**
 
@@ -83,5 +83,5 @@ This guide explains how to download, configure and run Retro AIM Server on macOS
 
 7. **Additional Setup**
 
-   For optional configuration steps that enhance your Retro AIM Server experience, refer to
+   For optional configuration steps that enhance your Open OSCAR Server experience, refer to
    the [Additional Setup Guide](./ADDITIONAL_SETUP.md).

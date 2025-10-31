@@ -1,10 +1,10 @@
-# Retro AIM Server Quickstart for Windows 10/11
+# Open OSCAR Server Quickstart for Windows 10/11
 
-This guide explains how to download, configure and run Retro AIM Server on Windows 10/11.
+This guide explains how to download, configure and run Open OSCAR Server on Windows 10/11.
 
-1. **Download Retro AIM Server**
+1. **Download Open OSCAR Server**
 
-   Download the latest Windows release from the [Releases page](https://github.com/mk6i/retro-aim-server/releases) and
+   Download the latest Windows release from the [Releases page](https://github.com/mk6i/open-oscar-server/releases) and
    extract the `.zip` archive, which contains the application and a configuration file `settings.env`.
 
 2. **Configure Server Address**
@@ -23,17 +23,17 @@ This guide explains how to download, configure and run Retro AIM Server on Windo
 
 3. **Start the Application**
 
-   Launch `retro-aim-server.exe` to start Retro AIM Server.
+   Launch `retro-aim-server.exe` to start Open OSCAR Server.
 
-   Because Retro AIM Server has not built up enough reputation with Microsoft, Windows will flag the application as a
+   Because Open OSCAR Server has not built up enough reputation with Microsoft, Windows will flag the application as a
    security risk the first time you run it. You'll be presented with a `Microsoft Defender SmartScreen` warning prompt
    that gives you the option to run the blocked application.
 
    To proceed, click `More Options`, then `Run anyway`.
 
     <p align="center">
-      <img alt="screenshot of microsoft defender smartscreen prompt" src="https://github.com/mk6i/retro-aim-server/assets/2894330/9ab0966b-d5dd-4b70-ba16-483e5c458f89">
-      <img alt="screenshot of microsoft defender smartscreen prompt" src="https://github.com/mk6i/retro-aim-server/assets/2894330/5d4106c6-0ce6-4d4f-9260-e9bbb777c770">
+      <img alt="screenshot of microsoft defender smartscreen prompt" src="https://github.com/mk6i/open-oscar-server/assets/2894330/9ab0966b-d5dd-4b70-ba16-483e5c458f89">
+      <img alt="screenshot of microsoft defender smartscreen prompt" src="https://github.com/mk6i/open-oscar-server/assets/2894330/5d4106c6-0ce6-4d4f-9260-e9bbb777c770">
     </p>
 
    Click `Allow` if you get a Windows Defender Firewall alert.
@@ -42,7 +42,7 @@ This guide explains how to download, configure and run Retro AIM Server on Windo
       <img alt="screenshot of microsoft defender firewall alert" src="https://github.com/user-attachments/assets/9ec6cbc4-5445-43bd-a64e-512fd15f8f0b">
     </p>
 
-   Retro AIM Server will open in a terminal, ready to accept AIM client connections.
+   Open OSCAR Server will open in a terminal, ready to accept AIM client connections.
 
 4. **Test**
 
@@ -60,5 +60,5 @@ This guide explains how to download, configure and run Retro AIM Server on Windo
 
 5. **Additional Setup**
 
-   For optional configuration steps that enhance your Retro AIM Server experience, refer to
+   For optional configuration steps that enhance your Open OSCAR Server experience, refer to
    the [Additional Setup Guide](./ADDITIONAL_SETUP.md).

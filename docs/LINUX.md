@@ -1,10 +1,10 @@
-# Retro AIM Server Quickstart for Linux (x86_64)
+# Open OSCAR Server Quickstart for Linux (x86_64)
 
-This guide explains how to download, configure and run Retro AIM Server on Linux (x86_64).
+This guide explains how to download, configure and run Open OSCAR Server on Linux (x86_64).
 
-1. **Download Retro AIM Server**
+1. **Download Open OSCAR Server**
 
-   Grab the latest Linux release from the [releases page](https://github.com/mk6i/retro-aim-server/releases) and extract
+   Grab the latest Linux release from the [releases page](https://github.com/mk6i/open-oscar-server/releases) and extract
    the archive. The extracted folder contains the application and a configuration file `settings.env`.
 
 2. **Configure Server Address**
@@ -23,13 +23,13 @@ This guide explains how to download, configure and run Retro AIM Server on Linux
 
 3. **Start the Application**
 
-   Run the following command to launch Retro AIM Server:
+   Run the following command to launch Open OSCAR Server:
 
    ```shell
    ./retro_aim_server
    ```
 
-   Retro AIM Server will run in the terminal, ready to accept AIM client connections.
+   Open OSCAR Server will run in the terminal, ready to accept AIM client connections.
 
 4. **Configure AIM Clients**
 
@@ -47,5 +47,5 @@ This guide explains how to download, configure and run Retro AIM Server on Linux
 
 5. **Additional Setup**
 
-   For optional configuration steps that enhance your Retro AIM Server experience, refer to
+   For optional configuration steps that enhance your Open OSCAR Server experience, refer to
    the [Additional Setup Guide](./ADDITIONAL_SETUP.md).

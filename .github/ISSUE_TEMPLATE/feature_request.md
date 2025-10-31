@@ -1,6 +1,6 @@
 ---
 name: Feature request ✨
-about: Use this template to suggest new features or improvements for Retro AIM Server.
+about: Use this template to suggest new features or improvements for Open OSCAR Server.
 
 title: ''
 labels: enhancement
@@ -9,7 +9,7 @@ assignees: ''
 ---
 
 <!--
-Hello! 👋 Thank you for suggesting a feature or improvement for Retro AIM Server. To help us understand your request better, please fill out the following template.
+Hello! 👋 Thank you for suggesting a feature or improvement for Open OSCAR Server. To help us understand your request better, please fill out the following template.
 Feel free to adjust or remove any parts that aren't relevant to your suggestion.
 
 Remember to avoid sharing sensitive information like passwords or personal data.

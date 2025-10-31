@@ -1,6 +1,6 @@
 # Additional Setup
 
-This guide covers some optional configuration steps to get the best experience from Retro AIM Server.
+This guide covers some optional configuration steps to get the best experience from Open OSCAR Server.
 
 - [Configure User Directory Keywords](#configure-user-directory-keywords)
 - [Import AIM Smiley Packs](#import-aim-smiley-packs)
@@ -12,7 +12,7 @@ AIM users can make themselves searchable by interest in the user directory by co
 Two types of keywords are supported: categorized keywords, which belong to a specific category (e.g., Books, Music), and
 top-level keywords, which appear at the top of the menu and are not associated with any category.
 
-Retro AIM Server does not come with any keywords installed out of the box. The following steps explain how to add
+Open OSCAR Server does not come with any keywords installed out of the box. The following steps explain how to add
 keywords and keyword categories via the management API.
 
 1. **Add Categories**
@@ -133,7 +133,7 @@ keywords and keyword categories via the management API.
 ## Import AIM Smiley Packs
 
 AIM emoticons (also called smileys) are the graphics that appear when users send messages with specific codes like `:)`
-or `:D`. Retro AIM Server includes a BART import utility that allows you to import smiley pack collections.
+or `:D`. Open OSCAR Server includes a BART import utility that allows you to import smiley pack collections.
 
 This guide shows you how to install a smiley pack available
 from [The Internet Archive](https://archive.org/details/aol_instant_messenger_smiley_packs).
@@ -157,7 +157,7 @@ from [The Internet Archive](https://archive.org/details/aol_instant_messenger_sm
 
 2. **Import Emoticons**
 
-   From the root of the Retro AIM Server repository, run the BART import script to upload the smiley pack:
+   From the root of the Open OSCAR Server repository, run the BART import script to upload the smiley pack:
 
     ```bash
     ./scripts/import_bart.sh -t emoticon_set -u http://localhost:8080 /path/to/aim_bart_emoticons

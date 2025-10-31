@@ -26,7 +26,7 @@ Username : <B>{{- .ScreenName -}}</B><BR><BR>
 
 // directoryTpl is the directory search response go template.
 const directoryTpl = `
-<HTML><HEAD><TITLE>Retro AIM Server</TITLE></HEAD><BODY><H3>Dir Results</H3>
+<HTML><HEAD><TITLE>Open OSCAR Server</TITLE></HEAD><BODY><H3>Dir Results</H3>
 {{- if .Results -}}
 <TABLE>
 {{- range .Results -}}

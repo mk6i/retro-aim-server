@@ -141,7 +141,7 @@ func validateConfigMigration() error {
 	// If there are any issues, return an error with details
 	if len(oldEnvVarsFound) > 0 || len(newEnvVarsMissing) > 0 {
 		var errorMsg strings.Builder
-		errorMsg.WriteString("Retro AIM Server v0.19.0 introduced some breaking configuration changes that you need to fix.\n")
+		errorMsg.WriteString("Open OSCAR Server v0.19.0 introduced some breaking configuration changes that you need to fix.\n")
 
 		if len(oldEnvVarsFound) > 0 {
 			errorMsg.WriteString("\nOld environment variables that must be removed:\n\n")

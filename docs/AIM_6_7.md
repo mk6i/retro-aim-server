@@ -1,6 +1,6 @@
 # Windows AIM 6.x/7.x Client Setup
 
-This guide explains how to install and configure **AIM 6.x and 7.x** for use with **Retro AIM Server**.
+This guide explains how to install and configure **AIM 6.x and 7.x** for use with **Open OSCAR Server**.
 
 <p align="center">
    <img alt="screenshot of AIM sign-on screen" src="https://github.com/user-attachments/assets/057c72fe-3d60-4dad-a602-8ff95c4fcbe1">
@@ -49,7 +49,7 @@ To switch from the default Kerberos-based auth (AAM/AAMUAS) to BUCP:
 
 ### Configure Server Hostname
 
-To point the client to your Retro AIM Server:
+To point the client to your Open OSCAR Server:
 
 1. In Notepad, go to **File → Open** again.
 2. Navigate to:
@@ -59,7 +59,7 @@ To point the client to your Retro AIM Server:
 3. Set the file filter to **All Files**.
 4. Open `serviceManifest.xml`.
 5. Find the `aol.aimcc.connect.host.address` preference and update it to match the hostname from your
-   `OSCAR_ADVERTISED_LISTENERS_PLAIN` Retro AIM Server config. For example, if
+   `OSCAR_ADVERTISED_LISTENERS_PLAIN` Open OSCAR Server config. For example, if
    `OSCAR_ADVERTISED_LISTENERS_PLAIN=LOCAL://127.0.0.1:5190`, use `127.0.0.1`.
 
    ```diff

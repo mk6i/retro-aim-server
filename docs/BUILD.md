@@ -1,15 +1,15 @@
-# Development: How to Run/Compile Retro AIM Server
+# Development: How to Run/Compile Open OSCAR Server
 
-This guide explains how to set up a development environment for Retro AIM Server and build/run the application. It
+This guide explains how to set up a development environment for Open OSCAR Server and build/run the application. It
 assumes that you have little to no experience with golang.
 
 ## Dependencies
 
-Before you can run Retro AIM Server, set up the following software dependencies.
+Before you can run Open OSCAR Server, set up the following software dependencies.
 
 ### Golang
 
-Since Retro AIM Server is written in go, install the latest version of [golang](https://go.dev/).
+Since Open OSCAR Server is written in go, install the latest version of [golang](https://go.dev/).
 
 If you're new to go, try [Visual Studio Code](https://code.visualstudio.com) wth the [go plugin](https://code.visualstudio.com/docs/languages/go)
 as your first IDE.
@@ -54,7 +54,7 @@ To run the binary with the settings file:
 
 ## Testing
 
-Retro AIM Server includes a test suite that must pass before merging new code. To run the unit tests, run the following
+Open OSCAR Server includes a test suite that must pass before merging new code. To run the unit tests, run the following
 command from the root of the repository in a terminal:
 
 ```shell

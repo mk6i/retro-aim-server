@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: User Management API
-  description: API that provides management functionality for Retro AIM Server operators.
+  description: API that provides management functionality for Open OSCAR Server operators.
   version: 1.0.0
 paths:
   /user:

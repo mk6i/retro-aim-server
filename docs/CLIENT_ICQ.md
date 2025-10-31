@@ -1,6 +1,6 @@
 # ICQ Client Setup
 
-This guide explains how to install and configure **ICQ 2000b** for Retro AIM Server.
+This guide explains how to install and configure **ICQ 2000b** for Open OSCAR Server.
 
 > ICQ 2000b is the only version of ICQ currently supported by RAS.
 
@@ -148,7 +148,7 @@ Server's hostname in the Windows Registry.
 3. **Configure OSCAR Host**
 
     - Double-click the `Default Server Host` registry entry.
-    - Set `Value data` to the hostname from `OSCAR_ADVERTISED_LISTENERS_PLAIN` found in Retro AIM Server
+    - Set `Value data` to the hostname from `OSCAR_ADVERTISED_LISTENERS_PLAIN` found in Open OSCAR Server
       configuration `config/settings.env`. For example, if `OSCAR_ADVERTISED_LISTENERS_PLAIN=LOCAL://127.0.0.1:5190`, use
       `127.0.0.1`.
     - Click OK.
@@ -164,7 +164,7 @@ Server's hostname in the Windows Registry.
 
     - Double-click the `Default Server Port` registry entry.
     - Tick the `Decimal` radio button.
-    - Set `Value data` to the port number from `OSCAR_ADVERTISED_LISTENERS_PLAIN` found in Retro AIM Server configuration
+    - Set `Value data` to the port number from `OSCAR_ADVERTISED_LISTENERS_PLAIN` found in Open OSCAR Server configuration
       `config/settings.env`. For example, if `OSCAR_ADVERTISED_LISTENERS_PLAIN=LOCAL://127.0.0.1:5190`, use `5190`.
     - Click OK.
 
@@ -180,9 +180,9 @@ Server's hostname in the Windows Registry.
 
 Start ICQ and complete the first-time registration wizard. Start by selecting `Existing User`.
 
-> Do not try to create a new user in the registration wizard. To create a new user in Retro AIM Server, follow account
+> Do not try to create a new user in the registration wizard. To create a new user in Open OSCAR Server, follow account
 > creation steps in
-> the [server quickstart guides](https://github.com/mk6i/retro-aim-server?tab=readme-ov-file#-how-to-run).
+> the [server quickstart guides](https://github.com/mk6i/open-oscar-server?tab=readme-ov-file#-how-to-run).
 
    <p align="center">
       <img width="400" alt="screenshot of ICQ registration wizard" src="https://github.com/user-attachments/assets/48c666a8-04c8-4b48-a86a-fc52e8a9af41">
@@ -196,4 +196,4 @@ the wizard is finished.
    <img width="400" alt="screenshot of ICQ registration wizard" src="https://github.com/user-attachments/assets/7520db7c-0512-42d1-88f3-e3f8f9d5eaec">
 </p>
 
-You should now be able to connect to Retro AIM Server using ICQ 2000b.
+You should now be able to connect to Open OSCAR Server using ICQ 2000b.

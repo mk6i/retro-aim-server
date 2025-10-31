@@ -1,11 +1,11 @@
-# Configuring Retro AIM Server With systemd
+# Configuring Open OSCAR Server With systemd
 
-This document details the configuration of Retro AIM Server to run as an unprivileged user with `systemd` managing it as
+This document details the configuration of Open OSCAR Server to run as an unprivileged user with `systemd` managing it as
 a production service.
 
-1. **Download Retro AIM Server**
+1. **Download Open OSCAR Server**
 
-   Grab the latest Linux release from the [releases page](https://github.com/mk6i/retro-aim-server/releases)
+   Grab the latest Linux release from the [releases page](https://github.com/mk6i/open-oscar-server/releases)
 
 2. **Create the ras user and group**
 
@@ -50,5 +50,5 @@ a production service.
    sudo journalctl -xeu ras.service
    ```
 
-Note that the `systemd` service defines the configuration for Retro AIM Server directly, bypassing the `settings.env`
+Note that the `systemd` service defines the configuration for Open OSCAR Server directly, bypassing the `settings.env`
 config. Customizations may be performed in `/etc/systemd/system/ras.service`.

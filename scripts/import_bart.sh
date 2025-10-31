@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# BART Import Script for Retro AIM Server
-# This script imports BART (Buddy ART) asset files into Retro AIM Server
+# BART Import Script for Open OSCAR Server
+# This script imports BART (Buddy ART) asset files into Open OSCAR Server
 # via the management API.
 # 
 # Compatible with macOS and Linux terminals
@@ -31,7 +31,7 @@ NC='\033[0m' # No Color
 usage() {
     echo "Usage: $0 [OPTIONS] -t <type> <file_path> [file_path...]"
     echo ""
-    echo "Import BART assets into Retro AIM Server"
+    echo "Import BART assets into Open OSCAR Server"
     echo ""
     echo "Arguments:"
     echo "  file_path         Path to BART asset file(s) to import"
@@ -322,7 +322,7 @@ if [ -z "$BART_TYPE_NUMBER" ]; then
 fi
 
 main() {
-    log_info "BART Import Script for Retro AIM Server"
+    log_info "BART Import Script for Open OSCAR Server"
     log_info "========================================"
     log_info "Target files: ${TARGET_FILES[*]}"
     log_info "BART type: $BART_TYPE (type number: $BART_TYPE_NUMBER)"

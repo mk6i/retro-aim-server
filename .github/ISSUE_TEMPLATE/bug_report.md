@@ -1,6 +1,6 @@
 ---
 name: Bug report 🐞
-about: Use this template to report bugs in Retro AIM Server.
+about: Use this template to report bugs in Open OSCAR Server.
 
 title: ''
 labels: bug
@@ -10,11 +10,11 @@ assignees: ''
 
 <!--
     ### 🚀 Please Update First! 🚀
-    Please ensure you're using the latest [release](https://github.com/mk6i/retro-aim-server/releases) of Retro AIM Server before reporting.
+    Please ensure you're using the latest [release](https://github.com/mk6i/open-oscar-server/releases) of Open OSCAR Server before reporting.
 -->
 
 <!--
-Hello! 👋 Thank you for reporting an issue with Retro AIM Server. To help us solve the problem quickly, please fill out the following template.
+Hello! 👋 Thank you for reporting an issue with Open OSCAR Server. To help us solve the problem quickly, please fill out the following template.
 Feel free to adjust or remove any parts that aren't relevant to your issue.
 
 Remember to avoid sharing sensitive information like passwords or personal data.
@@ -24,7 +24,7 @@ Remember to avoid sharing sensitive information like passwords or personal data.
 <!-- Briefly describe the problem you're encountering. -->
 
 ### Deployment Environment
-* **Retro AIM Server Version**: <!-- Version number -->
+* **Open OSCAR Server Version**: <!-- Version number -->
 * **Installation Method**: <!-- Pre-built, built from source, etc. -->
 * **Client(s) Used**: <!-- AIM 5.1.3036, Miranda IM 0.10.80, Pidgin 2.12, etc. -->
 * **Other Relevant Details**: <!-- Any additional context about your setup -->

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # docker-setup.sh
-# Cross-platform installer for Retro AIM Server Docker Setup
+# Cross-platform installer for Open OSCAR Server Docker Setup
 # Compatible with Linux and macOS
 
 set -e
@@ -87,8 +87,8 @@ resolve_repo_root() {
         if [ -d "$TMP_DIR/.git" ]; then
             warn "Directory '$TMP_DIR' is already a git repo. Using existing directory."
         else
-            log "Cloning Retro AIM Server repository..."
-            if ! git clone https://github.com/mk6i/retro-aim-server.git "$TMP_DIR"; then
+            log "Cloning Open OSCAR Server repository..."
+            if ! git clone https://github.com/mk6i/open-oscar-server.git "$TMP_DIR"; then
                 error "Failed to clone repository"
                 return 1
             fi
@@ -168,17 +168,17 @@ generate_nss() {
 }
 
 start_server() {
-    log "Starting Retro AIM Server with hostname $OSCAR_HOST..."
+    log "Starting Open OSCAR Server with hostname $OSCAR_HOST..."
     if ! make docker-run-bg OSCAR_HOST="$OSCAR_HOST"; then
         error "Failed to start server"
         return 1
     fi
-    success "Retro AIM Server is running."
+    success "Open OSCAR Server is running."
 }
 
 final_steps() {
     printf "%b\n" "${GREEN}
-Retro AIM Server setup complete!
+Open OSCAR Server setup complete!
 ===================================
 Next Steps:
 
@@ -190,7 +190,7 @@ Next Steps:
 ${YELLOW}127.0.0.1 $OSCAR_HOST${NC}
 
 ${GREEN}3. For AIM 6.x client setup instructions, see:
-   https://github.com/mk6i/retro-aim-server/blob/main/docs/AIM_6_7.md#aim-62-75-setup
+   https://github.com/mk6i/open-oscar-server/blob/main/docs/AIM_6_7.md#aim-62-75-setup
 
 Enjoy!
 ${NC}" >&2

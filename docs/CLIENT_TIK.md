@@ -1,6 +1,6 @@
 # TiK Client Setup
 
-This guide explains how to install and configure **TiK** for Retro AIM Server.
+This guide explains how to install and configure **TiK** for Open OSCAR Server.
 
  <p align="center">
     <img width="400" alt="screenshot of TiK sign-on window" src="https://github.com/user-attachments/assets/30f6b91b-cfe9-4749-a8f6-8f089ff24125">

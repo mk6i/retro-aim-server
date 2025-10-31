@@ -1,5 +1,5 @@
 [Unit]
-Description=Retro AIM Server
+Description=Open OSCAR Server
 
 [Service]
 Type=simple

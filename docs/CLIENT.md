@@ -1,6 +1,6 @@
 # Windows AIM 5.x Client Setup
 
-This guide explains how to install and configure Windows AIM 5.x clients for Retro AIM Server.
+This guide explains how to install and configure Windows AIM 5.x clients for Open OSCAR Server.
 
 AIM 5.x is recommended if you want to experience the last version of AIM with the "classic" early-2000s feel.
 
@@ -39,7 +39,7 @@ on `aim.exe`.
 
 ## Configuration
 
-Once installed, configure AIM to connect to Retro AIM Server.
+Once installed, configure AIM to connect to Open OSCAR Server.
 
 1. At the sign-on screen, click `Setup`.
    <p>

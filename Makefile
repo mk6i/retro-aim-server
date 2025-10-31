@@ -30,7 +30,7 @@ release-dry-run: ## GoReleaser dry-run (skips validate & publish)
 	$(DOCKER_RUN_GO_RELEASER) --clean --skip=validate --skip=publish
 
 .PHONY: docker-image-ras
-docker-image-ras: ## Build Retro AIM Server image
+docker-image-ras: ## Build Open OSCAR Server image
 	docker build -t ras:latest -f Dockerfile .
 
 .PHONY: docker-image-stunnel
@@ -49,11 +49,11 @@ docker-run:
 	OSCAR_HOST=$(OSCAR_HOST) docker compose up retro-aim-server stunnel
 
 .PHONY: docker-run-bg
-docker-run-bg: ## Run Retro AIM Server in background with docker-compose
+docker-run-bg: ## Run Open OSCAR Server in background with docker-compose
 	OSCAR_HOST=$(OSCAR_HOST) docker compose up -d retro-aim-server stunnel
 
 .PHONY: docker-run-stop
-docker-run-stop: ## Stop Retro AIM Server docker-compose services
+docker-run-stop: ## Stop Open OSCAR Server docker-compose services
 	OSCAR_HOST=$(OSCAR_HOST) docker compose down
 
 ################################################################################

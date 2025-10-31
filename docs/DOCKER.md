@@ -1,6 +1,6 @@
-# Retro AIM Server Docker Setup
+# Open OSCAR Server Docker Setup
 
-This guide explains how to set up an SSL-enabled instance of Retro AIM Server using Docker.
+This guide explains how to set up an SSL-enabled instance of Open OSCAR Server using Docker.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ This guide explains how to set up an SSL-enabled instance of Retro AIM Server us
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/mk6i/retro-aim-server.git
+git clone https://github.com/mk6i/open-oscar-server.git
 cd retro-aim-server
 ```
 
@@ -23,7 +23,7 @@ This builds Docker images for:
 
 - Certificate generation
 - SSL termination
-- The Retro AIM Server runtime
+- The Open OSCAR Server runtime
 
 ```bash
 make docker-images

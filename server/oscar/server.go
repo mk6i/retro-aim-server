@@ -591,7 +591,7 @@ func (s oscarServer) dispatchIncomingMessages(
 				// error code indicating user signed in a different location
 				block.Append(wire.NewTLVBE(0x0009, wire.OServiceDiscErrNewLogin))
 				// "more info" button
-				block.Append(wire.NewTLVBE(0x000b, "https://github.com/mk6i/retro-aim-server"))
+				block.Append(wire.NewTLVBE(0x000b, "https://github.com/mk6i/open-oscar-server"))
 				if err := flapc.NewSignoff(block); err != nil {
 					return fmt.Errorf("unable to gracefully disconnect user. %w", err)
 				}

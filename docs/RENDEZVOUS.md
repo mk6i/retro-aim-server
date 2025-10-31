@@ -10,7 +10,7 @@ one AIM client sent its IP address to another, that address was routable on the 
 is behind a router performing Network Address Translation (NAT). Consequently, the sender’s machine usually only has a
 **private IP address** (e.g., `192.168.x.x`), which cannot be reached directly over the Internet.
 
-To work around this limitation, **Retro AIM Server** can substitute your client’s private IP address with the server’s
+To work around this limitation, **Open OSCAR Server** can substitute your client’s private IP address with the server’s
 view of your **public IP address**. However, you still need to configure **port forwarding** on your router to ensure
 that incoming Rendezvous connections (for file transfers) are routed to the correct machine.
 

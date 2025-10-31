@@ -1,10 +1,10 @@
-# Retro AIM Server Release Process
+# Open OSCAR Server Release Process
 
-This document explains how the Retro AIM Server release process works.
+This document explains how the Open OSCAR Server release process works.
 
 ## Overview
 
-Retro AIM Server is built and released to Github using [GoReleaser](https://goreleaser.com/). The release process, which
+Open OSCAR Server is built and released to Github using [GoReleaser](https://goreleaser.com/). The release process, which
 runs from a local computer (and not a CI/CD process) creates pre-built binaries for several platforms (Windows, macOS,
 Linux).
 
@@ -14,16 +14,16 @@ host environment.
 ### Code Signing Policy
 
 This project offers signed Windows binaries and does not currently offer signed macOS binaries. This means that macOS
-distrusts Retro AIM Server by default and quarantines the application when you open it.
+distrusts Open OSCAR Server by default and quarantines the application when you open it.
 > If you don't want to bypass this security mechanism, you can [build the project yourself](./building) instead.
 
 ## Release Procedure
 
-The following is the procedure that builds Retro AIM Server and uploads the build artifacts to a Github release.
+The following is the procedure that builds Open OSCAR Server and uploads the build artifacts to a Github release.
 
 1. **Export Github Personal Access Token (PAT)**
 
-   Export a Github Personal Access Token that has `write:packages` permissions for the Retro AIM Server repo.
+   Export a Github Personal Access Token that has `write:packages` permissions for the Open OSCAR Server repo.
 
     ```sh
     export GITHUB_TOKEN=...
@@ -48,7 +48,7 @@ The following is the procedure that builds Retro AIM Server and uploads the buil
 
 4. **Release It!**
 
-   Now run the release process. Once its complete, a private draft [release](https://github.com/mk6i/retro-aim-server/releases)
+   Now run the release process. Once its complete, a private draft [release](https://github.com/mk6i/open-oscar-server/releases)
    should appear with attached build artifacts.
 
     ```shell

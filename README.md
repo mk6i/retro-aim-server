@@ -1,4 +1,4 @@
-# Retro AIM Server
+# Open OSCAR Server
 
 <div align="center">
 
@@ -7,7 +7,7 @@
 
 </div>
 
-**Retro AIM Server** is an open-source instant messaging server compatible with classic AIM and ICQ clients.
+**Open OSCAR Server** (formerly known as Retro AIM Server) is an open-source instant messaging server compatible with classic AIM and ICQ clients.
 
 | Disclaimer                                                                                                                                                                                                                           |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -44,7 +44,7 @@ The following features are supported:
 
 ## 🏁 How to Run
 
-Get up and running with Retro AIM Server using one of these handy server quickstart guides:
+Get up and running with Open OSCAR Server using one of these handy server quickstart guides:
 
 * [Linux (x86_64)](./docs/LINUX.md)
 * [macOS (Intel and Apple Silicon)](./docs/MACOS.md)
@@ -58,11 +58,11 @@ Don't have AIM installed yet? Check out the [AIM Client Setup Guide](./docs/CLIE
 
 This project is under active development. Contributions are welcome!
 
-Follow [this guide](./docs/BUILD.md) to learn how to compile and run Retro AIM Server.
+Follow [this guide](./docs/BUILD.md) to learn how to compile and run Open OSCAR Server.
 
 ## 🌍 Community
 
-Check out the Retro AIM Server [Discord server](https://discord.gg/2Xy4nF3Uh9) to get help or find out how to get
+Check out the Open OSCAR Server [Discord server](https://discord.gg/2Xy4nF3Uh9) to get help or find out how to get
 involved.
 
 ## 👤 Management API
@@ -193,4 +193,4 @@ curl http://localhost:8080/chat/room/public
 
 ## 📄 License
 
-Retro AIM Server is licensed under the [MIT license](./LICENSE).
+Open OSCAR Server is licensed under the [MIT license](./LICENSE).
